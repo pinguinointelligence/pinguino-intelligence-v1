@@ -100,8 +100,9 @@ describe('D7/D8 — the „Moja" badge is gone, the mark explains itself', () =>
 
   it('the base price survives without the native title', () => {
     // It used to live in `title`; it must stay in the accessible name.
-    expect(price).toContain('aria-label={ownPriceExplanation}');
-    expect(price).toContain('Cena bazowa');
+    expect(price).toContain('aria-label={tooltipCopy}');
+    expect(price).toContain('return `Cena bazowa: ${active}`');
+    expect(price).toContain('const own = `Moja cena: ${active}`');
   });
 
   it('anchors the short price preview inward so it cannot cover the right panel', () => {

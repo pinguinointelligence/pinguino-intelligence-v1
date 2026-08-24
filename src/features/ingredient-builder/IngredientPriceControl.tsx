@@ -17,12 +17,23 @@ export interface IngredientPriceView {
 const money = (value: number): string =>
   value.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+/** Presentation only: `pricePerKg` is already the shared resolved authority. */
+const priceTooltipCopy = (cost: EffectiveIngredientCost): string | null => {
+  if (cost.pricePerKg === null) return null;
+  const active = `${money(cost.pricePerKg)} ${cost.currency}/kg`;
+  if (cost.source !== 'customer_override') return `Cena bazowa: ${active}`;
+  const own = `Moja cena: ${active}`;
+  return cost.mapperPricePerKg === null
+    ? own
+    : `${own} · Bazowa: ${money(cost.mapperPricePerKg)} ${cost.currency}/kg`;
+};
+
 export function IngredientPriceCell({ view }: { view: IngredientPriceView }) {
   const { cost, lineCost } = view;
   const own = cost.source === 'customer_override';
-  const base = cost.mapperPricePerKg;
-  const ownPriceExplanation =
-    base === null ? 'Moja cena' : `Moja cena · Bazowa: ${money(base)} ${cost.currency}/kg`;
+  const tooltipCopy = priceTooltipCopy(cost);
+  const activePriceCopy =
+    cost.pricePerKg === null ? '—' : `${money(cost.pricePerKg)} ${cost.currency}/kg`;
   return (
     <div
       className="min-w-0 text-right leading-tight"
@@ -43,12 +54,12 @@ export function IngredientPriceCell({ view }: { view: IngredientPriceView }) {
         >
           {lineCost === null ? 'Koszt niepełny' : `${money(lineCost)} ${cost.currency}`}
         </span>
-        {own ? (
+        {own && tooltipCopy ? (
           // The base price used to hide in a native `title`. It now travels in
           // BOTH the hover preview and the accessible name, so nothing is lost
           // for keyboard/screen-reader users when the tooltip is not rendered.
           <HoverPreview
-            text={ownPriceExplanation}
+            text={tooltipCopy}
             focusable
             align="end"
             maxWidthPx={224}
@@ -58,16 +69,25 @@ export function IngredientPriceCell({ view }: { view: IngredientPriceView }) {
                 reachable, so a quiet indicator never becomes a mouse-only,
                 pixel-hunting affordance. */}
             <span
-              aria-label={ownPriceExplanation}
+              aria-label={tooltipCopy}
               data-testid="customer-price-indicator"
               className="block size-[5px] rounded-full bg-gold"
             />
           </HoverPreview>
         ) : null}
       </span>
-      <span className="block truncate text-[10px] text-stone-600">
-        {cost.pricePerKg === null ? '—' : `${money(cost.pricePerKg)} ${cost.currency}/kg`}
-      </span>
+      {!own && tooltipCopy ? (
+        <HoverPreview
+          text={tooltipCopy}
+          align="end"
+          maxWidthPx={224}
+          className="block truncate text-[10px] text-stone-600"
+        >
+          <span aria-label={tooltipCopy}>{activePriceCopy}</span>
+        </HoverPreview>
+      ) : (
+        <span className="block truncate text-[10px] text-stone-600">{activePriceCopy}</span>
+      )}
     </div>
   );
 }

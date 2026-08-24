@@ -59,6 +59,46 @@ const override = (pricePerKg = 1.12, currency = 'EUR'): CustomerIngredientPriceO
 });
 
 describe('effective customer pricing', () => {
+  it('uses the exact 1.20 base / 3.00 owner contract across row, line, recipe and ECO input', () => {
+    const input: RecipeInput = {
+      items: [
+        {
+          id: 'milk',
+          ingredient: ingredient('PI-ING-000236', 1.2),
+          planned_grams: 1000,
+          actual_grams: null,
+          lock_type: 'unlocked',
+        },
+      ],
+      mode: 'classic',
+      category: 'milk_gelato',
+      target_temperature_c: -11,
+      target_batch_grams: 1000,
+      machine_capacity_grams: null,
+      goals: { formulation_strategy: 'eco' },
+    };
+
+    const base = effectiveCostForIngredient(input.items[0]!.ingredient, {});
+    expect(base).toMatchObject({ source: 'mapper_reference', pricePerKg: 1.2 });
+    expect(effectiveLineCost(1000, base)).toBeCloseTo(1.2, 10);
+    expect(summarizeEffectiveRecipeCost(input, {}).costPerKg).toBeCloseTo(1.2, 10);
+
+    const overrides = { 'PI-ING-000236': override(3) };
+    const active = effectiveCostForIngredient(input.items[0]!.ingredient, overrides);
+    const ecoInput = applyEffectiveCustomerPrices(input, overrides);
+    const result = calculateRecipe(ecoInput);
+    expect(active).toMatchObject({
+      source: 'customer_override',
+      pricePerKg: 3,
+      mapperPricePerKg: 1.2,
+      customerOverridePerKg: 3,
+    });
+    expect(effectiveLineCost(1000, active)).toBeCloseTo(3, 10);
+    expect(ecoInput.items[0]!.ingredient.cost_per_kg).toBe(3);
+    expect(result.costs?.cost_per_kg).toBeCloseTo(3, 10);
+    expect(summarizeEffectiveRecipeCost(input, overrides).costPerKg).toBeCloseTo(3, 10);
+  });
+
   it('keeps one active price across the row, line cost, Engine result and recipe summary', () => {
     const input: RecipeInput = {
       items: [

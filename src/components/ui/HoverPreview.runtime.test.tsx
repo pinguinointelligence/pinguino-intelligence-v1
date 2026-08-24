@@ -25,7 +25,12 @@ describe('HoverPreview edge alignment', () => {
   it('anchors an end-aligned compact preview inward from the trigger', async () => {
     await act(async () => {
       root.render(
-        <HoverPreview text="Moja cena · Bazowa: 0,97 EUR/kg" focusable align="end" maxWidthPx={224}>
+        <HoverPreview
+          text="Moja cena: 3,00 EUR/kg · Bazowa: 1,20 EUR/kg"
+          focusable
+          align="end"
+          maxWidthPx={224}
+        >
           <span>●</span>
         </HoverPreview>,
       );
@@ -38,7 +43,7 @@ describe('HoverPreview edge alignment', () => {
     await act(async () => trigger.focus());
 
     const tooltip = document.querySelector<HTMLElement>('[role="tooltip"]');
-    expect(tooltip?.textContent).toBe('Moja cena · Bazowa: 0,97 EUR/kg');
+    expect(tooltip?.textContent).toBe('Moja cena: 3,00 EUR/kg · Bazowa: 1,20 EUR/kg');
     expect(tooltip?.style.right).toBe('532px');
     expect(tooltip?.style.left).toBe('');
     expect(tooltip?.style.maxWidth).toContain('224px');

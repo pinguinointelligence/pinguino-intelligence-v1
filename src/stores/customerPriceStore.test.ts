@@ -100,4 +100,29 @@ describe('customer price store', () => {
       overridesByCanonicalId: {},
     });
   });
+
+  it('removes an owner override on reset and keeps it removed after a fresh load', async () => {
+    const canonicalIngredientId = 'PI-ING-000514';
+    await useCustomerPriceStore.getState().loadForOwner('owner-reset');
+    await useCustomerPriceStore.getState().saveOverride({
+      ownerUserId: 'owner-reset',
+      canonicalIngredientId,
+      pricePerKg: 3,
+      currency: 'EUR',
+    });
+    expect(
+      useCustomerPriceStore.getState().overridesByCanonicalId[canonicalIngredientId]?.pricePerKg,
+    ).toBe(3);
+
+    await useCustomerPriceStore.getState().resetOverride('owner-reset', canonicalIngredientId);
+    expect(
+      useCustomerPriceStore.getState().overridesByCanonicalId[canonicalIngredientId],
+    ).toBeUndefined();
+
+    useCustomerPriceStore.getState().clear();
+    await useCustomerPriceStore.getState().loadForOwner('owner-reset');
+    expect(
+      useCustomerPriceStore.getState().overridesByCanonicalId[canonicalIngredientId],
+    ).toBeUndefined();
+  });
 });
