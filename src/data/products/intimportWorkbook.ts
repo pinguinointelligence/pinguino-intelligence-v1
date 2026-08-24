@@ -84,10 +84,12 @@ export class IntimportSheetAmbiguousError extends Error {
 /**
  * The workbook as canonical INTIMPORT CSV.
  *
- * `raw: false` so a cell is rendered the way the sheet displays it — a number
- * that reads 12,4 in Excel must not arrive as 12.400000000000001, and a date
- * must not arrive as a serial. Blank cells stay blank rather than becoming the
- * string "undefined", because the parser already knows what missing means.
+ * Numbers are emitted RAW, not as the sheet displays them. A cell holding 14
+ * displays as „14.00" under a two-decimal format, and package size is part of
+ * the catalogue's canonical identity — so display formatting would make the
+ * same product a different product depending on which file it arrived in, and
+ * a re-import would duplicate the catalogue rather than reuse it. On the
+ * owner's file that was 788 rows: „14.00 g × 1.00" against „14 g".
  *
  * When several sheets carry the INTIMPORT headers this REFUSES to guess and
  * asks the caller to choose.
@@ -109,7 +111,7 @@ export function intimportWorkbookToCsv(
 
   const sheet = workbook.Sheets[chosen!];
   if (!sheet) throw new Error(`Arkusz „${chosen}" nie istnieje w tym pliku.`);
-  const csv = xlsx.utils.sheet_to_csv(sheet, { blankrows: false, rawNumbers: false });
+  const csv = xlsx.utils.sheet_to_csv(sheet, { blankrows: false, rawNumbers: true });
   return { csv, sheet: chosen!, candidates };
 }
 

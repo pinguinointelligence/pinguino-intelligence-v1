@@ -64,6 +64,23 @@ describe.runIf(existsSync(CSV) && existsSync(XLSX) && existsSync(MAPPER_FILE))(
       mkdirSync(dirname(REPORT), { recursive: true });
       writeFileSync(REPORT, `${JSON.stringify(report, null, 2)}\n`);
 
+      // EVERY insert field, not just the name. package_size is part of the
+      // canonical identity, and Excel's display formatting silently made it
+      // „14.00 g × 1.00" against the CSV's „14 g" on 788 rows — which would have
+      // re-created the whole catalogue instead of reusing it.
+      const insertDiffs: string[] = [];
+      for (let i = 0; i < Math.min(fromXlsx.candidates.length, fromCsv.candidates.length); i += 1) {
+        const xi = fromXlsx.candidates[i]!.insert as Record<string, unknown>;
+        const ci = fromCsv.candidates[i]!.insert as Record<string, unknown>;
+        for (const field of new Set([...Object.keys(xi), ...Object.keys(ci)])) {
+          if (field === 'extracted_json' || field === 'product_name_display') continue;
+          if (JSON.stringify(xi[field]) !== JSON.stringify(ci[field])) {
+            insertDiffs.push(`row ${i + 1} ${field}`);
+          }
+        }
+      }
+      expect(insertDiffs).toEqual([]);
+
       expect(fromXlsx.candidates).toHaveLength(fromCsv.candidates.length);
       // Identity and canonical naming must be character-identical.
       expect(names(fromXlsx)).toEqual(names(fromCsv));
