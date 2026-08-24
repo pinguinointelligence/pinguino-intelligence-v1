@@ -12,6 +12,7 @@
 import type { IntimportCandidate } from '@/data/products/intimport';
 import {
   assessProductConfidence,
+  isAutoImportEligible,
   routeBeforeWeb,
   type EnrichmentRoute,
   type EvidenceSource,
@@ -531,9 +532,11 @@ export function planIntimportImport(
 
   for (const row of rows) {
     const values = row.workingValues;
+    const admittedByEvidence = isAutoImportEligible(row.assessment);
     // Composition decides. A professional product is not held back for missing
-    // dosage or process — those are informational and carry no authority.
-    const state: ImportedProductState = !values
+    // dosage or process — those are informational and carry no authority. The
+    // existing 85% Product Accuracy gate remains independent and must also pass.
+    const state: ImportedProductState = !values || !admittedByEvidence
       ? 'REVIEW'
       : values.valueReadiness === 'READY'
         ? 'READY_VERIFIED'
@@ -542,6 +545,12 @@ export function planIntimportImport(
           : 'REVIEW';
 
     const insert: ProductInsert = { ...row.insert };
+    const declared = Object.fromEntries(
+      WORKING_NUMERIC_FIELDS.flatMap((field) => {
+        const value = (row.insert as Record<string, unknown>)[field];
+        return typeof value === 'number' && Number.isFinite(value) ? [[field, value]] : [];
+      }),
+    );
     const provenance: Record<string, unknown> = {};
 
     if (values) {
@@ -576,6 +585,8 @@ export function planIntimportImport(
         version: 1,
         state,
         engineUsable: state === 'READY_VERIFIED' || state === 'READY_ESTIMATED',
+        productAccuracy: row.assessment.confidence,
+        criticalReadiness: row.assessment.criticalReadiness,
         // Two independent facts, deliberately never folded together.
         compositionReadiness: values?.valueReadiness ?? 'REVIEW',
         // INFORMATIONAL ONLY (owner decision, 2026-08-23). Recorded for audit,
@@ -591,15 +602,17 @@ export function planIntimportImport(
               selectedMapperIngredientId: selectedProfile?.ingredient_id ?? null,
             }
           : null,
-        // This is a proposal, never an authorization. catalog-submit recomputes
-        // the match server-side and will reject any different donor/confidence.
-        intimportWholeProfileProposal: selectedProfile
-          ? {
-              mapperIngredientId: selectedProfile.ingredient_id,
-              matchInput: row.profileMatchInput,
-              sourceProductId: row.sourceProductId,
-            }
-          : null,
+        // This is source material, never an authorization. catalog-submit
+        // rebuilds the complete product-owned profile and accuracy from these
+        // declarations plus the immutable Mapper, ignoring the browser's final
+        // technicalComposition entirely.
+        intimportProductProfileProposal: {
+          proposedMapperIngredientId: selectedProfile?.ingredient_id ?? null,
+          matchInput: row.profileMatchInput,
+          sourceProductId: row.sourceProductId,
+          declared,
+          evidence: row.evidence,
+        },
         fields: provenance,
       },
     };

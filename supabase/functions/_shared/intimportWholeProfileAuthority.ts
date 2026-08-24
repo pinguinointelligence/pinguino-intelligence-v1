@@ -8,6 +8,21 @@ import {
   type ProfileMatchBasis,
   type ProfileMatchInput,
 } from '../../../src/features/product-intelligence/mapperValueInference.ts';
+import {
+  assessProductConfidence,
+  isAutoImportEligible,
+  type ProductEvidenceInput,
+} from '../../../src/features/product-intelligence/productEvidenceConfidence.ts';
+import {
+  resolveProductWorkingValues,
+  type ProductReadiness,
+} from '../../../src/features/product-intelligence/productWorkingValues.ts';
+import {
+  WORKING_NUMERIC_FIELDS,
+  type FieldBasis,
+  type FieldTruthState,
+  type WorkingNumericField,
+} from '../../../src/features/product-intelligence/productFieldTruth.ts';
 
 export const INTIMPORT_WHOLE_PROFILE_AUTHORITY = 'INTIMPORT_WHOLE_PROFILE_MATCH' as const;
 
@@ -34,6 +49,80 @@ export interface IntimportWholeProfileProposalInput {
   matchInput: ProfileMatchInput;
   rows: readonly IntimportMapperAuthorityRow[];
 }
+
+export const PRODUCT_PROFILE_AUTHORITY = 'PRODUCT_PROFILE_V1' as const;
+/** Historical export retained for callers while PR and PM converge on one authority. */
+export const INTIMPORT_PRODUCT_PROFILE_AUTHORITY = PRODUCT_PROFILE_AUTHORITY;
+
+export interface IntimportTrustedFieldTruth {
+  value: number;
+  state: FieldTruthState;
+  basis: FieldBasis;
+  confidence: number;
+  mapperReferences: string[];
+  algorithmVersion: string | null;
+  mapperFingerprint: string | null;
+}
+
+export interface IntimportTrustedProductProfile {
+  authority: typeof PRODUCT_PROFILE_AUTHORITY;
+  validationMode: 'server_recomputed_product_profile';
+  articleIdentity: 'PRODUCT_OWNED';
+  origin: 'PR' | 'PM';
+  productAccuracy: number;
+  readiness: ProductReadiness;
+  engineUsable: boolean;
+  criticalReadiness: boolean;
+  missingCritical: string[];
+  missingEngineFields: WorkingNumericField[];
+  allergenEvidenceStatus: 'CONFIRMED' | 'USER_CONFIRMED' | 'NOT_CONFIRMED';
+  ingredientsEvidenceStatus: 'CONFIRMED' | 'USER_CONFIRMED' | 'NOT_CONFIRMED';
+  technicalComposition: Record<string, number>;
+  fieldTruth: Partial<Record<WorkingNumericField, IntimportTrustedFieldTruth>>;
+  estimatedFromMapperIds: string[];
+  mapperSimilarity: number | null;
+  mapperProfileBasis: Exclude<ProfileMatchBasis, 'none'> | null;
+  mapperFingerprint: string;
+}
+
+export interface IntimportProductProfileProposalInput {
+  origin?: 'PR' | 'PM';
+  /** Untrusted client hint retained only for diagnostics/backward compatibility.
+   * The server always recomputes the donor and never rejects the product merely
+   * because this hint differs. */
+  proposedMapperIngredientId: string | null;
+  matchInput: ProfileMatchInput;
+  declared: Partial<Record<WorkingNumericField, number | null>>;
+  declaredBasis?: Partial<Record<WorkingNumericField, 'product_declared' | 'user_confirmed'>>;
+  evidence: ProductEvidenceInput;
+  /** Deliberately ignored. It exists only so callers/tests can prove that a
+   * browser-supplied final profile has no authority at this boundary. */
+  proposedTechnicalComposition?: Record<string, unknown>;
+  rows: readonly IntimportMapperAuthorityRow[];
+}
+
+const TECHNICAL_KEYS: Readonly<Record<WorkingNumericField, string>> = Object.freeze({
+  water_percent: 'water',
+  total_solids_percent: 'totalSolids',
+  fat_percent: 'fat',
+  protein_percent: 'protein',
+  carbohydrate_percent: 'carbohydrate',
+  total_sugars_percent: 'sugars',
+  sucrose_percent: 'sucrose',
+  dextrose_percent: 'dextrose',
+  glucose_percent: 'glucose',
+  fructose_percent: 'fructose',
+  lactose_percent: 'lactose',
+  polyol_percent: 'polyols',
+  fiber_percent: 'fibre',
+  salt_percent: 'salt',
+  alcohol_percent: 'alcohol',
+  kcal_per_100g: 'energyKcal',
+  pod_value: 'podValue',
+  pac_value: 'pacValue',
+  sweetness_factor: 'sweetnessFactor',
+  freezing_factor: 'freezingFactor',
+});
 
 /** The immutable Mapper vocabulary is prefix-governed, not case-exact. */
 export function isBindableIntimportMapperTarget(row: IntimportMapperAuthorityRow): boolean {
@@ -89,5 +178,104 @@ export function validateIntimportWholeProfileProposal(
       match.basis,
       match.confidence.toFixed(4),
     ].join(':'),
+  };
+}
+
+/**
+ * Rebuild the imported article's own immutable technical profile.
+ *
+ * The submitted final composition is never read. Source declarations enter as
+ * VERIFIED facts, the immutable Mapper may fill only gaps, and both the
+ * admission verdict and displayed Product Accuracy are recomputed with the
+ * existing shared policies. A Mapper id is retained as estimate provenance;
+ * it never becomes this article's runtime identity.
+ */
+export function validateIntimportProductProfileProposal(
+  input: IntimportProductProfileProposalInput,
+): IntimportTrustedProductProfile | null {
+  const mapperFingerprint = fingerprintMapperRows(input.rows);
+  // Only verified, Engine-approved Mapper rows may contribute estimates. The
+  // browser's proposed ID is deliberately ignored: the server recomputes the
+  // donor from canonical facts, and a stale/wrong hint must degrade to the
+  // server result (or REVIEW), never discard the commercial product itself.
+  const knowledge = buildMapperKnowledge(
+    input.rows.filter(isBindableIntimportMapperTarget),
+    mapperFingerprint,
+  );
+  const assessment = assessProductConfidence(input.evidence);
+  const resolved = resolveProductWorkingValues(
+    {
+      declared: input.declared,
+      declaredBasis: input.declaredBasis,
+      declaredConfidence: assessment.confidence / 100,
+      identity: {
+        name: input.matchInput.name,
+        variant: input.matchInput.variant,
+        brand: input.matchInput.brand,
+        category: input.matchInput.category,
+        subcategory: input.matchInput.subcategory,
+        barcode: input.matchInput.barcode,
+      },
+      technical: input.matchInput.technical === true,
+      technicalAuthority: false,
+    },
+    knowledge,
+  );
+
+  const acceptedMatch =
+    resolved.profileMatch &&
+    resolved.profileMatch.confidence >= PROFILE_MATCH_FLOOR &&
+    resolved.profileMatch.rejected === null &&
+    resolved.profileMatch.basis !== 'none'
+      ? resolved.profileMatch
+      : null;
+
+  const technicalComposition: Record<string, number> = {};
+  const fieldTruth: Partial<Record<WorkingNumericField, IntimportTrustedFieldTruth>> = {};
+  for (const field of WORKING_NUMERIC_FIELDS) {
+    const truth = resolved.fields[field];
+    if (truth.value === null) continue;
+    technicalComposition[TECHNICAL_KEYS[field]] = truth.value;
+    fieldTruth[field] = {
+      value: truth.value,
+      state: truth.provenance.state,
+      basis: truth.provenance.basis,
+      confidence: truth.provenance.confidence,
+      mapperReferences: [...truth.provenance.mapperReferences],
+      algorithmVersion: truth.provenance.algorithmVersion,
+      mapperFingerprint: truth.provenance.mapperFingerprint,
+    };
+  }
+
+  return {
+    authority: PRODUCT_PROFILE_AUTHORITY,
+    validationMode: 'server_recomputed_product_profile',
+    articleIdentity: 'PRODUCT_OWNED',
+    origin: input.origin ?? 'PR',
+    productAccuracy: assessment.confidence,
+    readiness: resolved.readiness,
+    engineUsable: resolved.engineReady && isAutoImportEligible(assessment),
+    criticalReadiness: assessment.criticalReadiness,
+    missingCritical: [...assessment.missingCritical],
+    missingEngineFields: [...resolved.missingEngineFields],
+    allergenEvidenceStatus:
+      input.evidence.fields.allergens === 'user_confirmed'
+        ? 'USER_CONFIRMED'
+        : input.evidence.fields.allergens
+          ? 'CONFIRMED'
+          : 'NOT_CONFIRMED',
+    ingredientsEvidenceStatus:
+      input.evidence.fields.ingredients === 'user_confirmed'
+        ? 'USER_CONFIRMED'
+        : input.evidence.fields.ingredients
+          ? 'CONFIRMED'
+          : 'NOT_CONFIRMED',
+    technicalComposition,
+    fieldTruth,
+    estimatedFromMapperIds: [...resolved.mapperReferences],
+    mapperSimilarity: acceptedMatch?.confidence ?? null,
+    mapperProfileBasis:
+      acceptedMatch && acceptedMatch.basis !== 'none' ? acceptedMatch.basis : null,
+    mapperFingerprint,
   };
 }

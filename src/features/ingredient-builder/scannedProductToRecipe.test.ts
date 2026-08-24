@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 import type { CatalogProductSearchHit } from '@/features/global-catalog/contracts';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import {
+  currentCatalogArticleId,
   currentMapperCatalogId,
   engineIngredientForCatalogSelection,
   filterCurrentMapperCatalogHits,
@@ -42,6 +43,31 @@ const hit = (overrides: Partial<CatalogProductSearchHit> = {}): CatalogProductSe
 });
 
 const scanned = { id: 'PR-ING-006306', displayName: 'MLEKO 3,2%', barcode: '5900497010115' };
+
+const ownProductProfile = {
+  productAccuracy: 94,
+  productIntelligence: { engineUsable: true },
+  technicalComposition: {
+    water: 51,
+    totalSolids: 49,
+    fat: 11,
+    protein: 24,
+    carbohydrate: 13,
+    sugars: 0.5,
+    sucrose: 0.5,
+    glucose: 0,
+    dextrose: 0,
+    fructose: 0,
+    lactose: 0,
+    polyols: 0,
+    fibre: 0,
+    salt: 0.2,
+    alcohol: 0,
+    energyKcal: 250,
+    podValue: 0.5,
+    pacValue: 0.5,
+  },
+};
 
 /** A minimal current Mapper row — the only source of a recipe line's physics. */
 const mapperRow = {
@@ -102,7 +128,7 @@ describe('a scanned product returning to the recipe', () => {
     expect(target?.id).toBe(imported.id);
   });
 
-  it('refuses a commercial product that carries no current Mapper identity', () => {
+  it('refuses a commercial product that has no product-owned technical profile', () => {
     const commercial = hit({
       entityKind: 'commercial_product',
       status: 'manual_unverified',
@@ -112,14 +138,15 @@ describe('a scanned product returning to the recipe', () => {
   });
 
   it('B accepts the scanned product itself once its Mapper identity is authorized', () => {
-    // The catalogue entry is the product the owner scanned; the physics stay the
-    // Mapper row's. Nothing about the Mapper dataset changed to make this possible.
+    // The catalogue entry and its physics both belong to the scanned article.
     const overlay = hit({
       id: 'c0ffee00-0000-4000-8000-000000000009',
       entityKind: 'commercial_product',
       status: 'manual_unverified',
       displayName: 'MLEKO 3,2% Łaciate 1 l',
+      productCode: 'PR-ING-006306',
       mappedIngredientId: 'PI-ING-000123',
+      publicData: ownProductProfile,
     });
     const target = scannedProductRecipeTarget([overlay], scanned, 'BASE');
     expect(target?.id).toBe(overlay.id);
@@ -132,31 +159,58 @@ describe('a scanned product returning to the recipe', () => {
       entityKind: 'commercial_product',
       status: 'manual_unverified',
       displayName: 'MLEKO 3,2% Łaciate 1 l',
+      productCode: 'PR-ING-006306',
       mappedIngredientId: 'PI-ING-000123',
+      publicData: ownProductProfile,
     });
     expect(filterCurrentMapperCatalogHits([hit(), overlay], 'BASE')).toHaveLength(2);
   });
 
-  it('B builds the recipe line from the Mapper row and names it after the product', () => {
+  it('B builds the recipe line from the product-owned profile and keeps the PR identity', () => {
     const overlay = hit({
       entityKind: 'commercial_product',
       status: 'manual_unverified',
       displayName: 'MLEKO 3,2% Łaciate 1 l',
+      productCode: 'PR-ING-006306',
       mappedIngredientId: 'PI-ING-000123',
+      publicData: ownProductProfile,
     });
     const ingredient = engineIngredientForCatalogSelection(overlay, {
-      mapperId: 'PI-ING-000123',
-      row: mapperRow,
-    });
+      ok: true,
+      kind: 'catalog_product',
+      articleId: 'PR-ING-006306',
+      productVersionId: overlay.currentVersionId!,
+    })!;
     expect(ingredient.name).toBe('MLEKO 3,2% Łaciate 1 l');
-    expect(ingredient.canonical_ingredient_id).toBe('PI-ING-000123');
-    // Every scientific value is still the Mapper row's — no scanned physics anywhere.
-    expect(ingredient.composition).toEqual(
-      engineIngredientForCatalogSelection(hit(), { mapperId: 'PI-ING-000123', row: mapperRow })
-        .composition,
-    );
-    expect(ingredient.pod_value).toBe(mapperRow.pod_value);
-    expect(ingredient.pac_value).toBe(mapperRow.pac_value);
+    expect(ingredient.canonical_ingredient_id).toBe('PR-ING-006306');
+    expect('composition' in ingredient && ingredient.composition.fat_percent).toBe(11);
+    expect('composition' in ingredient && ingredient.composition.protein_percent).toBe(24);
+    expect('pac_value' in ingredient && ingredient.pac_value).toBe(0.5);
+    expect('composition' in ingredient && ingredient.composition.water_percent).toBe(51);
+    expect('composition' in ingredient && ingredient.composition.water_percent)
+      .not.toBe(mapperRow.water_percent);
+  });
+
+  it('keeps Baitz PR-ING-006308 distinct from PI-ING-000091 at runtime', () => {
+    const baitz = hit({
+      id: 'ba17caca-0000-4000-8000-000000006308',
+      entityKind: 'commercial_product',
+      status: 'manual_unverified',
+      displayName: 'Baitz Kakao',
+      productCode: 'PR-ING-006308',
+      mappedIngredientId: 'PI-ING-000091',
+      publicData: ownProductProfile,
+    });
+    const ingredient = engineIngredientForCatalogSelection(baitz, {
+      ok: true,
+      kind: 'catalog_product',
+      articleId: 'PR-ING-006308',
+      productVersionId: baitz.currentVersionId!,
+    })!;
+    expect(ingredient.id).toBe('PR-ING-006308');
+    expect(ingredient.canonical_ingredient_id).toBe('PR-ING-006308');
+    expect(ingredient.canonical_ingredient_id).not.toBe('PI-ING-000091');
+    expect('composition' in ingredient && ingredient.composition.fat_percent).toBe(11);
   });
 
   it('C refuses a blocked catalogue product however good its mapping looks', () => {
@@ -197,18 +251,19 @@ describe('a scanned product returning to the recipe', () => {
     ).toBeNull();
   });
 
-  it('A a Mapper-backed catalogue product is selectable in the scope it is usable in', () => {
-    // The picker shows imported products so they can be FOUND (Codex 7b74792); this is
-    // the other half — whether one may actually become a recipe line.
+  it('A a product-owned catalogue article is selectable in the scope it is usable in', () => {
     const mapped = hit({
       entityKind: 'commercial_product',
       status: 'verified',
+      productCode: 'PR-ING-006306',
       mappedIngredientId: 'PI-ING-000123',
+      publicData: ownProductProfile,
       usableInBase: true,
       usableAsTopping: false,
     });
-    expect(currentMapperCatalogId(mapped, 'BASE')).toBe('PI-ING-000123');
-    expect(currentMapperCatalogId(mapped, 'TOPPING')).toBeNull();
+    expect(currentCatalogArticleId(mapped, 'BASE')).toBe('PR-ING-006306');
+    expect(currentCatalogArticleId(mapped, 'TOPPING')).toBeNull();
+    expect(currentMapperCatalogId(mapped, 'BASE')).toBeNull();
   });
 
   it('an imported product with no identity is findable but never selectable', () => {

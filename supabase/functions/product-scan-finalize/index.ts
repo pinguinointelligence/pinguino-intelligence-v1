@@ -5,6 +5,18 @@ import {
   stableJson,
 } from '../_shared/productScanner.ts';
 import { authorizeLiveOverlayIdentity } from '../_shared/liveOverlayIdentity.ts';
+import {
+  validateIntimportProductProfileProposal,
+  type IntimportMapperAuthorityRow,
+  type IntimportTrustedProductProfile,
+} from '../_shared/intimportWholeProfileAuthority.ts';
+import type { ProfileMatchInput } from '../../../src/features/product-intelligence/mapperValueInference.ts';
+import type {
+  EvidenceSource,
+  ProductEvidenceField,
+  ProductEvidenceInput,
+} from '../../../src/features/product-intelligence/productEvidenceConfidence.ts';
+import type { WorkingNumericField } from '../../../src/features/product-intelligence/productFieldTruth.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -22,6 +34,126 @@ const objectValue = (value: unknown): Record<string, unknown> =>
     : {};
 const text = (value: unknown): string | null =>
   typeof value === 'string' && value.trim() ? value.trim() : null;
+
+const MAPPER_AUTHORITY_COLUMNS = [
+  'ingredient_id', 'ingredient_name_internal', 'ingredient_name_display', 'brand',
+  'ingredient_category', 'ingredient_subcategory', 'is_active', 'approved_for_base',
+  'approved_for_engines', 'verification_status', 'ean_code', 'water_percent',
+  'total_solids_percent', 'fat_percent', 'protein_percent', 'carbohydrate_percent',
+  'total_sugars_percent', 'sucrose_percent', 'dextrose_percent', 'glucose_percent',
+  'fructose_percent', 'lactose_percent', 'polyol_percent', 'fiber_percent',
+  'salt_percent', 'alcohol_percent', 'kcal_per_100g', 'pod_value', 'pac_value',
+  'sweetness_factor', 'freezing_factor',
+].join(',');
+
+const USER_NUMERIC_FIELDS: Readonly<Record<string, WorkingNumericField>> = Object.freeze({
+  energyKcal: 'kcal_per_100g',
+  fat: 'fat_percent',
+  carbohydrate: 'carbohydrate_percent',
+  sugars: 'total_sugars_percent',
+  protein: 'protein_percent',
+  salt: 'salt_percent',
+  fibre: 'fiber_percent',
+});
+
+type UserProductFields = {
+  nutrition: Partial<Record<keyof typeof USER_NUMERIC_FIELDS, number>>;
+  nutritionBasis: 'per_100g' | 'per_100ml' | null;
+  ingredientsText: string | null;
+  allergensText: string | null;
+};
+
+function userProductFields(value: unknown): UserProductFields | null {
+  const raw = objectValue(value);
+  const nutritionRaw = objectValue(raw.nutrition);
+  const nutrition: UserProductFields['nutrition'] = {};
+  for (const key of Object.keys(USER_NUMERIC_FIELDS)) {
+    const supplied = nutritionRaw[key];
+    if (supplied === undefined || supplied === null || supplied === '') continue;
+    if (typeof supplied !== 'number' || !Number.isFinite(supplied) || supplied < 0 || supplied > 1000)
+      return null;
+    if (key !== 'energyKcal' && supplied > 100) return null;
+    nutrition[key as keyof typeof USER_NUMERIC_FIELDS] = supplied;
+  }
+  if (
+    typeof nutrition.sugars === 'number' &&
+    typeof nutrition.carbohydrate === 'number' &&
+    nutrition.sugars > nutrition.carbohydrate
+  ) return null;
+  const macroMass = ['fat', 'carbohydrate', 'protein', 'fibre', 'salt']
+    .reduce((sum, key) => sum + (nutrition[key as keyof typeof USER_NUMERIC_FIELDS] ?? 0), 0);
+  if (macroMass > 105) return null;
+  return {
+    nutrition,
+    nutritionBasis:
+      raw.nutritionBasis === 'per_100g' || raw.nutritionBasis === 'per_100ml'
+        ? raw.nutritionBasis
+        : null,
+    ingredientsText: text(raw.ingredientsText),
+    allergensText: text(raw.allergensText),
+  };
+}
+
+function applyUserProductFields(
+  result: Record<string, unknown>,
+  supplied: UserProductFields,
+): { result: Record<string, unknown>; confirmed: string[] } {
+  const nutrition = { ...objectValue(result.nutrition) };
+  const confirmed: string[] = [];
+  if (supplied.nutritionBasis) {
+    nutrition.basis = supplied.nutritionBasis;
+    confirmed.push('nutrition.basis');
+  }
+  for (const [key, value] of Object.entries(supplied.nutrition)) {
+    nutrition[key] = value;
+    confirmed.push(`nutrition.${key}`);
+  }
+  if (Object.keys(supplied.nutrition).length > 0 && !text(nutrition.basis)) {
+    nutrition.basis = 'per_100g';
+    confirmed.push('nutrition.basis');
+  }
+  const next = { ...result, nutrition };
+  if (supplied.ingredientsText) {
+    next.ingredientsText = supplied.ingredientsText;
+    confirmed.push('ingredientsText');
+  }
+  if (supplied.allergensText) {
+    next.allergensText = supplied.allergensText;
+    confirmed.push('allergensText');
+  }
+  return { result: next, confirmed };
+}
+
+function remainingAfterUserConfirmation(
+  missing: readonly string[],
+  confirmed: readonly string[],
+): string[] {
+  const fields = new Set(confirmed);
+  return missing.filter((field) => {
+    if (field === 'nutrition_basis' && fields.has('nutrition.basis')) return false;
+    if (field.startsWith('nutrition_') && fields.has(`nutrition.${field.slice('nutrition_'.length)}`))
+      return false;
+    if (field === 'ingredientsText' && fields.has('ingredientsText')) return false;
+    if (field === 'allergen_confirmation' && fields.has('allergensText')) return false;
+    return true;
+  });
+}
+
+async function loadMapperAuthorityRows(service: ReturnType<typeof createClient>) {
+  const rows: IntimportMapperAuthorityRow[] = [];
+  for (let offset = 0; ; offset += 1000) {
+    const { data, error } = await service
+      .from('mapper_basement')
+      .select(MAPPER_AUTHORITY_COLUMNS)
+      .order('ingredient_id', { ascending: true })
+      .range(offset, offset + 999);
+    if (error) throw new Error('product_profile_mapper_read_failed');
+    const page = (data ?? []) as unknown as IntimportMapperAuthorityRow[];
+    rows.push(...page);
+    if (page.length < 1000) break;
+  }
+  return rows;
+}
 
 function canonicalInput(result: Record<string, unknown>): Record<string, unknown> {
   const identity = objectValue(result.identity);
@@ -69,6 +201,127 @@ function canonicalInput(result: Record<string, unknown>): Record<string, unknown
       },
     },
   };
+}
+
+const sourceForPath = (
+  result: Record<string, unknown>,
+  path: string,
+  userConfirmed: ReadonlySet<string>,
+): EvidenceSource | null => {
+  if (userConfirmed.has(path)) return 'user_confirmed';
+  const direct = Array.isArray(result.evidence)
+    ? result.evidence.map(objectValue).find((item) => item.field === path)
+    : null;
+  if (direct) {
+    if (direct.source === 'label') return 'label';
+    if (direct.source === 'manufacturer') return 'manufacturer';
+    if (direct.source === 'barcode_registry') return 'barcode_registry';
+    if (direct.source === 'retailer') return 'retailer';
+  }
+  const external = Array.isArray(result.externalSources)
+    ? result.externalSources.map(objectValue).find(
+        (item) => Array.isArray(item.fieldsUsed) && item.fieldsUsed.includes(path),
+      )
+    : null;
+  if (!external) return null;
+  if (external.sourceType === 'manufacturer') return 'manufacturer';
+  if (external.sourceType === 'barcode_registry') return 'barcode_registry';
+  if (external.sourceType === 'retailer') return 'retailer';
+  return 'web_search';
+};
+
+async function trustedPmProfile(input: {
+  service: ReturnType<typeof createClient>;
+  result: Record<string, unknown>;
+  userConfirmed: readonly string[];
+  highRisk: boolean;
+}): Promise<IntimportTrustedProductProfile> {
+  const identity = objectValue(input.result.identity);
+  const packageValue = objectValue(input.result.package);
+  const nutrition = objectValue(input.result.nutrition);
+  const barcode = Array.isArray(input.result.barcodes)
+    ? text(objectValue(input.result.barcodes[0]).value)
+    : null;
+  const confirmed = new Set(input.userConfirmed);
+  const fields: Partial<Record<ProductEvidenceField, EvidenceSource>> = {};
+  const setEvidence = (field: ProductEvidenceField, path: string, present: boolean) => {
+    if (!present) return;
+    const source = sourceForPath(input.result, path, confirmed);
+    if (source) fields[field] = source;
+  };
+  setEvidence('identity', 'identity.displayName', Boolean(text(identity.displayName) || text(identity.originalName)));
+  setEvidence('brand', 'identity.brand', Boolean(text(identity.brand) || identity.explicitlyUnbranded === true));
+  setEvidence('variant', 'identity.variant', Boolean(text(identity.variant)));
+  setEvidence('countryOfOrigin', 'identity.countryOfOrigin', Boolean(text(identity.countryOfOrigin)));
+  setEvidence('manufacturer', 'manufacturer', Boolean(input.result.manufacturer));
+  setEvidence('netQuantity', 'package.netQuantity', typeof packageValue.netQuantity === 'number');
+  setEvidence('ingredients', 'ingredientsText', Boolean(text(input.result.ingredientsText)));
+  setEvidence('allergens', 'allergensText', Boolean(text(input.result.allergensText)));
+  for (const field of ['energyKcal', 'fat', 'carbohydrate', 'protein', 'salt'] as const) {
+    setEvidence(field, `nutrition.${field}`, typeof nutrition[field] === 'number');
+  }
+  if (barcode) fields.barcode = 'label';
+
+  const declared: Partial<Record<WorkingNumericField, number>> = {};
+  const declaredBasis: Partial<Record<WorkingNumericField, 'product_declared' | 'user_confirmed'>> = {};
+  for (const [nutritionField, workingField] of Object.entries(USER_NUMERIC_FIELDS)) {
+    // Per-100 ml facts remain truthful nutrition evidence, but cannot be used as
+    // mass percentages without density. Mapper may fill that gap; we never copy
+    // the volume number into the Engine profile.
+    if (nutrition.basis !== 'per_100g') continue;
+    const value = nutrition[nutritionField];
+    if (typeof value !== 'number' || !Number.isFinite(value)) continue;
+    declared[workingField] = value;
+    declaredBasis[workingField] = confirmed.has(`nutrition.${nutritionField}`)
+      ? 'user_confirmed'
+      : 'product_declared';
+  }
+  const matchInput: ProfileMatchInput = {
+    name: text(identity.displayName) ?? text(identity.originalName),
+    variant: text(identity.variant),
+    brand: text(identity.brand),
+    category: text(identity.category),
+    subcategory: null,
+    barcode,
+    knownMacros: {
+      ...(typeof declared.fat_percent === 'number' ? { fat_percent: declared.fat_percent } : {}),
+      ...(typeof declared.protein_percent === 'number' ? { protein_percent: declared.protein_percent } : {}),
+      ...(typeof declared.carbohydrate_percent === 'number'
+        ? { carbohydrate_percent: declared.carbohydrate_percent }
+        : {}),
+      ...(typeof declared.total_sugars_percent === 'number'
+        ? { total_sugars_percent: declared.total_sugars_percent }
+        : {}),
+      ...(typeof declared.fiber_percent === 'number' ? { fiber_percent: declared.fiber_percent } : {}),
+      ...(typeof declared.salt_percent === 'number' ? { salt_percent: declared.salt_percent } : {}),
+    },
+    technical: input.highRisk,
+  };
+  const evidence: ProductEvidenceInput = {
+    kind: input.highRisk ? 'technical' : 'normal_food',
+    fields,
+    validatedBarcode: barcode !== null,
+    exactCanonicalMatch: false,
+    mapperFamilyMatch: false,
+    materialConflicts: Array.isArray(input.result.conflicts)
+      ? input.result.conflicts.map(objectValue).flatMap((conflict) =>
+          conflict.retainedSource === null && typeof conflict.field === 'string'
+            ? [conflict.field]
+            : [],
+        )
+      : [],
+  };
+  const authority = validateIntimportProductProfileProposal({
+    origin: 'PM',
+    proposedMapperIngredientId: null,
+    matchInput,
+    declared,
+    declaredBasis,
+    evidence,
+    rows: await loadMapperAuthorityRows(input.service),
+  });
+  if (!authority) throw new Error('pm_product_profile_rejected');
+  return authority;
 }
 
 Deno.serve(async (request) => {
@@ -130,6 +383,13 @@ Deno.serve(async (request) => {
     ? validation.missingCriticalFields.filter((item): item is string => typeof item === 'string')
     : [];
   const confirmations = objectValue(body.confirmations);
+  const suppliedProductFields = userProductFields(confirmations.productFields);
+  if (!suppliedProductFields) return json({ error: 'invalid_user_confirmed_product_fields' }, 400);
+  const appliedProductFields = applyUserProductFields(
+    objectValue(session.result_json),
+    suppliedProductFields,
+  );
+  const scanResult = appliedProductFields.result;
   const notOnLabelFields = Array.isArray(confirmations.notOnLabelFields)
     ? confirmations.notOnLabelFields.filter(
         (item): item is string =>
@@ -150,17 +410,19 @@ Deno.serve(async (request) => {
     allergenConfirmationPath && !notOnLabelFields.includes('allergens')
       ? [...notOnLabelFields, 'allergens']
       : notOnLabelFields;
-  const remainingMissingCriticalFields = missingFieldsAfterNotOnLabelConfirmation(
-    missingCriticalFields,
-    effectiveNotOnLabelFields,
+  const remainingMissingCriticalFields = remainingAfterUserConfirmation(
+    missingFieldsAfterNotOnLabelConfirmation(
+      missingCriticalFields,
+      effectiveNotOnLabelFields,
+    ),
+    appliedProductFields.confirmed,
   );
   const notOnLabelConfirmationPath =
     session.state === 'analyzed' &&
     session.overlay_state === 'SCAN_DRAFT' &&
     remainingMissingCriticalFields.length === 0 &&
     validation.highRiskAuthorityRequired !== true &&
-    effectiveNotOnLabelFields.length > 0;
-  const scanResult = objectValue(session.result_json);
+    (effectiveNotOnLabelFields.length > 0 || appliedProductFields.confirmed.length > 0);
   const confirmedAt = new Date().toISOString();
   const allergenConfirmation = {
     kind: 'no_additional_statement_visible',
@@ -174,6 +436,7 @@ Deno.serve(async (request) => {
       : missingCriticalFields,
     ...(allergenConfirmationPath ? { allergenConfirmation } : {}),
     userConfirmedNotOnLabelFields: effectiveNotOnLabelFields,
+    userConfirmedProductFields: appliedProductFields.confirmed,
     ...(notOnLabelConfirmationPath
       ? {
           userNotOnLabelConfirmation: {
@@ -260,6 +523,18 @@ Deno.serve(async (request) => {
   };
 
   const input = canonicalInput(scanResult);
+  let productProfileAuthority: IntimportTrustedProductProfile;
+  try {
+    productProfileAuthority = await trustedPmProfile({
+      service,
+      result: scanResult,
+      userConfirmed: appliedProductFields.confirmed,
+      highRisk: effectiveValidation.highRiskAuthorityRequired === true,
+    });
+  } catch {
+    await releaseCreationSlot();
+    return json({ error: 'pm_product_profile_unavailable' }, 503);
+  }
   const privateValue = objectValue(body.privateOverlay);
   const privateOverlay = {
     privatePrice: typeof privateValue.price === 'number' ? privateValue.price : null,
@@ -323,10 +598,19 @@ Deno.serve(async (request) => {
               warning: 'absence_only_not_zero_or_none',
             }
         : {},
+      userConfirmedProductFields: {
+        fields: appliedProductFields.confirmed,
+        provenance: 'USER_CONFIRMED',
+        confirmedAt,
+      },
       // Raw image bytes and private overlay are deliberately absent.
     },
     p_private_overlay: privateOverlay,
-    p_risk: { rateReservationId: preflightResult.reservationId, preflightPayloadHash: payloadHash },
+    p_risk: {
+      rateReservationId: preflightResult.reservationId,
+      preflightPayloadHash: payloadHash,
+      productProfileAuthority,
+    },
   });
   if (ingestError) {
     await releaseCreationSlot();
@@ -360,5 +644,14 @@ Deno.serve(async (request) => {
     actorUserId: auth.user.id,
     productId,
   });
-  return json({ ...result, liveOverlay });
+  return json({
+    ...result,
+    liveOverlay,
+    productAccuracy: productProfileAuthority.productAccuracy,
+    readiness: productProfileAuthority.readiness,
+    engineUsable: productProfileAuthority.engineUsable,
+    missingEngineFields: productProfileAuthority.missingEngineFields,
+    allergenEvidenceStatus: productProfileAuthority.allergenEvidenceStatus,
+    ingredientsEvidenceStatus: productProfileAuthority.ingredientsEvidenceStatus,
+  });
 });

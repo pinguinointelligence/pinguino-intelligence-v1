@@ -13,6 +13,7 @@ import { copy } from '@/copy/en';
 import { cn } from '@/lib/cn';
 import type { ProductIntakeResult, ProductIntakeSource } from '@/data/products/productTableParser';
 import type { ImportRowResult, ProductImportSummary } from '@/services/productCatalogImport';
+import type { ProductImportPreflight } from '@/services/productImportRuns';
 import type { IntimportResult, IntimportRowState } from '@/data/products/intimport';
 import {
   importPreviewRedFlags,
@@ -45,6 +46,48 @@ export function CountStat({ label, value }: { label: string; value: number }) {
     <div className="flex flex-col gap-1">
       <span className="text-[0.6rem] tracking-label text-ivory/40 uppercase">{label}</span>
       <MetricValue value={value} precision={0} size="lg" />
+    </div>
+  );
+}
+
+export function CleanImportPreflightView({
+  preflight,
+  loading = false,
+  error = null,
+}: {
+  preflight: ProductImportPreflight | null;
+  loading?: boolean;
+  error?: string | null;
+}) {
+  const ready = preflight?.ready === true;
+  return (
+    <div
+      className={cn(
+        'space-y-4 rounded-md border px-5 py-4',
+        ready ? 'border-ivory/20 bg-ivory/[0.03]' : 'border-status-risky/35 bg-status-risky/[0.04]',
+      )}
+      data-testid="intimport-clean-preflight"
+    >
+      <SectionLabel tone="ivory">Stan katalogu przed importem</SectionLabel>
+      {loading ? <p className="text-sm text-ivory/60">Sprawdzanie katalogu…</p> : null}
+      {preflight ? (
+        <div className="flex flex-wrap gap-x-8 gap-y-2 font-mono text-sm text-ivory/80">
+          <span>PI: {preflight.pi}</span>
+          <span>PR: {preflight.pr}</span>
+        </div>
+      ) : null}
+      {ready ? (
+        <p className="text-sm text-status-ideal">✓ Gotowe do czystego importu</p>
+      ) : preflight ? (
+        <div className="space-y-1 text-sm text-status-risky">
+          <p>Import zablokowany</p>
+          <p className="text-ivory/60">
+            W katalogu znajdują się istniejące produkty PR. Ten test wymaga czystego stanu PR =
+            0.
+          </p>
+        </div>
+      ) : null}
+      {error ? <p className="text-sm text-status-risky">Nie można sprawdzić katalogu: {error}</p> : null}
     </div>
   );
 }
@@ -541,6 +584,9 @@ export function ImportProgressView({
   lastUpdateAt,
   done = false,
   stopped = null,
+  cancelled = false,
+  cancelling = false,
+  onCancel,
 }: {
   progress: {
     processed: number;
@@ -555,10 +601,17 @@ export function ImportProgressView({
   lastUpdateAt: string | null;
   done?: boolean;
   stopped?: { reason: string; remaining: number } | null;
+  cancelled?: boolean;
+  cancelling?: boolean;
+  onCancel?: () => void;
 }) {
   const pct = progress.total > 0 ? Math.round((progress.processed / progress.total) * 100) : 0;
   const heading = stopped
     ? 'IMPORT ZATRZYMANY'
+    : cancelled
+      ? 'IMPORT PRZERWANY'
+      : cancelling
+        ? 'ZATRZYMYWANIE IMPORTU'
     : done
       ? 'IMPORT ZAKOŃCZONY'
       : 'IMPORTOWANIE PRODUKTÓW';
@@ -581,12 +634,12 @@ export function ImportProgressView({
         <CountStat label="Nieudane" value={progress.failed} />
         <CountStat label="Pozostało" value={Math.max(0, progress.total - progress.processed)} />
       </div>
-      {!done && !stopped ? (
+      {!done && !stopped && !cancelled ? (
         <p className="text-sm text-ivory/60">
           {progress.currentName ? `Bieżący produkt: ${progress.currentName}` : 'Przetwarzanie…'}
         </p>
       ) : null}
-      {!done && !stopped ? (
+      {!done && !stopped && !cancelled ? (
         <p className="text-xs text-[#8a7f6d]" data-testid="intimport-progress-heartbeat">
           {lastUpdateAt === null
             ? 'Oczekiwanie na odpowiedź serwera…'
@@ -601,6 +654,23 @@ export function ImportProgressView({
             bezpiecznie wznowić — produkty już zapisane nie zostaną utworzone ponownie.
           </p>
         </div>
+      ) : null}
+      {!done && !stopped && !cancelled && onCancel ? (
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={cancelling}
+          className={cn(buttonClasses('ghost', 'sm'), cancelling && 'opacity-50')}
+          data-testid="intimport-cancel-action"
+        >
+          {cancelling ? 'Zatrzymywanie…' : 'Przerwij import'}
+        </button>
+      ) : null}
+      {cancelled ? (
+        <p className="text-sm text-ivory/60">
+          Import zatrzymał się przed rozpoczęciem następnego produktu. Ostatni aktywny zapis
+          zakończył się atomowo.
+        </p>
       ) : null}
     </div>
   );

@@ -3,12 +3,22 @@ import { Image } from 'https://deno.land/x/imagescript@1.2.15/mod.ts';
 import { evidenceImageDimensionsAllowed } from '../_shared/evidenceImageDimensions.ts';
 import { authorizeLiveOverlayIdentity } from '../_shared/liveOverlayIdentity.ts';
 import {
+  INTIMPORT_PRODUCT_PROFILE_AUTHORITY,
   INTIMPORT_WHOLE_PROFILE_AUTHORITY,
-  validateIntimportWholeProfileProposal,
+  validateIntimportProductProfileProposal,
   type IntimportMapperAuthorityRow,
-  type IntimportWholeProfileAuthority,
+  type IntimportTrustedProductProfile,
 } from '../_shared/intimportWholeProfileAuthority.ts';
 import type { ProfileMatchInput } from '../../../src/features/product-intelligence/mapperValueInference.ts';
+import {
+  WORKING_NUMERIC_FIELDS,
+  type WorkingNumericField,
+} from '../../../src/features/product-intelligence/productFieldTruth.ts';
+import type {
+  EvidenceSource,
+  ProductEvidenceField,
+  ProductEvidenceInput,
+} from '../../../src/features/product-intelligence/productEvidenceConfidence.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -98,6 +108,24 @@ const MAPPER_AUTHORITY_COLUMNS = [
 
 let mapperAuthorityRowsCache: Promise<IntimportMapperAuthorityRow[]> | null = null;
 
+const EVIDENCE_SOURCES = new Set<EvidenceSource>([
+  'label',
+  'user_confirmed',
+  'manufacturer',
+  'barcode_registry',
+  'retailer',
+  'web_search',
+  'mapper_exact',
+  'mapper_family',
+  'source_file',
+]);
+
+const EVIDENCE_FIELDS = new Set<ProductEvidenceField>([
+  'identity', 'brand', 'manufacturer', 'variant', 'netQuantity', 'ingredients', 'allergens',
+  'energyKcal', 'fat', 'carbohydrate', 'protein', 'salt', 'barcode', 'countryOfOrigin',
+  'dosage', 'technicalParameters', 'technicalSource',
+]);
+
 async function loadMapperAuthorityRows(service: ServiceClient): Promise<IntimportMapperAuthorityRow[]> {
   if (!mapperAuthorityRowsCache) {
     mapperAuthorityRowsCache = (async () => {
@@ -186,6 +214,162 @@ function serverMatchInput(canonicalInput: Record<string, unknown>): {
       typeof identity.sourceProductId === 'string' && identity.sourceProductId.trim() !== ''
         ? identity.sourceProductId.trim()
         : null,
+  };
+}
+
+function serverProductProfileProposal(
+  canonicalInput: Record<string, unknown>,
+  rawProposal: Record<string, unknown>,
+): {
+  proposedMapperIngredientId: string | null;
+  matchInput: ProfileMatchInput;
+  declared: Partial<Record<WorkingNumericField, number>>;
+  evidence: ProductEvidenceInput;
+  sourceProductId: string | null;
+} | null {
+  const serverInput = serverMatchInput(canonicalInput);
+  if (!serverInput) return null;
+
+  const rawDeclared = objectValue(rawProposal.declared);
+  const declared: Partial<Record<WorkingNumericField, number>> = {};
+  for (const field of WORKING_NUMERIC_FIELDS) {
+    const value = rawDeclared[field];
+    if (value === undefined || value === null) continue;
+    if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+    declared[field] = value;
+  }
+  const rawEvidence = objectValue(rawProposal.evidence);
+  const rawFields = objectValue(rawEvidence.fields);
+  const fields: Partial<Record<ProductEvidenceField, EvidenceSource>> = {};
+  for (const [field, source] of Object.entries(rawFields)) {
+    if (!EVIDENCE_FIELDS.has(field as ProductEvidenceField)) return null;
+    if (typeof source !== 'string' || !EVIDENCE_SOURCES.has(source as EvidenceSource)) return null;
+    fields[field as ProductEvidenceField] = source as EvidenceSource;
+  }
+  if (rawEvidence.kind !== 'normal_food' && rawEvidence.kind !== 'technical') return null;
+  if (!Array.isArray(rawEvidence.materialConflicts) ||
+      rawEvidence.materialConflicts.some((entry) => typeof entry !== 'string')) return null;
+  for (const flag of ['validatedBarcode', 'exactCanonicalMatch', 'mapperFamilyMatch'] as const) {
+    if (typeof rawEvidence[flag] !== 'boolean') return null;
+  }
+
+  // The proposal and the stable catalog-import identity must describe the same
+  // source row. A caller cannot swap evidence material after the adapter built
+  // the canonical identity envelope.
+  const proposedMatch = objectValue(rawProposal.matchInput);
+  if (stableJson(proposedMatch) !== stableJson(objectValue(
+    objectValue(objectValue(canonicalInput.facts).catalogImportIdentity).matchInput,
+  ))) return null;
+  const sourceProductId =
+    typeof rawProposal.sourceProductId === 'string' && rawProposal.sourceProductId.trim() !== ''
+      ? rawProposal.sourceProductId.trim()
+      : null;
+  if (sourceProductId !== serverInput.sourceProductId) return null;
+
+  return {
+    proposedMapperIngredientId:
+      typeof rawProposal.proposedMapperIngredientId === 'string'
+        ? rawProposal.proposedMapperIngredientId
+        : null,
+    matchInput: serverInput.matchInput,
+    declared,
+    evidence: {
+      kind: rawEvidence.kind,
+      fields,
+      validatedBarcode: rawEvidence.validatedBarcode as boolean,
+      exactCanonicalMatch: rawEvidence.exactCanonicalMatch as boolean,
+      mapperFamilyMatch: rawEvidence.mapperFamilyMatch as boolean,
+      materialConflicts: rawEvidence.materialConflicts as string[],
+    },
+    sourceProductId,
+  };
+}
+
+function serverManualProductProfileProposal(
+  canonicalInput: Record<string, unknown>,
+): {
+  matchInput: ProfileMatchInput;
+  declared: Partial<Record<WorkingNumericField, number>>;
+  declaredBasis: Partial<Record<WorkingNumericField, 'user_confirmed'>>;
+  evidence: ProductEvidenceInput;
+} | null {
+  const facts = objectValue(canonicalInput.facts);
+  const nutrition = objectValue(facts.nutrition);
+  const name = typeof canonicalInput.displayName === 'string' && canonicalInput.displayName.trim()
+    ? canonicalInput.displayName.trim()
+    : null;
+  const brand = typeof canonicalInput.brand === 'string' && canonicalInput.brand.trim()
+    ? canonicalInput.brand.trim()
+    : null;
+  if (!name || (!brand && canonicalInput.explicitlyUnbranded !== true)) return null;
+
+  const declared: Partial<Record<WorkingNumericField, number>> = {};
+  const declaredBasis: Partial<Record<WorkingNumericField, 'user_confirmed'>> = {};
+  const macroMap: Readonly<Record<string, WorkingNumericField>> = {
+    energyKcal: 'kcal_per_100g', fat: 'fat_percent', protein: 'protein_percent',
+    carbohydrate: 'carbohydrate_percent', sugars: 'total_sugars_percent',
+    fibre: 'fiber_percent', salt: 'salt_percent',
+  };
+  if (nutrition.basis === 'per_100g') {
+    for (const [key, field] of Object.entries(macroMap)) {
+      const value = nutrition[key];
+      if (value === undefined || value === null) continue;
+      if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return null;
+      if (key !== 'energyKcal' && value > 100) return null;
+      declared[field] = value;
+      declaredBasis[field] = 'user_confirmed';
+    }
+  }
+  const ean = String(canonicalInput.ean ?? canonicalInput.barcode ?? '').replace(/\D+/g, '') || null;
+  const fields: Partial<Record<ProductEvidenceField, EvidenceSource>> = {
+    identity: 'user_confirmed',
+    ...(brand || canonicalInput.explicitlyUnbranded === true ? { brand: 'user_confirmed' as const } : {}),
+    ...(typeof facts.packageSize === 'string' && facts.packageSize.trim()
+      ? { netQuantity: 'user_confirmed' as const }
+      : {}),
+    ...(typeof facts.ingredientsText === 'string' && facts.ingredientsText.trim()
+      ? { ingredients: 'user_confirmed' as const }
+      : {}),
+    ...(typeof facts.allergensText === 'string' && facts.allergensText.trim()
+      ? { allergens: 'user_confirmed' as const }
+      : {}),
+    ...(typeof declared.kcal_per_100g === 'number' ? { energyKcal: 'user_confirmed' as const } : {}),
+    ...(typeof declared.fat_percent === 'number' ? { fat: 'user_confirmed' as const } : {}),
+    ...(typeof declared.carbohydrate_percent === 'number'
+      ? { carbohydrate: 'user_confirmed' as const }
+      : {}),
+    ...(typeof declared.protein_percent === 'number' ? { protein: 'user_confirmed' as const } : {}),
+    ...(typeof declared.salt_percent === 'number' ? { salt: 'user_confirmed' as const } : {}),
+    ...(ean ? { barcode: 'user_confirmed' as const } : {}),
+  };
+  return {
+    matchInput: {
+      name,
+      variant: null,
+      brand,
+      category: typeof canonicalInput.category === 'string' ? canonicalInput.category : null,
+      subcategory: null,
+      barcode: ean,
+      knownMacros: {
+        ...(typeof declared.fat_percent === 'number' ? { fat_percent: declared.fat_percent } : {}),
+        ...(typeof declared.protein_percent === 'number' ? { protein_percent: declared.protein_percent } : {}),
+        ...(typeof declared.carbohydrate_percent === 'number'
+          ? { carbohydrate_percent: declared.carbohydrate_percent }
+          : {}),
+        ...(typeof declared.total_sugars_percent === 'number'
+          ? { total_sugars_percent: declared.total_sugars_percent }
+          : {}),
+        ...(typeof declared.fiber_percent === 'number' ? { fiber_percent: declared.fiber_percent } : {}),
+        ...(typeof declared.salt_percent === 'number' ? { salt_percent: declared.salt_percent } : {}),
+      },
+      technical: false,
+    },
+    declared,
+    declaredBasis,
+    evidence: {
+      kind: 'normal_food', fields, validatedBarcode: ean !== null,
+      exactCanonicalMatch: false, mapperFamilyMatch: false, materialConflicts: [],
+    },
   };
 }
 
@@ -596,6 +780,24 @@ Deno.serve(async (request) => {
   }
   if (source === 'ocr' && !ocrSessionId) return json({ error: 'ocr_session_required' }, 400);
   if (idempotencyKey.length > 160) return json({ error: 'invalid_idempotency_key' }, 400);
+  const importRunId = typeof body.importRunId === 'string' ? body.importRunId : null;
+  const importRowIndex = Number(body.importRowIndex);
+  const hasImportRunMetadata =
+    importRunId !== null || body.importRowIndex !== null && body.importRowIndex !== undefined;
+  if (
+    hasImportRunMetadata &&
+    (source !== 'catalog_import' ||
+      !importRunId ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        importRunId,
+      ) ||
+      !Number.isInteger(importRowIndex) ||
+      importRowIndex < 0)
+  ) return json({ error: 'invalid_import_run_metadata' }, 400);
+  const importSourceRowId =
+    typeof body.importSourceRowId === 'string' ? body.importSourceRowId.slice(0, 240) : null;
+  const importDisplayName =
+    typeof body.importDisplayName === 'string' ? body.importDisplayName.slice(0, 500) : null;
   const market = typeof body.market === 'string' ? body.market.trim().slice(0, 64) : null;
   const retailer = typeof body.retailer === 'string' ? body.retailer.trim().slice(0, 120) : null;
   const packageLanguage =
@@ -669,34 +871,22 @@ Deno.serve(async (request) => {
   if (typeof body.duplicateProductId === 'string')
     canonicalInput.duplicateProductId = body.duplicateProductId;
   if (typeof body.productId === 'string') canonicalInput.productId = body.productId;
-  if (
-    body.operation === 'upsert' ||
-    body.operation === 'retire' ||
-    body.operation === 'bind_intimport_mapper'
-  )
+  if (body.operation === 'upsert' || body.operation === 'retire')
     canonicalInput.operation = body.operation;
-
-  // Backfill mode is existing-only by construction. Resolve the same base
-  // canonical identity ingest uses before reserving quota; a miss never falls
-  // through to upsert/product creation.
-  if (body.operation === 'bind_intimport_mapper' && typeof body.productId !== 'string') {
-    const { data: existingProductId, error: identityError } = await service.rpc(
-      'resolve_intimport_existing_product_v1',
-      {
-        p_actor_user_id: auth.user.id,
-        p_source: source,
-        p_input: canonicalInput,
-      },
-    );
-    if (identityError || typeof existingProductId !== 'string') {
-      return json({ error: 'intimport_existing_product_not_found' }, 409);
-    }
-    canonicalInput.productId = existingProductId;
-  }
 
   const suppliedMapperDecision = objectValue(canonicalInput.mapperDecision);
   if (suppliedMapperDecision.authority === INTIMPORT_WHOLE_PROFILE_AUTHORITY) {
     return json({ error: 'browser_intimport_mapper_authority_forbidden' }, 403);
+  }
+  if (
+    objectValue(canonicalInput.trustedProductProfile).authority ===
+      INTIMPORT_PRODUCT_PROFILE_AUTHORITY ||
+    objectValue(canonicalInput.intimportProductProfileAuthority).authority ===
+      INTIMPORT_PRODUCT_PROFILE_AUTHORITY ||
+    objectValue(canonicalInput.productProfileAuthority).authority ===
+      INTIMPORT_PRODUCT_PROFILE_AUTHORITY
+  ) {
+    return json({ error: 'browser_intimport_product_profile_authority_forbidden' }, 403);
   }
 
   let preflightEvidenceIdentity: unknown[] = [];
@@ -774,41 +964,75 @@ Deno.serve(async (request) => {
   }
   const completedResult = objectValue(preflightResult.completedResult);
   if (Object.keys(completedResult).length > 0) {
+    if (hasImportRunMetadata && importRunId) {
+      const { error: ledgerError } = await service.rpc('record_product_import_row_outcome_v1', {
+        p_actor_user_id: auth.user.id,
+        p_import_run_id: importRunId,
+        p_row_index: importRowIndex,
+        p_source_row_id: importSourceRowId,
+        p_display_name: importDisplayName,
+        p_outcome: 'REUSED',
+        p_error: null,
+        p_result: completedResult,
+      });
+      if (ledgerError) return json({ error: 'import_run_ledger_write_failed' }, 409);
+    }
     return json({ ...completedResult, idempotent: true });
   }
 
-  let serverWholeProfileAuthority: (IntimportWholeProfileAuthority & {
+  let serverProductProfileAuthority: (IntimportTrustedProductProfile & {
     sourceProductId: string | null;
   }) | null = null;
-  const wholeProfileProposal = objectValue(canonicalInput.intimportWholeProfileProposal);
-  delete canonicalInput.intimportWholeProfileProposal;
-  if (Object.keys(wholeProfileProposal).length > 0) {
+  const productProfileProposal = objectValue(canonicalInput.intimportProductProfileProposal);
+  delete canonicalInput.intimportProductProfileProposal;
+  const manualProductProfileProposal = objectValue(canonicalInput.manualProductProfileProposal);
+  delete canonicalInput.manualProductProfileProposal;
+  if (Object.keys(productProfileProposal).length > 0) {
     if (source !== 'catalog_import') {
-      return json({ error: 'intimport_mapper_authority_requires_catalog_import' }, 403);
+      return json({ error: 'intimport_product_profile_requires_catalog_import' }, 403);
     }
-    const proposedMapperIngredientId =
-      typeof wholeProfileProposal.mapperIngredientId === 'string'
-        ? wholeProfileProposal.mapperIngredientId
-        : '';
-    const serverInput = serverMatchInput(canonicalInput);
-    if (!serverInput) return json({ error: 'intimport_mapper_match_input_invalid' }, 409);
+    const proposal = serverProductProfileProposal(canonicalInput, productProfileProposal);
+    if (!proposal) return json({ error: 'intimport_product_profile_input_invalid' }, 409);
     try {
-      const authority = validateIntimportWholeProfileProposal({
-        proposedMapperIngredientId,
-        matchInput: serverInput.matchInput,
+      const authority = validateIntimportProductProfileProposal({
+        origin: 'PR',
+        proposedMapperIngredientId: proposal.proposedMapperIngredientId,
+        matchInput: proposal.matchInput,
+        declared: proposal.declared,
+        evidence: proposal.evidence,
+        proposedTechnicalComposition: objectValue(objectValue(canonicalInput.facts).technicalComposition),
         rows: await loadMapperAuthorityRows(service),
       });
-      if (!authority) return json({ error: 'intimport_mapper_authority_rejected' }, 409);
-      serverWholeProfileAuthority = {
+      if (!authority) return json({ error: 'intimport_product_profile_rejected' }, 409);
+      serverProductProfileAuthority = {
         ...authority,
-        sourceProductId: serverInput.sourceProductId,
-      };
-      canonicalInput.mapperDecision = {
-        authority: INTIMPORT_WHOLE_PROFILE_AUTHORITY,
-        mapperIngredientId: authority.mapperIngredientId,
+        sourceProductId: proposal.sourceProductId,
       };
     } catch {
-      return json({ error: 'intimport_mapper_authority_unavailable' }, 503);
+      return json({ error: 'intimport_product_profile_unavailable' }, 503);
+    }
+  }
+  if (Object.keys(manualProductProfileProposal).length > 0) {
+    if (source !== 'manual' && source !== 'barcode') {
+      return json({ error: 'manual_product_profile_requires_interactive_source' }, 403);
+    }
+    const proposal = serverManualProductProfileProposal(canonicalInput);
+    if (!proposal) return json({ error: 'manual_product_profile_input_invalid' }, 409);
+    try {
+      const authority = validateIntimportProductProfileProposal({
+        origin: 'PM',
+        proposedMapperIngredientId: null,
+        matchInput: proposal.matchInput,
+        declared: proposal.declared,
+        declaredBasis: proposal.declaredBasis,
+        evidence: proposal.evidence,
+        proposedTechnicalComposition: objectValue(objectValue(canonicalInput.facts).technicalComposition),
+        rows: await loadMapperAuthorityRows(service),
+      });
+      if (!authority) return json({ error: 'manual_product_profile_rejected' }, 409);
+      serverProductProfileAuthority = { ...authority, sourceProductId: null };
+    } catch {
+      return json({ error: 'manual_product_profile_unavailable' }, 503);
     }
   }
 
@@ -844,7 +1068,7 @@ Deno.serve(async (request) => {
     });
     return json({ error: 'catalog_evidence_verification_failed' }, 409);
   }
-  const { data, error } = await service.rpc('ingest_product_v1', {
+  const ingestArguments = {
     p_actor_user_id: auth.user.id,
     p_source: source,
     p_idempotency_key: idempotencyKey,
@@ -866,9 +1090,18 @@ Deno.serve(async (request) => {
       disputeReservationId: preflightResult.disputeReservationId ?? null,
       reviewReservationId: preflightResult.reviewReservationId ?? null,
       preflightPayloadHash,
-      intimportWholeProfileAuthority: serverWholeProfileAuthority,
+      productProfileAuthority: serverProductProfileAuthority,
     },
-  });
+  };
+  const { data, error } = hasImportRunMetadata && importRunId
+    ? await service.rpc('ingest_product_import_row_v1', {
+        ...ingestArguments,
+        p_import_run_id: importRunId,
+        p_row_index: importRowIndex,
+        p_source_row_id: importSourceRowId,
+        p_display_name: importDisplayName,
+      })
+    : await service.rpc('ingest_product_v1', ingestArguments);
   if (error) {
     await cleanupUnfinalizedEvidence({
       service,
@@ -878,6 +1111,8 @@ Deno.serve(async (request) => {
     });
     if (/idempotency|payload mismatch/i.test(error.message))
       return json({ error: 'idempotency_payload_mismatch' }, 409);
+    if (/import cancellation requested/i.test(error.message))
+      return json({ error: 'import_cancellation_requested' }, 409);
     return json({ error: 'product_ingest_failed' }, 400);
   }
   // The same last hop the Scanner takes. INTIMPORT and a manual entry reach identical
@@ -892,5 +1127,18 @@ Deno.serve(async (request) => {
         productId: ingestedProductId,
       })
     : { authorized: false, reason: 'product_id_missing' };
-  return json({ ...ingested, liveOverlay });
+  return json({
+    ...ingested,
+    liveOverlay,
+    ...(serverProductProfileAuthority
+      ? {
+          productAccuracy: serverProductProfileAuthority.productAccuracy,
+          readiness: serverProductProfileAuthority.readiness,
+          engineUsable: serverProductProfileAuthority.engineUsable,
+          missingEngineFields: serverProductProfileAuthority.missingEngineFields,
+          allergenEvidenceStatus: serverProductProfileAuthority.allergenEvidenceStatus,
+          ingredientsEvidenceStatus: serverProductProfileAuthority.ingredientsEvidenceStatus,
+        }
+      : {}),
+  });
 });

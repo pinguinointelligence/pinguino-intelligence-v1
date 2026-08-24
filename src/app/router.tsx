@@ -45,6 +45,7 @@ import {
   ProductImportPage,
   ProductScanPage,
   ProductScannerV1Page,
+  ManualProductPage,
   ProductsHubPage,
   ProductionHubPage,
   RecipesHubPage,
@@ -190,6 +191,7 @@ export function AppRoutes() {
       {/* Product catalog intake — direct-URL / internal-first (no nav entry yet). */}
       <Route path="/products/import" element={<ProductImportPage />} />
       <Route path="/products/scan" element={<ProductScannerV1Page />} />
+      <Route path="/products/add" element={<ManualProductPage />} />
       {import.meta.env.DEV && <Route path="/products/scan/legacy" element={<ProductScanPage />} />}
 
       {/* Legacy customer-shell preview path → the flow's new canonical /start. */}

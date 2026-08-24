@@ -80,10 +80,36 @@ function intimportRow(
   valueReadiness: 'READY' | 'ESTIMATED_READY' | 'REVIEW',
   technicalAuthorityRequired: boolean,
 ) {
+  const evidence = {
+    kind: 'technical' as const,
+    fields: {
+      identity: 'source_file' as const,
+      brand: 'source_file' as const,
+      manufacturer: 'source_file' as const,
+      ingredients: 'source_file' as const,
+      technicalParameters: 'source_file' as const,
+      technicalSource: 'source_file' as const,
+    },
+    validatedBarcode: false,
+    exactCanonicalMatch: true,
+    mapperFamilyMatch: true,
+    materialConflicts: [],
+  };
   return {
     rowIndex: 1,
     sourceProductId: 'PL-1',
     displayName: 'Produkt techniczny',
+    assessment: assessProductConfidence(evidence),
+    evidence,
+    profileMatchInput: {
+      name: 'Produkt techniczny',
+      category: 'professional',
+      brand: 'Test',
+      packageSize: null,
+      ingredients: 'składnik techniczny',
+      knownMacros: {},
+      technical: true,
+    },
     insert: { product_name: 'Produkt techniczny', extracted_json: { intimport: { version: 1 } } },
     workingValues: {
       valueReadiness,

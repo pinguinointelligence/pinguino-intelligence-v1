@@ -73,3 +73,105 @@ export function scanBlockerExplanation(missingCriticalFields: readonly string[])
   if (missing.has('allergen_confirmation') && missing.size === 1) return null;
   return null;
 }
+
+export type ProductCompletionField = {
+  key: string;
+  label: string;
+  unit: string | null;
+  input: 'number' | 'text' | 'textarea' | 'select';
+  help: string;
+};
+
+const NUTRITION_COMPLETION: Readonly<Record<string, ProductCompletionField>> = Object.freeze({
+  nutrition_energyKcal: {
+    key: 'energyKcal', label: 'Energia', unit: 'kcal / 100 g', input: 'number',
+    help: 'Przepisz wartość kcal z tabeli wartości odżywczych.',
+  },
+  nutrition_fat: {
+    key: 'fat', label: 'Tłuszcz', unit: 'g / 100 g', input: 'number',
+    help: 'Znajdziesz tę wartość w tabeli wartości odżywczych.',
+  },
+  nutrition_carbohydrate: {
+    key: 'carbohydrate', label: 'Węglowodany', unit: 'g / 100 g', input: 'number',
+    help: 'Przepisz wartość „węglowodany”.',
+  },
+  nutrition_protein: {
+    key: 'protein', label: 'Białko', unit: 'g / 100 g', input: 'number',
+    help: 'Znajdziesz tę wartość w tabeli wartości odżywczych.',
+  },
+  nutrition_salt: {
+    key: 'salt', label: 'Sól', unit: 'g / 100 g', input: 'number',
+    help: 'Przepisz sól, nie sód.',
+  },
+});
+
+/** Only package-readable facts become inputs. Internal POD/PAC/Mapper fields
+ * are deliberately absent: Product Intelligence derives them server-side. */
+export function productCompletionFields(
+  missingCriticalFields: readonly string[],
+): ProductCompletionField[] {
+  const result: ProductCompletionField[] = [];
+  const missing = new Set(missingCriticalFields);
+  for (const key of missingCriticalFields) {
+    const nutrition = NUTRITION_COMPLETION[key];
+    if (nutrition) result.push(nutrition);
+  }
+  if (missing.has('nutrition_basis')) {
+    result.unshift({
+      key: 'nutritionBasis', label: 'Podstawa tabeli', unit: null, input: 'select',
+      help: 'Wybierz podstawę wydrukowaną nad tabelą wartości odżywczych.',
+    });
+  }
+  if (missing.has('ingredientsText')) {
+    result.push({
+      key: 'ingredientsText', label: 'Skład produktu', unit: null, input: 'textarea',
+      help: 'Przepisz wykaz składników z opakowania.',
+    });
+  }
+  if (missing.has('allergen_confirmation')) {
+    result.push({
+      key: 'allergensText', label: 'Alergeny', unit: null, input: 'text',
+      help: 'Przepisz deklarację alergenów z opakowania. Puste pole nie oznacza braku alergenów.',
+    });
+  }
+  return result;
+}
+
+export function productCompletionReady(
+  fields: readonly ProductCompletionField[],
+  values: Readonly<Record<string, string>>,
+  allergenAbsenceConfirmed = false,
+): boolean {
+  return fields.every((field) => {
+    if (field.key === 'allergensText' && allergenAbsenceConfirmed) return true;
+    const value = values[field.key]?.trim() ?? '';
+    if (!value) return false;
+    if (field.input !== 'number') return true;
+    const parsed = Number(value.replace(',', '.'));
+    return Number.isFinite(parsed) && parsed >= 0 && parsed <= (field.key === 'energyKcal' ? 1000 : 100);
+  });
+}
+
+export function productCompletionPayload(values: Readonly<Record<string, string>>): {
+  nutrition: Record<string, number>;
+  nutritionBasis: 'per_100g' | 'per_100ml' | null;
+  ingredientsText: string | null;
+  allergensText: string | null;
+} {
+  const nutrition: Record<string, number> = {};
+  for (const field of Object.values(NUTRITION_COMPLETION)) {
+    const raw = values[field.key]?.trim();
+    if (!raw) continue;
+    const parsed = Number(raw.replace(',', '.'));
+    if (Number.isFinite(parsed)) nutrition[field.key] = parsed;
+  }
+  return {
+    nutrition,
+    nutritionBasis:
+      values.nutritionBasis === 'per_100g' || values.nutritionBasis === 'per_100ml'
+        ? values.nutritionBasis
+        : null,
+    ingredientsText: values.ingredientsText?.trim() || null,
+    allergensText: values.allergensText?.trim() || null,
+  };
+}

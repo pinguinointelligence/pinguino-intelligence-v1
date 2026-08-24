@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ProfileMatchInput } from './mapperValueInference';
 import {
+  validateIntimportProductProfileProposal,
   validateIntimportWholeProfileProposal,
   type IntimportMapperAuthorityRow,
 } from '../../../supabase/functions/_shared/intimportWholeProfileAuthority';
@@ -134,5 +135,171 @@ describe('INTIMPORT whole-profile match validation', () => {
 
   it('rejects a different ID than the exact server-selected donor', () => {
     expect(validate(baseRow(), input(), 'PI-ING-SPOOFED')).toBeNull();
+  });
+});
+
+describe('INTIMPORT trusted product-owned profile', () => {
+  const completeEvidence = {
+    kind: 'normal_food' as const,
+    fields: {
+      identity: 'source_file' as const,
+      brand: 'source_file' as const,
+      manufacturer: 'source_file' as const,
+      variant: 'source_file' as const,
+      netQuantity: 'source_file' as const,
+      barcode: 'barcode_registry' as const,
+      ingredients: 'source_file' as const,
+      allergens: 'source_file' as const,
+      energyKcal: 'source_file' as const,
+      fat: 'source_file' as const,
+      carbohydrate: 'source_file' as const,
+      protein: 'source_file' as const,
+      salt: 'source_file' as const,
+      countryOfOrigin: 'source_file' as const,
+    },
+    validatedBarcode: true,
+    exactCanonicalMatch: false,
+    mapperFamilyMatch: true,
+    materialConflicts: [],
+  };
+
+  it('recomputes a PR-owned profile and never overwrites a declared product value', () => {
+    const authority = validateIntimportProductProfileProposal({
+      proposedMapperIngredientId: null,
+      matchInput: input({
+        name: 'inulin',
+        knownMacros: { fat_percent: 11, protein_percent: 24, carbohydrate_percent: 13 },
+      }),
+      declared: {
+        fat_percent: 11,
+        protein_percent: 24,
+        carbohydrate_percent: 13,
+        total_sugars_percent: 0.5,
+      },
+      evidence: completeEvidence,
+      rows: [
+        baseRow({
+          fat_percent: 70,
+          protein_percent: 2,
+          carbohydrate_percent: 20,
+          total_sugars_percent: 18,
+        }),
+      ],
+    });
+
+    expect(authority).not.toBeNull();
+    expect(authority?.technicalComposition.fat).toBe(11);
+    expect(authority?.technicalComposition.protein).toBe(24);
+    expect(authority?.technicalComposition.carbohydrate).toBe(13);
+    expect(authority?.technicalComposition.sugars).toBe(0.5);
+    expect(authority?.fieldTruth.fat_percent).toMatchObject({
+      state: 'VERIFIED',
+      basis: 'product_declared',
+    });
+    expect(authority?.articleIdentity).toBe('PRODUCT_OWNED');
+  });
+
+  it('derives accuracy from evidence and applies the existing 85% admission rule', () => {
+    const accepted = validateIntimportProductProfileProposal({
+      proposedMapperIngredientId: 'PI-ING-TEST-001',
+      matchInput: input(),
+      declared: {},
+      evidence: completeEvidence,
+      rows: [baseRow()],
+    });
+    expect(accepted?.productAccuracy).toBeGreaterThanOrEqual(85);
+    expect(accepted?.engineUsable).toBe(true);
+
+    const weak = validateIntimportProductProfileProposal({
+      proposedMapperIngredientId: 'PI-ING-TEST-001',
+      matchInput: input(),
+      declared: {},
+      evidence: {
+        ...completeEvidence,
+        fields: { identity: 'web_search' as const },
+      },
+      rows: [baseRow()],
+    });
+    expect(weak?.productAccuracy).toBeLessThan(85);
+    expect(weak?.engineUsable).toBe(false);
+  });
+
+  it('ignores a forged browser final composition and publishes only the recomputed profile', () => {
+    const authority = validateIntimportProductProfileProposal({
+      proposedMapperIngredientId: 'PI-ING-TEST-001',
+      matchInput: input(),
+      declared: {},
+      evidence: completeEvidence,
+      proposedTechnicalComposition: {
+        fat: 999,
+        water: -400,
+        pacValue: 123456,
+      },
+      rows: [baseRow()],
+    });
+    expect(authority?.technicalComposition.fat).toBe(0);
+    expect(authority?.technicalComposition.water).toBe(5);
+    expect(authority?.technicalComposition.pacValue).toBe(0);
+  });
+
+  it('treats a stale browser donor as advisory and keeps the server-recomputed PR profile', () => {
+    const authority = validateIntimportProductProfileProposal({
+      proposedMapperIngredientId: 'PI-ING-FORGED-999',
+      matchInput: input(),
+      declared: {},
+      evidence: completeEvidence,
+      rows: [baseRow()],
+    });
+
+    expect(authority).not.toBeNull();
+    expect(authority?.estimatedFromMapperIds).toEqual(['PI-ING-TEST-001']);
+    expect(authority?.articleIdentity).toBe('PRODUCT_OWNED');
+  });
+
+  it('never estimates from a Mapper row that is not eligible for Engine use', () => {
+    const authority = validateIntimportProductProfileProposal({
+      proposedMapperIngredientId: 'PI-ING-TEST-001',
+      matchInput: input(),
+      declared: { fat_percent: 11 },
+      evidence: completeEvidence,
+      rows: [baseRow({ approved_for_engines: false, fat_percent: 70 })],
+    });
+
+    expect(authority).not.toBeNull();
+    expect(authority?.technicalComposition.fat).toBe(11);
+    expect(authority?.estimatedFromMapperIds).toEqual([]);
+  });
+
+  it('persists PM user values with USER_CONFIRMED provenance and recalculates accuracy', () => {
+    const authority = validateIntimportProductProfileProposal({
+      origin: 'PM',
+      proposedMapperIngredientId: null,
+      matchInput: input({ technical: false }),
+      declared: { fat_percent: 12.5, protein_percent: 7 },
+      declaredBasis: {
+        fat_percent: 'user_confirmed',
+        protein_percent: 'user_confirmed',
+      },
+      evidence: {
+        ...completeEvidence,
+        fields: {
+          ...completeEvidence.fields,
+          fat: 'user_confirmed',
+          protein: 'user_confirmed',
+          allergens: 'user_confirmed',
+        },
+      },
+      rows: [baseRow()],
+    });
+    expect(authority).toMatchObject({
+      authority: 'PRODUCT_PROFILE_V1',
+      origin: 'PM',
+      allergenEvidenceStatus: 'USER_CONFIRMED',
+    });
+    expect(authority?.fieldTruth.fat_percent).toMatchObject({
+      value: 12.5,
+      state: 'VERIFIED',
+      basis: 'user_confirmed',
+    });
   });
 });

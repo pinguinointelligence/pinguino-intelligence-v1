@@ -128,6 +128,15 @@ export function ProductsHubPage() {
               </span>
               <span aria-hidden>→</span>
             </Link>
+            <Link to="/products/add" className={quietLink}>
+              <span>
+                <strong className="block font-medium">Dodaj produkt ręcznie</strong>
+                <span className="mt-1 block text-xs text-stone-500">
+                  Fakty z opakowania, Product Intelligence i własny artykuł PM
+                </span>
+              </span>
+              <span aria-hidden>→</span>
+            </Link>
             <Link to="/products/import" className={quietLink}>
               <span>
                 <strong className="block font-medium">Importuj tabelę lub plik</strong>

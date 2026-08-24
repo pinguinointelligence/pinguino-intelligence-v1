@@ -9,7 +9,7 @@ import { buttonClasses } from '@/components/ui/buttonStyles';
  * (no upload, no storage bucket). Parsing is open; the Import action requires a signed-in
  * user (the products write is owner-scoped) and otherwise opens the existing auth modal.
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DestinationSection, DestinationSurface } from '@/components/shared/DestinationSurface';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/Button';
@@ -54,6 +54,7 @@ import { runProductImport, type RunImportResult } from './runProductImport';
 import type { ImportProgress } from '@/services/productCatalogImport';
 import {
   ImportActionBar,
+  CleanImportPreflightView,
   ImportProgressView,
   ImportSummaryView,
   IntimportLocalIntelligenceView,
@@ -61,6 +62,20 @@ import {
   ParsePreview,
   SourceSelect,
 } from './productImportView';
+import {
+  finishProductImportRun,
+  getCleanProductImportPreflight,
+  getProductImportRun,
+  productImportSourceFingerprint,
+  recordProductImportRowOutcome,
+  rememberedProductImportRun,
+  requestProductImportCancellation,
+  rollbackProductImportRun,
+  startCleanIntimportRun,
+  type ProductImportPreflight,
+  type ProductImportRunState,
+} from '@/services/productImportRuns';
+import { restoredImportProgress } from './productImportRunViewState';
 
 const c = copy.productsImport;
 
@@ -71,10 +86,6 @@ export function ProductImportPage() {
   const available = useAuthStore((state) => state.available);
   const isSignedIn = useAuthStore((state) => state.status === 'authed');
   const openAuthModal = useAuthModalStore((state) => state.open);
-  const mapperBackfillMode =
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).get('mode') === 'intimport-mapper-backfill';
-
   const [source, setSource] = useState<ProductIntakeSource>(DEFAULT_SOURCE);
   const [csvText, setCsvText] = useState('');
   const [result, setResult] = useState<ProductIntakeResult | null>(null);
@@ -90,6 +101,15 @@ export function ProductImportPage() {
   const [busy, setBusy] = useState(false);
   const [importResult, setImportResult] = useState<RunImportResult | null>(null);
   const [progress, setProgress] = useState<ImportProgress | null>(null);
+  const [preflight, setPreflight] = useState<ProductImportPreflight | null>(null);
+  const [preflightBusy, setPreflightBusy] = useState(false);
+  const [preflightError, setPreflightError] = useState<string | null>(null);
+  const [importRun, setImportRun] = useState<ProductImportRunState | null>(null);
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const [rollbackBusy, setRollbackBusy] = useState(false);
+  const [rollbackRemaining, setRollbackRemaining] = useState<number | null>(null);
+  const [runError, setRunError] = useState<string | null>(null);
+  const cancellationRequested = useRef(false);
   // Wall-clock of the last completed row. The page schedules nothing: progress
   // events are themselves the liveness signal, arriving about once a second, and
   // a stalled import is visible as a timestamp that stops advancing.
@@ -118,6 +138,34 @@ export function ProductImportPage() {
     setImportResult(null);
     setProgress(null);
     setLastProgressAt(null);
+    setPreflight(null);
+    setPreflightError(null);
+  };
+
+  useEffect(() => {
+    if (!isSignedIn) return;
+    const runId = rememberedProductImportRun();
+    if (!runId) return;
+    void getProductImportRun(runId)
+      .then((state) => {
+        setImportRun(state);
+        setProgress(restoredImportProgress(state));
+      })
+      .catch((error) => setRunError(errorMessage(error)));
+  }, [isSignedIn]);
+
+  const refreshPreflight = async () => {
+    if (!isSignedIn) return;
+    setPreflightBusy(true);
+    setPreflightError(null);
+    try {
+      setPreflight(await getCleanProductImportPreflight());
+    } catch (error) {
+      setPreflight(null);
+      setPreflightError(errorMessage(error));
+    } finally {
+      setPreflightBusy(false);
+    }
   };
 
   const onFile = async (file: File | undefined) => {
@@ -174,6 +222,7 @@ export function ProductImportPage() {
       setLocalRows(analysed.rows);
       // Who is who, before anything is written. Deterministic and free.
       setDedupPlan(planIntimportDedup(parsed.candidates));
+      await refreshPreflight();
     } else {
       setIntimport(null);
       setLocalIntelligence(null);
@@ -229,6 +278,10 @@ export function ProductImportPage() {
         undefined,
         setEnrichProgress,
       );
+      // Import must consume the enriched assessments/evidence returned by the
+      // explicit research pass. Keeping the pre-web rows here silently threw
+      // away the new Product Accuracy and could admit/refuse on stale evidence.
+      setLocalRows(outcome.products);
       setEnrichSummary(outcome.summary);
     } catch (error) {
       setEnrichError(errorMessage(error));
@@ -261,7 +314,10 @@ export function ProductImportPage() {
    */
   const onImport = async (qaLimit?: number) => {
     if (!result) return;
-    setBusy(true);
+    if (source === 'intimport' && preflight?.ready !== true) {
+      setRunError('Czysty import wymaga PI = 2088 i PR = 0.');
+      return;
+    }
     let candidates = result.candidates;
     if (source === 'intimport' && localRows.length > 0) {
       const plan = planIntimportImport(localRows);
@@ -290,17 +346,104 @@ export function ProductImportPage() {
         review: rows.filter((entry) => entry.state === 'REVIEW').length,
       });
     }
+    let startedRun: ProductImportRunState | null = null;
+    if (source === 'intimport') {
+      try {
+        startedRun = await startCleanIntimportRun({
+          label: 'Polska — clean owner reimport',
+          fileName: fileInfo?.name ?? null,
+          sourceFingerprint: await productImportSourceFingerprint(csvText),
+          totalRows: candidates.length,
+        });
+        setImportRun(startedRun);
+        setRunError(null);
+      } catch (error) {
+        setImportResult({ ok: false, error: errorMessage(error) });
+        await refreshPreflight();
+        return;
+      }
+    }
+    cancellationRequested.current = false;
+    setBusy(true);
     setProgress(null);
     setLastProgressAt(null);
     const outcome = await runProductImport(candidates, {
-      bindExistingIntimportMapperOnly: source === 'intimport' && mapperBackfillMode,
       onProgress: (next) => {
         setProgress(next);
         setLastProgressAt(new Date().toLocaleTimeString('pl-PL'));
       },
+      ...(startedRun
+        ? {
+            importRun: {
+              id: startedRun.id,
+              shouldCancel: () => cancellationRequested.current,
+              recordOutcome: async (row) => {
+                await recordProductImportRowOutcome({ runId: startedRun.id, ...row });
+              },
+            },
+          }
+        : {}),
     });
-    setBusy(false);
+    if (startedRun) {
+      const terminal = outcome.ok
+        ? outcome.summary.cancelled
+          ? 'CANCELLED'
+          : outcome.summary.stopped
+            ? 'FAILED'
+            : 'COMPLETED'
+        : cancellationRequested.current
+          ? 'CANCELLED'
+          : 'FAILED';
+      try {
+        setImportRun(await finishProductImportRun(startedRun.id, terminal));
+      } catch (error) {
+        setRunError(errorMessage(error));
+      }
+    }
     setImportResult(outcome);
+    setBusy(false);
+  };
+
+  const onCancelImport = async () => {
+    if (!importRun || !['IMPORTING', 'CANCELLING'].includes(importRun.status)) return;
+    cancellationRequested.current = true;
+    setCancelBusy(true);
+    setRunError(null);
+    try {
+      setImportRun(await requestProductImportCancellation(importRun.id));
+    } catch (error) {
+      setRunError(errorMessage(error));
+    } finally {
+      setCancelBusy(false);
+    }
+  };
+
+  const onRollbackImport = async () => {
+    if (!importRun || !['CANCELLED', 'COMPLETED', 'FAILED'].includes(importRun.status)) return;
+    const confirmed = window.confirm(
+      `Cofnąć import ${importRun.id}?\n\n` +
+        `Utworzone: ${importRun.created}\nPonownie użyte: ${importRun.reused}\n` +
+        `Zaktualizowane: ${importRun.updated}\nReview: ${importRun.review}\n` +
+        `Pominięte: ${importRun.skipped}\nBłędy: ${importRun.failed}\n\n` +
+        'Rollback usunie wyłącznie mutacje przypisane do tego runu. PI Mapper pozostanie bez zmian.',
+    );
+    if (!confirmed) return;
+    setRollbackBusy(true);
+    setRollbackRemaining(null);
+    setRunError(null);
+    try {
+      const state = await rollbackProductImportRun(importRun.id, (next) => {
+        setImportRun(next);
+        setRollbackRemaining(next.remainingRollbackRows);
+      });
+      setImportRun(state);
+      setProgress(null);
+      await refreshPreflight();
+    } catch (error) {
+      setRunError(errorMessage(error));
+    } finally {
+      setRollbackBusy(false);
+    }
   };
 
   return (
@@ -418,6 +561,15 @@ export function ProductImportPage() {
                   <p>Konflikty tożsamości: {dedupPlan.counts.IDENTITY_CONFLICT}</p>
                 </div>
               ) : null}
+              <CleanImportPreflightView
+                preflight={preflight}
+                loading={preflightBusy}
+                error={
+                  !isSignedIn
+                    ? 'Zaloguj się, aby sprawdzić stan staging przed importem.'
+                    : preflightError
+                }
+              />
               {localIntelligence ? (
                 <IntimportLocalIntelligenceView
                   summary={localIntelligence}
@@ -427,7 +579,13 @@ export function ProductImportPage() {
                   onImport={() => {
                     void onImport();
                   }}
-                  canImport={canImport({ isSignedIn, result })}
+                  canImport={
+                    canImport({ isSignedIn, result }) &&
+                    preflight?.ready === true &&
+                    !['IMPORTING', 'CANCELLING', 'ROLLING_BACK'].includes(
+                      importRun?.status ?? '',
+                    )
+                  }
                   importBusy={busy}
                   busy={enriching}
                   progress={
@@ -466,22 +624,31 @@ export function ProductImportPage() {
               onSignIn={openAuthModal}
             />
           )}
-          {progress || busy ? (
+          {progress || busy || (importRun && importRun.status !== 'ROLLED_BACK') ? (
             <div className="mt-8">
               <ImportProgressView
                 progress={
                   progress ?? {
-                    processed: 0,
-                    total: importPlan?.total ?? 0,
-                    created: 0,
-                    existing: 0,
-                    skipped: 0,
-                    failed: 0,
+                    processed: importRun?.processed ?? 0,
+                    total: importRun?.total_rows ?? importPlan?.total ?? 0,
+                    created: importRun?.created ?? 0,
+                    existing: importRun?.reused ?? 0,
+                    skipped: importRun?.skipped ?? 0,
+                    failed: importRun?.failed ?? 0,
                     currentName: null,
                   }
                 }
                 lastUpdateAt={lastProgressAt}
-                done={!busy && importResult?.ok === true}
+                done={importRun?.status === 'COMPLETED' || (!importRun && !busy && importResult?.ok === true)}
+                cancelled={importRun?.status === 'CANCELLED'}
+                cancelling={cancelBusy || importRun?.status === 'CANCELLING'}
+                onCancel={
+                  importRun && ['IMPORTING', 'CANCELLING'].includes(importRun.status)
+                    ? () => {
+                        void onCancelImport();
+                      }
+                    : undefined
+                }
                 stopped={
                   !busy && importResult?.ok === true && importResult.summary.stopped
                     ? {
@@ -493,6 +660,31 @@ export function ProductImportPage() {
               />
             </div>
           ) : null}
+          {importRun && ['CANCELLED', 'COMPLETED', 'FAILED'].includes(importRun.status) ? (
+            <div className="mt-6 space-y-3" data-testid="intimport-rollback-control">
+              <button
+                type="button"
+                disabled={rollbackBusy}
+                onClick={() => {
+                  void onRollbackImport();
+                }}
+                className={cn(buttonClasses('ghost', 'md'), rollbackBusy && 'opacity-50')}
+              >
+                {rollbackBusy ? 'Cofanie importu…' : 'Cofnij import'}
+              </button>
+              {rollbackBusy && rollbackRemaining !== null ? (
+                <p className="text-xs text-[#8a7f6d]">
+                  Pozostałe mutacje do cofnięcia: {rollbackRemaining}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+          {importRun?.status === 'ROLLED_BACK' ? (
+            <p className="mt-6 text-sm text-status-ideal" data-testid="intimport-rolled-back">
+              IMPORT COFNIĘTY · mutacje tego runu usunięte
+            </p>
+          ) : null}
+          {runError ? <p className="mt-4 text-sm text-status-risky">{runError}</p> : null}
           {importPlan ? (
             <p className="text-xs text-[#8a7f6d]">
               Product Intelligence: {importPlan.total} zapisanych do katalogu —{' '}

@@ -69,14 +69,18 @@ describe('neutral catalog data presentation', () => {
     ]);
   });
 
-  it('D distinguishes a genuine zero from a missing score and clamps display-only values', () => {
+  it('D always renders a percentage, keeps 100%, and clamps display-only values', () => {
     expect(normalizeDataConfidencePercent(undefined)).toBeNull();
-    expect(formatDataConfidencePercent(null)).toBe('—');
+    expect(formatDataConfidencePercent(null)).toBe('0%');
     expect(normalizeDataConfidencePercent(0)).toBe(0);
     expect(formatDataConfidencePercent(0)).toBe('0%');
     expect(normalizeDataConfidencePercent(-4)).toBe(0);
     expect(normalizeDataConfidencePercent(101.2)).toBe(100);
     expect(normalizeDataConfidencePercent(91.6)).toBe(92);
+    expect(formatDataConfidencePercent(100)).toBe('100%');
+    expect(catalogDataConfidencePercent(hit({
+      publicData: { productAccuracy: 96, sourceConfidence: 41 },
+    }))).toBe(96);
   });
 
   it('keeps an unbound product existing catalog root instead of inventing an ID', () => {

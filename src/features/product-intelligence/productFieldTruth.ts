@@ -52,6 +52,8 @@ export type FieldBasis =
   | 'retailer_card'
   /** Declared on the product's own label / source row. */
   | 'product_declared'
+  /** Explicitly copied or confirmed by the customer from this product. */
+  | 'user_confirmed'
   /** The card of a retailer that OWNS the brand — first-party for that product. */
   | 'private_label_card'
   /** The product IS a known Mapper row. */
@@ -70,6 +72,7 @@ const BASIS_RANK: Readonly<Record<FieldBasis, number>> = Object.freeze({
   // and any first-party source both outrank it — a shop is not the maker.
   retailer_card: 6,
   product_declared: 7,
+  user_confirmed: 7,
   private_label_card: 8,
   mapper_exact: 9,
   official_manufacturer: 10,

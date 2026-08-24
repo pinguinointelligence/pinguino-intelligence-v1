@@ -18,6 +18,7 @@
 /** How a fact came to be known, strongest first. Mirrors the Scanner hierarchy. */
 export type EvidenceSource =
   | 'label'
+  | 'user_confirmed'
   | 'manufacturer'
   | 'barcode_registry'
   | 'retailer'
@@ -29,6 +30,7 @@ export type EvidenceSource =
 /** Strength of each source. A family inference can never outrank a direct fact. */
 export const EVIDENCE_SOURCE_RANK: Readonly<Record<EvidenceSource, number>> = Object.freeze({
   label: 6,
+  user_confirmed: 6,
   mapper_exact: 6,
   manufacturer: 5,
   barcode_registry: 4,
@@ -135,6 +137,7 @@ const TECHNICAL_CRITICAL: readonly ProductEvidenceField[] = ['identity'];
 const sourceCredit = (source: EvidenceSource): number => {
   switch (source) {
     case 'label':
+    case 'user_confirmed':
     case 'mapper_exact':
       return 1;
     case 'manufacturer':

@@ -22,11 +22,14 @@ import {
 import { runProductImport } from './runProductImport';
 import {
   ImportActionBar,
+  CleanImportPreflightView,
+  ImportProgressView,
   ImportSummaryView,
   IntimportLocalIntelligenceView,
   ParsePreview,
 } from './productImportView';
 import { ProductImportPage } from './ProductImportPage';
+import { restoredImportProgress } from './productImportRunViewState';
 
 const c = copy.productsImport;
 
@@ -194,6 +197,96 @@ describe('ImportActionBar — auth gating', () => {
       <ImportActionBar available isSignedIn canImport busy onImport={noop} onSignIn={noop} />,
     );
     expect(html).toContain('disabled');
+  });
+});
+
+describe('clean INTIMPORT safety controls', () => {
+  const restoredRun = {
+    id: 'run-1',
+    status: 'ROLLED_BACK' as const,
+    source: 'INTIMPORT' as const,
+    mode: 'CLEAN_OWNER_REIMPORT' as const,
+    label: 'PL Poland',
+    source_file_name: 'PL_Poland.csv',
+    source_fingerprint: 'a'.repeat(64),
+    total_rows: 820,
+    processed: 272,
+    created: 3,
+    reused: 267,
+    updated: 267,
+    review: 0,
+    skipped: 0,
+    failed: 2,
+    remaining: 548,
+    started_at: '2026-08-24T18:01:40Z',
+    finished_at: '2026-08-24T18:17:00Z',
+    rolled_back_at: '2026-08-24T18:45:08Z',
+  };
+
+  it('blocks clean import when PR is not zero and shows the exact catalog counts', () => {
+    const text = visibleText(
+      shellRender(
+        <CleanImportPreflightView
+          preflight={{
+            pi: 2088,
+            pr: 820,
+            prVersions: 820,
+            prBehaviorBindings: 2763,
+            prMatchedBasementRelations: 428,
+            ready: false,
+          }}
+        />,
+      ),
+    );
+    expect(text).toContain('PI: 2088');
+    expect(text).toContain('PR: 820');
+    expect(text).toContain('Import zablokowany');
+    expect(text).toContain('PR = 0');
+  });
+
+  it('shows the approved clean boundary only for PI=2088 / PR=0', () => {
+    const text = visibleText(
+      shellRender(
+        <CleanImportPreflightView
+          preflight={{
+            pi: 2088,
+            pr: 0,
+            prVersions: 0,
+            prBehaviorBindings: 0,
+            prMatchedBasementRelations: 0,
+            ready: true,
+          }}
+        />,
+      ),
+    );
+    expect(text).toContain('✓ Gotowe do czystego importu');
+  });
+
+  it('renders Przerwij import beside a running progress state', () => {
+    const html = shellRender(
+      <ImportProgressView
+        progress={{
+          processed: 327,
+          total: 820,
+          created: 327,
+          existing: 0,
+          skipped: 0,
+          failed: 0,
+          currentName: 'Produkt',
+        }}
+        lastUpdateAt="20:00:00"
+        onCancel={() => {}}
+      />,
+    );
+    expect(visibleText(html)).toContain('Przerwij import');
+    expect(html).toContain('intimport-cancel-action');
+  });
+
+  it('does not restore stale progress after a run has been rolled back', () => {
+    expect(restoredImportProgress(restoredRun)).toBeNull();
+    expect(
+      restoredImportProgress({ ...restoredRun, status: 'CANCELLED', rolled_back_at: null }),
+    ).toMatchObject({ processed: 272, total: 820, created: 3, existing: 267, failed: 2 });
   });
 });
 

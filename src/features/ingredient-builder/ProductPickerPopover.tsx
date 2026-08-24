@@ -14,7 +14,7 @@ import type { EngineIngredient } from '@/engine';
 import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
 import { getEngineApprovedIngredientById } from '@/services/ingredients';
-import { markCurrentMapperCatalogProductUsed, searchProducts } from '@/services/globalCatalog';
+import { markCatalogProductUsed, searchProducts } from '@/services/globalCatalog';
 import {
   LiveProductScanner,
   type ResolvedScanProduct,
@@ -121,11 +121,8 @@ const pickerCategoryLabel = (option: PickerOption): string => {
 };
 
 const publicPickerUnavailableReason = (option: PickerOption, scope: ProductPickerScope): string => {
-  // A catalogue product that carries no Mapper identity is not "incomplete data" — it is
-  // a product the Engine has no physics for yet, and saying so is the difference between
-  // an owner who knows what to do next and one who refreshes the list forever.
-  if (option.catalog?.entityKind === 'commercial_product' && !option.catalog.mappedIngredientId) {
-    return `${option.name} jest w katalogu produktów, ale nie ma jeszcze przypisanej tożsamości Mapper — do receptury trafi dopiero po jej przypisaniu.`;
+  if (option.catalog?.entityKind === 'commercial_product') {
+    return `${option.name} nie ma jeszcze kompletnego własnego profilu produktu. Uzupełnij brakujące dane i spróbuj ponownie.`;
   }
   return scope === 'BASE_FORMULATION'
     ? `${option.name} nie ma obecnie kompletnego zatwierdzenia do bazy receptury. Odśwież dane lub wybierz inny produkt.`
@@ -287,7 +284,7 @@ export function ProductPickerPopover({
             detail: hit.productForm ?? hit.brand ?? hit.canonicalFamily ?? 'Produkt',
             brand: hit.brand,
             category: hit.category ?? hit.productForm ?? hit.canonicalFamily,
-            articleNumber: hit.eans[0] ?? null,
+            articleNumber: canonicalCatalogProductId(hit),
             entityKind: hit.entityKind,
             status: hit.status,
             favorite: hit.favorite,
@@ -532,8 +529,15 @@ export function ProductPickerPopover({
       if (ingredient) {
         // Recent-use telemetry is private ranking metadata; an unavailable
         // backend must never turn a valid ingredient selection into an error.
-        const mapperId = option.catalog?.mappedIngredientId ?? option.id.replace(/^mapper:/, '');
-        void markCurrentMapperCatalogProductUsed(mapperId).catch(() => undefined);
+        const relation = option.catalog
+          ? {
+              entityKind: option.catalog.entityKind,
+              id: option.catalog.entityKind === 'pi_base'
+                ? option.catalog.mappedIngredientId!
+                : option.catalog.id,
+            }
+          : { entityKind: 'pi_base' as const, id: option.id.replace(/^mapper:/, '') };
+        void markCatalogProductUsed(relation).catch(() => undefined);
       }
       close(selection?.focusLineId);
     } finally {
@@ -547,8 +551,8 @@ export function ProductPickerPopover({
    * The scanner resolves or creates the canonical product; this is the step that puts
    * it into the recipe the owner already had open, so nobody has to close the scanner
    * and search for the product they were just holding. The selection boundary is
-   * unchanged — the recipe accepts a current Mapper identity and nothing else, so a
-   * scanned product is added through exactly the same fail-closed path as a picked one.
+   * unchanged: an existing PI/PR/PM article is added through the same fail-closed
+   * selection and ProductBehavior path as a typed search result.
    */
   const addScannedProduct = async (resolved: ResolvedScanProduct) => {
     const context = scope === 'BASE_FORMULATION' ? 'BASE' : 'TOPPING';
@@ -568,10 +572,10 @@ export function ProductPickerPopover({
       ).flat();
       const hit = scannedProductRecipeTarget(hits, resolved, context);
       if (!hit) {
-        // Never invent a recipe line for a product the Engine has no identity for.
+        // Never invent a recipe line for a product whose own profile is incomplete.
         setScanning(false);
         setUnavailableNotice(
-          `${resolved.displayName} zapisano w katalogu produktów. Do receptury trafia dopiero po przypisaniu tożsamości Mapper — otwórz Produkty, aby dokończyć.`,
+          `${resolved.displayName} zapisano w katalogu produktów. Uzupełnij brakujące dane produktu, aby użyć go w recepturze.`,
         );
         return;
       }
@@ -586,6 +590,13 @@ export function ProductPickerPopover({
         return;
       }
       const ingredient = engineIngredientForCatalogSelection(hit, selection);
+      if (!ingredient) {
+        setScanning(false);
+        setUnavailableNotice(
+          `${hit.displayName} wymaga uzupełnienia danych produktu przed dodaniem do receptury.`,
+        );
+        return;
+      }
       if (scope === 'BASE_FORMULATION' && onPreflightDuplicate) {
         const duplicate = onPreflightDuplicate(ingredient as EngineIngredient);
         if (duplicate?.focusLineId) {
@@ -637,7 +648,10 @@ export function ProductPickerPopover({
         scope === 'POST_PROCESS_ADDON'
           ? onAdd(ingredient, behavior)
           : onAdd(ingredient as EngineIngredient, behavior);
-      void markCurrentMapperCatalogProductUsed(selection.mapperId).catch(() => undefined);
+      void markCatalogProductUsed({
+        entityKind: hit.entityKind,
+        id: hit.entityKind === 'pi_base' ? hit.mappedIngredientId! : hit.id,
+      }).catch(() => undefined);
       setScanning(false);
       close(added?.focusLineId);
     } finally {
@@ -1094,17 +1108,6 @@ export function ProductPickerPopover({
                                   {informationOption.canonicalId}
                                 </dd>
                               </div>
-                              {informationOption.entityKind === 'commercial_product' &&
-                              informationOption.catalog?.mappedIngredientId ? (
-                                <div>
-                                  <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-500">
-                                    Profil Gellatti / Mapper
-                                  </dt>
-                                  <dd className="mt-1 font-mono text-sm font-semibold">
-                                    {informationOption.catalog.mappedIngredientId}
-                                  </dd>
-                                </div>
-                              ) : null}
                               <div>
                                 <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-500">
                                   Status danych
@@ -1157,6 +1160,13 @@ export function ProductPickerPopover({
                       onClick={() => close()}
                     >
                       Skanuj produkt →
+                    </Link>
+                    <Link
+                      to="/products/add"
+                      className="pro-focus-ring rounded-lg px-2 py-1 font-semibold text-ink hover:bg-stone-100"
+                      onClick={() => close()}
+                    >
+                      Dodaj ręcznie →
                     </Link>
                     <button
                       type="button"

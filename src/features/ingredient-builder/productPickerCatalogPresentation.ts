@@ -37,8 +37,10 @@ export function canonicalCatalogProductId(
  * `publicData.sourceConfidence`. Status/provenance never invent a percentage. */
 export function catalogDataConfidencePercent(
   hit: Pick<CatalogProductSearchHit, 'publicData'>,
-): number | null {
-  return normalizeDataConfidencePercent(hit.publicData.sourceConfidence);
+): number {
+  return normalizeDataConfidencePercent(
+    hit.publicData.productAccuracy ?? hit.publicData.sourceConfidence,
+  ) ?? 0;
 }
 
 export function normalizeDataConfidencePercent(value: unknown): number | null {
@@ -47,7 +49,7 @@ export function normalizeDataConfidencePercent(value: unknown): number | null {
 }
 
 export function formatDataConfidencePercent(value: number | null): string {
-  return value === null ? '—' : `${value}%`;
+  return `${value ?? 0}%`;
 }
 
 /**

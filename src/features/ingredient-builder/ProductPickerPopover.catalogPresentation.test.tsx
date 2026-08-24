@@ -55,7 +55,7 @@ vi.mock('@/services/ingredients', () => ({
 }));
 
 vi.mock('@/services/globalCatalog', () => ({
-  markCurrentMapperCatalogProductUsed: mocks.markUsed,
+  markCatalogProductUsed: mocks.markUsed,
 }));
 
 vi.mock('@/data/ingredients/ingredientMapper', () => ({
@@ -275,7 +275,7 @@ describe('ProductPickerPopover catalog presentation', () => {
     expect(onAdd).toHaveBeenCalledWith(engineIngredient, undefined);
   });
 
-  it('shows Baitz commercial identity separately from its Mapper profile', async () => {
+  it('shows Baitz with exactly one customer-facing article identity', async () => {
     mocks.hits = [
       catalogHit({
         id: '0cfa39a9-e683-4dea-b4b9-7f732a7c9c08',
@@ -306,8 +306,8 @@ describe('ProductPickerPopover catalog presentation', () => {
 
     expect(dialog?.textContent).toContain('ID produktu');
     expect(dialog?.textContent).toContain('PR-ING-006308');
-    expect(dialog?.textContent).toContain('Profil Gellatti / Mapper');
-    expect(dialog?.textContent).toContain('PI-ING-000091');
+    expect(dialog?.textContent).not.toContain('Profil Gellatti / Mapper');
+    expect(dialog?.textContent).not.toContain('PI-ING-000091');
   });
 
   it('G/H/I keeps one or two segments through filtering, searching, and long scroll', async () => {

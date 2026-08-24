@@ -201,6 +201,12 @@ export async function finalizeProductScan(input: {
   confirmations?: {
     noAdditionalAllergenStatementVisible?: boolean;
     notOnLabelFields?: string[];
+    productFields?: {
+      nutrition: Record<string, number>;
+      nutritionBasis: 'per_100g' | 'per_100ml' | null;
+      ingredientsText: string | null;
+      allergensText: string | null;
+    };
   };
   privateOverlay: {
     price?: number | null;

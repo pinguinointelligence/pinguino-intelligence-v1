@@ -184,8 +184,11 @@ describe('Product Scanner server/client/security boundary', () => {
     expect(finalize).toContain("await service.rpc('ingest_product_v1'");
     expect(finalize).toContain("const source = text(input.ean) ? 'barcode' : 'manual'");
     expect(finalize).toContain("provenance: 'product_scanner_v1'");
-    // No scanner-specific physical estimate is invented on the way in.
-    expect(finalize).not.toMatch(/estimate|inference|mapper_value/i);
+    // Product Intelligence now recomputes the PM-owned profile server-side;
+    // Scanner still carries no separate client-side estimator.
+    expect(finalize).toContain('validateIntimportProductProfileProposal');
+    expect(finalize).toContain('productProfileAuthority');
+    expect(service).not.toContain('validateIntimportProductProfileProposal');
   });
 
   it('shows the required privacy message before cloud analysis', () => {

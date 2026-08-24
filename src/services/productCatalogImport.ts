@@ -16,10 +16,7 @@
  *     isolated and tallied (no silent failures); in-batch duplicates are detected by the
  *     pure identity key (the same one D5B dedupes on).
  */
-import {
-  bindExistingIntimportWholeProfile,
-  createProductWithIdentityResult,
-} from '@/services/products';
+import { createProductWithIdentityResult } from '@/services/products';
 import { productIdentityKey, productInsertToIdentityInput } from '@/data/products/productIdentity';
 import type { ProductIntakeCandidate } from '@/data/products/productTableParser';
 
@@ -45,11 +42,19 @@ export interface ImportProductCatalogOptions {
    * helps nobody and buries the reason.
    */
   stopAfterRepeatedFailures?: number;
-  /**
-   * Operator backfill: bind accepted INTIMPORT proposals only to canonical
-   * products that already exist. It never calls the create/upsert adapter.
-   */
-  bindExistingIntimportMapperOnly?: boolean;
+  /** Durable server run identity plus cooperative stop/ledger hooks. */
+  importRun?: {
+    id: string;
+    shouldCancel: () => boolean;
+    recordOutcome: (input: {
+      rowIndex: number;
+      sourceRowId: string | null;
+      displayName: string | null;
+      outcome: 'SKIPPED' | 'FAILED';
+      error?: string | null;
+      result?: Record<string, unknown>;
+    }) => Promise<void>;
+  };
 }
 
 export interface ImportProgress {
@@ -102,6 +107,8 @@ export interface ProductImportSummary {
    * resume can pick them up without recreating anything.
    */
   stopped?: { reason: string; afterRowIndex: number; remaining: number };
+  /** Cooperative cancellation stops before the next row; the in-flight row is atomic. */
+  cancelled?: { afterRowIndex: number | null; remaining: number };
 }
 
 function errorMessage(error: unknown): string {
@@ -121,7 +128,6 @@ export async function importProductCatalog(
   const runMatch = options.runMatch === true;
   const continueOnError = options.continueOnError !== false;
   const stopAfter = options.stopAfterRepeatedFailures ?? 5;
-  const bindExistingOnly = options.bindExistingIntimportMapperOnly === true;
   let lastFailure: string | null = null;
   let repeatedFailures = 0;
 
@@ -146,6 +152,13 @@ export async function importProductCatalog(
   }
 
   for (const candidate of candidates) {
+    if (options.importRun?.shouldCancel()) {
+      summary.cancelled = {
+        afterRowIndex: summary.rowResults.at(-1)?.rowIndex ?? null,
+        remaining: candidates.length - summary.rowResults.length,
+      };
+      break;
+    }
     const row: ImportRowResult = {
       rowIndex: candidate.rowIndex,
       outcome: 'failed', // replaced below on every path
@@ -157,82 +170,9 @@ export async function importProductCatalog(
       row.outcome = 'skipped';
       if (candidate.skipReason) row.skipReason = candidate.skipReason;
       summary.skipped += 1;
+      await recordRunOutcome(candidate, 'SKIPPED', candidate.skipReason);
       summary.rowResults.push(row);
       emitProgress(candidate);
-      continue;
-    }
-
-    if (bindExistingOnly) {
-      const extracted =
-        candidate.insert.extracted_json && typeof candidate.insert.extracted_json === 'object'
-          ? (candidate.insert.extracted_json as Record<string, unknown>)
-          : {};
-      const intelligence =
-        extracted.productIntelligence && typeof extracted.productIntelligence === 'object'
-          ? (extracted.productIntelligence as Record<string, unknown>)
-          : {};
-      const proposal = intelligence.intimportWholeProfileProposal;
-      if (candidate.forceDistinctIdentity) {
-        row.outcome = 'skipped';
-        row.skipReason = 'force-distinct source row has no resolvable current base identity';
-        summary.skipped += 1;
-        summary.rowResults.push(row);
-        emitProgress(candidate);
-        continue;
-      }
-      if (!proposal || typeof proposal !== 'object') {
-        row.outcome = 'skipped';
-        row.skipReason = 'no accepted INTIMPORT whole-profile proposal';
-        summary.skipped += 1;
-        summary.rowResults.push(row);
-        emitProgress(candidate);
-        continue;
-      }
-      try {
-        const ingest = await bindExistingIntimportWholeProfile(candidate.insert);
-        row.outcome = 'existing';
-        row.productId = ingest.productId ?? undefined;
-        row.productCode = ingest.productCode ?? undefined;
-        summary.existingDuplicates += 1;
-        if (row.productId) summary.productIds.push(row.productId);
-        if (row.productCode) summary.productCodes.push(row.productCode);
-        summary.rowResults.push(row);
-        lastFailure = null;
-        repeatedFailures = 0;
-      } catch (error) {
-        const message = errorMessage(error);
-        if (
-          message.includes('intimport_mapper_authority_rejected') ||
-          message.includes('intimport_existing_product_not_found')
-        ) {
-          row.outcome = 'skipped';
-          row.skipReason = message.includes('intimport_existing_product_not_found')
-            ? 'current canonical product identity not found'
-            : 'whole-profile target is not eligible for canonical binding';
-          summary.skipped += 1;
-          summary.rowResults.push(row);
-          lastFailure = null;
-          repeatedFailures = 0;
-        } else {
-          row.outcome = 'failed';
-          row.error = message;
-          summary.failed += 1;
-          summary.rowResults.push(row);
-          if (!continueOnError) throw error;
-          repeatedFailures = row.error === lastFailure ? repeatedFailures + 1 : 1;
-          lastFailure = row.error;
-        }
-      }
-      emitProgress(candidate);
-      if (stopAfter > 0 && repeatedFailures >= stopAfter) {
-        const handled = summary.rowResults.length;
-        summary.stopped = {
-          reason: lastFailure ?? 'powtarzający się błąd backfillu',
-          afterRowIndex: candidate.rowIndex,
-          remaining: candidates.length - handled,
-        };
-        break;
-      }
       continue;
     }
 
@@ -245,6 +185,10 @@ export async function importProductCatalog(
       row.outcome = 'in_batch_duplicate';
       row.duplicateOfRowIndex = firstRowIndex;
       summary.inBatchDuplicates += 1;
+      await recordRunOutcome(candidate, 'SKIPPED', null, {
+        duplicateOfRowIndex: firstRowIndex,
+        kind: 'in_batch_duplicate',
+      });
       summary.rowResults.push(row);
       emitProgress(candidate);
       continue;
@@ -257,6 +201,16 @@ export async function importProductCatalog(
       // cross-account shared duplicate honestly.
       const { product, ingest } = await createProductWithIdentityResult(candidate.insert, {
         duplicateDecision: candidate.forceDistinctIdentity ? 'different' : null,
+        ...(options.importRun
+          ? {
+              importRun: {
+                id: options.importRun.id,
+                rowIndex: candidate.rowIndex,
+                sourceRowId: sourceRowId(candidate),
+                displayName: displayName(candidate),
+              },
+            }
+          : {}),
       });
       // `idempotent` means the server replayed an earlier ingest and returned
       // its ORIGINAL snapshot, whose kind still reads `created`. Without this a
@@ -275,10 +229,21 @@ export async function importProductCatalog(
       lastFailure = null;
       repeatedFailures = 0;
     } catch (error) {
+      if (
+        options.importRun?.shouldCancel() ||
+        errorMessage(error).includes('import_cancellation_requested')
+      ) {
+        summary.cancelled = {
+          afterRowIndex: summary.rowResults.at(-1)?.rowIndex ?? null,
+          remaining: candidates.length - summary.rowResults.length,
+        };
+        break;
+      }
       // 8. isolate a create/lookup failure
       row.outcome = 'failed';
       row.error = errorMessage(error);
       summary.failed += 1;
+      await recordRunOutcome(candidate, 'FAILED', row.error);
       summary.rowResults.push(row);
       if (!continueOnError) throw error;
       repeatedFailures = row.error === lastFailure ? repeatedFailures + 1 : 1;
@@ -316,4 +281,36 @@ export async function importProductCatalog(
       currentRowIndex: candidate.rowIndex,
     });
   }
+
+  async function recordRunOutcome(
+    candidate: ProductIntakeCandidate,
+    outcome: 'SKIPPED' | 'FAILED',
+    error: string | null = null,
+    result: Record<string, unknown> = {},
+  ): Promise<void> {
+    if (!options.importRun) return;
+    await options.importRun.recordOutcome({
+      rowIndex: candidate.rowIndex,
+      sourceRowId: sourceRowId(candidate),
+      displayName: displayName(candidate),
+      outcome,
+      error,
+      result,
+    });
+  }
+}
+
+function displayName(candidate: ProductIntakeCandidate): string | null {
+  return candidate.insert.product_name_display ?? candidate.insert.product_name_internal ?? null;
+}
+
+function sourceRowId(candidate: ProductIntakeCandidate): string | null {
+  const extracted = candidate.insert.extracted_json;
+  if (!extracted || typeof extracted !== 'object') return null;
+  const intelligence = (extracted as Record<string, unknown>).productIntelligence;
+  if (!intelligence || typeof intelligence !== 'object') return null;
+  const proposal = (intelligence as Record<string, unknown>).intimportProductProfileProposal;
+  if (!proposal || typeof proposal !== 'object') return null;
+  const value = (proposal as Record<string, unknown>).sourceProductId;
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
 }

@@ -14,11 +14,15 @@ const matchMethodMigration = readFileSync(
   ),
   'utf8',
 );
+const productOwnedMigration = readFileSync(
+  resolve(root, 'supabase/migrations/20260824203000_product_owned_profile_authority.sql'),
+  'utf8',
+);
 const edge = readFileSync(resolve(root, 'supabase/functions/catalog-submit/index.ts'), 'utf8');
 const importer = readFileSync(resolve(root, 'src/services/productCatalogImport.ts'), 'utf8');
 const mapperBefore = readFileSync(resolve(root, 'docs/ingredients/validation/mapper_basement.csv'));
 
-describe('INTIMPORT Mapper binding is a distinct server authority', () => {
+describe('INTIMPORT Mapper knowledge is estimate provenance, not runtime identity', () => {
   it('uses the canonical Verified-prefix predicate without rewriting Mapper rows', () => {
     expect(migration).toContain("lower(trim(coalesce(m.verification_status,''))) like 'verified%'");
     expect(migration).not.toMatch(/update\s+public\.mapper_basement/i);
@@ -46,12 +50,12 @@ describe('INTIMPORT Mapper binding is a distinct server authority', () => {
     expect(migration).toContain("p_server_authority->>'mapperIngredientId'<>v_mapper_id");
   });
 
-  it('rejects manual/browser spoofing and accepts only an entitled catalog_import reservation', () => {
-    expect(edge).toContain('validateIntimportWholeProfileProposal');
+  it('rejects manual/browser spoofing and recomputes a product-owned catalog_import profile', () => {
+    expect(edge).toContain('validateIntimportProductProfileProposal');
     expect(edge).toContain("source !== 'catalog_import'");
     expect(edge).toContain('if (canonicalCode !== proposedCode) return null;');
-    expect(edge).toContain('intimportWholeProfileAuthority: serverWholeProfileAuthority');
-    expect(edge).not.toMatch(/body\.intimportWholeProfileAuthority/);
+    expect(edge).toContain('productProfileAuthority: serverProductProfileAuthority');
+    expect(edge).not.toMatch(/body\.intimportProductProfileAuthority/);
     expect(migration).toContain("p_rate_action<>'catalog_import'");
     expect(migration).toContain('gellatti_ingest_rate_action_v1(p_actor_user_id,p_source)');
   });
@@ -70,7 +74,7 @@ describe('INTIMPORT Mapper binding is a distinct server authority', () => {
     expect(matchMethodMigration).not.toMatch(/(insert\s+into|update)\s+public\.mapper_basement/i);
   });
 
-  it('supports binding-only backfill without inserting a product or Mapper row', () => {
+  it('retains the historical binding migration for audit but retires the callable path', () => {
     expect(migration).toContain('resolve_intimport_existing_product_v1');
     expect(migration).toContain(
       "coalesce(p_input#>>'{facts,catalogImportIdentity,system}','')<>'INTIMPORT'",
@@ -83,5 +87,12 @@ describe('INTIMPORT Mapper binding is a distinct server authority', () => {
     );
     expect(backfill).not.toMatch(/insert\s+into\s+public\.products/i);
     expect(migration).not.toMatch(/(insert\s+into|update)\s+public\.mapper_basement/i);
+    expect(productOwnedMigration).toContain(
+      "if v_operation not in (''upsert'',''retire'')",
+    );
+    expect(productOwnedMigration).toContain('INTIMPORT Mapper runtime binding is retired');
+    expect(productOwnedMigration).toContain(
+      'revoke all on function public.bind_intimport_whole_profile_match_v1',
+    );
   });
 });

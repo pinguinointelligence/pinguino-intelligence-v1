@@ -63,6 +63,9 @@ import { SCANNER_ERROR_COPY, type ScannerStage } from '@/features/product-scanne
 import { assertUserSafeScannerMessage } from '@/services/scannerErrorGuard';
 import {
   packageDisplay,
+  productCompletionFields,
+  productCompletionPayload,
+  productCompletionReady,
   scanBlockerExplanation,
   scanCompletenessLabel,
 } from '@/features/product-scanner/resultPresentation';
@@ -225,6 +228,7 @@ interface ScanSession {
   saved: Record<string, unknown> | null;
   privacyAccepted: boolean;
   allergenConfirmed: boolean;
+  completionValues: Record<string, string>;
   finished: boolean;
 }
 
@@ -266,6 +270,7 @@ const freshSession = (): ScanSession => ({
   saved: null,
   privacyAccepted: false,
   allergenConfirmed: false,
+  completionValues: {},
   finished: false,
 });
 
@@ -592,6 +597,7 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
           ),
           visionCalls: response.usage.visionCalls,
           allergenConfirmed: false,
+          completionValues: {},
         });
       } catch (caught) {
         // A failed analysis costs the session nothing and leaves the frames in place;
@@ -1026,15 +1032,16 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
         confirmations: {
           noAdditionalAllergenStatementVisible: current.allergenConfirmed,
           notOnLabelFields: current.notOnLabelFields,
+          productFields: productCompletionPayload(current.completionValues),
         },
         privateOverlay: {},
       });
       patch({ saved: result });
       const identity = current.analysis.result.identity;
-      const productId = typeof result.productId === 'string' ? result.productId : null;
-      if (productId && onResolved) {
+      const articleId = typeof result.productCode === 'string' ? result.productCode : null;
+      if (articleId && result.engineUsable === true && onResolved) {
         onResolved({
-          id: productId,
+          id: articleId,
           displayName: identity.displayName ?? identity.originalName ?? 'Nowy produkt',
           brand: identity.brand ?? null,
           entityKind: 'commercial_product',
@@ -1128,6 +1135,12 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
     state.missingCriticalFields.includes('allergen_confirmation') === true;
   const allergenConfirmationIsOnlyBlocker =
     state.missingCriticalFields.length === 1 && needsAllergenConfirmation;
+  const completionFields = productCompletionFields(state.missingCriticalFields);
+  const completionReady = productCompletionReady(
+    completionFields,
+    state.completionValues,
+    state.allergenConfirmed,
+  );
   const firstUnresolvedField = LIVE_FIELD_ORDER.find((key) =>
     ['MISSING', 'SEARCHING', 'CONFLICT'].includes(state.fields[key].status),
   );
@@ -1549,6 +1562,79 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
               {scanBlockerExplanation(state.missingCriticalFields)}
             </p>
           )}
+          {completionFields.length > 0 && (
+            <section className="mt-5 rounded-2xl border border-stone-200 bg-[#fbfaf7] p-5 sm:p-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
+                Uzupełnij produkt
+              </p>
+              <h3 className="mt-2 text-xl font-semibold text-ink">
+                Jeszcze {completionFields.length}{' '}
+                {completionFields.length === 1 ? 'informacja' : 'informacje'}
+              </h3>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-stone-600">
+                Przepisz tylko brakujące dane z opakowania. Zachowaliśmy cały dotychczasowy skan.
+              </p>
+              <div className="mt-5 grid gap-5 sm:grid-cols-2">
+                {completionFields.map((field) => (
+                  <label
+                    key={field.key}
+                    className={field.input === 'textarea' ? 'sm:col-span-2' : ''}
+                  >
+                    <span className="text-sm font-semibold text-stone-800">{field.label}</span>
+                    <span className="mt-2 flex items-center gap-2">
+                      {field.input === 'select' ? (
+                        <select
+                          value={state.completionValues[field.key] ?? ''}
+                          onChange={(event) => patch({
+                            completionValues: {
+                              ...session.current.completionValues,
+                              [field.key]: event.currentTarget.value,
+                            },
+                          })}
+                          className="pro-focus-ring min-h-11 w-full rounded-xl border border-stone-300 bg-white px-3 text-sm"
+                        >
+                          <option value="">Wybierz…</option>
+                          <option value="per_100g">na 100 g</option>
+                          <option value="per_100ml">na 100 ml</option>
+                        </select>
+                      ) : field.input === 'textarea' ? (
+                        <textarea
+                          rows={3}
+                          value={state.completionValues[field.key] ?? ''}
+                          onChange={(event) => patch({
+                            completionValues: {
+                              ...session.current.completionValues,
+                              [field.key]: event.currentTarget.value,
+                            },
+                          })}
+                          className="pro-focus-ring w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm"
+                        />
+                      ) : (
+                        <input
+                          type={field.input}
+                          inputMode={field.input === 'number' ? 'decimal' : undefined}
+                          min={field.input === 'number' ? 0 : undefined}
+                          step={field.input === 'number' ? 'any' : undefined}
+                          value={state.completionValues[field.key] ?? ''}
+                          onChange={(event) => patch({
+                            completionValues: {
+                              ...session.current.completionValues,
+                              [field.key]: event.currentTarget.value,
+                            },
+                          })}
+                          className="pro-focus-ring min-h-11 w-full rounded-xl border border-stone-300 bg-white px-3 text-sm"
+                        />
+                      )}
+                      {field.unit && (
+                        <span className="shrink-0 text-xs font-medium text-stone-500">{field.unit}</span>
+                      )}
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-stone-500">{field.help}</span>
+                  </label>
+                ))}
+              </div>
+            </section>
+          )}
           {evidence.packageEvidenceExhausted && (
             <p className="mt-4 rounded-xl border border-stone-200 bg-stone-50 p-4 text-sm text-stone-600">
               Pokazałeś już tę część opakowania. Brakujących danych nie ma na etykiecie —
@@ -1585,7 +1671,7 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
               </span>
             </label>
           )}
-          {notOnLabelCandidate && notOnLabelCandidate !== 'allergens' && (
+          {completionFields.length === 0 && notOnLabelCandidate && notOnLabelCandidate !== 'allergens' && (
             <button
               type="button"
               className={`${quietButton} mt-4`}
@@ -1601,7 +1687,10 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
               disabled={
                 Boolean(state.busy) ||
                 (state.analysis.overlayState === 'SCAN_DRAFT' &&
-                  !(allergenConfirmationIsOnlyBlocker && state.allergenConfirmed))
+                  !(
+                    (allergenConfirmationIsOnlyBlocker && state.allergenConfirmed) ||
+                    (completionFields.length > 0 && completionReady)
+                  ))
               }
               onClick={() => void save()}
             >
@@ -1613,10 +1702,21 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
 
       {state.saved && (
         <section className={`${card} mt-6 border-sage/40 p-6`} aria-live="polite">
-          <h2 className="text-xl font-semibold">Produkt zapisany</h2>
-          <p className="mt-2 text-sm text-stone-600">
-            Publiczne fakty i prywatne dane pozostały w oddzielnych granicach dostępu.
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
+            {state.saved.engineUsable === true ? 'Produkt gotowy' : 'Produkt wymaga weryfikacji'}
           </p>
+          <h2 className="mt-2 text-xl font-semibold">
+            {typeof state.saved.productCode === 'string' ? state.saved.productCode : 'Produkt zapisany'}
+          </h2>
+          <p className="mt-2 text-sm text-stone-600">
+            Dokładność danych{' '}
+            {typeof state.saved.productAccuracy === 'number'
+              ? `${Math.round(state.saved.productAccuracy)}%`
+              : '0%'}
+          </p>
+          {state.saved.allergenEvidenceStatus === 'NOT_CONFIRMED' && (
+            <p className="mt-2 text-sm font-medium text-terracotta">Alergeny niepotwierdzone</p>
+          )}
         </section>
       )}
 

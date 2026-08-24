@@ -27,7 +27,7 @@ import {
   WORKING_NUMERIC_FIELDS,
   type ProductFieldTruthMap,
   type WorkingNumericField,
-} from './productFieldTruth';
+} from './productFieldTruth.ts';
 
 export type PlausibilityRuleId =
   | 'range'

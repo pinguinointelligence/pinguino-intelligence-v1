@@ -15,12 +15,12 @@
  *
  * Pure and deterministic: no DB, no network, no AI, no clock.
  */
-import { foldLatin } from './mapperFamilyInference';
+import { foldLatin } from './mapperFamilyInference.ts';
 import {
   knownField,
   type FieldTruth,
   type WorkingNumericField,
-} from './productFieldTruth';
+} from './productFieldTruth.ts';
 
 export type CardAuthority = 'OFFICIAL_PRIVATE_LABEL' | 'AUTHORITATIVE_RETAILER';
 

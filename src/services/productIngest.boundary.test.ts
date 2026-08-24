@@ -17,17 +17,19 @@ describe('canonical product ingest boundary', () => {
     expect(importer).not.toContain('snapshotSourceChange');
   });
 
-  it('keeps existing-only identity resolution separate from the one product-authority RPC', () => {
+  it('keeps the retired Mapper-binding backfill out of the canonical product-authority RPC', () => {
     const edge = read('supabase/functions/catalog-submit/index.ts');
     const calls = [...edge.matchAll(/service\.rpc\(\s*'([^']+)'/g)].map((match) => match[1]);
     expect(calls).toEqual([
-      'resolve_intimport_existing_product_v1',
       'preflight_product_ingest_v1',
+      'record_product_import_row_outcome_v1',
+      'ingest_product_import_row_v1',
       'ingest_product_v1',
     ]);
-    expect(edge.indexOf("'resolve_intimport_existing_product_v1'")).toBeLessThan(
-      edge.indexOf("'preflight_product_ingest_v1'"),
-    );
+    expect(edge).toContain('hasImportRunMetadata');
+    expect(edge).toContain('import_cancellation_requested');
+    expect(edge).not.toContain("'resolve_intimport_existing_product_v1'");
+    expect(edge).not.toContain("'bind_intimport_mapper'");
     expect(edge.indexOf("'preflight_product_ingest_v1'")).toBeLessThan(
       edge.indexOf('evidence = await captureOwnedEvidence('),
     );
@@ -88,7 +90,7 @@ describe('canonical product ingest boundary', () => {
     expect(facts.nutrition).toBeNull();
   });
 
-  it('sends an INTIMPORT donor only as a proposal with stable source identity', () => {
+  it('sends INTIMPORT declarations/evidence only as a profile proposal with stable source identity', () => {
     const request = canonicalIngestFromLegacyProduct({
       source_type: 'catalog_import',
       catalog_source: 'INTIMPORT',
@@ -96,8 +98,8 @@ describe('canonical product ingest boundary', () => {
       brand: 'Test',
       extracted_json: {
         productIntelligence: {
-          intimportWholeProfileProposal: {
-            mapperIngredientId: 'PI-ING-000456',
+          intimportProductProfileProposal: {
+            proposedMapperIngredientId: 'PI-ING-000456',
             sourceProductId: 'PL-COM-1',
             matchInput: {
               name: 'Inulina',
@@ -106,12 +108,24 @@ describe('canonical product ingest boundary', () => {
               knownMacros: {},
               technical: true,
             },
+            declared: { fat_percent: 11 },
+            evidence: {
+              kind: 'technical',
+              fields: { identity: 'source_file' },
+              validatedBarcode: false,
+              exactCanonicalMatch: false,
+              mapperFamilyMatch: true,
+              materialConflicts: [],
+            },
           },
         },
       },
     });
-    expect(request.input.intimportWholeProfileProposal).toEqual({
-      mapperIngredientId: 'PI-ING-000456',
+    expect(request.input.intimportProductProfileProposal).toMatchObject({
+      proposedMapperIngredientId: 'PI-ING-000456',
+      sourceProductId: 'PL-COM-1',
+      declared: { fat_percent: 11 },
+      evidence: { kind: 'technical' },
     });
     expect(request.input).not.toHaveProperty('mapperDecision');
     expect((request.input.facts as Record<string, unknown>).catalogImportIdentity).toMatchObject({

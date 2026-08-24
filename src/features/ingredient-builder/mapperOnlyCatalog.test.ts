@@ -74,6 +74,20 @@ const hit = (overrides: Partial<CatalogProductSearchHit> = {}): CatalogProductSe
   ...overrides,
 });
 
+const productProfile = {
+  productAccuracy: 96,
+  productIntelligence: { engineUsable: true },
+  technicalComposition: {
+    water: 51,
+    totalSolids: 49,
+    fat: 11,
+    protein: 24,
+    carbohydrate: 13,
+    sugars: 0.5,
+    salt: 0.2,
+  },
+};
+
 const row = (overrides: Partial<IngredientRow> = {}): IngredientRow => ({
   ingredient_id: 'PI-ING-000001',
   ingredient_name_internal: 'current_mapper_ingredient',
@@ -208,9 +222,8 @@ describe('Mapper-only product catalog', () => {
   });
 
   it('J rejects forged snapshots before a recipe row, dirty state or Undo can be created', async () => {
-    // A catalogue product may now carry an AUTHORIZED Mapper identity (owner decision
-    // 2026-08-24 §1), so the refusal moves to where it belongs: the current Mapper row
-    // is loaded and must actually exist. A snapshot alone still authorizes nothing.
+    // A commercial result needs its own immutable profile and product identity.
+    // A Mapper-looking field on the browser snapshot authorizes nothing.
     const load = vi.fn(async () => null);
     const outcome = await resolveCurrentMapperCatalogSelection(
       hit({ entityKind: 'commercial_product', status: 'verified', mappedIngredientId: 'PI-ING-000001' }),
@@ -218,7 +231,7 @@ describe('Mapper-only product catalog', () => {
       load,
     );
     expect(outcome).toEqual({ ok: false, message: MAPPER_ONLY_CATALOG_ERROR });
-    expect(load).toHaveBeenCalledWith('PI-ING-000001');
+    expect(load).not.toHaveBeenCalled();
   });
 
   it('J refuses a blocked or unmapped catalogue product before anything is loaded', async () => {
@@ -252,9 +265,38 @@ describe('Mapper-only product catalog', () => {
       const currentViewRow = { ...row(), is_active: undefined } as unknown as IngredientRow;
       const load = vi.fn(async () => currentViewRow);
       const outcome = await resolveCurrentMapperCatalogSelection(hit(), context, load);
-      expect(outcome).toEqual({ ok: true, mapperId: 'PI-ING-000001', row: currentViewRow });
+      expect(outcome).toEqual({
+        ok: true,
+        kind: 'mapper',
+        articleId: 'PI-ING-000001',
+        mapperId: 'PI-ING-000001',
+        row: currentViewRow,
+      });
       expect(load).toHaveBeenCalledWith('PI-ING-000001');
     }
+  });
+
+  it('resolves an admitted PR from its own version without loading a Mapper row', async () => {
+    const load = vi.fn(async () => null);
+    const outcome = await resolveCurrentMapperCatalogSelection(
+      hit({
+        id: 'catalog-pr',
+        entityKind: 'commercial_product',
+        status: 'manual_unverified',
+        productCode: 'PR-ING-000001',
+        mappedIngredientId: null,
+        publicData: productProfile,
+      }),
+      'BASE',
+      load,
+    );
+    expect(outcome).toEqual({
+      ok: true,
+      kind: 'catalog_product',
+      articleId: 'PR-ING-000001',
+      productVersionId: 'mapper-version-1',
+    });
+    expect(load).not.toHaveBeenCalled();
   });
 
   it('does not trust an arbitrary PI-shaped id without a matching current row', async () => {

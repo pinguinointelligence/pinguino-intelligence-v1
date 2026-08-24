@@ -30,7 +30,7 @@
  * Engine was found to require, so the decision can be checked against evidence
  * instead of memory.
  */
-import type { WorkingNumericField } from './productFieldTruth';
+import type { WorkingNumericField } from './productFieldTruth.ts';
 
 export type FieldRequirement =
   /** The Engine cannot produce a meaningful result without it. */

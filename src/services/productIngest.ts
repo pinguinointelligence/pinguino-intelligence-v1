@@ -54,7 +54,7 @@ export interface ProductIngestRequest {
   privateOverlay?: Record<string, unknown>;
   /** Existing canonical identity for an explicit correction/retirement. */
   productId?: string | null;
-  operation?: 'upsert' | 'retire' | 'bind_intimport_mapper';
+  operation?: 'upsert' | 'retire';
   ocrSessionId?: string | null;
   market?: string | null;
   retailer?: string | null;
@@ -64,6 +64,13 @@ export interface ProductIngestRequest {
   deviceSignal?: string | null;
   riskChallengeToken?: string | null;
   resumeBlocked?: boolean;
+  /** Durable INTIMPORT row identity. All four fields travel together. */
+  importRun?: {
+    id: string;
+    rowIndex: number;
+    sourceRowId: string | null;
+    displayName: string | null;
+  };
 }
 
 export interface ProductIngestResult extends CatalogSubmissionResult {
@@ -79,6 +86,12 @@ export interface ProductIngestResult extends CatalogSubmissionResult {
   behaviorBindingId: string | null;
   ingestEventId: string | null;
   productCode?: string | null;
+  productAccuracy?: number;
+  readiness?: string;
+  engineUsable?: boolean;
+  missingEngineFields?: string[];
+  allergenEvidenceStatus?: 'CONFIRMED' | 'USER_CONFIRMED' | 'NOT_CONFIRMED';
+  ingredientsEvidenceStatus?: 'CONFIRMED' | 'USER_CONFIRMED' | 'NOT_CONFIRMED';
 }
 
 const sourceFromLegacyProduct = (source: ProductSourceType | undefined): ProductIngestSource => {
@@ -178,13 +191,13 @@ export function canonicalIngestFromLegacyProduct(
       ? (extracted.productIntelligence as Record<string, unknown>)
       : {};
   const intimportProposal =
-    typeof productIntelligence.intimportWholeProfileProposal === 'object' &&
-    productIntelligence.intimportWholeProfileProposal !== null
-      ? (productIntelligence.intimportWholeProfileProposal as Record<string, unknown>)
+    typeof productIntelligence.intimportProductProfileProposal === 'object' &&
+    productIntelligence.intimportProductProfileProposal !== null
+      ? (productIntelligence.intimportProductProfileProposal as Record<string, unknown>)
       : {};
   const proposedMapperIngredientId =
-    typeof intimportProposal.mapperIngredientId === 'string'
-      ? intimportProposal.mapperIngredientId
+    typeof intimportProposal.proposedMapperIngredientId === 'string'
+      ? intimportProposal.proposedMapperIngredientId
       : null;
   const intimportMatchInput =
     typeof intimportProposal.matchInput === 'object' && intimportProposal.matchInput !== null
@@ -220,10 +233,23 @@ export function canonicalIngestFromLegacyProduct(
       ean: input.ean_code ?? null,
       barcode: input.barcode ?? null,
       provenance: input.source_type ?? 'manual',
-      ...(isIntimport && proposedMapperIngredientId
+      ...(isIntimport && intimportMatchInput
         ? {
-            intimportWholeProfileProposal: {
-              mapperIngredientId: proposedMapperIngredientId,
+            intimportProductProfileProposal: {
+              proposedMapperIngredientId,
+              matchInput: intimportMatchInput,
+              sourceProductId:
+                typeof intimportProposal.sourceProductId === 'string'
+                  ? intimportProposal.sourceProductId
+                  : null,
+              declared:
+                typeof intimportProposal.declared === 'object' && intimportProposal.declared !== null
+                  ? intimportProposal.declared
+                  : {},
+              evidence:
+                typeof intimportProposal.evidence === 'object' && intimportProposal.evidence !== null
+                  ? intimportProposal.evidence
+                  : {},
             },
           }
         : {}),
@@ -308,6 +334,10 @@ export async function ingestProduct(request: ProductIngestRequest): Promise<Prod
       deviceSignal: request.deviceSignal ?? null,
       riskChallengeToken: request.riskChallengeToken ?? null,
       resumeBlocked: request.resumeBlocked === true,
+      importRunId: request.importRun?.id ?? null,
+      importRowIndex: request.importRun?.rowIndex ?? null,
+      importSourceRowId: request.importRun?.sourceRowId ?? null,
+      importDisplayName: request.importRun?.displayName ?? null,
     },
   });
   if (error) throw new Error(await functionErrorDetail(error));

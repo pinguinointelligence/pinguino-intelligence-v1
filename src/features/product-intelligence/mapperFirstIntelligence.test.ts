@@ -959,12 +959,29 @@ describe('INTIMPORT import handoff', () => {
     readiness: 'READY' | 'ESTIMATED_READY' | 'REVIEW',
     /** Informational only: the manufacturer's dosage is unproven for this row. */
     dosageUnproven = false,
+    productAccuracy = 94,
   ) =>
     ({
       rowIndex: 1,
       sourceProductId: 'PL-1',
       displayName: 'Produkt',
       insert: { product_name: 'Produkt', extracted_json: { intimport: { version: 1 } } },
+      kind: 'normal_food',
+      assessment: {
+        confidence: productAccuracy,
+        criticalReadiness: productAccuracy >= 85,
+        missingCritical: productAccuracy >= 85 ? [] : ['ingredients'],
+        reasons: [],
+      },
+      evidence: {
+        kind: 'normal_food',
+        fields: productAccuracy >= 85 ? { identity: 'source_file', ingredients: 'source_file' } : { identity: 'web_search' },
+        validatedBarcode: false,
+        exactCanonicalMatch: false,
+        mapperFamilyMatch: true,
+        materialConflicts: [],
+      },
+      profileMatchInput: { name: 'Produkt', knownMacros: {}, technical: false },
       workingValues: {
         valueReadiness: readiness,
         readiness,
@@ -990,6 +1007,7 @@ describe('INTIMPORT import handoff', () => {
       needsEnrichment: boolean;
       technicalAuthorityRequired: boolean;
       compositionReadiness?: string;
+      productAccuracy?: number;
       fields: Record<string, { state: string; basis: string }>;
     };
 
@@ -1020,6 +1038,26 @@ describe('INTIMPORT import handoff', () => {
     expect(plan.rows[0]!.engineUsable).toBe(false);
     expect(intelligence.needsEnrichment).toBe(true);
     expect(plan.engineUsable).toBe(0);
+  });
+
+  it('keeps a technically complete product out of circulation below the existing 85% floor', () => {
+    const entry = planIntimportImport([row('ESTIMATED_READY', false, 84.99)]).rows[0]!;
+    expect(entry.state).toBe('REVIEW');
+    expect(entry.engineUsable).toBe(false);
+    expect(intelligenceOf(entry).productAccuracy).toBe(84.99);
+  });
+
+  it('hands the server declarations and evidence, never a client-authorized final profile', () => {
+    const intelligence = intelligenceOf(planIntimportImport([row('ESTIMATED_READY')]).rows[0]!) as
+      ReturnType<typeof intelligenceOf> & {
+        intimportProductProfileProposal: Record<string, unknown>;
+      };
+    expect(intelligence.intimportProductProfileProposal).toMatchObject({
+      proposedMapperIngredientId: null,
+      declared: {},
+      evidence: { kind: 'normal_food' },
+    });
+    expect(intelligence).not.toHaveProperty('intimportWholeProfileProposal');
   });
 
   it('stores a REVIEW row WITH whatever evidence was resolved', () => {

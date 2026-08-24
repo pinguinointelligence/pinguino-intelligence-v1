@@ -9,6 +9,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   packageDisplay,
+  productCompletionFields,
+  productCompletionPayload,
+  productCompletionReady,
   scanCompletenessLabel,
   scanBlockerExplanation,
 } from './resultPresentation';
@@ -47,6 +50,36 @@ describe('packageDisplay — the Cacao Puro case', () => {
 
   it('formats non-integer quantities without float noise', () => {
     expect(packageDisplay(pkg(1.5, 'l', '1,5 L')).value).toBe('1.5 l');
+  });
+});
+
+describe('PM missing-data completion', () => {
+  it('asks only for package-readable missing facts, never Engine internals', () => {
+    const fields = productCompletionFields([
+      'nutrition_fat',
+      'nutrition_protein',
+      'ingredientsText',
+      'high_risk_dosage_authority',
+    ]);
+    expect(fields.map((field) => field.label)).toEqual(['Tłuszcz', 'Białko', 'Skład produktu']);
+    expect(fields.map((field) => field.label).join(' ')).not.toMatch(/POD|PAC|Mapper|technical/i);
+  });
+
+  it('accepts decimal commas and emits explicit user-confirmed product facts', () => {
+    const fields = productCompletionFields(['nutrition_fat', 'allergen_confirmation']);
+    const values = { fat: '12,5', allergensText: 'mleko, soja' };
+    expect(productCompletionReady(fields, values)).toBe(true);
+    expect(productCompletionPayload(values)).toMatchObject({
+      nutrition: { fat: 12.5 },
+      allergensText: 'mleko, soja',
+    });
+  });
+
+  it('keeps missing allergen evidence distinct from a no-allergens claim', () => {
+    const fields = productCompletionFields(['allergen_confirmation']);
+    expect(productCompletionReady(fields, {}, false)).toBe(false);
+    expect(productCompletionReady(fields, {}, true)).toBe(true);
+    expect(productCompletionPayload({}).allergensText).toBeNull();
   });
 });
 

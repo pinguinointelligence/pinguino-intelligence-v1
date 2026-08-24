@@ -16,10 +16,10 @@
  *
  * Pure and deterministic: no DB, no network, no AI, no clock.
  */
-import { MAPPER_ENGINE_REQUIRED_FIELDS } from './mapperRuntimeUsability';
-import { REQUIRED_COMPOSITION_FIELDS, SUGAR_SPECTRUM_FIELDS } from './engineFieldContract';
-import { validatePlausibility, type PlausibilityViolation } from './productPlausibility';
-import type { CardContribution } from './productSourceCard';
+import { MAPPER_ENGINE_REQUIRED_FIELDS } from './mapperRuntimeUsability.ts';
+import { REQUIRED_COMPOSITION_FIELDS, SUGAR_SPECTRUM_FIELDS } from './engineFieldContract.ts';
+import { validatePlausibility, type PlausibilityViolation } from './productPlausibility.ts';
+import type { CardContribution } from './productSourceCard.ts';
 import {
   CONSENSUS_BANDS,
   findProfileMatch,
@@ -31,7 +31,7 @@ import {
   type MapperInferenceInput,
   type MapperInferenceTier,
   type MapperKnowledge,
-} from './mapperValueInference';
+} from './mapperValueInference.ts';
 import {
   applyFieldTruth,
   emptyFieldTruthMap,
@@ -41,7 +41,7 @@ import {
   type FieldTruth,
   type ProductFieldTruthMap,
   type WorkingNumericField,
-} from './productFieldTruth';
+} from './productFieldTruth.ts';
 
 /**
  * What the Engine genuinely needs before it can compute with an ingredient.
@@ -133,6 +133,9 @@ export interface EstimateConflict {
 export interface ProductWorkingValuesInput {
   /** Values the product itself declares. Absent/null means not declared. */
   declared: Partial<Record<WorkingNumericField, number | null>>;
+  /** Per-field declaration provenance. Scanner/manual completion uses
+   * `user_confirmed`; import/label declarations keep `product_declared`. */
+  declaredBasis?: Partial<Record<WorkingNumericField, 'product_declared' | 'user_confirmed'>>;
   /**
    * Confidence the declaration earns from its source (§9 source authority).
    * A manufacturer datasheet and a random blog do not declare equally.
@@ -312,7 +315,7 @@ export function resolveProductWorkingValues(
         value,
         state: 'VERIFIED',
         confidence: input.declaredConfidence,
-        basis: 'product_declared',
+        basis: input.declaredBasis?.[field] ?? 'product_declared',
         note: 'wartosc zadeklarowana przez produkt',
       }),
     );

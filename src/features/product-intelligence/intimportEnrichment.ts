@@ -132,6 +132,7 @@ function mergeFacts(
 }
 
 const CREDIT_ORDER: Readonly<Record<EvidenceSource, number>> = Object.freeze({
+  user_confirmed: 7,
   label: 6,
   mapper_exact: 6,
   manufacturer: 5,
