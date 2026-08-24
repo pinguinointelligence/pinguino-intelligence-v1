@@ -5,7 +5,10 @@ import {
 } from '@/features/product-scanner/imagePreparation';
 import { scoreRgbaFrame } from '@/features/product-scanner/frameQuality';
 import { validateBarcode, type ValidBarcode } from '@/features/product-scanner/barcode';
-import { decodeGtinFromLuminance } from '@/features/product-scanner/barcodeScanline';
+import {
+  decodeGtinFromLuminance,
+  decodeGtinFromRgba,
+} from '@/features/product-scanner/barcodeScanline';
 import {
   frameHash,
   liveCaptureDecision,
@@ -74,6 +77,37 @@ function fileToBase64(file: File): Promise<string> {
     };
     reader.readAsDataURL(file);
   });
+}
+
+/**
+ * Read a GTIN out of a still image the owner supplied.
+ *
+ * An uploaded label is evidence exactly like a camera frame (§11, §12), so it gets the
+ * same free routing: a code found here reaches the catalogue and the exact source before
+ * any model is asked to read anything.
+ */
+async function decodeBarcodeFromFile(file: File): Promise<ValidBarcode | null> {
+  if (typeof createImageBitmap !== 'function' || typeof document === 'undefined') return null;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const width = Math.min(1280, bitmap.width);
+    const height = Math.max(1, Math.round((bitmap.height / bitmap.width) * width));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    if (!context) return null;
+    context.drawImage(bitmap, 0, 0, width, height);
+    bitmap.close?.();
+    const decoded = decodeGtinFromRgba(
+      context.getImageData(0, 0, width, height).data,
+      width,
+      height,
+    );
+    return decoded ? validateBarcode(decoded) : null;
+  } catch {
+    return null;
+  }
 }
 
 function productStatus(product: ScanExactProduct): string {
@@ -202,6 +236,8 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
   const stableFramesRef = useRef(0);
   const advancingRef = useRef(false);
   const capturingRef = useRef(false);
+  /** Set once `resolveDetectedBarcode` exists; uploads and frames share one route. */
+  const resolveBarcodeRef = useRef<(barcode: ValidBarcode) => Promise<void>>(async () => undefined);
 
   const evidence = evidenceOf(state);
   const route = routeScan({
@@ -237,11 +273,18 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
       const remaining = Math.max(0, MAX_IMAGES - session.current.assets.length);
       if (remaining === 0) return;
       patch({ error: null, busy: 'Przygotowuję zdjęcia lokalnie…' });
+      let uploadedBarcode: ValidBarcode | null = null;
       for (const file of files.slice(0, remaining)) {
         const result = await prepareProductScanImage(file);
         if (!result.ok) {
           patch({ error: result.reason });
           continue;
+        }
+        // A code found in an uploaded label routes exactly like one read live: catalogue
+        // and exact source first, before any model call.
+        if (!session.current.barcode && !session.current.exactProduct) {
+          const decoded = await decodeBarcodeFromFile(result.value.file);
+          if (decoded) uploadedBarcode = decoded;
         }
         const current = session.current;
         patch({
@@ -267,6 +310,7 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
         });
       }
       patch({ busy: null });
+      if (uploadedBarcode) await resolveBarcodeRef.current(uploadedBarcode);
     },
     [patch],
   );
@@ -450,6 +494,10 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
     },
     [advance, patch, stopCamera],
   );
+
+  useEffect(() => {
+    resolveBarcodeRef.current = resolveDetectedBarcode;
+  }, [resolveDetectedBarcode]);
 
   const captureFullFrame = useCallback(
     async (view: CaptureView, source: 'camera_auto' | 'camera_manual', hash: bigint) => {
@@ -763,6 +811,13 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
             <p className="mx-auto mt-4 max-w-2xl text-base font-medium" aria-live="polite">
               {state.busy ?? evidence.requestMessage ?? state.guidance}
             </p>
+            {/* What to show is the headline; how to hold it changes frame by frame and
+                must not be swallowed by it. */}
+            {!state.busy && evidence.requestMessage && (
+              <p className="mx-auto mt-1 max-w-2xl text-sm text-stone-300" aria-live="polite">
+                {state.guidance}
+              </p>
+            )}
             <ul className="mx-auto mt-3 flex max-w-2xl flex-wrap gap-x-5 gap-y-1 text-sm text-stone-300">
               {evidence.entries.map((entry) => (
                 <li key={entry.kind}>
