@@ -191,7 +191,7 @@ describe('mobile ingredient editing sheet', () => {
     expect(controls).toContain('data-testid={`row-mobile-main-toggle-${item.id}`}');
     expect(controls).toContain('<MainRoleGlyph active={isMain} />');
     // „Zmień/Zapisz" reuses the existing customer-price editor, not a new one.
-    expect(controls).toContain('<CustomerPriceEditor view={priceView} />');
+    expect(controls).toContain('<CustomerPriceEditor view={priceView} lineId={item.id} />');
   });
 
   it('puts the % and g steppers in the thumb zone, using the desktop control', () => {
@@ -231,6 +231,16 @@ describe('mobile preview navigation', () => {
     expect(surface).toContain('onCollapse={collapseMobileCockpit}');
     // Collapsing is a ROUTE change, so „what is open" stays visible and shareable.
     expect(surface).toContain("if (activeTab !== 'profile') onTabChange('profile')");
+  });
+
+  it('a BLOCKING dialog outranks the bottom stack it blocks', () => {
+    // The bar (z-60) was introduced after the recalculation overlay (z-50) and
+    // silently covered it on mobile — the PI dialog appeared behind Przelicz.
+    const recalc = read('features', 'pro-core', 'ProRecalcPanel.tsx');
+    const dialog = read('components', 'ui', 'DialogShell.tsx');
+    expect(recalc).toContain('z-[80]');
+    expect(dialog).toContain('z-[70]');
+    expect(surface).toContain('z-[60]');
   });
 
   it('never covers the bar it is toggled from, and respects the safe area', () => {

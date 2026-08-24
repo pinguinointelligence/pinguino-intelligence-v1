@@ -21,6 +21,16 @@ interface DirectNumberControlProps {
   preservePrecision?: boolean;
   /** Fixed recipe-table capacity. `percent` fits 100.0%; `grams` fits 10000 g. */
   widthPreset?: 'fluid' | 'percent' | 'grams';
+  /**
+   * `compact` is the DESKTOP recipe-table density (owner 2026-08-24): the row
+   * was dominated by its controls, leaving long catalog names truncated far too
+   * early. It shrinks the segments from 44 px to 32 px and tightens the value
+   * column, recovering ~90 px per row for the ingredient name.
+   *
+   * It is deliberately NOT used on touch surfaces — the mobile sheet keeps the
+   * comfortable 44 px targets.
+   */
+  density?: 'comfortable' | 'compact';
   /** Optional fourth segment. It stays operable while the numeric segments are locked. */
   lockSegment?: {
     pressed: boolean;
@@ -67,8 +77,11 @@ export function DirectNumberControl({
   ariaDescribedBy,
   preservePrecision = false,
   widthPreset = 'fluid',
+  density = 'comfortable',
   lockSegment,
 }: DirectNumberControlProps) {
+  const compact = density === 'compact';
+  const segment = compact ? 'size-8' : 'size-11';
   const accessibleValue = Number(value.toFixed(decimals));
   const valueRef = useRef(value);
   const [draft, setDraft] = useState(value.toFixed(decimals));
@@ -156,24 +169,35 @@ export function DirectNumberControl({
       className={cn(
         'grid min-w-0 max-w-full items-center overflow-hidden rounded-2xl border border-ink/12 bg-white shadow-pro-sm transition-[border-color,background-color,box-shadow] focus-within:border-ink/30 focus-within:shadow-pro-md',
         widthPreset === 'percent' &&
-          (lockSegment
-            ? 'w-[192px] grid-cols-[44px_60px_44px_44px]'
-            : 'w-[148px] grid-cols-[44px_60px_44px]'),
+          (compact
+            ? lockSegment
+              ? 'w-[144px] grid-cols-[32px_48px_32px_32px]'
+              : 'w-[112px] grid-cols-[32px_48px_32px]'
+            : lockSegment
+              ? 'w-[192px] grid-cols-[44px_60px_44px_44px]'
+              : 'w-[148px] grid-cols-[44px_60px_44px]'),
         widthPreset === 'grams' &&
-          (lockSegment
-            ? 'w-[204px] grid-cols-[44px_72px_44px_44px]'
-            : 'w-[160px] grid-cols-[44px_72px_44px]'),
+          (compact
+            ? lockSegment
+              ? 'w-[152px] grid-cols-[32px_56px_32px_32px]'
+              : 'w-[120px] grid-cols-[32px_56px_32px]'
+            : lockSegment
+              ? 'w-[204px] grid-cols-[44px_72px_44px_44px]'
+              : 'w-[160px] grid-cols-[44px_72px_44px]'),
         widthPreset === 'fluid' &&
           (lockSegment
             ? 'w-full grid-cols-[44px_minmax(68px,1fr)_44px_44px]'
             : 'w-full grid-cols-[44px_minmax(68px,1fr)_44px]'),
+        compact ? 'rounded-xl shadow-none' : null,
         lockSegment?.pressed
           ? 'border-stone-400/70 bg-stone-100 shadow-[inset_0_1px_2px_rgb(16_17_19_/_0.06)]'
           : disabled && 'bg-stone-50',
       )}
       data-testid={testId}
       data-preserve-precision={preservePrecision ? 'true' : undefined}
-      data-control-capacity={widthPreset === 'percent' ? '100.0%' : widthPreset === 'grams' ? '10000g' : 'fluid'}
+      data-control-capacity={
+        widthPreset === 'percent' ? '100.0%' : widthPreset === 'grams' ? '10000g' : 'fluid'
+      }
       data-control-locked={lockSegment?.pressed ? 'true' : 'false'}
     >
       <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
@@ -197,14 +221,21 @@ export function DirectNumberControl({
             nudge(direction);
           }}
           className={cn(
-            'row-start-1 grid size-11 place-items-center text-xl font-light text-ink transition-colors hover:bg-stone-100 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-gold disabled:cursor-not-allowed disabled:text-stone-400',
+            'row-start-1 grid place-items-center font-light text-ink transition-colors hover:bg-stone-100 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-gold disabled:cursor-not-allowed disabled:text-stone-400',
+            segment,
+            compact ? 'text-base' : 'text-xl',
             direction > 0 && 'col-start-3',
           )}
         >
           {direction < 0 ? '−' : '+'}
         </button>
       ))}
-      <label className="col-start-2 row-start-1 flex min-w-0 items-center justify-center border-x border-ink/18 px-1">
+      <label
+        className={cn(
+          'col-start-2 row-start-1 flex min-w-0 items-center justify-center border-x border-ink/18',
+          compact ? 'px-0.5' : 'px-1',
+        )}
+      >
         <span className="sr-only">{ariaLabel}</span>
         <input
           type="text"
@@ -256,9 +287,18 @@ export function DirectNumberControl({
           onPointerUp={onScrubEnd}
           onPointerCancel={onScrubEnd}
           data-scrubbable="horizontal"
-          className="min-w-0 flex-1 touch-pan-y select-none bg-transparent text-right font-mono text-sm font-semibold tabular-nums text-ink outline-none disabled:cursor-not-allowed"
+          className={cn(
+            'min-w-0 flex-1 touch-pan-y select-none bg-transparent text-right font-mono font-semibold tabular-nums text-ink outline-none disabled:cursor-not-allowed',
+            compact ? 'text-[13px]' : 'text-sm',
+          )}
         />
-        <span aria-hidden className="ml-1 shrink-0 text-xs font-semibold text-stone-600">
+        <span
+          aria-hidden
+          className={cn(
+            'shrink-0 font-semibold text-stone-600',
+            compact ? 'ml-0.5 text-[10px]' : 'ml-1 text-xs',
+          )}
+        >
           {suffix}
         </span>
       </label>
@@ -272,7 +312,9 @@ export function DirectNumberControl({
           data-testid={lockSegment.testId}
           onClick={lockSegment.onToggle}
           className={cn(
-            'col-start-4 row-start-1 inline-flex size-11 items-center justify-center gap-0.5 border-l border-ink/18 font-mono text-[11px] font-semibold transition-colors focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-gold',
+            'col-start-4 row-start-1 inline-flex items-center justify-center gap-0.5 border-l border-ink/18 font-mono font-semibold transition-colors focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-gold',
+            segment,
+            compact ? 'text-[9px]' : 'text-[11px]',
             lockSegment.pressed
               ? 'bg-stone-200 text-ink'
               : 'bg-white text-stone-500 hover:bg-stone-100 hover:text-ink',

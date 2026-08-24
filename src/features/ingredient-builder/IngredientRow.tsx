@@ -22,6 +22,7 @@ import {
   type SubstituteCandidate,
 } from './ingredientTableUx';
 import { DialogShell } from '@/components/ui/DialogShell';
+import { HoverPreview } from '@/components/ui/HoverPreview';
 import { DirectNumberControl } from './DirectNumberControl';
 import {
   MainRoleGlyph,
@@ -31,10 +32,7 @@ import {
 import { IngredientCategoryIcon } from './IngredientCategoryIcon';
 import { ingredientCategorySymbolFor } from './ingredientCategorySymbols';
 import { ProductionActualControl } from '@/features/production-workspace/ProductionActualControl';
-import {
-  productProcessPl,
-  productRecommendedDosagePl,
-} from '@/features/product-intelligence';
+import { productProcessPl, productRecommendedDosagePl } from '@/features/product-intelligence';
 import { useRecipeStore } from '@/stores/recipeStore';
 
 const b = copy.studio.builder;
@@ -42,11 +40,20 @@ const t = b.ingredientTable;
 
 export type IngredientTableMode = 'recipe' | 'production';
 
-/** Recipe mode only: Ingredient | % + lock | quantity + lock/unit | price | menu. */
+/**
+ * Recipe mode only: Ingredient | % + lock | quantity + lock/unit | price | menu.
+ *
+ * DENSITY (owner 2026-08-24): the controls used to own 512 px of every row
+ * (192 + 204 + 72 + 44), which left real catalog names — "CREAM 30% · Mlekovita
+ * Cream · Chilled" — truncated after a few words. The compact stepper density
+ * and a tighter price cell give that space back to the NAME, which is the row's
+ * primary identity: the name column's floor roughly doubles (164 → 300 px, and
+ * 260 → 420 px at 2xl) without removing any information.
+ */
 export const ROW_GRID =
-  'grid grid-cols-1 items-center gap-x-2.5 gap-y-3 md:grid-cols-[minmax(164px,1fr)_192px_204px_72px_44px] 2xl:grid-cols-[minmax(260px,1fr)_192px_204px_72px_44px]';
+  'grid grid-cols-1 items-center gap-x-2 gap-y-3 md:grid-cols-[minmax(300px,1fr)_144px_152px_60px_32px] 2xl:grid-cols-[minmax(420px,1fr)_144px_152px_60px_32px]';
 export const COMPACT_ROW_GRID =
-  'grid grid-cols-1 items-center gap-x-2.5 gap-y-3 md:grid-cols-[minmax(164px,1fr)_192px_204px_72px_44px]';
+  'grid grid-cols-1 items-center gap-x-2 gap-y-3 md:grid-cols-[minmax(300px,1fr)_144px_152px_60px_32px]';
 export const PRODUCTION_ROW_GRID =
   'grid grid-cols-1 items-center gap-x-3 gap-y-2 md:grid-cols-[minmax(140px,1.4fr)_78px_minmax(220px,1.2fr)_76px]';
 
@@ -562,7 +569,7 @@ function RecipeRow({
       >
         {t.data.open}
       </MenuButton>
-      <CustomerPriceEditor view={priceView} />
+      <CustomerPriceEditor view={priceView} lineId={item.id} />
 
       <MenuDivider />
       <MenuHeading>{t.remove.heading}</MenuHeading>
@@ -613,7 +620,7 @@ function RecipeRow({
                 aria-hidden
                 draggable
                 onDragStart={() => onDragStart?.(item.id)}
-                className="inline-grid size-11 shrink-0 cursor-grab select-none place-items-center text-base leading-none text-stone-400 active:cursor-grabbing md:size-6 2xl:order-1 2xl:size-5"
+                className="inline-grid size-11 shrink-0 cursor-grab select-none place-items-center text-base leading-none text-stone-400 active:cursor-grabbing md:size-5 2xl:order-1 2xl:size-4"
                 title="Przeciągnij, aby zmienić kolejność"
               >
                 ⠿
@@ -680,7 +687,7 @@ function RecipeRow({
               ) : null}
               <span
                 aria-hidden
-                className="grid size-7 shrink-0 place-items-center rounded-full bg-stone-100 text-stone-600 2xl:order-2 2xl:size-6"
+                className="grid size-7 shrink-0 place-items-center rounded-full bg-stone-100 text-stone-600 md:size-6 2xl:order-2 2xl:size-6"
               >
                 <IngredientCategoryIcon
                   symbol={ingredientCategorySymbolFor({
@@ -688,12 +695,14 @@ function RecipeRow({
                   })}
                 />
               </span>
-              <span
-                className="truncate text-[13px] font-semibold text-ink 2xl:order-3"
-                title={item.ingredient.name}
+              {/* Truncation is visual only — the full name stays in the DOM for
+                  assistive technology, and the hover preview serves the mouse. */}
+              <HoverPreview
+                text={item.ingredient.name}
+                className="min-w-0 truncate text-[13px] font-semibold text-ink 2xl:order-3"
               >
                 {item.ingredient.name}
-              </span>
+              </HoverPreview>
               {estimated ? (
                 <span
                   aria-label={t.data.estimatedHint}

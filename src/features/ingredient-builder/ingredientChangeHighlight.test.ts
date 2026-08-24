@@ -64,7 +64,7 @@ describe('ingredientChangeSignature', () => {
     // while the signature still carried a price.
     const signature = ingredientChangeSignature(line());
     expect(signature.split('|')).toHaveLength(3);
-    expect(signature).toBe('milk_3_5|670.0|unlocked');
+    expect(signature).toBe('milk_3_5|670|unlocked');
     for (const leaked of ['EUR', 'mapper_reference', 'customer_override', 'req', 'unavail'])
       expect(signature, leaked).not.toContain(leaked);
   });

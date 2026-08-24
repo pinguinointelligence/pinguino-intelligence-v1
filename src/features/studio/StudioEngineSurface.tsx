@@ -29,6 +29,7 @@ import { WorkbenchModuleTabs } from '@/features/pro-workbench/WorkbenchModuleTab
 import { useProductionWorkspace } from '@/features/production-workspace/useProductionWorkspace';
 import {
   MOBILE_COCKPIT_QUERY,
+  nextMobileCockpitState,
   shouldActivateMobileCockpitModal,
 } from '@/features/studio/mobileCockpitModal';
 
@@ -154,6 +155,21 @@ export function StudioEngineSurface({
         input: production.forecastInput,
       }
     : planning;
+  /**
+   * Which module the mobile panel is showing, and whether it is open.
+   *
+   * These are TWO facts, and conflating them broke Receptura: the open flag used
+   * to be derived as `activeTab !== 'profile'`, so the one module whose route is
+   * `/pro/recipe` could never open its panel at all — tapping Receptura returned
+   * the user to the bare ingredient list and the recipe settings (Słodycz /
+   * Twardość, typ produktu, maszyna, partia, OPTIMAL-ECO, name + save) were
+   * unreachable on a phone. Monitor, Produkcja and Etykieta were unaffected
+   * precisely because none of them is the default route.
+   *
+   * The bar now states its intent OPTIMISTICALLY before navigating, so the
+   * route-sync below only fires for an EXTERNAL change — a deep link or the
+   * back button — where „open" genuinely does follow the route.
+   */
   const [mobileCockpitState, setMobileCockpitState] = useState({
     activeTab,
     open: activeTab !== 'profile',
@@ -162,8 +178,14 @@ export function StudioEngineSurface({
     setMobileCockpitState({ activeTab, open: activeTab !== 'profile' });
   }
   const mobileCockpitOpen = mobileCockpitState.open;
-  // Collapsing a preview is a ROUTE change, so „what is open" is always visible
-  // in the address bar and survives refresh/back exactly like the desktop tabs.
+  /** One selector for the bottom bar: open, collapse, or switch. */
+  const selectMobileModule = (tab: CockpitTab) => {
+    const next = nextMobileCockpitState(mobileCockpitState, tab);
+    setMobileCockpitState(next);
+    if (next.open && tab !== activeTab) onTabChange(tab);
+  };
+  // Collapsing is also a ROUTE change for the non-default modules, so „what is
+  // open" stays visible in the address bar and survives refresh/back.
   const collapseMobileCockpit = () => {
     setMobileCockpitState({ activeTab, open: false });
     if (activeTab !== 'profile') onTabChange('profile');
@@ -367,7 +389,7 @@ export function StudioEngineSurface({
           ) : null}
           <WorkbenchModuleTabs
             activeTab={activeTab}
-            onTabChange={onTabChange}
+            onTabChange={selectMobileModule}
             onCollapse={collapseMobileCockpit}
             expanded={mobileCockpitOpen}
             triggerRef={cockpitTriggerRef}

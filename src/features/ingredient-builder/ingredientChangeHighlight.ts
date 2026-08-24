@@ -47,7 +47,24 @@ export interface IngredientChangeInput {
  * Engine, the recipe vector or any saved value.
  */
 export function ingredientChangeSignature(input: IngredientChangeInput): string {
-  return [input.ingredientId, input.plannedGrams.toFixed(1), input.lockType].join('|');
+  return [input.ingredientId, markerGramsToken(input.plannedGrams), input.lockType].join('|');
+}
+
+/**
+ * The gram token the signature compares — rounded by THE SAME MECHANISM the row
+ * renders with (`Intl`, one fraction digit), not by `toFixed`.
+ *
+ * That distinction is not academic. `Intl` rounds the shortest decimal
+ * representation while `toFixed` rounds the exact binary value, so they
+ * disagree exactly on the boundaries: 101.85 renders as `101,9 g` but
+ * `toFixed(1)` yields `101.8`. A precision sweep across 400 rebalance-shaped
+ * values caught it. With the two disagreeing, a line could render identically
+ * and still sign differently — the very false marker this rounding exists to
+ * prevent. Locale only changes the separator, never the rounding, so the token
+ * is pinned to `en-US` while the row keeps `pl-PL`.
+ */
+export function markerGramsToken(grams: number): string {
+  return grams.toLocaleString('en-US', { maximumFractionDigits: 1, useGrouping: false });
 }
 
 export type IngredientSignatureMap = Readonly<Record<string, string>>;

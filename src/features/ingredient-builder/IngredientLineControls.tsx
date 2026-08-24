@@ -278,7 +278,7 @@ export function MobileIngredientSheet({
 
           {priceOpen ? (
             <div className="mt-2">
-              <CustomerPriceEditor view={priceView} />
+              <CustomerPriceEditor view={priceView} lineId={item.id} />
             </div>
           ) : null}
         </div>

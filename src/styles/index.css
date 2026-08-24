@@ -37,21 +37,10 @@
       display: none;
     }
 
-    [data-scope='BASE_FORMULATION'] [data-testid^='row-percent-control-'],
-    [data-scope='BASE_FORMULATION'] [data-testid^='row-grams-control-'] {
-      height: 40px;
-      grid-template-columns: 40px minmax(68px, 1fr) 40px;
-    }
-
-    [data-scope='BASE_FORMULATION'] [data-testid^='row-percent-control-'] > button,
-    [data-scope='BASE_FORMULATION'] [data-testid^='row-grams-control-'] > button,
-    [data-scope='BASE_FORMULATION'] [data-testid^='row-lock-percent-'],
-    [data-scope='BASE_FORMULATION'] [data-testid^='row-lock-grams-'],
-    [data-scope='BASE_FORMULATION'] button[aria-haspopup='dialog'] {
-      width: 40px;
-      min-width: 40px;
-      height: 40px;
-    }
+    /* The 2xl override that inflated the recipe-table controls back to 40 px is
+       gone (owner density pass, 2026-08-24). The controls now carry ONE compact
+       geometry from `DirectNumberControl`'s `density="compact"`, so the widest
+       screens no longer re-take the space the ingredient name just won. */
   }
 }
 
@@ -65,7 +54,8 @@
  * dots and other genuinely circular controls remain circles. Native checkbox
  * geometry is also preserved as a compact form-control exception.
  */
-.pro-studio-radius-system :where(
+.pro-studio-radius-system
+  :where(
     .rounded:not(input[type='checkbox']),
     .rounded-sm,
     .rounded-md,
@@ -78,12 +68,14 @@
   border-radius: var(--radius-pro-studio) !important;
 }
 
-.pro-studio-radius-system :where(.rounded-t, .rounded-t-xl, .rounded-t-2xl, [class*='rounded-t-[']) {
+.pro-studio-radius-system
+  :where(.rounded-t, .rounded-t-xl, .rounded-t-2xl, [class*='rounded-t-[']) {
   border-top-left-radius: var(--radius-pro-studio) !important;
   border-top-right-radius: var(--radius-pro-studio) !important;
 }
 
-.pro-studio-radius-system :where(.rounded-b, .rounded-b-xl, .rounded-b-2xl, [class*='rounded-b-[']) {
+.pro-studio-radius-system
+  :where(.rounded-b, .rounded-b-xl, .rounded-b-2xl, [class*='rounded-b-[']) {
   border-bottom-left-radius: var(--radius-pro-studio) !important;
   border-bottom-right-radius: var(--radius-pro-studio) !important;
 }

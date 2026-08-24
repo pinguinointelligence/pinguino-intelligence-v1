@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { EffectiveIngredientCost } from '@/features/pro-core/costContracts';
 import { parseCustomerPriceText } from './customerPriceInput';
+import { useCustomerPriceDirtyStore } from './customerPriceDirtyStore';
 
 export interface IngredientPriceView {
   cost: EffectiveIngredientCost;
@@ -22,29 +23,56 @@ export function IngredientPriceCell({ view }: { view: IngredientPriceView }) {
     ? `Twoja cena. Cena bazowa: ${base === null ? 'brak' : `${money(base)} ${cost.currency}/kg`}`
     : undefined;
   return (
-    <div className="min-w-0 text-right" title={title} data-testid="ingredient-effective-price">
-      <span className="flex items-center justify-end gap-1 font-mono text-xs font-semibold tabular-nums text-ink">
+    <div
+      className="min-w-0 leading-tight text-right"
+      title={title}
+      data-testid="ingredient-effective-price"
+    >
+      {/* Same density family as the compacted %/g controls (owner 2026-08-24):
+          the price stays fully readable, but stops competing with the
+          ingredient name for the row's width. */}
+      <span className="flex items-center justify-end gap-1 font-mono text-[11px] font-semibold tabular-nums text-ink">
         {lineCost === null ? 'Koszt niepełny' : `${money(lineCost)} ${cost.currency}`}
         {own ? (
-          <span className="rounded-md bg-stone-200 px-1.5 py-px font-sans text-xs font-semibold text-stone-700">
+          <span
+            aria-label="Twoja cena"
+            className="rounded bg-stone-200 px-1 font-sans text-[9px] font-semibold text-stone-700"
+          >
             Moja
           </span>
         ) : null}
       </span>
-      <span className="block truncate text-xs text-stone-600">
+      <span className="block truncate text-[10px] text-stone-600">
         {cost.pricePerKg === null ? '—' : `${money(cost.pricePerKg)} ${cost.currency}/kg`}
       </span>
     </div>
   );
 }
 
-export function CustomerPriceEditor({ view }: { view?: IngredientPriceView }) {
+export function CustomerPriceEditor({
+  view,
+  lineId,
+}: {
+  view?: IngredientPriceView;
+  /** Lets the row show „you changed something here" while a typed price is
+   * unsaved. Price is excluded from the §8 recipe signature on purpose (it
+   * hydrates asynchronously), so the marker composes this state instead. */
+  lineId?: string;
+}) {
   const initial = view?.cost.customerOverridePerKg ?? view?.cost.pricePerKg ?? 0;
   const [raw, setRaw] = useState(String(initial).replace('.', ','));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const setPriceDirty = useCustomerPriceDirtyStore((state) => state.setDirty);
   const onSave = view?.onSave;
   const onReset = view?.onReset;
+  /** Only a real keystroke can raise the flag — never a hydration. */
+  const markDirtyFromInput = (nextRaw: string) => {
+    if (!lineId) return;
+    const parsed = parseCustomerPriceText(nextRaw);
+    const saved = view?.cost.customerOverridePerKg ?? view?.cost.pricePerKg ?? null;
+    setPriceDirty(lineId, parsed !== null && (saved === null || parsed !== saved));
+  };
 
   if (!view?.canEdit || !onSave || !onReset) {
     return (
@@ -64,6 +92,8 @@ export function CustomerPriceEditor({ view }: { view?: IngredientPriceView }) {
     setError(null);
     try {
       await onSave(parsed);
+      // The existing save flow succeeded, so the row is no longer price-dirty.
+      if (lineId) setPriceDirty(lineId, false);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
@@ -78,6 +108,7 @@ export function CustomerPriceEditor({ view }: { view?: IngredientPriceView }) {
       await onReset();
       const base = view.cost.mapperPricePerKg ?? 0;
       setRaw(String(base).replace('.', ','));
+      if (lineId) setPriceDirty(lineId, false);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
@@ -95,7 +126,10 @@ export function CustomerPriceEditor({ view }: { view?: IngredientPriceView }) {
             value={raw}
             inputMode="decimal"
             aria-label="Moja cena za kg"
-            onChange={(event) => setRaw(event.currentTarget.value)}
+            onChange={(event) => {
+              setRaw(event.currentTarget.value);
+              markDirtyFromInput(event.currentTarget.value);
+            }}
             className="h-11 w-20 rounded-lg border border-ink/15 px-2 text-right font-mono text-xs text-ink focus:border-ink/40 focus:outline-none"
           />
           {view.cost.currency}

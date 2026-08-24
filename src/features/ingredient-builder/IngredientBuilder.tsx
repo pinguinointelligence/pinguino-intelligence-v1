@@ -49,6 +49,7 @@ import {
 import { useIngredientLibrary } from './useIngredientLibrary';
 import { ingredientChangeSignature } from './ingredientChangeHighlight';
 import { useChangedIngredientLines } from './ingredientChangeStore';
+import { useCustomerPriceDirtyStore } from './customerPriceDirtyStore';
 import type { IngredientPriceView } from './IngredientPriceControl';
 import type { ProductionWorkspaceView } from '@/features/production-workspace/useProductionWorkspace';
 import { repairableCanonicalDuplicateCount } from './ingredientDuplicateRepair';
@@ -434,6 +435,12 @@ export function IngredientBuilder({
     ]),
   );
   const changedLineIds = useChangedIngredientLines(changeSignatures);
+  // §8 composed from the two canonical dirty states. Price is excluded from the
+  // recipe signature because it hydrates asynchronously, but a MANUAL „MOJA
+  // CENA" edit must still show until the existing price save succeeds.
+  const priceDirtyByLineId = useCustomerPriceDirtyStore((state) => state.dirtyByLineId);
+  const isLineChanged = (lineId: string) =>
+    changedLineIds.has(lineId) || priceDirtyByLineId[lineId] === true;
 
   const orderIndex = new Map(baseOrder.map((id, index) => [id, index]));
   const orderedItems = [...items].sort((left, right) => {
@@ -552,7 +559,7 @@ export function IngredientBuilder({
         productionActions={productionActions}
         canMoveUp={rowIndex > 0}
         canMoveDown={rowIndex < orderedItems.length - 1}
-        changed={changedLineIds.has(item.id)}
+        changed={isLineChanged(item.id)}
         onDragStart={(lineId) => {
           draggedBaseId.current = lineId;
         }}

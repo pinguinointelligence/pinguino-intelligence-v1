@@ -669,7 +669,10 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
   // editor + LIVE Monitor update in place and the bottom action bar carries the
   // applied confirmation + Cofnij. Same store pipeline, same testids.
   return (
-    <div className="fixed inset-0 z-50" data-testid="pro-recalc-overlay">
+    // Above the mobile preview bar and the score/Przelicz strip (z-60): a
+    // BLOCKING dialog must never be overlapped by the controls it blocks. The
+    // bar was introduced after this overlay and silently outranked it.
+    <div className="fixed inset-0 z-[80]" data-testid="pro-recalc-overlay">
       <button
         type="button"
         aria-label={r.close}

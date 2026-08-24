@@ -89,7 +89,7 @@ describe('mobile dispatches through the desktop action object', () => {
     expect(row).toContain('onSetRole={setRole}');
     // The price editor is the SAME component and the SAME view object, so
     // onSave/onReset remain the existing customer-price persistence.
-    expect(mobile).toContain('<CustomerPriceEditor view={priceView} />');
+    expect(mobile).toContain('<CustomerPriceEditor view={priceView} lineId={item.id} />');
     expect(row).toContain('priceView={resolvedPriceView}');
   });
 
@@ -135,7 +135,7 @@ describe('the change marker is derived UI state only', () => {
   });
 
   it('compares at the precision the row shows', () => {
-    expect(markerModel).toContain('input.plannedGrams.toFixed(1)');
-    expect(markerModel).not.toContain('toFixed(3)');
+    expect(markerModel).toContain('markerGramsToken(input.plannedGrams)');
+    expect(markerModel).toContain('maximumFractionDigits: 1');
   });
 });
