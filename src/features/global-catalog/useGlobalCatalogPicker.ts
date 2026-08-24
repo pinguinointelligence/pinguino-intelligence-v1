@@ -1,3 +1,4 @@
+import { queryTokenTerms } from '@/features/ingredient-builder/ingredientSearch';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useDebouncedValue } from '@/features/ingredient-builder/useIngredientSearch';
@@ -117,6 +118,7 @@ export function useGlobalCatalogPicker(input: {
           favoritesOnly: input.favoritesOnly,
           productProfile: input.productProfile,
           entityKind: input.mapperOnly ? 'pi_base' : null,
+          tokenGroups: queryTokenTerms(settledQuery),
           limit: batchLimit,
           cursor,
         });

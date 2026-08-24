@@ -186,6 +186,17 @@ export async function searchProducts(input: {
   entityKind?: 'pi_base' | 'commercial_product' | null;
   limit?: number;
   cursor?: number;
+  /**
+   * The query's CONCEPTS, already expanded by the shared search dictionary:
+   * one group per meaningful word, each holding that word's equivalents across
+   * languages. „mleko kokosowe" arrives as [[mleko, milk, …], [kokos, coconut, …]].
+   *
+   * The server requires EVERY group to be present, so a multi-word query means
+   * milk AND coconut — not milk OR coconut, which is what let 81 milk products
+   * answer a search for coconut milk. Expansion stays in the one dictionary the
+   * client already owns rather than being restated in SQL.
+   */
+  tokenGroups?: readonly (readonly string[])[];
 }): Promise<CatalogProductSearchHit[]> {
   if (!supabase) return emptyUnconfiguredRead('globalCatalog.searchProducts', []);
   const { data, error } = await supabase.rpc('search_products_v1', {
@@ -198,6 +209,7 @@ export async function searchProducts(input: {
     p_entity_kind: input.entityKind ?? null,
     p_limit: input.limit ?? 100,
     p_cursor: input.cursor ?? 0,
+    p_token_groups: (input.tokenGroups ?? []).map((group) => [...group]),
   });
   if (error) throw new Error(error.message);
   return ((data ?? []) as SearchRow[]).map(mapSearchRow);
