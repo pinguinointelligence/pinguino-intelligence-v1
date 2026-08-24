@@ -29,8 +29,8 @@
     "ESTIMATED_READY": 450,
     "REVIEW": 370
   },
-  "engineReady": 450,
-  "engineReadyShare": 0.5488,
+  "workingProfileComplete": 450,
+  "workingProfileCompleteShare": 0.5488,
   "familyAssigned": 229,
   "familyHistogram": {
     "chocolate": 6,
