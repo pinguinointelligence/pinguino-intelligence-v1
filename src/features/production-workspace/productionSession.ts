@@ -853,6 +853,17 @@ export function mergePendingProductionDrafts(
   const merge = (line: ProductionLineState): ProductionLineState => {
     if (line.confirmed) return line;
     const draft = localById.get(line.lineId);
+    // A correction editor is meaningful only while the server still owns a
+    // recorded physical fact for that line. Never resurrect a local correction
+    // after durable reconciliation says that the line has no recorded material.
+    if (
+      line.physicalAddedGrams <= PRODUCTION_GRAMS_EPSILON &&
+      line.recordCorrectionCount === 0 &&
+      draft != null &&
+      draft.recordCorrectionCount > 0
+    ) {
+      return line;
+    }
     const draftWasEdited =
       draft &&
       (Math.abs(draft.draftActualGrams - draft.targetGrams) > PRODUCTION_GRAMS_EPSILON ||

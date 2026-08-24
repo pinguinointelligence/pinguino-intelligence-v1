@@ -9,6 +9,13 @@ const SQL = readFileSync(
   ),
   'utf8',
 );
+const FLOOR_GUARD_SQL = readFileSync(
+  resolve(
+    import.meta.dirname,
+    '../../../supabase/migrations/20260824190000_production_actual_null_floor_guard.sql',
+  ),
+  'utf8',
+);
 
 describe('Production / Label closeout migration', () => {
   it('extends the one append-only Production history with every required event', () => {
@@ -76,5 +83,12 @@ describe('Production / Label closeout migration', () => {
     expect(SQL).toContain(
       'revoke execute on function public.production_transition_run_v1(uuid, text, uuid)',
     );
+  });
+
+  it('rejects null erasure of a previously recorded physical amount', () => {
+    expect(FLOOR_GUARD_SQL).toContain("previous->>'actualGrams' is not null");
+    expect(FLOOR_GUARD_SQL).toContain("candidate->>'actualGrams' is not null");
+    expect(FLOOR_GUARD_SQL).toContain('physically recorded material cannot become null');
+    expect(FLOOR_GUARD_SQL).toContain('before update of actual_items');
   });
 });

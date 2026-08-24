@@ -673,6 +673,25 @@ describe('production session physical-reality contract', () => {
     expect(preserved.lines[0]!.draftActualGrams).toBe(local.lines[0]!.plannedGrams - 1);
   });
 
+  it('does not revive correction mode when the durable line has no recorded material', () => {
+    const durable = session();
+    const local = session();
+    const line = local.lines[0]!;
+    const reopened = reopenProductionRecord(
+      confirmProductionLine(local, line.lineId, '2026-08-09T10:01:00.000Z'),
+      line.lineId,
+    );
+
+    const merged = mergePendingProductionDrafts(durable, reopened);
+
+    expect(merged.lines[0]).toMatchObject({
+      confirmed: false,
+      physicalAddedGrams: 0,
+      draftActualGrams: line.targetGrams,
+      recordCorrectionCount: 0,
+    });
+  });
+
   it('requires an explicit record-correction path for a human entry mistake', () => {
     const run = session();
     const line = run.lines[0]!;
