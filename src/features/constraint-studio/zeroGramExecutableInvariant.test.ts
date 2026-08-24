@@ -3,6 +3,10 @@ import type { RecipeDirectionTarget, RecipeInput, RecipeItem } from '@/engine';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
 import { findDemoIngredient } from '@/data/demoIngredients';
 import { findVerifiedVeganFormulationCandidate } from '@/data/ingredients/verifiedVeganToolbox';
+import {
+  OWNER_MAPPER_INGREDIENTS,
+  ownerSameInputRecipe,
+} from '@/features/formulation/__fixtures__/ownerSameInputFixture';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
 import {
   attachPracticalRecipeAudit,
@@ -37,7 +41,7 @@ import { buildCanonicalNewRecipeStarter } from '@/features/recipes/newRecipeStar
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { useCustomerPriceStore } from '@/stores/customerPriceStore';
 import { useRecipeStore } from '@/stores/recipeStore';
-import { buildOptimizePreview } from './applyPipeline';
+import { buildOptimizePreview, commitPreview } from './applyPipeline';
 import {
   createOptimizePreviewWithServerAuthority,
   missingProductDosePreviewIssue,
@@ -335,19 +339,25 @@ describe('Zero-gram executable recipe invariant', () => {
     ).toEqual([]);
   });
 
-  it('4./5./9. ECO regression: the priced cost sweep no longer leaves INULIN = 0 g — Preview and Apply omit it (−12 and −13)', () => {
+  it('4./5./9. ECO regression: the priced cost sweep keeps selected Inulin inside 2–8% and never leaves 0 g (−12 and −13)', () => {
     for (const temperature of [-12, -13] as const) {
       const input = servedSorbet(temperature, 'eco', [{ key: 'strawberry', grams: 600 }]);
       loadServed(input);
       const preview = stageAndApply(`ECO ${temperature}`);
-      // The sweep resolved inulin to 0 g → the row is OMITTED, shown as removed.
+      // Selected canonical Inulin is now governed by the published internal
+      // 2–8% authority; ECO may keep or move it inside that range, never leave
+      // an executable 0 g row.
       const inulinLine = preview.lines.find((line) => line.lineId.includes('inulin'));
-      expect(inulinLine?.kind, `ECO ${temperature} diff`).toBe('removed');
-      expect(preview.proposedInput.items.map((item) => item.id)).not.toContain(
-        'new-recipe-4-inulin',
+      expect(inulinLine?.kind, `ECO ${temperature} diff`).not.toBe('removed');
+      const proposedInulin = preview.proposedInput.items.find(
+        (item) => item.id === 'new-recipe-4-inulin',
       );
-      expect(storeItems().map(([id]) => id)).not.toContain('new-recipe-4-inulin');
-      expect(Object.keys(useRecipeStore.getState().productBehaviorSnapshots)).not.toContain(
+      expect(proposedInulin?.planned_grams).toBeGreaterThanOrEqual(20);
+      expect(proposedInulin?.planned_grams).toBeLessThanOrEqual(80);
+      expect(storeItems().find(([id]) => id === 'new-recipe-4-inulin')?.[1]).toBe(
+        proposedInulin?.planned_grams,
+      );
+      expect(Object.keys(useRecipeStore.getState().productBehaviorSnapshots)).toContain(
         'new-recipe-4-inulin',
       );
       expect(useConstraintStudioStore.getState().constraints.byLineId['new-recipe-4-inulin']).toBe(
@@ -359,6 +369,7 @@ describe('Zero-gram executable recipe invariant', () => {
       expect(next.recalculationTerminal?.state).not.toBe('PRODUCT_GRAMS_REQUIRED');
       expect(next.previewIssue?.code ?? 'ok').not.toBe('missing_required_role');
       const applied: RecipeInput = { ...input, items: useRecipeStore.getState().items };
+      noZeroGramRows(applied, `ECO ${temperature} applied`);
       const freezing = evaluateFreezingStabilityStatus({
         recipe: applied,
         snapshots: servedSnapshots(applied),
@@ -379,6 +390,61 @@ describe('Zero-gram executable recipe invariant', () => {
     const blocked = saveGate();
     expect(blocked.blocked).toBe(true);
     expect(['audit_mismatch', 'not_whole_gram_executable']).toContain(blocked.reason);
+  });
+
+  it('6b. a zero-dose Tara is repaired before Apply and stays positive through Save/reopen', () => {
+    const input = ownerSameInputRecipe();
+    input.items.find(
+      (item) =>
+        (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) ===
+        OWNER_MAPPER_INGREDIENTS.tara_gum.id,
+    )!.planned_grams = 0;
+
+    const built = buildOptimizePreview(input, NONE, '2026-08-24T12:00:00.000Z');
+    expect(built.ok, built.ok ? '' : JSON.stringify(built)).toBe(true);
+    if (!built.ok) return;
+    const tara = built.preview.proposedInput.items.find(
+      (item) =>
+        (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) ===
+        OWNER_MAPPER_INGREDIENTS.tara_gum.id,
+    );
+    expect(tara?.planned_grams).toBe(3);
+    noZeroGramRows(built.preview.proposedInput, 'zero Tara Preview');
+
+    const committed = commitPreview(
+      input,
+      NONE,
+      built.preview,
+      '2026-08-24T12:00:00.000Z',
+      'zero-tara-lifecycle',
+    );
+    expect(committed.ok, committed.ok ? '' : JSON.stringify(committed)).toBe(true);
+    if (!committed.ok || built.preview.practicalization?.status !== 'ready') return;
+    useRecipeStore.getState().loadRecipeInput(committed.verified.input);
+    const normalizedExecutable = buildRecipeInput(useRecipeStore.getState());
+    const saved = attachPracticalRecipeAudit(
+      normalizedExecutable,
+      built.preview.practicalization.audit.exactInput,
+      '2026-08-24T12:00:00.000Z',
+    );
+    useRecipeStore.getState().loadRecipeInput(saved, {
+      savedId: 'zero-tara-recipe',
+      savedName: 'Zero Tara repaired',
+      versionNumber: 1,
+      versionId: 'zero-tara-version-1',
+    });
+    const reopenedGate = saveGate();
+    expect(reopenedGate, JSON.stringify(reopenedGate)).toMatchObject({ blocked: false });
+    noZeroGramRows(buildRecipeInput(useRecipeStore.getState()), 'zero Tara reopened');
+    expect(
+      useRecipeStore
+        .getState()
+        .items.find(
+          (item) =>
+            (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) ===
+            OWNER_MAPPER_INGREDIENTS.tara_gum.id,
+        )?.planned_grams,
+    ).toBe(3);
   });
 
   it('7. reopen: a saved version never reopens with a legacy 0 g optional row; unsaved drafts keep their placeholder', () => {

@@ -350,7 +350,9 @@ describe('commitPreview — THE door (§17.2 hard guarantee)', () => {
     const outcome = commitPreview(input, set, drifted, 'now', 'apply-y');
     expect(outcome.ok).toBe(false);
     if (outcome.ok) return;
-    expect(outcome.code).toBe('constraints_violated');
+    // The independent executable recheck may reject the forged vector before
+    // the legacy lock diagnostic; either way the 0.1 g drift never applies.
+    expect(['constraints_violated', 'practicalization_invalid']).toContain(outcome.code);
   });
 
   it('refuses a STALE preview (recipe changed since it was built)', () => {
@@ -514,8 +516,7 @@ describe('batch rescale preview (§17.4)', () => {
 
     expect(buildBatchRescalePreview(input, NO_CONSTRAINTS, 50, 'now')).toMatchObject({
       ok: false,
-      code: 'practicalization_blocked',
-      lineIds: ['positive-standard'],
+      code: 'rescale_invalid',
     });
   });
 });

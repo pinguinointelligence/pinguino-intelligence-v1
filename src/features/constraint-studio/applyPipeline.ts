@@ -112,8 +112,9 @@ import type { SubstituteAuthorization } from '@/features/ingredient-builder/ingr
 import { detectProportionalScaling } from '@/features/formulation/proportionalScaling';
 import {
   isTemplateControlledStabilizer,
+  internalStabilizerProfileIssues,
   templateControlledStabilizerViolations,
-  violatesApprovedStabilizerDosage,
+  violatesInternalStabilizerProfileAuthority,
   withTemplateControlledStabilizerLocks,
 } from '@/features/formulation/stabilizerDosage';
 import {
@@ -143,7 +144,11 @@ import {
   type MainEnvelopeViolation,
   type ProductBehaviorSnapshot,
 } from '@/features/product-intelligence';
-import { OWNER_INULIN_POLICY } from '@/features/product-intelligence/ownerInulinPolicy';
+import {
+  OWNER_INULIN_POLICY,
+  ownerInulinPolicyIssues,
+  withOwnerInulinPolicyHold,
+} from '@/features/product-intelligence/ownerInulinPolicy';
 import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
 import {
   canonicalDuplicateIds,
@@ -236,7 +241,10 @@ const solverHolds = (
 ): ConstraintSet =>
   withUserHeldMainHold(
     input,
-    withVeganInulinEnvelopeHold(input, withTemplateControlledStabilizerLocks(input, set)),
+    withVeganInulinEnvelopeHold(
+      input,
+      withOwnerInulinPolicyHold(input, withTemplateControlledStabilizerLocks(input, set)),
+    ),
     options,
   );
 
@@ -1971,7 +1979,7 @@ function solveOneRound(
     // Owner Phase 9 (approved-bounds wiring): a solver action may never move a
     // registered stabilizer outside its approved Mapper window.
     const dosageBlocked = canonicalCandidate.actions.some((action) =>
-      violatesApprovedStabilizerDosage(current, action),
+      violatesInternalStabilizerProfileAuthority(current, action),
     );
     // Owner CURRENT-DRAFT P0 — §17 LINE HOLD: the engine's REDUCE path selects
     // the dominant contributor from `lock_type` alone and is blind to the §17
@@ -5904,6 +5912,8 @@ function buildOptimizePreviewWithDirection(
   const ecoCurrentDraftOwnsSearch =
     preRouteResult !== null &&
     violationCount(preRouteResult) === 0 &&
+    internalStabilizerProfileIssues(input).length === 0 &&
+    ownerInulinPolicyIssues(input).length === 0 &&
     !preRouteResult.warnings.some((warning) => warning.severity === 'critical') &&
     Math.abs(plannedSum(input) - input.target_batch_grams) <= BATCH_SUM_TOLERANCE_G &&
     input.items.every(
@@ -6157,7 +6167,8 @@ function buildOptimizePreviewWithDirection(
      */
     const currentDraftUnchanged =
       workingStateFingerprint(working, set) === workingStateFingerprint(input, set);
-    const currentNativeSafe = violationsBefore === 0;
+    const currentNativeSafe =
+      violationsBefore === 0 && ownerInulinPolicyIssues(working).length === 0;
     const exactDirectionActive = hasActiveExactDirectionObjective(input);
     const currentDirectionSafe =
       !exactDirectionActive || recipeDirectionViolations(working).length === 0;
@@ -6286,6 +6297,7 @@ function buildOptimizePreviewWithDirection(
   if (
     strategy !== 'eco' &&
     recipeDirectionViolations(working).length === 0 &&
+    ownerInulinPolicyIssues(working).length === 0 &&
     !hasCritical &&
     !batchRescaled &&
     (!initialProteinTarget.applicable || initialProteinTarget.qualification.qualified)
@@ -6947,20 +6959,26 @@ export function buildBatchRescalePreview(
       )
       .map((item) => item.id),
   );
-  const stabilizerScaledInput: RecipeInput = {
+  const percentageAuthorityScaledInput: RecipeInput = {
     ...input,
+    target_batch_grams: newBatchGrams,
     items: input.items.map((item) =>
       !fixedLineIds.has(item.id) &&
       !isPercentContract(item) &&
-      isTemplateControlledStabilizer(item.ingredient)
+      (isTemplateControlledStabilizer(item.ingredient) ||
+        canonicalIngredientId(item.ingredient) === OWNER_INULIN_POLICY.mapperIngredientId)
         ? { ...item, planned_grams: item.planned_grams * batchRatio }
         : item,
     ),
   };
   // §6: a batch change is an explicit owner control, so a user-held Main is
   // rescaled with the batch rather than pinned to its old absolute grams.
-  const batchSolverSet = solverHolds(stabilizerScaledInput, set);
-  const rescaled = rescaleBatchToTarget(stabilizerScaledInput, batchSolverSet, newBatchGrams);
+  const batchSolverSet = solverHolds(percentageAuthorityScaledInput, set);
+  const rescaled = rescaleBatchToTarget(
+    percentageAuthorityScaledInput,
+    batchSolverSet,
+    newBatchGrams,
+  );
   if (!rescaled.ok) {
     switch (rescaled.reason) {
       case 'invalid_constraints':
@@ -7956,8 +7974,9 @@ export class VerifiedApply {
     const proposedByLineIdForPractical = new Map(
       preview.proposedInput.items.map((item) => [item.id, item]),
     );
-    for (const exactLine of exactCandidate.items.filter((item) =>
-      isTemplateControlledStabilizer(item.ingredient),
+    for (const exactLine of exactCandidate.items.filter(
+      (item) =>
+        isTemplateControlledStabilizer(item.ingredient) && Math.round(item.planned_grams) > 0,
     )) {
       const practicalLine = proposedByLineIdForPractical.get(exactLine.id);
       if (

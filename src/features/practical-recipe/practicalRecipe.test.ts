@@ -172,10 +172,11 @@ describe('Pro practical whole-gram recipe', () => {
     cream.main_ratio_weight = 1;
     milk.planned_grams = 333.4;
     cream.planned_grams = 166.7;
-    inulin.planned_grams = 289;
+    inulin.planned_grams = 54.1;
+    exact.items.find((item) => item.id === 'owner:smp')!.planned_grams = 277.9;
 
     const result = practicalizeRecipeCandidate(exact, NONE);
-    expect(result.ok).toBe(true);
+    expect(result.ok, result.ok ? '' : `${result.code}: ${result.messagePl}`).toBe(true);
     if (!result.ok) return;
     const practicalMilk = result.audit.executableInput.items.find(
       (item) => item.id === 'owner:milk_3_5',
@@ -245,7 +246,7 @@ describe('Pro practical whole-gram recipe', () => {
     });
   });
 
-  it('rechecks Vegan, high-water and alcohol fixtures without introducing a hard gate', () => {
+  it('rechecks Vegan, high-water and alcohol fixtures with their required stabilizer present', () => {
     const veganScenario = BRANCH_RECALCULATION_SCENARIOS.find(
       (scenario) => scenario.id === 'rescue-vegan-too-soft',
     );
@@ -269,6 +270,21 @@ describe('Pro practical whole-gram recipe', () => {
     alcohol.items[1]!.planned_grams -= 0.4;
 
     for (const exact of [vegan, highWater, alcohol]) {
+      const hasStabilizer = exact.items.some(
+        (item) =>
+          (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) ===
+          OWNER_MAPPER_INGREDIENTS.tara_gum.id,
+      );
+      if (!hasStabilizer) {
+        exact.items[0]!.planned_grams -= 3;
+        exact.items.push({
+          id: `${exact.category}-authority-tara`,
+          ingredient: structuredClone(OWNER_MAPPER_INGREDIENTS.tara_gum),
+          planned_grams: 3,
+          actual_grams: null,
+          lock_type: 'unlocked',
+        });
+      }
       const audit = expectWholeGramAudit(practicalizeRecipeCandidate(exact, NONE));
       expect(audit.executableResult).not.toBe(audit.exactResult);
     }
@@ -336,20 +352,20 @@ describe('Pro practical whole-gram recipe', () => {
     const exact = ownerSameInputRecipe();
     const inulin = exact.items.find((item) => item.id === 'owner:inulin')!;
     const milk = exact.items.find((item) => item.id === 'owner:milk_3_5')!;
-    const delta = inulin.planned_grams - 1.49;
-    inulin.planned_grams = 1.49;
+    const delta = inulin.planned_grams - 20.49;
+    inulin.planned_grams = 20.49;
     milk.planned_grams += delta;
-    inulin.range_constraint = { min_grams: 1.49, max_grams: 2.2 };
+    inulin.range_constraint = { min_grams: 20.49, max_grams: 21.2 };
     inulin.lock_type = 'grams';
     const result = practicalizeRecipeCandidate(exact, {
       byLineId: {
-        [inulin.id]: { mode: 'range', minGrams: 1.49, maxGrams: 2.2 },
+        [inulin.id]: { mode: 'range', minGrams: 20.49, maxGrams: 21.2 },
       },
     });
     expect(result.ok, result.ok ? '' : JSON.stringify(result)).toBe(true);
     if (!result.ok) return;
     expect(
       result.audit.executableInput.items.find((item) => item.id === inulin.id)?.planned_grams,
-    ).toBe(2);
+    ).toBe(21);
   });
 });

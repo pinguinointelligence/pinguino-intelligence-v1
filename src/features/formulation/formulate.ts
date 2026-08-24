@@ -175,6 +175,48 @@ export function routeFormulationMode(input: RecipeInput, set: ConstraintSet): Mo
     };
   }
 
+  // Published internal formulation policies are part of technological
+  // completeness, even when the frozen Engine bands are already clean. An
+  // unlocked, positively selected Inulin line outside 2–8%, or a present
+  // Gelato/Sorbet stabilizer system whose nearest whole-gram vector is outside
+  // its Gellatti aggregate band, must be rebuilt through the approved profile
+  // template. Fractional components that round to a legal system stay on the
+  // local route and are made executable by the shared practicalizer.
+  const selectedInulinGrams = input.items
+    .filter(
+      (item) => canonicalIngredientId(item.ingredient) === OWNER_INULIN_POLICY.mapperIngredientId,
+    )
+    .reduce((total, item) => total + item.planned_grams, 0);
+  const ownerInulinNeedsFormulation =
+    selectedInulinGrams > 0 &&
+    !ownerInulinPresentDoseIsValid(input.target_batch_grams, selectedInulinGrams);
+  const stabilizerAssessment = gelatoStabilizerSystemApplies(input.category)
+    ? assessGelatoStabilizerSystem(input)
+    : sorbetStabilizerSystemApplies(input.category)
+      ? assessSorbetStabilizerSystem(input)
+      : null;
+  const roundedStabilizerTotal =
+    stabilizerAssessment?.lineIds.reduce((total, lineId) => {
+      const line = input.items.find((item) => item.id === lineId);
+      return total + Math.max(0, Math.round(line?.planned_grams ?? 0));
+    }, 0) ?? 0;
+  const stabilizerNeedsFormulation =
+    stabilizerAssessment?.present === true &&
+    stabilizerAssessment.band !== null &&
+    (roundedStabilizerTotal < stabilizerAssessment.band.minGrams ||
+      roundedStabilizerTotal > stabilizerAssessment.band.maxGrams);
+  if ((ownerInulinNeedsFormulation || stabilizerNeedsFormulation) && lookup.template) {
+    return {
+      mode: 'full_formulation',
+      template: lookup.template,
+      reasons: [
+        ownerInulinNeedsFormulation
+          ? 'owner_inulin_policy_requires_formulation'
+          : 'stabilizer_system_policy_requires_formulation',
+      ],
+    };
+  }
+
   // A substantive draft can still be technologically incomplete. The local
   // gram corrector may improve Engine bands without restoring a template HARD
   // role (for example Dextrose / sugar_freezing_control). Route that state
@@ -182,10 +224,6 @@ export function routeFormulationMode(input: RecipeInput, set: ConstraintSet): Mo
   const missingHardRole = lookup.template?.roles.some(
     (roleTarget) =>
       HARD_ROLES.has(roleTarget.role) &&
-      // Stabilizer absence has its own profile-specific, fail-closed readiness
-      // gate. A substantive recipe must report that state, not silently turn
-      // into a full formulation merely because the technical Engine bands pass.
-      roleTarget.role !== 'stabilizer' &&
       !input.items.some(
         (item) =>
           resolveFunctionalRole(item.ingredient) === roleTarget.role && item.planned_grams > 0,
@@ -869,9 +907,9 @@ export function buildFormulationProposal(
           // §9 — canonicalize BEFORE final physics: the executable line is built
           // from the canonical Mapper payload, so POD/NPAC, the Preview and the
           // Apply proof all describe the same product the served app resolves.
-          const approvedIngredient = approvedFormulationToolboxIngredients(
-            roleTarget.toolboxId,
-          ).at(-1);
+          const approvedIngredient = approvedFormulationToolboxIngredients(roleTarget.toolboxId).at(
+            -1,
+          );
           if (!approvedIngredient) {
             missingRoles.push(roleTarget.role);
             if (HARD_ROLES.has(roleTarget.role)) missingHardRoles.push(roleTarget.role);

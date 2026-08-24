@@ -136,20 +136,19 @@ const T12_SET: ConstraintSet = {
   byLineId: { 'l-milk': { mode: 'range', minGrams: 0, maxGrams: 500 } },
 };
 
-/** T14 — the owner sorbet fixture, inulin locked at 0 (944.6 g draft). */
+/** T14 — the owner sorbet fixture, optional Inulin absent (944.6 g draft). */
 const t14 = () => ({
   input: input(
     [
       line('l-straw', STRAWBERRIES(), 600),
-      line('l-water', WATER, 181),
+      line('l-water', WATER, 179.8),
       line('l-suc', findDemoIngredient('sucrose')!, 103.8),
       line('l-dex', findDemoIngredient('dextrose')!, 59),
-      line('l-inulin', findDemoIngredient('inulin')!, 0, 'grams'),
-      line('l-tara', findDemoIngredient('tara_gum')!, 0.8),
+      line('l-tara', findDemoIngredient('tara_gum')!, 2),
     ],
     'sorbet',
   ),
-  set: { byLineId: { 'l-inulin': { mode: 'locked' as const, grams: 0 } } } satisfies ConstraintSet,
+  set: { byLineId: {} } satisfies ConstraintSet,
 });
 
 /**
@@ -488,9 +487,8 @@ describe('addendum3 — hard-native residuals block Apply at the door', () => {
     const preview = buildOk(buildOptimizePreview(rec, set, 'now'));
     expect(preview.hardResidualMetrics).toEqual([]);
     expect(preview.diagnosticOnly).toBe(false);
-    // The exact 0 g inulin lock is byte-preserved (never re-added).
-    const inulin = preview.proposedInput.items.find((item) => item.id === 'l-inulin')!;
-    expect(Object.is(inulin.planned_grams, 0)).toBe(true);
+    // Optional Inulin remains absent; no executable 0 g placeholder is added.
+    expect(preview.proposedInput.items.some((item) => item.id === 'l-inulin')).toBe(false);
     const outcome = commitPreview(rec, set, preview, 'now', 'apply-test-t14-ok');
     expect(outcome.ok).toBe(true);
   });

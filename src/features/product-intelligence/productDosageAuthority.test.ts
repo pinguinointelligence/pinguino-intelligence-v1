@@ -24,10 +24,7 @@ import {
 } from '@/features/constraint-studio/applyPipeline';
 import { assessOwnerStabilizerSystem } from '@/features/recipe-constraints';
 import { useRecipeStore } from '@/stores/recipeStore';
-import {
-  productRecommendedDosageInfo,
-  productRecommendedDosagePl,
-} from './productDosageAuthority';
+import { productRecommendedDosageInfo, productRecommendedDosagePl } from './productDosageAuthority';
 
 const snapshot = (
   lineId: string,
@@ -245,13 +242,8 @@ describe('product dosage is informational only', () => {
     );
     expect(applied).toMatchObject({
       ok: false,
-      code: 'product_behavior_invalid',
-      violations: expect.arrayContaining([
-        expect.objectContaining({
-          code: 'product_behavior_missing',
-          lineIds: ['owner:tara_gum'],
-        }),
-      ]),
+      code: 'practicalization_invalid',
+      reason: 'profile_stabilizer_invalid',
     });
   });
 
@@ -375,11 +367,7 @@ describe('product dosage is informational only', () => {
         productBehaviorSnapshots: Object.fromEntries(
           input.items.map((item) => [
             item.id,
-            snapshot(
-              item.id,
-              item.ingredient.canonical_ingredient_id ?? item.ingredient.id,
-              null,
-            ),
+            snapshot(item.id, item.ingredient.canonical_ingredient_id ?? item.ingredient.id, null),
           ]),
         ),
       });

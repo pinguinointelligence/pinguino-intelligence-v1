@@ -140,27 +140,29 @@ const seedStore = (items: ReturnType<typeof line>[], constraints: ConstraintSet 
   useConstraintStudioStore.setState({ constraints });
 };
 
-beforeEach(() => seedStore(withInulin(10)));
+beforeEach(() => seedStore(withInulin(20)));
 
 /* ═══ 1–3 — the optimizer really receives the CURRENT draft ═══════════════ */
 
 describe('the optimizer receives the CURRENT draft (owner Phase 1, tests 1–3)', () => {
   it('test 1: a MANUALLY ADDED unlocked Inulin line reaches the optimizer as an adjustable candidate', () => {
-    const rec = draft(withInulin(10));
+    const rec = draft(withInulin(20));
     const vector = buildDraftCandidateVector(rec, NO, new Set());
     const inulin = vector.find((candidate) => candidate.lineId === 'l-inulin');
     expect(inulin, 'Inulin must be in the candidate vector').toBeDefined();
     expect(inulin!.increasable).toBe(true);
     expect(inulin!.testedGrams.length).toBeGreaterThan(0);
-    // …and the run itself records it (the QA-visible proof).
+    // …and the runtime projects the published 2–8% authority as a solver
+    // range, so the line is governed rather than offered as an unconstrained
+    // candidate.
     const preview = previewOf(buildOptimizePreview(rec, NO, AT));
-    expect(preview.iteration!.candidateVector.map((candidate) => candidate.lineId)).toContain(
+    expect(preview.iteration!.candidateVector.map((candidate) => candidate.lineId)).not.toContain(
       'l-inulin',
     );
   });
 
   it('test 2: the CURRENT amount reaches the optimizer — never a stale/reference value', () => {
-    for (const grams of [0, 10, 100, 500]) {
+    for (const grams of [20, 40, 80]) {
       const rec = draft(withInulin(grams));
       const preview = previewOf(buildOptimizePreview(rec, NO, AT));
       const iteration = preview.iteration!;
@@ -168,13 +170,12 @@ describe('the optimizer receives the CURRENT draft (owner Phase 1, tests 1–3)'
       // grams and the CURRENT total (955 / 1045 …), not a 1000 g reference.
       expect(iteration.draftPlannedSumGrams).toBeCloseTo(plannedSum(rec), 6);
       expect(iteration.draftLineGrams.find((l) => l.lineId === 'l-inulin')!.grams).toBe(grams);
-      // …and it was offered as an adjustable candidate on the batch-true state
-      // (the grams there are the CURRENT value carried through the §17.4
-      // reconciliation — proportional inside the free envelope, while the
-      // template-controlled Tara dose stays byte-exact).
+      // The runtime range governs the canonical line, so it is intentionally
+      // absent from the unconstrained candidate vector and remains in-band.
       const seen = iteration.candidateVector.find((c) => c.lineId === 'l-inulin');
-      expect(seen, `inulin ${grams} g must be offered`).toBeDefined();
-      expect(seen!.currentGrams).toBeCloseTo(grams * ((TARGET - 4) / (plannedSum(rec) - 4)), 6);
+      expect(seen).toBeUndefined();
+      expect(inulinGrams(preview.proposedInput)).toBeGreaterThanOrEqual(20);
+      expect(inulinGrams(preview.proposedInput)).toBeLessThanOrEqual(80);
       expect(iteration.startPlannedSumGrams).toBeCloseTo(TARGET, 6);
       expect(iteration.targetBatchGrams).toBe(TARGET);
     }
@@ -200,22 +201,22 @@ describe('the optimizer receives the CURRENT draft (owner Phase 1, tests 1–3)'
 /* ═══ 4–6 — the batch equality and real adjustability ════════════════════ */
 
 describe('target-batch equality is a REQUIRED outcome (tests 4–6)', () => {
-  it('test 4: the owner 955 g draft (Inulin 10 g) optimizes to EXACTLY 1000 g', () => {
-    const preview = previewOf(buildOptimizePreview(draft(withInulin(10)), NO, AT));
+  it('test 4: a 965 g draft (Inulin 20 g) optimizes to EXACTLY 1000 g', () => {
+    const preview = previewOf(buildOptimizePreview(draft(withInulin(20)), NO, AT));
     expect(Math.abs(plannedSum(preview.proposedInput) - TARGET)).toBeLessThanOrEqual(0.1);
   });
 
-  it('test 5: the owner 1045 g draft (Inulin 100 g) optimizes to EXACTLY 1000 g', () => {
-    const preview = previewOf(buildOptimizePreview(draft(withInulin(100)), NO, AT));
+  it('test 5: a 1025 g draft (Inulin 80 g) optimizes to EXACTLY 1000 g', () => {
+    const preview = previewOf(buildOptimizePreview(draft(withInulin(80)), NO, AT));
     expect(Math.abs(plannedSum(preview.proposedInput) - TARGET)).toBeLessThanOrEqual(0.1);
   });
 
-  it('test 6: an UNLOCKED Inulin line may really be changed without silently removing user intent', () => {
-    const changed = [0, 10, 100, 500].map((grams) => {
+  it('test 6: a positive Inulin line is governed without silently removing user intent', () => {
+    const changed = [20, 40, 80].map((grams) => {
       const preview = previewOf(buildOptimizePreview(draft(withInulin(grams)), NO, AT));
       return inulinGrams(preview.proposedInput) !== grams;
     });
-    expect(changed.some(Boolean), 'at least one amount must really move').toBe(true);
+    expect(changed).toEqual([false, false, false]);
     // A line at 0 g is offered upward movement (it is not frozen at zero).
     const zeroVector = buildDraftCandidateVector(draft(withInulin(0)), NO, new Set());
     const zeroInulin = zeroVector.find((c) => c.lineId === 'l-inulin')!;
@@ -224,21 +225,21 @@ describe('target-batch equality is a REQUIRED outcome (tests 4–6)', () => {
 
   it('keeps a positive user-intent Standard line present and anchors ranking to the entered grams', () => {
     const rec: RecipeInput = {
-      ...draft(withInulin(100)),
-      items: draft(withInulin(100)).items.map((item) =>
-        item.id === 'l-inulin' ? { ...item, user_intent_anchor_grams: 100 } : item,
+      ...draft(withInulin(80)),
+      items: draft(withInulin(80)).items.map((item) =>
+        item.id === 'l-inulin' ? { ...item, user_intent_anchor_grams: 80 } : item,
       ),
     };
     const vector = buildDraftCandidateVector(rec, NO, new Set());
     const inulin = vector.find((candidate) => candidate.lineId === 'l-inulin')!;
     expect(inulin.testedGrams).toContain(1);
     expect(inulin.testedGrams).not.toContain(0);
-    expect(inulin.anchorGrams).toBe(100);
+    expect(inulin.anchorGrams).toBe(80);
 
     const preview = previewOf(buildOptimizePreview(rec, NO, AT));
     expect(inulinGrams(preview.proposedInput)).toBeGreaterThanOrEqual(1);
     expect(preview.proposedInput.items.find((item) => item.id === 'l-inulin')).toMatchObject({
-      user_intent_anchor_grams: 100,
+      user_intent_anchor_grams: 80,
     });
   });
 });
@@ -292,7 +293,7 @@ describe('a stop must be proven (owner Phase 4, tests 9–11)', () => {
 
   it('test 9: resemblance to the reference template can NEVER stop the optimization', () => {
     // The owner's exact failing draft now produces a real Preview…
-    const preview = previewOf(buildOptimizePreview(draft(withInulin(10)), NO, AT));
+    const preview = previewOf(buildOptimizePreview(draft(withInulin(20)), NO, AT));
     expect(Math.abs(plannedSum(preview.proposedInput) - TARGET)).toBeLessThanOrEqual(0.1);
     // …and the „matches the reference template" phrasing is gone from the copy.
     const copySource = readFileSync(
@@ -311,7 +312,7 @@ describe('a stop must be proven (owner Phase 4, tests 9–11)', () => {
     const composed = /withBatchReconciliation\(\s*\n\s*withTemplateFallback\(\{/g;
     expect(pipelineSource.match(composed) ?? []).toHaveLength(2);
     // Behavioural: the CURRENT-DRAFT vector is really searched before any stop.
-    const preview = previewOf(buildOptimizePreview(draft(withInulin(500)), NO, AT));
+    const preview = previewOf(buildOptimizePreview(draft(withInulin(80)), NO, AT));
     expect(preview.iteration!.solverInvocations).toBeGreaterThanOrEqual(1);
     expect(preview.iteration!.candidateVector.length).toBeGreaterThan(0);
   });
@@ -359,7 +360,7 @@ describe('ONE canonical score (owner Phase 5, tests 12–13)', () => {
 
 describe('the live draft lifecycle (tests 14–18)', () => {
   it('test 14: the Preview is built on the CURRENT draft revision', () => {
-    seedStore(withInulin(10));
+    seedStore(withInulin(20));
     const revisionBefore = selectCanonicalDraft().revision;
     useConstraintStudioStore.getState().createOptimizePreview();
     const preview = useConstraintStudioStore.getState().preview;
@@ -381,7 +382,7 @@ describe('the live draft lifecycle (tests 14–18)', () => {
   });
 
   it('test 15: Cancel leaves the draft byte-unchanged', () => {
-    seedStore(withInulin(10));
+    seedStore(withInulin(20));
     const before = JSON.stringify(
       useRecipeStore.getState().items.map((i) => [i.id, i.planned_grams]),
     );
@@ -395,7 +396,7 @@ describe('the live draft lifecycle (tests 14–18)', () => {
   });
 
   it('test 16: Apply writes EXACTLY the previewed grams', () => {
-    seedStore(withInulin(10));
+    seedStore(withInulin(20));
     useConstraintStudioStore.getState().createOptimizePreview();
     const preview = useConstraintStudioStore.getState().preview!;
     const previewed = preview.proposedInput.items.map((i) => [i.id, i.planned_grams]);
@@ -405,7 +406,7 @@ describe('the live draft lifecycle (tests 14–18)', () => {
   });
 
   it('test 17: no duplicate canonical ingredients are ever produced', () => {
-    seedStore(withInulin(10));
+    seedStore(withInulin(20));
     for (let cycle = 0; cycle < 5; cycle += 1) {
       useConstraintStudioStore.getState().createOptimizePreview();
       if (useConstraintStudioStore.getState().preview) {
@@ -418,7 +419,7 @@ describe('the live draft lifecycle (tests 14–18)', () => {
   });
 
   it('test 18: the target batch stays 1000 g across repeated recalculate/apply cycles', () => {
-    seedStore(withInulin(10));
+    seedStore(withInulin(20));
     for (let cycle = 0; cycle < 5; cycle += 1) {
       useConstraintStudioStore.getState().createOptimizePreview();
       if (useConstraintStudioStore.getState().preview) {
@@ -436,7 +437,7 @@ describe('the live draft lifecycle (tests 14–18)', () => {
 
 describe('machine context and the science freeze (tests 19–20)', () => {
   it('test 19: a 1000 g PROFESSIONAL recipe with no Home machine raises NO capacity warning', () => {
-    seedStore(withInulin(10));
+    seedStore(withInulin(20));
     // The professional selection is authoritative — it imposes no Home limit.
     useRecipeStore.getState().setMachineSelection({
       kind: 'professional',
@@ -480,7 +481,7 @@ describe('machine context and the science freeze (tests 19–20)', () => {
   it('test 20: engine science is UNCHANGED (0.4.0 / 0.7.0 pinned)', () => {
     expect(ENGINE_VERSION).toBe('0.4.0');
     expect(CONFIG_VERSION).toBe('0.7.0');
-    const preview = previewOf(buildOptimizePreview(draft(withInulin(10)), NO, AT));
+    const preview = previewOf(buildOptimizePreview(draft(withInulin(20)), NO, AT));
     expect(preview.engineVersion).toBe('0.4.0');
     expect(preview.configVersion).toBe('0.7.0');
   });
@@ -503,9 +504,9 @@ describe('owner fixtures A–F (complete fruit-gelato family, real pipeline runs
     expect(preview.proposedInput.items.every((row) => row.planned_grams > 0)).toBe(true);
   });
 
-  it('B — Inulin 10 g (955 g): evaluated, batch → exactly 1000 g, canonical score before/after', () => {
-    const rec = draft(withInulin(10));
-    expect(plannedSum(rec)).toBeCloseTo(955, 6);
+  it('B — Inulin 20 g (965 g): evaluated, batch → exactly 1000 g, canonical score before/after', () => {
+    const rec = draft(withInulin(20));
+    expect(plannedSum(rec)).toBeCloseTo(965, 6);
     const preview = previewOf(buildOptimizePreview(rec, NO, AT));
     expect(Math.abs(plannedSum(preview.proposedInput) - TARGET)).toBeLessThanOrEqual(0.1);
     expect(preview.lines.some((l) => l.kind !== 'unchanged')).toBe(true);
@@ -516,9 +517,9 @@ describe('owner fixtures A–F (complete fruit-gelato family, real pipeline runs
     expect(after.score!).toBeGreaterThanOrEqual(before.score!);
   });
 
-  it('C — Inulin 100 g (1045 g): may be reduced, batch → exactly 1000 g, never a silent no-op', () => {
-    const rec = draft(withInulin(100));
-    expect(plannedSum(rec)).toBeCloseTo(1045, 6);
+  it('C — Inulin 80 g (1025 g): may be reduced, batch → exactly 1000 g, never a silent no-op', () => {
+    const rec = draft(withInulin(80));
+    expect(plannedSum(rec)).toBeCloseTo(1025, 6);
     const preview = previewOf(buildOptimizePreview(rec, NO, AT));
     expect(Math.abs(plannedSum(preview.proposedInput) - TARGET)).toBeLessThanOrEqual(0.1);
     expect(preview.lines.some((l) => l.kind === 'changed')).toBe(true);
@@ -543,12 +544,12 @@ describe('owner fixtures A–F (complete fruit-gelato family, real pipeline runs
     }
   });
 
-  it('E — Inulin EXACT-locked 100 g: byte-preserved while the rest reaches exactly 1000 g', () => {
-    const rec = draft(withInulin(100, 'grams'));
-    const set: ConstraintSet = { byLineId: { 'l-inulin': { mode: 'locked', grams: 100 } } };
+  it('E — Inulin EXACT-locked 80 g: byte-preserved while the rest reaches exactly 1000 g', () => {
+    const rec = draft(withInulin(80, 'grams'));
+    const set: ConstraintSet = { byLineId: { 'l-inulin': { mode: 'locked', grams: 80 } } };
     const result = buildOptimizePreview(rec, set, AT);
     if (result.ok) {
-      expect(Object.is(inulinGrams(result.preview.proposedInput), 100)).toBe(true);
+      expect(Object.is(inulinGrams(result.preview.proposedInput), 80)).toBe(true);
       expect(Math.abs(plannedSum(result.preview.proposedInput) - TARGET)).toBeLessThanOrEqual(0.1);
     } else {
       // An exact infeasibility proof is the only permitted alternative.
@@ -597,7 +598,7 @@ describe('batch reconciliation never re-opens the 8 × 125 g door', () => {
   });
 
   it('the owner 955 g DIFFERENTIATED draft IS a legitimate batch reconciliation', () => {
-    const rec = draft(withInulin(10));
+    const rec = draft(withInulin(20));
     const factor = TARGET / plannedSum(rec);
     const restored: RecipeInput = {
       ...rec,
@@ -627,7 +628,7 @@ describe('determinism (same draft → byte-identical outcome)', () => {
           : result,
       );
     const runs = Array.from({ length: 5 }, () =>
-      serialize(buildOptimizePreview(draft(withInulin(10)), NO, AT)),
+      serialize(buildOptimizePreview(draft(withInulin(20)), NO, AT)),
     );
     for (const run of runs) expect(run).toBe(runs[0]);
   });

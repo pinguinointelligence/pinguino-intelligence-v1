@@ -61,6 +61,11 @@ const EXPECTED_SOURCE_CLOSURE = [
   // user-held Main is never silently replaced by a better-calibrated product.
   'src/features/product-intelligence/mainCapability.ts',
   'src/features/product-intelligence/mainEnvelope.ts',
+  // REVIEWED 2026-08-24 (final pre-BASE0 cleanup). Pure canonical-identity
+  // arithmetic for the published optional 0-or-2–8% Inulin authority; no IO,
+  // network, dataset or persistence access. Rescue reaches it only through the
+  // shared practical executable-recipe boundary.
+  'src/features/product-intelligence/ownerInulinPolicy.ts',
   'src/features/product-intelligence/productBehaviorAccess.ts',
   'src/features/product-intelligence/productBehaviorResolver.ts',
   'src/features/product-intelligence/recipeBehaviorAuthority.ts',

@@ -241,7 +241,7 @@ Deno.serve(async (request) => {
     const priorResult = objectValue(existingSession?.result_json);
     const identity = objectValue(priorResult.identity);
     let facts: Record<string, unknown>[] = [];
-    let providerError: string | null = null;
+    let providerError: string | null;
     /** What the provider ACTUALLY did — a cache hit costs nothing and must say so. */
     let providerWebCalls = 0;
     try {

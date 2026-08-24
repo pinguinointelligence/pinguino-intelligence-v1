@@ -834,7 +834,7 @@ export const useRecipeStore = create<RecipeState>()(
             typeof grams !== 'number' ||
             Number.isNaN(grams) ||
             !Number.isFinite(grams) ||
-            grams < 0 ||
+            grams <= 0 ||
             (item.actual_grams !== null &&
               (!Number.isFinite(item.actual_grams) || item.actual_grams < 0)) ||
             !canonicalIngredientId(item.ingredient).trim()
@@ -1792,8 +1792,7 @@ export const useRecipeStore = create<RecipeState>()(
           savedRecipeId: link.savedId ?? null,
           savedRecipeName: link.savedName ?? null,
           currentVersionNumber: link.versionNumber ?? null,
-          savedRecipeLatestVersionNumber:
-            link.latestVersionNumber ?? link.versionNumber ?? null,
+          savedRecipeLatestVersionNumber: link.latestVersionNumber ?? link.versionNumber ?? null,
           currentVersionId: link.versionId ?? null,
           currentVersionDate: link.versionDate ?? null,
           dirty: false,

@@ -75,9 +75,14 @@ const mapperRow = (ingredientId: string): IngredientRow => {
     HEADER.map((field, position) => {
       const raw = record[position]?.trim() ?? '';
       if (NUMERIC.has(field)) return [field, raw === '' ? null : Number(raw)];
-      if (field === 'approved_for_base' || field === 'approved_for_engines' || field === 'is_active')
+      if (
+        field === 'approved_for_base' ||
+        field === 'approved_for_engines' ||
+        field === 'is_active'
+      )
         return [field, raw.toLocaleLowerCase('en') === 'true'];
-      if (field === 'verification_date' || field === 'last_reviewed_at') return [field, raw || null];
+      if (field === 'verification_date' || field === 'last_reviewed_at')
+        return [field, raw || null];
       return [field, raw];
     }),
   ) as unknown as IngredientRow;
@@ -425,8 +430,15 @@ describe('§4 Soft-Hold and the target-batch invariant survive the local route',
       proposed.items.find((item) => item.id === 'l:yolk')?.ingredient.canonical_ingredient_id,
     ).toBe(IDS.yolk);
     expect(gramsOf(proposed, 'l:inulin')).toBeGreaterThanOrEqual(20); // owner minimum
+    expect(gramsOf(proposed, 'l:inulin')).toBeLessThanOrEqual(80); // owner maximum
     expect(proposed.items.every((item) => item.planned_grams >= 1)).toBe(true);
-    expect(detectViolations(calculateRecipe(proposed))).toEqual([]);
+    const executableResult = calculateRecipe(proposed);
+    expect(detectViolations(executableResult)).toEqual([]);
+    expect(result.preview.violationsAfter).toBe(0);
+    expect(result.preview.practicalization).toMatchObject({
+      status: 'ready',
+      audit: { executableResult: { scores: executableResult.scores } },
+    });
   });
 
   it('holds the dried egg yolk at exactly 40 g when it is LOCKED', () => {
@@ -434,8 +446,19 @@ describe('§4 Soft-Hold and the target-batch invariant survive the local route',
     const result = buildOptimizePreview(input, set, AT);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(gramsOf(result.preview.proposedInput, 'l:yolk')).toBe(40);
-    expect(detectViolations(calculateRecipe(result.preview.proposedInput))).toEqual([]);
+    const proposed = result.preview.proposedInput;
+    expect(gramsOf(proposed, 'l:yolk')).toBe(40);
+    expect(gramsOf(proposed, 'l:inulin')).toBeGreaterThanOrEqual(20);
+    expect(gramsOf(proposed, 'l:inulin')).toBeLessThanOrEqual(80);
+    expect(proposed.items.every((item) => item.planned_grams > 0)).toBe(true);
+    expect(Math.abs(plannedSum(proposed) - 1000)).toBeLessThanOrEqual(BATCH_SUM_TOLERANCE_G);
+    const executableResult = calculateRecipe(proposed);
+    expect(detectViolations(executableResult)).toEqual([]);
+    expect(result.preview.violationsAfter).toBe(0);
+    expect(result.preview.practicalization).toMatchObject({
+      status: 'ready',
+      audit: { executableResult: { scores: executableResult.scores } },
+    });
   });
 
   it.each([...ORDINARY_GELATO, ['Polish Lost', lostRecipe(false).input] as const])(
@@ -543,7 +566,10 @@ describe('§5 route eligibility is profile-aware while the role stays global', (
         )[visible];
         const input = starterDraft(visible, category, -12);
         return input.items
-          .filter((item) => (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) === IDS.sucrose)
+          .filter(
+            (item) =>
+              (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) === IDS.sucrose,
+          )
           .map((item) => resolveFunctionalRole(item.ingredient));
       }),
     );

@@ -3750,7 +3750,6 @@ const APPROVED_STABILIZER_DOSAGES = [{
 function approvedStabilizerDosage(ingredientId) {
 	return APPROVED_STABILIZER_DOSAGES.find((entry) => entry.mapperId === ingredientId || entry.toolboxId === ingredientId) ?? null;
 }
-const sumPlanned = (input) => input.items.reduce((sum, item) => sum + item.planned_grams, 0);
 const DOSAGE_EPS = 1e-9;
 /**
 * A stabilizer carrier has an approved identity/dose contract, but no approved
@@ -3760,34 +3759,57 @@ const DOSAGE_EPS = 1e-9;
 * remains an adjustable solids/body lever.
 */
 const isTemplateControlledStabilizer = (ingredient) => resolveFunctionalRole(ingredient) === "stabilizer";
+const INTERNAL_STABILIZER_REQUIRED_CATEGORIES = new Set([
+	"milk_gelato",
+	"fruit_gelato",
+	"nut_gelato",
+	"chocolate_gelato",
+	"alcohol_gelato",
+	"sorbet",
+	"vegan_gelato",
+	"protein_gelato"
+]);
 /**
-* Assess every stabilizer-role line of the recipe against its OWN approved
-* dosage window (exact identity, explicit units). PURE, diagnostic — never
-* mutates and never blocks; consumers decide (QA rows, solver-action clamp).
+* Final executable stabilizer authority. Manufacturer recommended dosage and
+* heat/cold fields are intentionally absent here: they remain informational.
+*
+* Standard Gelato and Sorbet have published Gellatti aggregate bands. Vegan
+* and Protein currently have only the locked internal presence requirement;
+* their approved templates may seed their recorded dose, but no manufacturer
+* window is promoted into a generic hard gate.
 */
-function assessStabilizerDosage(input) {
-	const totalMix = sumPlanned(input);
-	const assessments = [];
-	for (const item of input.items) {
-		if (resolveFunctionalRole(item.ingredient) !== "stabilizer") continue;
-		const window = approvedStabilizerDosage(canonicalIngredientId(item.ingredient));
-		const percent = totalMix > 0 ? item.planned_grams / totalMix * 100 : null;
-		let status = "no_approved_window";
-		if (window !== null && percent !== null) status = percent < window.minPercentOfTotalMix - DOSAGE_EPS ? "below_window" : percent > window.maxPercentOfTotalMix + DOSAGE_EPS ? "above_window" : "within_window";
-		assessments.push({
-			lineId: item.id,
-			ingredientId: item.ingredient.id,
-			ingredientName: item.ingredient.name,
-			kind: window?.kind ?? null,
-			grams: item.planned_grams,
-			unitGrams: "grams",
-			percentOfTotalMix: percent,
-			unitPercent: "percent_of_total_mix",
-			window,
-			status
-		});
-	}
-	return assessments;
+function internalStabilizerProfileIssues(input) {
+	if (!INTERNAL_STABILIZER_REQUIRED_CATEGORIES.has(input.category)) return [];
+	const stabilizers = input.items.filter((item) => isTemplateControlledStabilizer(item.ingredient));
+	const positive = stabilizers.filter((item) => item.planned_grams > DOSAGE_EPS);
+	if (positive.length === 0) return [{
+		code: "stabilizer_missing",
+		lineIds: stabilizers.map((item) => item.id),
+		ingredientNames: stabilizers.map((item) => item.ingredient.name),
+		grams: 0,
+		minGrams: null,
+		maxGrams: null,
+		provenance: "PINGUINO Spine v1.0: stabilizer required for every active profile"
+	}];
+	const assessment = gelatoStabilizerSystemApplies(input.category) ? assessGelatoStabilizerSystem(input) : input.category === "sorbet" ? assessSorbetStabilizerSystem(input) : null;
+	if (assessment === null) return [];
+	return assessment.issues.map((issue) => ({
+		code: issue.code === "aggregate_below_minimum" ? "stabilizer_below_gellatti_minimum" : issue.code === "aggregate_above_maximum" ? "stabilizer_above_gellatti_maximum" : "stabilizer_not_whole_grams",
+		lineIds: issue.lineIds,
+		ingredientNames: positive.map((item) => item.ingredient.name),
+		grams: issue.totalGrams,
+		minGrams: issue.minGrams,
+		maxGrams: issue.maxGrams,
+		provenance: input.category === "sorbet" ? "owner-approved Gellatti Sorbet formulation policy" : "owner-approved Gellatti formulation policy"
+	}));
+}
+function internalStabilizerProfileMessagePl(issues) {
+	const issue = issues[0];
+	if (!issue) return "";
+	if (issue.code === "stabilizer_missing") return "Finalna receptura tego profilu wymaga dodatniej ilości stabilizatora zgodnie z wewnętrzną authority Gellatti.";
+	if (issue.code === "stabilizer_not_whole_grams") return "Składniki systemu stabilizującego muszą mieć pełne gramy.";
+	const boundary = issue.code === "stabilizer_below_gellatti_minimum" ? issue.minGrams : issue.maxGrams;
+	return issue.code === "stabilizer_below_gellatti_minimum" ? `Wewnętrzne minimum systemu stabilizującego Gellatti wynosi ${boundary ?? 0} g.` : `Wewnętrzne maksimum systemu stabilizującego Gellatti wynosi ${boundary ?? 0} g.`;
 }
 
 //#endregion
@@ -3802,8 +3824,7 @@ function veganProfileConstraintIssues(input) {
 	if (input.category !== "vegan_gelato") return [];
 	const total = plannedSum(input);
 	const issues = [];
-	const stabilizers = assessStabilizerDosage(input);
-	if (stabilizers.length === 0) issues.push({
+	if (internalStabilizerProfileIssues(input).some((issue) => issue.code === "stabilizer_missing")) issues.push({
 		code: "stabilizer_missing",
 		lineId: null,
 		ingredientName: "Stabilizator",
@@ -3812,20 +3833,6 @@ function veganProfileConstraintIssues(input) {
 		maxGrams: null,
 		provenance: "Vegan final task §32: 0 g requires an explicitly verified process profile"
 	});
-	for (const assessment of stabilizers) {
-		const minGrams = assessment.window ? assessment.window.minPercentOfTotalMix / 100 * total : null;
-		const maxGrams = assessment.window ? assessment.window.maxPercentOfTotalMix / 100 * total : null;
-		if (assessment.status === "within_window") continue;
-		issues.push({
-			code: assessment.status === "below_window" ? "stabilizer_below_approved_window" : assessment.status === "above_window" ? "stabilizer_above_approved_window" : "stabilizer_window_unknown",
-			lineId: assessment.lineId,
-			ingredientName: assessment.ingredientName,
-			grams: assessment.grams,
-			minGrams,
-			maxGrams,
-			provenance: assessment.window?.provenance ?? "No approved exact-identity dosage window in the current Mapper contract"
-		});
-	}
 	const inulinLines = input.items.filter((item) => {
 		const id = canonicalIngredientId(item.ingredient);
 		return PURE_INULIN_CANONICAL_IDS.has(id) || item.ingredient.id === "inulin";
@@ -4267,6 +4274,58 @@ function recipeCompositionFromState(state) {
 		} } : {},
 		migrationAmbiguities: (state.compositionMigrationAmbiguities ?? []).map((item) => ({ ...item }))
 	};
+}
+
+//#endregion
+//#region src/features/product-intelligence/ownerInulinPolicy.ts
+const OWNER_INULIN_POLICY = Object.freeze({
+	policyId: "gellatti-generic-inulin",
+	version: 1,
+	provenance: "owner-approved Gellatti formulation policy",
+	mapperIngredientId: "PI-ING-000456",
+	minPercent: 2,
+	preferredPercent: 4,
+	maxPercent: 8,
+	presenceSemantics: "optional_zero_or_range"
+});
+function ownerInulinGramBand(baseGrams) {
+	return {
+		minGrams: baseGrams * OWNER_INULIN_POLICY.minPercent / 100,
+		preferredGrams: baseGrams * OWNER_INULIN_POLICY.preferredPercent / 100,
+		maxGrams: baseGrams * OWNER_INULIN_POLICY.maxPercent / 100
+	};
+}
+/** Exact canonical Inulin lines governed by the published Gellatti policy.
+* This deliberately does not borrow the policy for another fibre/inulin SKU. */
+const ownerInulinPolicyLineIds = (input) => input.items.filter((item) => canonicalIngredientId(item.ingredient) === OWNER_INULIN_POLICY.mapperIngredientId).map((item) => item.id);
+/**
+* Published internal authority: canonical Inulin is optional when absent/0 g;
+* once present, its aggregate dose must be inside 2–8% of the target mix.
+* This is Gellatti formulation science, not a manufacturer dosage field.
+*/
+function ownerInulinPolicyIssues(input) {
+	const lineIds = ownerInulinPolicyLineIds(input);
+	if (lineIds.length === 0) return [];
+	const governed = new Set(lineIds);
+	const grams = input.items.filter((item) => governed.has(item.id)).reduce((sum, item) => sum + item.planned_grams, 0);
+	if (!(grams > 0)) return [];
+	const band = ownerInulinGramBand(input.target_batch_grams);
+	const base = {
+		lineIds,
+		grams,
+		minGrams: band.minGrams,
+		maxGrams: band.maxGrams,
+		provenance: OWNER_INULIN_POLICY.provenance
+	};
+	if (grams < band.minGrams - 1e-9) return [{
+		...base,
+		code: "inulin_below_owner_minimum"
+	}];
+	if (grams > band.maxGrams + 1e-9) return [{
+		...base,
+		code: "inulin_above_owner_maximum"
+	}];
+	return [];
 }
 
 //#endregion
@@ -6781,16 +6840,16 @@ function protectionFor(input, set, item) {
 /**
 * Owner zero-gram executable invariant (2026-08-22). A recipe line is
 * "optional" when it is an unlocked Standard line with no physical mass, no
-* gram/percent/range contract, no Main/required role and no template-controlled
-* stabilizer contract (an unavailable/excluded Standard line counts as optional:
+* gram/percent/range contract and no Main/required role (an unavailable/excluded Standard line counts as optional:
 * driven to 0 g it is simply not used, and its exclusion record lives in the
-* recipe goals, not in the row). When the Engine resolves such a line to exactly
-* 0 g, the executable recipe OMITS the row: "not used" is the absence of the
-* ingredient, never an explicit 0 g ingredient row. Every protected line keeps
-* its contract (a 0 g contract line is an unfinished editor placeholder that
-* the PI guard refuses before any candidate exists).
+* recipe goals, not in the row). A 0 g stabilizer line is equally unused: a
+* required profile must first gain a positive approved stabilizer elsewhere,
+* while an optional profile simply omits it. When the Engine resolves such a
+* line to exactly 0 g, the executable recipe OMITS the row: "not used" is the
+* absence of the ingredient, never an explicit 0 g ingredient row. Every
+* protected line keeps its contract; any protected 0 g row is refused below.
 */
-const isOmittableUnusedLine = (input, set, item) => item.actual_grams === null && item.lock_type === "unlocked" && exactGramsLockFor(set, item) === null && percentFor(input, set, item) === null && rangeFor(set, item) === null && !isTemplateControlledStabilizer(item.ingredient);
+const isOmittableUnusedLine = (input, set, item) => item.actual_grams === null && item.lock_type === "unlocked" && exactGramsLockFor(set, item) === null && percentFor(input, set, item) === null && rangeFor(set, item) === null;
 /** Line ids of optional lines that currently weigh exactly 0 g. */
 const unusedZeroGramLineIds = (input, set) => input.items.filter((item) => item.planned_grams === 0 && isOmittableUnusedLine(input, set, item)).map((item) => item.id);
 function mainIntegerCandidates(exactInput, rounded, set) {
@@ -6963,7 +7022,7 @@ function repairIntroducedHardGate(exactInput, initial, set, exactHardMetrics) {
 * the frozen Engine is called before and after, and remains the sole source of
 * every scientific metric and hard-band verdict.
 */
-function practicalizeRecipeCandidate(exactInput, set, nonIncreasableLineIds = /* @__PURE__ */ new Set()) {
+function practicalizeRecipeCandidate(exactInput, set, nonIncreasableLineIds = /* @__PURE__ */ new Set(), terminalAuthorityTargetBatchGrams = exactInput.target_batch_grams) {
 	const exact = cloneInput(exactInput);
 	const exactResult = calculateRecipe(exact);
 	const exactHardMetrics = classifyViolationBands(exact).hardMetrics;
@@ -7035,14 +7094,6 @@ function practicalizeRecipeCandidate(exactInput, set, nonIncreasableLineIds = /*
 		return approvedStabilizerDosage(canonicalIngredientId(item.ingredient)) === null && approvedStabilizerDosage(item.ingredient.id) === null;
 	});
 	if (unapprovedRoundedStabilizers.length > 0) return block(exact, exactResult, exactHardMetrics, "stabilizer_contract_changed", unapprovedRoundedStabilizers.map((item) => item.id), "Ten stabilizator nie ma zatwierdzonego kontraktu dawki do praktycznego zaokrąglenia. PI zachowało dokładną wartość i zablokowało wersję wykonawczą.", executable);
-	const exactStabilizers = new Map(assessStabilizerDosage(exact).map((assessment) => [assessment.lineId, assessment]));
-	const stabilizerOutside = assessStabilizerDosage(executable).filter((assessment) => {
-		if (assessment.window === null || assessment.status === "within_window") return false;
-		const before = exactStabilizers.get(assessment.lineId);
-		if (before && before.window !== null && before.status !== "within_window") return assessment.status !== before.status || assessment.status === "below_window" && assessment.grams < before.grams || assessment.status === "above_window" && assessment.grams > before.grams;
-		return true;
-	});
-	if (stabilizerOutside.length > 0) return block(exact, exactResult, exactHardMetrics, "stabilizer_outside_approved_window", stabilizerOutside.map((assessment) => assessment.lineId), "Zaokrąglona dawka stabilizatora wychodzi poza zatwierdzone okno dozowania.", executable);
 	let executableResult = calculateRecipe(executable);
 	let executableHardMetrics = classifyViolationBands(executable).hardMetrics;
 	let newHardMetrics = executableHardMetrics.filter((metric) => !exactHardMetrics.includes(metric));
@@ -7063,6 +7114,19 @@ function practicalizeRecipeCandidate(exactInput, set, nonIncreasableLineIds = /*
 		...executable,
 		items: executable.items.filter((item) => !omittedLineIds.has(item.id))
 	};
+	const nonPositiveExecutableLines = executableInput.items.filter((item) => !(item.planned_grams > 0));
+	if (nonPositiveExecutableLines.length > 0) return block(exact, exactResult, exactHardMetrics, "zero_gram_executable_line", nonPositiveExecutableLines.map((item) => item.id), "Receptura wykonawcza nie może zawierać składnika o ilości 0 g. Usuń nieużywany składnik albo ustaw dodatnią ilość zgodną z jego authority.", executableInput, executableHardMetrics);
+	const terminalAuthorityInput = {
+		...executableInput,
+		target_batch_grams: terminalAuthorityTargetBatchGrams
+	};
+	const stabilizerProfileIssues = internalStabilizerProfileIssues(terminalAuthorityInput);
+	if (stabilizerProfileIssues.length > 0) return block(exact, exactResult, exactHardMetrics, "profile_stabilizer_invalid", stabilizerProfileIssues.flatMap((issue) => issue.lineIds), internalStabilizerProfileMessagePl(stabilizerProfileIssues), executableInput, executableHardMetrics);
+	const inulinIssues = ownerInulinPolicyIssues(terminalAuthorityInput);
+	if (inulinIssues.length > 0) {
+		const issue = inulinIssues[0];
+		return block(exact, exactResult, exactHardMetrics, "inulin_outside_owner_policy", issue.lineIds, `Inulina ${issue.grams.toFixed(1)} g jest poza wewnętrznym zakresem Gellatti ${issue.minGrams.toFixed(1)}–${issue.maxGrams.toFixed(1)} g (${OWNER_INULIN_POLICY.minPercent}–${OWNER_INULIN_POLICY.maxPercent}% partii).`, executableInput, executableHardMetrics);
+	}
 	const executableById = new Map(executable.items.map((item) => [item.id, item]));
 	const reconciledById = new Map(reconciled.input.items.map((item) => [item.id, item]));
 	return {

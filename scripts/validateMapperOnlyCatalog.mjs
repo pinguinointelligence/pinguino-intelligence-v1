@@ -76,8 +76,8 @@ if (seedIds.size !== 2088 || catalogOutsideMapper.length || mapperMissingFromSee
 const picker = fs.readFileSync(pickerPath, 'utf8');
 const hook = fs.readFileSync(hookPath, 'utf8');
 const boundary = fs.readFileSync(boundaryPath, 'utf8');
-if (!picker.includes('mapperOnly: true') || picker.includes('Dodaj własny składnik ręcznie')) {
-  throw new Error('Active picker is not locked to Mapper-only mode');
+if (!picker.includes('mapperOnly: false') || picker.includes('Dodaj własny składnik ręcznie')) {
+  throw new Error('Active picker is not using the shared Mapper-resolved catalog mode');
 }
 for (const required of [
   "entityKind: input.mapperOnly ? 'pi_base' : null",
@@ -87,15 +87,20 @@ for (const required of [
 ]) {
   if (!hook.includes(required)) throw new Error(`Mapper-only hook guard missing: ${required}`);
 }
-if (!boundary.includes(expectedHash) || !boundary.includes('loadCurrentRow(mapperId)')) {
+if (
+  !boundary.includes(expectedHash) ||
+  !boundary.includes('loadCurrentRow(mapperId)') ||
+  !boundary.includes("hit.entityKind === 'commercial_product'") ||
+  !boundary.includes('hit.mappedIngredientId')
+) {
   throw new Error('Selection boundary is not pinned to current Mapper authority');
 }
 
-console.log('Mapper-only catalog validation PASS');
+console.log('Mapper-resolved catalog validation PASS');
 console.log(`2088 mapper rows inspected (SHA-256 ${mapperHash})`);
 console.log(`${selectableIds.size} current Base-selectable Mapper products covered`);
-console.log('0 catalog records outside current mapper');
-console.log('0 catalog products without canonical PI ID');
+console.log('Shared commercial catalog discovery enabled');
+console.log('Commercial selections require a canonical Mapper PI ID');
 console.log('0 stale favorite products rendered');
 console.log('0 stale recent products rendered');
 console.log('0 direct non-mapper additions accepted by the selection boundary');

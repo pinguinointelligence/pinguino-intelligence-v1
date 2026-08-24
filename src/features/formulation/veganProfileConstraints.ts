@@ -1,7 +1,7 @@
 import type { RecipeInput } from '@/engine';
 import type { ConstraintSet } from '@/features/recipe-constraints';
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
-import { assessStabilizerDosage } from './stabilizerDosage';
+import { internalStabilizerProfileIssues } from './stabilizerDosage';
 
 /** Highest owner-supplied external Vegan body reference (83.1 g / 1000 g).
  * This is a fail-closed calibration envelope, NOT a universal dosage claim. */
@@ -10,12 +10,7 @@ export const VEGAN_INULIN_CALIBRATION_MAX_PERCENT = 8.31;
 /** Exact pure-inulin Mapper identities covered by the owner calibration envelope. */
 const PURE_INULIN_CANONICAL_IDS = new Set(['PI-ING-000455', 'PI-ING-000456']);
 
-export type VeganProfileConstraintCode =
-  | 'stabilizer_missing'
-  | 'stabilizer_below_approved_window'
-  | 'stabilizer_above_approved_window'
-  | 'stabilizer_window_unknown'
-  | 'inulin_above_calibration_envelope';
+export type VeganProfileConstraintCode = 'stabilizer_missing' | 'inulin_above_calibration_envelope';
 
 export interface VeganProfileConstraintIssue {
   code: VeganProfileConstraintCode;
@@ -89,8 +84,7 @@ export function veganProfileConstraintIssues(input: RecipeInput): VeganProfileCo
   if (input.category !== 'vegan_gelato') return [];
   const total = plannedSum(input);
   const issues: VeganProfileConstraintIssue[] = [];
-  const stabilizers = assessStabilizerDosage(input);
-  if (stabilizers.length === 0) {
+  if (internalStabilizerProfileIssues(input).some((issue) => issue.code === 'stabilizer_missing')) {
     issues.push({
       code: 'stabilizer_missing',
       lineId: null,
@@ -99,31 +93,6 @@ export function veganProfileConstraintIssues(input: RecipeInput): VeganProfileCo
       minGrams: null,
       maxGrams: null,
       provenance: 'Vegan final task §32: 0 g requires an explicitly verified process profile',
-    });
-  }
-  for (const assessment of stabilizers) {
-    const minGrams = assessment.window
-      ? (assessment.window.minPercentOfTotalMix / 100) * total
-      : null;
-    const maxGrams = assessment.window
-      ? (assessment.window.maxPercentOfTotalMix / 100) * total
-      : null;
-    if (assessment.status === 'within_window') continue;
-    issues.push({
-      code:
-        assessment.status === 'below_window'
-          ? 'stabilizer_below_approved_window'
-          : assessment.status === 'above_window'
-            ? 'stabilizer_above_approved_window'
-            : 'stabilizer_window_unknown',
-      lineId: assessment.lineId,
-      ingredientName: assessment.ingredientName,
-      grams: assessment.grams,
-      minGrams,
-      maxGrams,
-      provenance:
-        assessment.window?.provenance ??
-        'No approved exact-identity dosage window in the current Mapper contract',
     });
   }
 

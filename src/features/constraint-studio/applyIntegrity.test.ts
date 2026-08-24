@@ -345,7 +345,7 @@ describe('PHASE 5/6/7 — the guarded store API rejects every corruption shape',
       return input;
     });
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.code).toBe('batch_mismatch');
+    if (!result.ok) expect(result.code).toBe('invalid_line');
     expect(JSON.stringify(storeRows())).toBe(before); // draft untouched
     expect(constraintStudioCopy.applyGuard.batchMismatch(0, 1000)).toContain(
       'Receptura nie została zmieniona.',
@@ -360,20 +360,18 @@ describe('PHASE 5/6/7 — the guarded store API rejects every corruption shape',
     expect(result.ok).toBe(false);
   });
 
-  it('an intentional explicit zero on ONE line applies when the batch still balances (test 12)', () => {
-    // 7-row applied draft: zero one line, move its grams onto another → valid.
+  it('an explicit zero on ONE line is rejected even when the batch still balances (test 12)', () => {
+    // The global executable invariant rejects the row before any write.
     useConstraintStudioStore.getState().createOptimizePreview();
     useConstraintStudioStore.getState().applyPreview();
+    const before = JSON.stringify(storeRows());
     const input = structuredClone(validInput());
     const moved = input.items[2]!.planned_grams;
     input.items[2]!.planned_grams = 0;
     input.items[0]!.planned_grams += moved;
     const result = useRecipeStore.getState().applyVerifiedRecipeInput(input);
-    expect(result.ok).toBe(true);
-    const rows = storeRows();
-    expect(rows[2]![1]).toBe(0); // only its own line
-    expect(rows.filter(([, g]) => g === 0).length).toBe(1);
-    expect(Math.abs(storeSum() - 1000)).toBeLessThanOrEqual(0.1);
+    expect(result).toMatchObject({ ok: false, code: 'invalid_line' });
+    expect(JSON.stringify(storeRows())).toBe(before);
   });
 });
 

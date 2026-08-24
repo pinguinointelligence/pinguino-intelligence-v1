@@ -11,9 +11,14 @@ import {
 } from '@/features/formulation/mainIngredientContract';
 import {
   approvedStabilizerDosage,
-  assessStabilizerDosage,
+  internalStabilizerProfileIssues,
+  internalStabilizerProfileMessagePl,
   isTemplateControlledStabilizer,
 } from '@/features/formulation/stabilizerDosage';
+import {
+  ownerInulinPolicyIssues,
+  OWNER_INULIN_POLICY,
+} from '@/features/product-intelligence/ownerInulinPolicy';
 import { classifyViolationBands } from '@/features/formulation/violationBands';
 
 export const PRACTICAL_RECIPE_MODEL_VERSION = 'pro-whole-gram-v1';
@@ -31,7 +36,9 @@ export type PracticalRecipeBlockCode =
   | 'batch_residual_unresolved'
   | 'constraint_changed'
   | 'stabilizer_contract_changed'
-  | 'stabilizer_outside_approved_window'
+  | 'profile_stabilizer_invalid'
+  | 'inulin_outside_owner_policy'
+  | 'zero_gram_executable_line'
   | 'post_rounding_hard_gate';
 
 export interface PracticalRecipeLineTrace {
@@ -320,14 +327,14 @@ function protectionFor(
 /**
  * Owner zero-gram executable invariant (2026-08-22). A recipe line is
  * "optional" when it is an unlocked Standard line with no physical mass, no
- * gram/percent/range contract, no Main/required role and no template-controlled
- * stabilizer contract (an unavailable/excluded Standard line counts as optional:
+ * gram/percent/range contract and no Main/required role (an unavailable/excluded Standard line counts as optional:
  * driven to 0 g it is simply not used, and its exclusion record lives in the
- * recipe goals, not in the row). When the Engine resolves such a line to exactly
- * 0 g, the executable recipe OMITS the row: "not used" is the absence of the
- * ingredient, never an explicit 0 g ingredient row. Every protected line keeps
- * its contract (a 0 g contract line is an unfinished editor placeholder that
- * the PI guard refuses before any candidate exists).
+ * recipe goals, not in the row). A 0 g stabilizer line is equally unused: a
+ * required profile must first gain a positive approved stabilizer elsewhere,
+ * while an optional profile simply omits it. When the Engine resolves such a
+ * line to exactly 0 g, the executable recipe OMITS the row: "not used" is the
+ * absence of the ingredient, never an explicit 0 g ingredient row. Every
+ * protected line keeps its contract; any protected 0 g row is refused below.
  */
 export const isOmittableUnusedLine = (
   input: RecipeInput,
@@ -338,8 +345,7 @@ export const isOmittableUnusedLine = (
   item.lock_type === 'unlocked' &&
   exactGramsLockFor(set, item) === null &&
   percentFor(input, set, item) === null &&
-  rangeFor(set, item) === null &&
-  !isTemplateControlledStabilizer(item.ingredient);
+  rangeFor(set, item) === null;
 
 /** Line ids of optional lines that currently weigh exactly 0 g. */
 export const unusedZeroGramLineIds = (input: RecipeInput, set: ConstraintSet): string[] =>
@@ -596,6 +602,14 @@ export function practicalizeRecipeCandidate(
    * behaviour exactly.
    */
   nonIncreasableLineIds: ReadonlySet<string> = new Set(),
+  /**
+   * A new-recipe scaffold may temporarily omit its user-supplied Main while
+   * still targeting the final requested batch. Reconciliation uses the
+   * scaffold mass, but profile percentage authorities must use the final batch
+   * base. Final Preview/Apply/Save callers omit this and therefore always
+   * validate against the executable recipe's own target.
+   */
+  terminalAuthorityTargetBatchGrams: number = exactInput.target_batch_grams,
 ): PracticalRecipeResult {
   const exact = cloneInput(exactInput);
   const exactResult = calculateRecipe(exact);
@@ -795,36 +809,6 @@ export function practicalizeRecipeCandidate(
     );
   }
 
-  const exactStabilizers = new Map(
-    assessStabilizerDosage(exact).map((assessment) => [assessment.lineId, assessment]),
-  );
-  const stabilizerOutside = assessStabilizerDosage(executable).filter((assessment) => {
-    if (assessment.window === null || assessment.status === 'within_window') return false;
-    const before = exactStabilizers.get(assessment.lineId);
-    // Practicalization is not a second stabilizer-science gate. It rejects a
-    // dosage violation only when the whole-gram transform introduces it or
-    // pushes an established frozen dose farther outside its approved window.
-    if (before && before.window !== null && before.status !== 'within_window') {
-      return (
-        assessment.status !== before.status ||
-        (assessment.status === 'below_window' && assessment.grams < before.grams) ||
-        (assessment.status === 'above_window' && assessment.grams > before.grams)
-      );
-    }
-    return true;
-  });
-  if (stabilizerOutside.length > 0) {
-    return block(
-      exact,
-      exactResult,
-      exactHardMetrics,
-      'stabilizer_outside_approved_window',
-      stabilizerOutside.map((assessment) => assessment.lineId),
-      'Zaokrąglona dawka stabilizatora wychodzi poza zatwierdzone okno dozowania.',
-      executable,
-    );
-  }
-
   let executableResult = calculateRecipe(executable);
   let executableHardMetrics = classifyViolationBands(executable).hardMetrics;
   let newHardMetrics = executableHardMetrics.filter((metric) => !exactHardMetrics.includes(metric));
@@ -874,6 +858,52 @@ export function practicalizeRecipeCandidate(
     omittedLineIds.size === 0
       ? executable
       : { ...executable, items: executable.items.filter((item) => !omittedLineIds.has(item.id)) };
+  const nonPositiveExecutableLines = executableInput.items.filter(
+    (item) => !(item.planned_grams > 0),
+  );
+  if (nonPositiveExecutableLines.length > 0) {
+    return block(
+      exact,
+      exactResult,
+      exactHardMetrics,
+      'zero_gram_executable_line',
+      nonPositiveExecutableLines.map((item) => item.id),
+      'Receptura wykonawcza nie może zawierać składnika o ilości 0 g. Usuń nieużywany składnik albo ustaw dodatnią ilość zgodną z jego authority.',
+      executableInput,
+      executableHardMetrics,
+    );
+  }
+  const terminalAuthorityInput = {
+    ...executableInput,
+    target_batch_grams: terminalAuthorityTargetBatchGrams,
+  };
+  const stabilizerProfileIssues = internalStabilizerProfileIssues(terminalAuthorityInput);
+  if (stabilizerProfileIssues.length > 0) {
+    return block(
+      exact,
+      exactResult,
+      exactHardMetrics,
+      'profile_stabilizer_invalid',
+      stabilizerProfileIssues.flatMap((issue) => issue.lineIds),
+      internalStabilizerProfileMessagePl(stabilizerProfileIssues),
+      executableInput,
+      executableHardMetrics,
+    );
+  }
+  const inulinIssues = ownerInulinPolicyIssues(terminalAuthorityInput);
+  if (inulinIssues.length > 0) {
+    const issue = inulinIssues[0]!;
+    return block(
+      exact,
+      exactResult,
+      exactHardMetrics,
+      'inulin_outside_owner_policy',
+      issue.lineIds,
+      `Inulina ${issue.grams.toFixed(1)} g jest poza wewnętrznym zakresem Gellatti ${issue.minGrams.toFixed(1)}–${issue.maxGrams.toFixed(1)} g (${OWNER_INULIN_POLICY.minPercent}–${OWNER_INULIN_POLICY.maxPercent}% partii).`,
+      executableInput,
+      executableHardMetrics,
+    );
+  }
   const executableById = new Map(executable.items.map((item) => [item.id, item] as const));
   const reconciledById = new Map(reconciled.input.items.map((item) => [item.id, item] as const));
 

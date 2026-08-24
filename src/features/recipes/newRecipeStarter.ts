@@ -14,10 +14,7 @@ import {
   selectFormulationTemplate,
   type FormulationTemplate,
 } from '@/features/formulation/templateRegistry';
-import {
-  resolveFunctionalRole,
-  type FunctionalRole,
-} from '@/features/formulation/ingredientRoles';
+import { resolveFunctionalRole, type FunctionalRole } from '@/features/formulation/ingredientRoles';
 import {
   approvedStabilizerDosage,
   stabilizerDosageWindowGrams,
@@ -34,11 +31,7 @@ import { projectSorbetStabilizerSystemToWholeGramPreferred } from '@/features/re
 import { recipeTechnicalFit } from '@/features/recipe-score/technicalFit';
 import type { VisibleProductType } from '@/features/studio/productType';
 
-export type NewRecipeServingModeId =
-  | 'temp_minus_11'
-  | 'temp_minus_12'
-  | 'temp_minus_13'
-  | 'fresh';
+export type NewRecipeServingModeId = 'temp_minus_11' | 'temp_minus_12' | 'temp_minus_13' | 'fresh';
 
 export const NEW_RECIPE_SERVING_MODES: readonly NewRecipeServingModeId[] = [
   'temp_minus_11',
@@ -47,8 +40,12 @@ export const NEW_RECIPE_SERVING_MODES: readonly NewRecipeServingModeId[] = [
   'fresh',
 ];
 
-export const isNewRecipeServingModeId = (value: string | null | undefined): value is NewRecipeServingModeId =>
-  value !== null && value !== undefined && NEW_RECIPE_SERVING_MODES.includes(value as NewRecipeServingModeId);
+export const isNewRecipeServingModeId = (
+  value: string | null | undefined,
+): value is NewRecipeServingModeId =>
+  value !== null &&
+  value !== undefined &&
+  NEW_RECIPE_SERVING_MODES.includes(value as NewRecipeServingModeId);
 
 export const DEFAULT_NEW_RECIPE_PROFILE: VisibleProductType = 'gelato';
 export const DEFAULT_NEW_RECIPE_SERVING_MODE: NewRecipeServingModeId = 'temp_minus_12';
@@ -271,10 +268,7 @@ const practicalizeStarter = (
     items: practicalizationInput.items.map((item) => {
       const dosage = approvedStabilizerDosage(canonicalIngredientId(item.ingredient));
       if (!dosage || Number.isInteger(item.planned_grams)) return item;
-      const window = stabilizerDosageWindowGrams(
-        dosage,
-        exactInput.target_batch_grams,
-      );
+      const window = stabilizerDosageWindowGrams(dosage, exactInput.target_batch_grams);
       const minimumWhole = Math.ceil(window.minGrams);
       const maximumWhole = Math.floor(window.maxGrams);
       if (minimumWhole > maximumWhole) return item;
@@ -304,12 +298,10 @@ const practicalizeStarter = (
     0,
   );
   const preferenceMassTransfer = massBeforePreference - massAfterPreference;
-  const carrierIndex = preferredStabilizerItems.findIndex(
-    (item) => {
-      const role = resolveFunctionalRole(item.ingredient);
-      return role === 'primary_liquid' || role === 'water';
-    },
-  );
+  const carrierIndex = preferredStabilizerItems.findIndex((item) => {
+    const role = resolveFunctionalRole(item.ingredient);
+    return role === 'primary_liquid' || role === 'water';
+  });
   // A starter policy change reallocates mass; it must not silently shrink or
   // grow the requested batch. Keep the exact pre-policy mass by transferring
   // the difference to the existing primary liquid, then let the shared
@@ -329,7 +321,12 @@ const practicalizeStarter = (
     ...productDosageSeed,
     items: preferredStabilizerItems,
   };
-  const practical = practicalizeRecipeCandidate(executableSeed, { byLineId: {} });
+  const practical = practicalizeRecipeCandidate(
+    executableSeed,
+    { byLineId: {} },
+    new Set(),
+    exactInput.target_batch_grams,
+  );
   if (!practical.ok) {
     const affected = practical.lineIds
       .map((lineId) => {
@@ -339,7 +336,7 @@ const practicalizeStarter = (
       })
       .join(',');
     throw new Error(
-      `Starter whole-gram practicalization failed: ${practical.code}${affected ? ` (${affected})` : ''}.`,
+      `Starter whole-gram practicalization failed: ${practical.code}${affected ? ` (${affected})` : ''}: ${practical.messagePl}`,
     );
   }
   const input = complete
@@ -434,9 +431,7 @@ export function buildCanonicalNewRecipeStarter(
       effectivePricePerKg: effective.pricePerKg,
       priceSource: effective.source,
       lineCost:
-        effective.pricePerKg === null
-          ? null
-          : (item.planned_grams / 1_000) * effective.pricePerKg,
+        effective.pricePerKg === null ? null : (item.planned_grams / 1_000) * effective.pricePerKg,
       wholeGram: Number.isInteger(item.planned_grams),
     };
   });

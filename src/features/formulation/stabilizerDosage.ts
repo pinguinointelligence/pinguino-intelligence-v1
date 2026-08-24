@@ -1,8 +1,8 @@
 /**
  * APPROVED STABILIZER DOSAGE (owner Phase 9 — tara 5 g forensic audit, NIGHTLY).
  *
- * Connects the EXISTING, already-approved Mapper dosage recommendation into the
- * formulation layer — as SAFETY BOUNDS and honest QA diagnostics. NOTHING here
+ * Connects the EXISTING Mapper dosage recommendation into the formulation
+ * layer as honest QA diagnostics. NOTHING here
  * is invented (science freeze):
  *  - the window 0.2–1 comes VERBATIM from the Mapper v1.0 row and its schema
  *    unit contract (`recommended_dosage_percent_min/max`, "0–100 · of total
@@ -28,17 +28,20 @@
  * band (`detectViolations` covers pod/npac/ice/water/solids/fat/protein/
  * lactose/sandiness/alcohol only, and `tara_gum` appears in no solver
  * SELECTION_RULES entry), so moving the stabilizer dose produces no
- * engine-verified gradient. These bounds therefore act as CLAMPS on any
- * solver-produced movement plus honest diagnostics — the template-controlled
- * seed itself is NEVER silently rewritten (templates are verbatim approved /
- * reference-derived records) and dose OPTIMIZATION stays scientifically
- * unresolved pending the owner's stabilizer-activity target.
+ * engine-verified gradient. Mapper/manufacturer bounds therefore remain
+ * ADVISORY diagnostics; runtime executability is governed separately by the
+ * published internal Gellatti profile authority below. The template-controlled
+ * seed itself is NEVER silently rewritten and dose OPTIMIZATION stays
+ * scientifically unresolved pending a profile-specific activity target.
  */
 import type { CorrectionAction, RecipeInput } from '@/engine';
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
 import type { ConstraintSet } from '@/features/recipe-constraints';
 import { resolveFunctionalRole } from './ingredientRoles';
-import { gelatoStabilizerSystemApplies } from '@/features/recipe-constraints/gelatoStabilizerSystemAuthority';
+import {
+  assessGelatoStabilizerSystem,
+  gelatoStabilizerSystemApplies,
+} from '@/features/recipe-constraints/gelatoStabilizerSystemAuthority';
 import { assessSorbetStabilizerSystem } from '@/features/recipe-constraints/sorbetStabilizerSystemAuthority';
 
 export type StabilizerIdentityKind = 'pure_gum' | 'stabilizer_blend';
@@ -335,14 +338,113 @@ export function assessStabilizerDosage(input: RecipeInput): StabilizerDosageAsse
   return assessments;
 }
 
+export type InternalStabilizerProfileIssueCode =
+  | 'stabilizer_missing'
+  | 'stabilizer_below_gellatti_minimum'
+  | 'stabilizer_above_gellatti_maximum'
+  | 'stabilizer_not_whole_grams';
+
+export interface InternalStabilizerProfileIssue {
+  code: InternalStabilizerProfileIssueCode;
+  lineIds: string[];
+  ingredientNames: string[];
+  grams: number;
+  minGrams: number | null;
+  maxGrams: number | null;
+  provenance: string;
+}
+
+const INTERNAL_STABILIZER_REQUIRED_CATEGORIES = new Set<RecipeInput['category']>([
+  'milk_gelato',
+  'fruit_gelato',
+  'nut_gelato',
+  'chocolate_gelato',
+  'alcohol_gelato',
+  'sorbet',
+  'vegan_gelato',
+  'protein_gelato',
+]);
+
 /**
- * SAFETY CLAMP (owner Phase 9 — the approved-bounds wiring): TRUE when a
+ * Final executable stabilizer authority. Manufacturer recommended dosage and
+ * heat/cold fields are intentionally absent here: they remain informational.
+ *
+ * Standard Gelato and Sorbet have published Gellatti aggregate bands. Vegan
+ * and Protein currently have only the locked internal presence requirement;
+ * their approved templates may seed their recorded dose, but no manufacturer
+ * window is promoted into a generic hard gate.
+ */
+export function internalStabilizerProfileIssues(
+  input: Pick<RecipeInput, 'category' | 'target_batch_grams' | 'items'>,
+): InternalStabilizerProfileIssue[] {
+  if (!INTERNAL_STABILIZER_REQUIRED_CATEGORIES.has(input.category)) return [];
+  const stabilizers = input.items.filter((item) => isTemplateControlledStabilizer(item.ingredient));
+  const positive = stabilizers.filter((item) => item.planned_grams > DOSAGE_EPS);
+  if (positive.length === 0) {
+    return [
+      {
+        code: 'stabilizer_missing',
+        lineIds: stabilizers.map((item) => item.id),
+        ingredientNames: stabilizers.map((item) => item.ingredient.name),
+        grams: 0,
+        minGrams: null,
+        maxGrams: null,
+        provenance: 'PINGUINO Spine v1.0: stabilizer required for every active profile',
+      },
+    ];
+  }
+
+  const assessment = gelatoStabilizerSystemApplies(input.category)
+    ? assessGelatoStabilizerSystem(input)
+    : input.category === 'sorbet'
+      ? assessSorbetStabilizerSystem(input)
+      : null;
+  if (assessment === null) return [];
+  return assessment.issues.map((issue) => ({
+    code:
+      issue.code === 'aggregate_below_minimum'
+        ? 'stabilizer_below_gellatti_minimum'
+        : issue.code === 'aggregate_above_maximum'
+          ? 'stabilizer_above_gellatti_maximum'
+          : 'stabilizer_not_whole_grams',
+    lineIds: issue.lineIds,
+    ingredientNames: positive.map((item) => item.ingredient.name),
+    grams: issue.totalGrams,
+    minGrams: issue.minGrams,
+    maxGrams: issue.maxGrams,
+    provenance:
+      input.category === 'sorbet'
+        ? 'owner-approved Gellatti Sorbet formulation policy'
+        : 'owner-approved Gellatti formulation policy',
+  }));
+}
+
+export function internalStabilizerProfileMessagePl(
+  issues: readonly InternalStabilizerProfileIssue[],
+): string {
+  const issue = issues[0];
+  if (!issue) return '';
+  if (issue.code === 'stabilizer_missing') {
+    return 'Finalna receptura tego profilu wymaga dodatniej ilości stabilizatora zgodnie z wewnętrzną authority Gellatti.';
+  }
+  if (issue.code === 'stabilizer_not_whole_grams') {
+    return 'Składniki systemu stabilizującego muszą mieć pełne gramy.';
+  }
+  const boundary =
+    issue.code === 'stabilizer_below_gellatti_minimum' ? issue.minGrams : issue.maxGrams;
+  return issue.code === 'stabilizer_below_gellatti_minimum'
+    ? `Wewnętrzne minimum systemu stabilizującego Gellatti wynosi ${boundary ?? 0} g.`
+    : `Wewnętrzne maksimum systemu stabilizującego Gellatti wynosi ${boundary ?? 0} g.`;
+}
+
+/**
+ * Historical diagnostic helper: TRUE when a hypothetical action would move a
  * solver action would move a REGISTERED stabilizer identity outside its
  * approved Mapper window — an `add` pushing the dose above the max percent of
  * the (mass-change-aware) total mix, or a `reduce` cutting it below the min.
  * Unregistered ingredients and non-stabilizer actions are never touched.
- * The formulation pipeline rejects such actions at candidate-selection time;
- * it NEVER rewrites the template-controlled seed itself.
+ * Runtime formulation intentionally does not call this manufacturer-window
+ * helper. See `violatesInternalStabilizerProfileAuthority` below.
  */
 export function violatesApprovedStabilizerDosage(
   current: RecipeInput,
@@ -377,6 +479,35 @@ export function violatesApprovedStabilizerDosage(
     return nextPercent < entry.minPercentOfTotalMix - DOSAGE_EPS;
   }
   return false;
+}
+
+/** Runtime correction clamp backed only by internal Gellatti profile science.
+ * Manufacturer dosage remains available through `assessStabilizerDosage` for
+ * diagnostics, but never decides whether a solver move is executable. */
+export function violatesInternalStabilizerProfileAuthority(
+  current: RecipeInput,
+  action: Pick<CorrectionAction, 'type' | 'ingredient_id' | 'grams'>,
+): boolean {
+  const lineIndex = current.items.findIndex(
+    (item) =>
+      item.ingredient.id === action.ingredient_id ||
+      canonicalIngredientId(item.ingredient) === action.ingredient_id,
+  );
+  if (lineIndex < 0) return false;
+  const line = current.items[lineIndex]!;
+  if (!isTemplateControlledStabilizer(line.ingredient)) return false;
+  if (action.type !== 'add' && action.type !== 'reduce') return false;
+  const nextGrams =
+    action.type === 'add'
+      ? line.planned_grams + action.grams
+      : Math.max(0, line.planned_grams - action.grams);
+  const next: RecipeInput = {
+    ...current,
+    items: current.items.map((item, index) =>
+      index === lineIndex ? { ...item, planned_grams: nextGrams } : item,
+    ),
+  };
+  return internalStabilizerProfileIssues(next).length > 0;
 }
 
 export function listApprovedStabilizerDosages(): readonly ApprovedStabilizerDosage[] {

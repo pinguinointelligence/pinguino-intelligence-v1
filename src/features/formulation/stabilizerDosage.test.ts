@@ -26,8 +26,10 @@ import {
   approvedStabilizerDosage,
   approvedStabilizerDosageOfKind,
   assessStabilizerDosage,
+  internalStabilizerProfileIssues,
   stabilizerDosageWindowGrams,
   violatesApprovedStabilizerDosage,
+  violatesInternalStabilizerProfileAuthority,
 } from './stabilizerDosage';
 
 /** The exact owner fixture: 350/380/80/40/110/35/tara (fruit_gelato −11). */
@@ -38,13 +40,55 @@ const fruitFixture = (taraGrams: number): RecipeInput => ({
   target_batch_grams: 1000,
   machine_capacity_grams: null,
   items: [
-    { id: 'l-straw', ingredient: strawberrySurrogate(), planned_grams: 350, actual_grams: null, lock_type: 'unlocked' },
-    { id: 'l-milk', ingredient: findDemoIngredient('milk_3_5')!, planned_grams: 380, actual_grams: null, lock_type: 'unlocked' },
-    { id: 'l-cream', ingredient: findDemoIngredient('cream_30')!, planned_grams: 80, actual_grams: null, lock_type: 'unlocked' },
-    { id: 'l-smp', ingredient: findDemoIngredient('smp')!, planned_grams: 40, actual_grams: null, lock_type: 'unlocked' },
-    { id: 'l-suc', ingredient: findDemoIngredient('sucrose')!, planned_grams: 110, actual_grams: null, lock_type: 'unlocked' },
-    { id: 'l-dex', ingredient: findDemoIngredient('dextrose')!, planned_grams: 35, actual_grams: null, lock_type: 'unlocked' },
-    { id: 'l-tara', ingredient: findDemoIngredient('tara_gum')!, planned_grams: taraGrams, actual_grams: null, lock_type: 'unlocked' },
+    {
+      id: 'l-straw',
+      ingredient: strawberrySurrogate(),
+      planned_grams: 350,
+      actual_grams: null,
+      lock_type: 'unlocked',
+    },
+    {
+      id: 'l-milk',
+      ingredient: findDemoIngredient('milk_3_5')!,
+      planned_grams: 380,
+      actual_grams: null,
+      lock_type: 'unlocked',
+    },
+    {
+      id: 'l-cream',
+      ingredient: findDemoIngredient('cream_30')!,
+      planned_grams: 80,
+      actual_grams: null,
+      lock_type: 'unlocked',
+    },
+    {
+      id: 'l-smp',
+      ingredient: findDemoIngredient('smp')!,
+      planned_grams: 40,
+      actual_grams: null,
+      lock_type: 'unlocked',
+    },
+    {
+      id: 'l-suc',
+      ingredient: findDemoIngredient('sucrose')!,
+      planned_grams: 110,
+      actual_grams: null,
+      lock_type: 'unlocked',
+    },
+    {
+      id: 'l-dex',
+      ingredient: findDemoIngredient('dextrose')!,
+      planned_grams: 35,
+      actual_grams: null,
+      lock_type: 'unlocked',
+    },
+    {
+      id: 'l-tara',
+      ingredient: findDemoIngredient('tara_gum')!,
+      planned_grams: taraGrams,
+      actual_grams: null,
+      lock_type: 'unlocked',
+    },
   ],
 });
 
@@ -72,8 +116,12 @@ describe('approved dosage identity (staging-verified PI-ING-000492)', () => {
     expect(approvedStabilizerDosageOfKind('PI-ING-000492', 'stabilizer_blend')).toBeNull();
     expect(approvedStabilizerDosageOfKind('tara_gum', 'stabilizer_blend')).toBeNull();
     // Each identity resolves ONLY under its own kind.
-    expect(approvedStabilizerDosageOfKind('PI-ING-000492', 'pure_gum')?.mapperId).toBe('PI-ING-000492');
-    expect(approvedStabilizerDosageOfKind('PI-ING-000490', 'stabilizer_blend')?.mapperId).toBe('PI-ING-000490');
+    expect(approvedStabilizerDosageOfKind('PI-ING-000492', 'pure_gum')?.mapperId).toBe(
+      'PI-ING-000492',
+    );
+    expect(approvedStabilizerDosageOfKind('PI-ING-000490', 'stabilizer_blend')?.mapperId).toBe(
+      'PI-ING-000490',
+    );
   });
 
   it('every dosage field carries an EXPLICIT unit (test 15)', () => {
@@ -147,7 +195,75 @@ describe('bounds violations are DETECTED (test 19)', () => {
   });
 });
 
-describe('the safety clamp on solver actions (Phase 9 wiring)', () => {
+describe('internal profile authority is separate from manufacturer advice', () => {
+  it.each([
+    ['Standard', 'fruit_gelato'],
+    ['Sorbet', 'sorbet'],
+    ['Vegan', 'vegan_gelato'],
+    ['Protein', 'protein_gelato'],
+  ] as const)('%s requires a positive stabilizer in the final recipe', (_label, category) => {
+    const input = fruitFixture(0);
+    input.category = category;
+    expect(internalStabilizerProfileIssues(input)).toMatchObject([
+      { code: 'stabilizer_missing', grams: 0 },
+    ]);
+  });
+
+  it('uses the published aggregate Gellatti bands for Standard and Sorbet', () => {
+    const standard = fruitFixture(3);
+    expect(internalStabilizerProfileIssues(standard)).toEqual([]);
+    standard.items.at(-1)!.planned_grams = 6;
+    expect(internalStabilizerProfileIssues(standard)).toMatchObject([
+      { code: 'stabilizer_above_gellatti_maximum', maxGrams: 5 },
+    ]);
+
+    const sorbet = fruitFixture(4);
+    sorbet.category = 'sorbet';
+    expect(internalStabilizerProfileIssues(sorbet)).toEqual([]);
+  });
+
+  it('does not promote manufacturer dosage into a Vegan or Protein hard gate', () => {
+    const vegan = fruitFixture(12);
+    vegan.category = 'vegan_gelato';
+    expect(assessStabilizerDosage(vegan)[0]?.status).toBe('above_window');
+    expect(internalStabilizerProfileIssues(vegan)).toEqual([]);
+
+    const protein = fruitFixture(1);
+    protein.category = 'protein_gelato';
+    expect(assessStabilizerDosage(protein)[0]?.status).toBe('below_window');
+    expect(internalStabilizerProfileIssues(protein)).toEqual([]);
+  });
+
+  it('runtime correction decisions use internal authority, not the manufacturer helper', () => {
+    const standard = fruitFixture(3);
+    expect(
+      violatesInternalStabilizerProfileAuthority(standard, {
+        type: 'add',
+        ingredient_id: 'tara_gum',
+        grams: 3,
+      }),
+    ).toBe(true);
+
+    const vegan = fruitFixture(1);
+    vegan.category = 'vegan_gelato';
+    expect(
+      violatesApprovedStabilizerDosage(vegan, {
+        type: 'add',
+        ingredient_id: 'tara_gum',
+        grams: 11,
+      }),
+    ).toBe(true);
+    expect(
+      violatesInternalStabilizerProfileAuthority(vegan, {
+        type: 'add',
+        ingredient_id: 'tara_gum',
+        grams: 11,
+      }),
+    ).toBe(false);
+  });
+});
+
+describe('manufacturer-window action diagnostics (advisory, not runtime authority)', () => {
   it('resolves a private-product action through canonical Tara before clamping', () => {
     const input = fruitFixture(5);
     const tara = input.items.find((item) => item.id === 'l-tara')!;
@@ -180,17 +296,29 @@ describe('the safety clamp on solver actions (Phase 9 wiring)', () => {
   it('a REDUCE cutting tara below 0.2 % of the mix is rejected', () => {
     const input = fruitFixture(5);
     expect(
-      violatesApprovedStabilizerDosage(input, { type: 'reduce', ingredient_id: 'tara_gum', grams: 4 }),
+      violatesApprovedStabilizerDosage(input, {
+        type: 'reduce',
+        ingredient_id: 'tara_gum',
+        grams: 4,
+      }),
     ).toBe(true); // 1 g / 996 g ≈ 0.10 % < 0.2 %
     expect(
-      violatesApprovedStabilizerDosage(input, { type: 'reduce', ingredient_id: 'tara_gum', grams: 1 }),
+      violatesApprovedStabilizerDosage(input, {
+        type: 'reduce',
+        ingredient_id: 'tara_gum',
+        grams: 1,
+      }),
     ).toBe(false); // 4 g / 999 g ≈ 0.40 %
   });
 
   it('actions on unregistered ingredients are never touched by the clamp', () => {
     const input = fruitFixture(5);
     expect(
-      violatesApprovedStabilizerDosage(input, { type: 'add', ingredient_id: 'sucrose', grams: 500 }),
+      violatesApprovedStabilizerDosage(input, {
+        type: 'add',
+        ingredient_id: 'sucrose',
+        grams: 500,
+      }),
     ).toBe(false);
   });
 });

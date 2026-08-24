@@ -6,31 +6,51 @@ import {
   veganProfileConstraintIssues,
 } from './veganProfileConstraints';
 
-const WATER = DEFAULT_CORRECTION_CANDIDATES.find((candidate) => candidate.id === 'water')!.ingredient;
+const WATER = DEFAULT_CORRECTION_CANDIDATES.find(
+  (candidate) => candidate.id === 'water',
+)!.ingredient;
 const TARA = findDemoIngredient('tara_gum')!;
 const INULIN = findDemoIngredient('inulin')!;
 const line = (id: string, ingredient: EngineIngredient, grams: number) => ({
-  id, ingredient, planned_grams: grams, actual_grams: null, lock_type: 'unlocked' as const,
+  id,
+  ingredient,
+  planned_grams: grams,
+  actual_grams: null,
+  lock_type: 'unlocked' as const,
 });
 const input = (items: ReturnType<typeof line>[]): RecipeInput => ({
-  mode: 'classic', category: 'vegan_gelato', target_temperature_c: -13,
-  target_batch_grams: 1000, machine_capacity_grams: null, items,
+  mode: 'classic',
+  category: 'vegan_gelato',
+  target_temperature_c: -13,
+  target_batch_grams: 1000,
+  machine_capacity_grams: null,
+  items,
 });
 
 describe('Vegan formulation envelope', () => {
-  it('accepts exact Tara minimum with floating-point tolerance', () => {
-    expect(veganProfileConstraintIssues(input([line('water', WATER, 998), line('tara', TARA, 2)]))).toEqual([]);
+  it('accepts the approved positive Tara template dose', () => {
+    expect(
+      veganProfileConstraintIssues(input([line('water', WATER, 998), line('tara', TARA, 2)])),
+    ).toEqual([]);
   });
 
   it.each([
-    ['missing', [line('water', WATER, 1000)], 'stabilizer_missing'],
-    ['below', [line('water', WATER, 998.01), line('tara', TARA, 1.99)], 'stabilizer_below_approved_window'],
-    ['above', [line('water', WATER, 989.99), line('tara', TARA, 10.01)], 'stabilizer_above_approved_window'],
-  ] as const)('blocks stabilizer state: %s', (_label, items, code) => {
-    expect(veganProfileConstraintIssues(input([...items])).map((issue) => issue.code)).toContain(code);
+    ['missing', [line('water', WATER, 1000)]],
+    ['explicit zero', [line('water', WATER, 1000), line('tara', TARA, 0)]],
+  ] as const)('blocks stabilizer state: %s', (_label, items) => {
+    expect(veganProfileConstraintIssues(input([...items])).map((issue) => issue.code)).toContain(
+      'stabilizer_missing',
+    );
   });
 
-  it('blocks an unregistered stabilizer rather than borrowing Tara dosage', () => {
+  it('does not turn manufacturer windows into a Vegan hard gate', () => {
+    expect(
+      veganProfileConstraintIssues(input([line('water', WATER, 999), line('tara', TARA, 1)])),
+    ).toEqual([]);
+    expect(
+      veganProfileConstraintIssues(input([line('water', WATER, 980), line('tara', TARA, 20)])),
+    ).toEqual([]);
+
     const unknown: EngineIngredient = {
       ...TARA,
       id: 'manual-stabilizer-blend',
@@ -38,21 +58,28 @@ describe('Vegan formulation envelope', () => {
       name: 'Manual stabilizer blend',
     };
     expect(
-      veganProfileConstraintIssues(input([line('water', WATER, 998), line('unknown', unknown, 2)]))
-        .map((issue) => issue.code),
-    ).toContain('stabilizer_window_unknown');
+      veganProfileConstraintIssues(input([line('water', WATER, 998), line('unknown', unknown, 2)])),
+    ).toEqual([]);
   });
 
   it('pins the owner high-inulin ceiling and blocks any excess', () => {
     const ceiling = VEGAN_INULIN_CALIBRATION_MAX_PERCENT * 10;
     expect(
       veganProfileConstraintIssues(
-        input([line('water', WATER, 1000 - ceiling - 2), line('inulin', INULIN, ceiling), line('tara', TARA, 2)]),
+        input([
+          line('water', WATER, 1000 - ceiling - 2),
+          line('inulin', INULIN, ceiling),
+          line('tara', TARA, 2),
+        ]),
       ),
     ).toEqual([]);
     expect(
       veganProfileConstraintIssues(
-        input([line('water', WATER, 1000 - ceiling - 2.01), line('inulin', INULIN, ceiling + 0.01), line('tara', TARA, 2)]),
+        input([
+          line('water', WATER, 1000 - ceiling - 2.01),
+          line('inulin', INULIN, ceiling + 0.01),
+          line('tara', TARA, 2),
+        ]),
       ).map((issue) => issue.code),
     ).toContain('inulin_above_calibration_envelope');
   });

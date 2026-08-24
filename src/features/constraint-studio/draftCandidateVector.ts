@@ -52,7 +52,7 @@ import type { ConstraintSet } from '@/features/recipe-constraints';
 import { isToolboxCandidateExcluded } from '@/features/formulation/toolboxCanonical';
 import {
   isTemplateControlledStabilizer,
-  violatesApprovedStabilizerDosage,
+  violatesInternalStabilizerProfileAuthority,
 } from '@/features/formulation/stabilizerDosage';
 import { HARD_ROLES } from '@/features/formulation/formulate';
 import { resolveFunctionalRole } from '@/features/formulation/ingredientRoles';
@@ -520,7 +520,7 @@ export function sweepDraftCandidateVector(args: DraftSweepArgs): DraftSweepResul
         // Owner Phase 9 (approved-bounds wiring) — the SAME clamp the solver
         // rounds honor: no move may push a registered stabilizer outside its
         // approved Mapper window.
-        if (violatesApprovedStabilizerDosage(state, actions[0]!)) continue;
+        if (violatesInternalStabilizerProfileAuthority(state, actions[0]!)) continue;
         const applied = applyDraftAdjustment(state, move, constraints);
         if (applied === null) continue;
         const normalized = normalize(applied);
@@ -730,7 +730,7 @@ function sweepPairedExchange(
             actions: draftAdjustmentActions(donor, donor.currentGrams - delta),
           };
           if (donorMove.actions.length === 0) continue;
-          if (violatesApprovedStabilizerDosage(state, donorMove.actions[0]!)) continue;
+          if (violatesInternalStabilizerProfileAuthority(state, donorMove.actions[0]!)) continue;
           const afterDonor = applyDraftAdjustment(state, donorMove, constraints);
           if (afterDonor === null) continue;
 
@@ -750,7 +750,8 @@ function sweepPairedExchange(
             actions: draftAdjustmentActions(receiverNow, receiverNow.currentGrams + delta),
           };
           if (receiverMove.actions.length === 0) continue;
-          if (violatesApprovedStabilizerDosage(afterDonor, receiverMove.actions[0]!)) continue;
+          if (violatesInternalStabilizerProfileAuthority(afterDonor, receiverMove.actions[0]!))
+            continue;
           const exchanged = applyDraftAdjustment(afterDonor, receiverMove, constraints);
           if (exchanged === null) continue;
 

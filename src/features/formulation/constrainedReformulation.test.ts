@@ -122,15 +122,14 @@ describe('FIXTURE A — inulin unavailable (tests 3/4/5/6)', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('CURRENT-DRAFT P0: the native ice residual is REPAIRED and Apply flows — inulin stays exactly 0', () => {
+  it('CURRENT-DRAFT P0: the native ice residual is repaired but executable 0 g keeps Apply closed', () => {
     // OWNER ACCEPTANCE ADDENDUM (2026-07-24) made a hard-native residual
     // DIAGNOSTIC-ONLY; FIXTURE A used to end with sorbet ice_fraction
     // 50.67 < 51 and was refused at the door. CURRENT-DRAFT OPTIMIZATION P0
     // (2026-07-25) — DELIBERATE update: with every unlocked selected line
-    // adjustable, the optimizer now REPAIRS that residual, so the apply
-    // legitimately flows. The properties this fixture exists to guard —
-    // the unavailable inulin never returns, the exact 0 g lock is
-    // byte-preserved, the batch lands on target — are pinned on the WRITE.
+    // adjustable, the optimizer repairs that residual. The global executable
+    // invariant now supersedes the old write expectation: a locked 0 g row is
+    // diagnostic-only and Apply must refuse it honestly.
     useRecipeStore.setState({
       mode: 'classic',
       category: 'sorbet',
@@ -149,18 +148,19 @@ describe('FIXTURE A — inulin unavailable (tests 3/4/5/6)', () => {
     const preview = useConstraintStudioStore.getState().preview;
     expect(preview).not.toBeNull();
     expect(preview!.hardResidualMetrics).toEqual([]);
-    expect(preview!.diagnosticOnly).toBe(false);
+    expect(preview!.diagnosticOnly).toBe(true);
     useConstraintStudioStore.getState().applyPreview();
-    expect(useConstraintStudioStore.getState().blocked).toBeNull();
+    expect(useConstraintStudioStore.getState().blocked).toMatchObject({
+      code: 'practicalization_invalid',
+      reason: 'zero_gram_executable_line',
+    });
     const items = useRecipeStore.getState().items;
-    // The unavailable ingredient never returns and the exact lock is byte-kept.
+    // The unavailable ingredient never returns and the rejected draft is
+    // byte-preserved.
     expect(Object.is(items.find((i) => i.id === 'l-inulin')!.planned_grams, 0)).toBe(true);
-    // One row per canonical identity, batch exactly on target.
     const ids = items.map((i) => i.ingredient.id);
     expect(new Set(ids).size).toBe(ids.length);
-    expect(Math.abs(items.reduce((a, i) => a + i.planned_grams, 0) - 1000)).toBeLessThanOrEqual(
-      0.1,
-    );
+    expect(items.reduce((a, i) => a + i.planned_grams, 0)).toBeCloseTo(944.6, 6);
   });
 });
 

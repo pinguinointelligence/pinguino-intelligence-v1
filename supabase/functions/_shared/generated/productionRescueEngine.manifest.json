@@ -21,8 +21,8 @@
     "productionSessionSchema": 2
   },
   "bundle": {
-    "bytes": 304036,
-    "sha256": "ef6eb58f0bcdacd99671941ee0885e4e0f437de4e8ab41e9785c7d90c6f62259",
+    "bytes": 307320,
+    "sha256": "27ab383310bee0504ef9c3455e0d250aef8b9efbdff46acf28206d6fdd8ee869",
     "externalImports": 0,
     "dynamicImports": 0
   },
@@ -145,11 +145,11 @@
     },
     {
       "path": "src/features/formulation/stabilizerDosage.ts",
-      "sha256": "a76272378c5cb7b77046b34588a0adf0dc5aadfe9fa7ba5623699e330047d7d4"
+      "sha256": "933ae99425a0ef2af0110ca801bf132f3a123f888d823f7f8d3fd81d2cf2fab6"
     },
     {
       "path": "src/features/formulation/veganProfileConstraints.ts",
-      "sha256": "ede50b98cbb52cde25eab9b1d16ef4605d44f58df33ce5e208d25bcbc96dd57c"
+      "sha256": "0fcd1d0b1ba99b95515876884b623b225c11dc67332f730f3ef749007cbf5885"
     },
     {
       "path": "src/features/formulation/violationBands.ts",
@@ -157,7 +157,7 @@
     },
     {
       "path": "src/features/practical-recipe/practicalRecipe.ts",
-      "sha256": "402855295c1df3a1cb63bf031149dbca2290001d55ff6b42ca6be7d7403b3f94"
+      "sha256": "5ee881fc4571f54692cbc042ba64f681ef5eb5aa75d10adfcf8e143bb9eb2ac4"
     },
     {
       "path": "src/features/pro-core/recipeScaling.ts",
@@ -170,6 +170,10 @@
     {
       "path": "src/features/product-intelligence/mainEnvelope.ts",
       "sha256": "c306b5819075fba128a4059a48bc07cb8168bf855eb58aec2c4bf49d44f16ed3"
+    },
+    {
+      "path": "src/features/product-intelligence/ownerInulinPolicy.ts",
+      "sha256": "9797471aaac4b247b8e2dbfb1df253ca1c78f50a6fff6382c54da3c85c97cc54"
     },
     {
       "path": "src/features/product-intelligence/productBehaviorAccess.ts",
@@ -260,5 +264,5 @@
       "sha256": "5523e8a79f059b81594793260535fc3b4a85185fe9f5020de87c2c7782a44fdb"
     }
   ],
-  "sourceClosureSha256": "9d14ca3351a6bae24e5da5623b8ee27b0fb3f2023a2a0fc6a9d9e1a5bd4b6a5d"
+  "sourceClosureSha256": "9c30a2af1225d0f2339a4973e012bcf1c3dafa5440f1cda01f3f5c10fd587877"
 }

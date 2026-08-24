@@ -62,9 +62,11 @@ const line = (
   ...(mainRatioWeight === undefined ? {} : { main_ratio_weight: mainRatioWeight }),
 });
 
-const structuralOwnerLines = (grams: number): RecipeInput['items'] => {
+const structuralOwnerLines = (grams: number, targetBatchGrams: number): RecipeInput['items'] => {
   if (grams <= 0) return [];
-  const shares = [500, 100, 30, 100, 50, 15, 5] as const;
+  // Canonical Inulin stays at the published 2% minimum after proportional
+  // rescale; the structural total remains 800 g.
+  const shares = [495, 100, 30, 100, 50, 20, 5] as const;
   const definitions = [
     ['line-milk', 'milk_3_5'],
     ['line-cream', 'cream_30'],
@@ -75,6 +77,9 @@ const structuralOwnerLines = (grams: number): RecipeInput['items'] => {
     ['line-tara', 'tara_gum'],
   ] as const;
   const allocations = shares.map((share) => Math.floor((grams * share) / 800));
+  const governedInulinGrams = Math.ceil(targetBatchGrams * 0.02 - 1e-9);
+  allocations[0] = allocations[0]! - (governedInulinGrams - allocations[5]!);
+  allocations[5] = governedInulinGrams;
   allocations[0] = allocations[0]! + grams - allocations.reduce((sum, value) => sum + value, 0);
   return definitions.map(([id, ingredientId], index) =>
     line(id, findDemoIngredient(ingredientId)!, allocations[index]!, 'unlocked'),
@@ -98,7 +103,14 @@ const ownerInput = (
     line('line-strawberry', STRAWBERRIES, strawberryGrams, 'main', explicitMainWeights?.[1]),
     ...extra,
     ...structuralOwnerLines(
-      Math.max(0, batch - bananaGrams - strawberryGrams - extra.reduce((sum, item) => sum + item.planned_grams, 0)),
+      Math.max(
+        0,
+        batch -
+          bananaGrams -
+          strawberryGrams -
+          extra.reduce((sum, item) => sum + item.planned_grams, 0),
+      ),
+      batch,
     ),
   ],
 });
@@ -162,7 +174,10 @@ beforeEach(() => {
 describe('multi-main role is a set in the canonical recipe draft', () => {
   it('marking a second line Main never demotes the first; demoting one changes only that line', () => {
     useRecipeStore.setState({
-      items: [line('line-banana', BANANA, 100, 'unlocked'), line('line-strawberry', STRAWBERRIES, 100, 'unlocked')],
+      items: [
+        line('line-banana', BANANA, 100, 'unlocked'),
+        line('line-strawberry', STRAWBERRIES, 100, 'unlocked'),
+      ],
       productBehaviorSnapshots: {
         'line-banana': mainSnapshot('line-banana', BANANA.id),
         'line-strawberry': mainSnapshot('line-strawberry', STRAWBERRIES.id),
@@ -174,7 +189,10 @@ describe('multi-main role is a set in the canonical recipe draft', () => {
     expect(useRecipeStore.getState().items.map((item) => item.lock_type)).toEqual(['main', 'main']);
 
     useRecipeStore.getState().setLockType('line-banana', 'unlocked');
-    expect(useRecipeStore.getState().items.map((item) => item.lock_type)).toEqual(['unlocked', 'main']);
+    expect(useRecipeStore.getState().items.map((item) => item.lock_type)).toEqual([
+      'unlocked',
+      'main',
+    ]);
   });
 
   it('renders the existing crown for every Main line without redesigning it', () => {
@@ -188,7 +206,14 @@ describe('multi-main role is a set in the canonical recipe draft', () => {
     const render = (item: RecipeInput['items'][number]) =>
       renderToStaticMarkup(
         <IngredientRow
-          item={{ ...item, effective_grams: item.planned_grams, difference: 0, is_actual: false } as EffectiveRecipeItem}
+          item={
+            {
+              ...item,
+              effective_grams: item.planned_grams,
+              difference: 0,
+              is_actual: false,
+            } as EffectiveRecipeItem
+          }
           totalBatchG={200}
           actions={actions}
         />,
@@ -212,9 +237,9 @@ describe('owner runtime fixtures — identity and ratio are hard formulation int
 
     const metadata = {
       ...input,
-      items: input.items.map((item, index) => index === 0
-        ? { ...item, main_ratio_weight: 2 }
-        : item),
+      items: input.items.map((item, index) =>
+        index === 0 ? { ...item, main_ratio_weight: 2 } : item,
+      ),
     };
     expect(verifyMainIngredientIdentity(input, metadata)).toMatchObject({ ok: false });
   });
@@ -268,9 +293,13 @@ describe('owner runtime fixtures — identity and ratio are hard formulation int
     const mains = ['line-banana', 'line-strawberry', 'line-pistachio'].map(
       (id) => after.items.find((item) => item.id === id)!,
     );
-    expect(mains.every((item) => item && item.lock_type === 'main' && item.planned_grams > 0)).toBe(true);
-    expect(Math.max(...mains.map((item) => item!.planned_grams)) -
-      Math.min(...mains.map((item) => item!.planned_grams))).toBeLessThanOrEqual(1);
+    expect(mains.every((item) => item && item.lock_type === 'main' && item.planned_grams > 0)).toBe(
+      true,
+    );
+    expect(
+      Math.max(...mains.map((item) => item!.planned_grams)) -
+        Math.min(...mains.map((item) => item!.planned_grams)),
+    ).toBeLessThanOrEqual(1);
   });
 
   it('returns an explicit conflict for a Main-ratio + exact-lock batch impossibility', () => {
@@ -334,7 +363,7 @@ describe('owner runtime fixtures — identity and ratio are hard formulation int
       expect(remainingViolations).toEqual([]);
     }
     const mainTotal = banana.planned_grams + strawberry.planned_grams;
-    expect(Math.abs(banana.planned_grams - mainTotal * 2 / 3)).toBeLessThanOrEqual(1);
+    expect(Math.abs(banana.planned_grams - (mainTotal * 2) / 3)).toBeLessThanOrEqual(1);
     expect(Math.abs(strawberry.planned_grams - mainTotal / 3)).toBeLessThanOrEqual(1);
     expect(banana.planned_grams).toBeGreaterThanOrEqual(160);
     expect(banana.planned_grams).toBeLessThanOrEqual(300);
@@ -352,17 +381,17 @@ describe('owner runtime fixtures — identity and ratio are hard formulation int
           }
         : null;
     const committed = commitPreview(
-        input,
-        constraints,
-        result.preview,
-        '2026-08-10T00:01:00.000Z',
-        'direction-multi-main-locks',
-        [],
-        undefined,
-        null,
-        null,
-        consent,
-      );
+      input,
+      constraints,
+      result.preview,
+      '2026-08-10T00:01:00.000Z',
+      'direction-multi-main-locks',
+      [],
+      undefined,
+      null,
+      null,
+      consent,
+    );
     if (result.preview.diagnosticOnly) {
       expect(committed.ok).toBe(false);
     } else {
@@ -406,12 +435,9 @@ describe('owner runtime fixtures — identity and ratio are hard formulation int
     input.items[0] = { ...input.items[0]!, actual_grams: 100 };
     const result = buildOptimizePreview(input, NO, '2026-08-08T00:00:00.000Z');
     if (!result.ok) {
-      expect([
-        'already_clean',
-        'no_proposal',
-        'unsafe_proposal',
-        'best_safe_result',
-      ]).toContain(result.code);
+      expect(['already_clean', 'no_proposal', 'unsafe_proposal', 'best_safe_result']).toContain(
+        result.code,
+      );
       return; // an honest no-proposal/diagnostic stop is allowed
     }
     const banana = result.preview.proposedInput.items.find((item) => item.id === 'line-banana')!;
@@ -431,11 +457,9 @@ describe('persistence, Apply and Undo boundaries', () => {
     });
     const reopened = buildRecipeInput(useRecipeStore.getState());
     expect(
-      reopened.items.filter((item) => item.lock_type === 'main').map((item) => [
-        item.id,
-        item.ingredient.canonical_ingredient_id,
-        item.lock_type,
-      ]),
+      reopened.items
+        .filter((item) => item.lock_type === 'main')
+        .map((item) => [item.id, item.ingredient.canonical_ingredient_id, item.lock_type]),
     ).toEqual([
       ['line-banana', 'PI-ING-000345', 'main'],
       ['line-strawberry', 'PI-ING-001553', 'main'],
@@ -458,11 +482,11 @@ describe('persistence, Apply and Undo boundaries', () => {
 
     useConstraintStudioStore.getState().undoLastApply();
     const restored = useRecipeStore.getState().items;
-    expect(restored.filter((item) => item.lock_type === 'main').map((item) => [
-      item.id,
-      item.planned_grams,
-      item.lock_type,
-    ])).toEqual([
+    expect(
+      restored
+        .filter((item) => item.lock_type === 'main')
+        .map((item) => [item.id, item.planned_grams, item.lock_type]),
+    ).toEqual([
       ['line-banana', 100, 'main'],
       ['line-strawberry', 100, 'main'],
     ]);
@@ -472,7 +496,9 @@ describe('persistence, Apply and Undo boundaries', () => {
     useRecipeStore.getState().loadRecipeInput(ownerInput());
     useRecipeStore.getState().markIngredientUnavailable('line-banana');
     expect(useRecipeStore.getState().items.some((item) => item.id === 'line-banana')).toBe(false);
-    expect(useRecipeStore.getState().items.some((item) => item.id === 'line-strawberry')).toBe(true);
+    expect(useRecipeStore.getState().items.some((item) => item.id === 'line-strawberry')).toBe(
+      true,
+    );
     expect(useRecipeStore.getState().unavailableMainIngredientIds).toEqual([
       BANANA.canonical_ingredient_id,
     ]);

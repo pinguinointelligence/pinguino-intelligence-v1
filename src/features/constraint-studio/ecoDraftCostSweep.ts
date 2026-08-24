@@ -5,7 +5,7 @@ import {
   type RecipeInput,
 } from '@/engine';
 import type { ConstraintSet } from '@/features/recipe-constraints';
-import { violatesApprovedStabilizerDosage } from '@/features/formulation/stabilizerDosage';
+import { violatesInternalStabilizerProfileAuthority } from '@/features/formulation/stabilizerDosage';
 import { isMaterialUserIntentDeviation } from '@/features/formulation/userLineIntent';
 import { verifyEcoFlavourProtection } from '@/features/formulation-strategy/flavourFloor';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
@@ -163,7 +163,8 @@ export function sweepEcoDraftCost(args: EcoDraftCostSweepArgs): DraftSweepResult
     );
     for (const toGrams of affordableGrams) {
       const actions = draftAdjustmentActions(candidate, toGrams);
-      if (actions.length === 0 || violatesApprovedStabilizerDosage(state, actions[0]!)) continue;
+      if (actions.length === 0 || violatesInternalStabilizerProfileAuthority(state, actions[0]!))
+        continue;
       const move: DraftAdjustmentMove = {
         lineId: candidate.lineId,
         ingredientId: candidate.ingredientId,
