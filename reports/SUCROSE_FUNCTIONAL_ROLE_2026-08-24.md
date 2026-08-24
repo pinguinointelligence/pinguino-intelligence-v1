@@ -333,7 +333,65 @@ Mapper is still null afterwards.
 
 ---
 
-## 7. Adjacent defects found, deliberately NOT fixed here
+## 7. SERVED QA — staging, TEST PRO (`pro@pro.com`)
+
+Deploy `dpl_8MdDjcXEjUHomwt4r2UYdqVW3kU6` **READY**, commit `ef8d514`, bundle
+`index-DoNnYPSq.js`, https://staging.pinguinoai.com.
+
+### A. Ordinary milk gelato (canonical Gelato starter, made over-sweet)
+
+Starter 672 / 130 / 35 / 130 / 30 / 3 = 1000 g; Sucrose typed up to 185 g
+(1055 g draft).
+
+| | |
+| --- | --- |
+| **Źródło propozycji** | **`kanoniczny solver korekt PI + wyrównanie partii`** — the LOCAL corrector, **no `milk_base_v1`** |
+| proposal | milk 672→453 · cream 130→345 · SMP 35→46 · **sucrose 185→112** · dextrose 30→41 · Tara 3 **BEZ ZMIAN** |
+| batch | 1055 g → **1000 g**, "Suma składników zgodna z docelową masą partii" |
+| bands | Parametry poza optymalnym zakresem **3 → 0** |
+| Apply | 453/345/46/112/41/3 = **1000 g**, **0** zero-gram rows, **Score 10** "Wyjątkowo dobrze dopasowana" |
+| added / removed | none / none |
+
+### B. Polish Lost `Śmietankowe na żółtkach`, yolk UNLOCKED
+
+Source typed exactly as the ticket specifies: 595 / 180 / 40 / 30 / 90 / 50 /
+20 / 2 = **1007 g**, target 1000 g, −11 °C, OPTIMAL, Direction 0/0.
+
+| | |
+| --- | --- |
+| **Źródło propozycji** | **`kanoniczny solver korekt PI + wyrównanie partii`** — **the route change, served.** Before this ticket it read `milk_base_v1 + kanoniczny solver korekt PI` through `full_formulation`. |
+| dried yolk | 40 g → **25 g** — never the served 1 g regression; canonical `EGGS CHICKEN YOLK DRIED` preserved, no fresh-yolk substitution |
+| Inulin | 20 g → 180 g (see the observation below) |
+| unchanged | SKIMMED MILK 30 g, TARA GUM 2 g |
+| batch | 1007 g → **1000 g** · bands **1 → 0** |
+| Apply | 567/90/30/81/25/2/180/25 = **1000 g**, **0** zero-gram rows, **Score 10** |
+
+### C. Polish Lost, yolk LOCKED at 40 g
+
+Same source draft, yolk hard-locked.
+
+| | |
+| --- | --- |
+| **Źródło formulacji** | `milk_base_v1 + kanoniczny solver korekt PI` — the **constrained reformulation** route, which is correct: an explicit hard lock is a global redistribution, and `sucroseFunctionalRole.test.ts` pins exactly that |
+| CHRONIONE PRZEZ APPLY | Blokady **1** · Główne 0 · Wymagane 0 · Wykluczenia 0 |
+| dried yolk | **40 g · BEZ ZMIAN · ZABLOKOWANE** |
+| Inulin | **20 g · BEZ ZMIAN** (owner minimum held) |
+| batch | 1007 g → **1000 g** · bands **1 → 0** |
+| Apply | 460/268/45/138/27/2/40/20 = **1000 g**, **0** zero-gram rows |
+
+### Served observation for the owner (not a regression)
+
+On the UNLOCKED Lost case the local corrector lifts Inulin to 180 g (18 % of the
+batch), outside the 2–8 % owner Inulin window. That window is **informational**
+— `stabilizerContractRegression.test.ts` records that "the band that actually
+holds is PINGÜINO's own stabilizer-system authority" — and the behaviour is
+**not** new: on `origin/staging`, through the template route, the same recipe
+produced Inulin 132 g. Worth an owner decision on whether the Inulin dose window
+should become enforced; it is out of scope here.
+
+---
+
+## 8. Adjacent defects found, deliberately NOT fixed here
 
 1. **A 0 g stabilizer line survives Apply on the local route.**
    `isOmittableUnusedLine` deliberately refuses to omit template-controlled
@@ -350,7 +408,7 @@ Mapper is still null afterwards.
 
 ---
 
-## 8. Tests
+## 9. Tests
 
 New:
 
