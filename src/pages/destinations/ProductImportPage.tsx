@@ -46,8 +46,10 @@ import {
   readCsvFile,
 } from './productImportController';
 import { runProductImport, type RunImportResult } from './runProductImport';
+import type { ImportProgress } from '@/services/productCatalogImport';
 import {
   ImportActionBar,
+  ImportProgressView,
   ImportSummaryView,
   IntimportLocalIntelligenceView,
   IntimportPreview,
@@ -79,6 +81,11 @@ export function ProductImportPage() {
   const [mapperNotice, setMapperNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [importResult, setImportResult] = useState<RunImportResult | null>(null);
+  const [progress, setProgress] = useState<ImportProgress | null>(null);
+  // Wall-clock of the last completed row. The page schedules nothing: progress
+  // events are themselves the liveness signal, arriving about once a second, and
+  // a stalled import is visible as a timestamp that stops advancing.
+  const [lastProgressAt, setLastProgressAt] = useState<string | null>(null);
   const [importPlan, setImportPlan] = useState<{
     total: number;
     engineUsable: number;
@@ -97,6 +104,8 @@ export function ProductImportPage() {
     setEnrichSummary(null);
     setEnrichError(null);
     setImportResult(null);
+    setProgress(null);
+    setLastProgressAt(null);
   };
 
   const onFile = async (file: File | undefined) => {
@@ -247,7 +256,14 @@ export function ProductImportPage() {
         review: rows.filter((entry) => entry.state === 'REVIEW').length,
       });
     }
-    const outcome = await runProductImport(candidates);
+    setProgress(null);
+    setLastProgressAt(null);
+    const outcome = await runProductImport(candidates, {
+      onProgress: (next) => {
+        setProgress(next);
+        setLastProgressAt(new Date().toLocaleTimeString('pl-PL'));
+      },
+    });
     setBusy(false);
     setImportResult(outcome);
   };
@@ -369,12 +385,39 @@ export function ProductImportPage() {
             }}
             onSignIn={openAuthModal}
           />
+          {progress || busy ? (
+            <div className="mt-8">
+              <ImportProgressView
+                progress={
+                  progress ?? {
+                    processed: 0,
+                    total: importPlan?.total ?? 0,
+                    created: 0,
+                    existing: 0,
+                    skipped: 0,
+                    failed: 0,
+                    currentName: null,
+                  }
+                }
+                lastUpdateAt={lastProgressAt}
+                done={!busy && importResult?.ok === true}
+                stopped={
+                  !busy && importResult?.ok === true && importResult.summary.stopped
+                    ? {
+                        reason: importResult.summary.stopped.reason,
+                        remaining: importResult.summary.stopped.remaining,
+                      }
+                    : null
+                }
+              />
+            </div>
+          ) : null}
           {importPlan ? (
             <p className="text-xs text-[#8a7f6d]">
               Product Intelligence: {importPlan.total} zapisanych do katalogu —{' '}
-              {importPlan.engineUsable} gotowych dla Engine, {importPlan.review} do
-              uzupełnienia. Bez informacji o dawkowaniu producenta:{' '}
-              {importPlan.dosageUnproven} (informacyjnie — nie blokuje).
+              {importPlan.engineUsable} gotowych dla Engine, {importPlan.review} do uzupełnienia.
+              Bez informacji o dawkowaniu producenta: {importPlan.dosageUnproven} (informacyjnie —
+              nie blokuje).
             </p>
           ) : null}
           {importResult ? (

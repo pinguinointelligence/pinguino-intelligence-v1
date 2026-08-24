@@ -198,15 +198,17 @@ describe('ImportActionBar — auth gating', () => {
 });
 
 describe('runProductImport — service seam (runMatch stays off)', () => {
-  it('calls importProductCatalog exactly once with the candidates and NO options object', async () => {
+  it('calls importProductCatalog exactly once with the candidates, never enabling matching', async () => {
     const summary = makeSummary();
     h.importProductCatalog.mockResolvedValue(summary);
     const candidates = parseIntake(CSV_ONE, 'generic').candidates;
     const result = await runProductImport(candidates);
     expect(result).toEqual({ ok: true, summary });
     expect(h.importProductCatalog).toHaveBeenCalledTimes(1);
-    expect(h.importProductCatalog).toHaveBeenCalledWith(candidates);
-    expect(h.importProductCatalog.mock.calls[0]).toHaveLength(1); // no second (options) argument
+    expect(h.importProductCatalog).toHaveBeenCalledWith(candidates, undefined);
+    // Progress may be forwarded, but matching must never be switched on here.
+    const options = h.importProductCatalog.mock.calls[0]![1] as { runMatch?: boolean } | undefined;
+    expect(options?.runMatch).toBeUndefined();
   });
 
   it('returns a calm error result when the service rejects (no crash)', async () => {

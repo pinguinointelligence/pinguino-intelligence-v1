@@ -487,3 +487,82 @@ export function IntimportLocalIntelligenceView({
     </div>
   );
 }
+
+/**
+ * What the import is doing, while it does it.
+ *
+ * Sequential canonical ingest runs about a row per second, so a real catalogue
+ * takes many minutes. A single "Importowanie…" over that span is
+ * indistinguishable from a hang, and the owner has no way to tell progress from
+ * paralysis. This shows the counts moving, the row in flight, and how long ago
+ * the last one landed.
+ */
+export function ImportProgressView({
+  progress,
+  lastUpdateAt,
+  done = false,
+  stopped = null,
+}: {
+  progress: {
+    processed: number;
+    total: number;
+    created: number;
+    existing: number;
+    skipped: number;
+    failed: number;
+    currentName: string | null;
+  };
+  /** Wall-clock of the last completed row, or null before the first one lands. */
+  lastUpdateAt: string | null;
+  done?: boolean;
+  stopped?: { reason: string; remaining: number } | null;
+}) {
+  const pct = progress.total > 0 ? Math.round((progress.processed / progress.total) * 100) : 0;
+  const heading = stopped
+    ? 'IMPORT ZATRZYMANY'
+    : done
+      ? 'IMPORT ZAKOŃCZONY'
+      : 'IMPORTOWANIE PRODUKTÓW';
+  return (
+    <div className="space-y-4" data-testid="intimport-progress">
+      <SectionLabel tone="ivory">{heading}</SectionLabel>
+      <p className="text-sm text-ivory/70">
+        {progress.processed} / {progress.total} — {pct}%
+      </p>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-ivory/10">
+        <div
+          className={cn('h-full rounded-full', stopped ? 'bg-status-risky' : 'bg-ivory/70')}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-6 sm:grid-cols-5">
+        <CountStat label="Utworzone" value={progress.created} />
+        <CountStat label="Ponownie użyte" value={progress.existing} />
+        <CountStat label="Pominięte" value={progress.skipped} />
+        <CountStat label="Nieudane" value={progress.failed} />
+        <CountStat label="Pozostało" value={Math.max(0, progress.total - progress.processed)} />
+      </div>
+      {!done && !stopped ? (
+        <p className="text-sm text-ivory/60">
+          {progress.currentName ? `Bieżący produkt: ${progress.currentName}` : 'Przetwarzanie…'}
+        </p>
+      ) : null}
+      {!done && !stopped ? (
+        <p className="text-xs text-[#8a7f6d]" data-testid="intimport-progress-heartbeat">
+          {lastUpdateAt === null
+            ? 'Oczekiwanie na odpowiedź serwera…'
+            : `Ostatnia aktualizacja: ${lastUpdateAt}`}
+        </p>
+      ) : null}
+      {stopped ? (
+        <div className="space-y-1" data-testid="intimport-progress-stopped">
+          <p className="text-sm text-status-risky">Powód: {stopped.reason}</p>
+          <p className="text-xs text-[#8a7f6d]">
+            {stopped.remaining} wierszy nie zostało przetworzonych. Po usunięciu przyczyny można
+            bezpiecznie wznowić — produkty już zapisane nie zostaną utworzone ponownie.
+          </p>
+        </div>
+      ) : null}
+    </div>
+  );
+}

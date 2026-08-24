@@ -264,3 +264,42 @@ describe('importProductCatalog — identity preflight and re-import (§15/§16)'
     expect(summary.rowResults[0]!.outcome).toBe('existing');
   });
 });
+
+describe('importProductCatalog — progress and systemic failure', () => {
+  it('reports progress after every row', async () => {
+    const seen: number[] = [];
+    await importProductCatalog(
+      [candidate({ rowIndex: 1 }), candidate({ rowIndex: 2, forceDistinctIdentity: true })],
+      { onProgress: (p) => seen.push(p.processed) },
+    );
+    expect(seen).toEqual([1, 2]);
+  });
+
+  it('stops after repeated identical failures instead of failing 800 rows the same way', async () => {
+    h.createWithIdentityResult.mockRejectedValue(new Error('limit zapisów (daily)'));
+    const rows = Array.from({ length: 40 }, (_, i) =>
+      candidate({ rowIndex: i + 1, forceDistinctIdentity: true }),
+    );
+    const summary = await importProductCatalog(rows, { stopAfterRepeatedFailures: 5 });
+    expect(summary.failed).toBe(5);
+    expect(summary.stopped?.reason).toContain('daily');
+    expect(summary.stopped?.remaining).toBe(35);
+    // The remaining rows were never attempted, so they can be resumed cleanly.
+    expect(h.createWithIdentityResult).toHaveBeenCalledTimes(5);
+  });
+
+  it('does not stop on scattered, differing failures', async () => {
+    let n = 0;
+    h.createWithIdentityResult.mockImplementation(() => {
+      n += 1;
+      if (n % 2 === 0) return Promise.reject(new Error(`inny błąd ${n}`));
+      return Promise.resolve({ product: makeRow(), ingest: { kind: 'created' } });
+    });
+    const rows = Array.from({ length: 12 }, (_, i) =>
+      candidate({ rowIndex: i + 1, forceDistinctIdentity: true }),
+    );
+    const summary = await importProductCatalog(rows, { stopAfterRepeatedFailures: 5 });
+    expect(summary.stopped).toBeUndefined();
+    expect(summary.rowResults).toHaveLength(12);
+  });
+});

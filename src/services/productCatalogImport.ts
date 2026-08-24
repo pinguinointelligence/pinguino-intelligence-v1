@@ -28,6 +28,33 @@ export interface ImportProductCatalogOptions {
   continueOnError?: boolean;
   /** @deprecated Canonical ingest always creates/retains the authoritative immutable version. */
   snapshot?: boolean;
+  /**
+   * Called after every row, so a long import can show what it is doing instead
+   * of one spinner. Sequential ingest takes about a second per row: 800 rows is
+   * a quarter of an hour, and silence for that long is indistinguishable from a
+   * hang.
+   */
+  onProgress?: (progress: ImportProgress) => void;
+  /**
+   * Stop after this many CONSECUTIVE failures carrying the same message
+   * (default 5). A systemic refusal — an exhausted quota, a lost session —
+   * fails every remaining row the same way, and grinding through 800 of them
+   * helps nobody and buries the reason.
+   */
+  stopAfterRepeatedFailures?: number;
+}
+
+export interface ImportProgress {
+  processed: number;
+  total: number;
+  created: number;
+  existing: number;
+  inBatchDuplicates: number;
+  skipped: number;
+  failed: number;
+  /** The row just handled, for a live "current product" line. */
+  currentName: string | null;
+  currentRowIndex: number;
 }
 
 export type ImportRowOutcome = 'created' | 'existing' | 'in_batch_duplicate' | 'skipped' | 'failed';
@@ -61,6 +88,12 @@ export interface ProductImportSummary {
   /** BATCH-level (orchestration) warnings; per-row warnings live in rowResults[].warnings. */
   warnings: string[];
   rowResults: ImportRowResult[];
+  /**
+   * Set when the run stopped early on a repeated systemic failure. `remaining`
+   * rows were never attempted, so they are neither imported nor failed — and a
+   * resume can pick them up without recreating anything.
+   */
+  stopped?: { reason: string; afterRowIndex: number; remaining: number };
 }
 
 function errorMessage(error: unknown): string {
@@ -79,6 +112,9 @@ export async function importProductCatalog(
 ): Promise<ProductImportSummary> {
   const runMatch = options.runMatch === true;
   const continueOnError = options.continueOnError !== false;
+  const stopAfter = options.stopAfterRepeatedFailures ?? 5;
+  let lastFailure: string | null = null;
+  let repeatedFailures = 0;
 
   const summary: ProductImportSummary = {
     total: candidates.length,
@@ -113,6 +149,7 @@ export async function importProductCatalog(
       if (candidate.skipReason) row.skipReason = candidate.skipReason;
       summary.skipped += 1;
       summary.rowResults.push(row);
+      emitProgress(candidate);
       continue;
     }
 
@@ -126,6 +163,7 @@ export async function importProductCatalog(
       row.duplicateOfRowIndex = firstRowIndex;
       summary.inBatchDuplicates += 1;
       summary.rowResults.push(row);
+      emitProgress(candidate);
       continue;
     }
     seenKeys.set(key, candidate.rowIndex);
@@ -151,6 +189,8 @@ export async function importProductCatalog(
       summary.productCodes.push(product.product_code);
 
       summary.rowResults.push(row);
+      lastFailure = null;
+      repeatedFailures = 0;
     } catch (error) {
       // 8. isolate a create/lookup failure
       row.outcome = 'failed';
@@ -158,8 +198,39 @@ export async function importProductCatalog(
       summary.failed += 1;
       summary.rowResults.push(row);
       if (!continueOnError) throw error;
+      repeatedFailures = row.error === lastFailure ? repeatedFailures + 1 : 1;
+      lastFailure = row.error;
+    }
+
+    emitProgress(candidate);
+
+    // The same refusal several times running is systemic, not bad luck. Stop and
+    // say why, instead of repeating it for every remaining row.
+    if (stopAfter > 0 && repeatedFailures >= stopAfter) {
+      const handled = summary.rowResults.length;
+      summary.stopped = {
+        reason: lastFailure ?? 'powtarzający się błąd zapisu',
+        afterRowIndex: candidate.rowIndex,
+        remaining: candidates.length - handled,
+      };
+      break;
     }
   }
 
   return summary;
+
+  function emitProgress(candidate: ProductIntakeCandidate): void {
+    options.onProgress?.({
+      processed: summary.rowResults.length,
+      total: candidates.length,
+      created: summary.created,
+      existing: summary.existingDuplicates,
+      inBatchDuplicates: summary.inBatchDuplicates,
+      skipped: summary.skipped,
+      failed: summary.failed,
+      currentName:
+        candidate.insert.product_name_display ?? candidate.insert.product_name_internal ?? null,
+      currentRowIndex: candidate.rowIndex,
+    });
+  }
 }

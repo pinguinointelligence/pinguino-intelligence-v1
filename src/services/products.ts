@@ -66,6 +66,39 @@ export interface ProductCreateResult {
 /** Create through the canonical ingest transaction and preserve the DB-owned
  * outcome. Callers must not guess `created` vs `existing` from an owner-scoped
  * browser precheck. */
+/**
+ * Say what the server actually refused.
+ *
+ * A submission with no product id is not a mystery: the ingest reports its
+ * `kind`, and a rate-limited one also reports WHICH quota and when it frees up.
+ * Reporting all of that as "did not return a canonical product" hid a daily
+ * quota behind a sentence that reads like a bug, and an owner watching an import
+ * stop at row 11 had no way to learn the real reason.
+ */
+export function productIngestRefusal(ingest: {
+  kind?: string | null;
+  rateReason?: string | null;
+  retryAt?: string | null;
+  missingFields?: string[] | null;
+  challengeRequired?: boolean | null;
+}): string {
+  const parts: string[] = [];
+  if (ingest.kind === 'rate_limited') {
+    parts.push(`Ingest odmówił: limit zapisów (${ingest.rateReason ?? 'nieznany'}).`);
+    if (ingest.retryAt) parts.push(`Można ponowić po ${ingest.retryAt}.`);
+    if (ingest.challengeRequired) parts.push('Wymagane potwierdzenie bezpieczeństwa.');
+  } else if (ingest.kind === 'blocked') {
+    parts.push('Ingest zablokował produkt.');
+    const missing = ingest.missingFields ?? [];
+    if (missing.length > 0) parts.push(`Brakujące pola: ${missing.join(', ')}.`);
+  } else if (ingest.kind === 'likely_duplicate') {
+    parts.push('Ingest uznał produkt za prawdopodobny duplikat i czeka na decyzję.');
+  } else {
+    parts.push(`Ingest nie zwrócił produktu kanonicznego (kind=${ingest.kind ?? 'brak'}).`);
+  }
+  return parts.join(' ');
+}
+
 export async function createProductWithResult(
   payload: ProductInsert,
   options: CreateProductIdentityOptions = {},
@@ -85,7 +118,7 @@ export async function createProductWithResult(
     idempotencyKey,
     duplicateDecision: options.duplicateDecision ?? null,
   });
-  if (!ingest.productId) throw new Error('Product ingest did not return a canonical product.');
+  if (!ingest.productId) throw new Error(productIngestRefusal(ingest));
   const product = await getProduct(ingest.productId);
   if (!product) throw new Error('Canonical product is not visible after ingest.');
   return { product, ingest };
