@@ -843,7 +843,7 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
           {state.assets.length === 0 ? (
             <p className="py-4 text-center text-sm text-stone-500">
               Nie masz produktu pod ręką? Przeciągnij, wklej lub dodaj zdjęcia etykiety — trafią do
-              tej samej sesji co skan (§11).
+              tej samej sesji co skan.
             </p>
           ) : (
             <div className="grid grid-cols-4 gap-2">

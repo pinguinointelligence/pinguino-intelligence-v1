@@ -13,7 +13,7 @@ import {
 const fact = (
   field: string,
   value: string,
-  authority = 'MANUFACTURER_OFFICIAL',
+  authority = 'OFFICIAL_MANUFACTURER',
   sourceUrl = 'https://www.coca-cola.com/pl/pl/brands/coca-cola-zero',
 ) => ({ field, value, sourceUrl, sourceAuthorityClass: authority, sourceTitle: 'Coca-Cola Zero' });
 
@@ -116,16 +116,22 @@ describe('the exact GTIN source fills gaps and never overwrites a label', () => 
   });
 
   it('classifies the source from the authority the server derived, not the model claim', () => {
-    const registry = scanResultFromLookupFacts([
-      fact('ingredients', 'Woda', 'STRUCTURED_DATABASE', 'https://world.openfoodfacts.org/x'),
-    ])!;
-    const retailer = scanResultFromLookupFacts([
-      fact('ingredients', 'Woda', 'RECOGNIZED_RETAILER', 'https://retailer.example/x'),
-    ])!;
-    expect((registry.externalSources as { sourceType: string }[])[0]?.sourceType).toBe(
-      'barcode_registry',
-    );
-    expect((retailer.externalSources as { sourceType: string }[])[0]?.sourceType).toBe('retailer');
+    const sourceTypeFor = (authority: string) =>
+      (
+        scanResultFromLookupFacts([
+          fact('ingredients', 'Woda', authority, 'https://example.com/x'),
+        ])!.externalSources as { sourceType: string }[]
+      )[0]?.sourceType;
+    // The keys are the canonical authority classes. The first served lookup mapped an
+    // official specification PDF to „web_search" because they were not.
+    expect(sourceTypeFor('OFFICIAL_MANUFACTURER')).toBe('manufacturer');
+    expect(sourceTypeFor('OFFICIAL_TECHNICAL_PDF')).toBe('manufacturer');
+    expect(sourceTypeFor('OFFICIAL_BRAND')).toBe('manufacturer');
+    expect(sourceTypeFor('STRUCTURED_PRODUCT_DATABASE')).toBe('barcode_registry');
+    expect(sourceTypeFor('AUTHORITATIVE_RETAILER')).toBe('retailer');
+    expect(sourceTypeFor('OFFICIAL_PRIVATE_LABEL')).toBe('retailer');
+    expect(sourceTypeFor('OTHER_WEB')).toBe('web_search');
+    expect(sourceTypeFor('OWNER_PROVIDED_SOURCE')).toBe('web_search');
   });
 
   it('returns nothing at all when the source found nothing', () => {
@@ -180,9 +186,9 @@ describe('the exact GTIN source fills gaps and never overwrites a label', () => 
       '5449000131805',
     );
     const validation = validateServerResult(merged, ['11111111-1111-4111-8111-111111111111']);
-    expect(validation.missingCriticalFields.filter((field) => field.startsWith('evidence_'))).toEqual(
-      [],
-    );
+    expect(
+      validation.missingCriticalFields.filter((field) => field.startsWith('evidence_')),
+    ).toEqual([]);
     expect(validation.missingCriticalFields).not.toContain('ingredientsText');
     expect(validation.missingCriticalFields).not.toContain('allergen_confirmation');
   });

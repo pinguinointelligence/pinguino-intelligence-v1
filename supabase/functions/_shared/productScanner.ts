@@ -1,3 +1,5 @@
+import type { SourceAuthorityClass } from '../../../src/features/product-intelligence/sourceAuthority.ts';
+
 export const PRODUCT_SCAN_SCHEMA_VERSION = 'gellatti_product_scan_v1';
 
 const nullableNumber = { type: ['number', 'null'] };
@@ -937,13 +939,23 @@ const nutritionBasisFact = (value: string): 'per_100g' | 'per_100ml' | null => {
   return null;
 };
 
-const SOURCE_TYPE_BY_AUTHORITY: Record<string, string> = {
-  MANUFACTURER_OFFICIAL: 'manufacturer',
-  BRAND_OFFICIAL: 'manufacturer',
-  TECHNICAL_DOCUMENT: 'manufacturer',
-  STRUCTURED_DATABASE: 'barcode_registry',
-  RECOGNIZED_RETAILER: 'retailer',
-};
+/**
+ * The scan schema's source vocabulary, keyed by the authority class the SERVER derived
+ * from the real URL. Typed against the canonical class union on purpose: the first
+ * served lookup mapped every fact to `web_search` because these keys were written from
+ * memory and matched nothing — provenance silently flattened to „some web page".
+ */
+const SOURCE_TYPE_BY_AUTHORITY: Readonly<Record<SourceAuthorityClass, string>> = Object.freeze({
+  OFFICIAL_MANUFACTURER: 'manufacturer',
+  OFFICIAL_BRAND: 'manufacturer',
+  OFFICIAL_TECHNICAL_PDF: 'manufacturer',
+  OFFICIAL_PRIVATE_LABEL: 'retailer',
+  AUTHORITATIVE_RETAILER: 'retailer',
+  STRUCTURED_PRODUCT_DATABASE: 'barcode_registry',
+  OWNER_PROVIDED_SOURCE: 'web_search',
+  OTHER_WEB: 'web_search',
+  UNKNOWN: 'web_search',
+});
 
 /**
  * Turn provider facts into a partial scan result.
@@ -970,7 +982,7 @@ export function scanResultFromLookupFacts(
 
   const remember = (fact: Record<string, unknown>, field: string) => {
     const url = typeof fact.sourceUrl === 'string' ? fact.sourceUrl : null;
-    const authority = String(fact.sourceAuthorityClass ?? '');
+    const authority = String(fact.sourceAuthorityClass ?? '') as SourceAuthorityClass;
     const sourceType = SOURCE_TYPE_BY_AUTHORITY[authority] ?? 'web_search';
     const key = `${sourceType}:${url ?? ''}`;
     const existing = bySource.get(key);
