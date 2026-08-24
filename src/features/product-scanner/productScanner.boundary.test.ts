@@ -5,7 +5,12 @@ import { describe, expect, it } from 'vitest';
 const read = (path: string) => readFileSync(resolve(process.cwd(), path), 'utf8');
 
 describe('Product Scanner server/client/security boundary', () => {
-  const ui = read('src/pages/products/ProductScannerV1Page.tsx');
+  // The scanning UI is one component entered from two places — the standalone page and
+  // the recipe's „Dodaj składnik" (§37) — so the client boundary is both files together.
+  const ui = [
+    read('src/pages/products/ProductScannerV1Page.tsx'),
+    read('src/features/product-scanner/LiveProductScanner.tsx'),
+  ].join('\n');
   const service = read('src/services/productScanner.ts');
   const analyze = read('supabase/functions/product-scan-analyze/index.ts');
   const finalize = read('supabase/functions/product-scan-finalize/index.ts');
@@ -17,8 +22,8 @@ describe('Product Scanner server/client/security boundary', () => {
     expect(ui).toContain("void addFiles(files, 'paste')");
     expect(ui).toContain("void addFiles([...event.dataTransfer.files], 'drop')");
     expect(ui).toContain('camera_auto');
-    expect(ui).toContain('bestFrameRef');
-    expect(ui).toContain('Zastąp');
+    expect(ui).toContain('liveCaptureDecision');
+    expect(ui).toContain('Usuń');
     expect(ui).toContain('Skanuj kamerą');
     expect(ui).toContain('Dodaj zdjęcia');
     expect(ui).not.toMatch(/MediaRecorder|RTCPeerConnection|webrtc/i);
@@ -129,11 +134,57 @@ describe('Product Scanner server/client/security boundary', () => {
     expect(analyze).not.toMatch(/console\.(?:log|info|debug|error)/);
   });
 
+  it('asks the code, the catalogue and the exact source before it spends anything', () => {
+    // The order IS the fix. Everything free happens before the first paid call.
+    expect(analyze.indexOf("mode === 'ean_lookup'")).toBeLessThan(
+      analyze.indexOf('reserve_product_scan_analysis_v1'),
+    );
+    expect(analyze).toContain('reserve_product_scan_ean_lookup_v1');
+    expect(analyze).toContain("researchStep: { kind: 'GTIN_LOOKUP'");
+    expect(analyze).toContain('lookup_requires_barcode');
+    // The lookup reaches the source through the dedicated provider function, which owns
+    // its own flag, caps and source-authority classification.
+    expect(analyze).toContain('/functions/v1/intimport-enrich');
+    expect(analyze).not.toMatch(/api\.openai\.com[\s\S]{0,400}ean_lookup/);
+  });
+
+  it('keeps Scanner general web search opt-in and off the client path', () => {
+    // `allowWeb: true` used to be sent on EVERY ordinary scan, held back only by a flag
+    // whose default was ON. The client no longer sends it and the server no longer reads it.
+    expect(service).not.toContain('allowWeb');
+    expect(ui).not.toContain('allowWeb');
+    expect(analyze).toContain(
+      "Deno.env.get('PRODUCT_SCANNER_WEB_SEARCH_ENABLED') === 'true'",
+    );
+    expect(analyze).not.toContain('body.allowWeb === true');
+  });
+
+  it('feeds uploaded photos through the very same session and pipeline', () => {
+    expect(ui).toContain("void addFiles(files, 'paste')");
+    expect(ui).toContain("addFiles([...event.dataTransfer.files], 'drop')");
+    expect(ui).toContain("void addFiles(files, 'gallery')");
+    // One analyse path, one finalize path — there is no second ingestion pipeline.
+    expect(ui.match(/analyzeProductImages\(/g)?.length).toBe(1);
+    expect(ui.match(/finalizeProductScan\(/g)?.length).toBe(1);
+  });
+
+  it('creates products through the shared canonical ingest, deduplicating on the GTIN', () => {
+    expect(finalize).toContain("await service.rpc('ingest_product_v1'");
+    expect(finalize).toContain("const source = text(input.ean) ? 'barcode' : 'manual'");
+    expect(finalize).toContain("provenance: 'product_scanner_v1'");
+    // No scanner-specific physical estimate is invented on the way in.
+    expect(finalize).not.toMatch(/estimate|inference|mapper_value/i);
+  });
+
   it('shows the required privacy message before cloud analysis', () => {
     expect(ui).toContain('Zdjęcia etykiety mogą zostać przesłane do analizy produktu.');
     expect(ui).toContain('Ceny, dostawcy, notatki i stan magazynowy nie są publikowane.');
-    expect(ui.indexOf('if (!privacyAccepted)')).toBeLessThan(
+    expect(ui.indexOf('if (!current.privacyAccepted)')).toBeLessThan(
       ui.indexOf('const response = await analyzeProductImages'),
     );
+    // Live capture uploads on its own, so consent is taken BEFORE the camera opens —
+    // not after the frames the owner never chose to send already exist.
+    expect(ui).toContain('if (!session.current.privacyAccepted)');
+    expect(ui).toContain('disabled={!state.privacyAccepted}');
   });
 });

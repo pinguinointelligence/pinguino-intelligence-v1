@@ -14,7 +14,11 @@ import type { EngineIngredient } from '@/engine';
 import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
 import { getEngineApprovedIngredientById } from '@/services/ingredients';
-import { markCurrentMapperCatalogProductUsed } from '@/services/globalCatalog';
+import { markCurrentMapperCatalogProductUsed, searchProducts } from '@/services/globalCatalog';
+import {
+  LiveProductScanner,
+  type ResolvedScanProduct,
+} from '@/features/product-scanner/LiveProductScanner';
 import { cn } from '@/lib/cn';
 import { preserveServerProductRank } from '@/features/global-catalog/ranking';
 import { useGlobalCatalogPicker } from '@/features/global-catalog/useGlobalCatalogPicker';
@@ -54,6 +58,7 @@ import {
 import {
   filterCurrentMapperCatalogHits,
   resolveCurrentMapperCatalogSelection,
+  scannedProductRecipeTarget,
 } from './mapperOnlyCatalog';
 
 export type ProductPickerScope = 'BASE_FORMULATION' | 'POST_PROCESS_ADDON';
@@ -175,6 +180,7 @@ export function ProductPickerPopover({
   const [unavailableNotice, setUnavailableNotice] = useState<string | null>(null);
   const [informationOption, setInformationOption] = useState<PickerOption | null>(null);
   const [activeFilter, setActiveFilter] = useState<IngredientCategoryFilterId>('all');
+  const [scanning, setScanning] = useState(false);
   const [scrollThumb, setScrollThumb] = useState({ top: 0, height: 50, visible: false });
   const [position, setPosition] = useState<PickerPosition | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -516,6 +522,110 @@ export function ProductPickerPopover({
     }
   };
 
+  /**
+   * A scan that ends in the recipe (§37).
+   *
+   * The scanner resolves or creates the canonical product; this is the step that puts
+   * it into the recipe the owner already had open, so nobody has to close the scanner
+   * and search for the product they were just holding. The selection boundary is
+   * unchanged — the recipe accepts a current Mapper identity and nothing else, so a
+   * scanned product is added through exactly the same fail-closed path as a picked one.
+   */
+  const addScannedProduct = async (resolved: ResolvedScanProduct) => {
+    const context = scope === 'BASE_FORMULATION' ? 'BASE' : 'TOPPING';
+    setAdding(true);
+    try {
+      const queries = [resolved.barcode, resolved.displayName].filter(
+        (value): value is string => typeof value === 'string' && value.trim().length > 0,
+      );
+      const hits = (
+        await Promise.all(
+          queries.map((search) =>
+            searchProducts({ query: search, context, marketScope: 'global', limit: 20 }).catch(
+              () => [],
+            ),
+          ),
+        )
+      ).flat();
+      const hit = scannedProductRecipeTarget(hits, resolved, context);
+      if (!hit) {
+        // Never invent a recipe line for a product the Engine has no identity for.
+        setScanning(false);
+        setUnavailableNotice(
+          `${resolved.displayName} zapisano w katalogu produktów. Do receptury trafia dopiero po przypisaniu tożsamości Mapper — otwórz Produkty, aby dokończyć.`,
+        );
+        return;
+      }
+      const selection = await resolveCurrentMapperCatalogSelection(
+        hit,
+        context,
+        getEngineApprovedIngredientById,
+      );
+      if (!selection.ok) {
+        setScanning(false);
+        setUnavailableNotice(selection.message);
+        return;
+      }
+      const ingredient = ingredientRowToEngineIngredient(selection.row);
+      if (scope === 'BASE_FORMULATION' && onPreflightDuplicate) {
+        const duplicate = onPreflightDuplicate(ingredient as EngineIngredient);
+        if (duplicate?.focusLineId) {
+          setScanning(false);
+          close(duplicate.focusLineId);
+          return;
+        }
+      }
+      let behavior: ProductBehaviorSnapshot | undefined;
+      if (behaviorContext) {
+        const entity =
+          hit.entityKind === 'pi_base' && hit.mappedIngredientId
+            ? { entityKind: 'mapper' as const, entityId: hit.mappedIngredientId }
+            : hit.currentVersionId
+              ? { entityKind: 'catalog_product_version' as const, entityId: hit.currentVersionId }
+              : null;
+        if (entity === null) {
+          setScanning(false);
+          setUnavailableNotice(
+            `${hit.displayName} wymaga odświeżenia danych produktu przed dodaniem.`,
+          );
+          return;
+        }
+        const resolvedBehavior = await resolveProductBehaviorForSelection({
+          entity,
+          context: {
+            ...behaviorContext,
+            processScope: scope,
+            requestedRole: 'STANDARD',
+            module: scope === 'BASE_FORMULATION' ? 'BASE_RECIPE' : 'TOPPING',
+          },
+        }).catch(() => null);
+        if (!resolvedBehavior || resolvedBehavior.state === 'blocked') {
+          setScanning(false);
+          setUnavailableNotice(
+            resolvedBehavior
+              ? productBehaviorBlockedMessage(resolvedBehavior)
+              : `Nie udało się potwierdzić aktualnych danych produktu ${hit.displayName}. Spróbuj ponownie.`,
+          );
+          return;
+        }
+        behavior = snapshotServerResolvedProductBehavior({
+          lineId: '',
+          processScope: scope,
+          resolved: resolvedBehavior,
+        });
+      }
+      const added =
+        scope === 'POST_PROCESS_ADDON'
+          ? onAdd(ingredient, behavior)
+          : onAdd(ingredient as EngineIngredient, behavior);
+      void markCurrentMapperCatalogProductUsed(selection.mapperId).catch(() => undefined);
+      setScanning(false);
+      close(added?.focusLineId);
+    } finally {
+      setAdding(false);
+    }
+  };
+
   const label = triggerLabel ?? (scope === 'BASE_FORMULATION' ? 'Dodaj składnik' : 'Dodaj topping');
   const listId = `product-picker-${scope.toLowerCase()}-${pickerInstanceId}`;
   const dialogId = `${listId}-dialog`;
@@ -671,6 +781,21 @@ export function ProductPickerPopover({
                         </button>
                       ) : null}
                     </div>
+                    {library.serverSearch ? (
+                      <button
+                        type="button"
+                        data-testid="product-picker-scan"
+                        onClick={() => {
+                          setScanning((current) => !current);
+                          setUnavailableNotice(null);
+                          setInformationOption(null);
+                        }}
+                        className="pro-focus-ring mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-ink/15 bg-white px-4 text-sm font-semibold text-ink hover:border-ink/35"
+                      >
+                        <span aria-hidden>▣</span>
+                        {scanning ? 'Wróć do wyszukiwania' : 'Skanuj produkt'}
+                      </button>
+                    ) : null}
                     <div
                       className="mt-3 flex items-center gap-2 overflow-x-auto pb-1"
                       aria-label={library.serverSearch ? 'Filtry katalogu' : undefined}
@@ -704,268 +829,284 @@ export function ProductPickerPopover({
                         : `Znaleziono ${uniqueOptionCount} ${uniqueOptionCount === 1 ? 'składnik' : 'składników'}`}
                     </p>
                   </div>
-                  <div className="relative min-h-0 flex-1">
-                    <div
-                      id={listId}
-                      ref={listRef}
-                      role="listbox"
-                      aria-label={`Produkty — ${label}`}
-                      className="product-picker-results h-full overflow-y-auto scroll-smooth p-2 motion-reduce:scroll-auto 2xl:pr-[19px]"
-                      onScroll={(event) => {
-                        const list = event.currentTarget;
-                        const maxScroll = list.scrollHeight - list.clientHeight;
-                        if (maxScroll <= 0) {
-                          setScrollThumb((current) =>
-                            current.visible ? { ...current, visible: false } : current,
-                          );
-                          return;
+                  {scanning ? (
+                    <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
+                      <LiveProductScanner
+                        onResolved={(resolved) => void addScannedProduct(resolved)}
+                        resolveLabel={
+                          scope === 'BASE_FORMULATION' ? 'Dodaj do receptury' : 'Dodaj jako topping'
                         }
-                        const height = Math.max(
-                          36,
-                          Math.min(50, (list.clientHeight * list.clientHeight) / list.scrollHeight),
-                        );
-                        const top =
-                          (list.scrollTop / maxScroll) * Math.max(0, list.clientHeight - height);
-                        setScrollThumb({ top, height, visible: true });
-                        if (
-                          library.serverSearch &&
-                          globalCatalog.hasMore &&
-                          !globalCatalog.isFetching &&
-                          list.scrollTop + list.clientHeight >= list.scrollHeight - 80
-                        ) {
-                          globalCatalog.loadMore();
-                        }
-                      }}
-                    >
-                      {visibleOptions.length === 0 ? (
-                        <p className="px-3 py-5 text-sm text-stone-600">
-                          {query.trim()
-                            ? 'Brak wyników. Zmień wyszukiwanie.'
-                            : 'Zacznij wpisywać nazwę produktu.'}
-                        </p>
-                      ) : (
-                        segments.map((segment, segmentIndex) => {
-                          const segmentOffset = segments
-                            .slice(0, segmentIndex)
-                            .reduce((count, previous) => count + previous.items.length, 0);
-                          return (
-                            <Fragment key={segment.id}>
-                              <p
-                                role="presentation"
-                                data-picker-segment={segment.id}
-                                className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-500"
-                              >
-                                {segment.label}
-                              </p>
-                              {segment.items.map((option, itemIndex) => {
-                                const index = segmentOffset + itemIndex;
-                                return (
-                                  <div
-                                    key={option.canonicalId}
-                                    role="presentation"
-                                    className={cn(
-                                      'relative flex min-h-16 w-full items-center rounded-xl border border-transparent',
-                                      index === safeActiveIndex
-                                        ? 'border-ink/10 bg-stone-50 text-ink'
-                                        : 'hover:border-ink/8 hover:bg-stone-50',
-                                      !option.selectable ? 'cursor-not-allowed opacity-60' : '',
-                                    )}
-                                    onMouseEnter={() => setActiveIndex(index)}
-                                  >
-                                    <button
-                                      id={`${listId}-${option.id}`}
-                                      type="button"
-                                      role="option"
-                                      aria-selected={index === safeActiveIndex}
-                                      aria-disabled={!option.selectable}
-                                      aria-label={`${option.name}. ${
-                                        option.selectable
-                                          ? 'Dostępny w wybranym zakresie'
-                                          : 'Wymaga uzupełnienia'
-                                      }${
-                                        !option.selectable && option.catalog
-                                          ? `. Niedostępny. ${publicPickerUnavailableReason(option, scope)}`
-                                          : ''
-                                      }`}
-                                      data-option-index={index}
-                                      data-entity-kind={option.catalog?.entityKind}
-                                      data-product-id={option.catalog?.id}
-                                      data-product-version-id={
-                                        option.catalog?.currentVersionId ?? undefined
-                                      }
-                                      data-mapper-id={
-                                        option.catalog?.mappedIngredientId ?? undefined
-                                      }
-                                      data-picker-data-confidence={
-                                        option.confidencePercent ?? undefined
-                                      }
-                                      data-product-form={option.catalog?.productForm ?? undefined}
-                                      className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-left"
-                                      onClick={() => void choose(option)}
-                                    >
-                                      <span
-                                        aria-hidden="true"
-                                        className={cn(
-                                          'grid size-9 shrink-0 place-items-center rounded-full text-xs font-bold',
-                                          !option.selectable
-                                            ? 'bg-red-100 text-red-700'
-                                            : option.verification.status === 'PINGÜINO — SPRAWDZONY'
-                                              ? 'bg-[#e8f7eb] text-[#1a9b3d]'
-                                              : option.entityKind === 'pi_base'
-                                                ? 'bg-[#fff4e2] text-[#f58a07]'
-                                                : 'bg-slate-200 text-slate-700',
-                                        )}
-                                      >
-                                        {option.selectable ? (
-                                          <IngredientCategoryIcon
-                                            symbol={ingredientCategorySymbolFor({
-                                              category: option.category,
-                                              form: option.detail,
-                                            })}
-                                            className="size-[18px]"
-                                          />
-                                        ) : (
-                                          <span aria-hidden>!</span>
-                                        )}
-                                      </span>
-                                      <span className="min-w-0 flex-1">
-                                        <span className="block truncate text-sm font-semibold">
-                                          {option.name}
-                                        </span>
-                                        <span className="block truncate text-[11px] text-stone-500">
-                                          {[option.brand, pickerCategoryLabel(option)]
-                                            .filter(Boolean)
-                                            .join(' · ')}
-                                        </span>
-                                      </span>
-                                    </button>
-                                    <button
-                                      type="button"
-                                      aria-label={`Pokaż status danych produktu: ${option.name}`}
-                                      data-info-product-id={option.canonicalId}
-                                      className="pro-focus-ring grid size-9 shrink-0 place-items-center rounded-full border border-ink/10 text-xs font-semibold text-stone-600"
-                                      onClick={(event) => {
-                                        event.preventDefault();
-                                        event.stopPropagation();
-                                        setInformationOption(option);
-                                      }}
-                                    >
-                                      ?
-                                    </button>
-                                    <button
-                                      type="button"
-                                      aria-label={
-                                        option.favorite
-                                          ? `Usuń ${option.name} z Ulubionych`
-                                          : `Dodaj ${option.name} do Ulubionych`
-                                      }
-                                      aria-pressed={option.favorite}
-                                      className={cn(
-                                        'pro-focus-ring grid size-10 shrink-0 place-items-center rounded-lg text-base max-sm:size-9',
-                                        option.favorite ? 'text-[#f58a07]' : 'text-stone-500',
-                                      )}
-                                      onClick={(event) => {
-                                        event.preventDefault();
-                                        event.stopPropagation();
-                                        globalCatalog.toggleFavorite(
-                                          option.entityKind,
-                                          option.entityKind === 'pi_base'
-                                            ? (option.catalog?.mappedIngredientId ??
-                                                option.id.replace(/^mapper:/, ''))
-                                            : (option.catalog?.id ??
-                                                option.id.replace(/^catalog:/, '')),
-                                          !option.favorite,
-                                        );
-                                      }}
-                                    >
-                                      <span aria-hidden>{option.favorite ? '★' : '☆'}</span>
-                                    </button>
-                                    <button
-                                      type="button"
-                                      aria-label={`Dodaj ${option.name}`}
-                                      disabled={!option.selectable || adding}
-                                      className="pro-focus-ring mr-2 grid size-9 shrink-0 place-items-center rounded-xl border border-ink/10 bg-white text-xl leading-none text-ink shadow-sm hover:border-[#f58a07]/60 hover:text-[#f58a07] disabled:cursor-not-allowed disabled:opacity-40"
-                                      onClick={() => void choose(option)}
-                                    >
-                                      +
-                                    </button>
-                                  </div>
-                                );
-                              })}
-                            </Fragment>
-                          );
-                        })
-                      )}
-                      {library.serverSearch && globalCatalog.isError ? (
-                        <p className="px-3 py-3 text-xs text-status-error" role="alert">
-                          Nie udało się pobrać produktów. Spróbuj ponownie.
-                        </p>
-                      ) : null}
+                        intro="Pokaż produkt kamerze. Znaleziony lub utworzony produkt wraca prosto do tej receptury."
+                      />
                     </div>
-                    {informationOption ? (
-                      <div className="absolute inset-0 z-40 grid place-items-center bg-white/88 p-4 backdrop-blur-[2px]">
-                        <section
-                          role="dialog"
-                          aria-modal="true"
-                          aria-label={`Status danych produktu: ${informationOption.name}`}
-                          data-testid="product-data-status-dialog"
-                          className="w-full max-w-[420px] rounded-xl border border-ink/12 bg-white p-5 text-ink shadow-pro-e2"
-                          onKeyDown={(event) => {
-                            if (event.key === 'Escape') {
-                              event.preventDefault();
-                              event.stopPropagation();
-                              closeInformation();
-                            } else if (event.key === 'Tab') {
-                              event.preventDefault();
-                              informationCloseRef.current?.focus({ preventScroll: true });
-                            }
-                          }}
-                        >
-                          <h2 className="pr-10 text-base font-semibold leading-snug">
-                            {informationOption.name}
-                          </h2>
-                          <dl className="mt-5 grid gap-4">
-                            <div>
-                              <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-500">
-                                ID
-                              </dt>
-                              <dd className="mt-1 font-mono text-sm font-semibold">
-                                {informationOption.canonicalId}
-                              </dd>
-                            </div>
-                            <div>
-                              <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-500">
-                                Status danych
-                              </dt>
-                              <dd className="mt-1 font-mono text-sm font-semibold">
-                                {formatDataConfidencePercent(informationOption.confidencePercent)}
-                              </dd>
-                            </div>
-                          </dl>
-                          <button
-                            ref={informationCloseRef}
-                            type="button"
-                            className="pro-focus-ring mt-6 min-h-11 rounded-lg border border-ink/15 px-4 text-xs font-semibold text-ink"
-                            onClick={closeInformation}
-                          >
-                            Zamknij
-                          </button>
-                        </section>
+                  ) : (
+                    <div className="relative min-h-0 flex-1">
+                      <div
+                        id={listId}
+                        ref={listRef}
+                        role="listbox"
+                        aria-label={`Produkty — ${label}`}
+                        className="product-picker-results h-full overflow-y-auto scroll-smooth p-2 motion-reduce:scroll-auto 2xl:pr-[19px]"
+                        onScroll={(event) => {
+                          const list = event.currentTarget;
+                          const maxScroll = list.scrollHeight - list.clientHeight;
+                          if (maxScroll <= 0) {
+                            setScrollThumb((current) =>
+                              current.visible ? { ...current, visible: false } : current,
+                            );
+                            return;
+                          }
+                          const height = Math.max(
+                            36,
+                            Math.min(
+                              50,
+                              (list.clientHeight * list.clientHeight) / list.scrollHeight,
+                            ),
+                          );
+                          const top =
+                            (list.scrollTop / maxScroll) * Math.max(0, list.clientHeight - height);
+                          setScrollThumb({ top, height, visible: true });
+                          if (
+                            library.serverSearch &&
+                            globalCatalog.hasMore &&
+                            !globalCatalog.isFetching &&
+                            list.scrollTop + list.clientHeight >= list.scrollHeight - 80
+                          ) {
+                            globalCatalog.loadMore();
+                          }
+                        }}
+                      >
+                        {visibleOptions.length === 0 ? (
+                          <p className="px-3 py-5 text-sm text-stone-600">
+                            {query.trim()
+                              ? 'Brak wyników. Zmień wyszukiwanie.'
+                              : 'Zacznij wpisywać nazwę produktu.'}
+                          </p>
+                        ) : (
+                          segments.map((segment, segmentIndex) => {
+                            const segmentOffset = segments
+                              .slice(0, segmentIndex)
+                              .reduce((count, previous) => count + previous.items.length, 0);
+                            return (
+                              <Fragment key={segment.id}>
+                                <p
+                                  role="presentation"
+                                  data-picker-segment={segment.id}
+                                  className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-500"
+                                >
+                                  {segment.label}
+                                </p>
+                                {segment.items.map((option, itemIndex) => {
+                                  const index = segmentOffset + itemIndex;
+                                  return (
+                                    <div
+                                      key={option.canonicalId}
+                                      role="presentation"
+                                      className={cn(
+                                        'relative flex min-h-16 w-full items-center rounded-xl border border-transparent',
+                                        index === safeActiveIndex
+                                          ? 'border-ink/10 bg-stone-50 text-ink'
+                                          : 'hover:border-ink/8 hover:bg-stone-50',
+                                        !option.selectable ? 'cursor-not-allowed opacity-60' : '',
+                                      )}
+                                      onMouseEnter={() => setActiveIndex(index)}
+                                    >
+                                      <button
+                                        id={`${listId}-${option.id}`}
+                                        type="button"
+                                        role="option"
+                                        aria-selected={index === safeActiveIndex}
+                                        aria-disabled={!option.selectable}
+                                        aria-label={`${option.name}. ${
+                                          option.selectable
+                                            ? 'Dostępny w wybranym zakresie'
+                                            : 'Wymaga uzupełnienia'
+                                        }${
+                                          !option.selectable && option.catalog
+                                            ? `. Niedostępny. ${publicPickerUnavailableReason(option, scope)}`
+                                            : ''
+                                        }`}
+                                        data-option-index={index}
+                                        data-entity-kind={option.catalog?.entityKind}
+                                        data-product-id={option.catalog?.id}
+                                        data-product-version-id={
+                                          option.catalog?.currentVersionId ?? undefined
+                                        }
+                                        data-mapper-id={
+                                          option.catalog?.mappedIngredientId ?? undefined
+                                        }
+                                        data-picker-data-confidence={
+                                          option.confidencePercent ?? undefined
+                                        }
+                                        data-product-form={option.catalog?.productForm ?? undefined}
+                                        className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-left"
+                                        onClick={() => void choose(option)}
+                                      >
+                                        <span
+                                          aria-hidden="true"
+                                          className={cn(
+                                            'grid size-9 shrink-0 place-items-center rounded-full text-xs font-bold',
+                                            !option.selectable
+                                              ? 'bg-red-100 text-red-700'
+                                              : option.verification.status ===
+                                                  'PINGÜINO — SPRAWDZONY'
+                                                ? 'bg-[#e8f7eb] text-[#1a9b3d]'
+                                                : option.entityKind === 'pi_base'
+                                                  ? 'bg-[#fff4e2] text-[#f58a07]'
+                                                  : 'bg-slate-200 text-slate-700',
+                                          )}
+                                        >
+                                          {option.selectable ? (
+                                            <IngredientCategoryIcon
+                                              symbol={ingredientCategorySymbolFor({
+                                                category: option.category,
+                                                form: option.detail,
+                                              })}
+                                              className="size-[18px]"
+                                            />
+                                          ) : (
+                                            <span aria-hidden>!</span>
+                                          )}
+                                        </span>
+                                        <span className="min-w-0 flex-1">
+                                          <span className="block truncate text-sm font-semibold">
+                                            {option.name}
+                                          </span>
+                                          <span className="block truncate text-[11px] text-stone-500">
+                                            {[option.brand, pickerCategoryLabel(option)]
+                                              .filter(Boolean)
+                                              .join(' · ')}
+                                          </span>
+                                        </span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        aria-label={`Pokaż status danych produktu: ${option.name}`}
+                                        data-info-product-id={option.canonicalId}
+                                        className="pro-focus-ring grid size-9 shrink-0 place-items-center rounded-full border border-ink/10 text-xs font-semibold text-stone-600"
+                                        onClick={(event) => {
+                                          event.preventDefault();
+                                          event.stopPropagation();
+                                          setInformationOption(option);
+                                        }}
+                                      >
+                                        ?
+                                      </button>
+                                      <button
+                                        type="button"
+                                        aria-label={
+                                          option.favorite
+                                            ? `Usuń ${option.name} z Ulubionych`
+                                            : `Dodaj ${option.name} do Ulubionych`
+                                        }
+                                        aria-pressed={option.favorite}
+                                        className={cn(
+                                          'pro-focus-ring grid size-10 shrink-0 place-items-center rounded-lg text-base max-sm:size-9',
+                                          option.favorite ? 'text-[#f58a07]' : 'text-stone-500',
+                                        )}
+                                        onClick={(event) => {
+                                          event.preventDefault();
+                                          event.stopPropagation();
+                                          globalCatalog.toggleFavorite(
+                                            option.entityKind,
+                                            option.entityKind === 'pi_base'
+                                              ? (option.catalog?.mappedIngredientId ??
+                                                  option.id.replace(/^mapper:/, ''))
+                                              : (option.catalog?.id ??
+                                                  option.id.replace(/^catalog:/, '')),
+                                            !option.favorite,
+                                          );
+                                        }}
+                                      >
+                                        <span aria-hidden>{option.favorite ? '★' : '☆'}</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        aria-label={`Dodaj ${option.name}`}
+                                        disabled={!option.selectable || adding}
+                                        className="pro-focus-ring mr-2 grid size-9 shrink-0 place-items-center rounded-xl border border-ink/10 bg-white text-xl leading-none text-ink shadow-sm hover:border-[#f58a07]/60 hover:text-[#f58a07] disabled:cursor-not-allowed disabled:opacity-40"
+                                        onClick={() => void choose(option)}
+                                      >
+                                        +
+                                      </button>
+                                    </div>
+                                  );
+                                })}
+                              </Fragment>
+                            );
+                          })
+                        )}
+                        {library.serverSearch && globalCatalog.isError ? (
+                          <p className="px-3 py-3 text-xs text-status-error" role="alert">
+                            Nie udało się pobrać produktów. Spróbuj ponownie.
+                          </p>
+                        ) : null}
                       </div>
-                    ) : null}
-                    <span
-                      aria-hidden="true"
-                      data-testid="product-picker-scroll-thumb"
-                      className={cn(
-                        'pointer-events-none absolute right-[3px] top-0 z-20 hidden w-[7px] rounded-full bg-[rgb(193_193_193)] 2xl:block',
-                        scrollThumb.visible ? 'opacity-100' : 'opacity-0',
-                      )}
-                      style={{
-                        height: scrollThumb.height,
-                        transform: `translateY(${scrollThumb.top}px)`,
-                      }}
-                    />
-                  </div>
+                      {informationOption ? (
+                        <div className="absolute inset-0 z-40 grid place-items-center bg-white/88 p-4 backdrop-blur-[2px]">
+                          <section
+                            role="dialog"
+                            aria-modal="true"
+                            aria-label={`Status danych produktu: ${informationOption.name}`}
+                            data-testid="product-data-status-dialog"
+                            className="w-full max-w-[420px] rounded-xl border border-ink/12 bg-white p-5 text-ink shadow-pro-e2"
+                            onKeyDown={(event) => {
+                              if (event.key === 'Escape') {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                closeInformation();
+                              } else if (event.key === 'Tab') {
+                                event.preventDefault();
+                                informationCloseRef.current?.focus({ preventScroll: true });
+                              }
+                            }}
+                          >
+                            <h2 className="pr-10 text-base font-semibold leading-snug">
+                              {informationOption.name}
+                            </h2>
+                            <dl className="mt-5 grid gap-4">
+                              <div>
+                                <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-500">
+                                  ID
+                                </dt>
+                                <dd className="mt-1 font-mono text-sm font-semibold">
+                                  {informationOption.canonicalId}
+                                </dd>
+                              </div>
+                              <div>
+                                <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-500">
+                                  Status danych
+                                </dt>
+                                <dd className="mt-1 font-mono text-sm font-semibold">
+                                  {formatDataConfidencePercent(informationOption.confidencePercent)}
+                                </dd>
+                              </div>
+                            </dl>
+                            <button
+                              ref={informationCloseRef}
+                              type="button"
+                              className="pro-focus-ring mt-6 min-h-11 rounded-lg border border-ink/15 px-4 text-xs font-semibold text-ink"
+                              onClick={closeInformation}
+                            >
+                              Zamknij
+                            </button>
+                          </section>
+                        </div>
+                      ) : null}
+                      <span
+                        aria-hidden="true"
+                        data-testid="product-picker-scroll-thumb"
+                        className={cn(
+                          'pointer-events-none absolute right-[3px] top-0 z-20 hidden w-[7px] rounded-full bg-[rgb(193_193_193)] 2xl:block',
+                          scrollThumb.visible ? 'opacity-100' : 'opacity-0',
+                        )}
+                        style={{
+                          height: scrollThumb.height,
+                          transform: `translateY(${scrollThumb.top}px)`,
+                        }}
+                      />
+                    </div>
+                  )}
                   {unavailableNotice ? (
                     <p
                       className="shrink-0 border-t border-attention/25 bg-pro-amber/35 px-3 py-2 text-xs leading-relaxed text-stone-700"

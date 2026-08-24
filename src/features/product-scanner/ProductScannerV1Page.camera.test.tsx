@@ -44,7 +44,23 @@ describe('Product Scanner camera fallback', () => {
   const cameraButton = () =>
     [...host.querySelectorAll('button')].find((button) => button.textContent === 'Skanuj kamerą')!;
 
+  /**
+   * Live capture sends frames without a further tap, so the privacy consent is taken
+   * before the camera starts. Every camera case therefore begins with it.
+   */
+  const acceptPrivacy = async () => {
+    const checkbox = host.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+    await act(async () => {
+      checkbox.click();
+    });
+  };
+
+  it('will not open the camera before the owner has accepted the privacy notice', async () => {
+    expect(cameraButton().disabled).toBe(true);
+  });
+
   it('offers upload fallback when getUserMedia is unavailable', async () => {
+    await acceptPrivacy();
     Object.defineProperty(navigator, 'mediaDevices', { value: undefined, configurable: true });
     await act(async () => cameraButton().click());
     expect(host.textContent).toContain(
@@ -53,6 +69,7 @@ describe('Product Scanner camera fallback', () => {
   });
 
   it('reports denied camera permission without losing the upload path', async () => {
+    await acceptPrivacy();
     Object.defineProperty(navigator, 'mediaDevices', {
       value: { getUserMedia: vi.fn().mockRejectedValue(new Error('denied')) },
       configurable: true,
@@ -68,6 +85,7 @@ describe('Product Scanner camera fallback', () => {
   });
 
   it('requests the rear camera without audio and exposes manual capture', async () => {
+    await acceptPrivacy();
     const stop = vi.fn();
     const getUserMedia = vi.fn().mockResolvedValue({ getTracks: () => [{ stop }] });
     Object.defineProperty(navigator, 'mediaDevices', {
@@ -91,6 +109,7 @@ describe('Product Scanner camera fallback', () => {
   });
 
   it('switches from rear to front camera in the same capture session', async () => {
+    await acceptPrivacy();
     const getUserMedia = vi.fn().mockResolvedValue({ getTracks: () => [{ stop: vi.fn() }] });
     Object.defineProperty(navigator, 'mediaDevices', {
       value: { getUserMedia },

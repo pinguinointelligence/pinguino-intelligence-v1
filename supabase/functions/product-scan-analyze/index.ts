@@ -1,6 +1,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 import {
+  EAN_LOOKUP_FIELDS,
   PRODUCT_SCAN_RESPONSE_SCHEMA,
+  scanResultFromLookupFacts,
   SYSTEM_PROMPT,
   extractResponseText,
   mergeProductScanResults,
@@ -117,7 +119,13 @@ Deno.serve(async (request) => {
       : null;
   const images = Array.isArray(body.images) ? body.images.map(objectValue) : [];
   const maxImages = Math.floor(numberEnv('PRODUCT_SCANNER_MAX_IMAGES', 4));
-  if (!sessionId || images.length < 1 || images.length > maxImages)
+  /**
+   * `ean_lookup` asks the barcode's own source and never reads a photograph, so it
+   * carries no images — that is the whole point of running it BEFORE the owner is
+   * asked to turn the package around.
+   */
+  const mode = body.mode === 'ean_lookup' ? 'ean_lookup' : 'analyze';
+  if (!sessionId || images.length > maxImages || (mode === 'analyze' && images.length < 1))
     return json({ error: 'invalid_scan_session' }, 400);
   let totalEncodedBytes = 0;
   for (const image of images) {
@@ -145,7 +153,7 @@ Deno.serve(async (request) => {
   );
   const { data: existingSession } = await service
     .from('product_scan_sessions')
-    .select('user_id,result_json,barcode,vision_calls')
+    .select('user_id,result_json,validation_json,overlay_state,barcode,vision_calls')
     .eq('id', sessionId)
     .maybeSingle();
   if (existingSession && existingSession.user_id !== auth.user.id) {
@@ -186,6 +194,141 @@ Deno.serve(async (request) => {
       .eq('user_id', auth.user.id)
       .is('barcode', null);
   }
+  if (mode === 'ean_lookup') {
+    // An exact canonical product answers the scan outright: no model, no source call,
+    // no allowance. This is the cheap path a rescan of a known package must take (§16).
+    if (exact)
+      return json({
+        sessionId,
+        kind: 'existing_product',
+        product: {
+          id: exact.id,
+          displayName: exact.product_name_display,
+          brand: exact.brand ?? null,
+          entityKind: exact.product_kind === 'mapper_reference' ? 'pi_base' : 'commercial_product',
+          status:
+            exact.product_kind === 'mapper_reference'
+              ? 'pi_base'
+              : exact.canonical_verification_status,
+        },
+        usage: { visionCalls: 0, webCalls: 0, estimatedCostUsd: 0 },
+      });
+    if (!barcode) return json({ error: 'lookup_requires_barcode' }, 400);
+    const { data: lookupReservation, error: lookupReserveError } = await service.rpc(
+      'reserve_product_scan_ean_lookup_v1',
+      { p_actor_user_id: auth.user.id, p_session_id: sessionId },
+    );
+    if (lookupReserveError) return json({ error: 'scanner_lookup_preflight_failed' }, 503);
+    const lookupReserved = objectValue(lookupReservation);
+    if (lookupReserved.allowed !== true) {
+      // A refused lookup is not a failure of the scan. The session keeps whatever it
+      // has and the flow continues locally (§24).
+      return json({
+        sessionId,
+        kind: 'ean_lookup',
+        skipped: String(lookupReserved.reason ?? 'session_lookup_already_used'),
+        result: existingSession?.result_json ?? null,
+        overlayState: existingSession?.overlay_state ?? null,
+        missingCriticalFields:
+          objectValue(existingSession?.validation_json).missingCriticalFields ?? [],
+        usage: {
+          visionCalls: Number(existingSession?.vision_calls ?? 0),
+          webCalls: 0,
+          estimatedCostUsd: 0,
+        },
+      });
+    }
+    const priorResult = objectValue(existingSession?.result_json);
+    const identity = objectValue(priorResult.identity);
+    let facts: Record<string, unknown>[] = [];
+    let providerError: string | null = null;
+    try {
+      // The narrowest dedicated server-side source path this repository has, called
+      // with its OWN flag, its OWN caps and its OWN source-authority classification.
+      // The Scanner's general web search is NOT switched on to reach it (§6).
+      const response = await fetch(`${url}/functions/v1/intimport-enrich`, {
+        method: 'POST',
+        headers: {
+          Authorization: authorization,
+          apikey: anonKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          importId: `product-scan-${sessionId}`,
+          product: {
+            brand: typeof identity.brand === 'string' ? identity.brand : null,
+            manufacturer: null,
+            name:
+              typeof identity.displayName === 'string'
+                ? identity.displayName
+                : typeof identity.originalName === 'string'
+                  ? identity.originalName
+                  : null,
+            variant: null,
+            barcode,
+            netQuantity: null,
+            knownSourceUrl: null,
+            technicalPdfUrl: null,
+          },
+          researchStep: { kind: 'GTIN_LOOKUP', url: null, allowedDomains: [] },
+          fields: [...EAN_LOOKUP_FIELDS],
+        }),
+      });
+      const payload = objectValue(await response.json());
+      if (!response.ok) throw new Error('lookup_provider_failed');
+      facts = Array.isArray(payload.facts) ? payload.facts.map(objectValue) : [];
+      providerError = typeof payload.error === 'string' ? payload.error : null;
+    } catch {
+      providerError = 'lookup_provider_unavailable';
+    }
+    const lookupResult = providerError ? null : scanResultFromLookupFacts(facts);
+    const merged = lookupResult
+      ? mergeProductScanResults(existingSession?.result_json ?? null, lookupResult, barcode)
+      : null;
+    const { data: priorAssets } = await service
+      .from('product_scan_assets')
+      .select('id')
+      .eq('session_id', sessionId)
+      .eq('user_id', auth.user.id);
+    const lookupValidation = merged
+      ? validateServerResult(
+          merged,
+          (priorAssets ?? []).map((asset) => String(asset.id)),
+        )
+      : null;
+    if (merged && lookupValidation) {
+      const { error: lookupCompleteError } = await service.rpc(
+        'complete_product_scan_ean_lookup_v1',
+        {
+          p_actor_user_id: auth.user.id,
+          p_session_id: sessionId,
+          p_result: merged,
+          p_validation: {
+            missingCriticalFields: lookupValidation.missingCriticalFields,
+            highRiskAuthorityRequired: lookupValidation.highRiskAuthorityRequired,
+          },
+          p_overlay_state: lookupValidation.overlayState,
+          p_cost_usd: 0.01,
+        },
+      );
+      if (lookupCompleteError) return json({ error: 'scanner_result_persistence_failed' }, 503);
+    }
+    return json({
+      sessionId,
+      kind: 'ean_lookup',
+      resolvedNothing: merged === null,
+      providerUnavailable: providerError !== null,
+      result: merged ?? existingSession?.result_json ?? null,
+      overlayState: lookupValidation?.overlayState ?? null,
+      missingCriticalFields: lookupValidation?.missingCriticalFields ?? [],
+      usage: {
+        visionCalls: Number(existingSession?.vision_calls ?? 0),
+        webCalls: 1,
+        estimatedCostUsd: merged ? 0.01 : 0,
+      },
+    });
+  }
+
   const assetRows = [];
   try {
     for (const image of images) {
@@ -298,11 +441,14 @@ Deno.serve(async (request) => {
   const detail = ['auto', 'low', 'high', 'original'].includes(configuredDetail)
     ? configuredDetail
     : 'original';
+  // Scanner web isolation (§6). The client's `allowWeb` is NOT read here any more: it
+  // was sent on every ordinary scan, so the moment this flag was ever unset or set to
+  // anything other than 'false' every label analysis silently gained a web-search tool.
+  // General search is now opt-IN, and the exact GTIN lookup above is what a scan uses.
   const allowWeb =
-    body.allowWeb === true &&
+    Deno.env.get('PRODUCT_SCANNER_WEB_SEARCH_ENABLED') === 'true' &&
     Boolean(barcode) &&
-    Math.min(1, nonNegativeIntegerEnv('PRODUCT_SCANNER_MAX_WEB_CALLS', 1)) === 1 &&
-    Deno.env.get('PRODUCT_SCANNER_WEB_SEARCH_ENABLED') !== 'false';
+    Math.min(1, nonNegativeIntegerEnv('PRODUCT_SCANNER_MAX_WEB_CALLS', 1)) === 1;
   const estimatedCost = accurateRetry ? 0.18 : 0.035;
   if (estimatedCost > numberEnv('PRODUCT_SCANNER_MAX_ESTIMATED_CALL_USD', 0.25)) {
     return json({ error: 'scanner_call_cost_limit' }, 429);

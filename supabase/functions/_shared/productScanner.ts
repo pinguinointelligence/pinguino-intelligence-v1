@@ -259,8 +259,7 @@ const sourceRank: Record<ProductScanSource, number> = {
 const regionForField = (field: string): string | null => {
   if (field.startsWith('nutrition.')) return 'nutrition_table';
   if (field === 'ingredientsText') return 'ingredients';
-  if (field === 'allergensText' || field === 'mayContainAllergens')
-    return 'allergen_statement';
+  if (field === 'allergensText' || field === 'mayContainAllergens') return 'allergen_statement';
   if (field.startsWith('identity.')) return 'front';
   if (field.startsWith('package.')) return 'package';
   if (field === 'barcodes') return 'barcode';
@@ -465,9 +464,7 @@ function appendConflict(
     labelValue:
       typeof priorValue === 'string' || typeof priorValue === 'number' ? priorValue : null,
     externalValue:
-      typeof incomingValue === 'string' || typeof incomingValue === 'number'
-        ? incomingValue
-        : null,
+      typeof incomingValue === 'string' || typeof incomingValue === 'number' ? incomingValue : null,
     retainedSource,
   };
   const key = conflictKey(candidate);
@@ -512,9 +509,14 @@ const satisfiedMissingField = (root: Record<string, unknown>, missing: string): 
   if (missing === 'product_identity')
     return Boolean(getPath(root, 'identity.displayName') ?? getPath(root, 'identity.originalName'));
   if (missing === 'brand_or_unbranded')
-    return Boolean(getPath(root, 'identity.brand') ?? getPath(root, 'identity.explicitlyUnbranded'));
+    return Boolean(
+      getPath(root, 'identity.brand') ?? getPath(root, 'identity.explicitlyUnbranded'),
+    );
   if (missing === 'net_quantity')
-    return typeof getPath(root, 'package.netQuantity') === 'number' && Boolean(getPath(root, 'package.unit'));
+    return (
+      typeof getPath(root, 'package.netQuantity') === 'number' &&
+      Boolean(getPath(root, 'package.unit'))
+    );
   if (missing.startsWith('nutrition_'))
     return getPath(root, `nutrition.${missing.slice('nutrition_'.length)}`) !== null;
   return getPath(root, missing) !== null && getPath(root, missing) !== undefined;
@@ -600,7 +602,10 @@ export function mergeProductScanResults(
   setPath(
     merged,
     'identity.labelLanguages',
-    mergeUnique(getPath(prior, 'identity.labelLanguages'), getPath(incoming, 'identity.labelLanguages')),
+    mergeUnique(
+      getPath(prior, 'identity.labelLanguages'),
+      getPath(incoming, 'identity.labelLanguages'),
+    ),
   );
   for (const field of ['mayContainAllergens', 'claims'])
     setPath(merged, field, mergeUnique(getPath(prior, field), getPath(incoming, field)));
@@ -632,7 +637,9 @@ export function mergeProductScanResults(
 
   const directMayContainEvidence = bestEvidence(merged, 'mayContainAllergens');
   const mayContain = Array.isArray(merged.mayContainAllergens)
-    ? merged.mayContainAllergens.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+    ? merged.mayContainAllergens.filter(
+        (item): item is string => typeof item === 'string' && item.trim().length > 0,
+      )
     : [];
   if (
     !merged.allergensText &&
@@ -789,15 +796,16 @@ export function validateServerResult(
       'allergensText',
     ]).has(field);
   };
-  const unresolvedConflicts = (Array.isArray(root.conflicts) ? root.conflicts : [])
-    .flatMap((item) => {
+  const unresolvedConflicts = (Array.isArray(root.conflicts) ? root.conflicts : []).flatMap(
+    (item) => {
       const conflict = item && typeof item === 'object' ? (item as Record<string, unknown>) : {};
       return conflict.retainedSource === null &&
         typeof conflict.field === 'string' &&
         conflictBlocksReadiness(String(conflict.field))
         ? [String(conflict.field)]
         : [];
-    });
+    },
+  );
   for (const field of unresolvedConflicts) missing.push(`conflict_${field}`);
   const evidencedFields = new Set([
     ...evidence.map((item) => String(item.field ?? '')),
@@ -884,4 +892,181 @@ export function stableJson(value: unknown): string {
       .join(',')}}`;
   }
   return JSON.stringify(value) ?? 'null';
+}
+
+/**
+ * The exact-GTIN lookup, expressed as the fields the SCANNER can actually use.
+ * `manufacturer` and `countryOfOrigin` are researched too because they cost nothing
+ * extra once the call is made and they carry identity, but nothing here can invent a
+ * product name: a new product's identity is read from its own front label.
+ */
+export const EAN_LOOKUP_FIELDS = [
+  'ingredients',
+  'allergens',
+  'nutritionBasis',
+  'energyKcal',
+  'fat',
+  'carbohydrate',
+  'protein',
+  'salt',
+  'netQuantity',
+  'manufacturer',
+] as const;
+
+/** „0,3 g" / „330 ml" → 0.3 / 330. A value that is not a plain number is refused. */
+const numericFact = (value: string): number | null => {
+  const match = /-?\d+(?:[.,]\d+)?/.exec(value.replace(/\s+/g, ' '));
+  if (!match) return null;
+  const parsed = Number(match[0].replace(',', '.'));
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+};
+
+const netQuantityFact = (value: string): { netQuantity: number; unit: string } | null => {
+  const match = /(-?\d+(?:[.,]\d+)?)\s*(kg|g|ml|l)\b/i.exec(value.replace(/\s+/g, ' '));
+  if (!match) return null;
+  const amount = Number(match[1]!.replace(',', '.'));
+  return Number.isFinite(amount) && amount > 0
+    ? { netQuantity: amount, unit: match[2]!.toLowerCase() }
+    : null;
+};
+
+const nutritionBasisFact = (value: string): 'per_100g' | 'per_100ml' | null => {
+  const normalized = value.toLowerCase().replace(/\s+/g, '');
+  if (normalized.includes('100ml')) return 'per_100ml';
+  if (normalized.includes('100g')) return 'per_100g';
+  return null;
+};
+
+const SOURCE_TYPE_BY_AUTHORITY: Record<string, string> = {
+  MANUFACTURER_OFFICIAL: 'manufacturer',
+  BRAND_OFFICIAL: 'manufacturer',
+  TECHNICAL_DOCUMENT: 'manufacturer',
+  STRUCTURED_DATABASE: 'barcode_registry',
+  RECOGNIZED_RETAILER: 'retailer',
+};
+
+/**
+ * Turn provider facts into a partial scan result.
+ *
+ * These facts carry NO `evidence` rows on purpose. Evidence rank decides who wins a
+ * disagreement, and a label read from the package must always outrank a page found on
+ * the internet — leaving external facts unranked is what guarantees it. Provenance is
+ * not lost: every field is listed in `externalSources[].fieldsUsed`, which is what the
+ * session's external-source rows and the „skąd to jest" detail are built from.
+ */
+export function scanResultFromLookupFacts(
+  facts: readonly Record<string, unknown>[],
+): Record<string, unknown> | null {
+  const nutrition: Record<string, unknown> = {};
+  const identity: Record<string, unknown> = {};
+  const packageValue: Record<string, unknown> = {};
+  const bySource = new Map<
+    string,
+    { sourceType: string; url: string | null; title: string | null; fieldsUsed: string[] }
+  >();
+  let ingredientsText: string | null = null;
+  let allergensText: string | null = null;
+  let manufacturer: string | null = null;
+
+  const remember = (fact: Record<string, unknown>, field: string) => {
+    const url = typeof fact.sourceUrl === 'string' ? fact.sourceUrl : null;
+    const authority = String(fact.sourceAuthorityClass ?? '');
+    const sourceType = SOURCE_TYPE_BY_AUTHORITY[authority] ?? 'web_search';
+    const key = `${sourceType}:${url ?? ''}`;
+    const existing = bySource.get(key);
+    if (existing) existing.fieldsUsed.push(field);
+    else
+      bySource.set(key, {
+        sourceType,
+        url: url && /^https:\/\//i.test(url) ? url : null,
+        title: typeof fact.sourceTitle === 'string' ? fact.sourceTitle : null,
+        fieldsUsed: [field],
+      });
+  };
+
+  for (const fact of facts) {
+    const field = String(fact.field ?? '');
+    const raw = typeof fact.value === 'string' ? fact.value.trim() : '';
+    if (!raw) continue;
+    if (field === 'ingredients' && !ingredientsText) {
+      ingredientsText = raw;
+      remember(fact, 'ingredientsText');
+    } else if (field === 'allergens' && !allergensText) {
+      allergensText = raw;
+      remember(fact, 'allergensText');
+    } else if (field === 'manufacturer' && !manufacturer) {
+      manufacturer = raw;
+      remember(fact, 'manufacturer');
+    } else if (field === 'nutritionBasis' && !nutrition.basis) {
+      const basis = nutritionBasisFact(raw);
+      if (basis) {
+        nutrition.basis = basis;
+        remember(fact, 'nutrition.basis');
+      }
+    } else if (field === 'netQuantity' && packageValue.netQuantity === undefined) {
+      const quantity = netQuantityFact(raw);
+      if (quantity) {
+        packageValue.netQuantity = quantity.netQuantity;
+        packageValue.unit = quantity.unit;
+        packageValue.netQuantityText = raw;
+        remember(fact, 'package.netQuantity');
+      }
+    } else if (['energyKcal', 'fat', 'carbohydrate', 'protein', 'salt'].includes(field)) {
+      if (nutrition[field] === undefined) {
+        const parsed = numericFact(raw);
+        if (parsed !== null) {
+          nutrition[field] = parsed;
+          remember(fact, `nutrition.${field}`);
+        }
+      }
+    }
+  }
+  const externalSources = [...bySource.values()];
+  if (externalSources.length === 0) return null;
+  // Numbers without a declared basis are not a measurement. INTIMPORT drops them for
+  // the same reason; the Mapper fills the gap honestly instead.
+  if (!nutrition.basis) {
+    for (const field of ['energyKcal', 'fat', 'carbohydrate', 'protein', 'salt'])
+      delete nutrition[field];
+  }
+  return {
+    schemaVersion: PRODUCT_SCAN_SCHEMA_VERSION,
+    identity: {
+      displayName: null,
+      originalName: null,
+      brand: null,
+      explicitlyUnbranded: false,
+      category: null,
+      variant: null,
+      countryOfOrigin: null,
+      labelLanguages: [],
+      ...identity,
+    },
+    package: { netQuantity: null, unit: null, netQuantityText: null, ...packageValue },
+    nutrition: {
+      basis: null,
+      energyKj: null,
+      energyKcal: null,
+      fat: null,
+      saturatedFat: null,
+      carbohydrate: null,
+      sugars: null,
+      protein: null,
+      salt: null,
+      fibre: null,
+      ...nutrition,
+    },
+    ingredientsText,
+    allergensText,
+    manufacturer,
+    mayContainAllergens: [],
+    claims: [],
+    barcodes: [],
+    storageInstructions: null,
+    evidence: [],
+    externalSources,
+    conflicts: [],
+    warnings: [],
+    missingFields: [],
+  };
 }

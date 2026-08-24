@@ -93,3 +93,35 @@ export async function resolveCurrentMapperCatalogSelection(
     return { ok: false, message: MAPPER_ONLY_CATALOG_ERROR };
   return { ok: true, mapperId, row };
 }
+
+/** What a finished scan hands the recipe: the canonical product and the code it carries. */
+export interface ScannedProductIdentity {
+  id: string;
+  displayName: string;
+  barcode: string | null;
+}
+
+/**
+ * The catalogue row a scanned product may enter the recipe as.
+ *
+ * A scan ends in the recipe (§37), but it does not get a private door into it. The
+ * recipe accepts a CURRENT Mapper identity and nothing else, so the scanned product is
+ * matched against the same filtered catalogue the picker itself shows — by GTIN first,
+ * then by canonical identity. A commercial product that carries no current Mapper
+ * identity resolves to null here, and the owner is told so rather than handed a line the
+ * Engine cannot price or model.
+ */
+export function scannedProductRecipeTarget(
+  hits: readonly CatalogProductSearchHit[],
+  scanned: ScannedProductIdentity,
+  context: MapperCatalogContext,
+): CatalogProductSearchHit | null {
+  const selectable = filterCurrentMapperCatalogHits(hits, context);
+  const byBarcode = scanned.barcode
+    ? (selectable.find((hit) => hit.eans.includes(scanned.barcode!)) ?? null)
+    : null;
+  if (byBarcode) return byBarcode;
+  return (
+    selectable.find((hit) => hit.id === scanned.id || hit.mappedIngredientId === scanned.id) ?? null
+  );
+}

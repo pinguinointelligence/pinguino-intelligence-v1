@@ -51,6 +51,9 @@ const WORST_CASE_SEARCHES_PER_CALL = 3;
 const RESEARCHABLE = new Set([
   'ingredients',
   'allergens',
+  // The Scanner's exact-GTIN lookup asks for the basis explicitly: nutrition numbers
+  // without one are not a measurement, and per-100 ml never silently becomes per-100 g.
+  'nutritionBasis',
   'energyKcal',
   'fat',
   'carbohydrate',

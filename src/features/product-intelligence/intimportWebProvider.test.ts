@@ -219,13 +219,20 @@ describe('provider runs server-side only', () => {
     expect(envReads).toContain('INTIMPORT_WEB_ENRICHMENT_ENABLED');
   });
 
-  it('leaves the Scanner analyze function untouched', () => {
+  it('is what the Scanner calls for an exact GTIN — without gaining its own web search', () => {
     const scanner = readFileSync(
       new URL('../../../supabase/functions/product-scan-analyze/index.ts', import.meta.url),
       'utf8',
     );
-    expect(scanner).toContain("Deno.env.get('PRODUCT_SCANNER_WEB_SEARCH_ENABLED') !== 'false'");
+    // The Scanner reaches a source ONLY through this function, which keeps its own flag,
+    // its own caps and its own source-authority classification.
+    expect(scanner).toContain('/functions/v1/intimport-enrich');
     expect(scanner).not.toContain('INTIMPORT_WEB_ENRICHMENT_ENABLED');
+    // Its general web search stays OFF unless explicitly switched on. It used to be
+    // default-ON (`!== 'false'`) while the client sent allowWeb:true on every scan.
+    expect(scanner).toContain("Deno.env.get('PRODUCT_SCANNER_WEB_SEARCH_ENABLED') === 'true'");
+    expect(scanner).not.toContain("PRODUCT_SCANNER_WEB_SEARCH_ENABLED') !== 'false'");
+    expect(scanner).not.toContain('body.allowWeb');
   });
 
   it('sends only public product identity — never recipes or account data', () => {

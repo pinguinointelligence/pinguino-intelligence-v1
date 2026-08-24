@@ -89,6 +89,20 @@ export interface ScanAnalysisResponse {
   usage: { visionCalls: number; webCalls: number; estimatedCostUsd: number };
 }
 
+export interface ScanEanLookupResponse {
+  sessionId: string;
+  kind: 'ean_lookup';
+  /** The lookup ran and found nothing usable. Not an error — the scan continues. */
+  resolvedNothing?: boolean;
+  providerUnavailable?: boolean;
+  /** Why the lookup was not run at all (already used this session, no barcode). */
+  skipped?: string;
+  result: ProductScanResult | null;
+  overlayState: ProductScanOverlayState | null;
+  missingCriticalFields: string[];
+  usage: { visionCalls: number; webCalls: number; estimatedCostUsd: number };
+}
+
 export interface ScanExactMatchResponse {
   sessionId: string;
   kind: 'existing_product';
@@ -104,6 +118,37 @@ export interface ScanExactProduct {
   status: 'pi_base' | 'verified' | 'manual_unverified' | 'blocked';
 }
 
+/**
+ * Ask the barcode's own source BEFORE asking the owner to turn the package around.
+ *
+ * This is a distinct server mode, not a flag on the analysis: it reads no photograph,
+ * spends no analysis allowance, and reaches the external source through the dedicated
+ * server-side provider path with its own caps. The Scanner's general web search stays
+ * off (§6).
+ */
+export async function lookupExactBarcodeFacts(input: {
+  sessionId: string;
+  barcode: ValidBarcode;
+}): Promise<ScanEanLookupResponse | ScanExactMatchResponse> {
+  if (!supabase) throw new Error(UNAVAILABLE);
+  const { data, error } = await supabase.functions.invoke('product-scan-analyze', {
+    body: { sessionId: input.sessionId, mode: 'ean_lookup', images: [], barcode: input.barcode },
+  });
+  if (error || !data || typeof data !== 'object' || data.error) {
+    const failure = error ? await readFunctionFailure(error) : { serverCode: null, visionCalls: 0, networkFailure: false };
+    const scannerError = classifyScannerError({
+      stage: 'analysis',
+      serverCode: failure.serverCode ?? (typeof data?.error === 'string' ? data.error : null),
+      rawMessage: error?.message ?? null,
+      networkFailure: failure.networkFailure,
+    });
+    reportScannerDiagnostic(scannerError);
+    // An unreachable source must never stop the scan; the caller continues locally.
+    throw new ProductScannerServiceError(scannerError, 'analysis', failure.visionCalls);
+  }
+  return data as ScanEanLookupResponse | ScanExactMatchResponse;
+}
+
 export async function analyzeProductImages(input: {
   sessionId: string;
   images: Array<{
@@ -117,7 +162,6 @@ export async function analyzeProductImages(input: {
   }>;
   barcode: ValidBarcode | null;
   accurateRetry?: boolean;
-  allowWeb?: boolean;
 }): Promise<ScanAnalysisResponse | ScanExactMatchResponse> {
   if (!supabase) throw new Error(UNAVAILABLE);
   const { data, error } = await supabase.functions.invoke('product-scan-analyze', { body: input });
