@@ -83,11 +83,7 @@ function NutritionCostProfileGrid({
       ? result.nutrition_per_100g
       : nutritionOverride
     : null;
-  const costs = ready
-    ? costsOverride === undefined
-      ? result.costs
-      : costsOverride
-    : null;
+  const costs = ready ? (costsOverride === undefined ? result.costs : costsOverride) : null;
   const grams = (value: number | null | undefined, precision = 1) =>
     value === null || value === undefined ? '—' : `${value.toFixed(precision)} g`;
   const euro = (value: number | null | undefined) =>
@@ -99,7 +95,13 @@ function NutritionCostProfileGrid({
     >
       <summary className="pro-focus-ring flex min-h-16 cursor-pointer list-none items-center justify-between gap-4 px-4 py-3">
         <span className="flex min-w-0 flex-1 items-center gap-3">
-          <span aria-hidden className="text-xl text-[#18a83a]">
+          {/* AWAITING APPROVED DESIGN — "nutrition" is not covered by the
+              approved reference sheet, so no icon is invented for it here. */}
+          <span
+            aria-hidden
+            data-icon-status="awaiting-approved-design"
+            className="text-xl text-[#18a83a]"
+          >
             ♧
           </span>
           <span>
@@ -111,7 +113,13 @@ function NutritionCostProfileGrid({
         </span>
         <span className="h-9 w-px bg-ink/8" aria-hidden />
         <span className="flex min-w-0 flex-1 items-center gap-3">
-          <span aria-hidden className="text-xl text-[#18a83a]">
+          {/* AWAITING APPROVED DESIGN — "cost" is not covered by the approved
+              reference sheet. */}
+          <span
+            aria-hidden
+            data-icon-status="awaiting-approved-design"
+            className="text-xl text-[#18a83a]"
+          >
             ◎
           </span>
           <span>

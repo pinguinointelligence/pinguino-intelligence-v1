@@ -7,6 +7,9 @@ import {
   useRecipeProfileStore,
   type DirectionIntent,
 } from './recipeProfileStore';
+import { cn } from '@/lib/cn';
+import { HardnessIcon, SweetnessIcon } from '@/components/icons/PinguinoIcons';
+import { PINGUINO_ICON_CIRCLE } from '@/components/icons/pinguinoIconTokens';
 import { MonitorRangeScale } from './ProfessionalMonitorModules';
 import { buildMonitorScaleModel } from './monitorScaleModel';
 import { MonitorScoreHeader } from './MonitorScoreHeader';
@@ -95,11 +98,17 @@ export function MonitorLiveSummary({
                 className="monitor-module-row monitor-summary-grid grid items-center gap-3 bg-white px-3 py-2"
                 data-testid={`monitor-module-${key === 'pod' ? 'sweetness' : 'hardness'}`}
               >
-                <span
-                  aria-hidden
-                  className={`grid size-8 place-items-center text-xl ${key === 'pod' ? 'text-[#ef3249]' : 'text-[#1676f3]'}`}
-                >
-                  {key === 'pod' ? '✣' : '◇'}
+                {/* Sweetness and Hardness from the SAME approved icon set as the
+                    module rows below. These two were the last Unicode glyphs in
+                    the Monitor, with their colour hard-coded beside them, and
+                    they sat in a DIFFERENT component from the other five — which
+                    is exactly how they survived the first replacement pass. */}
+                <span aria-hidden className={cn('size-8', PINGUINO_ICON_CIRCLE)}>
+                  {key === 'pod' ? (
+                    <SweetnessIcon className="size-[18px]" />
+                  ) : (
+                    <HardnessIcon className="size-[18px]" />
+                  )}
                 </span>
                 <span className="min-w-0">
                   <strong className="block text-sm font-semibold text-ink">{label}</strong>
