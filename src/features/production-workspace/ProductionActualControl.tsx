@@ -36,7 +36,7 @@ export function ProductionActualControl({
 }: ProductionActualControlProps) {
   return (
     <div
-      className="grid min-w-0 grid-cols-[minmax(0,1fr)_44px] items-stretch gap-1.5 lg:grid-cols-[minmax(0,1fr)_28px] lg:gap-1"
+      className="grid w-[226px] max-w-full min-w-0 grid-cols-[176px_44px] items-stretch gap-1.5 lg:w-[154px] lg:grid-cols-[122px_28px] lg:gap-1"
       data-testid={`production-actual-control-${lineId}`}
       data-production-control-family="recipe-direct-number"
       data-production-control-state={
@@ -55,6 +55,7 @@ export function ProductionActualControl({
         testId={`production-stepper-${lineId}`}
         ariaDescribedBy={describedBy}
         preservePrecision
+        widthPreset="grams"
         density="responsive"
       />
       <button

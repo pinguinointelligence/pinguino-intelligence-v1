@@ -22,7 +22,7 @@
  * persona switch lets acceptance exercise pro/home/demo without a login.
  */
 import { useEffect, useRef, useState } from 'react';
-import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router';
+import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 import { PageHeading } from '@/components/shared/PageHeading';
 import { UpgradePrompt } from '@/components/shared/UpgradePrompt';
 import { SurfaceToneContext } from '@/components/ui/surface';
@@ -175,6 +175,8 @@ function RecipeWorkbench({
   onOpenExistingPreview,
   onRecalculate,
   onCloseRecalc,
+  initialLabelView,
+  labelViewRequestKey,
 }: {
   activeTab: CockpitTab;
   onTabChange: (tab: CockpitTab) => void;
@@ -182,6 +184,8 @@ function RecipeWorkbench({
   onOpenExistingPreview: () => void;
   onRecalculate: () => void;
   onCloseRecalc: () => void;
+  initialLabelView: 'label' | 'settings';
+  labelViewRequestKey: string;
 }) {
   const draftContextSeq = useRecipeStore((state) => state.draftContextSeq);
   return (
@@ -196,6 +200,8 @@ function RecipeWorkbench({
             recalcSlot={<ProRecalcPanel open={recalcOpen} onClose={onCloseRecalc} />}
             onRecalculate={onRecalculate}
             onOpenExistingPreview={onOpenExistingPreview}
+            initialLabelView={initialLabelView}
+            labelViewRequestKey={labelViewRequestKey}
           />
         </div>
       </SurfaceToneContext.Provider>
@@ -320,6 +326,7 @@ function SectionPanel({ tab, persona }: { tab: TabId; persona: ProCorePersona })
 export function ProWorkspacePage() {
   const [recalcOpen, setRecalcOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const persona = useProCorePersona();
   const { section } = useParams<{ section?: string }>();
   const [searchParams] = useSearchParams();
@@ -537,6 +544,10 @@ export function ProWorkspacePage() {
                   onOpenExistingPreview={() => setRecalcOpen(true)}
                   onRecalculate={startRecalc}
                   onCloseRecalc={() => setRecalcOpen(false)}
+                  initialLabelView={
+                    searchParams.get('labelView') === 'settings' ? 'settings' : 'label'
+                  }
+                  labelViewRequestKey={location.key}
                 />
               </>
             )}

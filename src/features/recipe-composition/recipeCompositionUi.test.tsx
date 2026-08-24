@@ -121,7 +121,8 @@ describe('Base/Topping owner entry points', () => {
   it('routes completed Summary facts through the one LabelWorkspace authority', () => {
     const summary = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
     const labels = read('features', 'master-label', 'LabelWorkspace.tsx');
-    expect(summary).toContain('<LabelWorkspace snapshot={completed} />');
+    expect(summary).toContain('snapshot={completed}');
+    expect(summary).toContain('initialView={initialLabelView}');
     expect(summary).not.toContain('summary-final-nutrition-cost');
     expect(labels).toContain('title="Baza techniczna"');
     expect(labels).toContain('data-testid="label-internal-overview"');

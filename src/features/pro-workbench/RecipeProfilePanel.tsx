@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/Button';
-import { LabelWorkspace } from '@/features/master-label/LabelWorkspace';
+import { LabelWorkspace, type LabelWorkspaceView } from '@/features/master-label/LabelWorkspace';
 import {
   calculateRecipe,
   type CorrectionResult,
@@ -294,11 +294,13 @@ function ProductionPanel({
   onOpenPreview,
   onRecalculate,
   onReturnToRecipe,
+  onOpenLabel,
 }: {
   production?: ProductionWorkspaceView;
   onOpenPreview: () => void;
   onRecalculate: () => void;
   onReturnToRecipe: () => void;
+  onOpenLabel: () => void;
 }) {
   if (production) {
     return (
@@ -308,6 +310,7 @@ function ProductionPanel({
           onOpenPreview={onOpenPreview}
           onRecalculate={onRecalculate}
           onReturnToRecipe={onReturnToRecipe}
+          onOpenLabel={onOpenLabel}
         />
       </div>
     );
@@ -330,15 +333,23 @@ function ProductionPanel({
 function SummaryPanel({
   production,
   onOpenProduction,
+  initialLabelView,
+  labelViewRequestKey,
 }: {
   production?: ProductionWorkspaceView;
   onOpenProduction: () => void;
+  initialLabelView: LabelWorkspaceView;
+  labelViewRequestKey?: string;
 }) {
   const completed = production?.session?.completionSnapshot ?? null;
   if (completed) {
     return (
       <div className="pro-scroll-safe" data-testid="pro-context-summary">
-        <LabelWorkspace snapshot={completed} />
+        <LabelWorkspace
+          key={labelViewRequestKey ?? initialLabelView}
+          snapshot={completed}
+          initialView={initialLabelView}
+        />
       </div>
     );
   }
@@ -376,6 +387,8 @@ export function RecipeProfilePanel({
   showTabs,
   onOpenPreview,
   onRecalculate,
+  initialLabelView = 'label',
+  labelViewRequestKey,
 }: {
   activeTab: CockpitTab;
   onTabChange: (tab: CockpitTab) => void;
@@ -389,6 +402,8 @@ export function RecipeProfilePanel({
   showTabs: boolean;
   onOpenPreview: () => void;
   onRecalculate: () => void;
+  initialLabelView?: LabelWorkspaceView;
+  labelViewRequestKey?: string;
 }) {
   const [educationOpen, setEducationOpen] = useState(false);
   const tabPanelRef = useRef<HTMLDivElement>(null);
@@ -466,12 +481,15 @@ export function RecipeProfilePanel({
             onOpenPreview={onOpenPreview}
             onRecalculate={onRecalculate}
             onReturnToRecipe={() => onTabChange('profile')}
+            onOpenLabel={() => onTabChange('summary')}
           />
         ) : null}
         {activeTab === 'summary' ? (
           <SummaryPanel
             production={production}
             onOpenProduction={() => onTabChange('production')}
+            initialLabelView={initialLabelView}
+            labelViewRequestKey={labelViewRequestKey}
           />
         ) : null}
       </div>

@@ -56,7 +56,7 @@ export const ROW_GRID =
 export const COMPACT_ROW_GRID =
   'grid grid-cols-1 items-center gap-x-2 gap-y-3 md:grid-cols-[minmax(300px,1fr)_142px_150px_96px_28px]';
 export const PRODUCTION_ROW_GRID =
-  'grid grid-cols-1 items-center gap-x-2 gap-y-2 md:grid-cols-[minmax(140px,1.15fr)_76px_minmax(220px,1fr)_80px] xl:grid-cols-[minmax(200px,1.25fr)_88px_minmax(240px,1fr)_88px]';
+  'grid grid-cols-1 items-center gap-x-2 gap-y-2 md:grid-cols-[minmax(140px,1fr)_76px_226px_80px] lg:grid-cols-[minmax(200px,1fr)_88px_154px_88px]';
 
 export interface IngredientRowActions {
   setPlannedGrams: (lineId: string, grams: number) => void;
@@ -1060,10 +1060,7 @@ function ProductionRow({
           </button>
         ) : null}
       </div>
-      <div
-        className="min-w-0 px-1 text-left md:text-right"
-        data-production-cell="planned"
-      >
+      <div className="min-w-0 px-1 text-left md:text-right" data-production-cell="planned">
         <span className="block text-[10px] font-semibold text-stone-600 md:block">Plan</span>
         <strong className="block font-mono text-sm font-semibold tabular-nums text-ink">
           {formatProductionMassG(line.targetGrams)} g
@@ -1112,10 +1109,7 @@ function ProductionRow({
         ) : null}
       </div>
       <div
-        className={cn(
-          'min-w-0 px-1 md:text-right',
-          exact ? 'text-stone-600' : 'text-attention',
-        )}
+        className={cn('min-w-0 px-1 md:text-right', exact ? 'text-stone-600' : 'text-attention')}
         data-testid={`production-difference-${line.lineId}`}
         data-production-cell="deviation"
         data-production-difference={exact ? 'exact' : difference > 0 ? 'over' : 'under'}

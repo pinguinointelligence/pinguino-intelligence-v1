@@ -83,7 +83,9 @@ describe('Production workspace touch-first UI', () => {
     expect(html).toContain('data-production-cell="deviation"');
     expect(html).toContain('border-b border-ink/[0.075]');
     expect(html).toContain('data-control-density="responsive"');
+    expect(html).toContain('data-control-capacity="10000g"');
     expect(html).toContain('lg:min-h-7');
+    expect(html).toContain('lg:w-[154px]');
     expect(html).toContain('data-category-symbol=');
     expect(html).toContain('text-[10px] leading-tight');
     expect(html).toContain('basis-full lg:mt-0 lg:ml-auto lg:basis-auto');
@@ -954,7 +956,8 @@ describe('Production workspace touch-first UI', () => {
     expect(html).toContain('data-testid="production-completed"');
     expect(html).toContain('Partia gotowa');
     expect(html).toContain('Przejdź do etykiety');
-    expect(html).toContain('/labels?run=ui-run');
+    expect(html).toContain('data-testid="production-go-to-label"');
+    expect(html).not.toContain('/labels?run=ui-run');
     expect(html).not.toContain('class="p-3 text-xs text-stone-500"');
     const staleCompletedHtml = renderToStaticMarkup(
       <ProductionCockpit
@@ -987,5 +990,10 @@ describe('Production workspace touch-first UI', () => {
     expect(labelWorkspace).toContain('Zapisz finalną etykietę');
     expect(labelWorkspace).toContain('Dane wewnętrzne · poza wydrukiem.');
     expect(labelWorkspace).toContain('data-testid="consumer-print-boundary"');
+    const recipeProfilePanel = readFileSync(
+      resolve(import.meta.dirname, '..', 'pro-workbench', 'RecipeProfilePanel.tsx'),
+      'utf8',
+    );
+    expect(recipeProfilePanel).toContain("onOpenLabel={() => onTabChange('summary')}");
   });
 });

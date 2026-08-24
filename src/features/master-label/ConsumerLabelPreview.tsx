@@ -1,5 +1,6 @@
 import type { MasterLabelData } from './masterLabel';
 import { marketProfile } from './marketProfiles';
+import { lotCodeForDisplay } from './labelPresentation';
 
 const primaryText = (value: Record<string, string>, languages: readonly string[]): string =>
   languages.map((language) => value[language]).find((text) => text?.trim()) ?? '';
@@ -96,7 +97,7 @@ export function ConsumerLabelPreview({
         <div>
           <dt className="text-stone-500">LOT</dt>
           <dd className="font-mono" data-testid="consumer-lot">
-            {label.lotCode}
+            {lotCodeForDisplay(label.lotCode)}
           </dd>
         </div>
         {label.dateMark.date ? (

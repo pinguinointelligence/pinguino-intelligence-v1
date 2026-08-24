@@ -23,6 +23,7 @@ import { LockedCalculatorPreview } from '@/features/studio/locked/LockedCalculat
 import { ReviewMarkedModule } from '@/features/design-review/ReviewMarkedModule';
 import { ProReviewZone, type ReviewInventoryRow } from '@/features/pro-workbench/ProReviewZone';
 import { RecipeProfilePanel, type CockpitTab } from '@/features/pro-workbench/RecipeProfilePanel';
+import type { LabelWorkspaceView } from '@/features/master-label/LabelWorkspace';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
 import { WorkbenchRecipeActionDock } from '@/features/pro-workbench/WorkbenchRecipeActionDock';
 import { WorkbenchModuleTabs } from '@/features/pro-workbench/WorkbenchModuleTabs';
@@ -125,6 +126,8 @@ export function StudioEngineSurface({
   recipeBar,
   onRecalculate,
   onOpenExistingPreview,
+  initialLabelView = 'label',
+  labelViewRequestKey,
 }: {
   forceDemo?: boolean;
   /** The Przelicz z PI overlay (Preview → Zastosuj/Anuluj → Cofnij), host-wired. */
@@ -136,6 +139,8 @@ export function StudioEngineSurface({
   recipeBar?: ReactNode;
   onRecalculate?: () => void;
   onOpenExistingPreview?: () => void;
+  initialLabelView?: LabelWorkspaceView;
+  labelViewRequestKey?: string;
 }) {
   const setPlan = useSessionStore((state) => state.setPlan);
   const loadPreset = useRecipeStore((state) => state.loadPreset);
@@ -368,6 +373,8 @@ export function StudioEngineSurface({
               showTabs={false}
               onOpenPreview={onOpenExistingPreview ?? (() => undefined)}
               onRecalculate={onRecalculate ?? (() => undefined)}
+              initialLabelView={initialLabelView}
+              labelViewRequestKey={labelViewRequestKey}
             />
           </aside>
         </div>
@@ -443,6 +450,8 @@ export function StudioEngineSurface({
                   showTabs={false}
                   onOpenPreview={onOpenExistingPreview ?? (() => undefined)}
                   onRecalculate={onRecalculate ?? (() => undefined)}
+                  initialLabelView={initialLabelView}
+                  labelViewRequestKey={labelViewRequestKey}
                 />
               </div>
             </section>

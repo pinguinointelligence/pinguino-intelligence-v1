@@ -88,8 +88,17 @@ describe('plan-aware global navigation', () => {
     expect(activeNavId(loc('/pro/history'), 'pro')).toBe('production');
     expect(activeNavId(loc('/label'), 'pro')).toBe('labels');
     expect(activeNavId(loc('/labels'), 'pro')).toBe('labels');
+    expect(activeNavId(loc('/pro/recipe', '?panel=summary&labelView=settings'), 'pro')).toBe(
+      'labels',
+    );
     expect(activeNavId(loc('/pro/monitor'), 'pro')).toBe('proWorkspace');
     expect(isGroupActive('product', loc('/pro/versions'), 'pro')).toBe(true);
+  });
+
+  it('opens label settings in the canonical recipe workbench instead of the history page', () => {
+    const labels = APP_NAV_ITEMS.find((item) => item.id === 'labels');
+    expect(labels?.label).toBe('Ustawienia etykiety');
+    expect(labels?.to).toBe('/pro/recipe?panel=summary&labelView=settings');
   });
 
   it('never promotes contextual actions, internals or a separate Studio destination', () => {

@@ -1,8 +1,14 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type TouchEvent as ReactTouchEvent,
+} from 'react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { DialogShell } from '@/components/ui/DialogShell';
-import { MetricValue } from '@/components/shared/MetricValue';
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import type { ProductionCompletionSnapshot } from '@/features/production-workspace/productionSession';
 import {
@@ -19,6 +25,7 @@ import {
   type MasterLabelFieldId,
 } from './marketProfiles';
 import { ConsumerLabelPreview } from './ConsumerLabelPreview';
+import { lotCodeForDisplay } from './labelPresentation';
 import {
   defaultAccountLabelProfile,
   resolveLabelRepository,
@@ -27,8 +34,10 @@ import {
   type RunLabelSnapshot,
 } from '@/services/labels/labelRepository';
 import { useAuthStore } from '@/stores/authStore';
+import { cn } from '@/lib/cn';
 
 const MARKET_CODES: readonly MarketProfileCode[] = ['EU', 'US', 'CA', 'UK', 'AU_NZ', 'CUSTOM'];
+export type LabelWorkspaceView = 'label' | 'settings';
 
 const primaryText = (value: Record<string, string>, languages: readonly string[]): string =>
   languages.map((language) => value[language]).find((text) => text?.trim()) ?? '';
@@ -86,12 +95,14 @@ export function LabelWorkspace({
   profileOnly = false,
   repository: suppliedRepository,
   onSaved,
+  initialView = 'label',
 }: {
   snapshot?: ProductionCompletionSnapshot | null;
   runId?: string | null;
   profileOnly?: boolean;
   repository?: LabelRepository;
   onSaved?: (snapshot: RunLabelSnapshot) => void;
+  initialView?: LabelWorkspaceView;
 }) {
   const repository = useMemo(
     () => suppliedRepository ?? resolveLabelRepository(),
@@ -104,7 +115,12 @@ export function LabelWorkspace({
   const [saved, setSaved] = useState<RunLabelSnapshot | null>(null);
   const [label, setLabel] = useState<MasterLabelData | null>(null);
   const [editing, setEditing] = useState(false);
-  const [saveAsDefault, setSaveAsDefault] = useState(false);
+  const [saveAsDefault, setSaveAsDefault] = useState(true);
+  const [activeView, setActiveView] = useState<LabelWorkspaceView>(initialView);
+  const [transitionDirection, setTransitionDirection] = useState<'forward' | 'back'>(
+    initialView === 'settings' ? 'forward' : 'back',
+  );
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [resolvedLogo, setResolvedLogo] = useState<{
@@ -112,6 +128,13 @@ export function LabelWorkspace({
     url: string | null;
   } | null>(null);
   const requestedRunId = suppliedSnapshot?.sessionId ?? runId;
+  const visibleView: LabelWorkspaceView = saved ? 'label' : activeView;
+
+  const openView = (next: LabelWorkspaceView) => {
+    if (next === visibleView || (next === 'settings' && saved)) return;
+    setTransitionDirection(next === 'settings' ? 'forward' : 'back');
+    setActiveView(next);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -200,6 +223,31 @@ export function LabelWorkspace({
     }
   };
 
+  const onTouchStart = (event: ReactTouchEvent<HTMLDivElement>) => {
+    const target = event.target;
+    if (
+      target instanceof HTMLElement &&
+      target.closest('input, select, textarea, button, label, [role="spinbutton"]')
+    ) {
+      swipeStart.current = null;
+      return;
+    }
+    const touch = event.touches[0];
+    swipeStart.current = touch ? { x: touch.clientX, y: touch.clientY } : null;
+  };
+
+  const onTouchEnd = (event: ReactTouchEvent<HTMLDivElement>) => {
+    const start = swipeStart.current;
+    const touch = event.changedTouches[0];
+    swipeStart.current = null;
+    if (!start || !touch) return;
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+    if (Math.abs(deltaX) < 56 || Math.abs(deltaX) <= Math.abs(deltaY) * 1.25) return;
+    if (deltaX < 0) openView('settings');
+    else openView('label');
+  };
+
   if (busy && !profile) {
     return <p className="py-8 text-sm text-stone-500">Odczytuję profil i snapshot etykiety…</p>;
   }
@@ -276,7 +324,6 @@ export function LabelWorkspace({
 
   const productName = primaryText(label.productName, label.labelLanguages);
   const costs = snapshot.finalProduct.costs;
-  const nutrition = label.nutritionSource;
   const activeMarket = marketProfile(label.market);
   const missing = preflight?.items.filter((item) => item.status === 'missing') ?? [];
   const printBlockedReason = missing[0]?.message ?? activeMarket.rendererLimitation;
@@ -284,160 +331,189 @@ export function LabelWorkspace({
 
   return (
     <div
-      className="space-y-4 p-3 text-ink sm:p-4"
+      className="relative min-w-0 overflow-x-hidden text-ink touch-pan-y"
       data-testid="label-workspace"
       data-workspace-mode="run"
+      data-active-label-view={visibleView}
+      data-run-id={snapshot.sessionId}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
     >
-      <Card padding="none" className="overflow-hidden rounded-[22px]">
-        <header className="flex flex-wrap items-start justify-between gap-4 border-b border-ink/10 p-4 sm:p-5">
-          <div>
-            <SectionLabel>Etykieta produktu</SectionLabel>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <h2 className="text-xl font-semibold text-ink">{productName}</h2>
-              <span
-                className="rounded-full border border-ink/10 bg-stone-50 px-2.5 py-1 text-xs font-semibold"
-                data-testid="active-label-market"
-              >
-                {activeMarket.flag} {activeMarket.label}
-              </span>
-            </div>
-            <p className="mt-1 text-sm text-stone-500">
-              Profil rynku steruje wymaganymi polami i wydrukiem.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setEditing(true)}
-              disabled={Boolean(saved)}
-            >
-              {saved ? 'Snapshot zapisany' : 'Ustawienia'}
-            </Button>
-            <Button
-              size="sm"
-              disabled={!preflight?.readyForSystemPrint}
-              onClick={() => printMasterLabel(label, logoUrl)}
-            >
-              Drukuj
-            </Button>
-          </div>
-        </header>
-        <div className="border-b border-ink/10 bg-[#f7f5f0] px-4 py-3" role="status">
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-            <span
-              className={preflight?.readyForSystemPrint ? 'text-status-success' : 'text-stone-700'}
-            >
-              {preflight?.readyForSystemPrint
-                ? 'Gotowa do wydruku'
-                : `Wydruk zablokowany · ${missing.length > 0 ? `${missing.length} wymaganych pól` : `profil ${activeMarket.label} wymaga weryfikacji`}`}
-            </span>
-            {!preflight?.readyForSystemPrint ? (
-              <button
-                type="button"
-                className="font-semibold underline"
-                onClick={() => setEditing(true)}
-                disabled={Boolean(saved)}
-              >
-                {printBlockedReason}
-              </button>
-            ) : null}
-          </div>
-        </div>
-        <div className="p-4 sm:p-6" data-testid="consumer-print-boundary">
-          <ConsumerLabelPreview label={label} logoUrl={logoUrl} />
-        </div>
-      </Card>
-
-      <section
-        className="grid gap-3 md:grid-cols-2 xl:grid-cols-4"
-        data-testid="label-internal-overview"
-      >
-        <OverviewCard title="Składniki">
-          <dl className="space-y-2">
-            {label.ingredients.map((ingredient) => (
-              <div key={ingredient.lineId} className="flex justify-between gap-3 text-xs">
-                <dt className="min-w-0 truncate text-stone-600">
-                  {primaryText(ingredient.names, label.labelLanguages)}
-                </dt>
-                <dd className="shrink-0 font-mono tabular-nums">
-                  {ingredient.actualGrams.toFixed(0)} g
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </OverviewCard>
-        <OverviewCard title="Wartości odżywcze">
-          <MetricValue
-            value={nutrition?.kcal ?? '—'}
-            unit={nutrition ? 'kcal / 100 g' : undefined}
-            size="lg"
-          />
-          <p className="mt-2 text-xs text-stone-500">Z finalnej, faktycznej partii.</p>
-        </OverviewCard>
-        <OverviewCard title="Koszt">
-          <dl className="space-y-2 text-xs">
-            <OverviewMetric label="Cała partia" value={costs?.total_cost} unit="€" />
-            <OverviewMetric label="1 kg" value={costs?.cost_per_kg} unit="€" />
-            <OverviewMetric label="Porcja 60 g" value={costs?.cost_per_serving_60g} unit="€" />
-          </dl>
-          <p className="mt-3 text-[11px] text-stone-500">Dane wewnętrzne · poza wydrukiem.</p>
-        </OverviewCard>
-        <OverviewCard title="Baza techniczna">
-          <dl className="space-y-2 text-xs">
-            <OverviewMetric label="Woda" value={percentages.water_percent} unit="%" />
-            <OverviewMetric label="Ciała stałe" value={percentages.solids_percent} unit="%" />
-            <OverviewMetric label="Tłuszcz" value={percentages.fat_percent} unit="%" />
-            <OverviewMetric label="Białko" value={percentages.protein_percent} unit="%" />
-          </dl>
-        </OverviewCard>
-      </section>
-
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-ink/10 bg-white px-4 py-3">
-        <p className="text-xs text-stone-600">
-          {saved
-            ? `Niezmienny snapshot etykiety · ${new Date(saved.createdAt).toLocaleString('pl-PL')}`
-            : 'Finalny zapis zamraża rynek, treść, LOT i logo dla tej partii.'}
-        </p>
-        {saved ? null : (
-          <Button
-            size="sm"
-            onClick={() => void saveRunSnapshot()}
-            disabled={busy || missing.length > 0}
-          >
-            {busy ? 'Zapisywanie…' : 'Zapisz finalną etykietę'}
-          </Button>
+      <div
+        key={visibleView}
+        className={cn(
+          'space-y-4 p-3 sm:p-4 motion-safe:animate-[labelWorkspaceInFromRight_240ms_cubic-bezier(0.32,0.72,0,1)]',
+          transitionDirection === 'back' &&
+            'motion-safe:animate-[labelWorkspaceInFromLeft_240ms_cubic-bezier(0.32,0.72,0,1)]',
         )}
-      </div>
-      {error ? (
-        <p className="text-sm text-status-error" role="alert">
-          {error}
-        </p>
-      ) : null}
+      >
+        {visibleView === 'label' ? (
+          <>
+            <Card padding="none" className="overflow-hidden rounded-[22px]">
+              <header className="flex flex-wrap items-start justify-between gap-4 border-b border-ink/10 p-4 sm:p-5">
+                <div>
+                  <SectionLabel>Etykieta produktu</SectionLabel>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <h2 className="text-xl font-semibold text-ink">{productName}</h2>
+                    <span
+                      className="rounded-full border border-ink/10 bg-stone-50 px-2.5 py-1 text-xs font-semibold"
+                      data-testid="active-label-market"
+                    >
+                      {activeMarket.flag} {activeMarket.label}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-stone-500">
+                    Profil rynku steruje wymaganymi polami i wydrukiem.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => openView('settings')}
+                    disabled={Boolean(saved)}
+                  >
+                    {saved ? 'Snapshot zapisany' : 'Ustawienia'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    disabled={!preflight?.readyForSystemPrint}
+                    onClick={() => printMasterLabel(label, logoUrl)}
+                  >
+                    Drukuj
+                  </Button>
+                </div>
+              </header>
+              <div className="border-b border-ink/10 bg-[#f7f5f0] px-4 py-3" role="status">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <span
+                    className={
+                      preflight?.readyForSystemPrint ? 'text-status-success' : 'text-stone-700'
+                    }
+                  >
+                    {preflight?.readyForSystemPrint
+                      ? 'Gotowa do wydruku'
+                      : `Wydruk zablokowany · ${missing.length > 0 ? `${missing.length} wymaganych pól` : `profil ${activeMarket.label} wymaga weryfikacji`}`}
+                  </span>
+                  {!preflight?.readyForSystemPrint ? (
+                    <button
+                      type="button"
+                      className="font-semibold underline underline-offset-4"
+                      onClick={() => openView('settings')}
+                      disabled={Boolean(saved)}
+                    >
+                      {printBlockedReason}
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+              <div className="p-4 sm:p-6" data-testid="consumer-print-boundary">
+                <ConsumerLabelPreview label={label} logoUrl={logoUrl} />
+              </div>
+            </Card>
 
-      {editing && !saved ? (
-        <RunLabelEditor
-          label={label}
-          logoUrl={logoUrl}
-          repository={repository}
-          saveAsDefault={saveAsDefault}
-          onSaveAsDefaultChange={setSaveAsDefault}
-          onClose={() => setEditing(false)}
-          onSave={async (next) => {
-            setBusy(true);
-            setError(null);
-            try {
-              setLabel(next);
-              if (saveAsDefault) await persistProfile(profileFromLabel(profile, next));
-              setEditing(false);
-            } catch (caught) {
-              setError(caught instanceof Error ? caught.message : 'Nie zapisano zmian etykiety.');
-            } finally {
-              setBusy(false);
-            }
-          }}
-        />
-      ) : null}
+            <section className="grid gap-3 md:grid-cols-2" data-testid="label-internal-overview">
+              <OverviewCard title="Koszt">
+                <dl className="space-y-2 text-xs">
+                  <OverviewMetric label="Cała partia" value={costs?.total_cost} unit="€" />
+                  <OverviewMetric label="1 kg" value={costs?.cost_per_kg} unit="€" />
+                  <OverviewMetric
+                    label="Porcja 60 g"
+                    value={costs?.cost_per_serving_60g}
+                    unit="€"
+                  />
+                </dl>
+                <p className="mt-3 text-[11px] text-stone-500">Dane wewnętrzne · poza wydrukiem.</p>
+              </OverviewCard>
+              <OverviewCard title="Baza techniczna">
+                <dl className="space-y-2 text-xs">
+                  <OverviewMetric label="Woda" value={percentages.water_percent} unit="%" />
+                  <OverviewMetric label="Ciała stałe" value={percentages.solids_percent} unit="%" />
+                  <OverviewMetric label="Tłuszcz" value={percentages.fat_percent} unit="%" />
+                  <OverviewMetric label="Białko" value={percentages.protein_percent} unit="%" />
+                </dl>
+              </OverviewCard>
+            </section>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-ink/10 bg-white px-4 py-3">
+              <p className="text-xs text-stone-600">
+                {saved
+                  ? `Niezmienny snapshot etykiety · ${new Date(saved.createdAt).toLocaleString('pl-PL')}`
+                  : 'Finalny zapis zamraża rynek, treść, LOT i logo dla tej partii.'}
+              </p>
+              {saved ? null : (
+                <Button
+                  size="sm"
+                  onClick={() => void saveRunSnapshot()}
+                  disabled={busy || missing.length > 0}
+                >
+                  {busy ? 'Zapisywanie…' : 'Zapisz finalną etykietę'}
+                </Button>
+              )}
+            </div>
+          </>
+        ) : (
+          <RunLabelEditor
+            label={label}
+            logoUrl={logoUrl}
+            repository={repository}
+            saveAsDefault={saveAsDefault}
+            onSaveAsDefaultChange={setSaveAsDefault}
+            onClose={() => openView('label')}
+            onSave={async (next) => {
+              setBusy(true);
+              setError(null);
+              try {
+                if (saveAsDefault) await persistProfile(profileFromLabel(profile, next));
+                setLabel(next);
+                openView('label');
+              } catch (caught) {
+                setError(caught instanceof Error ? caught.message : 'Nie zapisano zmian etykiety.');
+              } finally {
+                setBusy(false);
+              }
+            }}
+          />
+        )}
+        {error ? (
+          <p className="text-sm text-status-error" role="alert">
+            {error}
+          </p>
+        ) : null}
+      </div>
+
+      <nav
+        aria-label="Widoki workspace etykiety"
+        className="sticky bottom-0 z-20 flex min-h-11 items-center justify-center gap-2 border-t border-ink/8 bg-white/95 px-4 backdrop-blur"
+        data-testid="label-workspace-dots"
+      >
+        {(['label', 'settings'] as const).map((view) => (
+          <button
+            key={view}
+            type="button"
+            aria-label={view === 'label' ? 'Pokaż etykietę' : 'Pokaż ustawienia etykiety'}
+            aria-current={visibleView === view ? 'step' : undefined}
+            disabled={view === 'settings' && Boolean(saved)}
+            onClick={() => openView(view)}
+            className={cn(
+              'pro-focus-ring grid size-8 place-items-center rounded-full disabled:cursor-not-allowed disabled:opacity-35',
+            )}
+            data-testid={`label-workspace-dot-${view}`}
+          >
+            <span
+              aria-hidden
+              className={cn(
+                'block size-1.5 rounded-full border border-ink/35 transition-[width,background-color,border-color]',
+                visibleView === view && 'w-4 border-[#b58b32] bg-[#b58b32]',
+              )}
+            />
+          </button>
+        ))}
+      </nav>
+      <style>{`
+        @keyframes labelWorkspaceInFromRight { from { opacity: .55; transform: translateX(22px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes labelWorkspaceInFromLeft { from { opacity: .55; transform: translateX(-22px); } to { opacity: 1; transform: translateX(0); } }
+      `}</style>
     </div>
   );
 }
@@ -572,225 +648,553 @@ function RunLabelEditor({
   const [draft, setDraft] = useState(label);
   const [uploading, setUploading] = useState(false);
   const primaryLanguage = draft.labelLanguages[0] ?? 'pl';
+  const draftPreflight = useMemo(() => buildLabelPreflight(draft), [draft]);
+  const missingFields = useMemo(
+    () =>
+      new Set(
+        draftPreflight.items.filter((item) => item.status === 'missing').map((item) => item.field),
+      ),
+    [draftPreflight],
+  );
+  const missing = (field: MasterLabelFieldId) => missingFields.has(field);
+  const fieldClass = (field: MasterLabelFieldId, empty = true) =>
+    cn(
+      SETTINGS_INPUT_CLASS,
+      missing(field) &&
+        empty &&
+        'border-[#a96832] bg-[#fffaf4] ring-1 ring-[#a96832]/15 focus:border-[#8a5b23]',
+    );
   const updateText = (
     field: 'productName' | 'legalProductName' | 'storageInstructions' | 'origin' | 'customerNote',
     language: string,
     value: string,
   ) => setDraft({ ...draft, [field]: { ...draft[field], [language]: value } });
   return (
-    <DialogShell
-      label="Edytuj etykietę zakończonej partii"
-      testId="label-run-editor"
-      placement="responsive"
-      onClose={onClose}
-      panelClassName="p-5 sm:w-[min(760px,94vw)]"
+    <Card
+      padding="none"
+      className="overflow-hidden rounded-[18px] border-ink/10 shadow-pro-e0"
+      data-testid="label-settings-view"
     >
-      <EditorHeader title="Etykieta zakończonej partii" onClose={onClose} />
-      <MarketAndIdentityFields
-        market={draft.market}
-        languages={draft.labelLanguages}
-        businessName={draft.businessName}
-        operatorName={draft.operator.operatorName}
-        address={draft.operator.address}
-        logoUrl={logoUrl}
-        uploading={uploading}
-        onMarket={(market) =>
-          setDraft({
-            ...draft,
-            market,
-            marketProfileVersion: MARKET_PROFILES[market].version,
-            enabledOptionalFields: normalizeEnabledOptionalFields(
-              market,
-              draft.enabledOptionalFields,
-            ),
-          })
-        }
-        onLanguages={(labelLanguages) => setDraft({ ...draft, labelLanguages })}
-        onBusinessName={(businessName) => setDraft({ ...draft, businessName })}
-        onOperatorName={(operatorName) =>
-          setDraft({ ...draft, operator: { ...draft.operator, operatorName } })
-        }
-        onAddress={(address) => setDraft({ ...draft, operator: { ...draft.operator, address } })}
-        onLogo={async (file) => {
-          setUploading(true);
-          try {
-            const logoPath = await repository.uploadLogo(file);
-            setDraft((current) => ({ ...current, logoPath }));
-          } finally {
-            setUploading(false);
-          }
-        }}
-      />
-      <OptionalFieldSettings
-        market={draft.market}
-        enabled={draft.enabledOptionalFields}
-        onChange={(enabledOptionalFields) => setDraft({ ...draft, enabledOptionalFields })}
-      />
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        {draft.labelLanguages.flatMap((language) => [
-          <label key={`name:${language}`} className="text-xs text-stone-600">
-            Nazwa · {language.toUpperCase()}
-            <input
-              value={draft.productName[language] ?? ''}
-              onChange={(event) => updateText('productName', language, event.currentTarget.value)}
-              className="mt-1 h-11 w-full border border-ink/15 px-3 text-sm text-ink"
-            />
-          </label>,
-          <label key={`legal:${language}`} className="text-xs text-stone-600">
-            Nazwa prawna · {language.toUpperCase()}
-            <input
-              value={draft.legalProductName[language] ?? ''}
-              onChange={(event) =>
-                updateText('legalProductName', language, event.currentTarget.value)
-              }
-              className="mt-1 h-11 w-full border border-ink/15 px-3 text-sm text-ink"
-            />
-          </label>,
-        ])}
-        <label className="text-xs text-stone-600">
-          Masa netto · g
-          <input
-            type="number"
-            min={0}
-            value={draft.netQuantityG ?? ''}
-            onChange={(event) =>
-              setDraft({ ...draft, netQuantityG: Number(event.currentTarget.value) || null })
-            }
-            className="mt-1 h-11 w-full border border-ink/15 px-3 font-mono text-sm text-ink"
-          />
-        </label>
-        <div className="text-xs text-stone-600">
-          LOT · nadawany automatycznie
-          <output className="mt-1 flex h-11 w-full items-center border border-ink/10 bg-stone-50 px-3 font-mono text-sm text-ink">
-            {draft.lotCode}
-          </output>
+      <header className="border-b border-ink/10 bg-[#fffdf8] px-4 py-4 sm:px-5">
+        <button
+          type="button"
+          onClick={onClose}
+          className="pro-focus-ring -ml-1 min-h-11 px-1 text-xs font-semibold text-stone-600 transition-colors hover:text-ink"
+        >
+          ← Etykieta
+        </button>
+        <div className="mt-1 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <SectionLabel>Ustawienia etykiety</SectionLabel>
+            <h2 className="mt-1 text-xl font-semibold tracking-[-0.02em] text-ink">
+              Profil i dane bieżącej etykiety
+            </h2>
+          </div>
+          <span className="rounded-full border border-ink/10 bg-white px-2.5 py-1 text-xs font-semibold text-ink">
+            {marketProfile(draft.market).flag} {marketProfile(draft.market).label}
+          </span>
         </div>
-        <label className="text-xs text-stone-600">
-          Przechowywanie
-          <input
-            value={draft.storageInstructions[primaryLanguage] ?? ''}
-            onChange={(event) =>
-              updateText('storageInstructions', primaryLanguage, event.currentTarget.value)
-            }
-            className="mt-1 h-11 w-full border border-ink/15 px-3 text-sm text-ink"
-          />
-        </label>
-        <label className="text-xs text-stone-600">
-          Data produkcji
-          <input
-            type="date"
-            value={draft.productionDate}
-            onChange={(event) =>
-              setDraft({
-                ...draft,
-                productionDate: event.currentTarget.value,
-                productionDateReviewed: true,
-              })
-            }
-            className="mt-1 h-11 w-full border border-ink/15 px-3 text-sm text-ink"
-          />
-        </label>
-        <label className="text-xs text-stone-600">
-          Najlepiej spożyć przed
-          <input
-            type="date"
-            value={draft.dateMark.date ?? ''}
-            onChange={(event) =>
-              setDraft({
-                ...draft,
-                dateMark: {
-                  kind: 'best_before',
-                  date: event.currentTarget.value || null,
-                  basis: 'manual',
-                  reviewedByUser: Boolean(event.currentTarget.value),
-                },
-              })
-            }
-            className="mt-1 h-11 w-full border border-ink/15 px-3 text-sm text-ink"
-          />
-        </label>
-        {draft.enabledOptionalFields.includes('origin') ? (
-          <label className="text-xs text-stone-600">
-            Pochodzenie
+        <div
+          className={cn(
+            'mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[12px] border px-3 py-3',
+            draftPreflight.missingCount > 0
+              ? 'border-[#d8bb8d] bg-[#fbf8f1]'
+              : 'border-status-ideal/25 bg-status-ideal/[0.06]',
+          )}
+          data-testid="label-settings-missing-count"
+          role="status"
+          aria-live="polite"
+        >
+          <div>
+            <strong className="block text-sm text-ink">
+              {draftPreflight.missingCount > 0
+                ? `Brakuje ${draftPreflight.missingCount} wymaganych informacji`
+                : 'Wszystkie wymagane informacje są uzupełnione'}
+            </strong>
+            <span className="mt-0.5 block text-xs text-stone-600">
+              {draftPreflight.missingCount > 0
+                ? 'Uzupełnij oznaczone pola, aby odblokować druk.'
+                : 'Pozostają istniejące kontrole profilu prawnego i przeglądu.'}
+            </span>
+          </div>
+          {draftPreflight.missingCount > 0 ? (
+            <button
+              type="button"
+              className="pro-focus-ring min-h-11 px-2 text-xs font-semibold text-[#8a5b23] underline underline-offset-4"
+              onClick={(event) => {
+                const root = event.currentTarget.closest('[data-testid="label-settings-view"]');
+                const control = root?.querySelector<HTMLElement>(
+                  '[data-missing-required="true"] input, [data-missing-required="true"] select, [data-missing-required="true"] button',
+                );
+                control?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                control?.focus();
+              }}
+            >
+              Pokaż brakujące
+            </button>
+          ) : null}
+        </div>
+      </header>
+
+      <div className="px-4 sm:px-5">
+        <SettingsSection title="Rynek i język">
+          <div>
+            <span className="text-xs font-medium text-stone-600">Jurysdykcja / profil</span>
+            <div className="mt-2 grid grid-cols-2 gap-1.5 min-[480px]:grid-cols-3">
+              {MARKET_CODES.map((code) => (
+                <button
+                  key={code}
+                  type="button"
+                  className={cn(
+                    'pro-focus-ring min-h-11 rounded-[10px] border px-2 text-xs font-semibold transition-colors',
+                    draft.market === code
+                      ? 'border-ink bg-ink text-white'
+                      : 'border-ink/12 bg-white text-ink hover:bg-stone-50',
+                  )}
+                  data-market-active={draft.market === code ? 'true' : undefined}
+                  onClick={() =>
+                    setDraft({
+                      ...draft,
+                      market: code,
+                      marketProfileVersion: MARKET_PROFILES[code].version,
+                      enabledOptionalFields: normalizeEnabledOptionalFields(
+                        code,
+                        draft.enabledOptionalFields,
+                      ),
+                    })
+                  }
+                >
+                  {MARKET_PROFILES[code].label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <label className="mt-3 block text-xs font-medium text-stone-600">
+            Języki · po przecinku
             <input
-              value={draft.origin[primaryLanguage] ?? ''}
-              onChange={(event) => updateText('origin', primaryLanguage, event.currentTarget.value)}
-              className="mt-1 h-11 w-full border border-ink/15 px-3 text-sm text-ink"
+              value={draft.labelLanguages.join(', ')}
+              onChange={(event) => {
+                const parsed = event.currentTarget.value
+                  .split(',')
+                  .map((value) => value.trim())
+                  .filter(Boolean);
+                setDraft({ ...draft, labelLanguages: parsed.length > 0 ? parsed : ['pl'] });
+              }}
+              className={SETTINGS_INPUT_CLASS}
             />
           </label>
-        ) : null}
-        {draft.enabledOptionalFields.includes('customer_note') ? (
-          <label className="text-xs text-stone-600">
-            Nota dla klienta
+        </SettingsSection>
+
+        <SettingsSection title="Firma">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="text-xs font-medium text-stone-600">
+              Marka / nazwa firmy
+              <input
+                value={draft.businessName}
+                onChange={(event) =>
+                  setDraft({ ...draft, businessName: event.currentTarget.value })
+                }
+                className={SETTINGS_INPUT_CLASS}
+              />
+            </label>
+            <RequiredSettingsField field="operator" missing={missing('operator')}>
+              <div className="grid gap-3">
+                <label className="text-xs font-medium text-stone-600">
+                  Operator
+                  <input
+                    value={draft.operator.operatorName}
+                    onChange={(event) =>
+                      setDraft({
+                        ...draft,
+                        operator: { ...draft.operator, operatorName: event.currentTarget.value },
+                      })
+                    }
+                    className={fieldClass('operator', !draft.operator.operatorName.trim())}
+                  />
+                </label>
+                <label className="text-xs font-medium text-stone-600">
+                  Adres operatora
+                  <input
+                    value={draft.operator.address}
+                    onChange={(event) =>
+                      setDraft({
+                        ...draft,
+                        operator: { ...draft.operator, address: event.currentTarget.value },
+                      })
+                    }
+                    className={fieldClass('operator', !draft.operator.address.trim())}
+                  />
+                </label>
+              </div>
+            </RequiredSettingsField>
+          </div>
+          <label className="mt-3 flex min-h-14 items-center gap-3 rounded-[12px] border border-ink/10 bg-[#fffdf8] p-3 text-xs text-stone-600">
+            {logoUrl ? (
+              <img src={logoUrl} alt="Aktualne logo" className="size-12 object-contain" />
+            ) : (
+              <span className="grid size-12 shrink-0 place-items-center rounded-[10px] border border-ink/10 bg-white text-[10px] text-stone-400">
+                Logo
+              </span>
+            )}
+            <span className="min-w-0 flex-1">PNG, JPEG, WebP lub SVG · maks. 5 MB</span>
             <input
-              value={draft.customerNote[primaryLanguage] ?? ''}
-              onChange={(event) =>
-                updateText('customerNote', primaryLanguage, event.currentTarget.value)
-              }
-              className="mt-1 h-11 w-full border border-ink/15 px-3 text-sm text-ink"
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+              disabled={uploading}
+              className="max-w-32 text-xs"
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                if (!file) return;
+                setUploading(true);
+                void repository
+                  .uploadLogo(file)
+                  .then((logoPath) => setDraft((current) => ({ ...current, logoPath })))
+                  .finally(() => setUploading(false));
+              }}
             />
           </label>
-        ) : null}
+        </SettingsSection>
+
+        <SettingsSection title="Produkt">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <RequiredSettingsField field="product_name" missing={missing('product_name')}>
+              <div className="grid gap-3">
+                {draft.labelLanguages.map((language) => (
+                  <label key={`name:${language}`} className="text-xs font-medium text-stone-600">
+                    Nazwa produktu · {language.toUpperCase()}
+                    <input
+                      value={draft.productName[language] ?? ''}
+                      onChange={(event) =>
+                        updateText('productName', language, event.currentTarget.value)
+                      }
+                      className={fieldClass(
+                        'product_name',
+                        !(draft.productName[language] ?? '').trim(),
+                      )}
+                    />
+                  </label>
+                ))}
+              </div>
+            </RequiredSettingsField>
+            <RequiredSettingsField
+              field="legal_product_name"
+              missing={missing('legal_product_name')}
+            >
+              <div className="grid gap-3">
+                {draft.labelLanguages.map((language) => (
+                  <label key={`legal:${language}`} className="text-xs font-medium text-stone-600">
+                    <span className="flex items-center justify-between gap-2">
+                      <span>Nazwa prawna · {language.toUpperCase()}</span>
+                      {missing('legal_product_name') ? <RequiredBadge /> : null}
+                    </span>
+                    <input
+                      value={draft.legalProductName[language] ?? ''}
+                      onChange={(event) =>
+                        updateText('legalProductName', language, event.currentTarget.value)
+                      }
+                      className={fieldClass(
+                        'legal_product_name',
+                        !(draft.legalProductName[language] ?? '').trim(),
+                      )}
+                    />
+                  </label>
+                ))}
+              </div>
+            </RequiredSettingsField>
+            <RequiredSettingsField field="net_quantity" missing={missing('net_quantity')}>
+              <label className="text-xs font-medium text-stone-600">
+                Masa netto · g
+                <input
+                  type="number"
+                  min={0}
+                  value={draft.netQuantityG ?? ''}
+                  onChange={(event) =>
+                    setDraft({ ...draft, netQuantityG: Number(event.currentTarget.value) || null })
+                  }
+                  className={cn(
+                    fieldClass('net_quantity', !draft.netQuantityG),
+                    'font-mono tabular-nums',
+                  )}
+                />
+              </label>
+            </RequiredSettingsField>
+          </div>
+        </SettingsSection>
+
+        <SettingsSection title="Daty i identyfikacja">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <RequiredSettingsField field="lot" missing={missing('lot')}>
+              <div className="text-xs font-medium text-stone-600">
+                LOT · nadawany automatycznie
+                <output
+                  className={cn(
+                    SETTINGS_INPUT_CLASS,
+                    'flex items-center bg-stone-50 font-mono tabular-nums',
+                  )}
+                >
+                  {lotCodeForDisplay(draft.lotCode)}
+                </output>
+              </div>
+            </RequiredSettingsField>
+            <label className="text-xs font-medium text-stone-600">
+              Data produkcji
+              <input
+                type="date"
+                value={draft.productionDate}
+                onChange={(event) =>
+                  setDraft({
+                    ...draft,
+                    productionDate: event.currentTarget.value,
+                    productionDateReviewed: true,
+                  })
+                }
+                className={SETTINGS_INPUT_CLASS}
+              />
+            </label>
+            <RequiredSettingsField field="date_mark" missing={missing('date_mark')}>
+              <label className="text-xs font-medium text-stone-600">
+                <span className="flex items-center justify-between gap-2">
+                  <span>Najlepiej spożyć przed</span>
+                  {missing('date_mark') ? <RequiredBadge /> : null}
+                </span>
+                <input
+                  type="date"
+                  value={draft.dateMark.date ?? ''}
+                  onChange={(event) =>
+                    setDraft({
+                      ...draft,
+                      dateMark: {
+                        kind: 'best_before',
+                        date: event.currentTarget.value || null,
+                        basis: 'manual',
+                        reviewedByUser: Boolean(event.currentTarget.value),
+                      },
+                    })
+                  }
+                  className={fieldClass('date_mark', !draft.dateMark.date)}
+                />
+              </label>
+            </RequiredSettingsField>
+          </div>
+        </SettingsSection>
+
+        <SettingsSection title="Informacje dodatkowe">
+          <RequiredSettingsField field="storage" missing={missing('storage')}>
+            <label className="text-xs font-medium text-stone-600">
+              <span className="flex items-center justify-between gap-2">
+                <span>Przechowywanie · {primaryLanguage.toUpperCase()}</span>
+                {missing('storage') ? <RequiredBadge /> : null}
+              </span>
+              <input
+                value={draft.storageInstructions[primaryLanguage] ?? ''}
+                onChange={(event) =>
+                  updateText('storageInstructions', primaryLanguage, event.currentTarget.value)
+                }
+                className={fieldClass(
+                  'storage',
+                  !(draft.storageInstructions[primaryLanguage] ?? '').trim(),
+                )}
+              />
+            </label>
+          </RequiredSettingsField>
+          <OptionalFieldSettings
+            market={draft.market}
+            enabled={draft.enabledOptionalFields}
+            onChange={(enabledOptionalFields) => setDraft({ ...draft, enabledOptionalFields })}
+          />
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {draft.enabledOptionalFields.includes('origin') ? (
+              <label className="text-xs font-medium text-stone-600">
+                Pochodzenie
+                <input
+                  value={draft.origin[primaryLanguage] ?? ''}
+                  onChange={(event) =>
+                    updateText('origin', primaryLanguage, event.currentTarget.value)
+                  }
+                  className={SETTINGS_INPUT_CLASS}
+                />
+              </label>
+            ) : null}
+            {draft.enabledOptionalFields.includes('customer_note') ? (
+              <label className="text-xs font-medium text-stone-600">
+                Nota dla klienta
+                <input
+                  value={draft.customerNote[primaryLanguage] ?? ''}
+                  onChange={(event) =>
+                    updateText('customerNote', primaryLanguage, event.currentTarget.value)
+                  }
+                  className={SETTINGS_INPUT_CLASS}
+                />
+              </label>
+            ) : null}
+          </div>
+        </SettingsSection>
+
+        <SettingsSection title="Format">
+          <PresentationFields
+            format={draft.format}
+            widthMm={draft.size.widthMm}
+            heightMm={draft.size.heightMm}
+            copies={draft.copies}
+            onChange={(presentation) =>
+              setDraft({
+                ...draft,
+                format: presentation.format,
+                size: { widthMm: presentation.widthMm, heightMm: presentation.heightMm },
+                copies: presentation.copies,
+              })
+            }
+          />
+        </SettingsSection>
+
+        <SettingsSection title="Weryfikacja">
+          <div className="grid gap-2">
+            <RequiredSettingsField field="ingredients" missing={missing('ingredients')}>
+              <ReviewLine
+                label="Składniki"
+                ready={!missing('ingredients')}
+                message={
+                  missing('ingredients')
+                    ? 'Brakuje składników lub canonical ID w danych bieżącej partii.'
+                    : 'Dane składników pochodzą z finalnego ACTUAL snapshotu.'
+                }
+              />
+            </RequiredSettingsField>
+            <RequiredSettingsField field="nutrition" missing={missing('nutrition')}>
+              <ReviewLine
+                label="Wartości odżywcze"
+                ready={!missing('nutrition')}
+                message={
+                  missing('nutrition')
+                    ? 'Brakuje finalnych obliczeń Nutrition.'
+                    : 'Deklaracja korzysta z istniejącej authority Nutrition.'
+                }
+              />
+            </RequiredSettingsField>
+            <RequiredSettingsField field="allergens" missing={missing('allergens')}>
+              <label
+                className={cn(
+                  'flex min-h-12 items-center gap-3 rounded-[12px] border px-3 text-xs text-ink',
+                  missing('allergens') ? 'border-[#a96832] bg-[#fffaf4]' : 'border-ink/10 bg-white',
+                )}
+              >
+                <input
+                  type="checkbox"
+                  className="size-5 accent-ink"
+                  checked={draft.allergens.reviewedByUser}
+                  onChange={(event) =>
+                    setDraft({
+                      ...draft,
+                      allergens: {
+                        ...draft.allergens,
+                        reviewedByUser: event.currentTarget.checked,
+                      },
+                    })
+                  }
+                />
+                <span className="flex-1">Potwierdzam przegląd danych alergenowych.</span>
+                {missing('allergens') ? <RequiredBadge /> : null}
+              </label>
+            </RequiredSettingsField>
+            <label className="flex min-h-12 items-center gap-3 rounded-[12px] border border-ink/10 bg-white px-3 text-xs text-ink">
+              <input
+                type="checkbox"
+                className="size-5 accent-ink"
+                checked={draft.preflightAcknowledged}
+                onChange={(event) =>
+                  setDraft({ ...draft, preflightAcknowledged: event.currentTarget.checked })
+                }
+              />
+              Sprawdziłem dane etykiety przed wydrukiem.
+            </label>
+            <label className="flex min-h-12 items-center gap-3 rounded-[12px] border border-ink/10 bg-[#fffdf8] px-3 text-xs text-ink">
+              <input
+                type="checkbox"
+                className="size-5 accent-ink"
+                checked={saveAsDefault}
+                onChange={(event) => onSaveAsDefaultChange(event.currentTarget.checked)}
+              />
+              Zapisz jako domyślne dla przyszłych etykiet.
+            </label>
+          </div>
+          <p className="mt-3 text-xs leading-relaxed text-stone-500">
+            Profil prawny pozostaje oznaczony zgodnie z istniejącą macierzą. Gellatti nie deklaruje
+            certyfikacji prawnej.
+          </p>
+        </SettingsSection>
       </div>
-      <PresentationFields
-        format={draft.format}
-        widthMm={draft.size.widthMm}
-        heightMm={draft.size.heightMm}
-        copies={draft.copies}
-        onChange={(presentation) =>
-          setDraft({
-            ...draft,
-            format: presentation.format,
-            size: { widthMm: presentation.widthMm, heightMm: presentation.heightMm },
-            copies: presentation.copies,
-          })
-        }
-      />
-      <label className="mt-4 flex min-h-11 items-center gap-3 text-xs text-ink">
-        <input
-          type="checkbox"
-          className="size-5"
-          checked={draft.allergens.reviewedByUser}
-          onChange={(event) =>
-            setDraft({
-              ...draft,
-              allergens: { ...draft.allergens, reviewedByUser: event.currentTarget.checked },
-            })
-          }
-        />
-        Potwierdzam przegląd danych alergenowych.
-      </label>
-      <label className="mt-2 flex min-h-11 items-center gap-3 text-xs text-ink">
-        <input
-          type="checkbox"
-          className="size-5"
-          checked={draft.preflightAcknowledged}
-          onChange={(event) =>
-            setDraft({ ...draft, preflightAcknowledged: event.currentTarget.checked })
-          }
-        />
-        Sprawdziłem dane etykiety przed wydrukiem.
-      </label>
-      <label className="mt-2 flex min-h-11 items-center gap-3 border-t border-ink/10 pt-3 text-xs text-ink">
-        <input
-          type="checkbox"
-          className="size-5"
-          checked={saveAsDefault}
-          onChange={(event) => onSaveAsDefaultChange(event.currentTarget.checked)}
-        />
-        Zapisz jako domyślne dla przyszłych etykiet.
-      </label>
-      <p className="mt-3 text-xs leading-relaxed text-stone-500">
-        Profil prawny pozostaje oznaczony zgodnie z istniejącą macierzą. Gellatti nie deklaruje
-        certyfikacji prawnej.
-      </p>
-      <div className="mt-5 grid grid-cols-2 gap-2">
+
+      <footer className="sticky bottom-11 z-10 grid grid-cols-2 gap-2 border-t border-ink/10 bg-white/95 p-4 backdrop-blur sm:px-5">
         <Button variant="ghost" onClick={onClose}>
           Anuluj
         </Button>
         <Button onClick={() => void onSave(draft)}>Zastosuj</Button>
-      </div>
-    </DialogShell>
+      </footer>
+    </Card>
+  );
+}
+
+const SETTINGS_INPUT_CLASS =
+  'mt-1 h-11 w-full rounded-[10px] border border-ink/15 bg-white px-3 text-sm text-ink outline-none transition-[border-color,box-shadow,background-color] focus:border-ink/35 focus:ring-2 focus:ring-ink/5';
+
+function SettingsSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="border-b border-ink/8 py-5 last:border-b-0">
+      <h3 className="mb-3 text-xs font-semibold tracking-[0.08em] text-stone-600 uppercase">
+        {title}
+      </h3>
+      {children}
+    </section>
+  );
+}
+
+function RequiredBadge() {
+  return (
+    <span className="shrink-0 rounded-full border border-[#a96832]/30 bg-[#fff7ed] px-2 py-0.5 text-[9px] font-semibold tracking-[0.06em] text-[#8a5b23] uppercase">
+      Wymagane
+    </span>
+  );
+}
+
+function RequiredSettingsField({
+  field,
+  missing,
+  children,
+}: {
+  field: MasterLabelFieldId;
+  missing: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      data-label-field={field}
+      data-missing-required={missing ? 'true' : undefined}
+      className="min-w-0"
+    >
+      {children}
+      {missing ? (
+        <p className="mt-1 text-[11px] font-medium text-[#8a5b23]">Brak wymaganej wartości</p>
+      ) : null}
+    </div>
+  );
+}
+
+function ReviewLine({ label, ready, message }: { label: string; ready: boolean; message: string }) {
+  return (
+    <div
+      className={cn(
+        'flex min-h-12 items-start justify-between gap-3 rounded-[12px] border px-3 py-2.5',
+        ready ? 'border-ink/10 bg-white' : 'border-[#a96832] bg-[#fffaf4]',
+      )}
+    >
+      <span>
+        <strong className="block text-xs text-ink">{label}</strong>
+        <span className="mt-0.5 block text-[11px] leading-relaxed text-stone-600">{message}</span>
+      </span>
+      <span className="shrink-0 font-mono text-[10px] font-semibold text-stone-500">
+        {ready ? 'GOTOWE' : 'BRAK'}
+      </span>
+    </div>
   );
 }
 
@@ -821,7 +1225,7 @@ function OptionalFieldSettings({
 }) {
   const profile = marketProfile(market);
   return (
-    <fieldset className="mt-4 border-t border-ink/10 pt-4" data-testid="label-field-settings">
+    <fieldset className="mt-4" data-testid="label-field-settings">
       <legend className="text-sm font-semibold text-ink">Pola etykiety</legend>
       <p className="mt-1 text-xs text-stone-500">
         Wymagane pola profilu {profile.label} są zawsze aktywne.
@@ -840,7 +1244,7 @@ function OptionalFieldSettings({
         {profile.optionalFields.map((field) => (
           <label
             key={field}
-            className="flex min-h-11 items-center gap-2 border border-ink/10 px-3 text-xs text-ink"
+            className="flex min-h-11 items-center gap-2 rounded-[10px] border border-ink/10 bg-white px-3 text-xs text-ink"
           >
             <input
               type="checkbox"
@@ -882,7 +1286,7 @@ function PresentationFields({
 }) {
   const current = { format, widthMm, heightMm, copies };
   return (
-    <fieldset className="mt-4 grid grid-cols-2 gap-3 border-t border-ink/10 pt-4 sm:grid-cols-4">
+    <fieldset className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
       <legend className="sr-only">Prezentacja etykiety</legend>
       <label className="text-xs text-stone-600">
         Format
@@ -891,7 +1295,7 @@ function PresentationFields({
           onChange={(event) =>
             onChange({ ...current, format: event.currentTarget.value as 'rectangle' | 'round' })
           }
-          className="mt-1 h-11 w-full border border-ink/15 bg-white px-3 text-sm text-ink"
+          className={SETTINGS_INPUT_CLASS}
         >
           <option value="rectangle">Prostokąt</option>
           <option value="round">Okrągła</option>
@@ -906,7 +1310,7 @@ function PresentationFields({
           onChange={(event) =>
             onChange({ ...current, widthMm: Math.max(20, Number(event.currentTarget.value) || 20) })
           }
-          className="mt-1 h-11 w-full border border-ink/15 px-3 font-mono text-sm text-ink"
+          className={cn(SETTINGS_INPUT_CLASS, 'font-mono tabular-nums')}
         />
       </label>
       <label className="text-xs text-stone-600">
@@ -921,7 +1325,7 @@ function PresentationFields({
               heightMm: Math.max(20, Number(event.currentTarget.value) || 20),
             })
           }
-          className="mt-1 h-11 w-full border border-ink/15 px-3 font-mono text-sm text-ink"
+          className={cn(SETTINGS_INPUT_CLASS, 'font-mono tabular-nums')}
         />
       </label>
       <label className="text-xs text-stone-600">
@@ -933,7 +1337,7 @@ function PresentationFields({
           onChange={(event) =>
             onChange({ ...current, copies: Math.max(1, Number(event.currentTarget.value) || 1) })
           }
-          className="mt-1 h-11 w-full border border-ink/15 px-3 font-mono text-sm text-ink"
+          className={cn(SETTINGS_INPUT_CLASS, 'font-mono tabular-nums')}
         />
       </label>
     </fieldset>
@@ -997,7 +1401,7 @@ function MarketAndIdentityFields({
             <button
               key={code}
               type="button"
-              className={`min-h-11 border px-2 text-xs ${market === code ? 'border-ink bg-ink text-white' : 'border-ink/15'}`}
+              className={`min-h-11 rounded-[10px] border px-2 text-xs ${market === code ? 'border-ink bg-ink text-white' : 'border-ink/15 bg-white'}`}
               onClick={() => onMarket(code)}
             >
               {MARKET_PROFILES[code].label}
@@ -1017,7 +1421,7 @@ function MarketAndIdentityFields({
                 .filter(Boolean);
               onLanguages(parsed.length > 0 ? parsed : ['pl']);
             }}
-            className="mt-1 h-11 w-full border border-ink/15 px-3 text-sm text-ink"
+            className={SETTINGS_INPUT_CLASS}
           />
         </label>
         <label className="text-xs text-stone-600">
@@ -1025,7 +1429,7 @@ function MarketAndIdentityFields({
           <input
             value={businessName}
             onChange={(event) => onBusinessName(event.currentTarget.value)}
-            className="mt-1 h-11 w-full border border-ink/15 px-3 text-sm text-ink"
+            className={SETTINGS_INPUT_CLASS}
           />
         </label>
         <label className="text-xs text-stone-600">
@@ -1033,7 +1437,7 @@ function MarketAndIdentityFields({
           <input
             value={operatorName}
             onChange={(event) => onOperatorName(event.currentTarget.value)}
-            className="mt-1 h-11 w-full border border-ink/15 px-3 text-sm text-ink"
+            className={SETTINGS_INPUT_CLASS}
           />
         </label>
         <label className="text-xs text-stone-600">
@@ -1041,11 +1445,11 @@ function MarketAndIdentityFields({
           <input
             value={address}
             onChange={(event) => onAddress(event.currentTarget.value)}
-            className="mt-1 h-11 w-full border border-ink/15 px-3 text-sm text-ink"
+            className={SETTINGS_INPUT_CLASS}
           />
         </label>
       </div>
-      <label className="flex min-h-14 items-center gap-3 border border-ink/10 p-3 text-xs text-stone-600">
+      <label className="flex min-h-14 items-center gap-3 rounded-[12px] border border-ink/10 bg-[#fffdf8] p-3 text-xs text-stone-600">
         {logoUrl ? (
           <img src={logoUrl} alt="Aktualne logo" className="size-12 object-contain" />
         ) : null}

@@ -86,7 +86,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
     host.remove();
   });
 
-  async function renderWorkspace() {
+  async function renderWorkspace(initialView: 'label' | 'settings' = 'label') {
     const repository = inMemoryLabelRepository('owner-label-workspace');
     await repository.saveAccountProfile({
       ...defaultAccountLabelProfile('owner-label-workspace'),
@@ -94,12 +94,45 @@ describe('LabelWorkspace unified actual-run surface', () => {
       logoPath: 'owner-label-workspace/logo.png',
     });
     await act(async () => {
-      root.render(<LabelWorkspace snapshot={completedSnapshot()} repository={repository} />);
+      root.render(
+        <LabelWorkspace
+          snapshot={completedSnapshot()}
+          repository={repository}
+          initialView={initialView}
+        />,
+      );
       await Promise.resolve();
       await Promise.resolve();
     });
     return repository;
   }
+
+  const button = (label: string) =>
+    [...host.querySelectorAll('button')].find(
+      (candidate) => candidate.textContent?.trim() === label,
+    );
+
+  const setInputValue = (input: HTMLInputElement, value: string) => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    setter?.call(input, value);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+
+  const swipe = async (target: Element, startX: number, endX: number) => {
+    const start = new Event('touchstart', { bubbles: true });
+    Object.defineProperty(start, 'touches', {
+      value: [{ clientX: startX, clientY: 120 }],
+    });
+    const end = new Event('touchend', { bubbles: true });
+    Object.defineProperty(end, 'changedTouches', {
+      value: [{ clientX: endX, clientY: 124 }],
+    });
+    await act(async () => {
+      target.dispatchEvent(start);
+      target.dispatchEvent(end);
+    });
+  };
 
   it('shows one market-driven preview with ACTUAL overview outside the print boundary', async () => {
     await renderWorkspace();
@@ -108,7 +141,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(host.textContent).toContain('Gellatti Laboratory');
     expect(host.textContent).toContain('Masa netto');
     expect(host.textContent).toContain('Składniki');
-    expect(host.textContent).toContain('Wartości odżywcze');
+    expect(host.textContent).toContain('Wartość odżywcza');
     expect(host.textContent).toContain('Koszt');
     expect(host.textContent).toContain('Baza techniczna');
     expect(
@@ -119,27 +152,34 @@ describe('LabelWorkspace unified actual-run surface', () => {
         .querySelector('[data-testid="label-consumer-preview"]')
         ?.getAttribute('data-label-layout'),
     ).toBe('eu_declaration');
-    expect(host.querySelector('[data-testid="consumer-lot"]')?.textContent).toMatch(
-      /^LOT-20260824-/,
-    );
+    expect(completedSnapshot().lotCode).toMatch(/^LOT-20260824-/);
+    expect(host.querySelector('[data-testid="consumer-lot"]')?.textContent).toMatch(/^20260824-/);
+    expect(host.querySelector('[data-testid="consumer-lot"]')?.textContent).not.toContain('LOT-');
     expect(
       host.querySelector('[data-testid="consumer-print-boundary"]')?.textContent,
     ).not.toContain('Koszt');
+    const internal = host.querySelector('[data-testid="label-internal-overview"]');
+    expect(internal?.textContent).toContain('Koszt');
+    expect(internal?.textContent).toContain('Baza techniczna');
+    expect(internal?.textContent).not.toContain('Składniki');
+    expect(internal?.textContent).not.toContain('Wartości odżywcze');
     expect(host.textContent).not.toContain('none_declared');
   });
 
-  it('uses the shared bottom-sheet editor on mobile with 44px controls', async () => {
+  it('opens the complete Settings state inside the same two-view workspace', async () => {
     await renderWorkspace();
-    const edit = [...host.querySelectorAll('button')].find(
-      (button) => button.textContent === 'Ustawienia',
+    expect(host.querySelector('[data-active-label-view="label"]')).not.toBeNull();
+    expect(host.querySelector('[data-testid="label-workspace"]')?.getAttribute('data-run-id')).toBe(
+      'run-label-workspace',
     );
+    expect(host.querySelectorAll('[data-testid^="label-workspace-dot-"]')).toHaveLength(2);
+    const edit = button('Ustawienia');
     expect(edit).not.toBeUndefined();
     await act(async () => edit!.click());
-    const editor = host.querySelector('[data-testid="label-run-editor"]');
-    expect(editor?.getAttribute('data-placement')).toBe('responsive');
-    expect(editor?.className).toContain('justify-end');
-    expect(editor?.className).toContain('sm:place-items-center');
-    expect(editor?.querySelector('[role="dialog"]')).not.toBeNull();
+    const editor = host.querySelector('[data-testid="label-settings-view"]');
+    expect(host.querySelector('[data-active-label-view="settings"]')).not.toBeNull();
+    expect(host.querySelector('[data-testid="label-run-editor"]')).toBeNull();
+    expect(editor?.querySelector('[role="dialog"]')).toBeNull();
     expect(editor?.innerHTML).toContain('min-h-11');
     expect(editor?.textContent).toContain('Jurysdykcja / profil');
     expect(editor?.textContent).toContain('Zapisz jako domyślne');
@@ -159,6 +199,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
       apply!.click();
       await Promise.resolve();
     });
+    expect(host.querySelector('[data-active-label-view="label"]')).not.toBeNull();
     expect(
       host.querySelector('[data-testid="label-consumer-preview"]')?.getAttribute('data-market'),
     ).toBe('US');
@@ -174,11 +215,10 @@ describe('LabelWorkspace unified actual-run surface', () => {
 
   it('locks required fields and persists an optional toggle through a reload', async () => {
     const repository = await renderWorkspace();
-    const openSettings = () =>
-      [...host.querySelectorAll('button')].find((button) => button.textContent === 'Ustawienia');
+    const openSettings = () => button('Ustawienia');
 
     await act(async () => openSettings()!.click());
-    let editor = host.querySelector('[data-testid="label-run-editor"]')!;
+    let editor = host.querySelector('[data-testid="label-settings-view"]')!;
     expect(editor.querySelector('[data-testid="required-label-fields"] input')).toBeNull();
     const originLabel = [
       ...editor.querySelectorAll('[data-testid="optional-label-fields"] label'),
@@ -191,10 +231,6 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(originToggle.checked).toBe(true);
     await act(async () => originToggle.click());
 
-    const saveDefault = [...editor.querySelectorAll('label')]
-      .find((label) => label.textContent?.includes('Zapisz jako domyślne'))!
-      .querySelector('input')!;
-    await act(async () => saveDefault.click());
     const apply = [...editor.querySelectorAll('button')].find(
       (button) => button.textContent === 'Zastosuj',
     )!;
@@ -211,12 +247,101 @@ describe('LabelWorkspace unified actual-run surface', () => {
       await Promise.resolve();
     });
     await act(async () => openSettings()!.click());
-    editor = host.querySelector('[data-testid="label-run-editor"]')!;
+    editor = host.querySelector('[data-testid="label-settings-view"]')!;
     const reloadedOrigin = [
       ...editor.querySelectorAll('[data-testid="optional-label-fields"] label'),
     ]
       .find((label) => label.textContent?.includes('Pochodzenie'))!
       .querySelector('input')!;
     expect(reloadedOrigin.checked).toBe(false);
+  });
+
+  it('marks exactly the preflight-missing required fields and updates the one live count', async () => {
+    await renderWorkspace();
+    await act(async () => button('Ustawienia')!.click());
+    const settings = host.querySelector('[data-testid="label-settings-view"]')!;
+    const missingCount = () =>
+      settings.querySelector('[data-testid="label-settings-missing-count"]')?.textContent ?? '';
+    const missingFields = () => settings.querySelectorAll('[data-missing-required="true"]');
+
+    expect(missingCount()).toContain('Brakuje 5 wymaganych informacji');
+    expect(missingFields()).toHaveLength(5);
+    expect(
+      [...missingFields()].map((field) => field.getAttribute('data-label-field')).sort(),
+    ).toEqual(['allergens', 'date_mark', 'legal_product_name', 'operator', 'storage']);
+
+    const fill = async (field: string, values: string[]) => {
+      const inputs = [
+        ...settings.querySelectorAll<HTMLInputElement>(`[data-label-field="${field}"] input`),
+      ].filter((input) => input.type !== 'checkbox');
+      await act(async () => {
+        inputs.forEach((input, index) => setInputValue(input, values[index] ?? values[0]!));
+      });
+    };
+
+    await fill('legal_product_name', ['Ice cream']);
+    expect(missingCount()).toContain('Brakuje 4 wymaganych informacji');
+    await act(async () =>
+      settings.querySelector<HTMLInputElement>('[data-label-field="allergens"] input')!.click(),
+    );
+    await fill('operator', ['Gellatti Laboratory', '1 Test Street']);
+    await fill('storage', ['Keep frozen']);
+    await fill('date_mark', ['2026-09-24']);
+
+    expect(missingCount()).toContain('Wszystkie wymagane informacje są uzupełnione');
+    expect(missingFields()).toHaveLength(0);
+  });
+
+  it('uses accessible dots and Cancel returns without applying the draft', async () => {
+    await renderWorkspace();
+    const settingsDot = host.querySelector<HTMLButtonElement>(
+      '[data-testid="label-workspace-dot-settings"]',
+    )!;
+    expect(settingsDot.getAttribute('aria-current')).toBeNull();
+    await act(async () => settingsDot.click());
+    expect(settingsDot.getAttribute('aria-current')).toBe('step');
+
+    const settings = host.querySelector('[data-testid="label-settings-view"]')!;
+    const us = [...settings.querySelectorAll('button')].find(
+      (candidate) => candidate.textContent === 'USA',
+    )!;
+    await act(async () => us.click());
+    await act(async () => button('Anuluj')!.click());
+
+    expect(host.querySelector('[data-active-label-view="label"]')).not.toBeNull();
+    expect(
+      host.querySelector('[data-testid="label-consumer-preview"]')?.getAttribute('data-market'),
+    ).toBe('EU');
+
+    await act(async () => button('Ustawienia')!.click());
+    expect(
+      host.querySelector('[data-testid="label-settings-view"] [data-market-active="true"]')
+        ?.textContent,
+    ).toBe('UE');
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>('[data-testid="label-workspace-dot-label"]')!.click(),
+    );
+    expect(host.querySelector('[data-active-label-view="label"]')).not.toBeNull();
+  });
+
+  it('opens the same Settings state from a deep link and supports guarded mobile swipe', async () => {
+    await renderWorkspace('settings');
+    const workspace = host.querySelector('[data-testid="label-workspace"]')!;
+    expect(workspace.getAttribute('data-active-label-view')).toBe('settings');
+    expect(
+      workspace.querySelector('[data-testid="label-settings-view"] [data-market-active="true"]')
+        ?.textContent,
+    ).toBe('UE');
+
+    await swipe(workspace, 80, 170);
+    expect(workspace.getAttribute('data-active-label-view')).toBe('label');
+    await swipe(workspace, 260, 130);
+    expect(workspace.getAttribute('data-active-label-view')).toBe('settings');
+
+    const settingsInput = workspace.querySelector<HTMLInputElement>(
+      '[data-testid="label-settings-view"] input',
+    )!;
+    await swipe(settingsInput, 90, 200);
+    expect(workspace.getAttribute('data-active-label-view')).toBe('settings');
   });
 });

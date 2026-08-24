@@ -82,11 +82,13 @@ export function ProductionCockpit({
   onOpenPreview,
   onRecalculate,
   onReturnToRecipe,
+  onOpenLabel,
 }: {
   production: ProductionWorkspaceView;
   onOpenPreview: () => void;
   onRecalculate: () => void;
   onReturnToRecipe: () => void;
+  onOpenLabel?: () => void;
 }) {
   const { session, progress, rescue, score } = production;
   const toppingProgress = production.toppingProgress;
@@ -250,13 +252,15 @@ export function ProductionCockpit({
               )}
             </div>
           ) : null}
-          <a
-            href={`/labels?run=${encodeURIComponent(session.sessionId)}`}
+          <button
+            type="button"
+            onClick={onOpenLabel}
+            disabled={!onOpenLabel}
             className={cn(buttonClasses('primary', 'md'), 'mt-4 w-full justify-center')}
             data-testid="production-go-to-label"
           >
             Przejdź do etykiety
-          </a>
+          </button>
           <button
             type="button"
             onClick={prerequisite ? prerequisiteAction : () => void production.startNewSession()}

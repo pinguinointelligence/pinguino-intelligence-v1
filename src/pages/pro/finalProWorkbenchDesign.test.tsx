@@ -164,7 +164,9 @@ describe('one global menu and four local contexts', () => {
   it('delegates Etykieta to the one completed-run LabelWorkspace authority', () => {
     const panel = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
     expect(panel).toContain('production?.session?.completionSnapshot');
-    expect(panel).toContain('<LabelWorkspace snapshot={completed} />');
+    expect(panel).toContain('snapshot={completed}');
+    expect(panel).toContain('initialView={initialLabelView}');
+    expect(panel).toContain('key={labelViewRequestKey ?? initialLabelView}');
     expect(panel).toContain('Najpierw zakończ Produkcję');
     expect(panel).not.toContain('Faktyczna zakończona partia');
     expect(panel).not.toContain('Receptura wykonawcza');
