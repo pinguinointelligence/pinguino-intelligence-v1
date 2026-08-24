@@ -628,39 +628,43 @@ function RecipeRow({
               >
                 ⠿
               </span>
-              <button
-                type="button"
-                aria-label={isMain ? 'Zmień na składnik standardowy' : 'Ustaw jako składnik główny'}
-                aria-pressed={isMain}
-                title={
-                  isMain
-                    ? mainUserHeld
-                      ? 'Główny (Twoja decyzja) — PI nie zmienia jego gramatury samo z siebie. ' +
-                        'Kliknij, aby ustawić Standardowy.'
-                      : 'Główny — kliknij, aby ustawić Standardowy'
-                    : mainUserHeld
-                      ? 'Ustaw jako składnik główny — brak zatwierdzonego zakresu, ' +
-                        'PI utrzyma Twoją gramaturę i dobierze resztę receptury.'
-                      : t.role.mainHint
-                }
-                disabled={!isMain && Boolean(mainUnavailableReason)}
-                onClick={() => setRole(isMain ? 'standard' : 'main')}
-                data-testid={`row-main-toggle-${item.id}`}
-                className={cn(
-                  'pro-focus-ring grid size-8 shrink-0 place-items-center rounded-lg border transition-colors disabled:cursor-not-allowed disabled:opacity-35 2xl:order-10 2xl:size-6',
-                  isMain && '2xl:flex 2xl:w-auto 2xl:gap-1 2xl:px-2',
-                  isMain
-                    ? 'border-gold/22 bg-education-ivory'
-                    : 'border-transparent bg-transparent hover:border-gold/18 hover:bg-education-ivory/55',
-                )}
-              >
-                <MainRoleGlyph active={isMain} />
-                {isMain ? (
-                  <span className="hidden text-[11px] font-semibold text-gold 2xl:inline">
-                    Główny
-                  </span>
-                ) : null}
-              </button>
+              {isMain || !mainUnavailableReason ? (
+                <button
+                  type="button"
+                  aria-label={isMain ? 'Składnik Główny' : 'Ustaw składnik jako Główny'}
+                  aria-pressed={isMain}
+                  title={
+                    isMain
+                      ? mainUserHeld
+                        ? 'Główny (Twoja decyzja) — PI nie zmienia jego gramatury samo z siebie. ' +
+                          'Kliknij, aby ustawić Standardowy.'
+                        : 'Główny'
+                      : 'Ustaw jako Główny'
+                  }
+                  onClick={() => setRole(isMain ? 'standard' : 'main')}
+                  data-testid={`row-main-toggle-${item.id}`}
+                  className={cn(
+                    'pro-focus-ring grid size-8 shrink-0 place-items-center rounded-lg border transition-colors 2xl:order-10 2xl:size-6',
+                    isMain && '2xl:flex 2xl:w-auto 2xl:gap-1 2xl:px-2',
+                    isMain
+                      ? 'border-gold/22 bg-education-ivory text-gold'
+                      : 'border-transparent bg-transparent text-gold hover:bg-education-ivory/55',
+                  )}
+                >
+                  <MainRoleGlyph active={isMain} />
+                  {isMain ? (
+                    <span className="hidden text-[11px] font-semibold text-gold 2xl:inline">
+                      Główny
+                    </span>
+                  ) : null}
+                </button>
+              ) : (
+                <span
+                  aria-hidden
+                  data-testid={`row-main-slot-${item.id}`}
+                  className="size-8 shrink-0 2xl:order-10 2xl:size-6"
+                />
+              )}
               {isMain ? (
                 <span
                   aria-label="Składnik główny"

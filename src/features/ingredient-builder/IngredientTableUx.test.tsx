@@ -14,6 +14,7 @@ import {
   type IngredientRowActions,
   type IngredientRowLockView,
 } from './IngredientRow';
+import { MainRoleGlyph, MobileIngredientSheet } from './IngredientLineControls';
 import {
   DEFAULT_INGREDIENT_ROW_META,
   type IngredientRowMeta,
@@ -57,6 +58,7 @@ const renderRow = (
   item: EffectiveRecipeItem = baseItem,
   meta: IngredientRowMeta = DEFAULT_INGREDIENT_ROW_META,
   locked = false,
+  mainUnavailableReason?: string | null,
 ) =>
   renderToStaticMarkup(
     <IngredientRow
@@ -65,6 +67,7 @@ const renderRow = (
       actions={actions()}
       lock={lock(locked)}
       meta={meta}
+      mainUnavailableReason={mainUnavailableReason}
     />,
   );
 
@@ -171,6 +174,110 @@ describe('Recipe ingredient table — quiet primary surface', () => {
     const standard = renderRow();
     expect(standard).not.toContain('aria-label="Dodatek"');
     expect(standard).not.toContain('aria-label="Składnik główny"');
+  });
+
+  it('renders no crown action for a non-eligible ingredient while preserving its layout slot', () => {
+    const blocked = renderRow(
+      baseItem,
+      DEFAULT_INGREDIENT_ROW_META,
+      false,
+      'Ten składnik nie może być Główny.',
+    );
+
+    expect(blocked).not.toContain(`data-testid="row-main-toggle-${baseItem.id}"`);
+    expect(blocked).not.toContain('aria-label="Ustaw składnik jako Główny"');
+    expect(blocked).toContain(`data-testid="row-main-slot-${baseItem.id}"`);
+    expect(blocked).toContain('aria-hidden="true"');
+  });
+
+  it('renders a gold outline crown for an eligible inactive ingredient', () => {
+    const eligible = renderRow();
+    const crown =
+      eligible.match(/<button[^>]*data-testid="row-main-toggle-[\s\S]*?<\/button>/)?.[0] ?? '';
+
+    expect(crown).toContain('aria-label="Ustaw składnik jako Główny"');
+    expect(crown).toContain('aria-pressed="false"');
+    expect(crown).not.toContain('disabled');
+    expect(crown).toContain('title="Ustaw jako Główny"');
+    expect(crown).toContain('text-gold');
+    expect(crown).toContain('fill="none"');
+    expect(crown).toContain('stroke="currentColor"');
+    expect(crown).not.toContain('text-stone-300');
+  });
+
+  it('keeps the accepted filled-gold crown for every active Main state', () => {
+    const active = renderRow({ ...baseItem, lock_type: 'main' });
+    const crown =
+      active.match(/<button[^>]*data-testid="row-main-toggle-[\s\S]*?<\/button>/)?.[0] ?? '';
+
+    expect(crown).toContain('aria-label="Składnik Główny"');
+    expect(crown).toContain('aria-pressed="true"');
+    expect(crown).toContain('text-gold');
+    expect(crown).toContain('fill="currentColor"');
+  });
+
+  it('uses one crown glyph with outline and filled variants, never a disabled-grey variant', () => {
+    const outline = renderToStaticMarkup(<MainRoleGlyph active={false} />);
+    const filled = renderToStaticMarkup(<MainRoleGlyph active />);
+
+    expect(outline).toContain('fill="none"');
+    expect(outline).toContain('stroke="currentColor"');
+    expect(outline).toContain('text-gold');
+    expect(outline).not.toContain('stone-300');
+    expect(filled).toContain('fill="currentColor"');
+    expect(filled).toContain('text-gold');
+  });
+
+  it('removes a blocked Main crown from the mobile sheet accessibility tree', () => {
+    const sheet = renderToStaticMarkup(
+      <MobileIngredientSheet
+        item={baseItem}
+        percent={67}
+        actions={actions()}
+        lock={lock(false)}
+        meta={DEFAULT_INGREDIENT_ROW_META}
+        isMain={false}
+        gramsLocked={false}
+        mainUnavailableReason="Ten składnik nie może być Główny."
+        mainUserHeld={false}
+        onSetRole={vi.fn()}
+        onOpenData={vi.fn()}
+        onClose={vi.fn()}
+        menu={null}
+      />,
+    );
+
+    expect(sheet).not.toContain(`data-testid="row-mobile-main-toggle-${baseItem.id}"`);
+    expect(sheet).not.toContain('aria-label="Ustaw składnik jako Główny"');
+    expect(text(sheet)).toContain('Ten składnik nie może być Główny.');
+  });
+
+  it('keeps the mobile Main action keyboard-accessible when the outline crown is available', () => {
+    const sheet = renderToStaticMarkup(
+      <MobileIngredientSheet
+        item={baseItem}
+        percent={67}
+        actions={actions()}
+        lock={lock(false)}
+        meta={DEFAULT_INGREDIENT_ROW_META}
+        isMain={false}
+        gramsLocked={false}
+        mainUnavailableReason={null}
+        mainUserHeld={false}
+        onSetRole={vi.fn()}
+        onOpenData={vi.fn()}
+        onClose={vi.fn()}
+        menu={null}
+      />,
+    );
+    const crown =
+      sheet.match(/<button[^>]*data-testid="row-mobile-main-toggle-[\s\S]*?<\/button>/)?.[0] ??
+      '';
+
+    expect(crown).toContain('aria-label="Ustaw składnik jako Główny"');
+    expect(crown).toContain('aria-pressed="false"');
+    expect(crown).not.toContain('disabled');
+    expect(crown).toContain('data-crown-state="available"');
   });
 
   it('keeps a legacy Add-on line visible as an ambiguity, never as a new Base role', () => {

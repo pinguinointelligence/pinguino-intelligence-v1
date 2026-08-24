@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act } from 'react';
+import { act, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { SurfaceToneContext } from '@/components/ui/surface';
@@ -10,6 +10,7 @@ import { useConstraintStudioStore } from '@/features/constraint-studio/constrain
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { IngredientBuilder } from './IngredientBuilder';
+import { IngredientRow, type IngredientRowActions } from './IngredientRow';
 import { useIngredientTableUxStore } from './ingredientTableUxStore';
 
 describe('IngredientBuilder Main role integration', () => {
@@ -84,6 +85,70 @@ describe('IngredientBuilder Main role integration', () => {
       mode: 'locked',
       grams: main.planned_grams,
     });
+    act(() => root.unmount());
+    container.remove();
+  });
+
+  it('transitions outline → filled → outline through the existing row Main action', () => {
+    const state = useRecipeStore.getState();
+    const calculated = calculateRecipe({
+      mode: state.mode,
+      category: state.category,
+      target_temperature_c: state.target_temperature_c,
+      target_batch_grams: state.target_batch_grams,
+      machine_capacity_grams: state.machine_capacity_grams,
+      goals: { formulation_strategy: state.formulation_strategy },
+      items: state.items,
+    });
+    const main = calculated.items.find((item) => item.lock_type === 'main')!;
+    const baseActions: IngredientRowActions = {
+      setPlannedGrams: () => undefined,
+      setActualGrams: () => undefined,
+      setLockType: () => undefined,
+      setMainIngredient: () => undefined,
+      setStandardIngredient: () => undefined,
+      removeItem: () => undefined,
+    };
+    function CrownHarness() {
+      const [isMain, setIsMain] = useState(false);
+      return (
+        <IngredientRow
+          item={{ ...main, lock_type: isMain ? 'main' : 'unlocked' }}
+          totalBatchG={calculated.total_batch_g}
+          actions={{
+            ...baseActions,
+            setCustomerRole: (_lineId, role) => setIsMain(role === 'main'),
+          }}
+          mainUnavailableReason={null}
+        />
+      );
+    }
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    act(() => root.render(<CrownHarness />));
+
+    let crown = container.querySelector<HTMLButtonElement>(
+      `[data-testid="row-main-toggle-${main.id}"]`,
+    );
+    expect(crown?.getAttribute('aria-pressed')).toBe('false');
+    expect(crown?.querySelector('[data-crown-state="available"]')).not.toBeNull();
+
+    act(() => crown!.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+
+    crown = container.querySelector<HTMLButtonElement>(
+      `[data-testid="row-main-toggle-${main.id}"]`,
+    );
+    expect(crown?.getAttribute('aria-pressed')).toBe('true');
+    expect(crown?.querySelector('[data-crown-state="active"]')).not.toBeNull();
+
+    act(() => crown!.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+
+    crown = container.querySelector<HTMLButtonElement>(
+      `[data-testid="row-main-toggle-${main.id}"]`,
+    );
+    expect(crown?.getAttribute('aria-pressed')).toBe('false');
+    expect(crown?.querySelector('[data-crown-state="available"]')).not.toBeNull();
     act(() => root.unmount());
     container.remove();
   });

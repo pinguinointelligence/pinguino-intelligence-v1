@@ -25,9 +25,16 @@ export function MainRoleGlyph({ active = true }: { active?: boolean }) {
       height="14"
       viewBox="0 0 16 16"
       fill="none"
-      className={active ? 'text-gold' : 'text-stone-300'}
+      className="text-gold"
+      data-crown-state={active ? 'active' : 'available'}
     >
-      <path d="M2 5.5 5.3 8 8 3l2.7 5L14 5.5l-1 6H3l-1-6Z" fill="currentColor" />
+      <path
+        d="M2 5.5 5.3 8 8 3l2.7 5L14 5.5l-1 6H3l-1-6Z"
+        fill={active ? 'currentColor' : 'none'}
+        stroke={active ? undefined : 'currentColor'}
+        strokeWidth={active ? undefined : 1.25}
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -224,29 +231,31 @@ export function MobileIngredientSheet({
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {/* Main product — the existing crown metaphor and the existing authority. */}
-            <button
-              type="button"
-              aria-pressed={isMain}
-              disabled={!isMain && Boolean(mainUnavailableReason)}
-              onClick={() => onSetRole(isMain ? 'standard' : 'main')}
-              data-testid={`row-mobile-main-toggle-${item.id}`}
-              title={
-                isMain
-                  ? mainUserHeld
-                    ? 'Główny (Twoja decyzja) — PI nie zmienia jego gramatury samo z siebie.'
-                    : 'Główny — kliknij, aby ustawić Standardowy'
-                  : t.role.mainHint
-              }
-              className={cn(
-                'pro-focus-ring inline-flex min-h-11 items-center gap-1.5 rounded-xl border px-3 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-35',
-                isMain
-                  ? 'border-gold/22 bg-education-ivory text-gold'
-                  : 'border-ink/12 bg-white text-stone-600',
-              )}
-            >
-              <MainRoleGlyph active={isMain} />
-              {isMain ? 'Główny' : 'Ustaw jako główny'}
-            </button>
+            {isMain || !mainUnavailableReason ? (
+              <button
+                type="button"
+                aria-label={isMain ? 'Składnik Główny' : 'Ustaw składnik jako Główny'}
+                aria-pressed={isMain}
+                onClick={() => onSetRole(isMain ? 'standard' : 'main')}
+                data-testid={`row-mobile-main-toggle-${item.id}`}
+                title={
+                  isMain
+                    ? mainUserHeld
+                      ? 'Główny (Twoja decyzja) — PI nie zmienia jego gramatury samo z siebie.'
+                      : 'Główny'
+                    : 'Ustaw jako Główny'
+                }
+                className={cn(
+                  'pro-focus-ring min-h-11 shrink-0 rounded-xl border text-xs font-semibold transition-colors',
+                  isMain
+                    ? 'inline-flex items-center gap-1.5 border-gold/22 bg-education-ivory px-3 text-gold'
+                    : 'grid size-11 place-items-center border-transparent bg-transparent text-gold hover:bg-education-ivory/55',
+                )}
+              >
+                <MainRoleGlyph active={isMain} />
+                {isMain ? 'Główny' : null}
+              </button>
+            ) : null}
 
             {/* Price — compact, and only expands into the existing editor on demand. */}
             <button
