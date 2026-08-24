@@ -134,6 +134,27 @@ describe('stabilizer grams/percent parity', () => {
         productBehaviorSnapshots: {},
       });
 
+    /**
+     * A recipe whose stabilizer state is LEGAL to begin with.
+     *
+     * This is the case served staging actually presents, and the case the first
+     * version of this suite missed: `ownerSameInputRecipe()` starts at 1.9 g,
+     * already below PINGÜINO's 2 g aggregate minimum, so an edit down to 1 g
+     * introduced nothing new and both controls agreed by accident. From a CLEAN
+     * start the same edit DOES introduce a below-minimum state, and that is
+     * where the two controls diverged on staging: 1 g accepted as grams,
+     * silently refused as 0.1 %.
+     */
+    const cleanStart = (): RecipeInput => {
+      const base = ownerSameInputRecipe();
+      return {
+        ...base,
+        items: base.items.map((item) =>
+          item.id === STABILIZER ? { ...item, planned_grams: 2 } : item,
+        ),
+      };
+    };
+
     const stabilizerGrams = () =>
       useRecipeStore.getState().items.find((item) => item.id === STABILIZER)!.planned_grams;
 
@@ -165,21 +186,100 @@ describe('stabilizer grams/percent parity', () => {
       },
     );
 
-    it('still refuses a percent edit that INTRODUCES a stabilizer violation', () => {
-      const input = ownerSameInputRecipe();
+    it.each([0, 1, 2, 3, 4, 5, 6, 12])(
+      'from a LEGAL starting state, lands on the same grams for %i g either way',
+      (requested) => {
+        const input = cleanStart();
+        expect(assessOwnerStabilizerSystem(input).issues).toEqual([]);
+        const before = useRecipeStore.getState();
+        try {
+          seed(input);
+          useRecipeStore.getState().setPlannedGrams(STABILIZER, requested);
+          const fromGrams = stabilizerGrams();
+
+          seed(input);
+          const built = buildDirectPercentEdit(
+            { ...input, items: useRecipeStore.getState().items },
+            NONE,
+            STABILIZER,
+            asPercentOfBatch(input, requested),
+          );
+          expect(built.ok).toBe(true);
+          if (built.ok) useRecipeStore.getState().setPlannedGramsVector(built.gramsByLineId);
+          const fromPercent = stabilizerGrams();
+
+          expect(fromPercent).toBe(fromGrams);
+        } finally {
+          useRecipeStore.setState(before, true);
+        }
+      },
+    );
+
+    it('lets BOTH controls leave the aggregate below the band, for Preview to judge', () => {
+      const input = cleanStart();
       const before = useRecipeStore.getState();
       try {
-        // Start from a legal stabilizer state, then try to write a vector that
-        // breaks PINGÜINO's whole-gram rule. The science still holds.
-        seed({
-          ...input,
-          items: input.items.map((item) =>
-            item.id === STABILIZER ? { ...item, planned_grams: 3 } : item,
-          ),
-        });
-        expect(stabilizerGrams()).toBe(3);
+        // PINGÜINO's minimum is not an editing gate on either control — it is a
+        // formulation verdict. Both must reach the same invalid draft, and the
+        // stabilizer system must still report it as invalid.
+        for (const drive of ['grams', 'percent'] as const) {
+          seed(input);
+          if (drive === 'grams') {
+            useRecipeStore.getState().setPlannedGrams(STABILIZER, 1);
+          } else {
+            const built = buildDirectPercentEdit(
+              { ...input, items: useRecipeStore.getState().items },
+              NONE,
+              STABILIZER,
+              asPercentOfBatch(input, 1),
+            );
+            expect(built.ok).toBe(true);
+            if (built.ok) useRecipeStore.getState().setPlannedGramsVector(built.gramsByLineId);
+          }
+          expect(stabilizerGrams()).toBe(1);
+          const issues = assessOwnerStabilizerSystem({
+            category: input.category,
+            target_batch_grams: input.target_batch_grams,
+            items: useRecipeStore.getState().items,
+          }).issues;
+          expect(issues.map((issue) => issue.code)).toContain('aggregate_below_minimum');
+        }
+      } finally {
+        useRecipeStore.setState(before, true);
+      }
+    });
+
+    it('enforces PINGÜINO’s whole-gram rule at BOTH store seams', () => {
+      const input = cleanStart();
+      const before = useRecipeStore.getState();
+      try {
+        // Neither seam may write half a gram of stabilizer, whichever control
+        // reached it. The single-line grams write and the vector write apply
+        // the same per-component clamp.
+        seed(input);
+        useRecipeStore.getState().setPlannedGrams(STABILIZER, 3.5);
+        expect(stabilizerGrams()).toBe(4);
+
+        seed(input);
         useRecipeStore.getState().setPlannedGramsVector({ [STABILIZER]: 3.5 });
-        expect(stabilizerGrams()).toBe(3);
+        expect(stabilizerGrams()).toBe(4);
+      } finally {
+        useRecipeStore.setState(before, true);
+      }
+    });
+
+    it('enforces PINGÜINO’s aggregate ceiling at BOTH store seams', () => {
+      const input = cleanStart();
+      const before = useRecipeStore.getState();
+      try {
+        seed(input);
+        useRecipeStore.getState().setPlannedGrams(STABILIZER, 40);
+        const viaGramsSeam = stabilizerGrams();
+
+        seed(input);
+        useRecipeStore.getState().setPlannedGramsVector({ [STABILIZER]: 40 });
+        expect(stabilizerGrams()).toBe(viaGramsSeam);
+        expect(stabilizerGrams()).toBeLessThan(40);
       } finally {
         useRecipeStore.setState(before, true);
       }

@@ -81,8 +81,8 @@ import {
   type ProductBehaviorSnapshot,
   type ProductionThermalMode,
 } from '@/features/product-intelligence';
+import { resolveFunctionalRole } from '@/features/formulation/ingredientRoles';
 import {
-  assessOwnerStabilizerSystem,
   clampOwnerStabilizerComponentGrams,
   evaluateRecipeConstraintAuthority,
 } from '@/features/recipe-constraints';
@@ -1437,11 +1437,20 @@ export const useRecipeStore = create<RecipeState>()(
               !Object.is(item.planned_grams, gramsByLineId[item.id]),
           );
           if (!touched) return {};
+          // Apply PINGÜINO's per-component stabilizer clamp exactly as the
+          // single-line grams write does, so both seams enforce the same
+          // science (aggregate ceiling + whole grams) and neither enforces the
+          // aggregate minimum, which is a Preview/Apply/Save verdict.
           const proposedItems = state.items.map((item) => {
             const next = gramsByLineId[item.id];
-            return next !== undefined && Number.isFinite(next)
-              ? { ...item, planned_grams: Math.max(0, next) }
-              : item;
+            if (next === undefined || !Number.isFinite(next)) return item;
+            const requested = Math.max(0, next);
+            const planned =
+              resolveFunctionalRole(item.ingredient) === 'stabilizer'
+                ? clampOwnerStabilizerComponentGrams(buildRecipeInput(state), item.id, requested)
+                    .grams
+                : requested;
+            return { ...item, planned_grams: planned };
           });
           const proposed = buildRecipeInput({ ...state, items: proposedItems });
           const required = productBehaviorRequiredLineIds({ items: proposed.items });
@@ -1452,21 +1461,15 @@ export const useRecipeStore = create<RecipeState>()(
               .ready
           )
             return {};
-          // GRAMS/PERCENT PARITY. The grams control clamps and writes; it does
-          // not refuse a draft that is already outside PINGÜINO's stabilizer
-          // band, because the band is enforced where it belongs — at Preview,
-          // Apply and Save. Percent must behave the same way, or the two
-          // representations of one quantity diverge. So refuse only what this
-          // edit INTRODUCES, never what it merely inherits.
-          const before = new Set(
-            assessOwnerStabilizerSystem(buildRecipeInput(state)).issues.map(
-              (issue) => `${issue.code}:${issue.lineIds.join(',')}`,
-            ),
-          );
-          const introduced = assessOwnerStabilizerSystem(proposed).issues.some(
-            (issue) => !before.has(`${issue.code}:${issue.lineIds.join(',')}`),
-          );
-          if (introduced) return {};
+          // GRAMS/PERCENT PARITY. The grams control applies PINGÜINO's
+          // per-component stabilizer clamp and then WRITES — it does not refuse
+          // an amount that leaves the aggregate below the band, because the
+          // band is enforced where it belongs: Preview, Apply and Save. The
+          // percent control must behave identically, or the two representations
+          // of one quantity diverge (served staging: 1 g accepted as grams,
+          // silently refused as 0.1 %). `buildDirectPercentEdit` has already
+          // applied the SAME clamp to this vector, so there is nothing left for
+          // a second, stricter stabilizer verdict to legitimately add here.
           return {
             items: proposedItems,
             dirty: true,
