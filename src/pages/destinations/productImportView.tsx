@@ -427,6 +427,7 @@ export function IntimportLocalIntelligenceView({
     webRecommended: number;
     webRequired: number;
     reviewRequired: number;
+    identityConflicts?: number;
     familyMatches: number;
     estimatedMaxExternalCalls: number;
     /** Null when no Mapper was available, so the counts are simply absent. */
@@ -483,7 +484,10 @@ export function IntimportLocalIntelligenceView({
         ) : null}
         {readiness ? <CountStat label="Do przeglądu" value={readiness.review} /> : null}
         {readiness ? <CountStat label="Zablokowane" value={readiness.blocked} /> : null}
-        <CountStat label="Konflikty / decyzje" value={summary.reviewRequired} />
+        <CountStat
+          label="Konflikty / decyzje"
+          value={summary.identityConflicts ?? summary.reviewRequired}
+        />
       </div>
 
       {readiness ? (

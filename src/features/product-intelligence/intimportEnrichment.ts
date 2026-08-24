@@ -60,6 +60,8 @@ export interface EnrichmentResponse {
   estimatedCostUsd?: number;
   /** Server-owned usage-ledger key. catalog-submit verifies it before crediting web evidence. */
   evidenceReceipt?: string;
+  /** Server refused before spending because the import-wide cap is exhausted. */
+  capReached?: boolean;
 }
 
 export type EnrichmentProvider = (request: EnrichmentRequest) => Promise<EnrichmentResponse>;
@@ -196,6 +198,7 @@ export async function runIntimportEnrichment(
   // admitting whenever `used < cap` overshoots on any cap that does not divide
   // evenly — a cap of 5 would have allowed 6.
   const capExhausted = () =>
+    capReached ||
     callsUsed + WORST_CASE_SEARCHES_PER_CALL > caps.maxCallsPerImport ||
     spendUsd >= caps.maxSpendUsd;
 
@@ -269,40 +272,51 @@ export async function runIntimportEnrichment(
             barcode: row.barcode,
             fields: intelligence.enrichmentTargets.slice(0, MAX_CALLS_PER_PRODUCT),
           }));
-        if (cached) cacheHits += 1;
-        else {
-          cache.set(key, response);
-          callsUsed += response.calls;
-          spendUsd += response.estimatedCostUsd ?? 0;
-        }
-        webAttempted += 1;
+        if (response.capReached) {
+          // A server-side spend refusal is a truthful terminal state, not an
+          // exception that discards every enriched row already completed.
+          capReached = true;
+          results.push(
+            settle(row, intelligence.assessment.confidence, {
+              webSkippedReason: 'osiągnięto serwerowy limit wywołań importu',
+            }),
+          );
+        } else {
+          if (cached) cacheHits += 1;
+          else {
+            cache.set(key, response);
+            callsUsed += response.calls;
+            spendUsd += response.estimatedCostUsd ?? 0;
+          }
+          webAttempted += 1;
 
-        const { evidence, applied } = mergeFacts(
-          row.evidence ?? intelligence.evidence,
-          response.facts,
-        );
-        const assessment = assessProductConfidence(evidence);
-        results.push(
-          settle(row, assessment.confidence, {
-            // This is the seam that used to drop the enriched evidence: the
-            // assessment was replaced, but `row.intelligence.evidence` survived
-            // unchanged and was later handed to the canonical ingest planner.
-            evidence,
-            assessment,
-            webAttempted: true,
-            callsUsed: cached ? 0 : response.calls,
-            cacheHit: Boolean(cached),
-            appliedFacts: applied,
-            enrichmentEvidenceReceipts: response.evidenceReceipt
-              ? [
-                  ...new Set([
-                    ...intelligence.enrichmentEvidenceReceipts,
-                    response.evidenceReceipt,
-                  ]),
-                ]
-              : intelligence.enrichmentEvidenceReceipts,
-          }),
-        );
+          const { evidence, applied } = mergeFacts(
+            row.evidence ?? intelligence.evidence,
+            response.facts,
+          );
+          const assessment = assessProductConfidence(evidence);
+          results.push(
+            settle(row, assessment.confidence, {
+              // This is the seam that used to drop the enriched evidence: the
+              // assessment was replaced, but `row.intelligence.evidence` survived
+              // unchanged and was later handed to the canonical ingest planner.
+              evidence,
+              assessment,
+              webAttempted: true,
+              callsUsed: cached ? 0 : response.calls,
+              cacheHit: Boolean(cached),
+              appliedFacts: applied,
+              enrichmentEvidenceReceipts: response.evidenceReceipt
+                ? [
+                    ...new Set([
+                      ...intelligence.enrichmentEvidenceReceipts,
+                      response.evidenceReceipt,
+                    ]),
+                  ]
+                : intelligence.enrichmentEvidenceReceipts,
+            }),
+          );
+        }
       }
 
       onProgress?.({

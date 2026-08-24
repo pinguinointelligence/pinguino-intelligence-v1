@@ -516,6 +516,39 @@ describe('targeted enrichment pipeline', () => {
     for (const product of stopped) expect(product.finalRoute).toBe('REVIEW_REQUIRED');
   });
 
+  it('keeps completed enrichment when the server reports its authoritative cap', async () => {
+    let calls = 0;
+    const serverCapped = vi.fn(async () => {
+      calls += 1;
+      return calls === 1
+        ? {
+            facts: [
+              { field: 'ingredients' as const, value: 'Cukier.', source: 'manufacturer' as const },
+            ],
+            calls: 1,
+            evidenceReceipt: 'b'.repeat(64),
+          }
+        : { facts: [], calls: 0, capReached: true };
+    });
+    const rows = Array.from({ length: 8 }, (_, i) =>
+      toEnrichmentRows([
+        row({ 'Product ID': `SERVER-${i}`, 'Product Name Original': `Produkt ${i}` }),
+      ])[0]!,
+    );
+    const { products, summary } = await runIntimportEnrichment(rows, serverCapped, {
+      maxCallsPerImport: 400,
+      maxSpendUsd: 5,
+      concurrency: 1,
+    });
+
+    expect(summary.capReached).toBe(true);
+    expect(serverCapped).toHaveBeenCalledTimes(2);
+    expect(products).toHaveLength(8);
+    expect(products[0]!.evidence.fields.ingredients).toBe('manufacturer');
+    expect(products[0]!.enrichmentEvidenceReceipts).toEqual(['b'.repeat(64)]);
+    expect(products.slice(1).every((product) => product.finalRoute === 'REVIEW_REQUIRED')).toBe(true);
+  });
+
   it('uses a bounded worker pool rather than one call per row at once', async () => {
     let inFlight = 0;
     let peak = 0;

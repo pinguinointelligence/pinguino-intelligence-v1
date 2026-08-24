@@ -463,6 +463,7 @@ describe('INTIMPORT direct import is never gated by web enrichment', () => {
             webRecommended: 0,
             webRequired: 1,
             reviewRequired: 0,
+            identityConflicts: 3,
             familyMatches: 0,
             estimatedMaxExternalCalls: 3,
             valueReadiness: { READY: 0, ESTIMATED_READY: 1, REVIEW: 0 },
@@ -485,6 +486,7 @@ describe('INTIMPORT direct import is never gated by web enrichment', () => {
     expect(text).toMatch(/Kompletna kompozycja robocza\s+1/);
     expect(text).toMatch(/Gotowe dla Engine\s+0/);
     expect(text).toMatch(/Product Accuracy ≥85%\s+0/);
+    expect(text).toMatch(/Konflikty \/ decyzje\s+3/);
     expect(text).not.toContain('Oszacowane ≥85% — gotowe');
   });
 });

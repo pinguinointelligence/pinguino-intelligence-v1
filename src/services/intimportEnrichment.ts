@@ -62,16 +62,6 @@ export interface IntimportEnrichmentTelemetry {
   error: string | null;
 }
 
-export class IntimportEnrichmentCapReached extends Error {
-  constructor(
-    readonly callsUsed: number,
-    readonly cap: number,
-  ) {
-    super('intimport_import_call_cap_reached');
-    this.name = 'IntimportEnrichmentCapReached';
-  }
-}
-
 /**
  * Build the provider the pure pipeline consumes. `identityFor` supplies the
  * public product identity for a row — recipes and account data never leave.
@@ -101,7 +91,7 @@ export function createIntimportWebProvider(options: {
     if (error) {
       // The import-wide cap is a deliberate stop, not a failure to swallow.
       const status = (error as { context?: { status?: number } }).context?.status;
-      if (status === 429) throw new IntimportEnrichmentCapReached(0, 0);
+      if (status === 429) return { facts: [], calls: 0, capReached: true };
       // Any other transport failure degrades this ONE product, not the batch.
       options.onTelemetry?.({
         calls: 0,

@@ -409,6 +409,8 @@ export interface IntimportLocalSummary {
   webRecommended: number;
   webRequired: number;
   reviewRequired: number;
+  /** Parser-level ambiguous identities retained for an owner decision. */
+  identityConflicts: number;
   familyMatches: number;
   /** Upper bound on external calls if the owner enriches everything under 90%. */
   estimatedMaxExternalCalls: number;
@@ -454,6 +456,10 @@ export function runIntimportLocalIntelligence(
       webRecommended: count('WEB_RECOMMENDED'),
       webRequired: count('WEB_REQUIRED'),
       reviewRequired: count('REVIEW_REQUIRED'),
+      identityConflicts: candidates.filter(
+        (candidate) =>
+          candidate.state === 'REVIEW_REQUIRED' && candidate.duplicateOfRow !== null,
+      ).length,
       familyMatches: rows.filter((row) => row.familyApplied).length,
       // One targeted call per genuinely missing field, capped per product.
       estimatedMaxExternalCalls: enrichable.reduce(
