@@ -198,7 +198,11 @@ export function ProductPickerPopover({
     selectedMarkets: [],
     forceGlobal: false,
     limit: 500,
-    mapperOnly: true,
+    // The picker searches the whole eligible catalogue: Mapper reference rows
+    // AND the commercial products the owner imported. Restricting the query to
+    // pi_base meant an imported product could never be found, however exactly
+    // its name was typed.
+    mapperOnly: false,
   });
   useLayoutEffect(() => {
     if (!open || typeof window === 'undefined') return;
@@ -252,14 +256,21 @@ export function ProductPickerPopover({
     if (library.serverSearch) {
       // Never expose hits belonging to the previous debounced query. A quick
       // type -> Enter must not add a stale canonical ingredient.
+      // Deduping by Mapper id is meaningful only for reference rows — several of
+      // them can point at one Mapper ingredient. A commercial product is its own
+      // identity, so it must pass through rather than be collapsed away.
+      const context = scope === 'BASE_FORMULATION' ? 'BASE' : 'TOPPING';
+      const referenceHits = new Set(
+        filterCurrentMapperCatalogHits(
+          globalCatalog.hits.filter((hit) => hit.entityKind === 'pi_base'),
+          context,
+        ),
+      );
+      const eligible = globalCatalog.hits.filter(
+        (hit) => hit.entityKind !== 'pi_base' || referenceHits.has(hit),
+      );
       const catalog = globalCatalog.isSettled
-        ? preserveServerProductRank(
-            filterCurrentMapperCatalogHits(
-              globalCatalog.hits,
-              scope === 'BASE_FORMULATION' ? 'BASE' : 'TOPPING',
-            ),
-            globalCatalog.preferences,
-          ).map((hit) => ({
+        ? preserveServerProductRank(eligible, globalCatalog.preferences).map((hit) => ({
             id:
               hit.entityKind === 'pi_base'
                 ? `mapper:${hit.mappedIngredientId ?? hit.id}`

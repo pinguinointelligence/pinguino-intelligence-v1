@@ -262,13 +262,15 @@ describe('Mapper-only picker source and UI contract', () => {
     expect(hook).not.toMatch(/localStorage|indexedDB/i);
   });
 
-  it('I keeps the picker Mapper-only while restoring the modern add-product CTA', () => {
+  it('I searches the whole eligible catalogue, and keeps the add-product CTA', () => {
     const picker = read('src/features/ingredient-builder/ProductPickerPopover.tsx');
     expect(picker).toContain('Nie znalazłeś produktu?');
     expect(picker).toContain('Skanuj produkt');
     expect(picker).toContain('to="/products/scan"');
     expect(picker).not.toContain('Katalog zawiera wyłącznie aktualne produkty Mappera.');
-    expect(picker).toContain('mapperOnly: true');
+    // Owner decision: an imported commercial product must be findable in the
+    // recipe picker. Restricting the query to pi_base made that impossible.
+    expect(picker).toContain('mapperOnly: false');
   });
 
   it('pins the sanctioned selection view as the current/active authority', () => {
