@@ -53,6 +53,8 @@ describe('durable product import run safety', () => {
     expect(migration).toContain('v_result:=public.ingest_product_v1(');
     expect(catalogEdge).toContain("service.rpc('ingest_product_import_row_v1'");
     expect(catalogEdge).toContain('import_cancellation_requested');
+    expect(catalogEdge).toContain("console.error('catalog_product_ingest_failed'");
+    expect(catalogEdge).toContain('code: error.code');
   });
 
   it('supports targeted rollback and a guarded clean PR reset', () => {

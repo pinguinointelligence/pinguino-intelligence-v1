@@ -687,7 +687,7 @@ export function ProductImportPage() {
           {runError ? <p className="mt-4 text-sm text-status-risky">{runError}</p> : null}
           {importPlan ? (
             <p className="text-xs text-[#8a7f6d]">
-              Product Intelligence: {importPlan.total} zapisanych do katalogu —{' '}
+              Product Intelligence: przeanalizowano {importPlan.total} —{' '}
               {importPlan.engineUsable} gotowych dla Engine, {importPlan.review} do uzupełnienia.
               Bez informacji o dawkowaniu producenta: {importPlan.dosageUnproven} (informacyjnie —
               nie blokuje).

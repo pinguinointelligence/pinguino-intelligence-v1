@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router';
 import type { ReactElement } from 'react';
@@ -325,6 +327,15 @@ describe('ProductImportPage — render smoke', () => {
     expect(text).toContain(c.parse);
     expect(text).toContain(c.emptyPreview);
     expect(/\bdemo\b/i.test(text)).toBe(false);
+  });
+
+  it('labels Product Intelligence counts as analyzed, never already persisted', () => {
+    const source = readFileSync(
+      resolve(process.cwd(), 'src/pages/destinations/ProductImportPage.tsx'),
+      'utf8',
+    );
+    expect(source).toContain('Product Intelligence: przeanalizowano {importPlan.total}');
+    expect(source).not.toContain('{importPlan.total} zapisanych do katalogu');
   });
 });
 

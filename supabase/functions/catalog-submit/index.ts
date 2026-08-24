@@ -1103,6 +1103,16 @@ Deno.serve(async (request) => {
       })
     : await service.rpc('ingest_product_v1', ingestArguments);
   if (error) {
+    console.error('catalog_product_ingest_failed', {
+      source,
+      importRunId,
+      importRowIndex,
+      importSourceRowId,
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
     await cleanupUnfinalizedEvidence({
       service,
       actorUserId: auth.user.id,
