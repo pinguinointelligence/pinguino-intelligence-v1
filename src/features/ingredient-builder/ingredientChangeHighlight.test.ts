@@ -51,6 +51,22 @@ describe('ingredientChangeSignature', () => {
       ingredientChangeSignature(line()),
     );
   });
+
+  it('compares at the precision the row SHOWS, so an invisible residue is not marked', () => {
+    // Served staging QA: a percentage edit rebalanced the other lines and left
+    // SUCROSE at 135.0004 g and INULIN at 120.9996 g. Both rows still displayed
+    // 135 g and 121 g, so marking them was unexplainable to the owner.
+    expect(ingredientChangeSignature(line({ plannedGrams: 135.0004 }))).toBe(
+      ingredientChangeSignature(line({ plannedGrams: 135 })),
+    );
+    expect(ingredientChangeSignature(line({ plannedGrams: 120.9996 }))).toBe(
+      ingredientChangeSignature(line({ plannedGrams: 121 })),
+    );
+    // A difference the row can actually show is still a change.
+    expect(ingredientChangeSignature(line({ plannedGrams: 135.4 }))).not.toBe(
+      ingredientChangeSignature(line({ plannedGrams: 135 })),
+    );
+  });
 });
 
 describe('changedIngredientLineIds', () => {

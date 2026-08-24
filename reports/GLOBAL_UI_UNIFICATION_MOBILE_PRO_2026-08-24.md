@@ -170,3 +170,14 @@ authenticated Pro recipe ("QA Lost PL.zoltka UNLOCKED v2", 8 base lines).
    the detail view truncated too — so the full name was unreachable on mobile.
    Fixed: the sheet header wraps; the collapsed list row still keeps one line.
    Regression test: "shows the WHOLE catalog name in the detail view".
+
+3. **Lines marked while showing identical numbers.** A percentage edit
+   rebalances the other lines and can leave a residue below the displayed
+   precision: served QA left SUCROSE at 135.0004 g and INULIN at 120.9996 g,
+   both still rendering `135 g` and `121 g`, yet both marked. The signature
+   compared grams at three decimals while the row shows one. Fixed: the
+   comparison now rounds exactly the way the display rounds, so the marker only
+   ever claims a change the owner can read off the row. Rounding stays
+   display-only — nothing re-enters the Engine or any saved value. Regression
+   test: "compares at the precision the row SHOWS, so an invisible residue is
+   not marked".

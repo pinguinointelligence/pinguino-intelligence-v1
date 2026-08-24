@@ -29,11 +29,22 @@ export interface IngredientChangeInput {
   ingredientId: string;
 }
 
-/** One stable, comparable string per line. Rounded to the precision shown. */
+/**
+ * One stable, comparable string per line, compared at THE PRECISION THE ROW
+ * ACTUALLY SHOWS (one decimal for grams, matching the list row and the stepper).
+ *
+ * This is not a detail. A percentage edit rebalances the other lines and can
+ * leave a residue far below the displayed precision — served staging QA showed
+ * SUCROSE and INULIN marked as changed while both rows still displayed exactly
+ * `135 g` and `121 g`. A marker the owner cannot explain from the numbers in
+ * front of them is worse than no marker, so the comparison rounds the same way
+ * the display does. Rounding stays display-only: nothing here re-enters the
+ * Engine, the recipe vector or any saved value.
+ */
 export function ingredientChangeSignature(input: IngredientChangeInput): string {
   return [
     input.ingredientId,
-    input.plannedGrams.toFixed(3),
+    input.plannedGrams.toFixed(1),
     input.lockType,
     input.role,
     input.required ? 'req' : '-',
