@@ -4,6 +4,7 @@ import {
   SYSTEM_PROMPT,
   extractResponseText,
   mergeProductScanResults,
+  missingFieldsAfterNotOnLabelConfirmation,
   normalizeValidatedBarcode,
   validateServerResult,
   webCallsInResponse,
@@ -210,9 +211,7 @@ describe('server Product Scanner result authority', () => {
       const merged = mergeProductScanResults(prior, incoming);
       expect((merged.nutrition as Record<string, unknown>)[key]).toBeNull();
       expect(merged.conflicts).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ field, retainedSource: null }),
-        ]),
+        expect.arrayContaining([expect.objectContaining({ field, retainedSource: null })]),
       );
       expect(validateServerResult(merged, ['asset-1'])).toMatchObject({
         ok: true,
@@ -306,9 +305,7 @@ describe('server Product Scanner result authority', () => {
     prior.identity.displayName = 'Cacao Puro';
     const incoming = result();
     incoming.identity.displayName = 'Cacao Puro Desgrasado en Polvo';
-    incoming.evidence = incoming.evidence.filter(
-      (item) => item.field === 'identity.displayName',
-    );
+    incoming.evidence = incoming.evidence.filter((item) => item.field === 'identity.displayName');
     const merged = mergeProductScanResults(prior, incoming);
     expect((merged.identity as Record<string, unknown>).displayName).toBe(
       'Cacao Puro Desgrasado en Polvo',
@@ -323,9 +320,7 @@ describe('server Product Scanner result authority', () => {
   it('prefers a direct decimal table value over its rounded value from another asset', () => {
     const prior = result();
     prior.nutrition.carbohydrate = 16;
-    prior.evidence = prior.evidence.filter(
-      (item) => item.field === 'nutrition.carbohydrate',
-    );
+    prior.evidence = prior.evidence.filter((item) => item.field === 'nutrition.carbohydrate');
     const incoming = result();
     incoming.nutrition.carbohydrate = 16.3;
     incoming.evidence = incoming.evidence
@@ -375,6 +370,23 @@ describe('server Product Scanner result authority', () => {
       missingCriticalFields: expect.arrayContaining(['allergen_confirmation']),
       highRiskAuthorityRequired: false,
     });
+  });
+
+  it('lets explicit label-absence confirmations clear only matching readiness fields', () => {
+    const remaining = missingFieldsAfterNotOnLabelConfirmation(
+      [
+        'product_identity',
+        'net_quantity',
+        'nutrition_basis',
+        'nutrition_energyKcal',
+        'ingredientsText',
+        'allergen_confirmation',
+        'conflict_nutrition.energyKcal',
+      ],
+      ['net_quantity', 'nutrition', 'ingredients', 'allergens'],
+    );
+
+    expect(remaining).toEqual(['product_identity', 'conflict_nutrition.energyKcal']);
   });
 
   it('rejects materially inconsistent kJ/kcal values at the database boundary', () => {

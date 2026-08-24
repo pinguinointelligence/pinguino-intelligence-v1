@@ -35,29 +35,21 @@ export interface LiveCaptureInput {
   /** Views still worth capturing, most useful first. Empty = capture nothing. */
   wanted: readonly CaptureView[];
   captured: readonly CapturedFrame[];
-  /** Consecutive frames that already passed the quality gate. */
-  stableFrames: number;
+  /** The rolling window has selected its best readable frame. */
+  bestFrameReady: boolean;
   signals: FrameSignals;
   /** Hard ceiling on evidence frames in one session. */
   maxFrames: number;
 }
 
 export type LiveCaptureDecision =
-  | { kind: 'capture'; view: CaptureView; reason: 'barcode_read' | 'requested_view' }
+  | { kind: 'capture'; view: CaptureView; reason: 'barcode_read' | 'best_readable' }
   | { kind: 'hold'; reason: HoldReason; guidance: string }
   | { kind: 'duplicate' }
   | { kind: 'enough' };
 
-export type HoldReason =
-  | 'unstable'
-  | 'blurred'
-  | 'glare'
-  | 'too_dark'
-  | 'no_text'
-  | 'settling';
+export type HoldReason = 'unstable' | 'blurred' | 'glare' | 'too_dark' | 'no_text' | 'settling';
 
-/** Frames must be held steady this long before one is kept. */
-export const STABLE_FRAMES_BEFORE_CAPTURE = 3;
 /** Two frames closer than this in Hamming distance show the same thing. */
 export const DUPLICATE_HAMMING_DISTANCE = 6;
 /** A text surface has to actually show text before it counts as that evidence. */
@@ -158,16 +150,17 @@ export function liveCaptureDecision(input: LiveCaptureInput): LiveCaptureDecisio
     // Only the barcode is still wanted and this frame does not carry one.
     return { kind: 'hold', reason: 'settling', guidance: GUIDANCE.settling };
   }
-  const reason = holdReason(input.signals, view);
-  if (reason) return { kind: 'hold', reason, guidance: GUIDANCE[reason] };
   const duplicate = input.captured.some(
     (frame) => hammingDistance(frame.hash, input.signals.hash) <= DUPLICATE_HAMMING_DISTANCE,
   );
   // The same side of the package held in front of the lens for ten seconds is one
   // piece of evidence, not ten. It must not consume a frame slot or a model call.
   if (duplicate) return { kind: 'duplicate' };
-  if (input.stableFrames + 1 < STABLE_FRAMES_BEFORE_CAPTURE) {
-    return { kind: 'hold', reason: 'settling', guidance: GUIDANCE.settling };
-  }
-  return { kind: 'capture', view, reason: 'requested_view' };
+  // Quality ranks candidates inside a bounded rolling window. Once that window has a
+  // readable winner it is used even if it never crossed the old “perfect” gate.
+  if (input.bestFrameReady) return { kind: 'capture', view, reason: 'best_readable' };
+  const reason = holdReason(input.signals, view);
+  return reason
+    ? { kind: 'hold', reason, guidance: GUIDANCE[reason] }
+    : { kind: 'hold', reason: 'settling', guidance: GUIDANCE.settling };
 }

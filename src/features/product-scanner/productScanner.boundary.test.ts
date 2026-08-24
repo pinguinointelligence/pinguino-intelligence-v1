@@ -18,15 +18,17 @@ describe('Product Scanner server/client/security boundary', () => {
 
   it('offers one capture session across camera/upload/drop/paste with local barcode detection', () => {
     expect(ui).toContain('navigator.mediaDevices.getUserMedia');
-    expect(ui).toContain('BarcodeDetector');
     expect(ui).toContain("void addFiles(files, 'paste')");
     expect(ui).toContain("void addFiles([...event.dataTransfer.files], 'drop')");
     expect(ui).toContain('camera_auto');
-    expect(ui).toContain('liveCaptureDecision');
+    expect(ui).toContain('RollingBestFrameWindow');
+    expect(ui).toContain('getSharedBarcodeDecoder');
+    expect(ui).toContain('createLiveFrameSource');
     expect(ui).toContain('Usuń');
     expect(ui).toContain('Skanuj kamerą');
     expect(ui).toContain('Dodaj zdjęcia');
     expect(ui).not.toMatch(/MediaRecorder|RTCPeerConnection|webrtc/i);
+    expect(ui).toContain("document.addEventListener('visibilitychange'");
   });
 
   it('keeps the OpenAI key and model choice server-only', () => {
@@ -98,7 +100,9 @@ describe('Product Scanner server/client/security boundary', () => {
     expect(analyze).toContain('PRODUCT_SCANNER_MAX_VISION_CALLS');
     expect(analyze).toContain('PRODUCT_SCANNER_MAX_WEB_CALLS');
     expect(analyze).toContain('accurate_retry_requires_fast_evidence');
-    expect(migration).toContain('vision_calls smallint not null default 0 check (vision_calls between 0 and 2)');
+    expect(migration).toContain(
+      'vision_calls smallint not null default 0 check (vision_calls between 0 and 2)',
+    );
   });
 
   it('merges each call into cumulative server-owned session evidence before readiness', () => {
@@ -115,10 +119,13 @@ describe('Product Scanner server/client/security boundary', () => {
     expect(finalize).toContain('noAdditionalAllergenStatementVisible');
     expect(finalize).toContain("missingCriticalFields[0] === 'allergen_confirmation'");
     expect(finalize).toContain('absence_of_statement_is_not_no_allergens');
+    expect(finalize).toContain('missingFieldsAfterNotOnLabelConfirmation');
+    expect(finalize).toContain('absence_only_not_zero_or_none');
+    expect(finalize).toContain('userConfirmedNotOnLabelFields');
     expect(finalize).toContain('validation.highRiskAuthorityRequired !== true');
     expect(finalize).toContain('result_json: scanResult');
     expect(finalize).toContain('modelValidation: effectiveValidation');
-    expect(finalize).toContain('.select(\'id\')');
+    expect(finalize).toContain(".select('id')");
   });
 
   it('records safe cost/rate diagnostics without raw IPs or images', () => {
@@ -153,9 +160,7 @@ describe('Product Scanner server/client/security boundary', () => {
     // whose default was ON. The client no longer sends it and the server no longer reads it.
     expect(service).not.toContain('allowWeb');
     expect(ui).not.toContain('allowWeb');
-    expect(analyze).toContain(
-      "Deno.env.get('PRODUCT_SCANNER_WEB_SEARCH_ENABLED') === 'true'",
-    );
+    expect(analyze).toContain("Deno.env.get('PRODUCT_SCANNER_WEB_SEARCH_ENABLED') === 'true'");
     expect(analyze).not.toContain('body.allowWeb === true');
   });
 
@@ -166,6 +171,13 @@ describe('Product Scanner server/client/security boundary', () => {
     // One analyse path, one finalize path — there is no second ingestion pipeline.
     expect(ui.match(/analyzeProductImages\(/g)?.length).toBe(1);
     expect(ui.match(/finalizeProductScan\(/g)?.length).toBe(1);
+  });
+
+  it('sends only new evidence and the canonical list of unresolved fields', () => {
+    expect(ui).toContain('analyzedAssetIds');
+    expect(ui).toContain('missingFieldsForAnalysis');
+    expect(service).toContain('missingFields: string[]');
+    expect(analyze).toContain('Requested missing fields only:');
   });
 
   it('creates products through the shared canonical ingest, deduplicating on the GTIN', () => {

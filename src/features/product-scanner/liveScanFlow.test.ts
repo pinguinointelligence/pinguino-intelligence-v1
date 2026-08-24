@@ -9,7 +9,6 @@ import {
   DUPLICATE_HAMMING_DISTANCE,
   frameHash,
   liveCaptureDecision,
-  STABLE_FRAMES_BEFORE_CAPTURE,
   textDensity,
   type CapturedFrame,
   type FrameSignals,
@@ -53,6 +52,7 @@ const routing = (overrides: Partial<Parameters<typeof routeScan>[0]> = {}) =>
     eanLookupDone: false,
     frameCount: 0,
     analyzedFrameCount: 0,
+    liveBarcodeSearchActive: false,
     visionCalls: 0,
     maxVisionCalls: 2,
     evidence: evidence(),
@@ -97,7 +97,9 @@ describe('B. a new EAN whose exact source answers everything needs no photograph
       evidence: state,
     });
     expect(route).toEqual({ kind: 'ready' });
-    expect(state.entries.find((entry) => entry.kind === 'nutrition')?.provenance).toBe('ean_lookup');
+    expect(state.entries.find((entry) => entry.kind === 'nutrition')?.provenance).toBe(
+      'ean_lookup',
+    );
   });
 
   it('never spends a vision call to confirm what the exact source already gave', () => {
@@ -139,7 +141,11 @@ describe('C. external nutrition but no ingredients — ask for ingredients only'
         visionCalls: 1,
         evidence: state,
       }),
-    ).toEqual({ kind: 'request_evidence', view: 'ingredients', message: EVIDENCE_REQUEST.ingredients });
+    ).toEqual({
+      kind: 'request_evidence',
+      view: 'ingredients',
+      message: EVIDENCE_REQUEST.ingredients,
+    });
   });
 });
 
@@ -149,8 +155,11 @@ describe('D. a barcode in front of the camera is detected before any result appe
       liveCaptureDecision({
         wanted: ['barcode', 'identity'],
         captured: [],
-        stableFrames: 0,
-        signals: signals({ barcode: '5449000131805', quality: { ...goodQuality, sharpness: 0.36 } }),
+        bestFrameReady: false,
+        signals: signals({
+          barcode: '5449000131805',
+          quality: { ...goodQuality, sharpness: 0.36 },
+        }),
         maxFrames: 4,
       }),
     ).toEqual({ kind: 'capture', view: 'barcode', reason: 'barcode_read' });
@@ -164,14 +173,42 @@ describe('D. a barcode in front of the camera is detected before any result appe
       provenance: 'camera',
     });
   });
+
+  it('gives a live barcode one rotated surface before spending the first Vision call', () => {
+    expect(
+      routing({
+        frameCount: 1,
+        analyzedFrameCount: 0,
+        liveBarcodeSearchActive: true,
+      }),
+    ).toEqual({ kind: 'collect' });
+    expect(
+      routing({
+        barcode: '5449000131805',
+        frameCount: 1,
+        analyzedFrameCount: 0,
+        liveBarcodeSearchActive: true,
+      }),
+    ).toEqual({ kind: 'ean_lookup' });
+  });
+
+  it('keeps a one-image upload session on the same pipeline without making it wait for a camera', () => {
+    expect(
+      routing({
+        frameCount: 1,
+        analyzedFrameCount: 0,
+        liveBarcodeSearchActive: false,
+      }),
+    ).toEqual({ kind: 'analyze_label', accurateRetry: false });
+  });
 });
 
 describe('E. turning the package captures the views on its own', () => {
-  it('captures the requested view once the frame settles', () => {
+  it('captures the requested best frame once the rolling window is ready', () => {
     const held = liveCaptureDecision({
       wanted: ['nutrition'],
       captured: [],
-      stableFrames: 0,
+      bestFrameReady: false,
       signals: signals(),
       maxFrames: 4,
     });
@@ -180,19 +217,40 @@ describe('E. turning the package captures the views on its own', () => {
       liveCaptureDecision({
         wanted: ['nutrition'],
         captured: [],
-        stableFrames: STABLE_FRAMES_BEFORE_CAPTURE - 1,
+        bestFrameReady: true,
         signals: signals(),
         maxFrames: 4,
       }),
-    ).toEqual({ kind: 'capture', view: 'nutrition', reason: 'requested_view' });
+    ).toEqual({ kind: 'capture', view: 'nutrition', reason: 'best_readable' });
+  });
+
+  it('progresses with a medium readable frame even when no perfect frame arrives', () => {
+    expect(
+      liveCaptureDecision({
+        wanted: ['ingredients'],
+        captured: [],
+        bestFrameReady: true,
+        signals: signals({
+          quality: {
+            ...goodQuality,
+            score: 48,
+            sharpness: 0.22,
+            acceptableForAutoCapture: false,
+          },
+        }),
+        maxFrames: 4,
+      }),
+    ).toEqual({ kind: 'capture', view: 'ingredients', reason: 'best_readable' });
   });
 
   it('refuses a blurred, dark or glaring frame with a reason the owner can act on', () => {
     const blurred = liveCaptureDecision({
       wanted: ['ingredients'],
       captured: [],
-      stableFrames: 9,
-      signals: signals({ quality: { ...goodQuality, sharpness: 0.1, acceptableForAutoCapture: false } }),
+      bestFrameReady: false,
+      signals: signals({
+        quality: { ...goodQuality, sharpness: 0.1, acceptableForAutoCapture: false },
+      }),
       maxFrames: 4,
     });
     expect(blurred).toMatchObject({ kind: 'hold', reason: 'blurred' });
@@ -200,7 +258,7 @@ describe('E. turning the package captures the views on its own', () => {
       liveCaptureDecision({
         wanted: ['ingredients'],
         captured: [],
-        stableFrames: 9,
+        bestFrameReady: false,
         signals: signals({ quality: { ...goodQuality, glare: 0.4 } }),
         maxFrames: 4,
       }),
@@ -212,7 +270,7 @@ describe('E. turning the package captures the views on its own', () => {
       liveCaptureDecision({
         wanted: ['nutrition'],
         captured: [],
-        stableFrames: 9,
+        bestFrameReady: false,
         signals: signals({ textDensity: 0.01 }),
         maxFrames: 4,
       }),
@@ -228,7 +286,7 @@ describe('F. the same side held in front of the lens is one piece of evidence', 
       liveCaptureDecision({
         wanted: ['nutrition'],
         captured,
-        stableFrames: 9,
+        bestFrameReady: false,
         signals: signals({ hash: 0x0f0f0f0f0f0f0f0dn }),
         maxFrames: 4,
       }),
@@ -240,11 +298,11 @@ describe('F. the same side held in front of the lens is one piece of evidence', 
       liveCaptureDecision({
         wanted: ['nutrition'],
         captured,
-        stableFrames: 9,
+        bestFrameReady: true,
         signals: signals({ hash: 0xf0f0f0f00f0f0f0fn }),
         maxFrames: 4,
       }),
-    ).toEqual({ kind: 'capture', view: 'nutrition', reason: 'requested_view' });
+    ).toEqual({ kind: 'capture', view: 'nutrition', reason: 'best_readable' });
   });
 
   it('measures sameness on what the frame looks like', () => {
@@ -257,7 +315,42 @@ describe('F. the same side held in front of the lens is one piece of evidence', 
     const hash = frameHash(surface, 64, 64);
     expect(Number(hash ^ frameHash(moved, 64, 64))).toBeLessThanOrEqual(DUPLICATE_HAMMING_DISTANCE);
     expect(frameHash(other, 64, 64)).not.toBe(hash);
-    expect(textDensity(surface, 64, 64)).toBeGreaterThan(textDensity(new Uint8Array(64 * 64).fill(200), 64, 64));
+    expect(textDensity(surface, 64, 64)).toBeGreaterThan(
+      textDensity(new Uint8Array(64 * 64).fill(200), 64, 64),
+    );
+  });
+
+  it('shows the nutrition panel three times but keeps and analyses it only once', () => {
+    const first = liveCaptureDecision({
+      wanted: ['nutrition'],
+      captured: [],
+      bestFrameReady: true,
+      signals: signals(),
+      maxFrames: 4,
+    });
+    const kept: CapturedFrame[] =
+      first.kind === 'capture' ? [{ view: first.view, hash: signals().hash, score: 74 }] : [];
+    const repeatedDecisions = [1, 2].map(() =>
+      liveCaptureDecision({
+        wanted: ['nutrition'],
+        captured: kept,
+        bestFrameReady: true,
+        signals: signals({ hash: 0x0f0f0f0f0f0f0f0dn }),
+        maxFrames: 4,
+      }),
+    );
+    const usableEvidenceCount = Number(first.kind === 'capture');
+    const paidAnalysisCalls = usableEvidenceCount;
+    const afterAnalysis = evidence({
+      resolvedByCamera: ['nutrition'],
+      missingCriticalFields: ['barcode', 'product_identity', 'ingredientsText'],
+      shownViews: ['nutrition'],
+    });
+
+    expect(usableEvidenceCount).toBe(1);
+    expect(paidAnalysisCalls).toBe(1);
+    expect(repeatedDecisions).toEqual([{ kind: 'duplicate' }, { kind: 'duplicate' }]);
+    expect(afterAnalysis.requestView).not.toBe('nutrition');
   });
 });
 
@@ -339,16 +432,22 @@ describe('the result card waits for collection to finish (§20)', () => {
     expect(scanShowsResult({ kind: 'collect' })).toBe(false);
     expect(scanShowsResult({ kind: 'ean_lookup' })).toBe(false);
     expect(scanShowsResult({ kind: 'analyze_label', accurateRetry: false })).toBe(false);
-    expect(
-      scanShowsResult({ kind: 'request_evidence', view: 'ingredients', message: 'x' }),
-    ).toBe(false);
+    expect(scanShowsResult({ kind: 'request_evidence', view: 'ingredients', message: 'x' })).toBe(
+      false,
+    );
   });
 });
 
 describe('capture stops when the evidence is enough (§28)', () => {
   it('keeps nothing further once every wanted view is held', () => {
     expect(
-      liveCaptureDecision({ wanted: [], captured: [], stableFrames: 9, signals: signals(), maxFrames: 4 }),
+      liveCaptureDecision({
+        wanted: [],
+        captured: [],
+        bestFrameReady: true,
+        signals: signals(),
+        maxFrames: 4,
+      }),
     ).toEqual({ kind: 'enough' });
   });
 
@@ -362,7 +461,7 @@ describe('capture stops when the evidence is enough (§28)', () => {
           { view: 'nutrition', hash: 4n, score: 70 },
           { view: 'ingredients', hash: 8n, score: 70 },
         ],
-        stableFrames: 9,
+        bestFrameReady: true,
         signals: signals(),
         maxFrames: 4,
       }),

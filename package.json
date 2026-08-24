@@ -37,6 +37,7 @@
     "@sentry/react": "^10.66.0",
     "@supabase/supabase-js": "^2.108.1",
     "@tanstack/react-query": "^5.101.0",
+    "barcode-detector": "^3.2.2",
     "heic-to": "^1.5.2",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",

@@ -135,7 +135,9 @@ export async function lookupExactBarcodeFacts(input: {
     body: { sessionId: input.sessionId, mode: 'ean_lookup', images: [], barcode: input.barcode },
   });
   if (error || !data || typeof data !== 'object' || data.error) {
-    const failure = error ? await readFunctionFailure(error) : { serverCode: null, visionCalls: 0, networkFailure: false };
+    const failure = error
+      ? await readFunctionFailure(error)
+      : { serverCode: null, visionCalls: 0, networkFailure: false };
     const scannerError = classifyScannerError({
       stage: 'analysis',
       serverCode: failure.serverCode ?? (typeof data?.error === 'string' ? data.error : null),
@@ -162,6 +164,7 @@ export async function analyzeProductImages(input: {
   }>;
   barcode: ValidBarcode | null;
   accurateRetry?: boolean;
+  missingFields: string[];
 }): Promise<ScanAnalysisResponse | ScanExactMatchResponse> {
   if (!supabase) throw new Error(UNAVAILABLE);
   const { data, error } = await supabase.functions.invoke('product-scan-analyze', { body: input });
@@ -197,6 +200,7 @@ export async function finalizeProductScan(input: {
   idempotencyKey: string;
   confirmations?: {
     noAdditionalAllergenStatementVisible?: boolean;
+    notOnLabelFields?: string[];
   };
   privateOverlay: {
     price?: number | null;

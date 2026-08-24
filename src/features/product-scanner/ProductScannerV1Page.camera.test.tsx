@@ -84,7 +84,7 @@ describe('Product Scanner camera fallback', () => {
     expect(host.textContent).toContain('Dodaj zdjęcia');
   });
 
-  it('requests the rear camera without audio and exposes manual capture', async () => {
+  it('requests the rear camera without audio and keeps manual capture in troubleshooting only', async () => {
     await acceptPrivacy();
     const stop = vi.fn();
     const getUserMedia = vi.fn().mockResolvedValue({ getTracks: () => [{ stop }] });
@@ -102,10 +102,14 @@ describe('Product Scanner camera fallback', () => {
         facingMode: { ideal: 'environment' },
         width: { ideal: 1920 },
         height: { ideal: 1080 },
+        aspectRatio: { ideal: 4 / 3 },
       },
       audio: false,
     });
-    expect(host.textContent).toContain('Zrób zdjęcie');
+    const troubleshooting = [...host.querySelectorAll('details')].find((item) =>
+      item.textContent?.includes('Problem ze skanowaniem?'),
+    );
+    expect(troubleshooting?.textContent).toContain('Zatrzymaj jedną klatkę');
   });
 
   it('switches from rear to front camera in the same capture session', async () => {
@@ -121,7 +125,7 @@ describe('Product Scanner camera fallback', () => {
       await Promise.resolve();
     });
     const rotate = [...host.querySelectorAll('button')].find(
-      (button) => button.textContent === 'Obróć',
+      (button) => button.textContent === 'Zmień kamerę',
     )!;
     await act(async () => {
       rotate.click();
@@ -133,8 +137,29 @@ describe('Product Scanner camera fallback', () => {
         facingMode: { ideal: 'user' },
         width: { ideal: 1920 },
         height: { ideal: 1080 },
+        aspectRatio: { ideal: 4 / 3 },
       },
       audio: false,
     });
+  });
+
+  it('stops every camera track and frame callback when the live session closes', async () => {
+    await acceptPrivacy();
+    const stop = vi.fn();
+    Object.defineProperty(navigator, 'mediaDevices', {
+      value: { getUserMedia: vi.fn().mockResolvedValue({ getTracks: () => [{ stop }] }) },
+      configurable: true,
+    });
+    await act(async () => {
+      cameraButton().click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    const close = [...host.querySelectorAll('button')].find(
+      (button) => button.textContent === 'Zamknij',
+    )!;
+    await act(async () => close.click());
+    expect(stop).toHaveBeenCalledOnce();
+    expect(cancelAnimationFrame).toHaveBeenCalled();
   });
 });

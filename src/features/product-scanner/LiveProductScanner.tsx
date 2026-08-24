@@ -4,13 +4,23 @@ import {
   prepareProductScanImage,
 } from '@/features/product-scanner/imagePreparation';
 import { scoreRgbaFrame } from '@/features/product-scanner/frameQuality';
-import { validateBarcode, type ValidBarcode } from '@/features/product-scanner/barcode';
+import { browserPerceptualHash } from '@/features/ocr-intake/imagePerceptualHash';
+import type { ValidBarcode } from '@/features/product-scanner/barcode';
 import {
-  decodeGtinFromLuminance,
-  decodeGtinFromRgba,
-} from '@/features/product-scanner/barcodeScanline';
+  getSharedBarcodeDecoder,
+  type BarcodeDecoder,
+  type BarcodeDecoderKind,
+} from '@/features/product-scanner/barcodeDecoder';
 import {
+  createLiveFrameSource,
+  type LiveFrameSource,
+  type LiveFrameSourceKind,
+} from '@/features/product-scanner/liveFrameSource';
+import { RollingBestFrameWindow } from '@/features/product-scanner/rollingBestFrame';
+import {
+  DUPLICATE_HAMMING_DISTANCE,
   frameHash,
+  hammingDistance,
   liveCaptureDecision,
   textDensity,
   type CapturedFrame,
@@ -23,6 +33,22 @@ import {
   scanEvidenceState,
   type ScanEvidenceKind,
 } from '@/features/product-scanner/evidenceState';
+import {
+  LIVE_FIELD_LABEL,
+  LIVE_FIELD_ORDER,
+  applyExactProduct,
+  applyLocalBarcode,
+  applyProductScanResult,
+  clearNotOnLabel,
+  confirmNotOnLabel,
+  createLiveFieldState,
+  liveScanCompletion,
+  markLiveFieldsSearching,
+  missingFieldsForAnalysis,
+  nextLiveHint,
+  type LiveFieldState,
+  type LiveScanFieldKey,
+} from '@/features/product-scanner/liveFieldState';
 import { routeScan, scanShowsResult } from '@/features/product-scanner/scanRouting';
 import {
   analyzeProductImages,
@@ -42,27 +68,22 @@ import {
 } from '@/features/product-scanner/resultPresentation';
 import type { PreparedProductScanAsset } from '@/features/product-scanner/contracts';
 
-interface DetectedBarcode {
-  rawValue: string;
-  format?: string;
-}
-
-interface BarcodeDetectorLike {
-  detect(source: CanvasImageSource): Promise<DetectedBarcode[]>;
-}
-
-interface BarcodeDetectorConstructor {
-  new (options?: { formats?: string[] }): BarcodeDetectorLike;
-  getSupportedFormats?: () => Promise<string[]>;
-}
-
 export const MAX_IMAGES = 4;
-const CAMERA_SCAN_INTERVAL_MS = 220;
-/** The analysis width the local reader works on. Small enough to stay real-time. */
-const ANALYSIS_WIDTH = 480;
+const CAMERA_SCAN_INTERVAL_MS = 180;
+/** Enough pixels for small retail bars while bounding work to roughly 5–6 attempts/s. */
+const ANALYSIS_WIDTH = 960;
+const FULL_FRAME_BARCODE_EVERY = 4;
+const BEST_FRAME_WINDOW_MS = 700;
 
-const card =
-  'rounded-[20px] border border-stone-200 bg-white shadow-[0_12px_32px_rgba(28,25,23,0.06)]';
+interface BestFrameCandidate {
+  canvas: HTMLCanvasElement;
+  hash: bigint;
+  qualityScore: number;
+  quality: ReturnType<typeof scoreRgbaFrame>;
+  textDensity: number;
+}
+
+const card = 'rounded-xl border border-stone-200 bg-white shadow-[0_12px_32px_rgba(28,25,23,0.06)]';
 const quietButton =
   'pro-focus-ring inline-flex min-h-11 items-center justify-center rounded-xl border border-stone-300 bg-white px-4 text-sm font-semibold text-ink transition hover:border-stone-500 disabled:cursor-not-allowed disabled:opacity-45';
 const primaryButton =
@@ -80,6 +101,38 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
+function snapshotVideoFrame(video: HTMLVideoElement): HTMLCanvasElement | null {
+  if (video.videoWidth < 1 || video.videoHeight < 1) return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const context = canvas.getContext('2d');
+  if (!context) return null;
+  context.drawImage(video, 0, 0, canvas.width, canvas.height);
+  return canvas;
+}
+
+function centralBarcodeRoi(source: HTMLCanvasElement): HTMLCanvasElement {
+  const roi = document.createElement('canvas');
+  roi.width = Math.max(1, Math.round(source.width * 0.88));
+  roi.height = Math.max(1, Math.round(source.height * 0.62));
+  const context = roi.getContext('2d');
+  if (context) {
+    context.drawImage(
+      source,
+      Math.round(source.width * 0.06),
+      Math.round(source.height * 0.19),
+      roi.width,
+      roi.height,
+      0,
+      0,
+      roi.width,
+      roi.height,
+    );
+  }
+  return roi;
+}
+
 /**
  * Read a GTIN out of a still image the owner supplied.
  *
@@ -87,7 +140,10 @@ function fileToBase64(file: File): Promise<string> {
  * same free routing: a code found here reaches the catalogue and the exact source before
  * any model is asked to read anything.
  */
-async function decodeBarcodeFromFile(file: File): Promise<ValidBarcode | null> {
+async function decodeBarcodeFromFile(
+  file: File,
+  decoder: BarcodeDecoder,
+): Promise<ValidBarcode | null> {
   if (typeof createImageBitmap !== 'function' || typeof document === 'undefined') return null;
   try {
     const bitmap = await createImageBitmap(file);
@@ -100,12 +156,7 @@ async function decodeBarcodeFromFile(file: File): Promise<ValidBarcode | null> {
     if (!context) return null;
     context.drawImage(bitmap, 0, 0, width, height);
     bitmap.close?.();
-    const decoded = decodeGtinFromRgba(
-      context.getImageData(0, 0, width, height).data,
-      width,
-      height,
-    );
-    return decoded ? validateBarcode(decoded) : null;
+    return await decoder.decode(canvas);
   } catch {
     return null;
   }
@@ -135,6 +186,7 @@ function resolvedKinds(missing: readonly string[]): ScanEvidenceKind[] {
 interface ScanSession {
   sessionId: string;
   assets: PreparedProductScanAsset[];
+  assetHashes: Array<bigint | null>;
   captured: CapturedFrame[];
   barcode: ValidBarcode | null;
   exactProduct: ScanExactProduct | null;
@@ -143,12 +195,29 @@ interface ScanSession {
   resolvedByLookup: ScanEvidenceKind[];
   resolvedByCamera: ScanEvidenceKind[];
   shownViews: ScanEvidenceKind[];
+  fields: LiveFieldState;
+  notOnLabelFields: LiveScanFieldKey[];
   eanLookupDone: boolean;
   lookupUnavailable: boolean;
   visionCalls: number;
-  analyzedFrameCount: number;
+  sourceLookupCount: number;
+  analyzedAssetIds: string[];
   cameraOpen: boolean;
   cameraFacing: 'environment' | 'user';
+  cameraCapabilities: {
+    torch: boolean;
+    zoom: { min: number; max: number; step: number; value: number } | null;
+    continuousFocus: boolean;
+  };
+  torchOn: boolean;
+  decoderKind: BarcodeDecoderKind | null;
+  decoderWarmupMs: number | null;
+  frameSourceKind: LiveFrameSourceKind | null;
+  cameraStartupMs: number | null;
+  barcodeAttempts: number;
+  timeToFirstBarcodeMs: number | null;
+  duplicateFramesSkipped: number;
+  autoCapturedViews: CaptureView[];
   guidance: string;
   busy: string | null;
   error: string | null;
@@ -162,6 +231,7 @@ interface ScanSession {
 const freshSession = (): ScanSession => ({
   sessionId: crypto.randomUUID(),
   assets: [],
+  assetHashes: [],
   captured: [],
   barcode: null,
   exactProduct: null,
@@ -170,13 +240,26 @@ const freshSession = (): ScanSession => ({
   resolvedByLookup: [],
   resolvedByCamera: [],
   shownViews: [],
+  fields: createLiveFieldState(),
+  notOnLabelFields: [],
   eanLookupDone: false,
   lookupUnavailable: false,
   visionCalls: 0,
-  analyzedFrameCount: 0,
+  sourceLookupCount: 0,
+  analyzedAssetIds: [],
   cameraOpen: false,
   cameraFacing: 'environment',
-  guidance: 'Pokaż produkt — kod kreskowy najlepiej na początek.',
+  cameraCapabilities: { torch: false, zoom: null, continuousFocus: false },
+  torchOn: false,
+  decoderKind: null,
+  decoderWarmupMs: null,
+  frameSourceKind: null,
+  cameraStartupMs: null,
+  barcodeAttempts: 0,
+  timeToFirstBarcodeMs: null,
+  duplicateFramesSkipped: 0,
+  autoCapturedViews: [],
+  guidance: 'Obracaj produkt powoli',
   busy: null,
   error: null,
   errorStage: 'analysis',
@@ -220,6 +303,10 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
   // camera loop runs between renders and must never read a stale snapshot, while the
   // view must never read a ref during render.
   const [state, setState] = useState<ScanSession>(freshSession);
+  const exposeStagingQaDiagnostics =
+    typeof window !== 'undefined' &&
+    (import.meta.env.DEV || window.location.hostname === 'staging.pinguinoai.com') &&
+    new URLSearchParams(window.location.search).has('qa');
   const session = useRef<ScanSession>(state);
   const patch = useCallback((changes: Partial<ScanSession>) => {
     const next = { ...session.current, ...changes };
@@ -230,11 +317,15 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const detectorRef = useRef<BarcodeDetectorLike | null>(null);
-  const frameLoopRef = useRef<number | null>(null);
+  const decoderRef = useRef<BarcodeDecoder | null>(null);
+  const frameSourceRef = useRef<LiveFrameSource | null>(null);
   const scanFramesRef = useRef<() => void>(() => undefined);
   const lastFrameAtRef = useRef(0);
-  const stableFramesRef = useRef(0);
+  const cameraStartedAtRef = useRef<number | null>(null);
+  const barcodeAttemptRef = useRef(0);
+  const processingFrameRef = useRef(false);
+  const bestFrameRef = useRef(new RollingBestFrameWindow<BestFrameCandidate>(BEST_FRAME_WINDOW_MS));
+  const bestFrameViewRef = useRef<CaptureView | null>(null);
   const advancingRef = useRef(false);
   const capturingRef = useRef(false);
   /** Set once `resolveDetectedBarcode` exists; uploads and frames share one route. */
@@ -246,22 +337,53 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
     barcode: state.barcode?.lookupValue ?? null,
     eanLookupDone: state.eanLookupDone,
     frameCount: state.assets.length,
-    analyzedFrameCount: state.analyzedFrameCount,
+    analyzedFrameCount: state.analyzedAssetIds.length,
+    liveBarcodeSearchActive: state.cameraOpen,
     visionCalls: state.visionCalls,
     maxVisionCalls: 2,
     evidence,
   });
 
   const stopCamera = useCallback(() => {
-    if (frameLoopRef.current !== null) cancelAnimationFrame(frameLoopRef.current);
-    frameLoopRef.current = null;
+    frameSourceRef.current?.stop();
+    frameSourceRef.current = null;
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
-    patch({ cameraOpen: false });
+    processingFrameRef.current = false;
+    bestFrameRef.current.reset();
+    bestFrameViewRef.current = null;
+    patch({
+      cameraOpen: false,
+      torchOn: false,
+      cameraCapabilities: { torch: false, zoom: null, continuousFocus: false },
+    });
   }, [patch]);
 
-  useEffect(() => () => stopCamera(), [stopCamera]);
+  useEffect(
+    () => () => {
+      stopCamera();
+      for (const asset of session.current.assets) URL.revokeObjectURL(asset.previewUrl);
+    },
+    [stopCamera],
+  );
+
+  useEffect(() => {
+    if (import.meta.env.MODE === 'test') return undefined;
+    let active = true;
+    void getSharedBarcodeDecoder()
+      .then((decoder) => {
+        if (!active) return;
+        decoderRef.current = decoder;
+        patch({ decoderKind: decoder.kind, decoderWarmupMs: Math.round(decoder.warmupMs) });
+      })
+      .catch(() => {
+        if (active) patch({ guidance: 'Obracaj produkt powoli — czytnik kodu uruchamia się.' });
+      });
+    return () => {
+      active = false;
+    };
+  }, [patch]);
 
   const addFiles = useCallback(
     async (
@@ -281,10 +403,28 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
           patch({ error: result.reason });
           continue;
         }
+        const previewHash =
+          hash ??
+          (await browserPerceptualHash(result.value.file).then((value) =>
+            value ? BigInt(`0x${value}`) : null,
+          ));
+        if (
+          previewHash !== null &&
+          session.current.assetHashes.some(
+            (existingHash) =>
+              existingHash !== null &&
+              hammingDistance(existingHash, previewHash) <= DUPLICATE_HAMMING_DISTANCE,
+          )
+        ) {
+          patch({ duplicateFramesSkipped: session.current.duplicateFramesSkipped + 1 });
+          continue;
+        }
         // A code found in an uploaded label routes exactly like one read live: catalogue
         // and exact source first, before any model call.
         if (!session.current.barcode && !session.current.exactProduct) {
-          const decoded = await decodeBarcodeFromFile(result.value.file);
+          const decoder = decoderRef.current ?? (await getSharedBarcodeDecoder());
+          decoderRef.current = decoder;
+          const decoded = await decodeBarcodeFromFile(result.value.file, decoder);
           if (decoded) uploadedBarcode = decoded;
         }
         const current = session.current;
@@ -301,13 +441,18 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
               qualityScore,
             },
           ].slice(0, MAX_IMAGES),
+          assetHashes: [...current.assetHashes, previewHash].slice(0, MAX_IMAGES),
           captured: view
-            ? [...current.captured, { view, hash: hash ?? 0n, score: qualityScore ?? 0 }]
+            ? [...current.captured, { view, hash: previewHash ?? 0n, score: qualityScore ?? 0 }]
             : current.captured,
           shownViews:
             view && !current.shownViews.includes(view)
               ? [...current.shownViews, view]
               : current.shownViews,
+          autoCapturedViews:
+            view && source === 'camera_auto'
+              ? [...current.autoCapturedViews, view]
+              : current.autoCapturedViews,
         });
       }
       patch({ busy: null });
@@ -321,16 +466,19 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
     const current = session.current;
     if (current.exactProduct) return [];
     const held = new Set(current.captured.map((frame) => frame.view));
-    const missing = evidenceOf(current).missingKinds;
-    const wanted = missing.filter((kind) => !held.has(kind));
-    // Before the first analysis nothing is known to be missing, so the session starts
-    // by wanting the two views every packaged product has: its code and its front.
-    if (current.assets.length === 0 && wanted.length === 0) {
-      return ['barcode', 'identity'].filter(
-        (kind) => !held.has(kind as CaptureView),
-      ) as CaptureView[];
-    }
-    return wanted;
+    const viewForField: Readonly<Record<LiveScanFieldKey, CaptureView>> = {
+      barcode: 'barcode',
+      product_name: 'identity',
+      brand: 'identity',
+      net_quantity: 'identity',
+      nutrition: 'nutrition',
+      ingredients: 'ingredients',
+      allergens: 'ingredients',
+    };
+    const wanted = LIVE_FIELD_ORDER.filter((key) =>
+      ['MISSING', 'SEARCHING', 'CONFLICT'].includes(current.fields[key].status),
+    ).map((key) => viewForField[key]);
+    return [...new Set(wanted)].filter((view) => !held.has(view));
   }, []);
 
   const runEanLookup = useCallback(async () => {
@@ -343,16 +491,37 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
         barcode,
       });
       if (response.kind === 'existing_product') {
-        patch({ exactProduct: response.product });
+        patch({
+          exactProduct: response.product,
+          fields: applyExactProduct(session.current.fields, {
+            displayName: response.product.displayName,
+            brand: response.product.brand,
+            barcode: session.current.barcode?.lookupValue ?? null,
+          }),
+        });
       } else {
         patch({
           ...(response.result
             ? {
+                analysis: {
+                  sessionId: response.sessionId,
+                  result: response.result,
+                  overlayState: response.overlayState ?? 'SCAN_DRAFT',
+                  missingCriticalFields: response.missingCriticalFields,
+                  usage: response.usage,
+                },
                 missingCriticalFields: response.missingCriticalFields,
                 resolvedByLookup: resolvedKinds(response.missingCriticalFields),
+                fields: applyProductScanResult(
+                  session.current.fields,
+                  response.result,
+                  response.missingCriticalFields,
+                  'ean_lookup',
+                ),
               }
             : {}),
           lookupUnavailable: response.providerUnavailable === true,
+          sourceLookupCount: session.current.sourceLookupCount + 1,
         });
       }
     } catch {
@@ -371,10 +540,17 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
         return;
       }
       patch({ busy: accurateRetry ? 'Czytam uzupełnione ujęcie…' : 'Czytam etykietę…' });
-      const analyzedNow = current.assets.length;
+      const newAssets = current.assets.filter(
+        (asset) => !current.analyzedAssetIds.includes(asset.id),
+      );
+      if (newAssets.length === 0) {
+        patch({ busy: null });
+        return;
+      }
+      const analyzedNow = [...current.analyzedAssetIds, ...newAssets.map((asset) => asset.id)];
       try {
         const images = await Promise.all(
-          current.assets.map(async (asset) => ({
+          newAssets.map(async (asset) => ({
             assetId: asset.id,
             mime: asset.file.type,
             base64: await fileToBase64(asset.file),
@@ -389,20 +565,31 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
           images,
           barcode: current.barcode,
           accurateRetry,
+          missingFields: missingFieldsForAnalysis(current.fields),
         });
         if (!('result' in response)) {
           patch({
-            analyzedFrameCount: analyzedNow,
+            analyzedAssetIds: analyzedNow,
             exactProduct: response.product,
             analysis: null,
+            fields: applyExactProduct(session.current.fields, {
+              displayName: response.product.displayName,
+              brand: response.product.brand,
+              barcode: current.barcode?.lookupValue ?? null,
+            }),
           });
           return;
         }
         patch({
-          analyzedFrameCount: analyzedNow,
+          analyzedAssetIds: analyzedNow,
           analysis: response,
           missingCriticalFields: response.missingCriticalFields,
           resolvedByCamera: resolvedKinds(response.missingCriticalFields),
+          fields: applyProductScanResult(
+            session.current.fields,
+            response.result,
+            response.missingCriticalFields,
+          ),
           visionCalls: response.usage.visionCalls,
           allergenConfirmed: false,
         });
@@ -410,7 +597,6 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
         // A failed analysis costs the session nothing and leaves the frames in place;
         // the owner is not sent back to the beginning (§14, §15).
         patch({
-          analyzedFrameCount: analyzedNow,
           visionCalls:
             caught instanceof ProductScannerServiceError && caught.visionCalls > 0
               ? caught.visionCalls
@@ -441,7 +627,8 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
           barcode: current.barcode?.lookupValue ?? null,
           eanLookupDone: current.eanLookupDone,
           frameCount: current.assets.length,
-          analyzedFrameCount: current.analyzedFrameCount,
+          analyzedFrameCount: current.analyzedAssetIds.length,
+          liveBarcodeSearchActive: current.cameraOpen,
           visionCalls: current.visionCalls,
           maxVisionCalls: 2,
           evidence: evidenceOf(current),
@@ -469,7 +656,17 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
   const resolveDetectedBarcode = useCallback(
     async (detected: ValidBarcode) => {
       if (session.current.barcode) return;
-      patch({ barcode: detected, guidance: 'Kod odczytany. Sprawdzam katalog…' });
+      const detectedAt =
+        session.current.timeToFirstBarcodeMs ??
+        (cameraStartedAtRef.current === null
+          ? null
+          : Math.max(0, performance.now() - cameraStartedAtRef.current));
+      patch({
+        barcode: detected,
+        fields: applyLocalBarcode(session.current.fields, detected.lookupValue),
+        guidance: 'Kod znaleziony. Sprawdzam katalog…',
+        timeToFirstBarcodeMs: detectedAt === null ? null : Math.round(detectedAt),
+      });
       try {
         const existing = await lookupExactBarcode(detected);
         if (existing) {
@@ -482,6 +679,11 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
               entityKind: existing.entityKind,
               status: existing.status,
             },
+            fields: applyExactProduct(session.current.fields, {
+              displayName: existing.displayName,
+              brand: existing.brand,
+              barcode: detected.lookupValue,
+            }),
             finished: true,
           });
           stopCamera();
@@ -500,24 +702,25 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
     resolveBarcodeRef.current = resolveDetectedBarcode;
   }, [resolveDetectedBarcode]);
 
-  const captureFullFrame = useCallback(
-    async (view: CaptureView, source: 'camera_auto' | 'camera_manual', hash: bigint) => {
-      const video = videoRef.current;
-      if (!video || video.videoWidth === 0 || capturingRef.current) return;
+  const captureCanvasFrame = useCallback(
+    async (
+      view: CaptureView,
+      source: 'camera_auto' | 'camera_manual',
+      hash: bigint | null,
+      full: HTMLCanvasElement,
+      qualityScore: number | null,
+    ) => {
+      if (capturingRef.current) return;
       capturingRef.current = true;
       try {
-        const full = document.createElement('canvas');
-        full.width = video.videoWidth;
-        full.height = video.videoHeight;
-        full.getContext('2d')?.drawImage(video, 0, 0, full.width, full.height);
         const blob = await new Promise<Blob | null>((resolve) =>
           full.toBlob(resolve, 'image/jpeg', 0.92),
         );
         if (!blob) return;
         const file = new File([blob], `produkt-${Date.now()}.jpg`, { type: 'image/jpeg' });
-        await addFiles([file], source, null, view, hash);
+        await addFiles([file], source, qualityScore, view, hash);
         patch({
-          guidance: view === 'barcode' ? 'Kod zapisany.' : `Zapisano: ${EVIDENCE_LABEL[view]}.`,
+          guidance: `Odczytuję: ${EVIDENCE_LABEL[view].toLowerCase()}.`,
         });
       } finally {
         capturingRef.current = false;
@@ -526,91 +729,153 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
     [addFiles, patch],
   );
 
+  const captureFullFrame = useCallback(
+    async (view: CaptureView, source: 'camera_auto' | 'camera_manual', hash: bigint | null) => {
+      const video = videoRef.current;
+      if (!video) return;
+      const full = snapshotVideoFrame(video);
+      if (!full) return;
+      await captureCanvasFrame(view, source, hash, full, null);
+    },
+    [captureCanvasFrame],
+  );
+
   const scanFrames = useCallback(async () => {
+    if (processingFrameRef.current) return;
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    const current = session.current;
-    if (video && canvas && streamRef.current) {
-      const now = performance.now();
-      if (video.readyState >= 2 && now - lastFrameAtRef.current >= CAMERA_SCAN_INTERVAL_MS) {
-        lastFrameAtRef.current = now;
-        const width = Math.min(ANALYSIS_WIDTH, video.videoWidth || ANALYSIS_WIDTH);
-        const height = Math.max(
-          2,
-          Math.round(((video.videoHeight || 240) / (video.videoWidth || 320)) * width),
-        );
-        canvas.width = width;
-        canvas.height = height;
-        const context = canvas.getContext('2d', { willReadFrequently: true });
-        if (context) {
-          context.drawImage(video, 0, 0, width, height);
-          const pixels = context.getImageData(0, 0, width, height).data;
-          const quality = scoreRgbaFrame(pixels, width, height);
-          const luminance = new Uint8Array(width * height);
-          for (let index = 0; index < luminance.length; index += 1) {
-            const offset = index * 4;
-            luminance[index] = Math.round(
-              (pixels[offset] ?? 0) * 0.2126 +
-                (pixels[offset + 1] ?? 0) * 0.7152 +
-                (pixels[offset + 2] ?? 0) * 0.0722,
-            );
-          }
-          let decoded: string | null = null;
-          if (!current.barcode) {
-            if (detectorRef.current) {
-              try {
-                const found = await detectorRef.current.detect(canvas);
-                decoded =
-                  found
-                    .map((item) => validateBarcode(item.rawValue, item.format))
-                    .find((item): item is ValidBarcode => item !== null)?.value ?? null;
-              } catch {
-                detectorRef.current = null;
-              }
-            }
-            // Safari has no BarcodeDetector. Without this the owner's iPhone reached a
-            // paid analysis with no code at all and the result said „Kod: Brak".
-            if (!decoded) decoded = decodeGtinFromLuminance(luminance, width, height);
-          }
-          const validated = decoded ? validateBarcode(decoded) : null;
-          const decision = liveCaptureDecision({
-            wanted: wantedViews(),
-            captured: current.captured,
-            stableFrames: stableFramesRef.current,
-            signals: {
-              quality,
-              barcode: validated?.value ?? null,
-              hash: frameHash(luminance, width, height),
-              textDensity: textDensity(luminance, width, height),
-            },
-            maxFrames: MAX_IMAGES,
-          });
-          if (decision.kind === 'hold') {
-            stableFramesRef.current =
-              decision.reason === 'settling' ? stableFramesRef.current + 1 : 0;
-            if (current.guidance !== decision.guidance && !current.busy) {
-              patch({ guidance: decision.guidance });
-            }
-          } else if (decision.kind === 'capture') {
-            stableFramesRef.current = 0;
-            await captureFullFrame(
-              decision.view,
-              'camera_auto',
-              frameHash(luminance, width, height),
-            );
-            if (decision.view === 'barcode' && validated) {
-              await resolveDetectedBarcode(validated);
-            } else {
-              await advance();
-            }
-          } else if (decision.kind === 'enough') {
-            await advance();
-          }
+    if (!video || !canvas || !streamRef.current || video.readyState < 2) return;
+    const now = performance.now();
+    if (now - lastFrameAtRef.current < CAMERA_SCAN_INTERVAL_MS) return;
+    processingFrameRef.current = true;
+    lastFrameAtRef.current = now;
+    try {
+      const width = Math.min(ANALYSIS_WIDTH, video.videoWidth || ANALYSIS_WIDTH);
+      const height = Math.max(
+        2,
+        Math.round(((video.videoHeight || 240) / (video.videoWidth || 320)) * width),
+      );
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      if (!context) return;
+      context.drawImage(video, 0, 0, width, height);
+
+      if (!session.current.barcode && decoderRef.current) {
+        barcodeAttemptRef.current += 1;
+        const decodeSource =
+          barcodeAttemptRef.current % FULL_FRAME_BARCODE_EVERY === 0
+            ? canvas
+            : centralBarcodeRoi(canvas);
+        const decodeStartedAt = performance.now();
+        const detected = await decoderRef.current.decode(decodeSource);
+        patch({
+          barcodeAttempts: barcodeAttemptRef.current,
+          decoderKind: decoderRef.current.kind,
+          decoderWarmupMs: Math.round(decoderRef.current.warmupMs),
+        });
+        if (detected && !session.current.barcode) {
+          patch({ timeToFirstBarcodeMs: Math.round(performance.now() - decodeStartedAt) });
+          await resolveDetectedBarcode(detected);
         }
       }
+
+      const current = session.current;
+      if (current.exactProduct || current.busy || capturingRef.current) return;
+      const pixels = context.getImageData(0, 0, width, height).data;
+      const quality = scoreRgbaFrame(pixels, width, height);
+      const luminance = new Uint8Array(width * height);
+      for (let index = 0; index < luminance.length; index += 1) {
+        const offset = index * 4;
+        luminance[index] = Math.round(
+          (pixels[offset] ?? 0) * 0.2126 +
+            (pixels[offset + 1] ?? 0) * 0.7152 +
+            (pixels[offset + 2] ?? 0) * 0.0722,
+        );
+      }
+      const hash = frameHash(luminance, width, height);
+      const density = textDensity(luminance, width, height);
+      const wanted = wantedViews();
+      // Prefer human-readable label surfaces while the local decoder keeps running,
+      // but never dead-end when barcode is the final unresolved field. In that case
+      // one selected barcode view can still enter the existing evidence pipeline.
+      const view = wanted.find((candidate) => candidate !== 'barcode') ?? wanted[0] ?? null;
+      if (view === null) {
+        bestFrameRef.current.reset();
+        bestFrameViewRef.current = null;
+        if (!current.barcode && current.guidance !== 'Obracaj produkt powoli') {
+          patch({ guidance: 'Obracaj produkt powoli' });
+        }
+        return;
+      }
+      if (bestFrameViewRef.current !== view) {
+        bestFrameRef.current.reset();
+        bestFrameViewRef.current = view;
+      }
+
+      const duplicate = current.assetHashes.some(
+        (existingHash) =>
+          existingHash !== null &&
+          hammingDistance(existingHash, hash) <= DUPLICATE_HAMMING_DISTANCE,
+      );
+      const isTextView = view === 'nutrition' || view === 'ingredients';
+      const readable =
+        !duplicate &&
+        quality.score >= 32 &&
+        quality.exposure >= 0.2 &&
+        quality.sharpness >= 0.12 &&
+        quality.glare <= 0.55 &&
+        (!isTextView || density >= 0.035);
+      if (readable) {
+        const full = snapshotVideoFrame(video);
+        if (full) {
+          bestFrameRef.current.offer({
+            value: {
+              canvas: full,
+              hash,
+              qualityScore: quality.score,
+              quality,
+              textDensity: density,
+            },
+            score: quality.score,
+            readable: true,
+            capturedAt: now,
+          });
+        }
+      }
+      const selected = bestFrameRef.current.takeReady(now)?.value ?? null;
+      const decision = liveCaptureDecision({
+        wanted,
+        captured: current.captured,
+        bestFrameReady: selected !== null,
+        signals: {
+          quality: selected?.quality ?? quality,
+          barcode: null,
+          hash: selected?.hash ?? hash,
+          textDensity: selected?.textDensity ?? density,
+        },
+        maxFrames: MAX_IMAGES,
+      });
+      if (decision.kind === 'hold') {
+        if (current.guidance !== decision.guidance) patch({ guidance: decision.guidance });
+      } else if (decision.kind === 'duplicate') {
+        patch({ duplicateFramesSkipped: current.duplicateFramesSkipped + 1 });
+      } else if (decision.kind === 'capture' && selected) {
+        await captureCanvasFrame(
+          decision.view,
+          'camera_auto',
+          selected.hash,
+          selected.canvas,
+          selected.qualityScore,
+        );
+        await advance();
+      } else if (decision.kind === 'enough') {
+        await advance();
+      }
+    } finally {
+      processingFrameRef.current = false;
     }
-    frameLoopRef.current = requestAnimationFrame(() => scanFramesRef.current());
-  }, [advance, captureFullFrame, patch, resolveDetectedBarcode, wantedViews]);
+  }, [advance, captureCanvasFrame, patch, resolveDetectedBarcode, wantedViews]);
 
   useEffect(() => {
     scanFramesRef.current = () => void scanFrames();
@@ -632,27 +897,64 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
       }
       stopCamera();
       try {
+        const cameraRequestStartedAt = performance.now();
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: { ideal: requestedFacing },
             width: { ideal: 1920 },
             height: { ideal: 1080 },
+            aspectRatio: { ideal: 4 / 3 },
           },
           audio: false,
         });
         streamRef.current = stream;
-        const Detector = (
-          window as typeof window & { BarcodeDetector?: BarcodeDetectorConstructor }
-        ).BarcodeDetector;
-        if (Detector) {
-          detectorRef.current = new Detector({ formats: ['ean_8', 'ean_13', 'upc_a', 'upc_e'] });
+        if (import.meta.env.MODE !== 'test') {
+          void getSharedBarcodeDecoder().then((decoder) => {
+            decoderRef.current = decoder;
+            patch({ decoderKind: decoder.kind, decoderWarmupMs: Math.round(decoder.warmupMs) });
+          });
         }
-        stableFramesRef.current = 0;
+        const track = stream.getVideoTracks?.()[0] ?? stream.getTracks()[0];
+        const capabilities = track?.getCapabilities?.() as
+          | {
+              focusMode?: string[];
+              torch?: boolean;
+              zoom?: { min?: number; max?: number; step?: number };
+            }
+          | undefined;
+        const continuousFocus = capabilities?.focusMode?.includes('continuous') === true;
+        if (continuousFocus && track?.applyConstraints) {
+          void track
+            .applyConstraints({
+              advanced: [{ focusMode: 'continuous' } as MediaTrackConstraintSet],
+            })
+            .catch(() => undefined);
+        }
+        const zoom = capabilities?.zoom;
+        const zoomState =
+          typeof zoom?.min === 'number' && typeof zoom.max === 'number'
+            ? {
+                min: zoom.min,
+                max: zoom.max,
+                step: typeof zoom.step === 'number' && zoom.step > 0 ? zoom.step : 0.1,
+                value: zoom.min,
+              }
+            : null;
+        cameraStartedAtRef.current ??= cameraRequestStartedAt;
+        bestFrameRef.current.reset();
+        bestFrameViewRef.current = null;
         patch({
           cameraFacing: requestedFacing,
           cameraOpen: true,
+          cameraStartupMs: Math.round(performance.now() - cameraRequestStartedAt),
           finished: false,
-          guidance: 'Pokaż produkt — kod kreskowy najlepiej na początek.',
+          fields: markLiveFieldsSearching(session.current.fields),
+          cameraCapabilities: {
+            torch: capabilities?.torch === true,
+            zoom: zoomState,
+            continuousFocus,
+          },
+          guidance: 'Obracaj produkt powoli',
         });
       } catch {
         patch({
@@ -672,12 +974,23 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
     void video
       .play()
       .then(() => {
-        if (frameLoopRef.current === null) {
-          frameLoopRef.current = requestAnimationFrame(() => scanFramesRef.current());
-        }
+        frameSourceRef.current?.stop();
+        const source = createLiveFrameSource(video, () => scanFramesRef.current());
+        frameSourceRef.current = source;
+        patch({ frameSourceKind: source.kind });
+        source.start();
       })
       .catch(() => patch({ error: 'Podgląd kamery nie mógł zostać uruchomiony.' }));
   }, [patch, state.cameraOpen]);
+
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') frameSourceRef.current?.pause();
+      else if (session.current.cameraOpen) frameSourceRef.current?.resume();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, []);
 
   /**
    * Dropping a frame also releases the view it was evidence for, so a bad capture can
@@ -693,9 +1006,10 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
       const view = current.captured[index]?.view ?? null;
       patch({
         assets: current.assets.filter((asset) => asset.id !== assetId),
+        assetHashes: current.assetHashes.filter((_, position) => position !== index),
         captured: current.captured.filter((_, position) => position !== index),
         shownViews: view ? current.shownViews.filter((kind) => kind !== view) : current.shownViews,
-        analyzedFrameCount: Math.min(current.analyzedFrameCount, current.assets.length - 1),
+        analyzedAssetIds: current.analyzedAssetIds.filter((id) => id !== assetId),
       });
     },
     [patch],
@@ -709,7 +1023,10 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
       const result = await finalizeProductScan({
         sessionId: current.sessionId,
         idempotencyKey: `${current.sessionId}:create-v1`,
-        confirmations: { noAdditionalAllergenStatementVisible: current.allergenConfirmed },
+        confirmations: {
+          noAdditionalAllergenStatementVisible: current.allergenConfirmed,
+          notOnLabelFields: current.notOnLabelFields,
+        },
         privateOverlay: {},
       });
       patch({ saved: result });
@@ -735,6 +1052,74 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
     }
   }, [onResolved, patch]);
 
+  const setTorch = useCallback(
+    async (enabled: boolean) => {
+      const track = streamRef.current?.getVideoTracks?.()[0];
+      if (!track?.applyConstraints) return;
+      try {
+        await track.applyConstraints({
+          advanced: [{ torch: enabled } as MediaTrackConstraintSet],
+        });
+        patch({ torchOn: enabled });
+      } catch {
+        patch({ guidance: 'Latarka nie jest dostępna dla tej kamery.' });
+      }
+    },
+    [patch],
+  );
+
+  const setZoom = useCallback(
+    async (value: number) => {
+      const track = streamRef.current?.getVideoTracks?.()[0];
+      if (!track?.applyConstraints || !Number.isFinite(value)) return;
+      try {
+        await track.applyConstraints({ advanced: [{ zoom: value } as MediaTrackConstraintSet] });
+        const zoom = session.current.cameraCapabilities.zoom;
+        if (zoom) {
+          patch({
+            cameraCapabilities: {
+              ...session.current.cameraCapabilities,
+              zoom: { ...zoom, value },
+            },
+          });
+        }
+      } catch {
+        patch({ guidance: 'Zoom nie jest dostępny dla tej kamery.' });
+      }
+    },
+    [patch],
+  );
+
+  const confirmMissingOnPackage = useCallback(
+    async (key: LiveScanFieldKey) => {
+      const current = session.current;
+      const viewForField: Readonly<Record<LiveScanFieldKey, ScanEvidenceKind>> = {
+        barcode: 'barcode',
+        product_name: 'identity',
+        brand: 'identity',
+        net_quantity: 'identity',
+        nutrition: 'nutrition',
+        ingredients: 'ingredients',
+        allergens: 'ingredients',
+      };
+      const view = viewForField[key];
+      const nextFields = confirmNotOnLabel(current.fields, key);
+      patch({
+        fields: nextFields,
+        notOnLabelFields: current.notOnLabelFields.includes(key)
+          ? current.notOnLabelFields
+          : [...current.notOnLabelFields, key],
+        shownViews: current.shownViews.includes(view)
+          ? current.shownViews
+          : [...current.shownViews, view],
+        allergenConfirmed: key === 'allergens' ? true : current.allergenConfirmed,
+        guidance: nextLiveHint(nextFields),
+      });
+      await advance();
+    },
+    [advance, patch],
+  );
+
   const exactProduct = state.exactProduct;
   const showResult = scanShowsResult(route) || state.finished || state.assets.length > 0;
   const showFinalResult =
@@ -743,6 +1128,17 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
     state.missingCriticalFields.includes('allergen_confirmation') === true;
   const allergenConfirmationIsOnlyBlocker =
     state.missingCriticalFields.length === 1 && needsAllergenConfirmation;
+  const firstUnresolvedField = LIVE_FIELD_ORDER.find((key) =>
+    ['MISSING', 'SEARCHING', 'CONFLICT'].includes(state.fields[key].status),
+  );
+  const notOnLabelCandidate =
+    firstUnresolvedField &&
+    ['barcode', 'net_quantity', 'nutrition', 'ingredients', 'allergens'].includes(
+      firstUnresolvedField,
+    )
+      ? firstUnresolvedField
+      : null;
+  const completion = liveScanCompletion(state.fields);
 
   return (
     <div
@@ -800,63 +1196,132 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
 
         {state.cameraOpen && (
           <div className="border-b border-stone-200 bg-ink p-4 text-white sm:p-6">
-            <div className="relative mx-auto max-w-2xl overflow-hidden rounded-2xl bg-black">
+            <div className="relative mx-auto max-w-2xl overflow-hidden rounded-xl bg-black">
               <video
                 ref={videoRef}
                 playsInline
                 muted
                 className="aspect-[3/4] w-full object-cover sm:aspect-[4/3]"
               />
-              <div className="pointer-events-none absolute inset-[8%] rounded-xl border border-white/80 shadow-[0_0_0_999px_rgba(0,0,0,0.25)]" />
+              <div className="pointer-events-none absolute inset-x-[6%] top-[19%] h-[62%] rounded-lg border border-white/70 shadow-[0_0_0_999px_rgba(0,0,0,0.18)]" />
             </div>
             <p className="mx-auto mt-4 max-w-2xl text-base font-medium" aria-live="polite">
-              {state.busy ?? evidence.requestMessage ?? state.guidance}
+              {state.busy ??
+                (state.guidance === 'Obracaj produkt powoli'
+                  ? nextLiveHint(state.fields)
+                  : state.guidance)}
             </p>
-            {/* What to show is the headline; how to hold it changes frame by frame and
-                must not be swallowed by it. */}
-            {!state.busy && evidence.requestMessage && (
-              <p className="mx-auto mt-1 max-w-2xl text-sm text-stone-300" aria-live="polite">
-                {state.guidance}
-              </p>
-            )}
-            <ul className="mx-auto mt-3 flex max-w-2xl flex-wrap gap-x-5 gap-y-1 text-sm text-stone-300">
-              {evidence.entries.map((entry) => (
-                <li key={entry.kind}>
-                  <span aria-hidden>{entry.present ? '✓' : '○'}</span>{' '}
-                  <span className={entry.present ? 'text-white' : ''}>
-                    {EVIDENCE_LABEL[entry.kind]}
-                  </span>
-                </li>
-              ))}
+            <ul
+              className="mx-auto mt-4 grid max-w-2xl gap-px overflow-hidden rounded-lg border border-white/15 bg-white/15 text-sm"
+              aria-label="Postęp odczytu produktu"
+            >
+              {LIVE_FIELD_ORDER.map((key) => {
+                const field = state.fields[key];
+                const isFound = field.status === 'FOUND';
+                const isAbsent = field.status === 'USER_CONFIRMED_NOT_ON_LABEL';
+                const icon = isFound
+                  ? '✓'
+                  : isAbsent
+                    ? '–'
+                    : field.status === 'CONFLICT'
+                      ? '!'
+                      : '○';
+                return (
+                  <li
+                    key={key}
+                    className="flex min-h-11 items-center justify-between gap-3 bg-[#242321] px-3 py-2"
+                  >
+                    <span className={isFound || isAbsent ? 'text-white' : 'text-stone-300'}>
+                      <span aria-hidden>{icon}</span> {LIVE_FIELD_LABEL[key]}
+                    </span>
+                    <span className="text-right font-mono text-xs text-stone-300">
+                      {field.value ?? (isAbsent ? 'brak na etykiecie' : '')}
+                    </span>
+                    <span className="sr-only">
+                      {isFound
+                        ? 'znaleziono'
+                        : isAbsent
+                          ? 'potwierdzono brak na etykiecie'
+                          : field.status === 'CONFLICT'
+                            ? 'wykryto konflikt'
+                            : 'szukanie'}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
-            <div className="mx-auto mt-4 flex max-w-2xl flex-wrap items-center justify-end gap-2">
+            <p className="sr-only" aria-live="polite" aria-atomic="true">
+              {LIVE_FIELD_ORDER.filter((key) => state.fields[key].status === 'FOUND')
+                .map((key) => `${LIVE_FIELD_LABEL[key]} znaleziono`)
+                .join('. ')}
+            </p>
+            {notOnLabelCandidate && (
               <button
                 type="button"
-                className="pro-focus-ring min-h-10 rounded-xl border border-white/30 px-3 text-sm"
-                onClick={() =>
-                  void startCamera(state.cameraFacing === 'environment' ? 'user' : 'environment')
-                }
+                className="pro-focus-ring mx-auto mt-3 flex min-h-11 max-w-2xl items-center text-sm text-stone-200 underline decoration-white/30 underline-offset-4"
+                onClick={() => void confirmMissingOnPackage(notOnLabelCandidate)}
               >
-                Obróć
+                Nie ma tej informacji na opakowaniu
               </button>
+            )}
+            <div className="mx-auto mt-4 flex max-w-2xl justify-end">
               <button
                 type="button"
-                className="pro-focus-ring min-h-10 rounded-xl border border-white/30 px-3 text-sm"
-                onClick={() => {
-                  const view = (wantedViews()[0] ?? 'identity') as CaptureView;
-                  void captureFullFrame(view, 'camera_manual', 0n).then(() => advance());
-                }}
-              >
-                Zrób zdjęcie
-              </button>
-              <button
-                type="button"
-                className="pro-focus-ring min-h-10 px-2 text-sm text-stone-300"
+                className="pro-focus-ring min-h-11 px-3 text-sm text-stone-300"
                 onClick={stopCamera}
               >
                 Zamknij
               </button>
             </div>
+            <details className="mx-auto mt-2 max-w-2xl border-t border-white/15 pt-3 text-sm text-stone-300">
+              <summary className="pro-focus-ring flex min-h-11 cursor-pointer items-center">
+                Problem ze skanowaniem?
+              </summary>
+              <div className="flex flex-wrap items-center gap-2 pb-1 pt-2">
+                <button
+                  type="button"
+                  className="pro-focus-ring min-h-11 rounded-lg border border-white/30 px-3"
+                  onClick={() => {
+                    const view = (wantedViews().find((item) => item !== 'barcode') ??
+                      'identity') as CaptureView;
+                    void captureFullFrame(view, 'camera_manual', null).then(() => advance());
+                  }}
+                >
+                  Zatrzymaj jedną klatkę
+                </button>
+                <button
+                  type="button"
+                  className="pro-focus-ring min-h-11 rounded-lg border border-white/30 px-3"
+                  onClick={() =>
+                    void startCamera(state.cameraFacing === 'environment' ? 'user' : 'environment')
+                  }
+                >
+                  Zmień kamerę
+                </button>
+                {state.cameraCapabilities.torch && (
+                  <button
+                    type="button"
+                    className="pro-focus-ring min-h-11 rounded-lg border border-white/30 px-3"
+                    onClick={() => void setTorch(!state.torchOn)}
+                  >
+                    {state.torchOn ? 'Wyłącz latarkę' : 'Włącz latarkę'}
+                  </button>
+                )}
+                {state.cameraCapabilities.zoom && (
+                  <label className="flex min-h-11 items-center gap-2">
+                    Zoom
+                    <input
+                      type="range"
+                      min={state.cameraCapabilities.zoom.min}
+                      max={state.cameraCapabilities.zoom.max}
+                      step={state.cameraCapabilities.zoom.step}
+                      value={state.cameraCapabilities.zoom.value}
+                      onChange={(event) => void setZoom(Number(event.currentTarget.value))}
+                    />
+                  </label>
+                )}
+              </div>
+            </details>
           </div>
         )}
         <canvas ref={canvasRef} className="hidden" />
@@ -866,16 +1331,16 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
               Skanowanie produktu
             </p>
-            <ul className="mt-3 space-y-1 text-sm">
-              {evidence.entries.map((entry) => (
-                <li key={entry.kind}>
-                  <span aria-hidden>{entry.present ? '✓' : '○'}</span> {EVIDENCE_LABEL[entry.kind]}
+            <ul className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+              {LIVE_FIELD_ORDER.map((key) => (
+                <li key={key}>
+                  <span aria-hidden>{state.fields[key].status === 'FOUND' ? '✓' : '○'}</span>{' '}
+                  {LIVE_FIELD_LABEL[key]}
+                  {state.fields[key].value ? ` · ${state.fields[key].value}` : ''}
                 </li>
               ))}
             </ul>
-            <p className="mt-4 text-sm font-medium">
-              {state.busy ?? evidence.requestMessage ?? 'Zbieram dane produktu…'}
-            </p>
+            <p className="mt-4 text-sm font-medium">{state.busy ?? nextLiveHint(state.fields)}</p>
             {evidence.requestView && !state.cameraOpen && (
               <button
                 type="button"
@@ -885,48 +1350,121 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
                 Pokaż to ujęcie
               </button>
             )}
+            {notOnLabelCandidate && (
+              <button
+                type="button"
+                className={`${quietButton} mt-3`}
+                onClick={() => void confirmMissingOnPackage(notOnLabelCandidate)}
+              >
+                Nie ma tej informacji na opakowaniu
+              </button>
+            )}
           </div>
         )}
 
-        <div
-          className="m-5 rounded-2xl border border-dashed border-stone-300 bg-white p-4 sm:m-7"
-          onDragOver={(event) => event.preventDefault()}
-          onDrop={(event) => {
-            event.preventDefault();
-            void addFiles([...event.dataTransfer.files], 'drop').then(() => advance());
-          }}
-        >
-          {state.assets.length === 0 ? (
-            <p className="py-4 text-center text-sm text-stone-500">
-              Nie masz produktu pod ręką? Przeciągnij, wklej lub dodaj zdjęcia etykiety — trafią do
-              tej samej sesji co skan.
-            </p>
-          ) : (
-            <div className="grid grid-cols-4 gap-2">
-              {state.assets.map((asset, index) => (
-                <figure
-                  key={asset.id}
-                  className="overflow-hidden rounded-xl border border-stone-200"
-                >
-                  <img
-                    src={asset.previewUrl}
-                    alt={`Ujęcie ${index + 1}`}
-                    className="aspect-square w-full object-cover"
-                  />
-                  <figcaption className="p-1 text-center">
-                    <button
-                      type="button"
-                      className="pro-focus-ring min-h-8 px-1 text-[11px] font-semibold text-stone-600"
-                      onClick={() => discardAsset(asset.id)}
-                    >
-                      Usuń
-                    </button>
-                  </figcaption>
-                </figure>
-              ))}
-            </div>
+        <details className="m-5 rounded-xl border border-stone-200 bg-white p-4 text-sm sm:m-7">
+          <summary className="pro-focus-ring flex min-h-11 cursor-pointer items-center font-semibold text-stone-700">
+            Szczegóły i dodane zdjęcia {state.assets.length > 0 ? `(${state.assets.length})` : ''}
+          </summary>
+          <div
+            className="mt-3 rounded-lg border border-dashed border-stone-300 p-4"
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => {
+              event.preventDefault();
+              void addFiles([...event.dataTransfer.files], 'drop').then(() => advance());
+            }}
+          >
+            {state.assets.length === 0 ? (
+              <p className="py-3 text-center text-stone-500">
+                Przeciągnij, wklej lub dodaj zdjęcia etykiety — trafią do tej samej sesji co skan.
+              </p>
+            ) : (
+              <div className="grid grid-cols-4 gap-2">
+                {state.assets.map((asset, index) => (
+                  <figure
+                    key={asset.id}
+                    className="overflow-hidden rounded-lg border border-stone-200"
+                  >
+                    <img
+                      src={asset.previewUrl}
+                      alt={`Ujęcie ${index + 1}`}
+                      className="aspect-square w-full object-cover"
+                    />
+                    <figcaption className="p-1 text-center">
+                      <button
+                        type="button"
+                        className="pro-focus-ring min-h-11 px-1 text-[11px] font-semibold text-stone-600"
+                        onClick={() => discardAsset(asset.id)}
+                      >
+                        Usuń
+                      </button>
+                    </figcaption>
+                  </figure>
+                ))}
+              </div>
+            )}
+          </div>
+          {exposeStagingQaDiagnostics && (
+            <dl className="mt-4 grid gap-2 rounded-lg bg-stone-950 p-3 font-mono text-[11px] text-stone-200 sm:grid-cols-2">
+              <div>
+                <dt>camera</dt>
+                <dd>getUserMedia · {state.cameraFacing}</dd>
+              </div>
+              <div>
+                <dt>camera startup</dt>
+                <dd>{state.cameraStartupMs ?? '—'} ms</dd>
+              </div>
+              <div>
+                <dt>frame source</dt>
+                <dd>{state.frameSourceKind ?? 'preparing'}</dd>
+              </div>
+              <div>
+                <dt>decoder</dt>
+                <dd>{state.decoderKind ?? 'preparing'}</dd>
+              </div>
+              <div>
+                <dt>WASM warmup</dt>
+                <dd>{state.decoderWarmupMs ?? '—'} ms</dd>
+              </div>
+              <div>
+                <dt>barcode attempts</dt>
+                <dd>{state.barcodeAttempts}</dd>
+              </div>
+              <div>
+                <dt>first barcode</dt>
+                <dd>{state.timeToFirstBarcodeMs ?? '—'} ms</dd>
+              </div>
+              <div>
+                <dt>auto evidence</dt>
+                <dd>{state.autoCapturedViews.join(', ') || '—'}</dd>
+              </div>
+              <div>
+                <dt>duplicates skipped</dt>
+                <dd>{state.duplicateFramesSkipped}</dd>
+              </div>
+              <div>
+                <dt>Vision calls</dt>
+                <dd>{state.visionCalls}</dd>
+              </div>
+              <div>
+                <dt>source lookups</dt>
+                <dd>{state.sourceLookupCount}</dd>
+              </div>
+              <div>
+                <dt>missing fields</dt>
+                <dd>{missingFieldsForAnalysis(state.fields).join(', ') || '—'}</dd>
+              </div>
+              <div>
+                <dt>not on label</dt>
+                <dd>{state.notOnLabelFields.join(', ') || '—'}</dd>
+              </div>
+              <div>
+                <dt>session</dt>
+                <dd>{completion}</dd>
+              </div>
+            </dl>
           )}
-        </div>
+        </details>
 
         {state.barcode && (
           <div className="mx-5 mb-5 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm sm:mx-7">
@@ -966,26 +1504,31 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
                 Wynik analizy
               </p>
               <h2 className="mt-2 text-2xl font-semibold">
-                {state.analysis.result.identity.displayName ??
+                {state.fields.product_name.value ??
+                  state.analysis.result.identity.displayName ??
                   state.analysis.result.identity.originalName ??
                   'Nazwa wymaga potwierdzenia'}
               </h2>
               <p className="mt-2 text-sm text-stone-600">
-                {state.analysis.result.identity.brand ??
+                {state.fields.brand.value ??
+                  state.analysis.result.identity.brand ??
                   (state.analysis.result.identity.explicitlyUnbranded
                     ? 'Produkt bez marki'
                     : 'Marka nieznana')}
               </p>
             </div>
             <span className="rounded-full border border-stone-300 px-3 py-1 text-xs font-semibold text-stone-600">
-              {scanCompletenessLabel(state.analysis.overlayState, state.missingCriticalFields)}
+              {completion === 'COMPLETE' || completion === 'COMPLETE_WITH_NOT_ON_LABEL_FIELDS'
+                ? 'Produkt gotowy ✓'
+                : scanCompletenessLabel(state.analysis.overlayState, state.missingCriticalFields)}
             </span>
           </div>
           <dl className="mt-6 grid gap-4 border-y border-stone-200 py-5 sm:grid-cols-3">
             <div>
               <dt className="text-xs text-stone-500">Opakowanie</dt>
               <dd className="mt-1 font-medium">
-                {packageDisplay(state.analysis.result.package).value}
+                {state.fields.net_quantity.value ??
+                  packageDisplay(state.analysis.result.package).value}
               </dd>
             </div>
             <div>
@@ -1023,7 +1566,17 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
               <input
                 type="checkbox"
                 checked={state.allergenConfirmed}
-                onChange={(event) => patch({ allergenConfirmed: event.currentTarget.checked })}
+                onChange={(event) => {
+                  if (event.currentTarget.checked) void confirmMissingOnPackage('allergens');
+                  else
+                    patch({
+                      allergenConfirmed: false,
+                      fields: clearNotOnLabel(session.current.fields, 'allergens'),
+                      notOnLabelFields: session.current.notOnLabelFields.filter(
+                        (key) => key !== 'allergens',
+                      ),
+                    });
+                }}
                 className="mt-1 size-4 accent-stone-900"
               />
               <span>
@@ -1031,6 +1584,15 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
                 To nie oznacza automatycznie „braku alergenów”.
               </span>
             </label>
+          )}
+          {notOnLabelCandidate && notOnLabelCandidate !== 'allergens' && (
+            <button
+              type="button"
+              className={`${quietButton} mt-4`}
+              onClick={() => void confirmMissingOnPackage(notOnLabelCandidate)}
+            >
+              Nie ma tej informacji na opakowaniu
+            </button>
           )}
           <div className="mt-6 flex flex-wrap gap-3">
             <button
@@ -1068,6 +1630,18 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
             <p className="mt-2 text-stone-600">
               Wynik analizy jest zachowany — nic nie trzeba skanować ponownie.
             </p>
+          )}
+          {state.errorStage === 'analysis' && state.assets.length > 0 && (
+            <button
+              type="button"
+              className={`${quietButton} mt-3`}
+              onClick={() => {
+                patch({ error: null });
+                void advance();
+              }}
+            >
+              Spróbuj ponownie w tej sesji
+            </button>
           )}
         </div>
       )}

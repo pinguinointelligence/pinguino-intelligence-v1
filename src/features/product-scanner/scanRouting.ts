@@ -41,6 +41,8 @@ export interface ScanRoutingInput {
   frameCount: number;
   /** Frames the last analysis actually saw. */
   analyzedFrameCount: number;
+  /** A live decoder is still watching; give it one rotated surface before first Vision. */
+  liveBarcodeSearchActive: boolean;
   visionCalls: number;
   maxVisionCalls: number;
   evidence: ScanEvidenceState;
@@ -54,6 +56,14 @@ export function routeScan(input: ScanRoutingInput): ScanRoute {
   if (input.evidence.complete) return { kind: 'ready' };
   if (input.frameCount === 0) return { kind: 'collect' };
   if (input.frameCount > input.analyzedFrameCount && input.visionCalls < input.maxVisionCalls) {
+    if (
+      input.liveBarcodeSearchActive &&
+      !input.barcode &&
+      input.frameCount === 1 &&
+      input.visionCalls === 0
+    ) {
+      return { kind: 'collect' };
+    }
     return { kind: 'analyze_label', accurateRetry: input.visionCalls > 0 };
   }
   if (input.evidence.requestView && input.visionCalls < input.maxVisionCalls) {

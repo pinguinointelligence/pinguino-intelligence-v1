@@ -15,9 +15,8 @@ vi.mock('@/lib/supabase/client', async (importOriginal) => ({
   isSupabaseConfigured: true,
 }));
 
-const { analyzeProductImages, finalizeProductScan, ProductScannerServiceError } = await import(
-  './productScanner'
-);
+const { analyzeProductImages, finalizeProductScan, ProductScannerServiceError } =
+  await import('./productScanner');
 const { SCANNER_ERROR_COPY } = await import('@/features/product-scanner/scannerErrors');
 const { isRawInfrastructureMessage } = await import('./scannerErrorGuard');
 
@@ -128,6 +127,7 @@ describe('analyzeProductImages — the same gate on the analysis call', () => {
     sessionId: '4c969b3f-fa89-46de-90fc-7802e66a21ed',
     images: [],
     barcode: null,
+    missingFields: [],
   };
 
   it('never surfaces the SDK message', async () => {

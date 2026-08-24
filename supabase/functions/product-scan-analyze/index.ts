@@ -41,6 +41,15 @@ const nonNegativeIntegerEnv = (name: string, fallback: number) => {
   const value = Number(raw);
   return Number.isInteger(value) && value >= 0 ? value : fallback;
 };
+const SCANNER_MISSING_FIELDS = new Set([
+  'barcode',
+  'product_identity',
+  'brand_or_unbranded',
+  'net_quantity',
+  'nutrition',
+  'ingredientsText',
+  'allergensText',
+]);
 const objectValue = (value: unknown): Record<string, unknown> =>
   value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -118,6 +127,15 @@ Deno.serve(async (request) => {
       ? body.sessionId
       : null;
   const images = Array.isArray(body.images) ? body.images.map(objectValue) : [];
+  const suppliedMissingFields = Array.isArray(body.missingFields) ? body.missingFields : null;
+  const requestedMissingFields = suppliedMissingFields
+    ? suppliedMissingFields.filter(
+        (field): field is string => typeof field === 'string' && SCANNER_MISSING_FIELDS.has(field),
+      )
+    : [...SCANNER_MISSING_FIELDS];
+  if (suppliedMissingFields && requestedMissingFields.length !== suppliedMissingFields.length) {
+    return json({ error: 'invalid_missing_fields' }, 400);
+  }
   const maxImages = Math.floor(numberEnv('PRODUCT_SCANNER_MAX_IMAGES', 4));
   /**
    * `ean_lookup` asks the barcode's own source and never reads a photograph, so it
@@ -471,6 +489,7 @@ Deno.serve(async (request) => {
       model,
       detail,
       allowWeb,
+      requestedMissingFields,
       projectId,
     }),
   );
@@ -539,7 +558,7 @@ Deno.serve(async (request) => {
   const content: Array<Record<string, unknown>> = [
     {
       type: 'input_text',
-      text: `Asset ids: ${images.map((image) => image.assetId).join(', ')}. Barcode observed locally: ${barcode ?? 'none'}. Read all visible label languages.`,
+      text: `Asset ids: ${images.map((image) => image.assetId).join(', ')}. Barcode observed locally: ${barcode ?? 'none'}. Requested missing fields only: ${requestedMissingFields.join(', ') || 'none'}. Analyze only those unresolved fields from these new assets. Do not repeat or replace fields not requested. Read all visible label languages.`,
     },
   ];
   for (const image of images)

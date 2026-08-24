@@ -1,5 +1,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
-import { sha256Text, stableJson } from '../_shared/productScanner.ts';
+import {
+  missingFieldsAfterNotOnLabelConfirmation,
+  sha256Text,
+  stableJson,
+} from '../_shared/productScanner.ts';
 import { authorizeLiveOverlayIdentity } from '../_shared/liveOverlayIdentity.ts';
 
 const cors = {
@@ -126,6 +130,13 @@ Deno.serve(async (request) => {
     ? validation.missingCriticalFields.filter((item): item is string => typeof item === 'string')
     : [];
   const confirmations = objectValue(body.confirmations);
+  const notOnLabelFields = Array.isArray(confirmations.notOnLabelFields)
+    ? confirmations.notOnLabelFields.filter(
+        (item): item is string =>
+          typeof item === 'string' &&
+          ['barcode', 'net_quantity', 'nutrition', 'ingredients', 'allergens'].includes(item),
+      )
+    : [];
   const confirmedNoAdditionalAllergenStatement =
     confirmations.noAdditionalAllergenStatementVisible === true;
   const allergenConfirmationPath =
@@ -135,6 +146,20 @@ Deno.serve(async (request) => {
     missingCriticalFields[0] === 'allergen_confirmation' &&
     validation.highRiskAuthorityRequired !== true &&
     confirmedNoAdditionalAllergenStatement;
+  const effectiveNotOnLabelFields =
+    allergenConfirmationPath && !notOnLabelFields.includes('allergens')
+      ? [...notOnLabelFields, 'allergens']
+      : notOnLabelFields;
+  const remainingMissingCriticalFields = missingFieldsAfterNotOnLabelConfirmation(
+    missingCriticalFields,
+    effectiveNotOnLabelFields,
+  );
+  const notOnLabelConfirmationPath =
+    session.state === 'analyzed' &&
+    session.overlay_state === 'SCAN_DRAFT' &&
+    remainingMissingCriticalFields.length === 0 &&
+    validation.highRiskAuthorityRequired !== true &&
+    effectiveNotOnLabelFields.length > 0;
   const scanResult = objectValue(session.result_json);
   const confirmedAt = new Date().toISOString();
   const allergenConfirmation = {
@@ -142,19 +167,32 @@ Deno.serve(async (request) => {
     confirmedBy: auth.user.id,
     confirmedAt,
   };
-  const effectiveValidation = allergenConfirmationPath
-    ? {
-        ...validation,
-        missingCriticalFields: [],
-        allergenConfirmation,
-      }
-    : validation;
+  const effectiveValidation = {
+    ...validation,
+    missingCriticalFields: notOnLabelConfirmationPath
+      ? remainingMissingCriticalFields
+      : missingCriticalFields,
+    ...(allergenConfirmationPath ? { allergenConfirmation } : {}),
+    userConfirmedNotOnLabelFields: effectiveNotOnLabelFields,
+    ...(notOnLabelConfirmationPath
+      ? {
+          userNotOnLabelConfirmation: {
+            fields: effectiveNotOnLabelFields,
+            confirmedBy: auth.user.id,
+            confirmedAt,
+            semantics: 'absence_only_not_zero_or_none',
+          },
+        }
+      : {}),
+  };
   if (allergenConfirmationPath && !text(scanResult.allergensText)) {
     scanResult.allergensText =
       'Osobna deklaracja alergenów niewidoczna na dostarczonej etykiecie — potwierdzone przez użytkownika; nie oznacza to automatycznie braku alergenów.';
     scanResult.warnings = [
       ...new Set([
-        ...(Array.isArray(scanResult.warnings) ? scanResult.warnings.filter((item): item is string => typeof item === 'string') : []),
+        ...(Array.isArray(scanResult.warnings)
+          ? scanResult.warnings.filter((item): item is string => typeof item === 'string')
+          : []),
         'allergen_statement_absence_owner_confirmed',
       ]),
     ];
@@ -162,14 +200,14 @@ Deno.serve(async (request) => {
   if (
     session.state !== 'analyzed' ||
     (!['USABLE_FOR_OWNER', 'PENDING_PUBLICATION'].includes(session.overlay_state) &&
-      !allergenConfirmationPath)
+      !notOnLabelConfirmationPath)
   ) {
     return json({ error: 'scan_not_ready_for_creation' }, 409);
   }
   if (new Date(session.expires_at).getTime() <= Date.now())
     return json({ error: 'scan_session_expired' }, 409);
 
-  if (allergenConfirmationPath) {
+  if (notOnLabelConfirmationPath) {
     const { data: confirmedSession, error: confirmationError } = await service
       .from('product_scan_sessions')
       .update({
@@ -273,11 +311,17 @@ Deno.serve(async (request) => {
       scannerSchema: 'gellatti_product_scan_v1',
       modelValidation: effectiveValidation,
       conflicts: scanResult.conflicts ?? [],
-      ownerConfirmations: allergenConfirmationPath
-        ? {
-            noAdditionalAllergenStatementVisible: true,
-            warning: 'absence_of_statement_is_not_no_allergens',
-          }
+      ownerConfirmations: notOnLabelConfirmationPath
+        ? allergenConfirmationPath
+          ? {
+              noAdditionalAllergenStatementVisible: true,
+              warning: 'absence_of_statement_is_not_no_allergens',
+              notOnLabelFields: effectiveNotOnLabelFields,
+            }
+          : {
+              notOnLabelFields: effectiveNotOnLabelFields,
+              warning: 'absence_only_not_zero_or_none',
+            }
         : {},
       // Raw image bytes and private overlay are deliberately absent.
     },
