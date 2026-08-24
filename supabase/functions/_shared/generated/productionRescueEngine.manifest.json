@@ -21,8 +21,8 @@
     "productionSessionSchema": 2
   },
   "bundle": {
-    "bytes": 301470,
-    "sha256": "10411175dd26197f7a16d69db9b71ae2d4b6c78f3555366cd2e57980ac6ce0e2",
+    "bytes": 304036,
+    "sha256": "ef6eb58f0bcdacd99671941ee0885e4e0f437de4e8ab41e9785c7d90c6f62259",
     "externalImports": 0,
     "dynamicImports": 0
   },
@@ -137,7 +137,7 @@
     },
     {
       "path": "src/features/formulation/ingredientRoles.ts",
-      "sha256": "fd4e097139e2b5f61637893d5ca4cde13191ea6af621ea6818e87b9fe4feaa5a"
+      "sha256": "01ef87c1d2ae4b4f4bd3d78140ce0208fc68436893e5f6014343b5e2b8f5bd05"
     },
     {
       "path": "src/features/formulation/mainIngredientContract.ts",
@@ -260,5 +260,5 @@
       "sha256": "5523e8a79f059b81594793260535fc3b4a85185fe9f5020de87c2c7782a44fdb"
     }
   ],
-  "sourceClosureSha256": "48f72933a84d868d269c004ce810a60ced8e38f5be0d1c7b857b08cfcbe8edc2"
+  "sourceClosureSha256": "9d14ca3351a6bae24e5da5623b8ee27b0fb3f2023a2a0fc6a9d9e1a5bd4b6a5d"
 }

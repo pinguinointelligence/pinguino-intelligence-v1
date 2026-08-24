@@ -8,6 +8,7 @@ import type { ConstraintSet } from '@/features/recipe-constraints';
 import { assessGelatoStabilizerSystem } from '@/features/recipe-constraints';
 import { overSweetStarter, starterLine } from '@/features/recipe-constraints/constraintFixtures';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
+import { routeFormulationMode } from '@/features/formulation/formulate';
 import { recipeDirectionViolations } from '@/features/recipe-direction/recipeDirectionTargets';
 import {
   buildBatchRescalePreview,
@@ -51,6 +52,56 @@ const exactCandidateOf = (
   return preview.practicalization.audit.exactInput;
 };
 
+/**
+ * ROUTE NOTE (2026-08-24, PAC/POD unit contract).
+ *
+ * `ownerSameInputRecipe()` carries canonical Sucrose. Until the unit fix that
+ * row resolved to `sugar_freezing_control`, so EVERY fixture in this file
+ * reported `missing_hard_role` and was rebuilt through `full_formulation` —
+ * which is where the template stabilizer seed lives. With the role corrected
+ * these drafts are complete and the LOCAL corrector owns them, so the file now
+ * separates two different contracts:
+ *
+ *  - on the LOCAL route the user's own stabilizer system is made EXECUTABLE —
+ *    whole grams inside the owner band, `assessGelatoStabilizerSystem` clean —
+ *    and PI does not move it to the preferred dose or invent one where there is
+ *    none (`gelatoStabilizerSystemAuthority`: "not permission to silently
+ *    insert a stabilizer into a recipe that has none");
+ *  - on the TEMPLATE route — a draft that really is missing a HARD role — the
+ *    approved seed and its whole-gram preferred total are unchanged.
+ */
+const withoutLine = (input: RecipeInput, canonicalId: string): RecipeInput => ({
+  ...input,
+  items: input.items.filter(
+    (item) => (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) !== canonicalId,
+  ),
+});
+
+/** Drops Sucrose, so the milk-gelato template HARD role really is missing and
+ *  the approved formulation path is the honest route. */
+const templateRoutedRecipe = (input: RecipeInput): RecipeInput =>
+  withoutLine(input, OWNER_MAPPER_INGREDIENTS.sucrose.id);
+
+const hasLine = (input: RecipeInput, canonicalId: string): boolean =>
+  input.items.some(
+    (item) => (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) === canonicalId,
+  );
+
+/** The executable stabilizer contract on the local route: whole grams, inside
+ *  the owner band, and the aggregate authority reports nothing wrong. */
+const expectExecutableStabilizerSystem = (input: RecipeInput, label: string) => {
+  const assessment = assessGelatoStabilizerSystem(input);
+  expect(assessment.issues, `${label}: stabilizer issues`).toEqual([]);
+  expect(assessment.present, `${label}: stabilizer present`).toBe(true);
+  expect(Number.isInteger(assessment.totalGrams), `${label}: whole grams`).toBe(true);
+  expect(assessment.totalGrams, `${label}: >= band minimum`).toBeGreaterThanOrEqual(
+    assessment.band!.minGrams,
+  );
+  expect(assessment.totalGrams, `${label}: <= band maximum`).toBeLessThanOrEqual(
+    assessment.band!.maxGrams,
+  );
+};
+
 describe('owner-approved Gelato aggregate stabilizer contract', () => {
   it('creates an executable Preview for an Engine-clean but fractional G17 draft', () => {
     const directionSeed = buildOptimizePreview(ownerDirectionFixture(-1), NO_CONSTRAINTS, AT);
@@ -67,12 +118,12 @@ describe('owner-approved Gelato aggregate stabilizer contract', () => {
     expect(built.ok).toBe(true);
     if (!built.ok) return;
     expect(built.preview.practicalization?.status).toBe('ready');
-    expect(
-      gramsOf(exactCandidateOf(built.preview), OWNER_MAPPER_INGREDIENTS.inulin.id),
-    ).toBeCloseTo(40.52845528455285, 10);
-    expect(gramsOf(exactCandidateOf(built.preview), OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(3);
-    expect(gramsOf(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.inulin.id)).toBe(40);
-    expect(gramsOf(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(3);
+    // The continued candidate is already whole-gram, so the second pass keeps
+    // it byte-stable instead of rebuilding it.
+    expect(gramsOf(exactCandidateOf(built.preview), OWNER_MAPPER_INGREDIENTS.inulin.id)).toBe(100);
+    expect(gramsOf(exactCandidateOf(built.preview), OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(2);
+    expect(gramsOf(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.inulin.id)).toBe(100);
+    expectExecutableStabilizerSystem(built.preview.proposedInput, 'continued G17 draft');
     expect(commitPreview(input, NO_CONSTRAINTS, built.preview, AT, 'practical-only').ok).toBe(true);
   });
 
@@ -85,17 +136,19 @@ describe('owner-approved Gelato aggregate stabilizer contract', () => {
     const before = calculateRecipe(input);
     const after = calculateRecipe(built.preview.proposedInput);
     expect(gramsOf(input, OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(1.9);
-    expect(gramsOf(exactCandidateOf(built.preview), OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(3);
-    expect(gramsOf(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(3);
+    // The user's own 1.9 g system is made executable — whole grams inside the
+    // owner band — instead of being moved to the template's preferred dose.
+    expect(gramsOf(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(2);
+    expectExecutableStabilizerSystem(built.preview.proposedInput, 'Sweetness LESS');
     expect(before.pod_points).toBeCloseTo(15.5712, 10);
     // Owner P1-A (2026-08-23): the paired mass-neutral exchange reaches the
     // Sweetness −1 band [13, 14] that the old single-line search could not, so
-    // this fixture now lands INSIDE its target instead of 0.36 above it.
-    // Proven on this exact candidate: POD 13.959024 (side "inside", distance 0),
-    // NPAC 45.723 also inside, zero violations, batch exactly 1000 g, preview
-    // applicable. The previous 14.361032 pin recorded the former search's
-    // limitation, not an owner target.
-    expect(after.pod_points).toBeCloseTo(13.959024, 10);
+    // this fixture lands INSIDE its target instead of 0.36 above it. On the
+    // local route (2026-08-24 unit contract) the same exchange runs on the
+    // user's own draft rather than a template rebuild: POD 13.934384, side
+    // "inside", distance 0; NPAC 45.1637 also inside; zero violations; batch
+    // exactly 1000 g; preview applicable.
+    expect(after.pod_points).toBeCloseTo(13.934384, 10);
     expect(after.pod_points!).toBeLessThan(before.pod_points!);
     expect(detectViolations(after)).toEqual([]);
     expect(built.preview.directionAssessment).toMatchObject({
@@ -115,17 +168,18 @@ describe('owner-approved Gelato aggregate stabilizer contract', () => {
         ]),
       ),
     ).toEqual({
-      // New exact candidate for the same fixture: the exchange pass trades
-      // sucrose down / dextrose up and rebalances milk↔cream, which is what
-      // brings POD inside [13, 14]. Tara stays exactly 3 g — the stabilizer
-      // contract this test exists for is unchanged.
-      [OWNER_MAPPER_INGREDIENTS.milk_3_5.id]: 554.3965074860284,
-      [OWNER_MAPPER_INGREDIENTS.cream_30.id]: 146.93768307324663,
-      [OWNER_MAPPER_INGREDIENTS.smp.id]: 45.15771641287682,
-      [OWNER_MAPPER_INGREDIENTS.sucrose.id]: 66.2802153663538,
-      [OWNER_MAPPER_INGREDIENTS.dextrose.id]: 79.89492236636366,
-      [OWNER_MAPPER_INGREDIENTS.inulin.id]: 104.3329552951306,
-      [OWNER_MAPPER_INGREDIENTS.tara_gum.id]: 3,
+      // Exact candidate for the same fixture on the local route: the exchange
+      // pass trades sucrose down / dextrose up and rebalances milk↔cream, which
+      // is what brings POD inside [13, 14]. Tara stays byte-exact at the user's
+      // own 1.9 g — the solver-side stabilizer hold — and only the executable
+      // whole-gram projection below rounds it.
+      [OWNER_MAPPER_INGREDIENTS.milk_3_5.id]: 574.9357232684927,
+      [OWNER_MAPPER_INGREDIENTS.cream_30.id]: 131.82974684524112,
+      [OWNER_MAPPER_INGREDIENTS.smp.id]: 45.11525949770638,
+      [OWNER_MAPPER_INGREDIENTS.sucrose.id]: 66.22223866828396,
+      [OWNER_MAPPER_INGREDIENTS.dextrose.id]: 79.84111023097371,
+      [OWNER_MAPPER_INGREDIENTS.inulin.id]: 100.15592148930214,
+      [OWNER_MAPPER_INGREDIENTS.tara_gum.id]: 1.9,
     });
     expect(
       Object.fromEntries(
@@ -135,15 +189,15 @@ describe('owner-approved Gelato aggregate stabilizer contract', () => {
         ]),
       ),
     ).toEqual({
-      // Executable whole-gram projection of the new exact candidate; still
-      // exactly 1000 g and still Tara 3 g.
-      [OWNER_MAPPER_INGREDIENTS.milk_3_5.id]: 555,
-      [OWNER_MAPPER_INGREDIENTS.cream_30.id]: 147,
+      // Executable whole-gram projection of the exact candidate; still exactly
+      // 1000 g, and Tara now a whole 2 g inside the owner band [2, 5].
+      [OWNER_MAPPER_INGREDIENTS.milk_3_5.id]: 575,
+      [OWNER_MAPPER_INGREDIENTS.cream_30.id]: 132,
       [OWNER_MAPPER_INGREDIENTS.smp.id]: 45,
       [OWNER_MAPPER_INGREDIENTS.sucrose.id]: 66,
       [OWNER_MAPPER_INGREDIENTS.dextrose.id]: 80,
-      [OWNER_MAPPER_INGREDIENTS.inulin.id]: 104,
-      [OWNER_MAPPER_INGREDIENTS.tara_gum.id]: 3,
+      [OWNER_MAPPER_INGREDIENTS.inulin.id]: 100,
+      [OWNER_MAPPER_INGREDIENTS.tara_gum.id]: 2,
     });
 
     // The Direction target is now REACHED, so the best-achievable consent gate
@@ -171,13 +225,13 @@ describe('owner-approved Gelato aggregate stabilizer contract', () => {
     );
     expect(applied.ok).toBe(true);
     if (!applied.ok) return;
-    expect(gramsOf(applied.verified.input, OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(3);
+    expect(gramsOf(applied.verified.input, OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(2);
     expect(
       gramsOf(
         applied.verified.record.practicalization!.exactInput,
         OWNER_MAPPER_INGREDIENTS.tara_gum.id,
       ),
-    ).toBe(3);
+    ).toBe(1.9);
     expect(applied.verified.record.before.input).toEqual(input);
   });
 
@@ -187,19 +241,24 @@ describe('owner-approved Gelato aggregate stabilizer contract', () => {
     ['Hardness softer', 0, -2],
     ['Hardness firmer', 0, 2],
   ] as const)(
-    '%s corrects fractional Tara to whole-gram authority',
-    (_label, sweetness, softness) => {
+    '%s makes the fractional Tara system executable under Direction',
+    (label, sweetness, softness) => {
       for (const strategy of ['optimal', 'eco'] as const) {
         const input = ownerDirectionFixture(sweetness, softness, strategy);
         const built = buildOptimizePreview(input, NO_CONSTRAINTS, AT);
         if (!built.ok) {
-          expect(built.code).toBe('already_clean');
+          // ECO on this fixture has no owner prices — an honest refusal, and
+          // an already-clean draft is equally acceptable.
+          expect(['already_clean', 'missing_prices']).toContain(built.code);
           continue;
         }
-        expect(gramsOf(exactCandidateOf(built.preview), OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(
-          3,
+        // The user's 1.9 g may be held byte-exact by the solver-side stabilizer
+        // hold; what Apply writes must be whole grams inside the owner band.
+        expectExecutableStabilizerSystem(
+          built.preview.proposedInput,
+          `${label} ${strategy}`,
         );
-        expect(gramsOf(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(3);
+        expect(gramsOf(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(2);
       }
     },
   );
@@ -393,7 +452,11 @@ describe('owner-approved Gelato aggregate stabilizer contract', () => {
     });
   });
 
-  it('rejects a forged seed from an existing zero-dose stabilizer', () => {
+  it('leaves an existing zero-dose stabilizer at zero on the local route', () => {
+    // The owner policy is explicit: it "governs an existing Gelato stabilizer
+    // system" and is "not permission to silently insert a stabilizer into a
+    // recipe that has none". A complete draft is corrected locally, so a
+    // zero-dose stabilizer stays the user's decision.
     const base = ownerSameInputRecipe();
     const input: RecipeInput = {
       ...base,
@@ -404,6 +467,28 @@ describe('owner-approved Gelato aggregate stabilizer contract', () => {
           : item,
       ),
     };
+    expect(routeFormulationMode(input, NO_CONSTRAINTS).mode).toBe('local_correction');
+    const built = buildOptimizePreview(input, NO_CONSTRAINTS, AT);
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    expect(gramsOf(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(0);
+    expect(assessGelatoStabilizerSystem(built.preview.proposedInput).present).toBe(false);
+  });
+
+  it('rejects a forged seed from an existing zero-dose stabilizer', () => {
+    // The seed itself is a TEMPLATE-path authority, so the forgery is staged on
+    // a draft that genuinely needs the template (no Sucrose → missing HARD role).
+    const base = ownerSameInputRecipe();
+    const input: RecipeInput = templateRoutedRecipe({
+      ...base,
+      items: base.items.map((item) =>
+        (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) ===
+        OWNER_MAPPER_INGREDIENTS.tara_gum.id
+          ? { ...item, planned_grams: 0 }
+          : item,
+      ),
+    });
+    expect(routeFormulationMode(input, NO_CONSTRAINTS).mode).toBe('full_formulation');
     const built = buildOptimizePreview(input, NO_CONSTRAINTS, AT);
     expect(built.ok).toBe(true);
     if (!built.ok) return;
@@ -432,16 +517,25 @@ describe('owner-approved Gelato aggregate stabilizer contract', () => {
     });
   });
 
-  it('seeds the owner-preferred whole-gram total when Tara is missing', () => {
+  it('never invents a stabilizer for a complete draft that has none', () => {
     const base = ownerSameInputRecipe();
-    const input: RecipeInput = {
-      ...base,
-      items: base.items.filter(
-        (item) =>
-          (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) !==
-          OWNER_MAPPER_INGREDIENTS.tara_gum.id,
-      ),
-    };
+    const input = withoutLine(base, OWNER_MAPPER_INGREDIENTS.tara_gum.id);
+    expect(routeFormulationMode(input, NO_CONSTRAINTS).mode).toBe('local_correction');
+    const built = buildOptimizePreview(input, NO_CONSTRAINTS, AT);
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    expect(hasLine(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(false);
+    expect(assessGelatoStabilizerSystem(built.preview.proposedInput).present).toBe(false);
+  });
+
+  it('seeds the owner-preferred whole-gram total when Tara is missing', () => {
+    // TEMPLATE route: this draft is genuinely missing a HARD role, so the
+    // approved seed authority is the one under test here.
+    const base = ownerSameInputRecipe();
+    const input: RecipeInput = templateRoutedRecipe(
+      withoutLine(base, OWNER_MAPPER_INGREDIENTS.tara_gum.id),
+    );
+    expect(routeFormulationMode(input, NO_CONSTRAINTS).mode).toBe('full_formulation');
     const built = buildOptimizePreview(input, NO_CONSTRAINTS, AT);
     expect(built.ok).toBe(true);
     if (!built.ok) return;
@@ -491,7 +585,7 @@ describe('owner-approved Gelato aggregate stabilizer contract', () => {
   });
 
   it('never gives an approved template dose to an unapproved zero-dose stabilizer identity', () => {
-    const base = ownerSameInputRecipe();
+    const base = templateRoutedRecipe(ownerSameInputRecipe());
     const input: RecipeInput = {
       ...base,
       items: base.items.map((item) =>

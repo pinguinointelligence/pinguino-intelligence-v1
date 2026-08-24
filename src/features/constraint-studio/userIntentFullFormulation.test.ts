@@ -43,6 +43,7 @@ import { parseCsv } from '@/lib/csv';
 import type { ConstraintSet } from '@/features/recipe-constraints';
 import { buildOptimizePreview } from './applyPipeline';
 import { routeFormulationMode } from '@/features/formulation/formulate';
+import { resolveFunctionalRole } from '@/features/formulation/ingredientRoles';
 
 const MAPPER = readFileSync(
   resolve(process.cwd(), 'docs/ingredients/validation/mapper_basement.csv'),
@@ -140,10 +141,47 @@ const gramsOf = (input: RecipeInput, lineId: string): number =>
 const sum = (input: RecipeInput): number =>
   input.items.reduce((total, item) => total + item.planned_grams, 0);
 
-describe('§1–§12 the served Polish Lost reproducer, through full_formulation', () => {
-  it('routes UNLOCKED through full_formulation — the path the first round did not cover', () => {
+describe('§1–§12 the served Polish Lost reproducer', () => {
+  /**
+   * ROUTE NOTE (2026-08-24, PAC/POD unit contract). This recipe used to report
+   * `missing_hard_role` and route through `full_formulation` for one reason
+   * only: canonical Sucrose resolved to `sugar_freezing_control`, because the
+   * role classifier compared a stored per-100 g PAC POINT against the 1.3
+   * COEFFICIENT separator. With the unit contract normalized the draft is
+   * complete, so the LOCAL corrector owns it — which is the route the served
+   * owner reproducer was always supposed to take. The Soft-Hold contract below
+   * is unchanged and is now additionally proven on a draft that genuinely
+   * still needs `full_formulation`.
+   */
+  it('routes UNLOCKED through the local corrector once Sucrose resolves correctly', () => {
     const { input, set } = lostRecipe(false);
-    expect(routeFormulationMode(input, set).mode).toBe('full_formulation');
+    const decision = routeFormulationMode(input, set);
+    expect(decision.mode).toBe('local_correction');
+    expect(decision.reasons).not.toContain('missing_hard_role');
+    expect(
+      resolveFunctionalRole(input.items.find((item) => item.id === 'l:sucrose')!.ingredient),
+    ).toBe('sweetener_sucrose');
+  });
+
+  it('still keeps the yolk on a draft that genuinely routes through full_formulation', () => {
+    // Drop the sugar: the template HARD role really is missing, so the
+    // formulation path — the path this file exists to cover — is the honest
+    // route, and the soft hold must hold there too.
+    const { input, set } = lostRecipe(false);
+    const noSugar: RecipeInput = {
+      ...input,
+      items: input.items.filter((item) => item.id !== 'l:sucrose'),
+    };
+    expect(routeFormulationMode(noSugar, set).mode).toBe('full_formulation');
+    const result = buildOptimizePreview(noSugar, set, '2026-08-23T22:00:00.000Z');
+    expect(result.ok, result.ok ? '' : JSON.stringify(result).slice(0, 300)).toBe(true);
+    if (!result.ok) return;
+    const proposed = result.preview.proposedInput;
+    const yolk = gramsOf(proposed, 'l:yolk');
+    expect(yolk).toBeGreaterThan(1);
+    expect(isMaterialUserIntentDeviation(40, yolk, 1000)).toBe(false);
+    expect(sum(proposed)).toBeCloseTo(1000, 6);
+    expect(detectViolations(calculateRecipe(proposed))).toEqual([]);
   });
 
   it('does NOT collapse the dried egg yolk to a trace amount (the binding regression)', () => {

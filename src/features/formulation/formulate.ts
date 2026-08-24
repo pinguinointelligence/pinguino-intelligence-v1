@@ -25,6 +25,7 @@ import { canonicalToolboxComposition } from '@/data/ingredients/canonicalToolbox
 import {
   DEFAULT_CORRECTION_CANDIDATES,
   type EngineIngredient,
+  type ProductCategory,
   type RecipeInput,
   type RecipeItem,
 } from '@/engine';
@@ -203,12 +204,27 @@ export function routeFormulationMode(input: RecipeInput, set: ConstraintSet): Mo
   // owns it (it is batch-first and rescales 975 g → 1000 g itself, protected by
   // the beat-the-null gate). A hollow draft (empty, all-zero, or the 8 × 1 g
   // damaged case) has no composition to preserve → full formulation.
+  //
+  // …but only for the profiles that corrector is actually FOR (owner
+  // 2026-08-24). Functional ingredient role is global; route eligibility is
+  // not. Protein, Sorbet and Vegan each own an approved formulation path and
+  // keep it — see `localCorrectionProfileEligible`.
   const substantiveDraft = batch > 0 && sum >= batch * 0.5;
-  if (substantiveDraft) {
+  if (substantiveDraft && localCorrectionProfileEligible(input.category)) {
     return {
       mode: 'local_correction',
       template: null,
       reasons: ['substantive_unconstrained_draft'],
+    };
+  }
+  if (substantiveDraft && lookup.template) {
+    return {
+      mode: 'full_formulation',
+      template: lookup.template,
+      reasons: [
+        'profile_owns_formulation_path',
+        `draft_mass_${Math.round(sum)}g_vs_batch_${Math.round(batch)}g`,
+      ],
     };
   }
   if (!lookup.template) {
@@ -280,6 +296,32 @@ export interface FormulationRecommendation {
 /** Roles a frozen product cannot exist without (Phase 10): a proposal missing
  * one of these entirely may NEVER be applied. Soft roles (fibre/body, milk
  * solids, dairy fat) lower the honest score instead. */
+/**
+ * LOCAL-CORRECTION PROFILE AUTHORITY (owner, 2026-08-24).
+ *
+ * The bounded local corrector is the ordinary DAIRY GELATO corrector: its
+ * stabilizer band, its Inulin dose policy, its gram ladder and its exact
+ * Direction search are all the Gelato ones. Functional ingredient ROLE is
+ * global — Sucrose is Sucrose in every profile — but ROUTE ELIGIBILITY is not.
+ *
+ * A profile that owns an approved formulation path of its own keeps it and is
+ * never dropped into the dairy corrector merely because its ingredient roles
+ * happen to cover a dairy template's HARD roles:
+ *   - `protein_gelato` → the approved `protein_<route>_<strategy>_minus<T>_v1`
+ *     templates plus the Protein qualification authority;
+ *   - `sorbet`         → the Sorbet projection / NEAREST search;
+ *   - `vegan_gelato`   → the Vegan structure authority.
+ *
+ * The eligible set is READ FROM the engine's existing Gelato authority
+ * (`gelatoStabilizerSystemApplies`) rather than restated here, so there is one
+ * definition of "this is an ordinary dairy Gelato". `custom` is included
+ * separately and deliberately: it has no profile authority of its own, so the
+ * generic corrector is the only thing that can serve it.
+ */
+export function localCorrectionProfileEligible(category: ProductCategory): boolean {
+  return gelatoStabilizerSystemApplies(category) || category === 'custom';
+}
+
 export const HARD_ROLES: ReadonlySet<FunctionalRole> = new Set([
   'primary_liquid',
   'water',

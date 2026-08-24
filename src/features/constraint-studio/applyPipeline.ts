@@ -143,6 +143,7 @@ import {
   type MainEnvelopeViolation,
   type ProductBehaviorSnapshot,
 } from '@/features/product-intelligence';
+import { OWNER_INULIN_POLICY } from '@/features/product-intelligence/ownerInulinPolicy';
 import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
 import {
   canonicalDuplicateIds,
@@ -5888,8 +5889,16 @@ function buildOptimizePreviewWithDirection(
   const preRouteStrategy = normalizeFormulationStrategy(
     input.goals?.formulation_strategy ?? input.mode,
   );
+  // The ECO null hypothesis fires whenever the router would hand this draft to
+  // a TEMPLATE. It used to test `missing_hard_role` specifically — which, while
+  // canonical Sucrose and Water mis-resolved, was simply what every complete
+  // draft reported. With the roles correct a complete draft reaches the same
+  // template route under `profile_owns_formulation_path` instead, so the test
+  // is now the route itself. (`composition_requires_formulation` is the other
+  // `full_formulation` reason; a hollow draft is off-batch, so the batch
+  // equality below excludes it exactly as before.)
   const preRouteResult =
-    preRouteStrategy === 'eco' && routedDecision.reasons.includes('missing_hard_role')
+    preRouteStrategy === 'eco' && routedDecision.mode === 'full_formulation'
       ? calculateRecipe(input)
       : null;
   const ecoCurrentDraftOwnsSearch =
@@ -5937,6 +5946,35 @@ function buildOptimizePreviewWithDirection(
     );
   }
 
+  // ── from here down the LOCAL corrector owns the draft ──────────────────────
+  // Owner rule, already enforced on the formulation path (`ownerInulinAbsent`):
+  // PI never silently ADDS canonical Inulin to a recipe that does not carry it
+  // — the user selects it explicitly, and PI recommends it instead. The local
+  // corrector reaches the same approved toolbox, so it inherits the same
+  // exclusion. „Absent" means the LINE is not in the draft at all: a selected
+  // Inulin line sitting at 0 g is „chosen but unfilled" under the owner
+  // zero-gram rule and must still be fillable, and a draft that already has
+  // Inulin stays governed by the owner dose policy.
+  // The template path keeps the ORIGINAL options: an approved template that
+  // carries a `fiber_body` role is entitled to place Inulin, and it runs its
+  // own `ownerInulinAbsent` guard against the seeded proposal.
+  const templateOptions = options;
+  const ownerInulinAbsentInDraft = !input.items.some(
+    (item) => canonicalIngredientId(item.ingredient) === OWNER_INULIN_POLICY.mapperIngredientId,
+  );
+  if (ownerInulinAbsentInDraft) {
+    options = {
+      ...options,
+      excludedIngredientIds: [
+        ...new Set([
+          ...(options.excludedIngredientIds ?? []),
+          'inulin',
+          OWNER_INULIN_POLICY.mapperIngredientId,
+        ]),
+      ],
+    };
+  }
+
   /**
    * Owner Phase 6 (NIGHTLY, live FAILURE A): when the LOCAL corrector cannot
    * improve a COMPLETE UNCONSTRAINED draft, PI no longer stops at the one-line
@@ -5962,7 +6000,7 @@ function buildOptimizePreviewWithDirection(
       lookup.template,
       'full_formulation',
       createdAt,
-      options,
+      templateOptions,
       true,
     );
     if (seeded.ok) return seeded;
@@ -6594,6 +6632,45 @@ function buildOptimizePreviewWithDirection(
         directionTargetUnreached: true,
         iteration: iterated.diagnostics,
       };
+    }
+  }
+  // Owner Phase 6 template door, third shape. It already covers a local
+  // corrector that produces NOTHING (`no_proposal`) and one whose candidate is
+  // rejected (`unsafe_proposal`). A candidate that IMPROVES the draft but still
+  // leaves a HARD band out of range is the same failure wearing a different
+  // hat: the Preview is diagnostic-only, so nobody can Apply it. On a
+  // substantive unconstrained draft, try the approved template for the SAME
+  // profile before settling for a Preview that cannot be executed — and keep
+  // the local result unless the template one is genuinely applicable.
+  //
+  // A requested Direction target the executable candidate does not REACH is the
+  // same shape again: the Preview is applicable, but PI is handing back NEAREST
+  // where an approved formulation of the same profile reaches the target
+  // exactly. The template is taken only when it genuinely reaches what the
+  // local candidate missed, so this can improve the answer and never degrade it.
+  const localDirectionUnreached =
+    hasActiveExactDirectionObjective(input) &&
+    recipeDirectionViolations(preview.proposedInput).length > 0;
+  if (
+    decision.reasons.includes('substantive_unconstrained_draft') &&
+    ((preview.diagnosticOnly === true && preview.diagnosticReason === 'hard_residual') ||
+      localDirectionUnreached)
+  ) {
+    const lookup = selectFormulationTemplateForRecipe(input);
+    if (lookup.template) {
+      const seeded = buildFormulationPreviewInternal(
+        input,
+        set,
+        lookup.template,
+        'full_formulation',
+        createdAt,
+        templateOptions,
+        true,
+      );
+      const seededUsable = seeded.ok && seeded.preview.diagnosticOnly !== true;
+      const seededReachesDirection =
+        seeded.ok && recipeDirectionViolations(seeded.preview.proposedInput).length === 0;
+      if (seededUsable && (!localDirectionUnreached || seededReachesDirection)) return seeded;
     }
   }
   return mainSafePreview(input, preview, options.productBehaviorSnapshots);

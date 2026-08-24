@@ -135,6 +135,14 @@ export interface EngineIngredient {
   private_product_id?: string | null;
   /** Where this representation entered the recipe. Diagnostic only. */
   identity_provenance?: IngredientIdentityProvenance;
+  /**
+   * Dataset subcategory (e.g. `water`, `cola_soft_drink`), carried for
+   * FUNCTIONAL-ROLE CLASSIFICATION EVIDENCE only. It never participates in any
+   * Engine formula. It exists because composition alone cannot separate some
+   * classes: plain water and a zero-sugar cola are both 100 % water with
+   * POD/PAC 0, and only the declared subcategory tells them apart.
+   */
+  source_subcategory?: string | null;
   name: string;
   category: IngredientCategory;
   composition: IngredientComponentProfile;

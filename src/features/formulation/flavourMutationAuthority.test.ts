@@ -113,10 +113,12 @@ describe('flavour mutation authority — role scope', () => {
     expect(isFlavourSensitiveRole('fruit')).toBe(true);
   });
 
-  it('never freezes the structural Vegan base or the mis-resolved water row', () => {
-    // `WATER · Liquid` resolves to `flavor_other` in the real Mapper data.
-    // Freezing that role would create exactly the water floor the owner forbade.
-    expect(resolveFunctionalRole(ing(WATER))).toBe('flavor_other');
+  it('never freezes the structural Vegan base or the water row', () => {
+    // `WATER · Liquid` resolves to `water` since the 2026-08-24 role fix (it
+    // used to fall to `flavor_other` because the Mapper category `liquid` is
+    // unmapped). Freezing either role would create exactly the water floor the
+    // owner forbade, so both stay flavour-insensitive.
+    expect(resolveFunctionalRole(ing(WATER))).toBe('water');
     expect(isFlavourSensitiveRole('flavor_other')).toBe(false);
     expect(isFlavourSensitiveRole('plant_liquid')).toBe(false);
     expect(isFlavourSensitiveRole('plant_fat')).toBe(false);

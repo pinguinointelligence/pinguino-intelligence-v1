@@ -65,6 +65,8 @@ export function ingredientRowToEngineIngredient(row: IngredientRow): EngineIngre
     canonical_ingredient_id: row.ingredient_id,
     private_product_id: null,
     identity_provenance: 'mapper',
+    // classification evidence only — never an Engine formula input
+    source_subcategory: row.ingredient_subcategory?.trim() || null,
     name: row.ingredient_name_display.trim() || row.ingredient_name_internal,
     category,
     composition,
