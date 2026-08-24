@@ -242,6 +242,16 @@ export const durableProductionRecoveryRelation = (
   return 'same';
 };
 
+/**
+ * A matching durable revision still has to be hydrated on recovery. The local
+ * browser copy may contain an unfinished stepper or record-correction draft,
+ * while only the server owns the recorded physical facts used to decide whether
+ * that draft is still meaningful.
+ */
+export const shouldHydrateDurableProductionRecovery = (
+  relation: DurableProductionRecoveryRelation,
+): boolean => relation !== 'missing_remote';
+
 export const productionSourceForRecipe = (
   recipe: Pick<
     RecipeState,
@@ -541,12 +551,7 @@ export function useProductionWorkspace(enabled: boolean) {
           return;
         }
         const recoveryRelation = durableProductionRecoveryRelation(localSession, remote);
-        if (
-          !localSession ||
-          remote.status === 'completed' ||
-          recoveryRelation === 'new_rescue' ||
-          recoveryRelation === 'new_actual'
-        ) {
+        if (shouldHydrateDurableProductionRecovery(recoveryRelation)) {
           const hydrated = hydrateProductionSessionFromRun(
             remote,
             source,

@@ -10,6 +10,7 @@ import {
   browserProductionRescueDecision,
   durableActual,
   durableProductionRecoveryRelation,
+  shouldHydrateDurableProductionRecovery,
   durableRescueRequiresReconciliation,
   productionRescueAuthorizationInvalidation,
   productionSourceForRecipe,
@@ -135,6 +136,13 @@ describe('durable Production actual projection', () => {
         },
       }),
     ).toBe('new_actual');
+  });
+
+  it('rehydrates matching durable revisions so stale local correction drafts are reconciled', () => {
+    expect(shouldHydrateDurableProductionRecovery('same')).toBe(true);
+    expect(shouldHydrateDurableProductionRecovery('new_actual')).toBe(true);
+    expect(shouldHydrateDurableProductionRecovery('new_rescue')).toBe(true);
+    expect(shouldHydrateDurableProductionRecovery('missing_remote')).toBe(false);
   });
 });
 
