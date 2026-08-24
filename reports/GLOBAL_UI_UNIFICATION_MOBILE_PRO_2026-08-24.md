@@ -201,3 +201,20 @@ asynchronous price hydration, the DEV demo preset cannot edit grams at all (see
 the separate BASE_RECIPE bug), and only a REAL saved recipe with owner prices,
 a gram-locked line and a percentage rebalance exercises the combination. This is
 the value the owner's mandatory served gram/% proof was asking for.
+
+5. **A signature that could be moved by a fetch (the root of 1–4).** Scenario J
+   on the isolated recipe — write a previous-format baseline, reload — lit up 4
+   of 6 lines. The four were exactly the four showing „Moja", and their migrated
+   baseline read `mapper_reference`: on a DIRTY draft the cold-start capture
+   happens once, before the owner's prices land, and never re-captures.
+
+   That is the same fault as 1, 2 and 3, reached through a third door. The
+   common cause was structural: the signature carried values that can change
+   without the user touching anything. Fixed at the root by reducing the
+   signature to the RECIPE VECTOR — product identity, grams (at display
+   precision), and the exclusive lock where the Main crown lives — matching the
+   owner's own ruling that the marker means „differs from the last accepted
+   recipe state". Price and the required/unavailable UX flags are gone from it
+   entirely, so no asynchronous value can move the marker by construction.
+   `SIGNATURE_FORMAT_VERSION` bumped to 2. Regression test: "carries NO
+   asynchronously hydrated value — the marker cannot be moved by a fetch".

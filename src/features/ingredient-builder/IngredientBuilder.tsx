@@ -47,7 +47,6 @@ import {
   useIngredientTableUxStore,
 } from './ingredientTableUxStore';
 import { useIngredientLibrary } from './useIngredientLibrary';
-import { customerRoleFor } from './ingredientTableUx';
 import { ingredientChangeSignature } from './ingredientChangeHighlight';
 import { useChangedIngredientLines } from './ingredientChangeStore';
 import type { IngredientPriceView } from './IngredientPriceControl';
@@ -424,24 +423,15 @@ export function IngredientBuilder({
   // this component the production forecast instead of the planning result, so
   // reading the rendered vector made every tab switch look like an edit.
   const changeSignatures = Object.fromEntries(
-    storeItems.map((line) => {
-      const lineCost = effectiveCostForIngredient(line.ingredient, customerPrices);
-      const lineMeta = ingredientRowMeta(metaByLineId, line.id);
-      return [
-        line.id,
-        ingredientChangeSignature({
-          lineId: line.id,
-          plannedGrams: line.planned_grams,
-          lockType: line.lock_type,
-          role: customerRoleFor(line.lock_type, lineMeta),
-          required: lineMeta.required || line.lock_type === 'required',
-          unavailable: lineMeta.unavailable,
-          pricePerKg: lineCost.pricePerKg,
-          priceSource: lineCost.source ?? 'none',
-          ingredientId: canonicalIngredientId(line.ingredient) ?? line.ingredient.id,
-        }),
-      ];
-    }),
+    storeItems.map((line) => [
+      line.id,
+      ingredientChangeSignature({
+        lineId: line.id,
+        ingredientId: canonicalIngredientId(line.ingredient) ?? line.ingredient.id,
+        plannedGrams: line.planned_grams,
+        lockType: line.lock_type,
+      }),
+    ]),
   );
   const changedLineIds = useChangedIngredientLines(changeSignatures);
 

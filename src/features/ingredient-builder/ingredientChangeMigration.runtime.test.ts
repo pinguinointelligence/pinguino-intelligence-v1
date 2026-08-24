@@ -40,19 +40,17 @@ describe('persisted marker baseline migration', () => {
     // longer knows what the accepted state was.
     const { changedIngredientLineIds } = await import('./ingredientChangeHighlight');
     const current = {
-      'line-1': 'PI-ING-000236|566.0|unlocked|standard|-|-|1.2000|mapper_reference',
-      'line-2': 'PI-ING-000180|120.0|unlocked|standard|-|-|3.2000|mapper_reference',
+      'line-1': 'PI-ING-000236|566.0|unlocked',
+      'line-2': 'PI-ING-000180|120.0|unlocked',
     };
     expect([...changedIngredientLineIds(current, baseline)]).toEqual([]);
   });
 
   it('keeps a baseline written by the CURRENT format', async () => {
-    const current = {
-      'line-1': 'PI-ING-000236|566.0|unlocked|standard|-|-|1.2000|mapper_reference',
-    };
+    const current = { 'line-1': 'PI-ING-000236|566.0|unlocked' };
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ state: { baselineByLineId: current }, version: 1 }),
+      JSON.stringify({ state: { baselineByLineId: current }, version: 2 }),
     );
     const { useIngredientChangeStore } = await import('./ingredientChangeStore');
     await useIngredientChangeStore.persist.rehydrate();

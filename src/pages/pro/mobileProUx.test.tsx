@@ -124,7 +124,7 @@ describe('collapsed mobile recipe line', () => {
       builder.indexOf('const changeSignatures = Object.fromEntries('),
       builder.indexOf('const changedLineIds = useChangedIngredientLines('),
     );
-    expect(block).toContain('storeItems.map((line) => {');
+    expect(block).toContain('storeItems.map((line) => [');
     expect(block).toContain('plannedGrams: line.planned_grams');
     // Never the `items` prop — that vector changes with the active module.
     expect(block).not.toContain('item.planned_grams');

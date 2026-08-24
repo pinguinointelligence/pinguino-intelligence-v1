@@ -1,10 +1,9 @@
 /**
  * §8 „I changed something here" — the change marker is a PURE comparison.
  *
- * These proofs pin the two properties the owner asked for: every editable
- * ingredient value participates (grams/%, lock, Main role, required,
- * unavailable, price, substitution), and nothing is ever marked before there is
- * an accepted state to compare against.
+ * These proofs pin what the owner ruled on 2026-08-24: the marker compares the
+ * RECIPE VECTOR only, at the precision the row shows, and nothing is ever
+ * marked before there is an accepted state to compare against.
  */
 import { describe, expect, it } from 'vitest';
 import {
@@ -15,14 +14,9 @@ import {
 
 const line = (overrides: Partial<IngredientChangeInput> = {}): IngredientChangeInput => ({
   lineId: 'line-1',
+  ingredientId: 'milk_3_5',
   plannedGrams: 670,
   lockType: 'unlocked',
-  role: 'standard',
-  required: false,
-  unavailable: false,
-  pricePerKg: 0.9,
-  priceSource: 'mapper',
-  ingredientId: 'milk_3_5',
   ...overrides,
 });
 
@@ -34,11 +28,7 @@ describe('ingredientChangeSignature', () => {
   it.each([
     ['grams (and therefore the displayed %)', { plannedGrams: 671 }],
     ['an exclusive lock', { lockType: 'grams' }],
-    ['the Main crown', { role: 'main' }],
-    ['required status', { required: true }],
-    ['unavailable status', { unavailable: true }],
-    ['the effective price', { pricePerKg: 1.1 }],
-    ['switching to the owner’s own price', { priceSource: 'customer_override' }],
+    ['the Main crown, which lives on the lock', { lockType: 'main' }],
     ['a substituted product', { ingredientId: 'milk_1_5' }],
   ])('changes when %s changes', (_label, patch) => {
     expect(ingredientChangeSignature(line(patch as Partial<IngredientChangeInput>))).not.toBe(
@@ -66,6 +56,17 @@ describe('ingredientChangeSignature', () => {
     expect(ingredientChangeSignature(line({ plannedGrams: 135.4 }))).not.toBe(
       ingredientChangeSignature(line({ plannedGrams: 135 })),
     );
+  });
+
+  it('carries NO asynchronously hydrated value — the marker cannot be moved by a fetch', () => {
+    // Owner ruling: recipe-state only. The owner's „MOJA CENA" arrives after
+    // first paint; served QA lit up 4–5 own-priced lines three separate times
+    // while the signature still carried a price.
+    const signature = ingredientChangeSignature(line());
+    expect(signature.split('|')).toHaveLength(3);
+    expect(signature).toBe('milk_3_5|670.0|unlocked');
+    for (const leaked of ['EUR', 'mapper_reference', 'customer_override', 'req', 'unavail'])
+      expect(signature, leaked).not.toContain(leaked);
   });
 });
 

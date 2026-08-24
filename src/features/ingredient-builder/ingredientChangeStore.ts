@@ -7,7 +7,7 @@ import { changedIngredientLineIds, type IngredientSignatureMap } from './ingredi
 /**
  * Bump when `ingredientChangeSignature` changes shape — see the persist config.
  */
-const SIGNATURE_FORMAT_VERSION = 1;
+const SIGNATURE_FORMAT_VERSION = 2;
 
 /**
  * Baseline of the last CLEAN ingredient state, so a changed line can be marked

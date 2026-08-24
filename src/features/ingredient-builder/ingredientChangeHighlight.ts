@@ -4,29 +4,34 @@
  *
  * PRESENTATION ONLY. This module never touches the Engine, the recipe vector,
  * pricing, persistence or the dirty/version semantics: it compares the values
- * ALREADY on screen against a baseline captured at the last clean state (a
- * load, a reopen, or a successful save — exactly the moments `recipeStore.dirty`
- * returns to false) and reports which line ids differ.
+ * ALREADY on screen against a baseline captured at the last accepted state and
+ * reports which line ids differ.
  *
- * The comparison covers everything the owner named as an ingredient change:
- * grams (and therefore the derived %), the exclusive lock, the Main/standard
- * role, required/unavailable status, and the effective price per kg.
+ * WHAT IT COMPARES — and, just as importantly, what it does not.
+ *
+ * The signature is the RECIPE VECTOR of a line and nothing else: which product
+ * is on it, how many grams (and therefore its %), and its exclusive lock, which
+ * is where the Main crown lives (`lock_type === 'main'`).
+ *
+ * It deliberately excludes every value that does NOT belong to the recipe's
+ * accepted state — the owner's „MOJA CENA", the required/unavailable UX flags.
+ * That is the owner's ruling (2026-08-24: „recipe-state only"), and it is also
+ * what makes the marker sound: those values arrive ASYNCHRONOUSLY. Served QA
+ * caught the same class of failure three separate times through three different
+ * doors — a module switch, a first paint before prices landed, and a
+ * signature-format migration on a dirty draft — every one of them because a
+ * server-hydrated field sat in the signature. A field that can change without
+ * the user touching anything cannot be evidence that the user touched
+ * something.
  */
 
 export interface IngredientChangeInput {
   lineId: string;
-  plannedGrams: number;
-  lockType: string;
-  /** Customer role: 'main' | 'standard' | 'addition'. */
-  role: string;
-  required: boolean;
-  unavailable: boolean;
-  /** Effective €/kg actually shown on the line (own price included), or null. */
-  pricePerKg: number | null;
-  /** Which authority the price came from — switching to „MOJA CENA" is a change. */
-  priceSource: string;
   /** Identity of the product on the line; a substitution is a change too. */
   ingredientId: string;
+  plannedGrams: number;
+  /** The exclusive lock — this is also where the Main crown lives. */
+  lockType: string;
 }
 
 /**
@@ -42,16 +47,7 @@ export interface IngredientChangeInput {
  * Engine, the recipe vector or any saved value.
  */
 export function ingredientChangeSignature(input: IngredientChangeInput): string {
-  return [
-    input.ingredientId,
-    input.plannedGrams.toFixed(1),
-    input.lockType,
-    input.role,
-    input.required ? 'req' : '-',
-    input.unavailable ? 'unavail' : '-',
-    input.pricePerKg === null ? 'no-price' : input.pricePerKg.toFixed(4),
-    input.priceSource,
-  ].join('|');
+  return [input.ingredientId, input.plannedGrams.toFixed(1), input.lockType].join('|');
 }
 
 export type IngredientSignatureMap = Readonly<Record<string, string>>;
