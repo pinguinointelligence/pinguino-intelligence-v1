@@ -273,6 +273,36 @@ export async function ingestProduct(request: ProductIngestRequest): Promise<Prod
       resumeBlocked: request.resumeBlocked === true,
     },
   });
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(await functionErrorDetail(error));
   return data as ProductIngestResult;
+}
+
+/**
+ * What the server actually said.
+ *
+ * supabase-js reports a refused Edge Function as „Edge Function returned a
+ * non-2xx status code" and keeps the response on the error. That sentence names
+ * neither the reason nor the fix, and it is the only thing the owner saw while
+ * an import stopped on row 6 — the body underneath said
+ * `product_ingest_preflight_failed`, which is an entirely different
+ * conversation. Read the body; fall back only when there genuinely isn't one.
+ */
+export async function functionErrorDetail(error: unknown): Promise<string> {
+  const fallback = error instanceof Error ? error.message : String(error);
+  const context = (error as { context?: unknown }).context;
+  if (!context || typeof (context as Response).clone !== 'function') return fallback;
+  try {
+    const body = await (context as Response).clone().json();
+    const reason =
+      typeof body === 'object' && body !== null
+        ? ((body as Record<string, unknown>).error ??
+          (body as Record<string, unknown>).message ??
+          null)
+        : null;
+    const status = (context as Response).status;
+    if (typeof reason === 'string' && reason !== '') return `${reason} (HTTP ${status})`;
+    return fallback;
+  } catch {
+    return fallback;
+  }
 }

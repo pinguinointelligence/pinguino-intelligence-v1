@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { canonicalIngestFromLegacyProduct } from './productIngest';
+import { canonicalIngestFromLegacyProduct, functionErrorDetail } from './productIngest';
 
 const root = process.cwd();
 const read = (path: string) => readFileSync(resolve(root, path), 'utf8');
@@ -9,7 +9,7 @@ const read = (path: string) => readFileSync(resolve(root, path), 'utf8');
 describe('canonical product ingest boundary', () => {
   it('routes every legacy product mutation through the canonical Edge adapter', () => {
     const products = read('src/services/products.ts');
-    expect(products).toContain("ingestProduct({");
+    expect(products).toContain('ingestProduct({');
     expect(products).not.toMatch(/\.from\(TABLE\)\s*\.(insert|update|delete)\(/s);
 
     const importer = read('src/services/productCatalogImport.ts');
@@ -34,18 +34,30 @@ describe('canonical product ingest boundary', () => {
 
   it('keeps external OCR and Turnstile optional while risk HMAC remains fail-closed', () => {
     const edge = read('supabase/functions/catalog-submit/index.ts');
-    expect(edge).toContain("if (!endpoint || !key) return null");
-    expect(edge).toContain("if (!input.token || !input.secret) return false");
-    expect(edge).toContain("if (!riskSecret) return json({ error: 'catalog_risk_control_unavailable' }, 503)");
+    expect(edge).toContain('if (!endpoint || !key) return null');
+    expect(edge).toContain('if (!input.token || !input.secret) return false');
+    expect(edge).toContain(
+      "if (!riskSecret) return json({ error: 'catalog_risk_control_unavailable' }, 503)",
+    );
   });
 
   it('declares every current and future intake source at the single client seam', () => {
     const service = read('src/services/productIngest.ts');
     for (const source of [
-      'ocr', 'barcode', 'manual', 'admin', 'catalog_import', 'retailer_feed',
-      'spreadsheet', 'supplier_specification', 'shop', 'franchise',
-      'future_integration', 'internal_subproduct',
-    ]) expect(service).toContain(`| '${source}'`);
+      'ocr',
+      'barcode',
+      'manual',
+      'admin',
+      'catalog_import',
+      'retailer_feed',
+      'spreadsheet',
+      'supplier_specification',
+      'shop',
+      'franchise',
+      'future_integration',
+      'internal_subproduct',
+    ])
+      expect(service).toContain(`| '${source}'`);
   });
 
   it('preserves reviewed OCR text/languages and never invents a nutrition basis', () => {
@@ -67,5 +79,33 @@ describe('canonical product ingest boundary', () => {
     expect(facts.mayContainAllergens).toEqual(['MILCH', 'LAIT']);
     expect(facts.labelLanguages).toEqual(['de', 'fr']);
     expect(facts.nutrition).toBeNull();
+  });
+});
+
+describe('a refused Edge Function reports what the server said', () => {
+  const withBody = (status: number, body: unknown) =>
+    Object.assign(new Error('Edge Function returned a non-2xx status code'), {
+      context: new Response(JSON.stringify(body), { status }),
+    });
+
+  it('surfaces the structured reason instead of the generic sentence', async () => {
+    const detail = await functionErrorDetail(
+      withBody(400, { error: 'product_ingest_preflight_failed' }),
+    );
+    expect(detail).toContain('product_ingest_preflight_failed');
+    expect(detail).toContain('400');
+  });
+
+  it('surfaces a rate/idempotency refusal by name', async () => {
+    const detail = await functionErrorDetail(
+      withBody(409, { error: 'idempotency_payload_mismatch' }),
+    );
+    expect(detail).toContain('idempotency_payload_mismatch');
+  });
+
+  it('falls back only when the response carries no reason', async () => {
+    const detail = await functionErrorDetail(withBody(500, {}));
+    expect(detail).toBe('Edge Function returned a non-2xx status code');
+    expect(await functionErrorDetail(new Error('boom'))).toBe('boom');
   });
 });

@@ -430,9 +430,15 @@ export function IntimportLocalIntelligenceView({
         >
           Gotowe dla Engine trafiają do katalogu z kompletną kompozycją. Pozostałe też zostaną
           zapisane — z całą wiedzą, którą już mamy — i będą gotowe po uzupełnieniu danych.
-          {summary.selfContradictory
-            ? ` ${summary.selfContradictory} produkt(ów) ma wzajemnie sprzeczne wartości źródłowe i wymaga poprawki w pliku.`
-            : ''}
+        </p>
+      ) : null}
+
+      {/* „Wymagają decyzji" counts rows the parser could not place. A product
+          whose own declared values contradict each other is a DIFFERENT fact:
+          folding it into that sentence made the screen say 0 and 2 at once. */}
+      {summary.selfContradictory ? (
+        <p className="text-sm text-ivory/60" data-testid="intimport-self-contradictory">
+          Sprzeczne wartości źródłowe: {summary.selfContradictory} — wymagają poprawki w pliku.
         </p>
       ) : null}
 
