@@ -36,7 +36,6 @@ const state = {
   currentVersionNumber: 3,
   dirty: true,
   draftContextSeq: 7,
-  productionThermalMode: 'HEAT_CAPABLE',
 } as unknown as RecipeState;
 
 describe('recipePersistPartialize', () => {
@@ -71,24 +70,17 @@ describe('recipePersistPartialize', () => {
     });
     expect(persisted.direction_targets_active).toBe(true);
     expect(persisted.draftContextSeq).toBe(7);
-    expect(persisted.productionThermalMode).toBe('HEAT_CAPABLE');
   });
 
-  it('persists Production thermal context without invalidating recipe mathematics or version identity', () => {
-    const prior = useRecipeStore.getState();
-    try {
-      useRecipeStore.setState({ dirty: false, productionThermalMode: null });
-      useRecipeStore.getState().setProductionThermalMode('COLD_ONLY');
-      expect(useRecipeStore.getState()).toMatchObject({
-        productionThermalMode: 'COLD_ONLY',
-        dirty: false,
-      });
-      expect(recipePersistPartialize(useRecipeStore.getState()).productionThermalMode).toBe(
-        'COLD_ONLY',
-      );
-    } finally {
-      useRecipeStore.setState(prior, true);
-    }
+  // §1 OWNER RULE (2026-08-24): Gellatti does not choose the process mode.
+  // The Production thermal route is gone from the store so it cannot come back
+  // as a persisted preference or a start-time gate.
+  it('holds no Production thermal route at all', () => {
+    expect('productionThermalMode' in useRecipeStore.getState()).toBe(false);
+    expect('setProductionThermalMode' in useRecipeStore.getState()).toBe(false);
+    expect('productionThermalMode' in recipePersistPartialize(useRecipeStore.getState())).toBe(
+      false,
+    );
   });
 });
 

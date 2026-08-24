@@ -9,93 +9,6 @@ import { CatalogVerificationBadge } from '@/features/global-catalog/CatalogVerif
 const formatPhysicalMassG = (value: number): string =>
   Number.isInteger(value) ? value.toFixed(0) : value.toFixed(3).replace(/\.?0+$/, '');
 
-/**
- * PROCESS INFORMATION — never a gate (owner decision, 2026-08-23).
- *
- * Gellatti does not decide how a professional ingredient must be processed, so
- * this notice states only what is known. Nothing here can block Production, and
- * an absence of process information renders nothing at all rather than a
- * warning the professional has to acknowledge.
- */
-function ProcessReadinessNotice({
-  readiness,
-}: {
-  readiness: ProductionWorkspaceView['processReadiness'] | undefined;
-  phase?: 'before_start' | 'active' | 'completed';
-}) {
-  if (!readiness) return null;
-  const products = [
-    ...new Set(
-      readiness.advisories
-        .map((detail) => detail.productName?.trim())
-        .filter((name): name is string => Boolean(name)),
-    ),
-  ];
-  if (products.length === 0) return null;
-  return (
-    <section
-      className="rounded-[12px] border border-ink/10 bg-[#f7f5f0] px-3 py-3 text-ink"
-      role="status"
-      aria-label="Informacje o procesie produktów"
-      data-testid="production-process-advisory"
-    >
-      <p className="text-xs font-semibold leading-relaxed">Informacja o obróbce</p>
-      <p className="mt-1 text-[11px] leading-relaxed text-stone-600">
-        Dla wskazanych produktów nie mamy informacji o obróbce. Sposób użycia produktu
-        technicznego określa jego karta techniczna lub instrukcja producenta.
-      </p>
-      <ul className="mt-2 space-y-1 text-xs text-stone-700">
-        {products.map((productName) => (
-          <li key={productName}>{productName}</li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-function ThermalModeSelector({ production }: { production: ProductionWorkspaceView }) {
-  return (
-    <fieldset
-      className="mt-4 rounded-[14px] border border-ink/10 bg-[#f7f5f0] p-3"
-      data-testid="production-thermal-mode"
-    >
-      <legend className="px-1 text-xs font-semibold text-ink">
-        Sposób przygotowania bazy (opcjonalnie)
-      </legend>
-      <p className="mt-1 text-[11px] leading-relaxed text-stone-600">
-        Zapisywane jako notatka do partii i zamrażane na runie po starcie. Nie warunkuje startu
-        produkcji — o obróbce decydujesz Ty.
-      </p>
-      <div className="mt-3 grid gap-2 sm:grid-cols-2">
-        {[
-          ['COLD_ONLY', 'Tylko na zimno', 'Bez etapu obróbki cieplnej.'],
-          ['HEAT_CAPABLE', 'Możliwa obróbka cieplna', 'Proces może zawierać etap na ciepło.'],
-        ].map(([value, label, description]) => (
-          <label
-            key={value}
-            className="flex min-h-11 cursor-pointer items-start gap-2 rounded-[12px] border border-ink/10 bg-white px-3 py-2 text-xs"
-          >
-            <input
-              type="radio"
-              name="production-thermal-mode"
-              value={value}
-              checked={production.thermalMode === value}
-              onChange={() => production.setThermalMode(value as 'COLD_ONLY' | 'HEAT_CAPABLE')}
-              className="mt-0.5 size-4 accent-ink"
-            />
-            <span>
-              <span className="block font-semibold text-ink">{label}</span>
-              <span className="mt-0.5 block text-[11px] leading-relaxed text-stone-500">
-                {description}
-              </span>
-            </span>
-          </label>
-        ))}
-      </div>
-    </fieldset>
-  );
-}
-
 export function ProductionCockpit({
   production,
   onOpenPreview,
@@ -155,14 +68,6 @@ export function ProductionCockpit({
         </p>
         <h2 className="mt-2 text-base font-semibold text-ink">{prerequisite.title}</h2>
         <p className="mt-2 text-xs leading-relaxed text-stone-700">{prerequisite.message}</p>
-        {session ? (
-          <div className="mt-3">
-            <ProcessReadinessNotice
-              readiness={production.processReadiness}
-              phase={session.status === 'completed' ? 'completed' : 'active'}
-            />
-          </div>
-        ) : null}
         <button
           type="button"
           onClick={prerequisiteAction}
@@ -215,10 +120,6 @@ export function ProductionCockpit({
             </dd>
           </div>
         </dl>
-        <ThermalModeSelector production={production} />
-        <div className="mt-4">
-          <ProcessReadinessNotice readiness={production.processReadiness} />
-        </div>
         <button
           type="button"
           onClick={() => void production.startNewSession()}
@@ -273,9 +174,6 @@ export function ProductionCockpit({
               )}
             </div>
           ) : null}
-          <div className="mt-3">
-            <ProcessReadinessNotice readiness={production.processReadiness} phase="completed" />
-          </div>
           <button
             type="button"
             onClick={prerequisite ? prerequisiteAction : () => void production.startNewSession()}
@@ -305,7 +203,6 @@ export function ProductionCockpit({
           {production.persistenceError}
         </p>
       ) : null}
-      <ProcessReadinessNotice readiness={production.processReadiness} phase="active" />
       <section className="overflow-hidden rounded-[18px] border border-ink/10 bg-white p-4 shadow-pro-e0">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -316,7 +213,7 @@ export function ProductionCockpit({
           </div>
           <span className="text-right">
             <span className="block text-xs font-medium text-stone-500">
-              Przewidywane dopasowanie partii
+              Przewidywany wynik po zakończeniu planu
             </span>
             <span className="mt-1 block font-mono text-xl font-semibold tabular-nums text-ink">
               {score.display}
@@ -331,22 +228,50 @@ export function ProductionCockpit({
             }}
           />
         </div>
-        <dl className="mt-3 grid grid-cols-2 gap-3 text-xs">
+        {/* §22/§23 LIVE MONITOR — physical truth first, plan second, and the
+            gap between them. `W naczyniu` is measured only from confirmed
+            additions; `Plan aktualny` follows an accepted scale-up. */}
+        <dl className="mt-3 grid grid-cols-3 gap-3 text-xs" data-testid="production-live-monitor">
           <div>
             <dt className="text-stone-500">W naczyniu</dt>
-            <dd className="font-mono font-semibold tabular-nums text-ink">
+            <dd
+              className="font-mono font-semibold tabular-nums text-ink"
+              data-testid="production-vessel-mass"
+            >
               {formatPhysicalMassG(progress.confirmedMassG)} g
             </dd>
           </div>
           <div>
-            <dt className="text-stone-500">Przewidywany finał</dt>
-            <dd className="font-mono font-semibold tabular-nums text-ink">
+            <dt className="text-stone-500">Plan aktualny</dt>
+            <dd
+              className="font-mono font-semibold tabular-nums text-ink"
+              data-testid="production-current-plan-mass"
+            >
               {formatPhysicalMassG(progress.forecastFinalMassG)} g
             </dd>
           </div>
+          <div>
+            <dt className="text-stone-500">Pozostało</dt>
+            <dd
+              className="font-mono font-semibold tabular-nums text-ink"
+              data-testid="production-remaining-mass"
+            >
+              {formatPhysicalMassG(progress.remainingMassG)} g
+            </dd>
+          </div>
         </dl>
+        {progress.targetChanged ? (
+          <p
+            className="mt-2 text-[11px] leading-relaxed text-stone-600"
+            data-testid="production-target-changed"
+          >
+            Partia została powiększona z {formatPhysicalMassG(progress.originalTargetMassG)} g do{' '}
+            {formatPhysicalMassG(progress.forecastFinalMassG)} g.
+          </p>
+        ) : null}
+        {/* §51 SCORE TRUTH — this figure describes the PLAN, not the vessel. */}
         <p className="mt-3 rounded-[12px] bg-status-ideal/10 px-3 py-2 text-xs text-[#2f6f3c]">
-          Ocena dotyczy przewidywanego składu po zakończeniu bieżącej partii · {score.display}
+          Przewidywany wynik po zakończeniu aktualnego planu · {score.display}
         </p>
       </section>
 
@@ -484,6 +409,18 @@ export function ProductionCockpit({
           data-testid="production-rescue-options"
         >
           <h3 className="text-xs font-semibold text-ink">Korekta po odchyleniu</h3>
+          {/* §16 — when the original batch is genuinely gone, say so before
+              offering the smallest verified larger one. Never hide the loss. */}
+          {rescue.options.every((option) => option.id !== 'keep_original_batch') &&
+          rescue.options.some((option) => option.id === 'enlarge_batch') ? (
+            <p
+              className="mt-1 text-xs leading-relaxed text-[#8a5b23]"
+              data-testid="production-original-batch-lost"
+            >
+              Nie da się już zachować partii {formatPhysicalMassG(progress.originalTargetMassG)} g
+              przy tym, co jest w naczyniu.
+            </p>
+          ) : null}
           <p className="mt-1 text-xs leading-relaxed text-stone-600">
             Wybierz kierunek. Bezpieczny Preview zostanie obliczony i autoryzowany przez serwer.
           </p>
@@ -619,28 +556,6 @@ export function ProductionCockpit({
           </div>
         </section>
       ) : null}
-
-      <ReadinessFrame
-        state="W PRZYGOTOWANIU"
-        title="Brakuje składnika · automatyczne etapy"
-        compact
-        tone="light"
-        details={{
-          limitation:
-            'Zamienniki w połowie produkcji i automatyczne etapy nie mają jeszcze pełnego kontraktu canonical/allergen/process.',
-          calculationImpact:
-            'Potwierdzona masa pozostaje zachowana; PI nie tworzy niezweryfikowanej korekty.',
-          remaining: 'Podłączyć verified substitute oraz Heat/Cold Process bez inferencji z nazw.',
-        }}
-      >
-        <button
-          type="button"
-          disabled
-          className="w-full rounded-[12px] border border-nonprod-soft/40 px-3 py-2 text-xs font-semibold text-nonprod-soft"
-        >
-          Brakuje składnika · W PRZYGOTOWANIU
-        </button>
-      </ReadinessFrame>
 
       <button
         type="button"

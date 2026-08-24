@@ -47,7 +47,6 @@ import type {
 import type {
   ProductProcessReadiness,
   ProductProcessReadinessDetail,
-  ProductionThermalMode,
 } from '@/features/product-intelligence';
 import {
   productionRecipeLifecycleState,
@@ -190,7 +189,10 @@ export const durableRescueRequiresReconciliation = (
   Boolean(remote.rescue && local && remote.rescue.revision !== local.durableRescueRevision);
 
 export type DurableProductionRecoveryRelation =
-  'missing_remote' | 'new_rescue' | 'new_actual' | 'same';
+  | 'missing_remote'
+  | 'new_rescue'
+  | 'new_actual'
+  | 'same';
 
 class MissingDurableProductionRunError extends Error {
   constructor() {
@@ -240,7 +242,10 @@ export type ProductionPrerequisiteCode =
   | 'owner_mismatch';
 
 export type ProductionPrerequisiteAction =
-  'open_preview' | 'recalculate' | 'return_to_recipe' | 'archive_stale_session';
+  | 'open_preview'
+  | 'recalculate'
+  | 'return_to_recipe'
+  | 'archive_stale_session';
 
 export type ProductionPrerequisite = {
   code: ProductionPrerequisiteCode;
@@ -423,13 +428,7 @@ export function useProductionWorkspace(enabled: boolean) {
             'Otwórz podgląd',
           ),
         };
-  }, [
-    constraints,
-    plannedInput,
-    preview,
-    recalculationTerminal,
-    recipeLifecycle,
-  ]);
+  }, [constraints, plannedInput, preview, recalculationTerminal, recipeLifecycle]);
 
   const source = useMemo(
     () => productionSourceForRecipe(recipe, recipeLifecycle === 'READY'),
@@ -462,9 +461,8 @@ export function useProductionWorkspace(enabled: boolean) {
         recipe: plannedInput,
         toppings: plannedComposition.toppings,
         snapshots: plannedComposition.behaviorSnapshots ?? {},
-        thermalMode: recipe.productionThermalMode,
       }),
-    [ownerUserId, plannedComposition, plannedInput, recipe.productionThermalMode],
+    [ownerUserId, plannedComposition, plannedInput],
   );
   const behaviorServerReady =
     requiredBehaviorLineIds.length === 0 ||
@@ -582,7 +580,6 @@ export function useProductionWorkspace(enabled: boolean) {
       snapshots: plannedComposition.behaviorSnapshots ?? {},
       module: 'PRODUCTION',
       accountId: ownerUserId,
-      ...(recipe.productionThermalMode ? { thermalMode: recipe.productionThermalMode } : {}),
     });
     void validationPromise
       .then((validation) => {
@@ -626,7 +623,6 @@ export function useProductionWorkspace(enabled: boolean) {
     plannedInput,
     practicalGate.ready,
     requiredBehaviorLineIds.length,
-    recipe.productionThermalMode,
   ]);
 
   const productionPrerequisite = sessionOwnerMismatch
@@ -930,7 +926,6 @@ export function useProductionWorkspace(enabled: boolean) {
     progress,
     toppingProgress,
     score,
-    thermalMode: session?.thermalMode ?? recipe.productionThermalMode,
     corrections,
     processReadiness,
     practicalReady: canStartProduction,
@@ -940,9 +935,6 @@ export function useProductionWorkspace(enabled: boolean) {
     persistenceBusy: persistence.busy,
     persistenceError: persistence.error,
     currentSourceFingerprint,
-    setThermalMode: (mode: ProductionThermalMode) => {
-      if (!session) recipe.setProductionThermalMode(mode);
-    },
     archiveStaleSession: async () => {
       if (!session || persistence.busy) return;
       if (recoveryOrphanedLocal) {
@@ -1071,8 +1063,7 @@ export function useProductionWorkspace(enabled: boolean) {
           // then require canonical server PRODUCTION validation immediately
           // below and again in production_start_run_v2.
           module: 'RECIPE_VERSION',
-          technicalOnlyMainLineIds:
-            plannedComposition.ownerReviewGate?.technicalOnlyMainLineIds,
+          technicalOnlyMainLineIds: plannedComposition.ownerReviewGate?.technicalOnlyMainLineIds,
         });
         if (!localAuthority.valid) {
           setSessionStart({
@@ -1090,9 +1081,6 @@ export function useProductionWorkspace(enabled: boolean) {
             snapshots: plannedComposition.behaviorSnapshots ?? {},
             module: 'PRODUCTION',
             accountId: ownerUserId,
-            ...(recipe.productionThermalMode
-              ? { thermalMode: recipe.productionThermalMode }
-              : {}),
           });
           // Only product authority can hold Production. Process readiness is
           // information and is deliberately not consulted here.
@@ -1143,7 +1131,6 @@ export function useProductionWorkspace(enabled: boolean) {
           target: { kind: 'weight_g', grams: plannedInput.target_batch_grams },
           capabilities: productionCapabilitiesFor(persona),
           by: ownerUserId,
-          meta: { thermalMode: recipe.productionThermalMode },
         });
         restoreDurableSession(
           hydrateProductionSessionFromRun(activeRun, source, plannedInput, plannedComposition),

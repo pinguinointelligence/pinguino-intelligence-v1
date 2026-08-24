@@ -21,8 +21,8 @@
     "productionSessionSchema": 2
   },
   "bundle": {
-    "bytes": 307320,
-    "sha256": "27ab383310bee0504ef9c3455e0d250aef8b9efbdff46acf28206d6fdd8ee869",
+    "bytes": 307798,
+    "sha256": "e27e608f4d60896c8c16cc0d64dd7b4d8f896a6c675cb49811e0ffe30d5ea3b4",
     "externalImports": 0,
     "dynamicImports": 0
   },
@@ -189,11 +189,11 @@
     },
     {
       "path": "src/features/production-workspace/productionRescue.ts",
-      "sha256": "26112d0b7c54971e04ed9760e12aa47ba88b784453ad7765f3ba5544c8295c56"
+      "sha256": "832a40c2f86fbe976d1e4f065574ff11630ee3e902832caac3bcf6419f469e3d"
     },
     {
       "path": "src/features/production-workspace/productionSession.ts",
-      "sha256": "42a0f94c92e22c30892b26f2105125cacd0a28d667fb0f99f0449f2849262fb0"
+      "sha256": "aa073e92f4fa70247fa3943768a8ce38d11df0621a1987374cb34a9edf677c0f"
     },
     {
       "path": "src/features/protein-gelato/proteinAuthority.ts",
@@ -264,5 +264,5 @@
       "sha256": "5523e8a79f059b81594793260535fc3b4a85185fe9f5020de87c2c7782a44fdb"
     }
   ],
-  "sourceClosureSha256": "9c30a2af1225d0f2339a4973e012bcf1c3dafa5440f1cda01f3f5c10fd587877"
+  "sourceClosureSha256": "e9b2fa2cca962b2db42e5d814797c480107b90045b24d7022a1386b4231c3914"
 }

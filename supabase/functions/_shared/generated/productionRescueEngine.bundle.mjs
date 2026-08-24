@@ -7652,6 +7652,11 @@ function hydrateProductionSessionFromRun(run, source, plannedInput, plannedCompo
 * the option-selection and practicalization layer authorized by the server.
 */
 const PRODUCTION_RESCUE_MODEL_VERSION = "production-rescue-v1";
+/**
+* OWNER RULE §17 — a batch size is spoken exactly as the Engine verified it.
+* 1086 g is reported as 1086 g; it is never rounded up to a tidier 1100 g.
+*/
+const formatBatchMassG = (grams) => Number.isInteger(grams) ? grams.toFixed(0) : grams.toFixed(1).replace(/\.0$/, "");
 const totalFor = (input) => input.items.reduce((sum, item) => sum + (item.actual_grams ?? item.planned_grams), 0);
 const productionRescueCandidateFingerprint = (input) => JSON.stringify({
 	mode: input.mode,
@@ -7840,8 +7845,8 @@ function bestOption(id, title, explanation, session, forecastInput, context, acc
 		const score = recipeFitForInput(candidateInput, result);
 		candidates.push({
 			id,
-			title,
-			explanation,
+			title: title(mass),
+			explanation: explanation(mass),
 			finalMassG: mass,
 			scoreDisplay: score.display,
 			exactCandidateInput,
@@ -7875,9 +7880,9 @@ function assessProductionRescue(session) {
 	};
 	const options = [];
 	const originalTarget = session.plannedInput.target_batch_grams;
-	const keep = bestOption("keep_original_batch", "Skoryguj pozostałe", "Zmienia wyłącznie to, czego jeszcze nie potwierdzono, i zachowuje docelową masę partii.", session, forecastInput, "planning", (mass) => Math.abs(mass - originalTarget) <= .1);
+	const keep = bestOption("keep_original_batch", (mass) => `Napraw do ${formatBatchMassG(mass)} g`, () => "Zmienia wyłącznie to, czego jeszcze nie potwierdzono, i zachowuje docelową masę partii.", session, forecastInput, "planning", (mass) => Math.abs(mass - originalTarget) <= .1);
 	if (keep) options.push(keep);
-	const enlarge = bestOption("enlarge_batch", "Powiększ partię", "Pokazuje najmniejszą znalezioną, zweryfikowaną przez Engine większą partię.", session, forecastInput, "actual_batch", (mass) => mass > originalTarget + .1);
+	const enlarge = bestOption("enlarge_batch", (mass) => `Powiększ do ${formatBatchMassG(mass)} g`, (mass) => `Najmniejsza partia powyżej ${formatBatchMassG(originalTarget)} g, którą Engine potwierdził dla tego, co jest już w naczyniu: ${formatBatchMassG(mass)} g.`, session, forecastInput, "actual_batch", (mass) => mass > originalTarget + .1);
 	if (enlarge) options.push(enlarge);
 	if (nativeSafe(forecastInput, forecastResult)) {
 		const practical = practicalizeProductionRescueCandidate(session, forecastInput, Math.round(totalFor(forecastInput)));
@@ -7885,7 +7890,7 @@ function assessProductionRescue(session) {
 			const candidateInput = practical.audit.executableInput;
 			options.push({
 				id: "leave_as_is",
-				title: "Zostaw tak",
+				title: "Kontynuuj bez korekty",
 				explanation: "Przewidywana gotowa partia pozostaje w zatwierdzonych zakresach technologicznych.",
 				finalMassG: practical.audit.executableResult.total_batch_g,
 				scoreDisplay: recipeFitForInput(candidateInput, practical.audit.executableResult).display,

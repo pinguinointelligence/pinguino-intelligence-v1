@@ -434,12 +434,26 @@ export interface ProductionProgress {
   confirmedMassG: number;
   forecastFinalMassG: number;
   originalTargetMassG: number;
+  /**
+   * OWNER RULE §22 — what is still to be added under the CURRENT plan. After an
+   * accepted scale-up this is measured against the new target, never the
+   * original one, and it is never negative.
+   */
+  remainingMassG: number;
+  /** True once the current plan target differs from the batch the run started with. */
+  targetChanged: boolean;
   coherent: boolean;
 }
 
 export function productionProgress(session: ProductionSession): ProductionProgress {
   const confirmed = session.lines.filter((line) => line.confirmed);
   const forecast = buildProductionForecastInput(session);
+  const confirmedMassG = session.lines.reduce((sum, line) => sum + line.physicalAddedGrams, 0);
+  const forecastFinalMassG = forecast.items.reduce(
+    (sum, item) => sum + (item.actual_grams ?? item.planned_grams),
+    0,
+  );
+  const originalTargetMassG = session.plannedInput.target_batch_grams;
   return {
     confirmedCount: confirmed.length,
     totalCount: session.lines.length,
@@ -447,12 +461,11 @@ export function productionProgress(session: ProductionSession): ProductionProgre
     // The original physical amount remains in the vessel even while that line is
     // pending again, so the operator-facing vessel mass must sum every physical
     // floor rather than only lines whose current target is fully confirmed.
-    confirmedMassG: session.lines.reduce((sum, line) => sum + line.physicalAddedGrams, 0),
-    forecastFinalMassG: forecast.items.reduce(
-      (sum, item) => sum + (item.actual_grams ?? item.planned_grams),
-      0,
-    ),
-    originalTargetMassG: session.plannedInput.target_batch_grams,
+    confirmedMassG,
+    forecastFinalMassG,
+    originalTargetMassG,
+    remainingMassG: Math.max(0, forecastFinalMassG - confirmedMassG),
+    targetChanged: Math.abs(forecastFinalMassG - originalTargetMassG) > PRODUCTION_GRAMS_EPSILON,
     coherent: session.lines.length > 0 && confirmed.length === session.lines.length,
   };
 }
@@ -484,10 +497,7 @@ export function applyVerifiedRescueInput(
   candidate: RecipeInput,
 ): ProductionSession {
   requireActive(session);
-  const candidateBatchGrams = candidate.items.reduce(
-    (sum, item) => sum + item.planned_grams,
-    0,
-  );
+  const candidateBatchGrams = candidate.items.reduce((sum, item) => sum + item.planned_grams, 0);
   const authority = evaluateRecipeConstraintAuthority({
     // Rescue is authorized precisely because the future plan may increase or
     // reduce the original target. Validate the exact new composition against
@@ -495,8 +505,7 @@ export function applyVerifiedRescueInput(
     recipe: { ...candidate, target_batch_grams: candidateBatchGrams },
     snapshots: session.plannedComposition.behaviorSnapshots ?? {},
     module: 'BATCH_RESCUE',
-    technicalOnlyMainLineIds:
-      session.plannedComposition.ownerReviewGate?.technicalOnlyMainLineIds,
+    technicalOnlyMainLineIds: session.plannedComposition.ownerReviewGate?.technicalOnlyMainLineIds,
   });
   if (!authority.valid) {
     throw new Error(

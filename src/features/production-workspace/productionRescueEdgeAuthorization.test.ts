@@ -233,7 +233,9 @@ describe('trusted Production Rescue authorization', () => {
   it('regenerates and selects only the requested stable option', async () => {
     const result = await authorizeTrustedProductionRescue(OWNER, request(), dependencies());
     expect(result.stableOptionId).toBe('enlarge_batch');
-    expect(result.preview.title).toBe('Powiększ partię');
+    // §16/§17 — the trusted preview names the exact verified batch, never a
+    // generic direction and never a tidied-up round number.
+    expect(result.preview.title).toBe(`Powiększ do ${result.preview.finalMassG.toFixed(0)} g`);
   });
 
   it('rejects a no-longer-available stable option without storing authorization', async () => {

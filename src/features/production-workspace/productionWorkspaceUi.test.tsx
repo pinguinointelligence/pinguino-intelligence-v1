@@ -284,12 +284,10 @@ describe('Production workspace touch-first UI', () => {
       progress: null,
       prerequisite: null,
       practicalReady: true,
-      thermalMode: 'HEAT_CAPABLE',
       processReadiness: { status: 'READY', blockers: [], advisories: [] },
       source: session.source,
       plannedInput: input,
       startNewSession: vi.fn(),
-      setThermalMode: vi.fn(),
     } as unknown as ProductionWorkspaceView;
     const html = renderToStaticMarkup(
       <ProductionCockpit
@@ -310,7 +308,9 @@ describe('Production workspace touch-first UI', () => {
     expect(surface).toContain("mode={productionActive ? 'production' : 'recipe'}");
   });
 
-  it('offers the thermal note as optional and never blocks Start on it', () => {
+  // §1 OWNER RULE — Gellatti never selects the process mode. The hot/cold
+  // choice is gone from Production and must never be recreated.
+  it('never offers a thermal-mode choice before starting a batch', () => {
     const html = renderToStaticMarkup(
       <ProductionCockpit
         production={
@@ -319,12 +319,10 @@ describe('Production workspace touch-first UI', () => {
             progress: null,
             prerequisite: null,
             practicalReady: false,
-            thermalMode: null,
             processReadiness: { status: 'READY', blockers: [], advisories: [] },
             source: session.source,
             plannedInput: input,
             startNewSession: vi.fn(),
-            setThermalMode: vi.fn(),
           } as unknown as ProductionWorkspaceView
         }
         onOpenPreview={vi.fn()}
@@ -332,17 +330,18 @@ describe('Production workspace touch-first UI', () => {
         onReturnToRecipe={vi.fn()}
       />,
     );
-    expect(html).toContain('data-testid="production-thermal-mode"');
-    expect(html).toContain('value="COLD_ONLY"');
-    expect(html).toContain('value="HEAT_CAPABLE"');
-    expect(html).toContain('Sposób przygotowania bazy (opcjonalnie)');
-    // The old "Wybierz sposób przygotowania bazy" blocker is gone: an
-    // undeclared route is not a reason to withhold Production.
-    expect(html).not.toContain('Wybierz sposób przygotowania bazy');
+    expect(html).not.toContain('data-testid="production-thermal-mode"');
+    expect(html).not.toContain('value="COLD_ONLY"');
+    expect(html).not.toContain('value="HEAT_CAPABLE"');
+    expect(html).not.toContain('Sposób przygotowania bazy');
+    expect(html).not.toContain('Tylko na zimno');
+    expect(html).not.toContain('Możliwa obróbka cieplna');
     expect(html).not.toContain('data-testid="production-process-blocked"');
   });
 
-  it('shows bounded READY_WITH_INFO guidance without auto-starting', () => {
+  // §3 OWNER RULE — an ingredient whose process is simply UNKNOWN is not a
+  // Production event. Nothing is rendered; the fact stays under the `?`.
+  it('renders nothing for missing process information before start', () => {
     const start = vi.fn();
     const html = renderToStaticMarkup(
       <ProductionCockpit
@@ -352,7 +351,6 @@ describe('Production workspace touch-first UI', () => {
             progress: null,
             prerequisite: null,
             practicalReady: true,
-            thermalMode: 'COLD_ONLY',
             processReadiness: {
               status: 'READY_WITH_INFO',
               blockers: [],
@@ -371,7 +369,6 @@ describe('Production workspace touch-first UI', () => {
             source: session.source,
             plannedInput: input,
             startNewSession: start,
-            setThermalMode: vi.fn(),
           } as unknown as ProductionWorkspaceView
         }
         onOpenPreview={vi.fn()}
@@ -380,13 +377,14 @@ describe('Production workspace touch-first UI', () => {
       />,
     );
     expect(start).not.toHaveBeenCalled();
-    expect(html).toContain('data-testid="production-process-advisory"');
-    expect(html).toContain(input.items[0]!.ingredient.name);
+    expect(html).not.toContain('data-testid="production-process-advisory"');
+    expect(html).not.toContain('nie mamy informacji o obróbce');
     expect(html).toContain('data-testid="start-production-session"');
     expect(html).not.toMatch(/data-testid="start-production-session"[^>]*disabled/);
   });
 
-  it('labels an active run advisory as frozen run authority, not a new start decision', () => {
+  // §3 again, on an ACTIVE run: unknown process never clutters real work.
+  it('keeps an active batch free of unknown-process notices', () => {
     const forecast = assessProductionRescue(session);
     const html = renderToStaticMarkup(
       <ProductionCockpit
@@ -431,11 +429,11 @@ describe('Production workspace touch-first UI', () => {
       />,
     );
 
-    // Informational, never a readiness verdict: the product is named and the
-    // professional is pointed at the manufacturer's own instructions.
-    expect(html).toContain('data-testid="production-process-advisory"');
-    expect(html).toContain('Informacja o obróbce');
+    expect(html).not.toContain('data-testid="production-process-advisory"');
+    expect(html).not.toContain('nie mamy informacji o obróbce');
     expect(html).not.toContain('data-testid="production-process-blocked"');
+    // §60 — no speculative "W PRZYGOTOWANIU" placeholder in real production work.
+    expect(html).not.toContain('Brakuje składnika · automatyczne etapy');
   });
 
   it('opens an existing Preview without starting a new recalculation', () => {
@@ -501,9 +499,14 @@ describe('Production workspace touch-first UI', () => {
         onReturnToRecipe={vi.fn()}
       />,
     );
-    expect(html).toContain('Przewidywane dopasowanie partii');
-    expect(html).toContain('Ocena dotyczy przewidywanego składu');
+    // §51 SCORE TRUTH — every pre-completion figure names the PLAN it describes.
+    expect(html).toContain('Przewidywany wynik po zakończeniu planu');
+    expect(html).toContain('Przewidywany wynik po zakończeniu aktualnego planu');
     expect(html).toContain('0 / 6 składników');
+    // §22 LIVE MONITOR — vessel, current plan and what is still to be added.
+    expect(html).toContain('data-testid="production-vessel-mass"');
+    expect(html).toContain('data-testid="production-current-plan-mass"');
+    expect(html).toContain('data-testid="production-remaining-mass"');
     expect(html).not.toContain('Nutrition');
     expect(html).not.toContain('POD');
     expect(html).not.toContain('NPAC');

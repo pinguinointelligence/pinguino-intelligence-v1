@@ -360,7 +360,9 @@ describe('Production trusted Rescue runtime races', () => {
     expect(executable.items).toHaveLength(6);
     expect(executable.items.every((item) => item.id.startsWith('new-recipe-'))).toBe(true);
     expect(
-      executable.items.every((item) => canonicalIngredientId(item.ingredient).startsWith('PI-ING-')),
+      executable.items.every((item) =>
+        canonicalIngredientId(item.ingredient).startsWith('PI-ING-'),
+      ),
     ).toBe(true);
     const snapshots = productBehaviorTestSnapshots(executable);
     const firstLineId = executable.items[0]!.id;
@@ -385,7 +387,6 @@ describe('Production trusted Rescue runtime races', () => {
       practicalRecipeAudit: readPracticalRecipeAudit(
         attachPracticalRecipeAudit(loadedExecutable, loadedExecutable, '2026-08-19T10:00:00.000Z'),
       ),
-      productionThermalMode: 'HEAT_CAPABLE',
       dirty: false,
     });
     const startedRun: ProductionRun = {
@@ -489,7 +490,6 @@ describe('Production trusted Rescue runtime races', () => {
       practicalRecipeAudit: readPracticalRecipeAudit(
         attachPracticalRecipeAudit(loadedExecutable, loadedExecutable, '2026-08-19T10:00:00.000Z'),
       ),
-      productionThermalMode: 'COLD_ONLY',
       dirty: false,
     });
     const advisory = {
@@ -548,25 +548,20 @@ describe('Production trusted Rescue runtime races', () => {
     expect(view?.prerequisite).toBeNull();
     expect(view?.processReadiness.status).toBe('READY_WITH_INFO');
     expect(view?.practicalReady).toBe(true);
-    expect(mocks.validateRecipeBehaviorOnServer).toHaveBeenCalledWith(
-      expect.objectContaining({ thermalMode: 'COLD_ONLY' }),
+    // §1 OWNER RULE — no thermal route is ever sent, held or offered.
+    expect(mocks.validateRecipeBehaviorOnServer).not.toHaveBeenCalledWith(
+      expect.objectContaining({ thermalMode: expect.anything() }),
     );
-
-    act(() => view!.setThermalMode('HEAT_CAPABLE'));
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-    expect(useRecipeStore.getState().productionThermalMode).toBe('HEAT_CAPABLE');
-    expect(mocks.validateRecipeBehaviorOnServer).toHaveBeenLastCalledWith(
-      expect.objectContaining({ thermalMode: 'HEAT_CAPABLE' }),
-    );
+    expect(view).not.toHaveProperty('setThermalMode');
+    expect(view).not.toHaveProperty('thermalMode');
 
     await act(async () => view!.startNewSession());
 
     expect(repository.startRun).toHaveBeenCalledTimes(1);
-    expect(repository.startRun).toHaveBeenCalledWith(
-      expect.objectContaining({ meta: { thermalMode: 'HEAT_CAPABLE' } }),
+    expect(repository.startRun).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        meta: expect.objectContaining({ thermalMode: expect.anything() }),
+      }),
     );
     expect(view?.processReadiness.status).toBe('READY_WITH_INFO');
   });
@@ -592,7 +587,6 @@ describe('Production trusted Rescue runtime races', () => {
       practicalRecipeAudit: readPracticalRecipeAudit(
         attachPracticalRecipeAudit(loadedExecutable, loadedExecutable, '2026-08-19T10:00:00.000Z'),
       ),
-      productionThermalMode: 'COLD_ONLY',
       dirty: false,
     });
     const repository = {
@@ -660,7 +654,6 @@ describe('Production trusted Rescue runtime races', () => {
         practicalAudit,
         '5d5eae9c-0a8e-41d8-95ba-7a4d265461a2',
       );
-    useRecipeStore.getState().setProductionThermalMode('HEAT_CAPABLE');
     expect(Object.keys(useRecipeStore.getState().productBehaviorSnapshots)).toHaveLength(
       loadedInput.items.length,
     );

@@ -65,6 +65,13 @@ export interface ProductionRescueAssessment {
   reason: string | null;
 }
 
+/**
+ * OWNER RULE §17 — a batch size is spoken exactly as the Engine verified it.
+ * 1086 g is reported as 1086 g; it is never rounded up to a tidier 1100 g.
+ */
+export const formatBatchMassG = (grams: number): string =>
+  Number.isInteger(grams) ? grams.toFixed(0) : grams.toFixed(1).replace(/\.0$/, '');
+
 const totalFor = (input: RecipeInput): number =>
   input.items.reduce((sum, item) => sum + (item.actual_grams ?? item.planned_grams), 0);
 
@@ -301,8 +308,13 @@ function instructionsFor(
 
 function bestOption(
   id: Exclude<ProductionRescueOptionId, 'leave_as_is'>,
-  title: string,
-  explanation: string,
+  /**
+   * OWNER RULE §14/§16/§17 — the operator is told the exact verified mass, not
+   * a generic direction. The batch size is part of the decision, so it is part
+   * of the CTA. Nothing is rounded to a "nice" number for presentation.
+   */
+  title: (finalMassG: number) => string,
+  explanation: (finalMassG: number) => string,
   session: ProductionSession,
   forecastInput: RecipeInput,
   context: 'planning' | 'actual_batch',
@@ -340,8 +352,8 @@ function bestOption(
     const score = recipeFitForInput(candidateInput, result);
     candidates.push({
       id,
-      title,
-      explanation,
+      title: title(mass),
+      explanation: explanation(mass),
       finalMassG: mass,
       scoreDisplay: score.display,
       exactCandidateInput,
@@ -390,8 +402,8 @@ export function assessProductionRescue(session: ProductionSession): ProductionRe
   const originalTarget = session.plannedInput.target_batch_grams;
   const keep = bestOption(
     'keep_original_batch',
-    'Skoryguj pozostałe',
-    'Zmienia wyłącznie to, czego jeszcze nie potwierdzono, i zachowuje docelową masę partii.',
+    (mass) => `Napraw do ${formatBatchMassG(mass)} g`,
+    () => 'Zmienia wyłącznie to, czego jeszcze nie potwierdzono, i zachowuje docelową masę partii.',
     session,
     forecastInput,
     'planning',
@@ -401,8 +413,10 @@ export function assessProductionRescue(session: ProductionSession): ProductionRe
 
   const enlarge = bestOption(
     'enlarge_batch',
-    'Powiększ partię',
-    'Pokazuje najmniejszą znalezioną, zweryfikowaną przez Engine większą partię.',
+    (mass) => `Powiększ do ${formatBatchMassG(mass)} g`,
+    (mass) =>
+      `Najmniejsza partia powyżej ${formatBatchMassG(originalTarget)} g, którą Engine potwierdził ` +
+      `dla tego, co jest już w naczyniu: ${formatBatchMassG(mass)} g.`,
     session,
     forecastInput,
     'actual_batch',
@@ -423,7 +437,7 @@ export function assessProductionRescue(session: ProductionSession): ProductionRe
       const candidateInput = practical.audit.executableInput;
       options.push({
         id: 'leave_as_is',
-        title: 'Zostaw tak',
+        title: 'Kontynuuj bez korekty',
         explanation:
           'Przewidywana gotowa partia pozostaje w zatwierdzonych zakresach technologicznych.',
         finalMassG: practical.audit.executableResult.total_batch_g,
