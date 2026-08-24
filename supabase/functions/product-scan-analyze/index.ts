@@ -242,6 +242,8 @@ Deno.serve(async (request) => {
     const identity = objectValue(priorResult.identity);
     let facts: Record<string, unknown>[] = [];
     let providerError: string | null = null;
+    /** What the provider ACTUALLY did — a cache hit costs nothing and must say so. */
+    let providerWebCalls = 0;
     try {
       // The narrowest dedicated server-side source path this repository has, called
       // with its OWN flag, its OWN caps and its OWN source-authority classification.
@@ -278,6 +280,8 @@ Deno.serve(async (request) => {
       if (!response.ok) throw new Error('lookup_provider_failed');
       facts = Array.isArray(payload.facts) ? payload.facts.map(objectValue) : [];
       providerError = typeof payload.error === 'string' ? payload.error : null;
+      providerWebCalls =
+        payload.cacheHit === true ? 0 : Math.max(0, Math.min(3, Number(payload.webCalls ?? 1)));
     } catch {
       providerError = 'lookup_provider_unavailable';
     }
@@ -308,7 +312,7 @@ Deno.serve(async (request) => {
             highRiskAuthorityRequired: lookupValidation.highRiskAuthorityRequired,
           },
           p_overlay_state: lookupValidation.overlayState,
-          p_cost_usd: 0.01,
+          p_cost_usd: providerWebCalls * 0.01,
         },
       );
       if (lookupCompleteError) return json({ error: 'scanner_result_persistence_failed' }, 503);
@@ -323,8 +327,8 @@ Deno.serve(async (request) => {
       missingCriticalFields: lookupValidation?.missingCriticalFields ?? [],
       usage: {
         visionCalls: Number(existingSession?.vision_calls ?? 0),
-        webCalls: 1,
-        estimatedCostUsd: merged ? 0.01 : 0,
+        webCalls: providerWebCalls,
+        estimatedCostUsd: providerWebCalls * 0.01,
       },
     });
   }
