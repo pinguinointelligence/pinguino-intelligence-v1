@@ -1,0 +1,1801 @@
+recipe_id,flavour_class,temperature,mode,sweetness,hardness,direction_status,delivered_pod,delivered_npac,zero_gram,total_g,runtime_ms
+R01,oat vanilla,-11,optimal,-2,-2,NEAREST,28.76,49.73,0,1000,23
+R01,oat vanilla,-11,optimal,-2,-1,NEAREST,27.94,47.27,0,1000,12
+R01,oat vanilla,-11,optimal,-2,0,NEAREST,24.90,40.08,0,1000,56
+R01,oat vanilla,-11,optimal,-2,1,NEAREST,23.64,37.59,0,1000,29
+R01,oat vanilla,-11,optimal,-2,2,NEAREST,22.47,35.14,0,1000,28
+R01,oat vanilla,-11,optimal,-1,-2,NEAREST,28.76,49.73,0,1000,20
+R01,oat vanilla,-11,optimal,-1,-1,NEAREST,27.94,47.27,0,1000,33
+R01,oat vanilla,-11,optimal,-1,0,NEAREST,24.69,39.99,0,1000,54
+R01,oat vanilla,-11,optimal,-1,1,NEAREST,23.64,37.59,0,1000,25
+R01,oat vanilla,-11,optimal,-1,2,NEAREST,22.47,35.14,0,1000,32
+R01,oat vanilla,-11,optimal,0,-2,NEAREST,28.76,49.73,0,1000,21
+R01,oat vanilla,-11,optimal,0,-1,NEAREST,27.94,47.27,0,1000,19
+R01,oat vanilla,-11,optimal,0,0,NEAREST,20.29,30.80,0,1000,39
+R01,oat vanilla,-11,optimal,0,1,NEAREST,23.64,37.59,0,1000,33
+R01,oat vanilla,-11,optimal,0,2,NEAREST,22.47,35.14,0,1000,48
+R01,oat vanilla,-11,optimal,1,-2,NEAREST,28.76,49.73,0,1000,43
+R01,oat vanilla,-11,optimal,1,-1,NEAREST,27.84,47.10,0,1000,50
+R01,oat vanilla,-11,optimal,1,0,NEAREST,22.61,40.05,0,1000,6
+R01,oat vanilla,-11,optimal,1,1,NEAREST,22.58,37.47,0,1000,47
+R01,oat vanilla,-11,optimal,1,2,ACHIEVED,22.57,35.00,0,1000,5
+R01,oat vanilla,-11,optimal,2,-2,NEAREST,24.96,40.53,0,1000,58
+R01,oat vanilla,-11,optimal,2,-1,NEAREST,24.96,40.53,0,1000,194
+R01,oat vanilla,-11,optimal,2,0,ACHIEVED,24.90,40.17,0,1000,16
+R01,oat vanilla,-11,optimal,2,1,ACHIEVED,23.94,37.87,0,1000,1
+R01,oat vanilla,-11,optimal,2,2,ACHIEVED,22.85,36.49,0,1000,8
+R02,coconut,-11,optimal,-2,-2,NEAREST,28.89,49.69,0,1000,23
+R02,coconut,-11,optimal,-2,-1,NEAREST,27.67,46.99,0,1000,24
+R02,coconut,-11,optimal,-2,0,NEAREST,24.70,40.00,0,1000,74
+R02,coconut,-11,optimal,-2,1,ACHIEVED,15.40,37.79,0,1000,55
+R02,coconut,-11,optimal,-2,2,NEAREST,22.43,35.05,0,1000,44
+R02,coconut,-11,optimal,-1,-2,NEAREST,28.89,49.69,0,1000,14
+R02,coconut,-11,optimal,-1,-1,NEAREST,27.67,46.99,0,1000,14
+R02,coconut,-11,optimal,-1,0,NEAREST,24.70,40.00,0,1000,65
+R02,coconut,-11,optimal,-1,1,ACHIEVED,17.55,39.45,0,1000,42
+R02,coconut,-11,optimal,-1,2,NEAREST,22.43,35.05,0,1000,46
+R02,coconut,-11,optimal,0,-2,NEAREST,28.89,49.69,0,1000,27
+R02,coconut,-11,optimal,0,-1,NEAREST,27.67,46.99,0,1000,30
+R02,coconut,-11,optimal,0,0,NEAREST,20.02,39.66,0,1000,59
+R02,coconut,-11,optimal,0,1,ACHIEVED,20.02,39.66,0,1000,32
+R02,coconut,-11,optimal,0,2,NEAREST,22.43,35.06,0,1000,65
+R02,coconut,-11,optimal,1,-2,NEAREST,22.58,36.05,0,1000,34
+R02,coconut,-11,optimal,1,-1,NEAREST,27.67,46.99,0,1000,30
+R02,coconut,-11,optimal,1,0,NEAREST,22.58,36.05,0,1000,24
+R02,coconut,-11,optimal,1,1,NEAREST,22.55,37.40,0,1000,7
+R02,coconut,-11,optimal,1,2,ACHIEVED,22.43,35.06,0,1000,8
+R02,coconut,-11,optimal,2,-2,NEAREST,24.96,40.45,0,1000,54
+R02,coconut,-11,optimal,2,-1,NEAREST,24.96,40.45,0,1000,62
+R02,coconut,-11,optimal,2,0,ACHIEVED,24.97,40.13,0,1000,14
+R02,coconut,-11,optimal,2,1,ACHIEVED,24.95,38.30,0,1000,4
+R02,coconut,-11,optimal,2,2,ACHIEVED,24.03,36.92,0,1000,4
+R03,dark cocoa,-11,optimal,-2,-2,NEAREST,24.21,41.92,0,1000,143
+R03,dark cocoa,-11,optimal,-2,-1,NEAREST,24.21,41.92,0,1000,106
+R03,dark cocoa,-11,optimal,-2,0,NEAREST,24.40,40.21,0,1000,37
+R03,dark cocoa,-11,optimal,-2,1,NEAREST,22.37,37.53,0,1000,44
+R03,dark cocoa,-11,optimal,-2,2,NEAREST,21.28,35.02,0,1000,66
+R03,dark cocoa,-11,optimal,-1,-2,NEAREST,24.21,41.92,0,1000,144
+R03,dark cocoa,-11,optimal,-1,-1,NEAREST,24.21,41.92,0,1000,150
+R03,dark cocoa,-11,optimal,-1,0,NEAREST,24.40,40.21,0,1000,42
+R03,dark cocoa,-11,optimal,-1,1,NEAREST,22.37,37.53,0,1000,58
+R03,dark cocoa,-11,optimal,-1,2,NEAREST,21.28,35.02,0,1000,58
+R03,dark cocoa,-11,optimal,0,-2,NEAREST,24.21,41.92,0,1000,78
+R03,dark cocoa,-11,optimal,0,-1,NEAREST,24.21,41.92,0,1000,127
+R03,dark cocoa,-11,optimal,0,0,NEAREST,24.40,40.21,0,1000,59
+R03,dark cocoa,-11,optimal,0,1,NEAREST,22.37,37.53,0,1000,59
+R03,dark cocoa,-11,optimal,0,2,NEAREST,21.29,35.08,0,1000,65
+R03,dark cocoa,-11,optimal,1,-2,NEAREST,22.59,39.42,0,1000,56
+R03,dark cocoa,-11,optimal,1,-1,NEAREST,22.59,39.42,0,1000,70
+R03,dark cocoa,-11,optimal,1,0,NEAREST,22.64,39.61,0,1000,92
+R03,dark cocoa,-11,optimal,1,1,ACHIEVED,22.57,37.55,0,1000,2
+R03,dark cocoa,-11,optimal,1,2,ACHIEVED,21.83,36.16,0,1000,2
+R03,dark cocoa,-11,optimal,2,-2,NEAREST,24.41,41.94,0,1000,37
+R03,dark cocoa,-11,optimal,2,-1,NEAREST,24.41,41.94,0,1000,26
+R03,dark cocoa,-11,optimal,2,0,ACHIEVED,24.40,40.21,0,1000,0
+R03,dark cocoa,-11,optimal,2,1,ACHIEVED,23.66,38.33,0,1000,2
+R03,dark cocoa,-11,optimal,2,2,ACHIEVED,23.12,36.93,0,1000,2
+R04,chocolate,-11,optimal,-2,-2,NEAREST,23.58,41.92,0,1000,118
+R04,chocolate,-11,optimal,-2,-1,NEAREST,23.58,41.92,0,1000,227
+R04,chocolate,-11,optimal,-2,0,NEAREST,22.55,40.01,0,1000,16
+R04,chocolate,-11,optimal,-2,1,NEAREST,21.52,37.60,0,1000,42
+R04,chocolate,-11,optimal,-2,2,ACHIEVED,15.09,37.25,0,1000,52
+R04,chocolate,-11,optimal,-1,-2,NEAREST,17.73,30.02,0,1000,17
+R04,chocolate,-11,optimal,-1,-1,NEAREST,17.73,30.02,0,1000,13
+R04,chocolate,-11,optimal,-1,0,NEAREST,17.82,28.89,0,1000,20
+R04,chocolate,-11,optimal,-1,1,NEAREST,17.82,28.96,0,1000,24
+R04,chocolate,-11,optimal,-1,2,NEAREST,17.85,35.20,0,1000,4
+R04,chocolate,-11,optimal,0,-2,NEAREST,20.12,34.49,0,1000,37
+R04,chocolate,-11,optimal,0,-1,NEAREST,20.12,34.49,0,1000,32
+R04,chocolate,-11,optimal,0,0,NEAREST,20.26,34.24,0,1000,41
+R04,chocolate,-11,optimal,0,1,NEAREST,21.52,37.60,0,1000,37
+R04,chocolate,-11,optimal,0,2,NEAREST,20.39,35.20,0,1000,72
+R04,chocolate,-11,optimal,1,-2,NEAREST,22.60,40.11,0,1000,19
+R04,chocolate,-11,optimal,1,-1,NEAREST,22.60,40.11,0,1000,40
+R04,chocolate,-11,optimal,1,0,ACHIEVED,22.55,40.01,0,1000,2
+R04,chocolate,-11,optimal,1,1,ACHIEVED,22.41,37.55,0,1000,1
+R04,chocolate,-11,optimal,1,2,ACHIEVED,21.43,36.03,0,1000,0
+R04,chocolate,-11,optimal,2,-2,NEAREST,24.30,41.92,0,1000,23
+R04,chocolate,-11,optimal,2,-1,NEAREST,24.49,41.81,0,1000,26
+R04,chocolate,-11,optimal,2,0,ACHIEVED,22.78,40.13,0,1000,5
+R04,chocolate,-11,optimal,2,1,ACHIEVED,23.16,37.93,0,1000,1
+R04,chocolate,-11,optimal,2,2,ACHIEVED,23.20,37.47,0,1000,1
+R05,strawberry,-11,optimal,-2,-2,NEAREST,21.08,35.00,0,1000,25041
+R05,strawberry,-11,optimal,-2,-1,NEAREST,21.08,35.00,0,1000,20161
+R05,strawberry,-11,optimal,-2,0,ACHIEVED,15.17,40.04,0,1000,46
+R05,strawberry,-11,optimal,-2,1,ACHIEVED,14.83,37.77,0,1000,32
+R05,strawberry,-11,optimal,-2,2,ACHIEVED,15.18,35.02,0,1000,23
+R05,strawberry,-11,optimal,-1,-2,NEAREST,21.08,35.00,0,1000,19556
+R05,strawberry,-11,optimal,-1,-1,NEAREST,21.08,35.00,0,1000,39041
+R05,strawberry,-11,optimal,-1,0,ACHIEVED,17.56,40.04,0,1000,43
+R05,strawberry,-11,optimal,-1,1,ACHIEVED,17.28,38.02,0,1000,31
+R05,strawberry,-11,optimal,-1,2,ACHIEVED,17.57,35.02,0,1000,30
+R05,strawberry,-11,optimal,0,-2,NEAREST,21.08,35.00,0,1000,57670
+R05,strawberry,-11,optimal,0,-1,NEAREST,21.08,35.00,0,1000,33265
+R05,strawberry,-11,optimal,0,0,ACHIEVED,19.94,40.04,0,1000,96
+R05,strawberry,-11,optimal,0,1,ACHIEVED,19.67,38.02,0,1000,28
+R05,strawberry,-11,optimal,0,2,ACHIEVED,19.95,35.02,0,1000,14
+R05,strawberry,-11,optimal,1,-2,NEAREST,21.08,35.00,0,1000,48233
+R05,strawberry,-11,optimal,1,-1,NEAREST,21.08,35.00,0,1000,41613
+R05,strawberry,-11,optimal,1,0,ACHIEVED,22.20,40.00,0,1000,38
+R05,strawberry,-11,optimal,1,1,ACHIEVED,22.05,38.02,0,1000,43
+R05,strawberry,-11,optimal,1,2,ACHIEVED,21.08,35.00,0,1000,20
+R05,strawberry,-11,optimal,2,-2,NEAREST,21.08,35.00,0,1000,41075
+R05,strawberry,-11,optimal,2,-1,NEAREST,21.08,35.00,0,1000,29513
+R05,strawberry,-11,optimal,2,0,ACHIEVED,24.58,40.00,0,1000,11
+R05,strawberry,-11,optimal,2,1,ACHIEVED,22.88,37.57,0,1000,10
+R05,strawberry,-11,optimal,2,2,ACHIEVED,23.10,37.31,0,1000,4
+R06,soy vanilla,-11,optimal,-2,-2,NEAREST,28.95,49.85,0,1000,16
+R06,soy vanilla,-11,optimal,-2,-1,NEAREST,27.70,47.00,0,1000,20
+R06,soy vanilla,-11,optimal,-2,0,NEAREST,24.73,40.01,0,1000,40
+R06,soy vanilla,-11,optimal,-2,1,NEAREST,23.62,37.53,0,1000,45
+R06,soy vanilla,-11,optimal,-2,2,NEAREST,22.51,35.16,0,1000,45
+R06,soy vanilla,-11,optimal,-1,-2,NEAREST,28.95,49.85,0,1000,11
+R06,soy vanilla,-11,optimal,-1,-1,NEAREST,27.70,47.00,0,1000,13
+R06,soy vanilla,-11,optimal,-1,0,NEAREST,24.73,40.01,0,1000,51
+R06,soy vanilla,-11,optimal,-1,1,NEAREST,23.62,37.53,0,1000,42
+R06,soy vanilla,-11,optimal,-1,2,NEAREST,22.51,35.16,0,1000,47
+R06,soy vanilla,-11,optimal,0,-2,NEAREST,28.75,49.50,0,1000,16
+R06,soy vanilla,-11,optimal,0,-1,NEAREST,27.70,47.00,0,1000,9
+R06,soy vanilla,-11,optimal,0,0,NEAREST,20.26,30.63,0,1000,34
+R06,soy vanilla,-11,optimal,0,1,NEAREST,23.62,37.53,0,1000,44
+R06,soy vanilla,-11,optimal,0,2,NEAREST,22.51,35.16,0,1000,46
+R06,soy vanilla,-11,optimal,1,-2,NEAREST,28.75,49.50,0,1000,45
+R06,soy vanilla,-11,optimal,1,-1,NEAREST,27.70,47.00,0,1000,40
+R06,soy vanilla,-11,optimal,1,0,NEAREST,22.54,34.62,0,1000,21
+R06,soy vanilla,-11,optimal,1,1,NEAREST,22.59,37.47,0,1000,7
+R06,soy vanilla,-11,optimal,1,2,ACHIEVED,22.59,35.12,0,1000,1
+R06,soy vanilla,-11,optimal,2,-2,NEAREST,24.94,40.55,0,1000,76
+R06,soy vanilla,-11,optimal,2,-1,NEAREST,24.94,40.55,0,1000,62
+R06,soy vanilla,-11,optimal,2,0,ACHIEVED,24.93,40.20,0,1000,11
+R06,soy vanilla,-11,optimal,2,1,ACHIEVED,24.50,37.94,0,1000,1
+R06,soy vanilla,-11,optimal,2,2,ACHIEVED,23.82,36.30,0,1000,0
+R07,raspberry / berry,-11,optimal,-2,-2,NEAREST,20.54,35.03,0,1000,42263
+R07,raspberry / berry,-11,optimal,-2,-1,NEAREST,20.54,35.03,0,1000,21667
+R07,raspberry / berry,-11,optimal,-2,0,ACHIEVED,15.18,40.10,0,1000,118
+R07,raspberry / berry,-11,optimal,-2,1,ACHIEVED,14.51,37.51,0,1000,30
+R07,raspberry / berry,-11,optimal,-2,2,ACHIEVED,14.93,35.01,0,1000,33
+R07,raspberry / berry,-11,optimal,-1,-2,NEAREST,20.54,35.03,0,1000,65524
+R07,raspberry / berry,-11,optimal,-1,-1,NEAREST,20.54,35.03,0,1000,92087
+R07,raspberry / berry,-11,optimal,-1,0,ACHIEVED,17.43,40.07,0,1000,115
+R07,raspberry / berry,-11,optimal,-1,1,ACHIEVED,17.03,38.01,0,1000,143
+R07,raspberry / berry,-11,optimal,-1,2,ACHIEVED,17.39,35.26,0,1000,46
+R07,raspberry / berry,-11,optimal,0,-2,NEAREST,20.54,35.03,0,1000,68524
+R07,raspberry / berry,-11,optimal,0,-1,NEAREST,20.54,35.03,0,1000,46078
+R07,raspberry / berry,-11,optimal,0,0,ACHIEVED,19.66,40.14,0,1000,42
+R07,raspberry / berry,-11,optimal,0,1,ACHIEVED,20.11,37.53,0,1000,33
+R07,raspberry / berry,-11,optimal,0,2,ACHIEVED,19.41,35.04,0,1000,13
+R07,raspberry / berry,-11,optimal,1,-2,NEAREST,20.54,35.03,0,1000,53781
+R07,raspberry / berry,-11,optimal,1,-1,NEAREST,20.54,35.03,0,1000,17840
+R07,raspberry / berry,-11,optimal,1,0,ACHIEVED,22.21,40.53,0,1000,51
+R07,raspberry / berry,-11,optimal,1,1,ACHIEVED,22.44,37.74,0,1000,4
+R07,raspberry / berry,-11,optimal,1,2,ACHIEVED,20.54,35.03,0,1000,4
+R07,raspberry / berry,-11,optimal,2,-2,NEAREST,20.54,35.03,0,1000,32593
+R07,raspberry / berry,-11,optimal,2,-1,NEAREST,20.54,35.03,0,1000,25894
+R07,raspberry / berry,-11,optimal,2,0,ACHIEVED,22.91,40.04,0,1000,7
+R07,raspberry / berry,-11,optimal,2,1,ACHIEVED,22.62,37.58,0,1000,6
+R07,raspberry / berry,-11,optimal,2,2,ACHIEVED,22.61,37.13,0,1000,14
+R08,banana,-11,optimal,-2,-2,NEAREST,19.97,36.83,0,1000,45128
+R08,banana,-11,optimal,-2,-1,NEAREST,19.97,36.83,0,1000,49079
+R08,banana,-11,optimal,-2,0,ACHIEVED,15.39,40.17,0,1000,634
+R08,banana,-11,optimal,-2,1,ACHIEVED,15.38,37.51,0,1000,1291
+R08,banana,-11,optimal,-2,2,ACHIEVED,15.40,35.01,0,1000,720
+R08,banana,-11,optimal,-1,-2,NEAREST,19.97,36.83,0,1000,87038
+R08,banana,-11,optimal,-1,-1,NEAREST,19.97,36.83,0,1000,44544
+R08,banana,-11,optimal,-1,0,ACHIEVED,17.79,40.07,0,1000,765
+R08,banana,-11,optimal,-1,1,ACHIEVED,17.80,37.50,0,1000,342
+R08,banana,-11,optimal,-1,2,ACHIEVED,17.80,35.12,0,1000,354
+R08,banana,-11,optimal,0,-2,NEAREST,19.97,36.83,0,1000,68743
+R08,banana,-11,optimal,0,-1,NEAREST,19.97,36.83,0,1000,55815
+R08,banana,-11,optimal,0,0,ACHIEVED,20.19,40.00,0,1000,58
+R08,banana,-11,optimal,0,1,ACHIEVED,20.17,37.57,0,1000,69
+R08,banana,-11,optimal,0,2,ACHIEVED,19.97,36.83,0,1000,8
+R08,banana,-11,optimal,1,-2,NEAREST,19.97,36.83,0,1000,74512
+R08,banana,-11,optimal,1,-1,NEAREST,19.97,36.83,0,1000,57825
+R08,banana,-11,optimal,1,0,ACHIEVED,22.56,40.09,0,1000,62
+R08,banana,-11,optimal,1,1,ACHIEVED,20.47,37.54,0,1000,10
+R08,banana,-11,optimal,1,2,ACHIEVED,20.20,37.01,0,1000,16
+R08,banana,-11,optimal,2,-2,NEAREST,19.97,36.83,0,1000,60047
+R08,banana,-11,optimal,2,-1,NEAREST,19.97,36.83,0,1000,55510
+R08,banana,-11,optimal,2,0,ACHIEVED,22.60,40.44,0,1000,79
+R08,banana,-11,optimal,2,1,ACHIEVED,22.61,39.99,0,1000,33
+R08,banana,-11,optimal,2,2,ACHIEVED,22.62,37.49,0,1000,540
+R09,mango / tropical,-11,optimal,-2,-2,NEAREST,22.35,35.79,0,1000,17580
+R09,mango / tropical,-11,optimal,-2,-1,NEAREST,22.35,35.79,0,1000,19090
+R09,mango / tropical,-11,optimal,-2,0,ACHIEVED,15.40,40.01,0,1000,32
+R09,mango / tropical,-11,optimal,-2,1,ACHIEVED,15.40,37.60,0,1000,30
+R09,mango / tropical,-11,optimal,-2,2,ACHIEVED,15.39,35.06,0,1000,23
+R09,mango / tropical,-11,optimal,-1,-2,NEAREST,22.35,35.79,0,1000,19439
+R09,mango / tropical,-11,optimal,-1,-1,NEAREST,22.35,35.79,0,1000,18932
+R09,mango / tropical,-11,optimal,-1,0,ACHIEVED,17.77,40.01,0,1000,19
+R09,mango / tropical,-11,optimal,-1,1,ACHIEVED,17.80,37.66,0,1000,23
+R09,mango / tropical,-11,optimal,-1,2,ACHIEVED,17.57,35.06,0,1000,14
+R09,mango / tropical,-11,optimal,0,-2,NEAREST,22.35,35.79,0,1000,22471
+R09,mango / tropical,-11,optimal,0,-1,NEAREST,22.35,35.79,0,1000,23865
+R09,mango / tropical,-11,optimal,0,0,ACHIEVED,19.39,40.01,0,1000,57
+R09,mango / tropical,-11,optimal,0,1,ACHIEVED,19.68,37.60,0,1000,15
+R09,mango / tropical,-11,optimal,0,2,ACHIEVED,19.86,35.05,0,1000,36
+R09,mango / tropical,-11,optimal,1,-2,NEAREST,22.35,35.79,0,1000,31934
+R09,mango / tropical,-11,optimal,1,-1,NEAREST,22.35,35.79,0,1000,27248
+R09,mango / tropical,-11,optimal,1,0,ACHIEVED,21.79,40.05,0,1000,12
+R09,mango / tropical,-11,optimal,1,1,ACHIEVED,21.66,37.62,0,1000,34
+R09,mango / tropical,-11,optimal,1,2,ACHIEVED,22.35,35.79,0,1000,40
+R09,mango / tropical,-11,optimal,2,-2,NEAREST,22.35,35.79,0,1000,23578
+R09,mango / tropical,-11,optimal,2,-1,NEAREST,22.35,35.79,0,1000,22977
+R09,mango / tropical,-11,optimal,2,0,ACHIEVED,22.68,40.15,0,1000,8
+R09,mango / tropical,-11,optimal,2,1,ACHIEVED,22.64,37.54,0,1000,5
+R09,mango / tropical,-11,optimal,2,2,ACHIEVED,22.62,35.78,0,1000,7
+R10,lemon / citrus,-11,optimal,-2,-2,NEAREST,23.86,49.47,0,1000,58
+R10,lemon / citrus,-11,optimal,-2,-1,NEAREST,21.21,46.94,0,1000,36
+R10,lemon / citrus,-11,optimal,-2,0,ACHIEVED,14.82,40.28,0,1000,12
+R10,lemon / citrus,-11,optimal,-2,1,ACHIEVED,15.40,38.20,0,1000,23
+R10,lemon / citrus,-11,optimal,-2,2,ACHIEVED,15.39,35.23,0,1000,13
+R10,lemon / citrus,-11,optimal,-1,-2,NEAREST,17.18,41.73,0,1000,51
+R10,lemon / citrus,-11,optimal,-1,-1,ACHIEVED,15.94,47.08,0,1000,18
+R10,lemon / citrus,-11,optimal,-1,0,ACHIEVED,15.86,40.71,0,1000,12
+R10,lemon / citrus,-11,optimal,-1,1,NEAREST,17.80,37.67,0,1000,5
+R10,lemon / citrus,-11,optimal,-1,2,ACHIEVED,17.80,35.21,0,1000,5
+R10,lemon / citrus,-11,optimal,0,-2,NEAREST,19.96,41.87,0,1000,39
+R10,lemon / citrus,-11,optimal,0,-1,NEAREST,18.67,46.82,0,1000,17
+R10,lemon / citrus,-11,optimal,0,0,ACHIEVED,20.09,40.08,0,1000,1
+R10,lemon / citrus,-11,optimal,0,1,ACHIEVED,20.20,37.51,0,1000,1
+R10,lemon / citrus,-11,optimal,0,2,ACHIEVED,19.86,37.19,0,1000,1
+R10,lemon / citrus,-11,optimal,1,-2,NEAREST,20.93,41.75,0,1000,14
+R10,lemon / citrus,-11,optimal,1,-1,ACHIEVED,22.35,47.07,0,1000,3
+R10,lemon / citrus,-11,optimal,1,0,ACHIEVED,21.59,40.69,0,1000,1
+R10,lemon / citrus,-11,optimal,1,1,ACHIEVED,21.19,39.60,0,1000,1
+R10,lemon / citrus,-11,optimal,1,2,ACHIEVED,20.26,37.23,0,1000,1
+R10,lemon / citrus,-11,optimal,2,-2,ACHIEVED,23.47,49.54,0,1000,2
+R10,lemon / citrus,-11,optimal,2,-1,NEAREST,24.32,46.89,0,1000,2
+R10,lemon / citrus,-11,optimal,2,0,ACHIEVED,23.30,41.93,0,1000,1
+R10,lemon / citrus,-11,optimal,2,1,ACHIEVED,22.66,38.01,0,1000,14
+R10,lemon / citrus,-11,optimal,2,2,ACHIEVED,22.67,35.97,0,1000,11
+R11,coffee,-11,optimal,-2,-2,NEAREST,14.93,41.48,0,1000,68
+R11,coffee,-11,optimal,-2,-1,NEAREST,14.93,41.48,0,1000,101
+R11,coffee,-11,optimal,-2,0,ACHIEVED,14.93,41.48,0,1000,13
+R11,coffee,-11,optimal,-2,1,ACHIEVED,15.34,39.96,0,1000,24
+R11,coffee,-11,optimal,-2,2,ACHIEVED,15.18,35.07,0,1000,8
+R11,coffee,-11,optimal,-1,-2,NEAREST,17.41,41.07,0,1000,55
+R11,coffee,-11,optimal,-1,-1,NEAREST,17.41,41.07,0,1000,90
+R11,coffee,-11,optimal,-1,0,ACHIEVED,17.41,41.07,0,1000,16
+R11,coffee,-11,optimal,-1,1,ACHIEVED,17.64,37.91,0,1000,3
+R11,coffee,-11,optimal,-1,2,ACHIEVED,17.11,35.19,0,1000,7
+R11,coffee,-11,optimal,0,-2,NEAREST,20.17,40.16,0,1000,71
+R11,coffee,-11,optimal,0,-1,NEAREST,20.17,40.16,0,1000,103
+R11,coffee,-11,optimal,0,0,ACHIEVED,20.17,40.16,0,1000,1
+R11,coffee,-11,optimal,0,1,ACHIEVED,20.07,37.52,0,1000,1
+R11,coffee,-11,optimal,0,2,ACHIEVED,18.26,36.83,0,1000,5
+R11,coffee,-11,optimal,1,-2,NEAREST,21.19,41.82,0,1000,8
+R11,coffee,-11,optimal,1,-1,NEAREST,21.19,41.82,0,1000,80
+R11,coffee,-11,optimal,1,0,ACHIEVED,21.61,41.33,0,1000,0
+R11,coffee,-11,optimal,1,1,ACHIEVED,21.32,38.75,0,1000,0
+R11,coffee,-11,optimal,1,2,ACHIEVED,20.37,35.54,0,1000,0
+R11,coffee,-11,optimal,2,-2,NEAREST,22.64,40.42,0,1000,35
+R11,coffee,-11,optimal,2,-1,NEAREST,22.64,40.42,0,1000,49
+R11,coffee,-11,optimal,2,0,ACHIEVED,22.64,40.42,0,1000,2
+R11,coffee,-11,optimal,2,1,ACHIEVED,22.63,37.69,0,1000,10
+R11,coffee,-11,optimal,2,2,ACHIEVED,23.01,35.06,0,1000,14
+R12,caramel,-11,optimal,-2,-2,NEAREST,15.21,40.14,0,1000,102
+R12,caramel,-11,optimal,-2,-1,NEAREST,15.21,40.14,0,1000,56
+R12,caramel,-11,optimal,-2,0,ACHIEVED,15.21,40.14,0,1000,20
+R12,caramel,-11,optimal,-2,1,ACHIEVED,15.36,37.57,0,1000,14
+R12,caramel,-11,optimal,-2,2,ACHIEVED,14.49,35.43,0,1000,2
+R12,caramel,-11,optimal,-1,-2,NEAREST,17.68,41.93,0,1000,40
+R12,caramel,-11,optimal,-1,-1,NEAREST,17.68,41.93,0,1000,76
+R12,caramel,-11,optimal,-1,0,NEAREST,21.48,41.81,0,1000,14
+R12,caramel,-11,optimal,-1,1,ACHIEVED,17.73,37.51,0,1000,12
+R12,caramel,-11,optimal,-1,2,ACHIEVED,16.14,37.25,0,1000,3
+R12,caramel,-11,optimal,0,-2,NEAREST,19.86,41.88,0,1000,30
+R12,caramel,-11,optimal,0,-1,NEAREST,19.86,41.88,0,1000,39
+R12,caramel,-11,optimal,0,0,ACHIEVED,20.09,40.40,0,1000,5
+R12,caramel,-11,optimal,0,1,ACHIEVED,18.17,39.30,0,1000,1
+R12,caramel,-11,optimal,0,2,ACHIEVED,18.02,36.68,0,1000,3
+R12,caramel,-11,optimal,1,-2,NEAREST,20.27,41.86,0,1000,20
+R12,caramel,-11,optimal,1,-1,NEAREST,20.27,41.86,0,1000,39
+R12,caramel,-11,optimal,1,0,ACHIEVED,21.81,40.89,0,1000,2
+R12,caramel,-11,optimal,1,1,NEAREST,22.64,39.12,0,1000,23
+R12,caramel,-11,optimal,1,2,ACHIEVED,21.24,36.63,0,1000,17
+R12,caramel,-11,optimal,2,-2,NEAREST,22.68,41.80,0,1000,97
+R12,caramel,-11,optimal,2,-1,NEAREST,22.68,41.80,0,1000,41
+R12,caramel,-11,optimal,2,0,ACHIEVED,22.68,41.80,0,1000,2
+R12,caramel,-11,optimal,2,1,ACHIEVED,22.64,39.12,0,1000,9
+R12,caramel,-11,optimal,2,2,ACHIEVED,24.15,36.54,0,1000,13
+R13,salted caramel,-11,optimal,-2,-2,NEAREST,15.36,40.92,0,1000,35
+R13,salted caramel,-11,optimal,-2,-1,NEAREST,15.36,40.92,0,1000,47
+R13,salted caramel,-11,optimal,-2,0,ACHIEVED,15.32,40.07,0,1000,10
+R13,salted caramel,-11,optimal,-2,1,ACHIEVED,15.40,37.61,0,1000,3
+R13,salted caramel,-11,optimal,-2,2,ACHIEVED,15.27,36.65,0,1000,1
+R13,salted caramel,-11,optimal,-1,-2,NEAREST,21.17,41.81,0,1000,31
+R13,salted caramel,-11,optimal,-1,-1,NEAREST,17.80,40.85,0,1000,30
+R13,salted caramel,-11,optimal,-1,0,ACHIEVED,17.72,40.01,0,1000,3
+R13,salted caramel,-11,optimal,-1,1,ACHIEVED,17.73,37.70,0,1000,6
+R13,salted caramel,-11,optimal,-1,2,ACHIEVED,17.32,35.86,0,1000,1
+R13,salted caramel,-11,optimal,0,-2,NEAREST,18.95,41.92,0,1000,12
+R13,salted caramel,-11,optimal,0,-1,NEAREST,18.95,41.92,0,1000,33
+R13,salted caramel,-11,optimal,0,0,ACHIEVED,19.77,40.17,0,1000,1
+R13,salted caramel,-11,optimal,0,1,ACHIEVED,18.17,38.09,0,1000,1
+R13,salted caramel,-11,optimal,0,2,ACHIEVED,17.88,36.49,0,1000,8
+R13,salted caramel,-11,optimal,1,-2,NEAREST,20.87,41.86,0,1000,30
+R13,salted caramel,-11,optimal,1,-1,NEAREST,20.87,41.86,0,1000,37
+R13,salted caramel,-11,optimal,1,0,ACHIEVED,20.87,41.86,0,1000,2
+R13,salted caramel,-11,optimal,1,1,ACHIEVED,21.64,39.87,0,1000,2
+R13,salted caramel,-11,optimal,1,2,ACHIEVED,21.13,36.97,0,1000,1
+R13,salted caramel,-11,optimal,2,-2,NEAREST,22.88,41.87,0,1000,35
+R13,salted caramel,-11,optimal,2,-1,NEAREST,22.88,41.87,0,1000,34
+R13,salted caramel,-11,optimal,2,0,ACHIEVED,22.88,41.87,0,1000,6
+R13,salted caramel,-11,optimal,2,1,ACHIEVED,22.63,39.83,0,1000,8
+R13,salted caramel,-11,optimal,2,2,ACHIEVED,23.16,37.40,0,1000,3
+R14,pistachio,-11,optimal,-2,-2,NEAREST,23.33,40.64,0,1000,7964
+R14,pistachio,-11,optimal,-2,-1,NEAREST,23.33,40.64,0,1000,4618
+R14,pistachio,-11,optimal,-2,0,ACHIEVED,15.30,40.04,0,1000,21
+R14,pistachio,-11,optimal,-2,1,ACHIEVED,14.93,39.06,0,1000,18
+R14,pistachio,-11,optimal,-2,2,ACHIEVED,14.94,36.63,0,1000,26
+R14,pistachio,-11,optimal,-1,-2,NEAREST,23.33,40.64,0,1000,7766
+R14,pistachio,-11,optimal,-1,-1,NEAREST,23.33,40.64,0,1000,4508
+R14,pistachio,-11,optimal,-1,0,ACHIEVED,17.65,40.09,0,1000,17
+R14,pistachio,-11,optimal,-1,1,ACHIEVED,17.15,37.71,0,1000,15
+R14,pistachio,-11,optimal,-1,2,ACHIEVED,17.16,35.23,0,1000,8
+R14,pistachio,-11,optimal,0,-2,NEAREST,23.33,40.64,0,1000,7302
+R14,pistachio,-11,optimal,0,-1,NEAREST,23.33,40.64,0,1000,6069
+R14,pistachio,-11,optimal,0,0,ACHIEVED,19.99,40.12,0,1000,12
+R14,pistachio,-11,optimal,0,1,ACHIEVED,20.16,37.51,0,1000,5
+R14,pistachio,-11,optimal,0,2,ACHIEVED,20.06,37.30,0,1000,4
+R14,pistachio,-11,optimal,1,-2,NEAREST,23.33,40.64,0,1000,7513
+R14,pistachio,-11,optimal,1,-1,NEAREST,23.33,40.64,0,1000,5546
+R14,pistachio,-11,optimal,1,0,ACHIEVED,20.62,41.43,0,1000,6
+R14,pistachio,-11,optimal,1,1,ACHIEVED,22.23,38.00,0,1000,6
+R14,pistachio,-11,optimal,1,2,ACHIEVED,21.93,37.29,0,1000,6
+R14,pistachio,-11,optimal,2,-2,NEAREST,23.33,40.64,0,1000,7412
+R14,pistachio,-11,optimal,2,-1,NEAREST,23.33,40.64,0,1000,6099
+R14,pistachio,-11,optimal,2,0,ACHIEVED,23.33,40.64,0,1000,5
+R14,pistachio,-11,optimal,2,1,ACHIEVED,22.63,38.95,0,1000,14
+R14,pistachio,-11,optimal,2,2,ACHIEVED,22.64,37.44,0,1000,8
+R15,hazelnut,-11,optimal,-2,-2,NEAREST,18.07,37.28,0,1000,9027
+R15,hazelnut,-11,optimal,-2,-1,NEAREST,18.07,37.28,0,1000,5865
+R15,hazelnut,-11,optimal,-2,0,ACHIEVED,13.52,40.91,0,1000,51
+R15,hazelnut,-11,optimal,-2,1,ACHIEVED,15.35,39.96,0,1000,26
+R15,hazelnut,-11,optimal,-2,2,ACHIEVED,15.33,37.49,0,1000,27
+R15,hazelnut,-11,optimal,-1,-2,NEAREST,18.07,37.28,0,1000,11947
+R15,hazelnut,-11,optimal,-1,-1,NEAREST,18.07,37.28,0,1000,4580
+R15,hazelnut,-11,optimal,-1,0,ACHIEVED,16.45,41.59,0,1000,29
+R15,hazelnut,-11,optimal,-1,1,ACHIEVED,17.80,39.88,0,1000,35
+R15,hazelnut,-11,optimal,-1,2,ACHIEVED,17.79,37.49,0,1000,14
+R15,hazelnut,-11,optimal,0,-2,NEAREST,18.07,37.28,0,1000,2896
+R15,hazelnut,-11,optimal,0,-1,NEAREST,18.07,37.28,0,1000,2915
+R15,hazelnut,-11,optimal,0,0,ACHIEVED,20.20,40.15,0,1000,15
+R15,hazelnut,-11,optimal,0,1,ACHIEVED,19.95,37.59,0,1000,5
+R15,hazelnut,-11,optimal,0,2,ACHIEVED,20.14,35.55,0,1000,6
+R15,hazelnut,-11,optimal,1,-2,NEAREST,18.07,37.28,0,1000,7391
+R15,hazelnut,-11,optimal,1,-1,NEAREST,18.07,37.28,0,1000,4293
+R15,hazelnut,-11,optimal,1,0,ACHIEVED,22.57,40.09,0,1000,9
+R15,hazelnut,-11,optimal,1,1,ACHIEVED,22.48,39.93,0,1000,7
+R15,hazelnut,-11,optimal,1,2,ACHIEVED,21.25,37.39,0,1000,4
+R15,hazelnut,-11,optimal,2,-2,NEAREST,18.07,37.28,0,1000,7028
+R15,hazelnut,-11,optimal,2,-1,NEAREST,18.07,37.28,0,1000,4049
+R15,hazelnut,-11,optimal,2,0,ACHIEVED,22.60,40.06,0,1000,19
+R15,hazelnut,-11,optimal,2,1,ACHIEVED,22.60,39.98,0,1000,9
+R15,hazelnut,-11,optimal,2,2,ACHIEVED,22.60,37.49,0,1000,17
+R16,peanut,-11,optimal,-2,-2,NEAREST,18.38,39.13,0,1000,8081
+R16,peanut,-11,optimal,-2,-1,NEAREST,18.38,39.13,0,1000,5303
+R16,peanut,-11,optimal,-2,0,ACHIEVED,13.79,40.16,0,1000,17
+R16,peanut,-11,optimal,-2,1,ACHIEVED,15.18,37.63,0,1000,30
+R16,peanut,-11,optimal,-2,2,ACHIEVED,13.88,35.14,0,1000,18
+R16,peanut,-11,optimal,-1,-2,NEAREST,18.38,39.13,0,1000,8462
+R16,peanut,-11,optimal,-1,-1,NEAREST,18.38,39.13,0,1000,5121
+R16,peanut,-11,optimal,-1,0,ACHIEVED,17.65,40.04,0,1000,11
+R16,peanut,-11,optimal,-1,1,ACHIEVED,17.68,37.55,0,1000,23
+R16,peanut,-11,optimal,-1,2,ACHIEVED,17.80,35.14,0,1000,10
+R16,peanut,-11,optimal,0,-2,NEAREST,18.38,39.13,0,1000,3137
+R16,peanut,-11,optimal,0,-1,NEAREST,18.38,39.13,0,1000,3246
+R16,peanut,-11,optimal,0,0,ACHIEVED,19.98,40.01,0,1000,10
+R16,peanut,-11,optimal,0,1,ACHIEVED,20.19,37.51,0,1000,9
+R16,peanut,-11,optimal,0,2,ACHIEVED,19.63,37.32,0,1000,6
+R16,peanut,-11,optimal,1,-2,NEAREST,18.38,39.13,0,1000,7988
+R16,peanut,-11,optimal,1,-1,NEAREST,18.38,39.13,0,1000,5303
+R16,peanut,-11,optimal,1,0,ACHIEVED,22.40,41.82,0,1000,6
+R16,peanut,-11,optimal,1,1,ACHIEVED,20.29,37.91,0,1000,8
+R16,peanut,-11,optimal,1,2,ACHIEVED,20.22,37.48,0,1000,11
+R16,peanut,-11,optimal,2,-2,NEAREST,18.38,39.13,0,1000,7984
+R16,peanut,-11,optimal,2,-1,NEAREST,18.38,39.13,0,1000,5092
+R16,peanut,-11,optimal,2,0,ACHIEVED,22.68,41.98,0,1000,26
+R16,peanut,-11,optimal,2,1,ACHIEVED,22.60,39.95,0,1000,32
+R16,peanut,-11,optimal,2,2,ACHIEVED,22.61,37.49,0,1000,90
+R17,almond,-11,optimal,-2,-2,NEAREST,18.51,41.76,0,1000,8010
+R17,almond,-11,optimal,-2,-1,NEAREST,18.51,41.76,0,1000,6384
+R17,almond,-11,optimal,-2,0,ACHIEVED,15.22,40.05,0,1000,23
+R17,almond,-11,optimal,-2,1,ACHIEVED,15.14,37.70,0,1000,13
+R17,almond,-11,optimal,-2,2,ACHIEVED,14.49,36.57,0,1000,14
+R17,almond,-11,optimal,-1,-2,NEAREST,18.51,41.76,0,1000,8687
+R17,almond,-11,optimal,-1,-1,NEAREST,18.51,41.76,0,1000,7794
+R17,almond,-11,optimal,-1,0,ACHIEVED,17.80,40.08,0,1000,108
+R17,almond,-11,optimal,-1,1,ACHIEVED,16.34,39.98,0,1000,3
+R17,almond,-11,optimal,-1,2,ACHIEVED,15.41,37.48,0,1000,4
+R17,almond,-11,optimal,0,-2,NEAREST,18.51,41.76,0,1000,9005
+R17,almond,-11,optimal,0,-1,NEAREST,18.51,41.76,0,1000,7854
+R17,almond,-11,optimal,0,0,ACHIEVED,18.49,41.70,0,1000,5
+R17,almond,-11,optimal,0,1,ACHIEVED,17.80,40.00,0,1000,7
+R17,almond,-11,optimal,0,2,ACHIEVED,17.81,37.48,0,1000,10
+R17,almond,-11,optimal,1,-2,NEAREST,18.51,41.76,0,1000,9699
+R17,almond,-11,optimal,1,-1,NEAREST,18.51,41.76,0,1000,7260
+R17,almond,-11,optimal,1,0,ACHIEVED,20.28,40.67,0,1000,532
+R17,almond,-11,optimal,1,1,ACHIEVED,20.20,39.96,0,1000,21
+R17,almond,-11,optimal,1,2,ACHIEVED,20.21,37.49,0,1000,29
+R17,almond,-11,optimal,2,-2,NEAREST,18.51,41.76,0,1000,9455
+R17,almond,-11,optimal,2,-1,NEAREST,18.51,41.76,0,1000,7669
+R17,almond,-11,optimal,2,0,ACHIEVED,22.61,41.99,0,1000,544
+R17,almond,-11,optimal,2,1,ACHIEVED,22.61,39.99,0,1000,23
+R17,almond,-11,optimal,2,2,ACHIEVED,22.60,37.50,0,1000,29
+R18,hard fat class,-11,optimal,-2,-2,NEAREST,14.50,41.98,0,1000,78
+R18,hard fat class,-11,optimal,-2,-1,NEAREST,14.50,41.98,0,1000,91
+R18,hard fat class,-11,optimal,-2,0,ACHIEVED,15.31,41.21,0,1000,44
+R18,hard fat class,-11,optimal,-2,1,ACHIEVED,15.30,39.80,0,1000,22
+R18,hard fat class,-11,optimal,-2,2,ACHIEVED,15.29,37.49,0,1000,28
+R18,hard fat class,-11,optimal,-1,-2,NEAREST,17.70,41.97,0,1000,32
+R18,hard fat class,-11,optimal,-1,-1,NEAREST,17.70,41.97,0,1000,50
+R18,hard fat class,-11,optimal,-1,0,ACHIEVED,16.55,40.63,0,1000,10
+R18,hard fat class,-11,optimal,-1,1,NEAREST,15.30,39.80,0,1000,25
+R18,hard fat class,-11,optimal,-1,2,ACHIEVED,16.68,35.03,0,1000,0
+R18,hard fat class,-11,optimal,0,-2,NEAREST,19.73,41.99,0,1000,18
+R18,hard fat class,-11,optimal,0,-1,NEAREST,19.73,41.99,0,1000,29
+R18,hard fat class,-11,optimal,0,0,ACHIEVED,19.20,40.03,0,1000,1
+R18,hard fat class,-11,optimal,0,1,ACHIEVED,19.99,38.93,0,1000,1
+R18,hard fat class,-11,optimal,0,2,ACHIEVED,18.79,35.44,0,1000,1
+R18,hard fat class,-11,optimal,1,-2,NEAREST,20.51,41.99,0,1000,8
+R18,hard fat class,-11,optimal,1,-1,NEAREST,20.51,41.99,0,1000,30
+R18,hard fat class,-11,optimal,1,0,ACHIEVED,20.33,41.26,0,1000,2
+R18,hard fat class,-11,optimal,1,1,ACHIEVED,20.33,37.66,0,1000,0
+R18,hard fat class,-11,optimal,1,2,ACHIEVED,20.39,36.79,0,1000,1
+R18,hard fat class,-11,optimal,2,-2,NEAREST,23.46,41.07,0,1000,48
+R18,hard fat class,-11,optimal,2,-1,NEAREST,23.46,41.07,0,1000,39
+R18,hard fat class,-11,optimal,2,0,ACHIEVED,23.46,41.07,0,1000,2
+R18,hard fat class,-11,optimal,2,1,ACHIEVED,22.79,37.89,0,1000,12
+R18,hard fat class,-11,optimal,2,2,ACHIEVED,23.46,35.24,0,1000,14
+R19,high fat,-11,optimal,-2,-2,NEAREST,14.08,41.27,0,1000,59
+R19,high fat,-11,optimal,-2,-1,NEAREST,14.08,41.27,0,1000,44
+R19,high fat,-11,optimal,-2,0,ACHIEVED,14.08,41.27,0,1000,13
+R19,high fat,-11,optimal,-2,1,ACHIEVED,14.86,39.66,0,1000,21
+R19,high fat,-11,optimal,-2,2,ACHIEVED,14.92,37.19,0,1000,14
+R19,high fat,-11,optimal,-1,-2,NEAREST,17.59,41.93,0,1000,28
+R19,high fat,-11,optimal,-1,-1,NEAREST,17.59,41.93,0,1000,37
+R19,high fat,-11,optimal,-1,0,ACHIEVED,17.79,40.20,0,1000,19
+R19,high fat,-11,optimal,-1,1,ACHIEVED,17.78,37.73,0,1000,3
+R19,high fat,-11,optimal,-1,2,ACHIEVED,17.20,35.18,0,1000,1
+R19,high fat,-11,optimal,0,-2,NEAREST,19.78,41.96,0,1000,18
+R19,high fat,-11,optimal,0,-1,NEAREST,19.78,41.96,0,1000,23
+R19,high fat,-11,optimal,0,0,ACHIEVED,20.16,40.11,0,1000,2
+R19,high fat,-11,optimal,0,1,ACHIEVED,19.64,39.81,0,1000,0
+R19,high fat,-11,optimal,0,2,ACHIEVED,18.33,36.93,0,1000,1
+R19,high fat,-11,optimal,1,-2,NEAREST,20.80,41.98,0,1000,12
+R19,high fat,-11,optimal,1,-1,NEAREST,20.80,41.98,0,1000,20
+R19,high fat,-11,optimal,1,0,ACHIEVED,21.71,41.21,0,1000,0
+R19,high fat,-11,optimal,1,1,ACHIEVED,21.38,38.79,0,1000,0
+R19,high fat,-11,optimal,1,2,ACHIEVED,20.47,35.55,0,1000,1
+R19,high fat,-11,optimal,2,-2,NEAREST,22.90,41.41,0,1000,39
+R19,high fat,-11,optimal,2,-1,NEAREST,22.90,41.41,0,1000,22
+R19,high fat,-11,optimal,2,0,ACHIEVED,22.90,41.41,0,1000,2
+R19,high fat,-11,optimal,2,1,NEAREST,22.59,39.97,0,1000,4
+R19,high fat,-11,optimal,2,2,ACHIEVED,23.12,35.02,0,1000,12
+R20,low fat,-11,optimal,-2,-2,NEAREST,14.62,40.32,0,1000,40
+R20,low fat,-11,optimal,-2,-1,NEAREST,14.62,40.32,0,1000,44
+R20,low fat,-11,optimal,-2,0,ACHIEVED,14.62,40.32,0,1000,9
+R20,low fat,-11,optimal,-2,1,ACHIEVED,14.77,38.40,0,1000,14
+R20,low fat,-11,optimal,-2,2,ACHIEVED,15.08,37.23,0,1000,15
+R20,low fat,-11,optimal,-1,-2,NEAREST,16.59,40.72,0,1000,32
+R20,low fat,-11,optimal,-1,-1,NEAREST,16.59,40.72,0,1000,33
+R20,low fat,-11,optimal,-1,0,ACHIEVED,16.59,40.72,0,1000,10
+R20,low fat,-11,optimal,-1,1,ACHIEVED,17.61,37.51,0,1000,2
+R20,low fat,-11,optimal,-1,2,ACHIEVED,17.32,37.25,0,1000,7
+R20,low fat,-11,optimal,0,-2,NEAREST,19.52,41.78,0,1000,18
+R20,low fat,-11,optimal,0,-1,NEAREST,19.52,41.78,0,1000,28
+R20,low fat,-11,optimal,0,0,ACHIEVED,20.19,40.29,0,1000,1
+R20,low fat,-11,optimal,0,1,ACHIEVED,19.60,39.85,0,1000,1
+R20,low fat,-11,optimal,0,2,ACHIEVED,17.85,36.80,0,1000,1
+R20,low fat,-11,optimal,1,-2,NEAREST,21.82,41.01,0,1000,19
+R20,low fat,-11,optimal,1,-1,NEAREST,21.82,41.01,0,1000,12
+R20,low fat,-11,optimal,1,0,ACHIEVED,21.82,41.01,0,1000,0
+R20,low fat,-11,optimal,1,1,ACHIEVED,21.38,38.40,0,1000,0
+R20,low fat,-11,optimal,1,2,ACHIEVED,20.54,37.43,0,1000,2
+R20,low fat,-11,optimal,2,-2,NEAREST,22.96,41.86,0,1000,21
+R20,low fat,-11,optimal,2,-1,NEAREST,22.96,41.86,0,1000,14
+R20,low fat,-11,optimal,2,0,ACHIEVED,22.96,41.86,0,1000,1
+R20,low fat,-11,optimal,2,1,ACHIEVED,22.92,39.81,0,1000,2
+R20,low fat,-11,optimal,2,2,ACHIEVED,24.04,35.27,0,1000,9
+R21,plant protein (pea),-11,optimal,-2,-2,NEAREST,14.62,41.95,0,1000,21
+R21,plant protein (pea),-11,optimal,-2,-1,NEAREST,14.32,41.80,0,1000,25
+R21,plant protein (pea),-11,optimal,-2,0,ACHIEVED,14.94,41.04,0,1000,1
+R21,plant protein (pea),-11,optimal,-2,1,ACHIEVED,15.38,37.51,0,1000,3
+R21,plant protein (pea),-11,optimal,-2,2,ACHIEVED,15.33,35.24,0,1000,2
+R21,plant protein (pea),-11,optimal,-1,-2,NEAREST,16.84,41.89,0,1000,33
+R21,plant protein (pea),-11,optimal,-1,-1,NEAREST,16.84,41.89,0,1000,15
+R21,plant protein (pea),-11,optimal,-1,0,ACHIEVED,16.95,41.35,0,1000,1
+R21,plant protein (pea),-11,optimal,-1,1,ACHIEVED,16.63,37.55,0,1000,1
+R21,plant protein (pea),-11,optimal,-1,2,ACHIEVED,16.64,35.31,0,1000,1
+R21,plant protein (pea),-11,optimal,0,-2,NEAREST,18.32,41.79,0,1000,27
+R21,plant protein (pea),-11,optimal,0,-1,NEAREST,18.32,41.79,0,1000,25
+R21,plant protein (pea),-11,optimal,0,0,ACHIEVED,20.16,40.09,0,1000,1
+R21,plant protein (pea),-11,optimal,0,1,ACHIEVED,19.77,37.78,0,1000,1
+R21,plant protein (pea),-11,optimal,0,2,ACHIEVED,19.31,36.81,0,1000,1
+R21,plant protein (pea),-11,optimal,1,-2,NEAREST,20.71,40.60,0,1000,24
+R21,plant protein (pea),-11,optimal,1,-1,NEAREST,20.71,40.60,0,1000,35
+R21,plant protein (pea),-11,optimal,1,0,ACHIEVED,20.71,40.60,0,1000,0
+R21,plant protein (pea),-11,optimal,1,1,ACHIEVED,21.41,39.76,0,1000,0
+R21,plant protein (pea),-11,optimal,1,2,ACHIEVED,22.10,37.28,0,1000,11
+R21,plant protein (pea),-11,optimal,2,-2,NEAREST,22.69,41.82,0,1000,33
+R21,plant protein (pea),-11,optimal,2,-1,NEAREST,22.69,41.82,0,1000,40
+R21,plant protein (pea),-11,optimal,2,0,ACHIEVED,22.69,41.82,0,1000,2
+R21,plant protein (pea),-11,optimal,2,1,ACHIEVED,22.92,39.91,0,1000,9
+R21,plant protein (pea),-11,optimal,2,2,ACHIEVED,23.10,35.29,0,1000,11
+R22,plant protein (rice),-11,optimal,-2,-2,NEAREST,13.59,40.33,0,1000,57
+R22,plant protein (rice),-11,optimal,-2,-1,NEAREST,13.59,40.33,0,1000,69
+R22,plant protein (rice),-11,optimal,-2,0,ACHIEVED,13.59,40.33,0,1000,33
+R22,plant protein (rice),-11,optimal,-2,1,ACHIEVED,15.38,37.71,0,1000,15
+R22,plant protein (rice),-11,optimal,-2,2,ACHIEVED,14.87,35.72,0,1000,17
+R22,plant protein (rice),-11,optimal,-1,-2,NEAREST,17.36,38.14,0,1000,51
+R22,plant protein (rice),-11,optimal,-1,-1,NEAREST,17.36,38.14,0,1000,51
+R22,plant protein (rice),-11,optimal,-1,0,NEAREST,13.59,40.33,0,1000,39
+R22,plant protein (rice),-11,optimal,-1,1,ACHIEVED,17.36,38.14,0,1000,3
+R22,plant protein (rice),-11,optimal,-1,2,ACHIEVED,16.76,35.69,0,1000,3
+R22,plant protein (rice),-11,optimal,0,-2,NEAREST,20.12,40.40,0,1000,8
+R22,plant protein (rice),-11,optimal,0,-1,NEAREST,20.12,40.40,0,1000,10
+R22,plant protein (rice),-11,optimal,0,0,ACHIEVED,20.12,40.40,0,1000,0
+R22,plant protein (rice),-11,optimal,0,1,ACHIEVED,19.90,39.84,0,1000,2
+R22,plant protein (rice),-11,optimal,0,2,ACHIEVED,19.52,37.46,0,1000,1
+R22,plant protein (rice),-11,optimal,1,-2,NEAREST,20.69,41.95,0,1000,13
+R22,plant protein (rice),-11,optimal,1,-1,NEAREST,20.69,41.95,0,1000,42
+R22,plant protein (rice),-11,optimal,1,0,ACHIEVED,20.50,41.67,0,1000,5
+R22,plant protein (rice),-11,optimal,1,1,ACHIEVED,20.40,37.89,0,1000,1
+R22,plant protein (rice),-11,optimal,1,2,ACHIEVED,20.35,36.60,0,1000,5
+R22,plant protein (rice),-11,optimal,2,-2,NEAREST,23.55,41.96,0,1000,41
+R22,plant protein (rice),-11,optimal,2,-1,NEAREST,23.55,41.96,0,1000,55
+R22,plant protein (rice),-11,optimal,2,0,ACHIEVED,23.55,41.96,0,1000,3
+R22,plant protein (rice),-11,optimal,2,1,NEAREST,20.40,37.89,0,1000,12
+R22,plant protein (rice),-11,optimal,2,2,NEAREST,20.35,36.60,0,1000,27
+R23,mixed fat,-11,optimal,-2,-2,NEAREST,13.79,41.80,0,1000,78
+R23,mixed fat,-11,optimal,-2,-1,NEAREST,13.79,41.80,0,1000,47
+R23,mixed fat,-11,optimal,-2,0,ACHIEVED,13.79,41.80,0,1000,16
+R23,mixed fat,-11,optimal,-2,1,ACHIEVED,15.11,39.73,0,1000,22
+R23,mixed fat,-11,optimal,-2,2,ACHIEVED,15.30,35.14,0,1000,12
+R23,mixed fat,-11,optimal,-1,-2,NEAREST,17.75,40.08,0,1000,41
+R23,mixed fat,-11,optimal,-1,-1,NEAREST,17.75,40.08,0,1000,34
+R23,mixed fat,-11,optimal,-1,0,ACHIEVED,17.75,40.08,0,1000,13
+R23,mixed fat,-11,optimal,-1,1,NEAREST,15.11,39.73,0,1000,29
+R23,mixed fat,-11,optimal,-1,2,NEAREST,15.30,35.14,0,1000,25
+R23,mixed fat,-11,optimal,0,-2,NEAREST,20.00,40.34,0,1000,21
+R23,mixed fat,-11,optimal,0,-1,NEAREST,20.00,40.34,0,1000,21
+R23,mixed fat,-11,optimal,0,0,ACHIEVED,20.00,40.34,0,1000,1
+R23,mixed fat,-11,optimal,0,1,ACHIEVED,19.99,37.71,0,1000,1
+R23,mixed fat,-11,optimal,0,2,ACHIEVED,18.38,36.42,0,1000,2
+R23,mixed fat,-11,optimal,1,-2,NEAREST,20.76,41.76,0,1000,15
+R23,mixed fat,-11,optimal,1,-1,NEAREST,20.76,41.76,0,1000,25
+R23,mixed fat,-11,optimal,1,0,ACHIEVED,21.19,41.12,0,1000,1
+R23,mixed fat,-11,optimal,1,1,ACHIEVED,21.39,39.35,0,1000,0
+R23,mixed fat,-11,optimal,1,2,ACHIEVED,20.55,36.24,0,1000,1
+R23,mixed fat,-11,optimal,2,-2,NEAREST,23.05,41.86,0,1000,29
+R23,mixed fat,-11,optimal,2,-1,NEAREST,23.05,41.86,0,1000,26
+R23,mixed fat,-11,optimal,2,0,ACHIEVED,23.05,41.86,0,1000,1
+R23,mixed fat,-11,optimal,2,1,ACHIEVED,22.63,37.90,0,1000,8
+R23,mixed fat,-11,optimal,2,2,ACHIEVED,23.08,35.06,0,1000,13
+R24,liquid oil,-11,optimal,-2,-2,NEAREST,13.69,41.36,0,1000,71
+R24,liquid oil,-11,optimal,-2,-1,NEAREST,13.69,41.36,0,1000,55
+R24,liquid oil,-11,optimal,-2,0,ACHIEVED,13.69,41.36,0,1000,12
+R24,liquid oil,-11,optimal,-2,1,ACHIEVED,15.08,39.65,0,1000,20
+R24,liquid oil,-11,optimal,-2,2,ACHIEVED,15.24,37.05,0,1000,22
+R24,liquid oil,-11,optimal,-1,-2,NEAREST,17.23,41.80,0,1000,68
+R24,liquid oil,-11,optimal,-1,-1,NEAREST,17.23,41.80,0,1000,56
+R24,liquid oil,-11,optimal,-1,0,ACHIEVED,17.23,41.80,0,1000,23
+R24,liquid oil,-11,optimal,-1,1,ACHIEVED,17.61,39.70,0,1000,10
+R24,liquid oil,-11,optimal,-1,2,ACHIEVED,17.59,37.23,0,1000,11
+R24,liquid oil,-11,optimal,0,-2,NEAREST,20.04,41.95,0,1000,31
+R24,liquid oil,-11,optimal,0,-1,NEAREST,20.04,41.95,0,1000,38
+R24,liquid oil,-11,optimal,0,0,ACHIEVED,20.19,40.24,0,1000,1
+R24,liquid oil,-11,optimal,0,1,ACHIEVED,20.08,39.60,0,1000,1
+R24,liquid oil,-11,optimal,0,2,ACHIEVED,18.84,35.51,0,1000,1
+R24,liquid oil,-11,optimal,1,-2,NEAREST,20.85,41.96,0,1000,14
+R24,liquid oil,-11,optimal,1,-1,NEAREST,20.85,41.96,0,1000,32
+R24,liquid oil,-11,optimal,1,0,ACHIEVED,20.51,40.86,0,1000,0
+R24,liquid oil,-11,optimal,1,1,ACHIEVED,20.52,37.90,0,1000,1
+R24,liquid oil,-11,optimal,1,2,ACHIEVED,20.37,36.42,0,1000,1
+R24,liquid oil,-11,optimal,2,-2,NEAREST,23.25,41.96,0,1000,43
+R24,liquid oil,-11,optimal,2,-1,NEAREST,23.25,41.96,0,1000,36
+R24,liquid oil,-11,optimal,2,0,ACHIEVED,23.25,41.96,0,1000,2
+R24,liquid oil,-11,optimal,2,1,ACHIEVED,22.69,37.95,0,1000,8
+R24,liquid oil,-11,optimal,2,2,ACHIEVED,22.63,37.48,0,1000,14
+R01,oat vanilla,-12,optimal,-2,-2,NEAREST,32.17,56.94,0,1000,7
+R01,oat vanilla,-12,optimal,-2,-1,NEAREST,30.54,54.20,0,1000,7
+R01,oat vanilla,-12,optimal,-2,0,NEAREST,28.14,48.34,0,1000,6
+R01,oat vanilla,-12,optimal,-2,1,NEAREST,27.29,45.96,0,1000,6
+R01,oat vanilla,-12,optimal,-2,2,NEAREST,26.40,44.03,0,1000,10
+R01,oat vanilla,-12,optimal,-1,-2,NEAREST,32.17,56.94,0,1000,7
+R01,oat vanilla,-12,optimal,-1,-1,NEAREST,30.54,54.20,0,1000,6
+R01,oat vanilla,-12,optimal,-1,0,NEAREST,28.14,48.34,0,1000,6
+R01,oat vanilla,-12,optimal,-1,1,NEAREST,27.29,45.96,0,1000,7
+R01,oat vanilla,-12,optimal,-1,2,NEAREST,26.40,44.03,0,1000,10
+R01,oat vanilla,-12,optimal,0,-2,NEAREST,32.17,56.94,0,1000,8
+R01,oat vanilla,-12,optimal,0,-1,NEAREST,30.54,54.20,0,1000,6
+R01,oat vanilla,-12,optimal,0,0,NEAREST,28.14,48.34,0,1000,6
+R01,oat vanilla,-12,optimal,0,1,NEAREST,27.29,45.96,0,1000,7
+R01,oat vanilla,-12,optimal,0,2,NEAREST,26.40,44.03,0,1000,11
+R01,oat vanilla,-12,optimal,1,-2,NEAREST,31.97,56.51,0,1000,7
+R01,oat vanilla,-12,optimal,1,-1,NEAREST,30.54,54.20,0,1000,7
+R01,oat vanilla,-12,optimal,1,0,NEAREST,28.14,48.34,0,1000,6
+R01,oat vanilla,-12,optimal,1,1,NEAREST,27.29,45.96,0,1000,6
+R01,oat vanilla,-12,optimal,1,2,NEAREST,26.40,44.03,0,1000,11
+R01,oat vanilla,-12,optimal,2,-2,NEAREST,24.98,37.21,0,1000,6
+R01,oat vanilla,-12,optimal,2,-1,NEAREST,24.98,37.21,0,1000,5
+R01,oat vanilla,-12,optimal,2,0,NEAREST,28.14,48.34,0,1000,7
+R01,oat vanilla,-12,optimal,2,1,NEAREST,24.98,37.21,0,1000,8
+R01,oat vanilla,-12,optimal,2,2,NEAREST,26.40,44.03,0,1000,11
+R02,coconut,-12,optimal,-2,-2,NEAREST,32.08,56.42,0,1000,8
+R02,coconut,-12,optimal,-2,-1,NEAREST,30.75,54.10,0,1000,6
+R02,coconut,-12,optimal,-2,0,NEAREST,28.03,47.92,0,1000,14
+R02,coconut,-12,optimal,-2,1,NEAREST,27.39,46.05,0,1000,9
+R02,coconut,-12,optimal,-2,2,NEAREST,26.60,44.14,0,1000,10
+R02,coconut,-12,optimal,-1,-2,NEAREST,32.08,56.42,0,1000,7
+R02,coconut,-12,optimal,-1,-1,NEAREST,30.75,54.10,0,1000,6
+R02,coconut,-12,optimal,-1,0,NEAREST,28.03,47.92,0,1000,11
+R02,coconut,-12,optimal,-1,1,NEAREST,27.39,46.05,0,1000,9
+R02,coconut,-12,optimal,-1,2,NEAREST,26.60,44.14,0,1000,9
+R02,coconut,-12,optimal,0,-2,NEAREST,32.08,56.42,0,1000,7
+R02,coconut,-12,optimal,0,-1,NEAREST,30.75,54.10,0,1000,11
+R02,coconut,-12,optimal,0,0,NEAREST,28.03,47.92,0,1000,7
+R02,coconut,-12,optimal,0,1,NEAREST,27.39,46.05,0,1000,9
+R02,coconut,-12,optimal,0,2,NEAREST,26.40,44.01,0,1000,10
+R02,coconut,-12,optimal,1,-2,NEAREST,32.08,56.42,0,1000,12
+R02,coconut,-12,optimal,1,-1,NEAREST,30.54,54.00,0,1000,6
+R02,coconut,-12,optimal,1,0,NEAREST,28.03,47.92,0,1000,7
+R02,coconut,-12,optimal,1,1,NEAREST,27.29,46.08,0,1000,12
+R02,coconut,-12,optimal,1,2,NEAREST,26.40,44.01,0,1000,17
+R02,coconut,-12,optimal,2,-2,NEAREST,24.94,36.58,0,1000,9
+R02,coconut,-12,optimal,2,-1,NEAREST,24.94,36.58,0,1000,8
+R02,coconut,-12,optimal,2,0,NEAREST,24.94,36.58,0,1000,9
+R02,coconut,-12,optimal,2,1,ACHIEVED,24.99,46.12,0,1000,4
+R02,coconut,-12,optimal,2,2,NEAREST,26.40,44.01,0,1000,15
+R03,dark cocoa,-12,optimal,-2,-2,NEAREST,25.75,45.37,0,1000,21
+R03,dark cocoa,-12,optimal,-2,-1,NEAREST,25.03,44.14,0,1000,29
+R03,dark cocoa,-12,optimal,-2,0,NEAREST,22.25,37.22,0,1000,27
+R03,dark cocoa,-12,optimal,-2,1,NEAREST,26.29,46.19,0,1000,12
+R03,dark cocoa,-12,optimal,-2,2,NEAREST,24.92,44.01,0,1000,27
+R03,dark cocoa,-12,optimal,-1,-2,NEAREST,25.75,45.37,0,1000,21
+R03,dark cocoa,-12,optimal,-1,-1,NEAREST,25.03,44.14,0,1000,29
+R03,dark cocoa,-12,optimal,-1,0,NEAREST,22.25,37.22,0,1000,22
+R03,dark cocoa,-12,optimal,-1,1,NEAREST,26.29,46.19,0,1000,18
+R03,dark cocoa,-12,optimal,-1,2,NEAREST,24.92,44.01,0,1000,23
+R03,dark cocoa,-12,optimal,0,-2,NEAREST,25.03,44.14,0,1000,35
+R03,dark cocoa,-12,optimal,0,-1,NEAREST,25.03,44.14,0,1000,47
+R03,dark cocoa,-12,optimal,0,0,NEAREST,25.03,44.14,0,1000,43
+R03,dark cocoa,-12,optimal,0,1,NEAREST,26.25,46.29,0,1000,30
+R03,dark cocoa,-12,optimal,0,2,NEAREST,24.92,44.01,0,1000,31
+R03,dark cocoa,-12,optimal,1,-2,NEAREST,22.64,39.02,0,1000,16
+R03,dark cocoa,-12,optimal,1,-1,NEAREST,22.64,39.02,0,1000,23
+R03,dark cocoa,-12,optimal,1,0,NEAREST,22.56,39.24,0,1000,16
+R03,dark cocoa,-12,optimal,1,1,NEAREST,22.59,39.42,0,1000,28
+R03,dark cocoa,-12,optimal,1,2,NEAREST,24.91,44.07,0,1000,23
+R03,dark cocoa,-12,optimal,2,-2,NEAREST,25.00,44.04,0,1000,34
+R03,dark cocoa,-12,optimal,2,-1,NEAREST,25.00,44.04,0,1000,34
+R03,dark cocoa,-12,optimal,2,0,NEAREST,25.00,44.04,0,1000,32
+R03,dark cocoa,-12,optimal,2,1,NEAREST,26.11,46.02,0,1000,23
+R03,dark cocoa,-12,optimal,2,2,ACHIEVED,24.91,44.07,0,1000,7
+R04,chocolate,-12,optimal,-2,-2,NEAREST,29.02,56.49,0,1000,13
+R04,chocolate,-12,optimal,-2,-1,NEAREST,30.54,54.16,0,1000,11
+R04,chocolate,-12,optimal,-2,0,NEAREST,21.48,37.19,0,1000,24
+R04,chocolate,-12,optimal,-2,1,NEAREST,24.83,45.97,0,1000,9
+R04,chocolate,-12,optimal,-2,2,NEAREST,24.95,44.13,0,1000,31
+R04,chocolate,-12,optimal,-1,-2,NEAREST,17.74,30.05,0,1000,9
+R04,chocolate,-12,optimal,-1,-1,NEAREST,30.54,54.16,0,1000,10
+R04,chocolate,-12,optimal,-1,0,NEAREST,17.71,31.45,0,1000,13
+R04,chocolate,-12,optimal,-1,1,NEAREST,24.83,45.97,0,1000,9
+R04,chocolate,-12,optimal,-1,2,NEAREST,24.95,44.13,0,1000,30
+R04,chocolate,-12,optimal,0,-2,NEAREST,20.15,34.78,0,1000,8
+R04,chocolate,-12,optimal,0,-1,NEAREST,20.14,35.47,0,1000,8
+R04,chocolate,-12,optimal,0,0,NEAREST,20.15,33.88,0,1000,10
+R04,chocolate,-12,optimal,0,1,NEAREST,24.83,45.97,0,1000,15
+R04,chocolate,-12,optimal,0,2,NEAREST,24.95,44.13,0,1000,29
+R04,chocolate,-12,optimal,1,-2,NEAREST,22.48,39.87,0,1000,16
+R04,chocolate,-12,optimal,1,-1,NEAREST,22.48,39.87,0,1000,12
+R04,chocolate,-12,optimal,1,0,NEAREST,22.60,40.12,0,1000,13
+R04,chocolate,-12,optimal,1,1,NEAREST,22.52,39.97,0,1000,16
+R04,chocolate,-12,optimal,1,2,NEAREST,21.66,38.30,0,1000,13
+R04,chocolate,-12,optimal,2,-2,NEAREST,24.92,44.01,0,1000,13
+R04,chocolate,-12,optimal,2,-1,NEAREST,24.92,44.01,0,1000,17
+R04,chocolate,-12,optimal,2,0,NEAREST,24.92,44.01,0,1000,12
+R04,chocolate,-12,optimal,2,1,NEAREST,24.94,45.94,0,1000,3
+R04,chocolate,-12,optimal,2,2,ACHIEVED,24.90,44.12,0,1000,2
+R05,strawberry,-12,optimal,-2,-2,NEAREST,25.00,44.00,0,1000,4584
+R05,strawberry,-12,optimal,-2,-1,ACHIEVED,15.39,54.04,0,1000,2
+R05,strawberry,-12,optimal,-2,0,ACHIEVED,15.40,48.02,0,1000,25
+R05,strawberry,-12,optimal,-2,1,ACHIEVED,15.31,46.04,0,1000,54
+R05,strawberry,-12,optimal,-2,2,ACHIEVED,14.89,44.52,0,1000,36
+R05,strawberry,-12,optimal,-1,-2,ACHIEVED,17.75,56.51,0,1000,3
+R05,strawberry,-12,optimal,-1,-1,ACHIEVED,17.76,54.73,0,1000,13
+R05,strawberry,-12,optimal,-1,0,ACHIEVED,17.39,48.10,0,1000,21
+R05,strawberry,-12,optimal,-1,1,ACHIEVED,17.12,46.08,0,1000,45
+R05,strawberry,-12,optimal,-1,2,ACHIEVED,16.84,44.06,0,1000,36
+R05,strawberry,-12,optimal,0,-2,ACHIEVED,19.78,56.54,0,1000,21
+R05,strawberry,-12,optimal,0,-1,ACHIEVED,19.20,54.09,0,1000,4
+R05,strawberry,-12,optimal,0,0,ACHIEVED,19.64,48.06,0,1000,27
+R05,strawberry,-12,optimal,0,1,ACHIEVED,19.37,46.04,0,1000,40
+R05,strawberry,-12,optimal,0,2,ACHIEVED,19.23,44.06,0,1000,81
+R05,strawberry,-12,optimal,1,-2,ACHIEVED,22.03,56.50,0,1000,4
+R05,strawberry,-12,optimal,1,-1,ACHIEVED,21.59,54.10,0,1000,46
+R05,strawberry,-12,optimal,1,0,ACHIEVED,22.03,48.06,0,1000,34
+R05,strawberry,-12,optimal,1,1,ACHIEVED,21.76,46.04,0,1000,22
+R05,strawberry,-12,optimal,1,2,ACHIEVED,21.48,44.02,0,1000,29
+R05,strawberry,-12,optimal,2,-2,ACHIEVED,24.42,56.51,0,1000,6
+R05,strawberry,-12,optimal,2,-1,ACHIEVED,24.97,54.04,0,1000,3
+R05,strawberry,-12,optimal,2,0,ACHIEVED,24.28,48.02,0,1000,38
+R05,strawberry,-12,optimal,2,1,ACHIEVED,24.14,46.04,0,1000,4
+R05,strawberry,-12,optimal,2,2,ACHIEVED,25.00,44.00,0,1000,42
+R06,soy vanilla,-12,optimal,-2,-2,NEAREST,31.99,56.50,0,1000,9
+R06,soy vanilla,-12,optimal,-2,-1,NEAREST,30.43,53.98,0,1000,10
+R06,soy vanilla,-12,optimal,-2,0,NEAREST,28.09,48.01,0,1000,9
+R06,soy vanilla,-12,optimal,-2,1,NEAREST,27.23,46.01,0,1000,16
+R06,soy vanilla,-12,optimal,-2,2,NEAREST,26.51,44.05,0,1000,16
+R06,soy vanilla,-12,optimal,-1,-2,NEAREST,31.99,56.50,0,1000,9
+R06,soy vanilla,-12,optimal,-1,-1,NEAREST,30.43,53.98,0,1000,11
+R06,soy vanilla,-12,optimal,-1,0,NEAREST,28.09,48.01,0,1000,10
+R06,soy vanilla,-12,optimal,-1,1,NEAREST,27.23,46.01,0,1000,26
+R06,soy vanilla,-12,optimal,-1,2,NEAREST,26.51,44.05,0,1000,14
+R06,soy vanilla,-12,optimal,0,-2,NEAREST,31.99,56.50,0,1000,18
+R06,soy vanilla,-12,optimal,0,-1,NEAREST,30.43,53.98,0,1000,12
+R06,soy vanilla,-12,optimal,0,0,NEAREST,28.09,48.01,0,1000,17
+R06,soy vanilla,-12,optimal,0,1,NEAREST,27.23,46.01,0,1000,13
+R06,soy vanilla,-12,optimal,0,2,NEAREST,26.51,44.05,0,1000,14
+R06,soy vanilla,-12,optimal,1,-2,NEAREST,31.99,56.50,0,1000,12
+R06,soy vanilla,-12,optimal,1,-1,NEAREST,30.43,53.98,0,1000,13
+R06,soy vanilla,-12,optimal,1,0,NEAREST,28.09,48.01,0,1000,21
+R06,soy vanilla,-12,optimal,1,1,NEAREST,27.23,46.01,0,1000,10
+R06,soy vanilla,-12,optimal,1,2,NEAREST,26.51,44.05,0,1000,11
+R06,soy vanilla,-12,optimal,2,-2,NEAREST,24.97,39.11,0,1000,10
+R06,soy vanilla,-12,optimal,2,-1,NEAREST,30.63,54.01,0,1000,10
+R06,soy vanilla,-12,optimal,2,0,NEAREST,24.97,39.11,0,1000,18
+R06,soy vanilla,-12,optimal,2,1,NEAREST,27.23,46.01,0,1000,8
+R06,soy vanilla,-12,optimal,2,2,NEAREST,26.58,44.00,0,1000,15
+R07,raspberry / berry,-12,optimal,-2,-2,NEAREST,21.23,44.01,0,1000,5728
+R07,raspberry / berry,-12,optimal,-2,-1,ACHIEVED,15.38,54.01,0,1000,4
+R07,raspberry / berry,-12,optimal,-2,0,ACHIEVED,15.18,48.08,0,1000,34
+R07,raspberry / berry,-12,optimal,-2,1,ACHIEVED,14.90,46.07,0,1000,36
+R07,raspberry / berry,-12,optimal,-2,2,ACHIEVED,14.63,44.05,0,1000,34
+R07,raspberry / berry,-12,optimal,-1,-2,ACHIEVED,17.56,56.57,0,1000,2
+R07,raspberry / berry,-12,optimal,-1,-1,ACHIEVED,17.15,54.02,0,1000,3
+R07,raspberry / berry,-12,optimal,-1,0,ACHIEVED,17.43,48.05,0,1000,45
+R07,raspberry / berry,-12,optimal,-1,1,ACHIEVED,17.13,46.13,0,1000,30
+R07,raspberry / berry,-12,optimal,-1,2,ACHIEVED,16.85,44.12,0,1000,45
+R07,raspberry / berry,-12,optimal,0,-2,ACHIEVED,19.95,56.53,0,1000,3
+R07,raspberry / berry,-12,optimal,0,-1,ACHIEVED,19.38,54.08,0,1000,3
+R07,raspberry / berry,-12,optimal,0,0,ACHIEVED,19.65,48.12,0,1000,45
+R07,raspberry / berry,-12,optimal,0,1,ACHIEVED,19.38,46.10,0,1000,22
+R07,raspberry / berry,-12,optimal,0,2,ACHIEVED,19.41,44.51,0,1000,4
+R07,raspberry / berry,-12,optimal,1,-2,ACHIEVED,20.23,56.57,0,1000,5
+R07,raspberry / berry,-12,optimal,1,-1,ACHIEVED,20.50,54.07,0,1000,3
+R07,raspberry / berry,-12,optimal,1,0,ACHIEVED,20.88,48.24,0,1000,10
+R07,raspberry / berry,-12,optimal,1,1,ACHIEVED,21.63,46.07,0,1000,51
+R07,raspberry / berry,-12,optimal,1,2,ACHIEVED,21.23,44.01,0,1000,12
+R07,raspberry / berry,-12,optimal,2,-2,ACHIEVED,22.67,56.52,0,1000,11
+R07,raspberry / berry,-12,optimal,2,-1,ACHIEVED,22.61,54.08,0,1000,6
+R07,raspberry / berry,-12,optimal,2,0,ACHIEVED,22.65,48.14,0,1000,3
+R07,raspberry / berry,-12,optimal,2,1,ACHIEVED,22.65,46.06,0,1000,4
+R07,raspberry / berry,-12,optimal,2,2,ACHIEVED,22.63,44.09,0,1000,4
+R08,banana,-12,optimal,-2,-2,NEAREST,24.09,44.04,0,1000,4818
+R08,banana,-12,optimal,-2,-1,ACHIEVED,15.38,54.00,0,1000,211
+R08,banana,-12,optimal,-2,0,ACHIEVED,15.40,48.00,0,1000,270
+R08,banana,-12,optimal,-2,1,ACHIEVED,15.39,46.05,0,1000,73
+R08,banana,-12,optimal,-2,2,ACHIEVED,15.38,44.00,0,1000,825
+R08,banana,-12,optimal,-1,-2,ACHIEVED,17.79,56.56,0,1000,4
+R08,banana,-12,optimal,-1,-1,ACHIEVED,17.79,54.07,0,1000,750
+R08,banana,-12,optimal,-1,0,ACHIEVED,17.78,48.18,0,1000,273
+R08,banana,-12,optimal,-1,1,ACHIEVED,17.79,46.08,0,1000,321
+R08,banana,-12,optimal,-1,2,ACHIEVED,17.80,44.11,0,1000,61
+R08,banana,-12,optimal,0,-2,ACHIEVED,20.19,56.59,0,1000,363
+R08,banana,-12,optimal,0,-1,ACHIEVED,20.19,54.09,0,1000,4
+R08,banana,-12,optimal,0,0,ACHIEVED,20.19,48.01,0,1000,352
+R08,banana,-12,optimal,0,1,ACHIEVED,20.20,46.11,0,1000,171
+R08,banana,-12,optimal,0,2,ACHIEVED,20.19,44.15,0,1000,14
+R08,banana,-12,optimal,1,-2,ACHIEVED,22.60,56.64,0,1000,46
+R08,banana,-12,optimal,1,-1,ACHIEVED,22.58,54.21,0,1000,32
+R08,banana,-12,optimal,1,0,ACHIEVED,22.60,48.03,0,1000,98
+R08,banana,-12,optimal,1,1,ACHIEVED,22.56,46.17,0,1000,7
+R08,banana,-12,optimal,1,2,ACHIEVED,22.35,44.07,0,1000,64
+R08,banana,-12,optimal,2,-2,ACHIEVED,24.99,56.53,0,1000,3
+R08,banana,-12,optimal,2,-1,ACHIEVED,24.58,54.21,0,1000,51
+R08,banana,-12,optimal,2,0,ACHIEVED,24.01,48.06,0,1000,7
+R08,banana,-12,optimal,2,1,ACHIEVED,24.48,46.07,0,1000,61
+R08,banana,-12,optimal,2,2,ACHIEVED,24.09,44.04,0,1000,93
+R09,mango / tropical,-12,optimal,-2,-2,NEAREST,20.31,44.13,0,1000,2915
+R09,mango / tropical,-12,optimal,-2,-1,ACHIEVED,15.40,54.03,0,1000,2
+R09,mango / tropical,-12,optimal,-2,0,ACHIEVED,15.40,48.01,0,1000,11
+R09,mango / tropical,-12,optimal,-2,1,ACHIEVED,15.39,46.03,0,1000,44
+R09,mango / tropical,-12,optimal,-2,2,ACHIEVED,15.39,44.03,0,1000,36
+R09,mango / tropical,-12,optimal,-1,-2,ACHIEVED,17.80,56.58,0,1000,3
+R09,mango / tropical,-12,optimal,-1,-1,ACHIEVED,17.79,54.07,0,1000,4
+R09,mango / tropical,-12,optimal,-1,0,ACHIEVED,17.80,48.06,0,1000,3
+R09,mango / tropical,-12,optimal,-1,1,ACHIEVED,17.80,46.01,0,1000,35
+R09,mango / tropical,-12,optimal,-1,2,ACHIEVED,17.80,44.07,0,1000,18
+R09,mango / tropical,-12,optimal,0,-2,ACHIEVED,20.19,56.52,0,1000,2
+R09,mango / tropical,-12,optimal,0,-1,ACHIEVED,20.20,54.04,0,1000,6
+R09,mango / tropical,-12,optimal,0,0,ACHIEVED,20.20,48.07,0,1000,24
+R09,mango / tropical,-12,optimal,0,1,ACHIEVED,20.20,46.18,0,1000,61
+R09,mango / tropical,-12,optimal,0,2,ACHIEVED,20.13,44.21,0,1000,52
+R09,mango / tropical,-12,optimal,1,-2,ACHIEVED,22.53,56.51,0,1000,52
+R09,mango / tropical,-12,optimal,1,-1,ACHIEVED,22.29,54.18,0,1000,34
+R09,mango / tropical,-12,optimal,1,0,ACHIEVED,21.08,48.06,0,1000,59
+R09,mango / tropical,-12,optimal,1,1,ACHIEVED,20.70,46.17,0,1000,6
+R09,mango / tropical,-12,optimal,1,2,ACHIEVED,20.41,44.27,0,1000,14
+R09,mango / tropical,-12,optimal,2,-2,ACHIEVED,22.72,56.51,0,1000,5
+R09,mango / tropical,-12,optimal,2,-1,ACHIEVED,22.61,54.02,0,1000,3
+R09,mango / tropical,-12,optimal,2,0,ACHIEVED,22.65,48.16,0,1000,4
+R09,mango / tropical,-12,optimal,2,1,ACHIEVED,22.66,46.23,0,1000,4
+R09,mango / tropical,-12,optimal,2,2,ACHIEVED,22.62,44.04,0,1000,3
+R10,lemon / citrus,-12,optimal,-2,-2,ACHIEVED,15.39,57.21,0,1000,36
+R10,lemon / citrus,-12,optimal,-2,-1,ACHIEVED,15.23,56.20,0,1000,35
+R10,lemon / citrus,-12,optimal,-2,0,ACHIEVED,15.13,50.24,0,1000,16
+R10,lemon / citrus,-12,optimal,-2,1,ACHIEVED,15.18,47.22,0,1000,32
+R10,lemon / citrus,-12,optimal,-2,2,ACHIEVED,15.29,44.17,0,1000,27
+R10,lemon / citrus,-12,optimal,-1,-2,ACHIEVED,17.79,56.61,0,1000,25
+R10,lemon / citrus,-12,optimal,-1,-1,ACHIEVED,17.47,54.44,0,1000,28
+R10,lemon / citrus,-12,optimal,-1,0,ACHIEVED,16.67,53.89,0,1000,11
+R10,lemon / citrus,-12,optimal,-1,1,NEAREST,17.87,46.23,0,1000,16
+R10,lemon / citrus,-12,optimal,-1,2,NEAREST,17.82,44.16,0,1000,8
+R10,lemon / citrus,-12,optimal,0,-2,ACHIEVED,19.87,56.95,0,1000,11
+R10,lemon / citrus,-12,optimal,0,-1,NEAREST,20.21,54.08,0,1000,13
+R10,lemon / citrus,-12,optimal,0,0,ACHIEVED,20.10,48.09,0,1000,2
+R10,lemon / citrus,-12,optimal,0,1,ACHIEVED,20.12,46.26,0,1000,1
+R10,lemon / citrus,-12,optimal,0,2,ACHIEVED,20.12,44.29,0,1000,1
+R10,lemon / citrus,-12,optimal,1,-2,ACHIEVED,22.38,57.05,0,1000,1
+R10,lemon / citrus,-12,optimal,1,-1,ACHIEVED,22.45,54.89,0,1000,1
+R10,lemon / citrus,-12,optimal,1,0,ACHIEVED,21.47,49.84,0,1000,1
+R10,lemon / citrus,-12,optimal,1,1,ACHIEVED,21.25,46.16,0,1000,0
+R10,lemon / citrus,-12,optimal,1,2,ACHIEVED,21.41,45.55,0,1000,0
+R10,lemon / citrus,-12,optimal,2,-2,ACHIEVED,22.74,58.93,0,1000,1
+R10,lemon / citrus,-12,optimal,2,-1,ACHIEVED,24.81,54.37,0,1000,1
+R10,lemon / citrus,-12,optimal,2,0,ACHIEVED,23.76,50.08,0,1000,0
+R10,lemon / citrus,-12,optimal,2,1,ACHIEVED,22.62,46.57,0,1000,1
+R10,lemon / citrus,-12,optimal,2,2,ACHIEVED,22.95,45.74,0,1000,10
+R11,coffee,-12,optimal,-2,-2,ACHIEVED,15.36,58.95,0,1000,47
+R11,coffee,-12,optimal,-2,-1,ACHIEVED,15.40,56.41,0,1000,40
+R11,coffee,-12,optimal,-2,0,ACHIEVED,15.35,48.11,0,1000,14
+R11,coffee,-12,optimal,-2,1,ACHIEVED,15.17,46.14,0,1000,36
+R11,coffee,-12,optimal,-2,2,ACHIEVED,15.27,45.84,0,1000,113
+R11,coffee,-12,optimal,-1,-2,ACHIEVED,17.73,57.89,0,1000,51
+R11,coffee,-12,optimal,-1,-1,ACHIEVED,17.78,54.34,0,1000,35
+R11,coffee,-12,optimal,-1,0,ACHIEVED,17.49,50.31,0,1000,9
+R11,coffee,-12,optimal,-1,1,NEAREST,17.82,46.11,0,1000,18
+R11,coffee,-12,optimal,-1,2,ACHIEVED,17.76,45.04,0,1000,7
+R11,coffee,-12,optimal,0,-2,ACHIEVED,19.68,58.81,0,1000,30
+R11,coffee,-12,optimal,0,-1,ACHIEVED,20.17,55.45,0,1000,20
+R11,coffee,-12,optimal,0,0,ACHIEVED,20.20,48.21,0,1000,1
+R11,coffee,-12,optimal,0,1,ACHIEVED,20.00,46.71,0,1000,1
+R11,coffee,-12,optimal,0,2,ACHIEVED,19.27,44.08,0,1000,1
+R11,coffee,-12,optimal,1,-2,ACHIEVED,22.59,56.70,0,1000,2
+R11,coffee,-12,optimal,1,-1,ACHIEVED,22.05,54.03,0,1000,1
+R11,coffee,-12,optimal,1,0,ACHIEVED,21.45,49.85,0,1000,0
+R11,coffee,-12,optimal,1,1,ACHIEVED,21.31,47.67,0,1000,1
+R11,coffee,-12,optimal,1,2,ACHIEVED,20.38,44.55,0,1000,2
+R11,coffee,-12,optimal,2,-2,ACHIEVED,23.97,57.00,0,1000,1
+R11,coffee,-12,optimal,2,-1,ACHIEVED,23.16,54.01,0,1000,2
+R11,coffee,-12,optimal,2,0,ACHIEVED,22.69,52.33,0,1000,0
+R11,coffee,-12,optimal,2,1,ACHIEVED,22.70,47.60,0,1000,1
+R11,coffee,-12,optimal,2,2,ACHIEVED,22.79,45.85,0,1000,9
+R12,caramel,-12,optimal,-2,-2,NEAREST,19.66,56.75,0,1000,47
+R12,caramel,-12,optimal,-2,-1,NEAREST,20.12,54.02,0,1000,40
+R12,caramel,-12,optimal,-2,0,NEAREST,17.78,48.22,0,1000,49
+R12,caramel,-12,optimal,-2,1,NEAREST,17.71,46.69,0,1000,47
+R12,caramel,-12,optimal,-2,2,NEAREST,17.60,44.92,0,1000,30
+R12,caramel,-12,optimal,-1,-2,NEAREST,19.66,56.75,0,1000,43
+R12,caramel,-12,optimal,-1,-1,NEAREST,20.12,54.02,0,1000,43
+R12,caramel,-12,optimal,-1,0,ACHIEVED,17.78,48.22,0,1000,16
+R12,caramel,-12,optimal,-1,1,ACHIEVED,17.71,46.69,0,1000,11
+R12,caramel,-12,optimal,-1,2,ACHIEVED,17.60,44.92,0,1000,12
+R12,caramel,-12,optimal,0,-2,ACHIEVED,19.66,56.75,0,1000,12
+R12,caramel,-12,optimal,0,-1,ACHIEVED,20.12,54.02,0,1000,13
+R12,caramel,-12,optimal,0,0,ACHIEVED,20.14,48.01,0,1000,11
+R12,caramel,-12,optimal,0,1,ACHIEVED,20.11,46.28,0,1000,9
+R12,caramel,-12,optimal,0,2,ACHIEVED,20.13,44.25,0,1000,11
+R12,caramel,-12,optimal,1,-2,ACHIEVED,21.79,56.57,0,1000,13
+R12,caramel,-12,optimal,1,-1,ACHIEVED,22.40,54.03,0,1000,10
+R12,caramel,-12,optimal,1,0,ACHIEVED,22.57,48.03,0,1000,9
+R12,caramel,-12,optimal,1,1,ACHIEVED,22.34,47.56,0,1000,1
+R12,caramel,-12,optimal,1,2,ACHIEVED,20.80,44.41,0,1000,1
+R12,caramel,-12,optimal,2,-2,ACHIEVED,24.97,56.61,0,1000,1
+R12,caramel,-12,optimal,2,-1,ACHIEVED,25.00,54.04,0,1000,1
+R12,caramel,-12,optimal,2,0,ACHIEVED,23.75,48.46,0,1000,0
+R12,caramel,-12,optimal,2,1,ACHIEVED,22.99,46.25,0,1000,0
+R12,caramel,-12,optimal,2,2,ACHIEVED,22.80,45.59,0,1000,1
+R13,salted caramel,-12,optimal,-2,-2,NEAREST,20.07,56.71,0,1000,52
+R13,salted caramel,-12,optimal,-2,-1,NEAREST,20.16,55.40,0,1000,47
+R13,salted caramel,-12,optimal,-2,0,NEAREST,17.67,48.20,0,1000,26
+R13,salted caramel,-12,optimal,-2,1,ACHIEVED,15.37,46.21,0,1000,13
+R13,salted caramel,-12,optimal,-2,2,ACHIEVED,14.97,44.43,0,1000,10
+R13,salted caramel,-12,optimal,-1,-2,NEAREST,20.07,56.71,0,1000,41
+R13,salted caramel,-12,optimal,-1,-1,ACHIEVED,17.76,54.02,0,1000,13
+R13,salted caramel,-12,optimal,-1,0,ACHIEVED,17.67,48.20,0,1000,12
+R13,salted caramel,-12,optimal,-1,1,NEAREST,15.37,46.21,0,1000,27
+R13,salted caramel,-12,optimal,-1,2,NEAREST,14.97,44.43,0,1000,20
+R13,salted caramel,-12,optimal,0,-2,ACHIEVED,20.07,56.71,0,1000,10
+R13,salted caramel,-12,optimal,0,-1,ACHIEVED,20.16,55.40,0,1000,9
+R13,salted caramel,-12,optimal,0,0,NEAREST,17.67,48.20,0,1000,27
+R13,salted caramel,-12,optimal,0,1,ACHIEVED,20.19,46.00,0,1000,4
+R13,salted caramel,-12,optimal,0,2,ACHIEVED,19.64,44.50,0,1000,1
+R13,salted caramel,-12,optimal,1,-2,ACHIEVED,22.49,56.51,0,1000,13
+R13,salted caramel,-12,optimal,1,-1,NEAREST,22.64,54.19,0,1000,5
+R13,salted caramel,-12,optimal,1,0,ACHIEVED,22.53,48.03,0,1000,1
+R13,salted caramel,-12,optimal,1,1,ACHIEVED,22.43,47.87,0,1000,1
+R13,salted caramel,-12,optimal,1,2,ACHIEVED,21.95,44.65,0,1000,1
+R13,salted caramel,-12,optimal,2,-2,ACHIEVED,24.89,56.55,0,1000,2
+R13,salted caramel,-12,optimal,2,-1,ACHIEVED,24.41,54.31,0,1000,1
+R13,salted caramel,-12,optimal,2,0,ACHIEVED,23.71,48.30,0,1000,0
+R13,salted caramel,-12,optimal,2,1,ACHIEVED,23.06,46.47,0,1000,1
+R13,salted caramel,-12,optimal,2,2,ACHIEVED,22.72,45.49,0,1000,0
+R14,pistachio,-12,optimal,-2,-2,ACHIEVED,15.25,56.56,0,1000,35
+R14,pistachio,-12,optimal,-2,-1,ACHIEVED,14.88,55.44,0,1000,28
+R14,pistachio,-12,optimal,-2,0,ACHIEVED,15.13,48.10,0,1000,19
+R14,pistachio,-12,optimal,-2,1,ACHIEVED,15.18,46.04,0,1000,37
+R14,pistachio,-12,optimal,-2,2,ACHIEVED,15.20,44.10,0,1000,26
+R14,pistachio,-12,optimal,-1,-2,ACHIEVED,17.55,56.56,0,1000,26
+R14,pistachio,-12,optimal,-1,-1,ACHIEVED,17.69,54.03,0,1000,29
+R14,pistachio,-12,optimal,-1,0,ACHIEVED,17.72,48.02,0,1000,14
+R14,pistachio,-12,optimal,-1,1,ACHIEVED,17.74,46.01,0,1000,14
+R14,pistachio,-12,optimal,-1,2,ACHIEVED,17.60,44.02,0,1000,31
+R14,pistachio,-12,optimal,0,-2,ACHIEVED,20.18,58.69,0,1000,15
+R14,pistachio,-12,optimal,0,-1,ACHIEVED,19.67,55.33,0,1000,23
+R14,pistachio,-12,optimal,0,0,ACHIEVED,20.02,53.88,0,1000,5
+R14,pistachio,-12,optimal,0,1,ACHIEVED,19.75,46.97,0,1000,5
+R14,pistachio,-12,optimal,0,2,ACHIEVED,19.98,44.07,0,1000,5
+R14,pistachio,-12,optimal,1,-2,ACHIEVED,20.80,56.78,0,1000,6
+R14,pistachio,-12,optimal,1,-1,ACHIEVED,21.76,54.11,0,1000,5
+R14,pistachio,-12,optimal,1,0,ACHIEVED,22.44,49.88,0,1000,6
+R14,pistachio,-12,optimal,1,1,ACHIEVED,22.56,48.00,0,1000,6
+R14,pistachio,-12,optimal,1,2,ACHIEVED,22.55,45.99,0,1000,10
+R14,pistachio,-12,optimal,2,-2,ACHIEVED,22.64,56.68,0,1000,7
+R14,pistachio,-12,optimal,2,-1,ACHIEVED,22.67,54.17,0,1000,3
+R14,pistachio,-12,optimal,2,0,ACHIEVED,22.72,48.01,0,1000,3
+R14,pistachio,-12,optimal,2,1,ACHIEVED,22.65,46.23,0,1000,10
+R14,pistachio,-12,optimal,2,2,ACHIEVED,23.25,44.38,0,1000,12
+R15,hazelnut,-12,optimal,-2,-2,ACHIEVED,15.39,58.62,0,1000,46
+R15,hazelnut,-12,optimal,-2,-1,ACHIEVED,15.21,56.39,0,1000,39
+R15,hazelnut,-12,optimal,-2,0,ACHIEVED,15.32,53.91,0,1000,14
+R15,hazelnut,-12,optimal,-2,1,ACHIEVED,15.40,47.85,0,1000,35
+R15,hazelnut,-12,optimal,-2,2,ACHIEVED,15.37,45.70,0,1000,25
+R15,hazelnut,-12,optimal,-1,-2,ACHIEVED,17.61,56.54,0,1000,4
+R15,hazelnut,-12,optimal,-1,-1,ACHIEVED,17.64,54.05,0,1000,32
+R15,hazelnut,-12,optimal,-1,0,ACHIEVED,17.80,51.18,0,1000,15
+R15,hazelnut,-12,optimal,-1,1,ACHIEVED,17.73,47.91,0,1000,21
+R15,hazelnut,-12,optimal,-1,2,ACHIEVED,17.72,45.91,0,1000,21
+R15,hazelnut,-12,optimal,0,-2,ACHIEVED,20.14,56.61,0,1000,13
+R15,hazelnut,-12,optimal,0,-1,ACHIEVED,20.19,54.04,0,1000,28
+R15,hazelnut,-12,optimal,0,0,ACHIEVED,20.08,48.15,0,1000,11
+R15,hazelnut,-12,optimal,0,1,ACHIEVED,20.16,46.11,0,1000,7
+R15,hazelnut,-12,optimal,0,2,ACHIEVED,20.18,44.11,0,1000,13
+R15,hazelnut,-12,optimal,1,-2,ACHIEVED,22.56,56.58,0,1000,4
+R15,hazelnut,-12,optimal,1,-1,ACHIEVED,22.44,54.08,0,1000,6
+R15,hazelnut,-12,optimal,1,0,ACHIEVED,22.60,48.15,0,1000,14
+R15,hazelnut,-12,optimal,1,1,ACHIEVED,22.60,46.04,0,1000,8
+R15,hazelnut,-12,optimal,1,2,ACHIEVED,22.45,44.08,0,1000,5
+R15,hazelnut,-12,optimal,2,-2,ACHIEVED,24.97,56.51,0,1000,11
+R15,hazelnut,-12,optimal,2,-1,ACHIEVED,24.97,54.14,0,1000,8
+R15,hazelnut,-12,optimal,2,0,ACHIEVED,24.77,48.05,0,1000,4
+R15,hazelnut,-12,optimal,2,1,ACHIEVED,24.69,46.05,0,1000,11
+R15,hazelnut,-12,optimal,2,2,ACHIEVED,25.00,44.05,0,1000,13
+R16,peanut,-12,optimal,-2,-2,ACHIEVED,15.16,56.53,0,1000,17
+R16,peanut,-12,optimal,-2,-1,ACHIEVED,15.19,54.04,0,1000,31
+R16,peanut,-12,optimal,-2,0,ACHIEVED,15.04,48.05,0,1000,21
+R16,peanut,-12,optimal,-2,1,ACHIEVED,15.40,46.07,0,1000,28
+R16,peanut,-12,optimal,-2,2,ACHIEVED,15.08,44.01,0,1000,23
+R16,peanut,-12,optimal,-1,-2,ACHIEVED,17.71,56.50,0,1000,44
+R16,peanut,-12,optimal,-1,-1,ACHIEVED,17.74,54.01,0,1000,39
+R16,peanut,-12,optimal,-1,0,ACHIEVED,17.61,48.08,0,1000,23
+R16,peanut,-12,optimal,-1,1,ACHIEVED,17.80,46.06,0,1000,33
+R16,peanut,-12,optimal,-1,2,ACHIEVED,17.75,44.01,0,1000,42
+R16,peanut,-12,optimal,0,-2,ACHIEVED,19.95,56.56,0,1000,38
+R16,peanut,-12,optimal,0,-1,ACHIEVED,19.99,54.07,0,1000,41
+R16,peanut,-12,optimal,0,0,ACHIEVED,19.84,48.08,0,1000,11
+R16,peanut,-12,optimal,0,1,ACHIEVED,20.02,46.03,0,1000,5
+R16,peanut,-12,optimal,0,2,ACHIEVED,19.99,44.07,0,1000,13
+R16,peanut,-12,optimal,1,-2,ACHIEVED,20.21,56.66,0,1000,19
+R16,peanut,-12,optimal,1,-1,ACHIEVED,21.19,54.10,0,1000,4
+R16,peanut,-12,optimal,1,0,ACHIEVED,21.73,48.10,0,1000,16
+R16,peanut,-12,optimal,1,1,ACHIEVED,20.81,46.15,0,1000,7
+R16,peanut,-12,optimal,1,2,ACHIEVED,21.00,44.15,0,1000,12
+R16,peanut,-12,optimal,2,-2,ACHIEVED,22.61,56.50,0,1000,5
+R16,peanut,-12,optimal,2,-1,ACHIEVED,22.61,54.26,0,1000,12
+R16,peanut,-12,optimal,2,0,ACHIEVED,22.66,48.24,0,1000,9
+R16,peanut,-12,optimal,2,1,ACHIEVED,22.64,46.06,0,1000,23
+R16,peanut,-12,optimal,2,2,ACHIEVED,22.66,44.07,0,1000,12
+R17,almond,-12,optimal,-2,-2,ACHIEVED,15.29,56.58,0,1000,35
+R17,almond,-12,optimal,-2,-1,ACHIEVED,14.97,54.07,0,1000,82
+R17,almond,-12,optimal,-2,0,ACHIEVED,14.59,48.27,0,1000,12
+R17,almond,-12,optimal,-2,1,ACHIEVED,15.30,46.04,0,1000,72
+R17,almond,-12,optimal,-2,2,ACHIEVED,14.69,44.27,0,1000,37
+R17,almond,-12,optimal,-1,-2,ACHIEVED,17.58,56.60,0,1000,27
+R17,almond,-12,optimal,-1,-1,ACHIEVED,17.76,54.03,0,1000,18
+R17,almond,-12,optimal,-1,0,ACHIEVED,17.51,48.14,0,1000,16
+R17,almond,-12,optimal,-1,1,ACHIEVED,17.58,46.06,0,1000,5
+R17,almond,-12,optimal,-1,2,ACHIEVED,17.63,44.09,0,1000,14
+R17,almond,-12,optimal,0,-2,ACHIEVED,20.09,56.60,0,1000,12
+R17,almond,-12,optimal,0,-1,ACHIEVED,20.12,54.11,0,1000,8
+R17,almond,-12,optimal,0,0,ACHIEVED,20.18,48.05,0,1000,13
+R17,almond,-12,optimal,0,1,ACHIEVED,20.18,47.18,0,1000,4
+R17,almond,-12,optimal,0,2,ACHIEVED,19.62,45.02,0,1000,5
+R17,almond,-12,optimal,1,-2,ACHIEVED,20.21,56.64,0,1000,54
+R17,almond,-12,optimal,1,-1,ACHIEVED,20.53,54.09,0,1000,4
+R17,almond,-12,optimal,1,0,ACHIEVED,21.10,48.17,0,1000,48
+R17,almond,-12,optimal,1,1,ACHIEVED,20.61,46.91,0,1000,4
+R17,almond,-12,optimal,1,2,ACHIEVED,20.21,45.90,0,1000,8
+R17,almond,-12,optimal,2,-2,ACHIEVED,22.65,56.61,0,1000,9
+R17,almond,-12,optimal,2,-1,ACHIEVED,22.67,54.26,0,1000,12
+R17,almond,-12,optimal,2,0,ACHIEVED,22.64,50.41,0,1000,6
+R17,almond,-12,optimal,2,1,ACHIEVED,22.66,47.97,0,1000,11
+R17,almond,-12,optimal,2,2,ACHIEVED,22.60,45.95,0,1000,11
+R18,hard fat class,-12,optimal,-2,-2,NEAREST,15.52,56.54,0,1000,65
+R18,hard fat class,-12,optimal,-2,-1,ACHIEVED,15.40,54.14,0,1000,41
+R18,hard fat class,-12,optimal,-2,0,ACHIEVED,15.11,48.28,0,1000,21
+R18,hard fat class,-12,optimal,-2,1,ACHIEVED,15.28,47.22,0,1000,40
+R18,hard fat class,-12,optimal,-2,2,ACHIEVED,15.33,45.25,0,1000,30
+R18,hard fat class,-12,optimal,-1,-2,ACHIEVED,15.52,56.54,0,1000,71
+R18,hard fat class,-12,optimal,-1,-1,ACHIEVED,17.79,54.66,0,1000,24
+R18,hard fat class,-12,optimal,-1,0,NEAREST,15.11,48.28,0,1000,28
+R18,hard fat class,-12,optimal,-1,1,ACHIEVED,17.63,47.41,0,1000,11
+R18,hard fat class,-12,optimal,-1,2,NEAREST,17.81,44.12,0,1000,15
+R18,hard fat class,-12,optimal,0,-2,NEAREST,20.23,56.59,0,1000,18
+R18,hard fat class,-12,optimal,0,-1,ACHIEVED,19.90,54.46,0,1000,15
+R18,hard fat class,-12,optimal,0,0,ACHIEVED,19.75,48.01,0,1000,2
+R18,hard fat class,-12,optimal,0,1,ACHIEVED,19.36,47.07,0,1000,1
+R18,hard fat class,-12,optimal,0,2,ACHIEVED,19.02,45.63,0,1000,0
+R18,hard fat class,-12,optimal,1,-2,NEAREST,23.14,56.71,0,1000,24
+R18,hard fat class,-12,optimal,1,-1,ACHIEVED,21.85,54.15,0,1000,2
+R18,hard fat class,-12,optimal,1,0,ACHIEVED,20.96,49.05,0,1000,1
+R18,hard fat class,-12,optimal,1,1,ACHIEVED,21.36,47.94,0,1000,1
+R18,hard fat class,-12,optimal,1,2,ACHIEVED,21.06,45.49,0,1000,1
+R18,hard fat class,-12,optimal,2,-2,ACHIEVED,23.14,56.71,0,1000,1
+R18,hard fat class,-12,optimal,2,-1,ACHIEVED,23.73,54.11,0,1000,2
+R18,hard fat class,-12,optimal,2,0,ACHIEVED,23.18,51.27,0,1000,1
+R18,hard fat class,-12,optimal,2,1,ACHIEVED,23.10,47.25,0,1000,1
+R18,hard fat class,-12,optimal,2,2,ACHIEVED,23.11,45.68,0,1000,1
+R19,high fat,-12,optimal,-2,-2,ACHIEVED,15.32,56.53,0,1000,43
+R19,high fat,-12,optimal,-2,-1,ACHIEVED,15.33,54.62,0,1000,38
+R19,high fat,-12,optimal,-2,0,ACHIEVED,15.06,53.59,0,1000,19
+R19,high fat,-12,optimal,-2,1,ACHIEVED,15.07,46.65,0,1000,38
+R19,high fat,-12,optimal,-2,2,ACHIEVED,15.20,45.06,0,1000,31
+R19,high fat,-12,optimal,-1,-2,ACHIEVED,17.58,58.91,0,1000,28
+R19,high fat,-12,optimal,-1,-1,ACHIEVED,17.75,56.16,0,1000,29
+R19,high fat,-12,optimal,-1,0,ACHIEVED,16.47,53.53,0,1000,19
+R19,high fat,-12,optimal,-1,1,ACHIEVED,17.75,47.24,0,1000,20
+R19,high fat,-12,optimal,-1,2,ACHIEVED,17.75,44.01,0,1000,4
+R19,high fat,-12,optimal,0,-2,ACHIEVED,20.18,56.53,0,1000,21
+R19,high fat,-12,optimal,0,-1,ACHIEVED,20.19,54.07,0,1000,14
+R19,high fat,-12,optimal,0,0,ACHIEVED,18.80,53.70,0,1000,13
+R19,high fat,-12,optimal,0,1,ACHIEVED,20.17,46.89,0,1000,1
+R19,high fat,-12,optimal,0,2,ACHIEVED,20.05,44.37,0,1000,1
+R19,high fat,-12,optimal,1,-2,NEAREST,22.63,56.64,0,1000,4
+R19,high fat,-12,optimal,1,-1,ACHIEVED,22.52,54.80,0,1000,2
+R19,high fat,-12,optimal,1,0,ACHIEVED,21.43,49.59,0,1000,0
+R19,high fat,-12,optimal,1,1,ACHIEVED,21.30,47.22,0,1000,0
+R19,high fat,-12,optimal,1,2,ACHIEVED,20.65,45.89,0,1000,2
+R19,high fat,-12,optimal,2,-2,ACHIEVED,24.15,57.10,0,1000,1
+R19,high fat,-12,optimal,2,-1,ACHIEVED,23.33,54.10,0,1000,1
+R19,high fat,-12,optimal,2,0,ACHIEVED,22.86,52.52,0,1000,0
+R19,high fat,-12,optimal,2,1,ACHIEVED,22.63,47.61,0,1000,1
+R19,high fat,-12,optimal,2,2,ACHIEVED,22.71,45.76,0,1000,13
+R20,low fat,-12,optimal,-2,-2,ACHIEVED,15.35,56.56,0,1000,25
+R20,low fat,-12,optimal,-2,-1,ACHIEVED,15.12,54.54,0,1000,24
+R20,low fat,-12,optimal,-2,0,ACHIEVED,14.88,53.54,0,1000,10
+R20,low fat,-12,optimal,-2,1,ACHIEVED,15.31,47.70,0,1000,31
+R20,low fat,-12,optimal,-2,2,ACHIEVED,15.26,45.17,0,1000,17
+R20,low fat,-12,optimal,-1,-2,ACHIEVED,17.53,57.06,0,1000,19
+R20,low fat,-12,optimal,-1,-1,ACHIEVED,17.63,56.39,0,1000,16
+R20,low fat,-12,optimal,-1,0,ACHIEVED,17.50,48.41,0,1000,10
+R20,low fat,-12,optimal,-1,1,ACHIEVED,17.75,46.03,0,1000,15
+R20,low fat,-12,optimal,-1,2,ACHIEVED,17.77,44.09,0,1000,3
+R20,low fat,-12,optimal,0,-2,ACHIEVED,20.03,58.90,0,1000,9
+R20,low fat,-12,optimal,0,-1,ACHIEVED,19.92,54.47,0,1000,9
+R20,low fat,-12,optimal,0,0,ACHIEVED,20.11,48.14,0,1000,1
+R20,low fat,-12,optimal,0,1,ACHIEVED,20.19,46.46,0,1000,1
+R20,low fat,-12,optimal,0,2,ACHIEVED,20.07,44.02,0,1000,1
+R20,low fat,-12,optimal,1,-2,ACHIEVED,22.58,56.56,0,1000,2
+R20,low fat,-12,optimal,1,-1,ACHIEVED,22.35,54.01,0,1000,1
+R20,low fat,-12,optimal,1,0,ACHIEVED,21.41,49.36,0,1000,1
+R20,low fat,-12,optimal,1,1,ACHIEVED,21.31,46.69,0,1000,0
+R20,low fat,-12,optimal,1,2,ACHIEVED,20.49,44.05,0,1000,0
+R20,low fat,-12,optimal,2,-2,ACHIEVED,24.67,57.93,0,1000,1
+R20,low fat,-12,optimal,2,-1,ACHIEVED,23.91,55.25,0,1000,4
+R20,low fat,-12,optimal,2,0,ACHIEVED,23.35,53.40,0,1000,0
+R20,low fat,-12,optimal,2,1,ACHIEVED,23.00,47.84,0,1000,2
+R20,low fat,-12,optimal,2,2,ACHIEVED,23.19,44.77,0,1000,5
+R21,plant protein (pea),-12,optimal,-2,-2,ACHIEVED,15.25,56.74,0,1000,36
+R21,plant protein (pea),-12,optimal,-2,-1,ACHIEVED,15.30,54.23,0,1000,23
+R21,plant protein (pea),-12,optimal,-2,0,ACHIEVED,15.27,48.20,0,1000,8
+R21,plant protein (pea),-12,optimal,-2,1,ACHIEVED,15.38,46.15,0,1000,9
+R21,plant protein (pea),-12,optimal,-2,2,ACHIEVED,15.38,44.63,0,1000,5
+R21,plant protein (pea),-12,optimal,-1,-2,ACHIEVED,17.27,57.09,0,1000,26
+R21,plant protein (pea),-12,optimal,-1,-1,ACHIEVED,17.40,54.56,0,1000,12
+R21,plant protein (pea),-12,optimal,-1,0,ACHIEVED,17.65,49.08,0,1000,2
+R21,plant protein (pea),-12,optimal,-1,1,ACHIEVED,17.60,46.14,0,1000,3
+R21,plant protein (pea),-12,optimal,-1,2,ACHIEVED,17.30,44.38,0,1000,2
+R21,plant protein (pea),-12,optimal,0,-2,ACHIEVED,20.10,56.66,0,1000,9
+R21,plant protein (pea),-12,optimal,0,-1,ACHIEVED,20.00,54.47,0,1000,6
+R21,plant protein (pea),-12,optimal,0,0,ACHIEVED,19.83,48.12,0,1000,1
+R21,plant protein (pea),-12,optimal,0,1,ACHIEVED,20.15,46.01,0,1000,2
+R21,plant protein (pea),-12,optimal,0,2,ACHIEVED,19.90,44.86,0,1000,1
+R21,plant protein (pea),-12,optimal,1,-2,ACHIEVED,22.28,57.21,0,1000,2
+R21,plant protein (pea),-12,optimal,1,-1,ACHIEVED,22.56,54.08,0,1000,0
+R21,plant protein (pea),-12,optimal,1,0,ACHIEVED,21.28,49.48,0,1000,0
+R21,plant protein (pea),-12,optimal,1,1,ACHIEVED,20.46,46.63,0,1000,2
+R21,plant protein (pea),-12,optimal,1,2,ACHIEVED,21.08,45.49,0,1000,1
+R21,plant protein (pea),-12,optimal,2,-2,ACHIEVED,23.80,56.65,0,1000,0
+R21,plant protein (pea),-12,optimal,2,-1,ACHIEVED,23.02,55.84,0,1000,1
+R21,plant protein (pea),-12,optimal,2,0,ACHIEVED,23.73,52.98,0,1000,0
+R21,plant protein (pea),-12,optimal,2,1,ACHIEVED,23.19,47.93,0,1000,2
+R21,plant protein (pea),-12,optimal,2,2,ACHIEVED,22.84,45.31,0,1000,1
+R22,plant protein (rice),-12,optimal,-2,-2,ACHIEVED,15.35,56.51,0,1000,43
+R22,plant protein (rice),-12,optimal,-2,-1,ACHIEVED,15.40,54.17,0,1000,41
+R22,plant protein (rice),-12,optimal,-2,0,NEAREST,15.47,48.28,0,1000,15
+R22,plant protein (rice),-12,optimal,-2,1,ACHIEVED,15.38,46.16,0,1000,20
+R22,plant protein (rice),-12,optimal,-2,2,NEAREST,15.45,44.24,0,1000,17
+R22,plant protein (rice),-12,optimal,-1,-2,ACHIEVED,17.80,56.50,0,1000,28
+R22,plant protein (rice),-12,optimal,-1,-1,ACHIEVED,17.76,55.36,0,1000,26
+R22,plant protein (rice),-12,optimal,-1,0,ACHIEVED,16.67,50.36,0,1000,10
+R22,plant protein (rice),-12,optimal,-1,1,ACHIEVED,17.73,47.31,0,1000,13
+R22,plant protein (rice),-12,optimal,-1,2,ACHIEVED,17.75,44.06,0,1000,2
+R22,plant protein (rice),-12,optimal,0,-2,ACHIEVED,20.08,58.80,0,1000,14
+R22,plant protein (rice),-12,optimal,0,-1,NEAREST,20.16,53.99,0,1000,4
+R22,plant protein (rice),-12,optimal,0,0,ACHIEVED,19.87,48.18,0,1000,1
+R22,plant protein (rice),-12,optimal,0,1,ACHIEVED,19.97,47.18,0,1000,2
+R22,plant protein (rice),-12,optimal,0,2,ACHIEVED,19.33,44.73,0,1000,1
+R22,plant protein (rice),-12,optimal,1,-2,ACHIEVED,22.38,56.79,0,1000,2
+R22,plant protein (rice),-12,optimal,1,-1,ACHIEVED,22.01,55.23,0,1000,1
+R22,plant protein (rice),-12,optimal,1,0,ACHIEVED,21.55,53.30,0,1000,0
+R22,plant protein (rice),-12,optimal,1,1,ACHIEVED,21.17,47.93,0,1000,1
+R22,plant protein (rice),-12,optimal,1,2,ACHIEVED,20.59,45.94,0,1000,1
+R22,plant protein (rice),-12,optimal,2,-2,ACHIEVED,23.81,58.31,0,1000,1
+R22,plant protein (rice),-12,optimal,2,-1,ACHIEVED,23.36,55.75,0,1000,1
+R22,plant protein (rice),-12,optimal,2,0,ACHIEVED,22.83,53.89,0,1000,1
+R22,plant protein (rice),-12,optimal,2,1,ACHIEVED,22.86,47.59,0,1000,2
+R22,plant protein (rice),-12,optimal,2,2,ACHIEVED,22.87,45.79,0,1000,1
+R23,mixed fat,-12,optimal,-2,-2,ACHIEVED,15.39,56.69,0,1000,37
+R23,mixed fat,-12,optimal,-2,-1,ACHIEVED,15.31,54.35,0,1000,36
+R23,mixed fat,-12,optimal,-2,0,ACHIEVED,15.09,53.63,0,1000,19
+R23,mixed fat,-12,optimal,-2,1,ACHIEVED,15.32,46.56,0,1000,37
+R23,mixed fat,-12,optimal,-2,2,ACHIEVED,15.38,45.26,0,1000,31
+R23,mixed fat,-12,optimal,-1,-2,ACHIEVED,17.56,58.71,0,1000,28
+R23,mixed fat,-12,optimal,-1,-1,ACHIEVED,17.54,54.69,0,1000,29
+R23,mixed fat,-12,optimal,-1,0,ACHIEVED,17.79,48.07,0,1000,16
+R23,mixed fat,-12,optimal,-1,1,NEAREST,17.79,45.97,0,1000,13
+R23,mixed fat,-12,optimal,-1,2,NEAREST,17.87,44.27,0,1000,5
+R23,mixed fat,-12,optimal,0,-2,ACHIEVED,19.67,58.77,0,1000,23
+R23,mixed fat,-12,optimal,0,-1,NEAREST,20.26,54.19,0,1000,12
+R23,mixed fat,-12,optimal,0,0,ACHIEVED,20.18,48.05,0,1000,4
+R23,mixed fat,-12,optimal,0,1,ACHIEVED,20.15,46.37,0,1000,1
+R23,mixed fat,-12,optimal,0,2,ACHIEVED,20.07,44.71,0,1000,1
+R23,mixed fat,-12,optimal,1,-2,NEAREST,22.62,56.56,0,1000,4
+R23,mixed fat,-12,optimal,1,-1,ACHIEVED,22.56,54.25,0,1000,1
+R23,mixed fat,-12,optimal,1,0,ACHIEVED,22.37,52.63,0,1000,0
+R23,mixed fat,-12,optimal,1,1,ACHIEVED,21.03,47.94,0,1000,1
+R23,mixed fat,-12,optimal,1,2,ACHIEVED,20.24,45.34,0,1000,1
+R23,mixed fat,-12,optimal,2,-2,ACHIEVED,24.28,57.46,0,1000,1
+R23,mixed fat,-12,optimal,2,-1,ACHIEVED,23.81,55.66,0,1000,0
+R23,mixed fat,-12,optimal,2,0,ACHIEVED,22.64,53.65,0,1000,1
+R23,mixed fat,-12,optimal,2,1,ACHIEVED,23.15,47.81,0,1000,1
+R23,mixed fat,-12,optimal,2,2,ACHIEVED,22.90,45.38,0,1000,1
+R24,liquid oil,-12,optimal,-2,-2,ACHIEVED,15.37,56.56,0,1000,39
+R24,liquid oil,-12,optimal,-2,-1,ACHIEVED,15.29,54.48,0,1000,35
+R24,liquid oil,-12,optimal,-2,0,ACHIEVED,15.08,53.40,0,1000,20
+R24,liquid oil,-12,optimal,-2,1,ACHIEVED,15.33,47.66,0,1000,47
+R24,liquid oil,-12,optimal,-2,2,ACHIEVED,15.37,45.18,0,1000,32
+R24,liquid oil,-12,optimal,-1,-2,ACHIEVED,17.74,56.73,0,1000,27
+R24,liquid oil,-12,optimal,-1,-1,ACHIEVED,17.43,54.36,0,1000,28
+R24,liquid oil,-12,optimal,-1,0,ACHIEVED,16.49,53.45,0,1000,18
+R24,liquid oil,-12,optimal,-1,1,ACHIEVED,17.79,46.14,0,1000,23
+R24,liquid oil,-12,optimal,-1,2,NEAREST,17.80,44.07,0,1000,12
+R24,liquid oil,-12,optimal,0,-2,ACHIEVED,18.52,58.69,0,1000,11
+R24,liquid oil,-12,optimal,0,-1,ACHIEVED,19.85,54.62,0,1000,18
+R24,liquid oil,-12,optimal,0,0,ACHIEVED,20.16,48.03,0,1000,3
+R24,liquid oil,-12,optimal,0,1,ACHIEVED,20.08,46.65,0,1000,1
+R24,liquid oil,-12,optimal,0,2,ACHIEVED,19.41,44.27,0,1000,1
+R24,liquid oil,-12,optimal,1,-2,NEAREST,22.57,56.46,0,1000,4
+R24,liquid oil,-12,optimal,1,-1,ACHIEVED,22.55,54.33,0,1000,1
+R24,liquid oil,-12,optimal,1,0,ACHIEVED,21.47,48.03,0,1000,1
+R24,liquid oil,-12,optimal,1,1,ACHIEVED,20.82,46.19,0,1000,0
+R24,liquid oil,-12,optimal,1,2,ACHIEVED,20.60,44.19,0,1000,1
+R24,liquid oil,-12,optimal,2,-2,ACHIEVED,24.91,56.74,0,1000,4
+R24,liquid oil,-12,optimal,2,-1,ACHIEVED,22.94,54.01,0,1000,1
+R24,liquid oil,-12,optimal,2,0,ACHIEVED,23.10,53.63,0,1000,1
+R24,liquid oil,-12,optimal,2,1,ACHIEVED,22.93,47.74,0,1000,1
+R24,liquid oil,-12,optimal,2,2,ACHIEVED,22.87,45.79,0,1000,1
+R01,oat vanilla,-13,optimal,-2,-2,NEAREST,35.04,61.89,0,1000,9
+R01,oat vanilla,-13,optimal,-2,-1,NEAREST,32.72,59.85,0,1000,10
+R01,oat vanilla,-13,optimal,-2,0,NEAREST,30.64,53.73,0,1000,8
+R01,oat vanilla,-13,optimal,-2,1,NEAREST,29.62,51.95,0,1000,10
+R01,oat vanilla,-13,optimal,-2,2,NEAREST,28.84,50.01,0,1000,7
+R01,oat vanilla,-13,optimal,-1,-2,NEAREST,35.04,61.89,0,1000,9
+R01,oat vanilla,-13,optimal,-1,-1,NEAREST,32.72,59.85,0,1000,9
+R01,oat vanilla,-13,optimal,-1,0,NEAREST,30.64,53.73,0,1000,12
+R01,oat vanilla,-13,optimal,-1,1,NEAREST,29.62,51.95,0,1000,7
+R01,oat vanilla,-13,optimal,-1,2,NEAREST,28.84,50.01,0,1000,6
+R01,oat vanilla,-13,optimal,0,-2,NEAREST,35.04,61.89,0,1000,9
+R01,oat vanilla,-13,optimal,0,-1,NEAREST,32.72,59.85,0,1000,15
+R01,oat vanilla,-13,optimal,0,0,NEAREST,30.64,53.73,0,1000,7
+R01,oat vanilla,-13,optimal,0,1,NEAREST,29.62,51.95,0,1000,7
+R01,oat vanilla,-13,optimal,0,2,NEAREST,28.84,50.01,0,1000,8
+R01,oat vanilla,-13,optimal,1,-2,NEAREST,35.04,61.89,0,1000,10
+R01,oat vanilla,-13,optimal,1,-1,NEAREST,32.72,59.85,0,1000,17
+R01,oat vanilla,-13,optimal,1,0,NEAREST,30.64,53.73,0,1000,11
+R01,oat vanilla,-13,optimal,1,1,NEAREST,29.62,51.95,0,1000,9
+R01,oat vanilla,-13,optimal,1,2,NEAREST,28.84,50.01,0,1000,8
+R01,oat vanilla,-13,optimal,2,-2,NEAREST,35.04,61.89,0,1000,19
+R01,oat vanilla,-13,optimal,2,-1,NEAREST,32.72,59.85,0,1000,15
+R01,oat vanilla,-13,optimal,2,0,NEAREST,24.97,38.50,0,1000,11
+R01,oat vanilla,-13,optimal,2,1,NEAREST,29.62,51.95,0,1000,8
+R01,oat vanilla,-13,optimal,2,2,NEAREST,28.84,50.01,0,1000,16
+R02,coconut,-13,optimal,-2,-2,NEAREST,35.01,62.05,0,1000,17
+R02,coconut,-13,optimal,-2,-1,NEAREST,33.98,60.04,0,1000,15
+R02,coconut,-13,optimal,-2,0,NEAREST,30.63,53.50,0,1000,8
+R02,coconut,-13,optimal,-2,1,NEAREST,29.85,51.94,0,1000,7
+R02,coconut,-13,optimal,-2,2,NEAREST,28.85,50.07,0,1000,13
+R02,coconut,-13,optimal,-1,-2,NEAREST,35.01,62.05,0,1000,9
+R02,coconut,-13,optimal,-1,-1,NEAREST,33.98,60.04,0,1000,7
+R02,coconut,-13,optimal,-1,0,NEAREST,30.63,53.50,0,1000,7
+R02,coconut,-13,optimal,-1,1,NEAREST,29.85,51.94,0,1000,18
+R02,coconut,-13,optimal,-1,2,NEAREST,28.85,50.07,0,1000,15
+R02,coconut,-13,optimal,0,-2,NEAREST,35.01,62.05,0,1000,8
+R02,coconut,-13,optimal,0,-1,NEAREST,33.98,60.04,0,1000,8
+R02,coconut,-13,optimal,0,0,NEAREST,30.63,53.50,0,1000,8
+R02,coconut,-13,optimal,0,1,NEAREST,29.65,51.85,0,1000,9
+R02,coconut,-13,optimal,0,2,NEAREST,28.85,50.07,0,1000,9
+R02,coconut,-13,optimal,1,-2,NEAREST,35.01,62.05,0,1000,9
+R02,coconut,-13,optimal,1,-1,NEAREST,33.98,60.04,0,1000,7
+R02,coconut,-13,optimal,1,0,NEAREST,30.63,53.50,0,1000,7
+R02,coconut,-13,optimal,1,1,NEAREST,29.65,51.85,0,1000,13
+R02,coconut,-13,optimal,1,2,NEAREST,28.85,50.07,0,1000,9
+R02,coconut,-13,optimal,2,-2,NEAREST,35.01,62.05,0,1000,8
+R02,coconut,-13,optimal,2,-1,NEAREST,33.98,60.04,0,1000,8
+R02,coconut,-13,optimal,2,0,NEAREST,24.99,39.63,0,1000,13
+R02,coconut,-13,optimal,2,1,NEAREST,29.65,51.85,0,1000,8
+R02,coconut,-13,optimal,2,2,NEAREST,28.85,50.07,0,1000,9
+R03,dark cocoa,-13,optimal,-2,-2,NEAREST,31.31,62.14,0,1000,19
+R03,dark cocoa,-13,optimal,-2,-1,NEAREST,25.75,45.37,0,1000,23
+R03,dark cocoa,-13,optimal,-2,0,NEAREST,28.40,50.00,0,1000,31
+R03,dark cocoa,-13,optimal,-2,1,NEAREST,25.75,45.37,0,1000,27
+R03,dark cocoa,-13,optimal,-2,2,NEAREST,25.75,45.37,0,1000,24
+R03,dark cocoa,-13,optimal,-1,-2,NEAREST,31.31,62.14,0,1000,20
+R03,dark cocoa,-13,optimal,-1,-1,NEAREST,25.75,45.37,0,1000,27
+R03,dark cocoa,-13,optimal,-1,0,NEAREST,28.40,50.00,0,1000,59
+R03,dark cocoa,-13,optimal,-1,1,NEAREST,25.75,45.37,0,1000,32
+R03,dark cocoa,-13,optimal,-1,2,NEAREST,25.75,45.37,0,1000,23
+R03,dark cocoa,-13,optimal,0,-2,NEAREST,28.40,50.00,0,1000,34
+R03,dark cocoa,-13,optimal,0,-1,NEAREST,28.40,50.00,0,1000,39
+R03,dark cocoa,-13,optimal,0,0,NEAREST,28.40,50.00,0,1000,40
+R03,dark cocoa,-13,optimal,0,1,NEAREST,28.40,50.00,0,1000,29
+R03,dark cocoa,-13,optimal,0,2,NEAREST,28.40,50.00,0,1000,33
+R03,dark cocoa,-13,optimal,1,-2,NEAREST,22.48,38.47,0,1000,17
+R03,dark cocoa,-13,optimal,1,-1,NEAREST,22.64,39.02,0,1000,11
+R03,dark cocoa,-13,optimal,1,0,NEAREST,22.64,39.02,0,1000,11
+R03,dark cocoa,-13,optimal,1,1,NEAREST,22.56,39.24,0,1000,11
+R03,dark cocoa,-13,optimal,1,2,NEAREST,22.56,39.24,0,1000,17
+R03,dark cocoa,-13,optimal,2,-2,NEAREST,24.88,43.82,0,1000,12
+R03,dark cocoa,-13,optimal,2,-1,NEAREST,24.88,43.82,0,1000,12
+R03,dark cocoa,-13,optimal,2,0,NEAREST,25.00,44.04,0,1000,21
+R03,dark cocoa,-13,optimal,2,1,NEAREST,25.00,44.04,0,1000,14
+R03,dark cocoa,-13,optimal,2,2,NEAREST,25.00,44.04,0,1000,19
+R04,chocolate,-13,optimal,-2,-2,NEAREST,31.24,62.36,0,1000,14
+R04,chocolate,-13,optimal,-2,-1,NEAREST,29.86,59.97,0,1000,20
+R04,chocolate,-13,optimal,-2,0,NEAREST,15.17,23.58,0,1000,17
+R04,chocolate,-13,optimal,-2,1,NEAREST,26.77,52.30,0,1000,15
+R04,chocolate,-13,optimal,-2,2,NEAREST,25.99,50.08,0,1000,8
+R04,chocolate,-13,optimal,-1,-2,NEAREST,31.24,62.36,0,1000,11
+R04,chocolate,-13,optimal,-1,-1,NEAREST,29.86,59.97,0,1000,14
+R04,chocolate,-13,optimal,-1,0,NEAREST,17.79,31.83,0,1000,11
+R04,chocolate,-13,optimal,-1,1,NEAREST,26.55,51.66,0,1000,9
+R04,chocolate,-13,optimal,-1,2,NEAREST,25.99,50.08,0,1000,14
+R04,chocolate,-13,optimal,0,-2,NEAREST,20.19,35.82,0,1000,10
+R04,chocolate,-13,optimal,0,-1,NEAREST,29.86,59.97,0,1000,11
+R04,chocolate,-13,optimal,0,0,NEAREST,20.15,33.88,0,1000,9
+R04,chocolate,-13,optimal,0,1,NEAREST,26.55,51.66,0,1000,14
+R04,chocolate,-13,optimal,0,2,NEAREST,25.99,50.08,0,1000,8
+R04,chocolate,-13,optimal,1,-2,NEAREST,22.48,39.87,0,1000,11
+R04,chocolate,-13,optimal,1,-1,NEAREST,22.48,39.87,0,1000,9
+R04,chocolate,-13,optimal,1,0,NEAREST,22.48,39.87,0,1000,22
+R04,chocolate,-13,optimal,1,1,NEAREST,22.48,39.87,0,1000,10
+R04,chocolate,-13,optimal,1,2,NEAREST,22.48,39.87,0,1000,10
+R04,chocolate,-13,optimal,2,-2,NEAREST,24.91,44.11,0,1000,12
+R04,chocolate,-13,optimal,2,-1,NEAREST,24.16,42.72,0,1000,14
+R04,chocolate,-13,optimal,2,0,NEAREST,27.21,53.57,0,1000,10
+R04,chocolate,-13,optimal,2,1,NEAREST,26.55,51.66,0,1000,11
+R04,chocolate,-13,optimal,2,2,NEAREST,25.99,50.08,0,1000,13
+R05,strawberry,-13,optimal,-2,-2,NEAREST,24.51,50.04,0,1000,30503
+R05,strawberry,-13,optimal,-2,-1,NEAREST,24.51,50.04,0,1000,29362
+R05,strawberry,-13,optimal,-2,0,NEAREST,24.51,50.04,0,1000,34359
+R05,strawberry,-13,optimal,-2,1,ACHIEVED,15.40,51.82,0,1000,87
+R05,strawberry,-13,optimal,-2,2,ACHIEVED,15.40,50.65,0,1000,75
+R05,strawberry,-13,optimal,-1,-2,ACHIEVED,17.79,62.04,0,1000,6
+R05,strawberry,-13,optimal,-1,-1,ACHIEVED,17.80,60.10,0,1000,9
+R05,strawberry,-13,optimal,-1,0,ACHIEVED,17.53,53.55,0,1000,15
+R05,strawberry,-13,optimal,-1,1,ACHIEVED,17.71,51.83,0,1000,38
+R05,strawberry,-13,optimal,-1,2,ACHIEVED,17.77,50.06,0,1000,34
+R05,strawberry,-13,optimal,0,-2,ACHIEVED,19.72,62.08,0,1000,3
+R05,strawberry,-13,optimal,0,-1,ACHIEVED,19.57,60.01,0,1000,12
+R05,strawberry,-13,optimal,0,0,ACHIEVED,19.91,53.56,0,1000,54
+R05,strawberry,-13,optimal,0,1,ACHIEVED,20.10,51.83,0,1000,27
+R05,strawberry,-13,optimal,0,2,ACHIEVED,19.87,50.08,0,1000,24
+R05,strawberry,-13,optimal,1,-2,ACHIEVED,22.10,62.08,0,1000,4
+R05,strawberry,-13,optimal,1,-1,ACHIEVED,21.96,60.02,0,1000,22
+R05,strawberry,-13,optimal,1,0,ACHIEVED,22.17,53.51,0,1000,97
+R05,strawberry,-13,optimal,1,1,ACHIEVED,22.35,51.79,0,1000,4
+R05,strawberry,-13,optimal,1,2,ACHIEVED,22.25,50.08,0,1000,5
+R05,strawberry,-13,optimal,2,-2,ACHIEVED,24.36,62.04,0,1000,11
+R05,strawberry,-13,optimal,2,-1,ACHIEVED,24.34,60.02,0,1000,26
+R05,strawberry,-13,optimal,2,0,ACHIEVED,24.55,53.52,0,1000,41
+R05,strawberry,-13,optimal,2,1,ACHIEVED,24.58,51.85,0,1000,49
+R05,strawberry,-13,optimal,2,2,ACHIEVED,24.51,50.04,0,1000,50
+R06,soy vanilla,-13,optimal,-2,-2,NEAREST,35.07,61.91,0,1000,18
+R06,soy vanilla,-13,optimal,-2,-1,NEAREST,34.07,60.16,0,1000,15
+R06,soy vanilla,-13,optimal,-2,0,NEAREST,20.87,31.80,0,1000,26
+R06,soy vanilla,-13,optimal,-2,1,NEAREST,29.64,51.87,0,1000,16
+R06,soy vanilla,-13,optimal,-2,2,NEAREST,28.87,50.03,0,1000,19
+R06,soy vanilla,-13,optimal,-1,-2,NEAREST,35.07,61.91,0,1000,47
+R06,soy vanilla,-13,optimal,-1,-1,NEAREST,34.07,60.16,0,1000,29
+R06,soy vanilla,-13,optimal,-1,0,NEAREST,20.87,31.80,0,1000,77
+R06,soy vanilla,-13,optimal,-1,1,NEAREST,29.64,51.87,0,1000,39
+R06,soy vanilla,-13,optimal,-1,2,NEAREST,28.87,50.03,0,1000,69
+R06,soy vanilla,-13,optimal,0,-2,NEAREST,35.07,61.91,0,1000,53
+R06,soy vanilla,-13,optimal,0,-1,NEAREST,34.07,60.16,0,1000,28
+R06,soy vanilla,-13,optimal,0,0,NEAREST,20.17,30.72,0,1000,53
+R06,soy vanilla,-13,optimal,0,1,NEAREST,29.64,51.87,0,1000,27
+R06,soy vanilla,-13,optimal,0,2,NEAREST,28.87,50.03,0,1000,36
+R06,soy vanilla,-13,optimal,1,-2,NEAREST,35.07,61.91,0,1000,52
+R06,soy vanilla,-13,optimal,1,-1,NEAREST,34.07,60.16,0,1000,37
+R06,soy vanilla,-13,optimal,1,0,NEAREST,22.55,34.65,0,1000,37
+R06,soy vanilla,-13,optimal,1,1,NEAREST,29.64,51.87,0,1000,35
+R06,soy vanilla,-13,optimal,1,2,NEAREST,28.87,50.03,0,1000,33
+R06,soy vanilla,-13,optimal,2,-2,NEAREST,24.97,39.11,0,1000,66
+R06,soy vanilla,-13,optimal,2,-1,NEAREST,24.97,39.11,0,1000,182
+R06,soy vanilla,-13,optimal,2,0,NEAREST,24.97,39.11,0,1000,64
+R06,soy vanilla,-13,optimal,2,1,NEAREST,24.97,39.11,0,1000,101
+R06,soy vanilla,-13,optimal,2,2,NEAREST,28.05,50.01,0,1000,46
+R07,raspberry / berry,-13,optimal,-2,-2,NEAREST,24.95,50.14,0,1000,22788
+R07,raspberry / berry,-13,optimal,-2,-1,NEAREST,24.95,50.14,0,1000,26843
+R07,raspberry / berry,-13,optimal,-2,0,ACHIEVED,15.33,53.52,0,1000,20
+R07,raspberry / berry,-13,optimal,-2,1,ACHIEVED,15.33,51.76,0,1000,43
+R07,raspberry / berry,-13,optimal,-2,2,ACHIEVED,15.16,50.01,0,1000,40
+R07,raspberry / berry,-13,optimal,-1,-2,ACHIEVED,17.78,62.04,0,1000,47
+R07,raspberry / berry,-13,optimal,-1,-1,ACHIEVED,17.77,60.11,0,1000,49
+R07,raspberry / berry,-13,optimal,-1,0,ACHIEVED,17.43,53.55,0,1000,14
+R07,raspberry / berry,-13,optimal,-1,1,ACHIEVED,17.33,51.85,0,1000,32
+R07,raspberry / berry,-13,optimal,-1,2,ACHIEVED,17.26,50.04,0,1000,31
+R07,raspberry / berry,-13,optimal,0,-2,ACHIEVED,19.78,62.01,0,1000,29
+R07,raspberry / berry,-13,optimal,0,-1,ACHIEVED,19.48,60.00,0,1000,20
+R07,raspberry / berry,-13,optimal,0,0,ACHIEVED,19.69,53.52,0,1000,13
+R07,raspberry / berry,-13,optimal,0,1,ACHIEVED,19.59,51.81,0,1000,34
+R07,raspberry / berry,-13,optimal,0,2,ACHIEVED,19.51,50.01,0,1000,25
+R07,raspberry / berry,-13,optimal,1,-2,ACHIEVED,22.01,62.08,0,1000,15
+R07,raspberry / berry,-13,optimal,1,-1,ACHIEVED,21.86,60.02,0,1000,44
+R07,raspberry / berry,-13,optimal,1,0,ACHIEVED,21.91,53.59,0,1000,6
+R07,raspberry / berry,-13,optimal,1,1,ACHIEVED,21.84,51.78,0,1000,5
+R07,raspberry / berry,-13,optimal,1,2,ACHIEVED,22.57,50.13,0,1000,4
+R07,raspberry / berry,-13,optimal,2,-2,ACHIEVED,23.13,62.06,0,1000,22
+R07,raspberry / berry,-13,optimal,2,-1,ACHIEVED,23.96,60.04,0,1000,4
+R07,raspberry / berry,-13,optimal,2,0,ACHIEVED,24.87,53.56,0,1000,3
+R07,raspberry / berry,-13,optimal,2,1,ACHIEVED,24.06,51.85,0,1000,47
+R07,raspberry / berry,-13,optimal,2,2,ACHIEVED,24.95,50.14,0,1000,13
+R08,banana,-13,optimal,-2,-2,NEAREST,24.75,50.06,0,1000,65916
+R08,banana,-13,optimal,-2,-1,NEAREST,24.75,50.06,0,1000,51673
+R08,banana,-13,optimal,-2,0,NEAREST,24.75,50.06,0,1000,55783
+R08,banana,-13,optimal,-2,1,NEAREST,24.75,50.06,0,1000,30205
+R08,banana,-13,optimal,-2,2,ACHIEVED,15.40,50.06,0,1000,916
+R08,banana,-13,optimal,-1,-2,ACHIEVED,17.80,62.05,0,1000,1206
+R08,banana,-13,optimal,-1,-1,ACHIEVED,17.80,60.13,0,1000,647
+R08,banana,-13,optimal,-1,0,ACHIEVED,17.80,53.51,0,1000,429
+R08,banana,-13,optimal,-1,1,ACHIEVED,17.80,51.75,0,1000,1088
+R08,banana,-13,optimal,-1,2,ACHIEVED,17.78,50.03,0,1000,304
+R08,banana,-13,optimal,0,-2,ACHIEVED,20.20,62.02,0,1000,250
+R08,banana,-13,optimal,0,-1,ACHIEVED,20.20,60.03,0,1000,1007
+R08,banana,-13,optimal,0,0,ACHIEVED,20.19,53.51,0,1000,15
+R08,banana,-13,optimal,0,1,ACHIEVED,20.20,51.76,0,1000,722
+R08,banana,-13,optimal,0,2,ACHIEVED,20.20,50.04,0,1000,1208
+R08,banana,-13,optimal,1,-2,ACHIEVED,22.60,62.01,0,1000,344
+R08,banana,-13,optimal,1,-1,ACHIEVED,22.60,60.01,0,1000,103
+R08,banana,-13,optimal,1,0,ACHIEVED,22.59,53.53,0,1000,24
+R08,banana,-13,optimal,1,1,ACHIEVED,22.59,51.88,0,1000,84
+R08,banana,-13,optimal,1,2,ACHIEVED,22.56,50.01,0,1000,44
+R08,banana,-13,optimal,2,-2,ACHIEVED,24.99,62.17,0,1000,8
+R08,banana,-13,optimal,2,-1,ACHIEVED,24.98,60.04,0,1000,69
+R08,banana,-13,optimal,2,0,ACHIEVED,24.87,53.61,0,1000,75
+R08,banana,-13,optimal,2,1,ACHIEVED,24.68,51.79,0,1000,102
+R08,banana,-13,optimal,2,2,ACHIEVED,24.75,50.06,0,1000,14
+R09,mango / tropical,-13,optimal,-2,-2,NEAREST,24.35,50.13,0,1000,32957
+R09,mango / tropical,-13,optimal,-2,-1,NEAREST,24.35,50.13,0,1000,31924
+R09,mango / tropical,-13,optimal,-2,0,NEAREST,24.35,50.13,0,1000,31288
+R09,mango / tropical,-13,optimal,-2,1,ACHIEVED,15.40,51.75,0,1000,53
+R09,mango / tropical,-13,optimal,-2,2,ACHIEVED,15.40,50.06,0,1000,38
+R09,mango / tropical,-13,optimal,-1,-2,ACHIEVED,17.80,62.01,0,1000,12
+R09,mango / tropical,-13,optimal,-1,-1,ACHIEVED,17.80,60.02,0,1000,3
+R09,mango / tropical,-13,optimal,-1,0,ACHIEVED,17.80,53.54,0,1000,16
+R09,mango / tropical,-13,optimal,-1,1,ACHIEVED,17.79,51.79,0,1000,34
+R09,mango / tropical,-13,optimal,-1,2,ACHIEVED,17.79,50.07,0,1000,34
+R09,mango / tropical,-13,optimal,0,-2,ACHIEVED,20.20,62.02,0,1000,5
+R09,mango / tropical,-13,optimal,0,-1,ACHIEVED,20.19,60.03,0,1000,7
+R09,mango / tropical,-13,optimal,0,0,ACHIEVED,20.12,53.52,0,1000,11
+R09,mango / tropical,-13,optimal,0,1,ACHIEVED,20.14,51.77,0,1000,18
+R09,mango / tropical,-13,optimal,0,2,ACHIEVED,20.19,50.04,0,1000,38
+R09,mango / tropical,-13,optimal,1,-2,ACHIEVED,22.60,62.05,0,1000,23
+R09,mango / tropical,-13,optimal,1,-1,ACHIEVED,22.53,60.02,0,1000,4
+R09,mango / tropical,-13,optimal,1,0,ACHIEVED,21.80,53.60,0,1000,10
+R09,mango / tropical,-13,optimal,1,1,ACHIEVED,22.59,51.84,0,1000,5
+R09,mango / tropical,-13,optimal,1,2,ACHIEVED,22.37,50.11,0,1000,9
+R09,mango / tropical,-13,optimal,2,-2,ACHIEVED,23.78,62.07,0,1000,14
+R09,mango / tropical,-13,optimal,2,-1,ACHIEVED,23.38,60.02,0,1000,13
+R09,mango / tropical,-13,optimal,2,0,ACHIEVED,23.79,53.63,0,1000,6
+R09,mango / tropical,-13,optimal,2,1,ACHIEVED,23.47,51.75,0,1000,31
+R09,mango / tropical,-13,optimal,2,2,ACHIEVED,24.35,50.13,0,1000,34
+R10,lemon / citrus,-13,optimal,-2,-2,NEAREST,16.31,62.13,0,1000,88
+R10,lemon / citrus,-13,optimal,-2,-1,NEAREST,15.77,59.88,0,1000,92
+R10,lemon / citrus,-13,optimal,-2,0,ACHIEVED,15.20,54.67,0,1000,10
+R10,lemon / citrus,-13,optimal,-2,1,ACHIEVED,15.31,53.10,0,1000,31
+R10,lemon / citrus,-13,optimal,-2,2,ACHIEVED,15.35,50.18,0,1000,21
+R10,lemon / citrus,-13,optimal,-1,-2,NEAREST,17.83,62.21,0,1000,25
+R10,lemon / citrus,-13,optimal,-1,-1,NEAREST,17.82,60.13,0,1000,24
+R10,lemon / citrus,-13,optimal,-1,0,ACHIEVED,17.25,59.34,0,1000,9
+R10,lemon / citrus,-13,optimal,-1,1,ACHIEVED,17.79,51.77,0,1000,6
+R10,lemon / citrus,-13,optimal,-1,2,ACHIEVED,17.75,50.00,0,1000,2
+R10,lemon / citrus,-13,optimal,0,-2,ACHIEVED,20.18,63.03,0,1000,15
+R10,lemon / citrus,-13,optimal,0,-1,ACHIEVED,20.20,60.20,0,1000,5
+R10,lemon / citrus,-13,optimal,0,0,ACHIEVED,19.63,54.12,0,1000,1
+R10,lemon / citrus,-13,optimal,0,1,ACHIEVED,20.13,52.10,0,1000,1
+R10,lemon / citrus,-13,optimal,0,2,ACHIEVED,19.98,51.59,0,1000,2
+R10,lemon / citrus,-13,optimal,1,-2,ACHIEVED,21.91,62.69,0,1000,1
+R10,lemon / citrus,-13,optimal,1,-1,ACHIEVED,21.57,61.15,0,1000,0
+R10,lemon / citrus,-13,optimal,1,0,ACHIEVED,21.06,59.08,0,1000,1
+R10,lemon / citrus,-13,optimal,1,1,ACHIEVED,21.40,52.43,0,1000,0
+R10,lemon / citrus,-13,optimal,1,2,ACHIEVED,21.24,51.71,0,1000,2
+R10,lemon / citrus,-13,optimal,2,-2,ACHIEVED,24.85,63.08,0,1000,1
+R10,lemon / citrus,-13,optimal,2,-1,ACHIEVED,24.91,61.29,0,1000,1
+R10,lemon / citrus,-13,optimal,2,0,ACHIEVED,23.70,56.85,0,1000,0
+R10,lemon / citrus,-13,optimal,2,1,ACHIEVED,22.69,53.19,0,1000,1
+R10,lemon / citrus,-13,optimal,2,2,NEAREST,22.63,51.82,0,1000,14
+R11,coffee,-13,optimal,-2,-2,ACHIEVED,15.39,62.09,0,1000,42
+R11,coffee,-13,optimal,-2,-1,ACHIEVED,15.35,61.89,0,1000,42
+R11,coffee,-13,optimal,-2,0,ACHIEVED,15.39,54.22,0,1000,2
+R11,coffee,-13,optimal,-2,1,ACHIEVED,15.39,51.83,0,1000,20
+R11,coffee,-13,optimal,-2,2,ACHIEVED,15.38,50.05,0,1000,21
+R11,coffee,-13,optimal,-1,-2,NEAREST,17.82,62.22,0,1000,25
+R11,coffee,-13,optimal,-1,-1,ACHIEVED,17.63,60.04,0,1000,20
+R11,coffee,-13,optimal,-1,0,ACHIEVED,17.68,55.36,0,1000,1
+R11,coffee,-13,optimal,-1,1,ACHIEVED,17.32,53.11,0,1000,2
+R11,coffee,-13,optimal,-1,2,ACHIEVED,17.79,50.02,0,1000,2
+R11,coffee,-13,optimal,0,-2,ACHIEVED,20.15,63.78,0,1000,14
+R11,coffee,-13,optimal,0,-1,ACHIEVED,20.20,60.08,0,1000,12
+R11,coffee,-13,optimal,0,0,ACHIEVED,20.19,53.71,0,1000,1
+R11,coffee,-13,optimal,0,1,ACHIEVED,20.03,53.05,0,1000,1
+R11,coffee,-13,optimal,0,2,ACHIEVED,19.35,50.21,0,1000,1
+R11,coffee,-13,optimal,1,-2,ACHIEVED,22.36,62.64,0,1000,1
+R11,coffee,-13,optimal,1,-1,ACHIEVED,22.02,61.27,0,1000,1
+R11,coffee,-13,optimal,1,0,ACHIEVED,21.24,57.86,0,1000,0
+R11,coffee,-13,optimal,1,1,ACHIEVED,20.57,53.41,0,1000,1
+R11,coffee,-13,optimal,1,2,NEAREST,20.20,51.69,0,1000,3
+R11,coffee,-13,optimal,2,-2,ACHIEVED,23.75,63.03,0,1000,1
+R11,coffee,-13,optimal,2,-1,ACHIEVED,23.49,61.86,0,1000,1
+R11,coffee,-13,optimal,2,0,ACHIEVED,22.96,59.77,0,1000,1
+R11,coffee,-13,optimal,2,1,ACHIEVED,22.96,53.44,0,1000,1
+R11,coffee,-13,optimal,2,2,ACHIEVED,22.67,51.21,0,1000,1
+R12,caramel,-13,optimal,-2,-2,NEAREST,26.93,62.03,0,1000,19
+R12,caramel,-13,optimal,-2,-1,NEAREST,26.17,60.11,0,1000,11
+R12,caramel,-13,optimal,-2,0,NEAREST,20.15,53.85,0,1000,30
+R12,caramel,-13,optimal,-2,1,NEAREST,17.09,52.23,0,1000,56
+R12,caramel,-13,optimal,-2,2,NEAREST,17.75,50.19,0,1000,30
+R12,caramel,-13,optimal,-1,-2,NEAREST,26.93,62.03,0,1000,9
+R12,caramel,-13,optimal,-1,-1,NEAREST,26.17,60.11,0,1000,9
+R12,caramel,-13,optimal,-1,0,NEAREST,20.15,53.85,0,1000,30
+R12,caramel,-13,optimal,-1,1,ACHIEVED,17.09,52.23,0,1000,21
+R12,caramel,-13,optimal,-1,2,ACHIEVED,17.75,50.19,0,1000,9
+R12,caramel,-13,optimal,0,-2,NEAREST,26.83,62.16,0,1000,9
+R12,caramel,-13,optimal,0,-1,NEAREST,26.02,60.08,0,1000,10
+R12,caramel,-13,optimal,0,0,ACHIEVED,20.15,53.85,0,1000,11
+R12,caramel,-13,optimal,0,1,ACHIEVED,20.09,52.21,0,1000,8
+R12,caramel,-13,optimal,0,2,ACHIEVED,20.20,50.11,0,1000,10
+R12,caramel,-13,optimal,1,-2,NEAREST,26.83,62.16,0,1000,10
+R12,caramel,-13,optimal,1,-1,NEAREST,26.02,60.08,0,1000,14
+R12,caramel,-13,optimal,1,0,ACHIEVED,22.55,53.67,0,1000,8
+R12,caramel,-13,optimal,1,1,ACHIEVED,22.54,51.87,0,1000,9
+R12,caramel,-13,optimal,1,2,NEAREST,22.62,50.08,0,1000,5
+R12,caramel,-13,optimal,2,-2,NEAREST,26.83,62.16,0,1000,13
+R12,caramel,-13,optimal,2,-1,NEAREST,26.02,60.08,0,1000,10
+R12,caramel,-13,optimal,2,0,ACHIEVED,24.86,53.66,0,1000,1
+R12,caramel,-13,optimal,2,1,ACHIEVED,24.97,52.30,0,1000,1
+R12,caramel,-13,optimal,2,2,ACHIEVED,24.63,51.19,0,1000,1
+R13,salted caramel,-13,optimal,-2,-2,NEAREST,25.84,62.08,0,1000,12
+R13,salted caramel,-13,optimal,-2,-1,NEAREST,25.34,60.08,0,1000,17
+R13,salted caramel,-13,optimal,-2,0,NEAREST,17.72,53.60,0,1000,48
+R13,salted caramel,-13,optimal,-2,1,NEAREST,17.69,51.85,0,1000,43
+R13,salted caramel,-13,optimal,-2,2,NEAREST,17.80,50.19,0,1000,36
+R13,salted caramel,-13,optimal,-1,-2,NEAREST,25.84,62.08,0,1000,13
+R13,salted caramel,-13,optimal,-1,-1,NEAREST,25.34,60.08,0,1000,14
+R13,salted caramel,-13,optimal,-1,0,ACHIEVED,17.72,53.60,0,1000,18
+R13,salted caramel,-13,optimal,-1,1,ACHIEVED,17.69,51.85,0,1000,13
+R13,salted caramel,-13,optimal,-1,2,ACHIEVED,17.80,50.19,0,1000,10
+R13,salted caramel,-13,optimal,0,-2,NEAREST,25.84,62.08,0,1000,12
+R13,salted caramel,-13,optimal,0,-1,NEAREST,25.34,60.08,0,1000,19
+R13,salted caramel,-13,optimal,0,0,ACHIEVED,20.19,53.51,0,1000,4
+R13,salted caramel,-13,optimal,0,1,NEAREST,20.24,51.78,0,1000,14
+R13,salted caramel,-13,optimal,0,2,ACHIEVED,20.18,50.34,0,1000,14
+R13,salted caramel,-13,optimal,1,-2,NEAREST,25.84,62.08,0,1000,26
+R13,salted caramel,-13,optimal,1,-1,NEAREST,24.97,60.02,0,1000,14
+R13,salted caramel,-13,optimal,1,0,ACHIEVED,22.57,53.54,0,1000,7
+R13,salted caramel,-13,optimal,1,1,ACHIEVED,22.58,51.79,0,1000,12
+R13,salted caramel,-13,optimal,1,2,ACHIEVED,22.59,50.10,0,1000,2
+R13,salted caramel,-13,optimal,2,-2,NEAREST,25.74,62.02,0,1000,18
+R13,salted caramel,-13,optimal,2,-1,ACHIEVED,24.97,60.02,0,1000,2
+R13,salted caramel,-13,optimal,2,0,ACHIEVED,24.49,53.78,0,1000,1
+R13,salted caramel,-13,optimal,2,1,ACHIEVED,24.92,52.08,0,1000,1
+R13,salted caramel,-13,optimal,2,2,ACHIEVED,24.63,51.03,0,1000,1
+R14,pistachio,-13,optimal,-2,-2,NEAREST,22.41,50.01,0,1000,4883
+R14,pistachio,-13,optimal,-2,-1,NEAREST,22.41,50.01,0,1000,4844
+R14,pistachio,-13,optimal,-2,0,ACHIEVED,15.18,53.58,0,1000,15
+R14,pistachio,-13,optimal,-2,1,ACHIEVED,15.14,51.81,0,1000,17
+R14,pistachio,-13,optimal,-2,2,ACHIEVED,15.11,50.06,0,1000,21
+R14,pistachio,-13,optimal,-1,-2,ACHIEVED,17.73,63.95,0,1000,37
+R14,pistachio,-13,optimal,-1,-1,ACHIEVED,17.68,60.04,0,1000,15
+R14,pistachio,-13,optimal,-1,0,ACHIEVED,17.65,53.56,0,1000,8
+R14,pistachio,-13,optimal,-1,1,ACHIEVED,17.58,51.84,0,1000,5
+R14,pistachio,-13,optimal,-1,2,ACHIEVED,17.37,50.76,0,1000,7
+R14,pistachio,-13,optimal,0,-2,ACHIEVED,19.93,63.90,0,1000,14
+R14,pistachio,-13,optimal,0,-1,ACHIEVED,20.17,61.51,0,1000,13
+R14,pistachio,-13,optimal,0,0,ACHIEVED,20.08,59.82,0,1000,3
+R14,pistachio,-13,optimal,0,1,ACHIEVED,19.74,52.35,0,1000,4
+R14,pistachio,-13,optimal,0,2,ACHIEVED,20.10,51.53,0,1000,4
+R14,pistachio,-13,optimal,1,-2,ACHIEVED,20.53,62.09,0,1000,5
+R14,pistachio,-13,optimal,1,-1,ACHIEVED,20.30,60.25,0,1000,6
+R14,pistachio,-13,optimal,1,0,ACHIEVED,21.91,53.51,0,1000,8
+R14,pistachio,-13,optimal,1,1,ACHIEVED,22.16,51.76,0,1000,12
+R14,pistachio,-13,optimal,1,2,ACHIEVED,22.41,50.01,0,1000,21
+R14,pistachio,-13,optimal,2,-2,ACHIEVED,22.62,62.11,0,1000,13
+R14,pistachio,-13,optimal,2,-1,ACHIEVED,22.66,60.14,0,1000,8
+R14,pistachio,-13,optimal,2,0,ACHIEVED,22.67,53.64,0,1000,2
+R14,pistachio,-13,optimal,2,1,ACHIEVED,22.67,51.79,0,1000,14
+R14,pistachio,-13,optimal,2,2,ACHIEVED,22.65,50.07,0,1000,12
+R15,hazelnut,-13,optimal,-2,-2,ACHIEVED,15.39,62.93,0,1000,50
+R15,hazelnut,-13,optimal,-2,-1,ACHIEVED,15.35,62.00,0,1000,50
+R15,hazelnut,-13,optimal,-2,0,ACHIEVED,15.34,59.95,0,1000,5
+R15,hazelnut,-13,optimal,-2,1,ACHIEVED,15.40,53.44,0,1000,29
+R15,hazelnut,-13,optimal,-2,2,ACHIEVED,15.21,51.66,0,1000,22
+R15,hazelnut,-13,optimal,-1,-2,ACHIEVED,17.79,62.05,0,1000,32
+R15,hazelnut,-13,optimal,-1,-1,ACHIEVED,17.50,60.05,0,1000,5
+R15,hazelnut,-13,optimal,-1,0,ACHIEVED,17.77,53.52,0,1000,7
+R15,hazelnut,-13,optimal,-1,1,ACHIEVED,17.80,51.82,0,1000,14
+R15,hazelnut,-13,optimal,-1,2,ACHIEVED,17.72,51.22,0,1000,10
+R15,hazelnut,-13,optimal,0,-2,ACHIEVED,20.11,62.00,0,1000,24
+R15,hazelnut,-13,optimal,0,-1,ACHIEVED,20.02,60.04,0,1000,14
+R15,hazelnut,-13,optimal,0,0,ACHIEVED,20.01,53.56,0,1000,16
+R15,hazelnut,-13,optimal,0,1,ACHIEVED,20.18,51.75,0,1000,11
+R15,hazelnut,-13,optimal,0,2,ACHIEVED,20.20,50.20,0,1000,6
+R15,hazelnut,-13,optimal,1,-2,ACHIEVED,22.50,62.11,0,1000,20
+R15,hazelnut,-13,optimal,1,-1,ACHIEVED,22.57,60.03,0,1000,10
+R15,hazelnut,-13,optimal,1,0,ACHIEVED,22.57,53.54,0,1000,23
+R15,hazelnut,-13,optimal,1,1,ACHIEVED,22.58,51.83,0,1000,15
+R15,hazelnut,-13,optimal,1,2,ACHIEVED,22.56,50.11,0,1000,17
+R15,hazelnut,-13,optimal,2,-2,ACHIEVED,24.91,62.03,0,1000,13
+R15,hazelnut,-13,optimal,2,-1,ACHIEVED,24.81,60.07,0,1000,20
+R15,hazelnut,-13,optimal,2,0,ACHIEVED,24.97,53.61,0,1000,9
+R15,hazelnut,-13,optimal,2,1,ACHIEVED,24.98,51.78,0,1000,26
+R15,hazelnut,-13,optimal,2,2,ACHIEVED,24.82,50.07,0,1000,28
+R16,peanut,-13,optimal,-2,-2,ACHIEVED,15.22,62.08,0,1000,49
+R16,peanut,-13,optimal,-2,-1,ACHIEVED,15.40,60.04,0,1000,90
+R16,peanut,-13,optimal,-2,0,ACHIEVED,15.25,53.53,0,1000,16
+R16,peanut,-13,optimal,-2,1,ACHIEVED,13.75,51.90,0,1000,27
+R16,peanut,-13,optimal,-2,2,ACHIEVED,15.14,50.10,0,1000,38
+R16,peanut,-13,optimal,-1,-2,ACHIEVED,17.60,62.02,0,1000,26
+R16,peanut,-13,optimal,-1,-1,ACHIEVED,17.63,60.06,0,1000,16
+R16,peanut,-13,optimal,-1,0,ACHIEVED,16.13,53.66,0,1000,15
+R16,peanut,-13,optimal,-1,1,ACHIEVED,17.39,51.80,0,1000,30
+R16,peanut,-13,optimal,-1,2,ACHIEVED,17.64,50.05,0,1000,8
+R16,peanut,-13,optimal,0,-2,ACHIEVED,19.89,62.06,0,1000,18
+R16,peanut,-13,optimal,0,-1,ACHIEVED,20.11,60.00,0,1000,27
+R16,peanut,-13,optimal,0,0,ACHIEVED,20.05,53.55,0,1000,12
+R16,peanut,-13,optimal,0,1,ACHIEVED,19.96,51.83,0,1000,11
+R16,peanut,-13,optimal,0,2,ACHIEVED,19.94,50.12,0,1000,14
+R16,peanut,-13,optimal,1,-2,ACHIEVED,20.21,62.05,0,1000,6
+R16,peanut,-13,optimal,1,-1,ACHIEVED,20.20,60.07,0,1000,6
+R16,peanut,-13,optimal,1,0,ACHIEVED,21.07,53.52,0,1000,8
+R16,peanut,-13,optimal,1,1,ACHIEVED,21.32,51.77,0,1000,14
+R16,peanut,-13,optimal,1,2,ACHIEVED,21.69,50.06,0,1000,15
+R16,peanut,-13,optimal,2,-2,ACHIEVED,22.68,62.03,0,1000,7
+R16,peanut,-13,optimal,2,-1,ACHIEVED,22.64,60.02,0,1000,10
+R16,peanut,-13,optimal,2,0,ACHIEVED,22.60,53.62,0,1000,28
+R16,peanut,-13,optimal,2,1,ACHIEVED,22.65,51.81,0,1000,28
+R16,peanut,-13,optimal,2,2,ACHIEVED,22.62,50.08,0,1000,23
+R17,almond,-13,optimal,-2,-2,ACHIEVED,15.15,62.05,0,1000,35
+R17,almond,-13,optimal,-2,-1,ACHIEVED,15.34,60.00,0,1000,23
+R17,almond,-13,optimal,-2,0,ACHIEVED,15.32,53.55,0,1000,32
+R17,almond,-13,optimal,-2,1,ACHIEVED,15.30,51.84,0,1000,144
+R17,almond,-13,optimal,-2,2,ACHIEVED,15.21,50.05,0,1000,18
+R17,almond,-13,optimal,-1,-2,ACHIEVED,17.67,62.04,0,1000,61
+R17,almond,-13,optimal,-1,-1,ACHIEVED,17.03,60.27,0,1000,21
+R17,almond,-13,optimal,-1,0,ACHIEVED,17.50,53.51,0,1000,8
+R17,almond,-13,optimal,-1,1,ACHIEVED,17.73,51.78,0,1000,7
+R17,almond,-13,optimal,-1,2,ACHIEVED,17.71,50.07,0,1000,12
+R17,almond,-13,optimal,0,-2,ACHIEVED,19.43,62.02,0,1000,98
+R17,almond,-13,optimal,0,-1,ACHIEVED,19.74,60.03,0,1000,29
+R17,almond,-13,optimal,0,0,ACHIEVED,20.12,53.58,0,1000,82
+R17,almond,-13,optimal,0,1,ACHIEVED,19.76,51.83,0,1000,8
+R17,almond,-13,optimal,0,2,ACHIEVED,20.14,50.01,0,1000,22
+R17,almond,-13,optimal,1,-2,ACHIEVED,20.25,62.23,0,1000,9
+R17,almond,-13,optimal,1,-1,ACHIEVED,20.25,60.02,0,1000,53
+R17,almond,-13,optimal,1,0,ACHIEVED,20.40,53.51,0,1000,11
+R17,almond,-13,optimal,1,1,ACHIEVED,20.76,51.82,0,1000,7
+R17,almond,-13,optimal,1,2,ACHIEVED,21.13,50.11,0,1000,16
+R17,almond,-13,optimal,2,-2,ACHIEVED,22.61,62.00,0,1000,159
+R17,almond,-13,optimal,2,-1,ACHIEVED,22.62,60.05,0,1000,52
+R17,almond,-13,optimal,2,0,ACHIEVED,22.63,53.52,0,1000,37
+R17,almond,-13,optimal,2,1,ACHIEVED,22.67,52.03,0,1000,12
+R17,almond,-13,optimal,2,2,ACHIEVED,22.64,50.41,0,1000,13
+R18,hard fat class,-13,optimal,-2,-2,NEAREST,18.45,62.76,0,1000,21
+R18,hard fat class,-13,optimal,-2,-1,NEAREST,16.20,59.97,0,1000,75
+R18,hard fat class,-13,optimal,-2,0,ACHIEVED,15.37,53.55,0,1000,16
+R18,hard fat class,-13,optimal,-2,1,ACHIEVED,15.30,51.89,0,1000,21
+R18,hard fat class,-13,optimal,-2,2,ACHIEVED,15.35,50.79,0,1000,37
+R18,hard fat class,-13,optimal,-1,-2,NEAREST,18.45,62.76,0,1000,32
+R18,hard fat class,-13,optimal,-1,-1,NEAREST,17.77,53.55,0,1000,40
+R18,hard fat class,-13,optimal,-1,0,ACHIEVED,17.77,53.55,0,1000,26
+R18,hard fat class,-13,optimal,-1,1,ACHIEVED,17.75,53.09,0,1000,21
+R18,hard fat class,-13,optimal,-1,2,ACHIEVED,17.80,50.12,0,1000,1
+R18,hard fat class,-13,optimal,0,-2,ACHIEVED,18.45,62.76,0,1000,9
+R18,hard fat class,-13,optimal,0,-1,NEAREST,20.12,59.80,0,1000,4
+R18,hard fat class,-13,optimal,0,0,ACHIEVED,19.77,53.59,0,1000,2
+R18,hard fat class,-13,optimal,0,1,ACHIEVED,19.13,51.89,0,1000,1
+R18,hard fat class,-13,optimal,0,2,ACHIEVED,18.99,51.11,0,1000,1
+R18,hard fat class,-13,optimal,1,-2,ACHIEVED,20.86,62.05,0,1000,8
+R18,hard fat class,-13,optimal,1,-1,ACHIEVED,20.80,60.15,0,1000,4
+R18,hard fat class,-13,optimal,1,0,ACHIEVED,22.23,54.55,0,1000,1
+R18,hard fat class,-13,optimal,1,1,ACHIEVED,21.03,53.04,0,1000,2
+R18,hard fat class,-13,optimal,1,2,ACHIEVED,20.84,51.00,0,1000,1
+R18,hard fat class,-13,optimal,2,-2,ACHIEVED,22.66,62.63,0,1000,3
+R18,hard fat class,-13,optimal,2,-1,ACHIEVED,22.97,60.61,0,1000,1
+R18,hard fat class,-13,optimal,2,0,ACHIEVED,23.70,57.22,0,1000,2
+R18,hard fat class,-13,optimal,2,1,ACHIEVED,23.10,53.48,0,1000,1
+R18,hard fat class,-13,optimal,2,2,ACHIEVED,23.08,51.65,0,1000,1
+R19,high fat,-13,optimal,-2,-2,NEAREST,16.20,61.86,0,1000,131
+R19,high fat,-13,optimal,-2,-1,NEAREST,15.85,60.06,0,1000,107
+R19,high fat,-13,optimal,-2,0,ACHIEVED,15.18,54.74,0,1000,31
+R19,high fat,-13,optimal,-2,1,ACHIEVED,15.38,52.00,0,1000,34
+R19,high fat,-13,optimal,-2,2,ACHIEVED,15.31,50.64,0,1000,38
+R19,high fat,-13,optimal,-1,-2,NEAREST,17.77,61.89,0,1000,39
+R19,high fat,-13,optimal,-1,-1,ACHIEVED,17.75,61.47,0,1000,35
+R19,high fat,-13,optimal,-1,0,NEAREST,17.77,53.48,0,1000,13
+R19,high fat,-13,optimal,-1,1,ACHIEVED,17.79,52.59,0,1000,16
+R19,high fat,-13,optimal,-1,2,NEAREST,17.82,50.19,0,1000,8
+R19,high fat,-13,optimal,0,-2,ACHIEVED,20.17,62.05,0,1000,18
+R19,high fat,-13,optimal,0,-1,ACHIEVED,20.16,60.13,0,1000,5
+R19,high fat,-13,optimal,0,0,ACHIEVED,20.11,53.66,0,1000,1
+R19,high fat,-13,optimal,0,1,ACHIEVED,20.13,52.88,0,1000,1
+R19,high fat,-13,optimal,0,2,ACHIEVED,19.82,51.52,0,1000,2
+R19,high fat,-13,optimal,1,-2,ACHIEVED,22.53,62.70,0,1000,2
+R19,high fat,-13,optimal,1,-1,ACHIEVED,22.19,61.34,0,1000,1
+R19,high fat,-13,optimal,1,0,ACHIEVED,21.41,58.03,0,1000,0
+R19,high fat,-13,optimal,1,1,ACHIEVED,20.30,53.49,0,1000,2
+R19,high fat,-13,optimal,1,2,ACHIEVED,20.21,51.58,0,1000,6
+R19,high fat,-13,optimal,2,-2,ACHIEVED,23.82,62.91,0,1000,1
+R19,high fat,-13,optimal,2,-1,ACHIEVED,23.54,61.89,0,1000,3
+R19,high fat,-13,optimal,2,0,ACHIEVED,23.03,59.95,0,1000,1
+R19,high fat,-13,optimal,2,1,ACHIEVED,22.92,53.34,0,1000,2
+R19,high fat,-13,optimal,2,2,ACHIEVED,22.88,51.66,0,1000,3
+R20,low fat,-13,optimal,-2,-2,NEAREST,16.16,61.98,0,1000,80
+R20,low fat,-13,optimal,-2,-1,NEAREST,15.80,60.11,0,1000,64
+R20,low fat,-13,optimal,-2,0,ACHIEVED,15.33,53.85,0,1000,16
+R20,low fat,-13,optimal,-2,1,ACHIEVED,15.12,52.85,0,1000,35
+R20,low fat,-13,optimal,-2,2,ACHIEVED,15.39,50.23,0,1000,25
+R20,low fat,-13,optimal,-1,-2,ACHIEVED,17.77,62.02,0,1000,29
+R20,low fat,-13,optimal,-1,-1,ACHIEVED,17.63,61.33,0,1000,26
+R20,low fat,-13,optimal,-1,0,ACHIEVED,17.77,53.57,0,1000,4
+R20,low fat,-13,optimal,-1,1,NEAREST,17.75,51.64,0,1000,5
+R20,low fat,-13,optimal,-1,2,ACHIEVED,17.77,50.01,0,1000,7
+R20,low fat,-13,optimal,0,-2,ACHIEVED,20.03,62.30,0,1000,10
+R20,low fat,-13,optimal,0,-1,ACHIEVED,20.19,60.16,0,1000,12
+R20,low fat,-13,optimal,0,0,ACHIEVED,19.58,53.89,0,1000,1
+R20,low fat,-13,optimal,0,1,ACHIEVED,20.13,52.24,0,1000,1
+R20,low fat,-13,optimal,0,2,ACHIEVED,19.89,51.51,0,1000,1
+R20,low fat,-13,optimal,1,-2,ACHIEVED,22.56,62.28,0,1000,1
+R20,low fat,-13,optimal,1,-1,ACHIEVED,22.40,61.01,0,1000,2
+R20,low fat,-13,optimal,1,0,ACHIEVED,21.89,58.88,0,1000,0
+R20,low fat,-13,optimal,1,1,ACHIEVED,20.48,53.42,0,1000,1
+R20,low fat,-13,optimal,1,2,NEAREST,20.19,51.66,0,1000,3
+R20,low fat,-13,optimal,2,-2,ACHIEVED,23.77,62.69,0,1000,0
+R20,low fat,-13,optimal,2,-1,ACHIEVED,23.50,61.85,0,1000,1
+R20,low fat,-13,optimal,2,0,ACHIEVED,22.64,59.23,0,1000,7
+R20,low fat,-13,optimal,2,1,ACHIEVED,23.04,53.34,0,1000,1
+R20,low fat,-13,optimal,2,2,ACHIEVED,23.00,51.67,0,1000,1
+R21,plant protein (pea),-13,optimal,-2,-2,ACHIEVED,15.33,63.42,0,1000,43
+R21,plant protein (pea),-13,optimal,-2,-1,ACHIEVED,15.35,60.33,0,1000,39
+R21,plant protein (pea),-13,optimal,-2,0,ACHIEVED,15.32,53.51,0,1000,3
+R21,plant protein (pea),-13,optimal,-2,1,ACHIEVED,15.13,52.08,0,1000,6
+R21,plant protein (pea),-13,optimal,-2,2,ACHIEVED,15.33,50.46,0,1000,6
+R21,plant protein (pea),-13,optimal,-1,-2,ACHIEVED,17.74,62.02,0,1000,22
+R21,plant protein (pea),-13,optimal,-1,-1,ACHIEVED,17.69,61.11,0,1000,24
+R21,plant protein (pea),-13,optimal,-1,0,ACHIEVED,17.72,55.74,0,1000,3
+R21,plant protein (pea),-13,optimal,-1,1,ACHIEVED,17.34,51.81,0,1000,2
+R21,plant protein (pea),-13,optimal,-1,2,ACHIEVED,17.75,50.14,0,1000,1
+R21,plant protein (pea),-13,optimal,0,-2,ACHIEVED,20.11,62.57,0,1000,2
+R21,plant protein (pea),-13,optimal,0,-1,ACHIEVED,20.18,60.23,0,1000,1
+R21,plant protein (pea),-13,optimal,0,0,ACHIEVED,20.09,55.22,0,1000,1
+R21,plant protein (pea),-13,optimal,0,1,ACHIEVED,19.40,52.39,0,1000,2
+R21,plant protein (pea),-13,optimal,0,2,ACHIEVED,18.97,50.74,0,1000,1
+R21,plant protein (pea),-13,optimal,1,-2,ACHIEVED,21.92,63.07,0,1000,1
+R21,plant protein (pea),-13,optimal,1,-1,ACHIEVED,21.56,61.45,0,1000,1
+R21,plant protein (pea),-13,optimal,1,0,ACHIEVED,21.13,59.53,0,1000,1
+R21,plant protein (pea),-13,optimal,1,1,ACHIEVED,20.38,53.45,0,1000,2
+R21,plant protein (pea),-13,optimal,1,2,NEAREST,20.25,51.83,0,1000,2
+R21,plant protein (pea),-13,optimal,2,-2,ACHIEVED,23.49,63.79,0,1000,1
+R21,plant protein (pea),-13,optimal,2,-1,ACHIEVED,22.92,61.92,0,1000,1
+R21,plant protein (pea),-13,optimal,2,0,ACHIEVED,22.62,59.76,0,1000,3
+R21,plant protein (pea),-13,optimal,2,1,ACHIEVED,22.73,52.96,0,1000,1
+R21,plant protein (pea),-13,optimal,2,2,ACHIEVED,22.69,51.19,0,1000,1
+R22,plant protein (rice),-13,optimal,-2,-2,ACHIEVED,15.39,62.15,0,1000,62
+R22,plant protein (rice),-13,optimal,-2,-1,NEAREST,15.38,59.92,0,1000,42
+R22,plant protein (rice),-13,optimal,-2,0,ACHIEVED,15.31,54.03,0,1000,3
+R22,plant protein (rice),-13,optimal,-2,1,ACHIEVED,15.32,52.31,0,1000,33
+R22,plant protein (rice),-13,optimal,-2,2,ACHIEVED,15.40,50.06,0,1000,19
+R22,plant protein (rice),-13,optimal,-1,-2,NEAREST,17.74,61.83,0,1000,31
+R22,plant protein (rice),-13,optimal,-1,-1,NEAREST,17.78,60.00,0,1000,16
+R22,plant protein (rice),-13,optimal,-1,0,ACHIEVED,17.71,53.52,0,1000,2
+R22,plant protein (rice),-13,optimal,-1,1,ACHIEVED,17.75,51.90,0,1000,1
+R22,plant protein (rice),-13,optimal,-1,2,ACHIEVED,17.75,50.01,0,1000,2
+R22,plant protein (rice),-13,optimal,0,-2,ACHIEVED,20.14,62.11,0,1000,7
+R22,plant protein (rice),-13,optimal,0,-1,ACHIEVED,20.07,60.17,0,1000,1
+R22,plant protein (rice),-13,optimal,0,0,ACHIEVED,20.18,58.88,0,1000,1
+R22,plant protein (rice),-13,optimal,0,1,ACHIEVED,18.98,53.22,0,1000,1
+R22,plant protein (rice),-13,optimal,0,2,ACHIEVED,18.29,50.23,0,1000,1
+R22,plant protein (rice),-13,optimal,1,-2,ACHIEVED,21.85,63.81,0,1000,1
+R22,plant protein (rice),-13,optimal,1,-1,ACHIEVED,21.42,61.62,0,1000,0
+R22,plant protein (rice),-13,optimal,1,0,ACHIEVED,20.36,59.77,0,1000,4
+R22,plant protein (rice),-13,optimal,1,1,ACHIEVED,20.93,52.17,0,1000,2
+R22,plant protein (rice),-13,optimal,1,2,ACHIEVED,20.89,50.24,0,1000,1
+R22,plant protein (rice),-13,optimal,2,-2,ACHIEVED,23.84,63.66,0,1000,1
+R22,plant protein (rice),-13,optimal,2,-1,ACHIEVED,22.84,61.77,0,1000,2
+R22,plant protein (rice),-13,optimal,2,0,ACHIEVED,22.79,59.83,0,1000,1
+R22,plant protein (rice),-13,optimal,2,1,ACHIEVED,22.62,53.34,0,1000,2
+R22,plant protein (rice),-13,optimal,2,2,ACHIEVED,22.65,51.74,0,1000,2
+R23,mixed fat,-13,optimal,-2,-2,NEAREST,16.35,62.14,0,1000,110
+R23,mixed fat,-13,optimal,-2,-1,NEAREST,15.92,60.08,0,1000,113
+R23,mixed fat,-13,optimal,-2,0,ACHIEVED,15.34,54.90,0,1000,11
+R23,mixed fat,-13,optimal,-2,1,ACHIEVED,15.37,51.76,0,1000,44
+R23,mixed fat,-13,optimal,-2,2,ACHIEVED,15.34,50.16,0,1000,38
+R23,mixed fat,-13,optimal,-1,-2,NEAREST,17.83,61.96,0,1000,46
+R23,mixed fat,-13,optimal,-1,-1,ACHIEVED,17.76,60.01,0,1000,28
+R23,mixed fat,-13,optimal,-1,0,NEAREST,17.84,53.63,0,1000,5
+R23,mixed fat,-13,optimal,-1,1,NEAREST,17.82,51.90,0,1000,6
+R23,mixed fat,-13,optimal,-1,2,ACHIEVED,17.75,50.08,0,1000,11
+R23,mixed fat,-13,optimal,0,-2,ACHIEVED,20.00,63.33,0,1000,24
+R23,mixed fat,-13,optimal,0,-1,NEAREST,20.19,59.97,0,1000,6
+R23,mixed fat,-13,optimal,0,0,ACHIEVED,19.83,53.56,0,1000,1
+R23,mixed fat,-13,optimal,0,1,ACHIEVED,19.74,53.17,0,1000,1
+R23,mixed fat,-13,optimal,0,2,ACHIEVED,18.96,50.10,0,1000,0
+R23,mixed fat,-13,optimal,1,-2,ACHIEVED,22.07,63.15,0,1000,2
+R23,mixed fat,-13,optimal,1,-1,ACHIEVED,21.73,61.65,0,1000,1
+R23,mixed fat,-13,optimal,1,0,ACHIEVED,20.95,58.16,0,1000,0
+R23,mixed fat,-13,optimal,1,1,ACHIEVED,20.42,53.42,0,1000,1
+R23,mixed fat,-13,optimal,1,2,NEAREST,20.26,51.82,0,1000,4
+R23,mixed fat,-13,optimal,2,-2,ACHIEVED,23.36,62.16,0,1000,0
+R23,mixed fat,-13,optimal,2,-1,ACHIEVED,22.65,60.11,0,1000,2
+R23,mixed fat,-13,optimal,2,0,ACHIEVED,23.04,59.82,0,1000,1
+R23,mixed fat,-13,optimal,2,1,ACHIEVED,22.75,53.16,0,1000,2
+R23,mixed fat,-13,optimal,2,2,ACHIEVED,22.71,51.45,0,1000,1
+R24,liquid oil,-13,optimal,-2,-2,NEAREST,16.34,62.13,0,1000,94
+R24,liquid oil,-13,optimal,-2,-1,NEAREST,15.88,59.99,0,1000,101
+R24,liquid oil,-13,optimal,-2,0,ACHIEVED,15.36,53.51,0,1000,11
+R24,liquid oil,-13,optimal,-2,1,ACHIEVED,15.37,51.78,0,1000,37
+R24,liquid oil,-13,optimal,-2,2,ACHIEVED,15.39,50.35,0,1000,37
+R24,liquid oil,-13,optimal,-1,-2,ACHIEVED,17.77,63.50,0,1000,30
+R24,liquid oil,-13,optimal,-1,-1,ACHIEVED,17.78,60.22,0,1000,25
+R24,liquid oil,-13,optimal,-1,0,NEAREST,17.77,53.45,0,1000,6
+R24,liquid oil,-13,optimal,-1,1,ACHIEVED,17.47,52.82,0,1000,14
+R24,liquid oil,-13,optimal,-1,2,ACHIEVED,17.71,50.08,0,1000,20
+R24,liquid oil,-13,optimal,0,-2,NEAREST,20.27,62.36,0,1000,7
+R24,liquid oil,-13,optimal,0,-1,NEAREST,20.22,60.09,0,1000,5
+R24,liquid oil,-13,optimal,0,0,ACHIEVED,19.64,53.60,0,1000,1
+R24,liquid oil,-13,optimal,0,1,ACHIEVED,18.96,52.33,0,1000,0
+R24,liquid oil,-13,optimal,0,2,ACHIEVED,18.44,50.04,0,1000,1
+R24,liquid oil,-13,optimal,1,-2,ACHIEVED,22.36,62.44,0,1000,1
+R24,liquid oil,-13,optimal,1,-1,ACHIEVED,21.81,60.01,0,1000,1
+R24,liquid oil,-13,optimal,1,0,ACHIEVED,21.81,57.83,0,1000,1
+R24,liquid oil,-13,optimal,1,1,ACHIEVED,20.60,53.50,0,1000,1
+R24,liquid oil,-13,optimal,1,2,ACHIEVED,20.40,50.54,0,1000,1
+R24,liquid oil,-13,optimal,2,-2,ACHIEVED,23.28,63.26,0,1000,2
+R24,liquid oil,-13,optimal,2,-1,ACHIEVED,23.85,61.37,0,1000,1
+R24,liquid oil,-13,optimal,2,0,ACHIEVED,22.93,59.85,0,1000,2
+R24,liquid oil,-13,optimal,2,1,ACHIEVED,22.61,53.29,0,1000,1
+R24,liquid oil,-13,optimal,2,2,ACHIEVED,23.47,51.67,0,1000,2

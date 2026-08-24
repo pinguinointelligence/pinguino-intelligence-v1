@@ -28,7 +28,8 @@
     "production-rescue:bundle-check": "node scripts/buildProductionRescueEdgeBundle.mjs --check",
     "protein:corpus": "node scripts/buildInternetProteinRecipeCorpus.mjs",
     "protein:corpus:check": "node scripts/buildInternetProteinRecipeCorpus.mjs --check",
-    "protein:behavior-audit": "node scripts/buildProteinProductBehaviorBindingAudit.mjs"
+    "protein:behavior-audit": "node scripts/buildProteinProductBehaviorBindingAudit.mjs",
+    "vegan:campaign": "vitest run --config vitest.campaign.config.ts"
   },
   "dependencies": {
     "@fontsource-variable/manrope": "^5.2.8",
