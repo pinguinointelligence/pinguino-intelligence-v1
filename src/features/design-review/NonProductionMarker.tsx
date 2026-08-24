@@ -29,7 +29,7 @@ export const NON_PRODUCTION_BADGE_LABEL = 'TESTOWE / NIEPRODUKCYJNE';
 
 /**
  * Marker tone. The pink token flips automatically inside `.theme-pro-dark`
- * (like `--color-review`), but the black-shell destinations (/label, /recipes)
+ * (like `--color-review`), but black-shell destinations such as /recipes
  * are dark WITHOUT that scope — they pass `tone="dark"` to use the
  * dark-calibrated `nonprod-soft` value explicitly.
  */

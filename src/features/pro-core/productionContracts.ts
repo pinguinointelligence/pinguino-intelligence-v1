@@ -98,7 +98,19 @@ export type ProductionEventType =
   | 'completed'
   | 'cancelled'
   | 'amended'
-  | 'note_added';
+  | 'note_added'
+  | 'production_started'
+  | 'heat_information_acknowledged'
+  | 'ingredient_actual_confirmed'
+  | 'actual_entry_corrected'
+  | 'variance_detected'
+  | 'rescue_previewed'
+  | 'rescue_accepted'
+  | 'batch_target_changed'
+  | 'additional_ingredient_requested'
+  | 'ingredient_completed'
+  | 'production_completed'
+  | 'production_cancelled';
 
 /** An append-only history entry. Amendments after completion are ONLY events — never rewrites. */
 export interface ProductionEvent {

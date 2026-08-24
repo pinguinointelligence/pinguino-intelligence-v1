@@ -105,6 +105,7 @@ describe('canonical PINGÜINO Pro — menu (proofs 4–6, 17–18)', () => {
       'recipes',
       'production',
       'products',
+      'labels',
       'machine',
       'memberShop',
       'workWithUs',

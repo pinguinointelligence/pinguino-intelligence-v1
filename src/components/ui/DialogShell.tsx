@@ -26,7 +26,7 @@ export function DialogShell({
   testId: string;
   children: React.ReactNode;
   onClose: () => void;
-  placement?: 'center' | 'bottom';
+  placement?: 'center' | 'bottom' | 'responsive';
   panelClassName?: string;
 }) {
   const dialogRef = useRef<HTMLElement>(null);
@@ -78,7 +78,9 @@ export function DialogShell({
         'fixed inset-0 z-[70] bg-black/45',
         placement === 'bottom'
           ? 'flex flex-col justify-end p-0'
-          : 'grid place-items-center p-[var(--pro-dialog-gutter)] sm:p-4',
+          : placement === 'responsive'
+            ? 'flex flex-col justify-end p-0 sm:grid sm:place-items-center sm:p-4'
+            : 'grid place-items-center p-[var(--pro-dialog-gutter)] sm:p-4',
       )}
       data-testid={testId}
       data-placement={placement}
@@ -92,7 +94,9 @@ export function DialogShell({
           'overflow-y-auto border border-ink/15 bg-white text-ink shadow-pro-e3 [overscroll-behavior:contain]',
           placement === 'bottom'
             ? 'max-h-[min(88dvh,calc(100dvh-env(safe-area-inset-top)-0.5rem))] w-full rounded-t-[22px] border-x-0 border-b-0 pb-[env(safe-area-inset-bottom)]'
-            : 'max-h-[min(86vh,760px)] w-[min(520px,94vw)] rounded-[24px] p-5',
+            : placement === 'responsive'
+              ? 'max-h-[min(88dvh,calc(100dvh-env(safe-area-inset-top)-0.5rem))] w-full rounded-t-[22px] border-x-0 border-b-0 pb-[env(safe-area-inset-bottom)] sm:max-h-[min(86vh,760px)] sm:w-[min(520px,94vw)] sm:rounded-[24px] sm:border sm:p-5'
+              : 'max-h-[min(86vh,760px)] w-[min(520px,94vw)] rounded-[24px] p-5',
           panelClassName,
         )}
       >

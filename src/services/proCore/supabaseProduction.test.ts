@@ -369,14 +369,14 @@ function fakeClient(store: FakeStore, userId: string | null) {
           created_by: userId,
           created_at: at,
         });
-      } else if (name === 'production_transition_run_v1') {
+      } else if (name === 'production_transition_run_v1' || name === 'production_cancel_run_v1') {
         if (fail('production_runs', 'update')) return error('production_runs');
         if (fail('production_run_events', 'insert')) return error('production_run_events');
         const run = next.production_runs!.find(
           (row) => row.id === args.p_run_id && row.owner_user_id === userId,
         );
         if (!run) return { data: null, error: { message: 'owned production run required' } };
-        const to = args.p_to_status as string;
+        const to = name === 'production_cancel_run_v1' ? 'cancelled' : (args.p_to_status as string);
         if (to === 'completed') {
           const actual = next.production_run_actuals!.find((row) => row.run_id === args.p_run_id);
           const expected = next.production_run_planned_items!.filter(
@@ -430,7 +430,7 @@ function fakeClient(store: FakeStore, userId: string | null) {
           updated_at: at,
         });
         store.updates.production_runs = (store.updates.production_runs ?? 0) + 1;
-      } else if (name === 'production_record_actual_v1') {
+      } else if (name === 'production_record_actual_v1' || name === 'production_record_actual_v2') {
         if (fail('production_run_actuals', 'upsert')) return error('production_run_actuals');
         if (fail('production_runs', 'update')) return error('production_runs');
         if (fail('production_run_events', 'insert')) return error('production_run_events');
@@ -604,7 +604,7 @@ function fakeClient(store: FakeStore, userId: string | null) {
           created_by: userId,
           created_at: at,
         });
-      } else if (name === 'production_complete_run_v1') {
+      } else if (name === 'production_complete_run_v1' || name === 'production_complete_run_v2') {
         if (fail('production_run_actuals', 'upsert')) return error('production_run_actuals');
         if (fail('production_runs', 'update')) return error('production_runs');
         if (fail('production_run_events', 'insert')) return error('production_run_events');
@@ -1225,19 +1225,54 @@ describe('supabaseProduction — atomic served start, Rescue, and completion', (
       meta: { thermalMode: 'HEAT_CAPABLE' },
     });
     await expect(
-      repo.completeRun(run.runId, {
-        by: U1,
-        expectedActualRevision: 0,
-        expectedRescueRevision: 0,
-        items: [{ id: 'milk', name: 'Milk', actualGrams: 600 }],
-        actualTotalMixG: 600,
-      }),
+      repo.completeRun(
+        run.runId,
+        {
+          by: U1,
+          expectedActualRevision: 0,
+          expectedRescueRevision: 0,
+          items: [{ id: 'milk', name: 'Milk', actualGrams: 600 }],
+          actualTotalMixG: 600,
+        },
+        { sessionId: run.runId } as never,
+      ),
     ).rejects.toThrow(/complete actual vector/);
     expect((await repo.getRun(run.runId, U1))?.status).toBe('in_progress');
     expect(store.tables.production_run_actuals).toHaveLength(0);
 
     await expect(
-      repo.completeRun(run.runId, {
+      repo.completeRun(
+        run.runId,
+        {
+          by: U1,
+          expectedActualRevision: 0,
+          expectedRescueRevision: 0,
+          items: [
+            {
+              id: 'milk',
+              name: 'Milk',
+              actualGrams: 600,
+              confirmedAt: '2026-01-01T10:00:00.000Z',
+              confirmationOrder: 1,
+            },
+            {
+              id: 'sugar',
+              name: 'Sugar',
+              actualGrams: 400,
+              confirmedAt: '2026-01-01T10:01:00.000Z',
+              confirmationOrder: 1,
+            },
+          ],
+          actualTotalMixG: 1000,
+        },
+        { sessionId: run.runId } as never,
+      ),
+    ).rejects.toThrow(/complete actual vector/);
+    expect(store.tables.production_run_actuals).toHaveLength(0);
+
+    const completed = await repo.completeRun(
+      run.runId,
+      {
         by: U1,
         expectedActualRevision: 0,
         expectedRescueRevision: 0,
@@ -1254,36 +1289,13 @@ describe('supabaseProduction — atomic served start, Rescue, and completion', (
             name: 'Sugar',
             actualGrams: 400,
             confirmedAt: '2026-01-01T10:01:00.000Z',
-            confirmationOrder: 1,
+            confirmationOrder: 2,
           },
         ],
         actualTotalMixG: 1000,
-      }),
-    ).rejects.toThrow(/complete actual vector/);
-    expect(store.tables.production_run_actuals).toHaveLength(0);
-
-    const completed = await repo.completeRun(run.runId, {
-      by: U1,
-      expectedActualRevision: 0,
-      expectedRescueRevision: 0,
-      items: [
-        {
-          id: 'milk',
-          name: 'Milk',
-          actualGrams: 600,
-          confirmedAt: '2026-01-01T10:00:00.000Z',
-          confirmationOrder: 1,
-        },
-        {
-          id: 'sugar',
-          name: 'Sugar',
-          actualGrams: 400,
-          confirmedAt: '2026-01-01T10:01:00.000Z',
-          confirmationOrder: 2,
-        },
-      ],
-      actualTotalMixG: 1000,
-    });
+      },
+      { sessionId: run.runId } as never,
+    );
     expect(completed.status).toBe('completed');
     expect(completed.actual).toMatchObject({
       revision: 1,
@@ -1449,28 +1461,32 @@ describe('supabaseProduction — post-completion amendments are append-only', ()
     });
     await repo.transition(run.runId, 'planned', U1);
     await repo.transition(run.runId, 'in_progress', U1);
-    await repo.completeRun(run.runId, {
-      by: U1,
-      expectedActualRevision: 0,
-      expectedRescueRevision: 0,
-      items: [
-        {
-          id: 'milk',
-          name: 'Milk',
-          actualGrams: 3000,
-          confirmedAt: '2026-01-01T10:00:00.000Z',
-          confirmationOrder: 1,
-        },
-        {
-          id: 'sugar',
-          name: 'Sugar',
-          actualGrams: 2000,
-          confirmedAt: '2026-01-01T10:01:00.000Z',
-          confirmationOrder: 2,
-        },
-      ],
-      actualTotalMixG: 5000,
-    });
+    await repo.completeRun(
+      run.runId,
+      {
+        by: U1,
+        expectedActualRevision: 0,
+        expectedRescueRevision: 0,
+        items: [
+          {
+            id: 'milk',
+            name: 'Milk',
+            actualGrams: 3000,
+            confirmedAt: '2026-01-01T10:00:00.000Z',
+            confirmationOrder: 1,
+          },
+          {
+            id: 'sugar',
+            name: 'Sugar',
+            actualGrams: 2000,
+            confirmedAt: '2026-01-01T10:01:00.000Z',
+            confirmationOrder: 2,
+          },
+        ],
+        actualTotalMixG: 5000,
+      },
+      { sessionId: run.runId } as never,
+    );
     return { repo, run };
   };
 
@@ -1644,28 +1660,32 @@ describe('supabaseProduction — the Community „confirmed make" trigger (§41)
   };
 
   const finish = (repo: ReturnType<typeof repoFor>, runId: string) =>
-    repo.completeRun(runId, {
-      by: U1,
-      expectedActualRevision: 0,
-      expectedRescueRevision: 0,
-      items: [
-        {
-          id: 'milk',
-          name: 'Milk',
-          actualGrams: 3000,
-          confirmedAt: '2026-01-01T10:00:00.000Z',
-          confirmationOrder: 1,
-        },
-        {
-          id: 'sugar',
-          name: 'Sugar',
-          actualGrams: 2000,
-          confirmedAt: '2026-01-01T10:01:00.000Z',
-          confirmationOrder: 2,
-        },
-      ],
-      actualTotalMixG: 5000,
-    });
+    repo.completeRun(
+      runId,
+      {
+        by: U1,
+        expectedActualRevision: 0,
+        expectedRescueRevision: 0,
+        items: [
+          {
+            id: 'milk',
+            name: 'Milk',
+            actualGrams: 3000,
+            confirmedAt: '2026-01-01T10:00:00.000Z',
+            confirmationOrder: 1,
+          },
+          {
+            id: 'sugar',
+            name: 'Sugar',
+            actualGrams: 2000,
+            confirmedAt: '2026-01-01T10:01:00.000Z',
+            confirmationOrder: 2,
+          },
+        ],
+        actualTotalMixG: 5000,
+      },
+      { sessionId: runId } as never,
+    );
 
   it('fires ONLY on completion — creating, planning and starting a run record nothing', async () => {
     const repo = repoFor(store);
@@ -1707,7 +1727,7 @@ describe('supabaseProduction — the Community „confirmed make" trigger (§41)
     expect(runIds.has(second.runId)).toBe(true);
   });
 
-  it('a failing make NEVER fails the production run — the run is the user\'s work', async () => {
+  it("a failing make NEVER fails the production run — the run is the user's work", async () => {
     const repo = repoFor(store);
     const run = await runThrough(repo);
     store.rpcErrorMessages[MAKE_RPC] = 'community unavailable';
@@ -1719,7 +1739,7 @@ describe('supabaseProduction — the Community „confirmed make" trigger (§41)
   it('does not fire when completion itself failed', async () => {
     const repo = repoFor(store);
     const run = await runThrough(repo);
-    store.fail.add('rpc:production_complete_run_v1');
+    store.fail.add('rpc:production_complete_run_v2');
     await expect(finish(repo, run.runId)).rejects.toThrow();
     // The run never reached `completed`, so nothing was made and nothing is
     // counted. The recovery path only records when the run really did land.

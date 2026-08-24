@@ -198,7 +198,7 @@ describe('Production workspace touch-first UI', () => {
 
     expect(html).toContain('data-production-mode="correction"');
     expect(html).toContain('data-production-control-state="correction"');
-    expect(html).toContain('Korekta zapisu');
+    expect(html).toContain('POPRAW WPIS');
     expect(html).toContain(`aria-describedby="production-correction-${line.lineId}"`);
     expect(html).toContain('role="status"');
   });
@@ -461,7 +461,7 @@ describe('Production workspace touch-first UI', () => {
         }}
       />,
     );
-    expect(html).toContain('Dodaj jeszcze 5 g');
+    expect(html).toContain('DODAJ JESZCZE 5 g');
     expect(html).toContain('Dodaj brakujące 5 g');
     expect(html).toContain(`data-testid="production-top-up-${line.lineId}"`);
     // The physical floor stays visible, so nobody can read this as "remove 5 g".
@@ -487,12 +487,60 @@ describe('Production workspace touch-first UI', () => {
         }}
       />,
     );
-    expect(html).toContain('Potwierdzono');
+    expect(html).toContain('DODANO');
     expect(html).not.toContain('Dodaj jeszcze');
     expect(html).not.toContain('Dodaj brakujące');
   });
 
   // §2 OWNER RULE — a POSITIVE heat fact is a one-time reminder with an OK.
+  it('gates Start on one OK for verified positive heat information', () => {
+    const heatInformation = [
+      {
+        code: 'HEAT_TREATMENT_INDICATED',
+        productId: 'product-chocolate',
+        mapperIngredientId: 'PI-ING-000087',
+        decision: 'HEAT_REQUIRED_FOR_FUNCTION',
+        verificationStatus: 'verified',
+        productName: 'DARK CHOCOLATE 55%',
+      },
+    ];
+    const render = (acknowledged: boolean) =>
+      renderToStaticMarkup(
+        <ProductionCockpit
+          production={
+            {
+              session: null,
+              progress: null,
+              prerequisite: null,
+              practicalReady: acknowledged,
+              source: session.source,
+              plannedInput: input,
+              heatInformation,
+              heatInformationAcknowledged: acknowledged,
+              acknowledgeHeatInformation: vi.fn(),
+              startNewSession: vi.fn(),
+            } as unknown as ProductionWorkspaceView
+          }
+          onOpenPreview={vi.fn()}
+          onRecalculate={vi.fn()}
+          onReturnToRecipe={vi.fn()}
+        />,
+      );
+
+    const pending = render(false);
+    expect(pending).toContain('Pamiętaj o obróbce');
+    expect(pending).toContain('Najpierw potwierdź informację');
+    expect(pending).toMatch(
+      /<button(?=[^>]*data-testid="start-production-session")(?=[^>]*\sdisabled="")/,
+    );
+    const confirmed = render(true);
+    expect(confirmed).toContain('Informacja potwierdzona');
+    expect(confirmed).toContain('Rozpocznij partię');
+    expect(confirmed).not.toMatch(
+      /<button(?=[^>]*data-testid="start-production-session")(?=[^>]*\sdisabled="")/,
+    );
+  });
+
   it('reminds the operator about verified heat treatment and takes one OK', () => {
     const forecast = assessProductionRescue(session);
     const acknowledge = vi.fn();
@@ -540,7 +588,7 @@ describe('Production workspace touch-first UI', () => {
     expect(pending).toContain('DARK CHOCOLATE 55%');
     expect(pending).toContain('data-testid="acknowledge-production-heat-information"');
     expect(pending).toContain('data-acknowledged="false"');
-    // It is a reminder, never a gate: completion is not held by it.
+    // It is awareness only: once a run is active it never becomes a science gate.
     expect(pending).not.toContain('data-testid="production-process-blocked"');
 
     const confirmed = renderToStaticMarkup(
@@ -783,6 +831,10 @@ describe('Production workspace touch-first UI', () => {
     expect(html).toContain('Preview autoryzowany przez serwer');
     expect(html).toContain('data-candidate-fingerprint="trusted-fingerprint-1"');
     expect(html).toContain('data-testid="apply-authorized-production-rescue"');
+    expect(html).toContain('Powiększ do 1050 g');
+    expect(html).toContain('data-mobile-presentation="bottom-sheet"');
+    expect(html).toContain('fixed inset-x-0 bottom-0');
+    expect(html).toContain('sm:static');
     expect(html).toContain('tabindex="-1"');
     expect(html).toContain('Nowy plan · Cream');
     expect(html).toContain('→ 350 g');
@@ -790,6 +842,33 @@ describe('Production workspace touch-first UI', () => {
       /<button(?=[^>]*data-testid="apply-authorized-production-rescue")[^>]* disabled=""/,
     );
     expect(html).not.toContain('data-testid="production-rescue-options"');
+
+    if (view.rescueAuthorization.status !== 'preview') throw new Error('preview fixture required');
+    const previewAuthorization = view.rescueAuthorization;
+    const keepOriginalHtml = renderToStaticMarkup(
+      <ProductionCockpit
+        production={
+          {
+            ...view,
+            rescueAuthorization: {
+              ...previewAuthorization,
+              authorization: {
+                ...previewAuthorization.authorization,
+                stableOptionId: 'keep_original_batch',
+                preview: {
+                  ...previewAuthorization.authorization.preview,
+                  finalMassG: 1000,
+                },
+              },
+            },
+          } as unknown as ProductionWorkspaceView
+        }
+        onOpenPreview={vi.fn()}
+        onRecalculate={vi.fn()}
+        onReturnToRecipe={vi.fn()}
+      />,
+    );
+    expect(keepOriginalHtml).toContain('Napraw do 1000 g');
 
     const staleHtml = renderToStaticMarkup(
       <ProductionCockpit
@@ -812,7 +891,7 @@ describe('Production workspace touch-first UI', () => {
     expect(staleHtml).toContain('Autoryzacja Preview wygasła');
   });
 
-  it('hosts completed Master Label on a readable light sheet', () => {
+  it('offers the completed run as an explicit transition to LabelWorkspace', () => {
     let confirmed = session;
     for (const [index, line] of confirmed.lines.entries()) {
       confirmed = confirmProductionLine(
@@ -846,9 +925,9 @@ describe('Production workspace touch-first UI', () => {
       />,
     );
     expect(html).toContain('data-testid="production-completed"');
-    expect(html).toContain('Przygotowywanie Master Label');
-    expect(html).toContain('bg-[#f7f5f0]');
-    expect(html).toContain('text-stone-600');
+    expect(html).toContain('Partia gotowa');
+    expect(html).toContain('Przejdź do etykiety');
+    expect(html).toContain('/labels?run=ui-run');
     expect(html).not.toContain('class="p-3 text-xs text-stone-500"');
     const staleCompletedHtml = renderToStaticMarkup(
       <ProductionCockpit
@@ -874,11 +953,13 @@ describe('Production workspace touch-first UI', () => {
     expect(staleCompletedHtml).toContain('data-testid="production-completed"');
     expect(staleCompletedHtml).toContain('Zarchiwizuj starą sesję');
     expect(staleCompletedHtml).toContain('Zachowaj zakończony zapis');
-    expect(
-      readFileSync(
-        resolve(import.meta.dirname, '..', 'master-label', 'MasterLabelEditor.tsx'),
-        'utf8',
-      ),
-    ).toContain('disabled:bg-stone-300 disabled:text-stone-700');
+    const labelWorkspace = readFileSync(
+      resolve(import.meta.dirname, '..', 'master-label', 'LabelWorkspace.tsx'),
+      'utf8',
+    );
+    expect(labelWorkspace).toContain('Zapisz finalną etykietę');
+    expect(labelWorkspace).toContain(
+      'Koszty są wyłącznie informacją wewnętrzną. Nie trafiają do konsumenckiego wydruku.',
+    );
   });
 });

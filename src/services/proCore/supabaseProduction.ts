@@ -62,6 +62,7 @@ import type {
   ProductionRescueAuthorization,
   RecordActualArgs,
 } from './productionRepository';
+import type { ProductionCompletionSnapshot } from '@/features/production-workspace/productionSession';
 
 const RUNS = 'production_runs';
 const PLANNED = 'production_run_planned_items';
@@ -70,11 +71,12 @@ const EVENTS = 'production_run_events';
 const CREATE_RUN_RPC = 'production_create_run_v1';
 const START_RUN_RPC = 'production_start_run_v2';
 const TRANSITION_RUN_RPC = 'production_transition_run_v1';
+const CANCEL_RUN_RPC = 'production_cancel_run_v1';
 const UPDATE_META_RPC = 'production_update_meta_v1';
-const RECORD_ACTUAL_RPC = 'production_record_actual_v1';
+const RECORD_ACTUAL_RPC = 'production_record_actual_v2';
 const AUTHORIZE_RESCUE_FUNCTION = 'production-rescue-authorize';
 const CONSUME_RESCUE_RPC = 'production_consume_rescue_authorization_v1';
-const COMPLETE_RUN_RPC = 'production_complete_run_v1';
+const COMPLETE_RUN_RPC = 'production_complete_run_v2';
 const APPEND_AMENDMENT_RPC = 'production_append_amendment_v1';
 const ACKNOWLEDGE_HEAT_RPC = 'production_acknowledge_heat_information_v1';
 
@@ -104,6 +106,7 @@ interface RunRow {
   process_advisories?:
     | import('@/features/product-intelligence').ProductProcessReadinessDetail[]
     | null;
+  heat_information_acknowledged_at?: string | null;
   planned_date: string | null;
   machine: string | null;
   location: string | null;
@@ -643,9 +646,9 @@ export function supabaseProductionRepository(
       const current = await requireRun(owner, runId);
       const next = transitionRun(current, to, by, now(), newId()); // throws on illegal transition
 
-      await mutate(TRANSITION_RUN_RPC, {
+      await mutate(to === 'cancelled' ? CANCEL_RUN_RPC : TRANSITION_RUN_RPC, {
         p_run_id: runId,
-        p_to_status: next.status,
+        ...(to === 'cancelled' ? {} : { p_to_status: next.status }),
         p_event_id: next.events[next.events.length - 1]!.eventId,
       });
       return requireRun(owner, runId);
@@ -687,6 +690,9 @@ export function supabaseProductionRepository(
         p_operator_notes: actual.operatorNotes,
         p_deviation_reason: actual.deviationReason,
         p_event_id: next.events[next.events.length - 1]!.eventId,
+        p_action: input.eventContext?.action ?? 'sync',
+        p_line_id: input.eventContext?.lineId ?? null,
+        p_previous_actual_g: input.eventContext?.previousActualG ?? null,
       });
       return requireRun(owner, runId);
     },
@@ -735,7 +741,11 @@ export function supabaseProductionRepository(
       return requireRun(owner, runId);
     },
 
-    async completeRun(runId: string, input: RecordActualArgs): Promise<ProductionRun> {
+    async completeRun(
+      runId: string,
+      input: RecordActualArgs,
+      snapshot: ProductionCompletionSnapshot,
+    ): Promise<ProductionRun> {
       const owner = await uid();
       const current = await requireRun(owner, runId);
       if (current.status === 'completed') {
@@ -763,6 +773,7 @@ export function supabaseProductionRepository(
           p_deviation_reason: actual.deviationReason,
           p_actual_event_id: next.events[next.events.length - 1]!.eventId,
           p_completed_event_id: newId(),
+          p_snapshot: snapshot,
         });
       } catch (error) {
         const recovered = await loadRun(owner, runId).catch(() => null);

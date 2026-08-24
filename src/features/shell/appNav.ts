@@ -47,8 +47,9 @@ const pathOrNested = (path: string) => (loc: NavLocation) =>
 const recipeDestination = (loc: NavLocation) =>
   pathOrNested('/recipes')(loc) || loc.pathname === '/my-recipes';
 const productionDestination = (loc: NavLocation) =>
-  pathOrNested('/production')(loc) ||
-  ['/pro/production', '/pro/history', '/label'].includes(loc.pathname);
+  pathOrNested('/production')(loc) || ['/pro/production', '/pro/history'].includes(loc.pathname);
+const labelsDestination = (loc: NavLocation) =>
+  pathOrNested('/labels')(loc) || loc.pathname === '/label';
 const productsDestination = (loc: NavLocation) =>
   pathOrNested('/products')(loc) ||
   ['/create-ingredient', '/products/import'].includes(loc.pathname);
@@ -150,11 +151,20 @@ export const APP_NAV_ITEMS: readonly AppNavItem[] = [
     isActive: productsDestination,
   },
   {
+    id: 'labels',
+    label: s.items.labels,
+    to: '/labels',
+    group: 'product',
+    order: 4,
+    audiences: ['pro'],
+    isActive: labelsDestination,
+  },
+  {
     id: 'machine',
     label: s.items.machine,
     to: '/machine',
     group: 'product',
-    order: 4,
+    order: 5,
     audiences: ['home', 'pro'],
     isActive: machineDestination,
   },

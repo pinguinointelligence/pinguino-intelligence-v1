@@ -1,11 +1,9 @@
 /**
- * Sample recipe context for the standalone Labels & Exports page.
+ * Deterministic fixture for pure label/export unit tests.
  *
- * The /label destination has no live recipe of its own, so it renders against a
- * fixed, balanced sample. We build it here in the data layer (data → data only;
- * no features/* imports) by mapping the default preset into the engine's
- * RecipeInput and calling `calculateRecipe` — the SAME public entry the Studio
- * uses. The engine owns every number; this module only assembles the input.
+ * No customer route imports this module. The production Labels workspace reads
+ * immutable completed-run snapshots; this fixture only keeps the lower-level
+ * CSV and ingredient-statement tests deterministic.
  */
 import { DEFAULT_PRESET } from '@/data/demoPresets';
 import { calculateRecipe, type RecipeInput, type RecipeResult } from '@/engine';

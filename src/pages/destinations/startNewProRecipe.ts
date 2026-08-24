@@ -1,6 +1,5 @@
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
-import { useMasterLabelStore } from '@/features/master-label/masterLabelStore';
 import { useProductionSessionStore } from '@/features/production-workspace/productionSessionStore';
 import { useIngredientTableUxStore } from '@/features/ingredient-builder/ingredientTableUxStore';
 import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
@@ -32,7 +31,6 @@ const hasRecipeSpecificSidecars = (): boolean => {
     studio.history.length > 0 ||
     studio.recalculationTerminal !== null ||
     useProductionSessionStore.getState().session !== null ||
-    useMasterLabelStore.getState().label !== null ||
     Object.keys(ingredientUx.metaByLineId).length > 0 ||
     Object.keys(ingredientUx.unresolvedRequiredByLineId).length > 0 ||
     useRecipeProfileStore.getState().awaitingRecalculation
@@ -56,7 +54,6 @@ export function startNewProRecipe(requestedVisible?: VisibleProductType): void {
   useConstraintStudioStore.getState().resetDraftSession();
   useConstraintStudioStore.setState({ proCoreRecipeId: null, lastSavedVersion: null });
   useProductionSessionStore.getState().clear();
-  useMasterLabelStore.getState().clear();
 }
 
 export type NewRecipeStarterSettingsPatch = Partial<
@@ -104,10 +101,7 @@ export function isUntouchedNewRecipeStarter(): boolean {
     excludedIngredientIds: recipe.excludedIngredientIds,
     unavailableMainIngredientIds: recipe.unavailableMainIngredientIds,
   });
-  return (
-    fingerprint === recipe.newRecipeStarterMaterialFingerprint &&
-    !hasRecipeSpecificSidecars()
-  );
+  return fingerprint === recipe.newRecipeStarterMaterialFingerprint && !hasRecipeSpecificSidecars();
 }
 
 export function rebuildNewProRecipeStarter(patch: NewRecipeStarterSettingsPatch): void {
@@ -116,7 +110,6 @@ export function rebuildNewProRecipeStarter(patch: NewRecipeStarterSettingsPatch)
   useConstraintStudioStore.getState().resetDraftSession();
   useConstraintStudioStore.setState({ proCoreRecipeId: null, lastSavedVersion: null });
   useProductionSessionStore.getState().clear();
-  useMasterLabelStore.getState().clear();
 }
 
 export function requestNewRecipeStarterSettingsChange(
@@ -163,9 +156,7 @@ export function requestProfessionalStarterServingChange(
   servingModeId: NewRecipeServingModeId,
   label: string,
 ): NewRecipeStarterSettingsChangeResult {
-  const result = requestNewRecipeStarterSettingsChange(
-    starterSettingsPatch.serving(servingModeId),
-  );
+  const result = requestNewRecipeStarterSettingsChange(starterSettingsPatch.serving(servingModeId));
   if (result !== 'confirmation_required') {
     applyProfessionalStarterMachineSelection(servingModeId, label);
     if (result === 'starter_replaced') {

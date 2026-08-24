@@ -1,6 +1,5 @@
 export { APIPage } from './APIPage';
 export { CreateIngredientPage } from './CreateIngredientPage';
-export { CreateLabelPage } from './CreateLabelPage';
 export { ProductImportPage } from './ProductImportPage';
 export { ProductScanPage } from '../products/ProductScanPage';
 export { ProductScannerV1Page } from '../products/ProductScannerV1Page';
@@ -11,6 +10,7 @@ export {
   AccountSettingsPage,
   FranchisePage,
   HowItWorksPage,
+  LabelsHubPage,
   ProductsHubPage,
   ProductionHubPage,
   ShopPage,

@@ -75,23 +75,23 @@ describe('nonProductionRegistry — complete, honest, grounded in real files', (
 
 describe('NonProductionMarker (block)', () => {
   const html = renderToStaticMarkup(
-    <NonProductionMarker itemId="label-sample-recipe" title="Etykieta">
+    <NonProductionMarker itemId="start-ready-catalogue" title="Katalog">
       <p>Zawartość testowa</p>
     </NonProductionMarker>,
   );
 
   it('renders the pink badge with the canonical label', () => {
     expect(html).toContain(NON_PRODUCTION_BADGE_LABEL);
-    expect(html).toContain('data-testid="nonprod-marked-label-sample-recipe"');
-    expect(html).toContain('data-testid="nonprod-badge-label-sample-recipe"');
+    expect(html).toContain('data-testid="nonprod-marked-start-ready-catalogue"');
+    expect(html).toContain('data-testid="nonprod-badge-start-ready-catalogue"');
     expect(html).toContain('border-l-nonprod');
     expect(html).toContain('text-nonprod');
   });
 
   it('the tooltip names the source file, identifier, reason and replacement', () => {
-    const item = nonProductionItem('label-sample-recipe');
-    expect(html).toContain('src/data/label/sampleLabelRecipe.ts');
-    expect(html).toContain('SAMPLE_LABEL_RESULT');
+    const item = nonProductionItem('start-ready-catalogue');
+    expect(html).toContain('src/features/customer-flow/__fixtures__/catalogueFixtures.ts');
+    expect(html).toContain('CATALOGUE_FIXTURES');
     // title attribute is HTML-escaped; compare against the escaped tooltip.
     const escaped = nonProductionTooltip(item)
       .replace(/&/g, '&amp;')
@@ -102,11 +102,11 @@ describe('NonProductionMarker (block)', () => {
 
   it('renders the marked content — nothing is removed or hidden', () => {
     expect(html).toContain('Zawartość testowa');
-    expect(html).toContain('Etykieta');
+    expect(html).toContain('Katalog');
   });
 
   it('shows the registry reason as the default honest note', () => {
-    const item = nonProductionItem('label-sample-recipe');
+    const item = nonProductionItem('start-ready-catalogue');
     expect(html).toContain(item.reason.slice(0, 30));
   });
 });

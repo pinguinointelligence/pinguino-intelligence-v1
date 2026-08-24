@@ -59,12 +59,13 @@ describe('plan-aware global navigation', () => {
     ]);
   });
 
-  it('returns the exact shallow Pro menu and adds only Production', () => {
+  it('returns the exact shallow Pro menu with Production and Labels', () => {
     expect(ids('pro')).toEqual([
       'proWorkspace',
       'recipes',
       'production',
       'products',
+      'labels',
       'machine',
       'memberShop',
       'workWithUs',
@@ -73,6 +74,7 @@ describe('plan-aware global navigation', () => {
     expect(ids('pro').filter((id) => !ids('home').includes(id))).toEqual([
       'proWorkspace',
       'production',
+      'labels',
     ]);
   });
 
@@ -84,7 +86,8 @@ describe('plan-aware global navigation', () => {
     expect(activeNavId(loc('/pro/machine'), 'pro')).toBe('machine');
     expect(activeNavId(loc('/pro/production'), 'pro')).toBe('production');
     expect(activeNavId(loc('/pro/history'), 'pro')).toBe('production');
-    expect(activeNavId(loc('/label'), 'pro')).toBe('production');
+    expect(activeNavId(loc('/label'), 'pro')).toBe('labels');
+    expect(activeNavId(loc('/labels'), 'pro')).toBe('labels');
     expect(activeNavId(loc('/pro/monitor'), 'pro')).toBe('proWorkspace');
     expect(isGroupActive('product', loc('/pro/versions'), 'pro')).toBe(true);
   });
@@ -95,7 +98,6 @@ describe('plan-aware global navigation', () => {
       '/api',
       '/create-ingredient',
       '/products/import',
-      '/label',
       '/pro/monitor',
       '/pro/versions',
       '/pro/costs',

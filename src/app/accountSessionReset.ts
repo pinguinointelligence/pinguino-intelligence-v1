@@ -19,7 +19,6 @@ import { useRecipeStore } from '@/stores/recipeStore';
 import { useIntakeStore } from '@/stores/intakeStore';
 import { useCustomerPriceStore } from '@/stores/customerPriceStore';
 import { useProductionSessionStore } from '@/features/production-workspace/productionSessionStore';
-import { useMasterLabelStore } from '@/features/master-label/masterLabelStore';
 import { useIngredientTableUxStore } from '@/features/ingredient-builder/ingredientTableUxStore';
 import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
 
@@ -52,8 +51,9 @@ export function shouldClearAccountScopedState(input: {
     );
   }
   if (input.nextUserId === null) {
-    return input.persistedOwnerMarker !== null &&
-      input.persistedOwnerMarker !== ANONYMOUS_OWNER_MARKER;
+    return (
+      input.persistedOwnerMarker !== null && input.persistedOwnerMarker !== ANONYMOUS_OWNER_MARKER
+    );
   }
   if (input.persistedOwnerMarker === input.nextUserId) return false;
   if (input.persistedOwnerMarker === ANONYMOUS_OWNER_MARKER) return false;
@@ -131,6 +131,5 @@ export function clearAccountScopedClientState(queryClient: QueryClient): void {
   useIntakeStore.getState().reset();
   useCustomerPriceStore.getState().clear();
   useProductionSessionStore.getState().clear();
-  useMasterLabelStore.getState().clear();
   useIngredientTableUxStore.getState().reset();
 }

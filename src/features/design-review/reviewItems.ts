@@ -47,15 +47,6 @@ export const REVIEW_ITEMS: readonly ReviewItem[] = [
     ownerDecision: 'pending',
   },
   {
-    id: 'RV-02',
-    route: '/label',
-    label: 'Etykiety i produkty — angielskie treści',
-    functionNote: 'Przykładowa deklaracja wartości odżywczej + skład QUID + CSV/druk.',
-    reason: 'Angielskie copy na ścieżce klienta (docelowo polska wersja).',
-    suggestion: 'keep',
-    ownerDecision: 'pending',
-  },
-  {
     id: 'RV-03',
     route: '/api',
     label: 'API — strona zapowiedzi (angielska)',
@@ -154,7 +145,8 @@ export const REVIEW_ITEMS: readonly ReviewItem[] = [
     id: 'RV-13',
     route: '/pro/machine',
     label: 'Maszyna (per-receptura) a Moja maszyna (domyślna)',
-    functionNote: 'Dwa miejsca wyboru maszyny: /pro/machine (bieżąca receptura) i /profile/machine (domyślna).',
+    functionNote:
+      'Dwa miejsca wyboru maszyny: /pro/machine (bieżąca receptura) i /profile/machine (domyślna).',
     reason:
       'Potencjalny duplikat w odczuciu użytkownika — role są różne; brakuje jednego zdania rozróżniającego na każdej ze stron.',
     suggestion: 'keep',
@@ -164,8 +156,10 @@ export const REVIEW_ITEMS: readonly ReviewItem[] = [
     id: 'RV-15',
     route: '/',
     label: 'ComingSoonSurface — nieroutowany ekran zapowiedzi (legacy shell)',
-    functionNote: 'Placeholder z Fazy 6C na starym czarnym ShellLayout; nie jest już importowany przez żadną trasę.',
-    reason: 'Martwo wyglądający ekran w drzewie komponentów — razem z klastrem legacy shell (RV-09/RV-11).',
+    functionNote:
+      'Placeholder z Fazy 6C na starym czarnym ShellLayout; nie jest już importowany przez żadną trasę.',
+    reason:
+      'Martwo wyglądający ekran w drzewie komponentów — razem z klastrem legacy shell (RV-09/RV-11).',
     suggestion: 'remove-later',
     ownerDecision: 'pending',
   },
@@ -173,7 +167,8 @@ export const REVIEW_ITEMS: readonly ReviewItem[] = [
     id: 'RV-14',
     route: '/pro/recipe',
     label: 'Podwójna linia kontekstu (workbar + nagłówek laboratorium)',
-    functionNote: 'Workbar pokazuje kontekst receptury; nagłówek StudioEngineSurface pokazuje trasę silnika + podsumowanie.',
+    functionNote:
+      'Workbar pokazuje kontekst receptury; nagłówek StudioEngineSurface pokazuje trasę silnika + podsumowanie.',
     reason: 'Dwie linie kontekstu w jednym widoku — do przeglądu prezentacji (tylko wygląd).',
     suggestion: 'merge',
     ownerDecision: 'pending',

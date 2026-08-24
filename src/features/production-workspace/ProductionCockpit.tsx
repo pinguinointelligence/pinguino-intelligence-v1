@@ -1,13 +1,25 @@
+import { useEffect, useRef } from 'react';
 import { ReadinessFrame } from '@/features/design-review/ReadinessMarker';
-import { MasterLabelEditor } from '@/features/master-label/MasterLabelEditor';
 import type { ProductionWorkspaceView } from './useProductionWorkspace';
 import { ProductionActualControl } from './ProductionActualControl';
 import { productionStepForGrams } from './productionSession';
 import { isCatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
 import { CatalogVerificationBadge } from '@/features/global-catalog/CatalogVerificationBadge';
+import { buttonClasses } from '@/components/ui/buttonStyles';
+import { cn } from '@/lib/cn';
 
 const formatPhysicalMassG = (value: number): string =>
   Number.isInteger(value) ? value.toFixed(0) : value.toFixed(3).replace(/\.?0+$/, '');
+
+const authorizedRescueActionLabel = (
+  stableOptionId: 'keep_original_batch' | 'enlarge_batch' | 'leave_as_is',
+  finalMassG: number,
+): string => {
+  const mass = formatPhysicalMassG(finalMassG);
+  if (stableOptionId === 'keep_original_batch') return `Napraw do ${mass} g`;
+  if (stableOptionId === 'enlarge_batch') return `Powiększ do ${mass} g`;
+  return `Zastosuj plan ${mass} g`;
+};
 
 /**
  * OWNER RULE §2 — HEAT INFORMATION IS A REMINDER, NOT A ROUTE.
@@ -142,58 +154,66 @@ export function ProductionCockpit({
   }
   if (!session || !progress) {
     return (
-      <section
-        className="m-3 rounded-[18px] border border-ink/10 bg-white p-5 text-ink shadow-pro-e0"
-        data-testid="production-start-ready"
-      >
-        <p className="text-[10px] font-semibold tracking-[0.09em] text-[#8a5b23] uppercase">
-          Receptura wykonawcza gotowa
-        </p>
-        <div className="mt-2 flex items-end justify-between gap-4">
-          <div className="min-w-0">
-            <h2 className="truncate text-base font-semibold">{production.source.recipeName}</h2>
-            <p className="mt-1 text-xs text-stone-600">
-              {production.source.recipeVersionNumber
-                ? `Wersja ${production.source.recipeVersionNumber}`
-                : 'Zweryfikowany bieżący szkic'}
-            </p>
-          </div>
-          <strong className="shrink-0 font-mono text-lg tabular-nums">
-            {formatPhysicalMassG(production.plannedInput.target_batch_grams)} g
-          </strong>
-        </div>
-        <dl className="mt-4 grid grid-cols-2 gap-3 border-y border-ink/8 py-3 text-xs">
-          <div>
-            <dt className="text-stone-500">Składniki bazy</dt>
-            <dd className="mt-1 font-mono font-semibold tabular-nums text-ink">
-              {production.plannedInput.items.length}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-stone-500">Źródło</dt>
-            <dd className="mt-1 font-semibold text-ink">
-              {production.source.recipeVersionId ? 'Zapisana wersja' : 'Bieżąca receptura'}
-            </dd>
-          </div>
-        </dl>
-        <button
-          type="button"
-          onClick={() => void production.startNewSession()}
-          disabled={production.sessionStarting || !production.practicalReady}
-          className="pro-focus-ring mt-4 min-h-11 w-full rounded-[12px] bg-ink px-4 py-2 text-xs font-semibold text-white shadow-pro-sm disabled:cursor-wait disabled:opacity-60"
-          data-testid="start-production-session"
+      <div className="space-y-3 p-3 text-ink">
+        <HeatInformationCard production={production} />
+        <section
+          className="rounded-[18px] border border-ink/10 bg-white p-5 shadow-pro-e0"
+          data-testid="production-start-ready"
         >
-          {production.sessionStarting ? 'Uruchamianie partii…' : 'Rozpocznij partię'}
-        </button>
-        {production.sessionStartError ? (
-          <p className="mt-2 text-xs leading-relaxed text-status-error" role="alert">
-            {production.sessionStartError}
+          <p className="text-[10px] font-semibold tracking-[0.09em] text-[#8a5b23] uppercase">
+            Receptura wykonawcza gotowa
           </p>
-        ) : null}
-        <p className="mt-2 text-[11px] leading-relaxed text-stone-500">
-          Start zamrozi dokładny plan, wersję produktu i pełnogramową gramaturę tej partii.
-        </p>
-      </section>
+          <div className="mt-2 flex items-end justify-between gap-4">
+            <div className="min-w-0">
+              <h2 className="truncate text-base font-semibold">{production.source.recipeName}</h2>
+              <p className="mt-1 text-xs text-stone-600">
+                {production.source.recipeVersionNumber
+                  ? `Wersja ${production.source.recipeVersionNumber}`
+                  : 'Zweryfikowany bieżący szkic'}
+              </p>
+            </div>
+            <strong className="shrink-0 font-mono text-lg tabular-nums">
+              {formatPhysicalMassG(production.plannedInput.target_batch_grams)} g
+            </strong>
+          </div>
+          <dl className="mt-4 grid grid-cols-2 gap-3 border-y border-ink/8 py-3 text-xs">
+            <div>
+              <dt className="text-stone-500">Składniki bazy</dt>
+              <dd className="mt-1 font-mono font-semibold tabular-nums text-ink">
+                {production.plannedInput.items.length}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-stone-500">Źródło</dt>
+              <dd className="mt-1 font-semibold text-ink">
+                {production.source.recipeVersionId ? 'Zapisana wersja' : 'Bieżąca receptura'}
+              </dd>
+            </div>
+          </dl>
+          <button
+            type="button"
+            onClick={() => void production.startNewSession()}
+            disabled={production.sessionStarting || !production.practicalReady}
+            className="pro-focus-ring mt-4 min-h-11 w-full rounded-[12px] bg-ink px-4 py-2 text-xs font-semibold text-white shadow-pro-sm disabled:cursor-wait disabled:opacity-60"
+            data-testid="start-production-session"
+          >
+            {production.sessionStarting
+              ? 'Uruchamianie partii…'
+              : (production.heatInformation?.length ?? 0) > 0 &&
+                  !production.heatInformationAcknowledged
+                ? 'Najpierw potwierdź informację'
+                : 'Rozpocznij partię'}
+          </button>
+          {production.sessionStartError ? (
+            <p className="mt-2 text-xs leading-relaxed text-status-error" role="alert">
+              {production.sessionStartError}
+            </p>
+          ) : null}
+          <p className="mt-2 text-[11px] leading-relaxed text-stone-500">
+            Start zamrozi dokładny plan, wersję produktu i pełnogramową gramaturę tej partii.
+          </p>
+        </section>
+      </div>
     );
   }
 
@@ -202,7 +222,7 @@ export function ProductionCockpit({
       <div data-testid="production-completed">
         <section className="m-3 rounded-[18px] border border-status-ideal/25 bg-status-ideal/[0.07] p-4 text-ink">
           <p className="text-xs font-semibold tracking-[0.06em] text-[#2f6f3c] uppercase">
-            Produkcja zakończona
+            Partia gotowa
           </p>
           <div className="mt-1 flex items-end justify-between gap-3">
             <strong className="text-sm text-ink">{session.source.recipeName}</strong>
@@ -230,10 +250,17 @@ export function ProductionCockpit({
               )}
             </div>
           ) : null}
+          <a
+            href={`/labels?run=${encodeURIComponent(session.sessionId)}`}
+            className={cn(buttonClasses('primary', 'md'), 'mt-4 w-full justify-center')}
+            data-testid="production-go-to-label"
+          >
+            Przejdź do etykiety
+          </a>
           <button
             type="button"
             onClick={prerequisite ? prerequisiteAction : () => void production.startNewSession()}
-            className="pro-focus-ring mt-3 min-h-11 rounded-[12px] bg-ink px-3 py-2 text-xs font-semibold text-white"
+            className="pro-focus-ring mt-2 min-h-11 w-full rounded-[12px] border border-ink/15 bg-white px-3 py-2 text-xs font-semibold text-ink"
           >
             {prerequisite ? prerequisite.actionLabel : 'Rozpocznij nową partię'}
           </button>
@@ -243,13 +270,15 @@ export function ProductionCockpit({
             </p>
           ) : null}
         </section>
-        <MasterLabelEditor snapshot={session.completionSnapshot} />
       </div>
     );
   }
 
   return (
-    <div className="pro-scroll-safe space-y-3 p-3 text-ink" data-testid="production-cockpit">
+    <div
+      className="pro-scroll-safe space-y-3 p-3 pb-24 text-ink sm:pb-3"
+      data-testid="production-cockpit"
+    >
       {production.persistenceError ? (
         <p
           className="rounded-[12px] border border-status-error/25 bg-status-error/[0.04] px-3 py-2 text-xs leading-relaxed text-status-error"
@@ -357,8 +386,9 @@ export function ProductionCockpit({
           tabIndex={-1}
           role="status"
           aria-live="polite"
-          className="pro-module border-attention/30 bg-pro-amber/55 p-3"
+          className="pro-module fixed inset-x-0 bottom-0 z-50 max-h-[82dvh] overflow-y-auto rounded-t-[22px] border-attention/30 bg-[#fbf8f1] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-18px_48px_rgba(31,29,26,0.22)] sm:static sm:max-h-none sm:rounded-[18px] sm:bg-pro-amber/55 sm:p-3 sm:shadow-none"
           data-testid="production-rescue-authorized-preview"
+          data-mobile-presentation="bottom-sheet"
           data-candidate-fingerprint={rescueAuthorization.authorization.candidateFingerprint}
         >
           <p className="text-[10px] font-semibold tracking-[0.08em] text-[#8a5b23] uppercase">
@@ -433,7 +463,10 @@ export function ProductionCockpit({
                   className="min-h-11 cursor-not-allowed rounded-[12px] bg-ink px-3 py-2 text-xs font-semibold text-white opacity-40"
                   data-testid="apply-authorized-production-rescue"
                 >
-                  Zastosuj Rescue
+                  {authorizedRescueActionLabel(
+                    rescueAuthorization.authorization.stableOptionId,
+                    rescueAuthorization.authorization.preview.finalMassG,
+                  )}
                 </button>
                 <button
                   type="button"
@@ -462,7 +495,10 @@ export function ProductionCockpit({
                   className="pro-focus-ring min-h-11 rounded-[12px] bg-ink px-3 py-2 text-xs font-semibold text-white shadow-pro-sm disabled:cursor-not-allowed disabled:opacity-50"
                   data-testid="apply-authorized-production-rescue"
                 >
-                  Zastosuj Rescue
+                  {authorizedRescueActionLabel(
+                    rescueAuthorization.authorization.stableOptionId,
+                    rescueAuthorization.authorization.preview.finalMassG,
+                  )}
                 </button>
               </>
             )}
@@ -473,8 +509,9 @@ export function ProductionCockpit({
       {rescue?.state === 'options' && rescueAuthorization.status !== 'preview' ? (
         <section
           aria-live="polite"
-          className="pro-module border-attention/30 bg-pro-amber/55 p-3"
+          className="pro-module fixed inset-x-0 bottom-0 z-50 max-h-[82dvh] overflow-y-auto rounded-t-[22px] border-attention/30 bg-[#fbf8f1] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-18px_48px_rgba(31,29,26,0.22)] sm:static sm:max-h-none sm:rounded-[18px] sm:bg-pro-amber/55 sm:p-3 sm:shadow-none"
           data-testid="production-rescue-options"
+          data-mobile-presentation="bottom-sheet"
         >
           <h3 className="text-xs font-semibold text-ink">Korekta po odchyleniu</h3>
           {/* §16 — when the original batch is genuinely gone, say so before
@@ -642,7 +679,29 @@ export function ProductionCockpit({
               ? `Potwierdź toppingi · ${(toppingProgress?.totalCount ?? 0) - (toppingProgress?.confirmedCount ?? 0)}`
               : `Potwierdź bazę · ${progress.totalCount - progress.confirmedCount}`}
       </button>
+      <aside
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-ink/12 bg-white/95 px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-10px_28px_rgba(31,29,26,0.12)] backdrop-blur sm:hidden"
+        data-testid="production-mobile-sticky-status"
+        aria-label="Status bieżącej produkcji"
+      >
+        <div className="mx-auto grid max-w-lg grid-cols-3 items-center gap-2 text-[11px] text-stone-600">
+          <strong className="font-mono text-sm tabular-nums text-ink">
+            {progress.confirmedCount} / {progress.totalCount}
+          </strong>
+          <span className="text-center">
+            W naczyniu{' '}
+            <strong className="block font-mono text-xs tabular-nums text-ink">
+              {formatPhysicalMassG(progress.confirmedMassG)} g
+            </strong>
+          </span>
+          <span className="text-right">
+            Plan{' '}
+            <strong className="block font-mono text-xs tabular-nums text-ink">
+              {formatPhysicalMassG(progress.currentPlanMassG)} g
+            </strong>
+          </span>
+        </div>
+      </aside>
     </div>
   );
 }
-import { useEffect, useRef } from 'react';

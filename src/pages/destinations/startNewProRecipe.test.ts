@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { DEFAULT_DIRECTION_TARGETS, useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
+import {
+  DEFAULT_DIRECTION_TARGETS,
+  useRecipeProfileStore,
+} from '@/features/pro-workbench/recipeProfileStore';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
-import { useMasterLabelStore } from '@/features/master-label/masterLabelStore';
 import { useProductionSessionStore } from '@/features/production-workspace/productionSessionStore';
 import { useIngredientTableUxStore } from '@/features/ingredient-builder/ingredientTableUxStore';
 import { useCustomerPriceStore } from '@/stores/customerPriceStore';
@@ -22,7 +24,6 @@ describe('visible + Nowa receptura action', () => {
     useRecipeStore.getState().resetToDemo();
     useConstraintStudioStore.getState().resetDraftSession();
     useProductionSessionStore.getState().clear();
-    useMasterLabelStore.getState().clear();
     useIngredientTableUxStore.getState().reset();
     useCustomerPriceStore.getState().clear();
   });
@@ -37,10 +38,11 @@ describe('visible + Nowa receptura action', () => {
       target_batch_grams: 875,
       machine_capacity_grams: previous.machine_capacity_grams,
     };
-    previous.loadRecipeInput(
-      savedInput,
-      { savedId: 'saved-old', savedName: 'Nie zmieniaj', versionNumber: 4 },
-    );
+    previous.loadRecipeInput(savedInput, {
+      savedId: 'saved-old',
+      savedName: 'Nie zmieniaj',
+      versionNumber: 4,
+    });
     useRecipeProfileStore.getState().saveDefaults('local-device:gelato', {
       visibleProductType: 'gelato',
       mode: 'classic',
@@ -126,7 +128,6 @@ describe('visible + Nowa receptura action', () => {
       history: [{ old: true }] as never,
     });
     useProductionSessionStore.setState({ session: { sessionId: 'old-production' } as never });
-    useMasterLabelStore.setState({ label: { productName: 'Old label' } as never });
     useIngredientTableUxStore.getState().markRequiredRemoved('missing-line', 'Old missing line');
     const privatePrice = {
       overrideId: 'private-price',
@@ -176,7 +177,6 @@ describe('visible + Nowa receptura action', () => {
     expect(useConstraintStudioStore.getState().proCoreRecipeId).toBeNull();
     expect(useConstraintStudioStore.getState().lastSavedVersion).toBeNull();
     expect(useProductionSessionStore.getState().session).toBeNull();
-    expect(useMasterLabelStore.getState().label).toBeNull();
     expect(useIngredientTableUxStore.getState().unresolvedRequiredByLineId).toEqual({});
     expect(useCustomerPriceStore.getState().overridesByCanonicalId).toEqual({
       [privatePrice.canonicalIngredientId]: privatePrice,
@@ -232,20 +232,24 @@ describe('visible + Nowa receptura action', () => {
     startNewProRecipe('gelato');
     const minus12 = structuredClone(useRecipeStore.getState().items);
 
-    expect(requestNewRecipeStarterSettingsChange({ servingModeId: 'temp_minus_13' }))
-      .toBe('starter_replaced');
+    expect(requestNewRecipeStarterSettingsChange({ servingModeId: 'temp_minus_13' })).toBe(
+      'starter_replaced',
+    );
     expect(useRecipeStore.getState().target_temperature_c).toBe(-13);
     expect(useRecipeStore.getState().items).not.toEqual(minus12);
 
-    expect(requestNewRecipeStarterSettingsChange({ formulationStrategy: 'eco' }))
-      .toBe('starter_replaced');
+    expect(requestNewRecipeStarterSettingsChange({ formulationStrategy: 'eco' })).toBe(
+      'starter_replaced',
+    );
     expect(useRecipeStore.getState().formulation_strategy).toBe('eco');
 
-    expect(requestNewRecipeStarterSettingsChange({ targetBatchGrams: 1_275 }))
-      .toBe('starter_replaced');
+    expect(requestNewRecipeStarterSettingsChange({ targetBatchGrams: 1_275 })).toBe(
+      'starter_replaced',
+    );
     expect(useRecipeStore.getState().target_batch_grams).toBe(1_275);
-    expect(useRecipeStore.getState().items.reduce((sum, item) => sum + item.planned_grams, 0))
-      .toBe(1_275);
+    expect(useRecipeStore.getState().items.reduce((sum, item) => sum + item.planned_grams, 0)).toBe(
+      1_275,
+    );
   });
 
   it('switches an untouched explicit starter from Home to Professional at the same temperature', () => {
@@ -260,12 +264,9 @@ describe('visible + Nowa receptura action', () => {
     });
     useRecipeProfileStore.getState().acknowledgeRecalculation();
 
-    expect(
-      requestProfessionalStarterServingChange(
-        'temp_minus_12',
-        'Maszyna profesjonalna',
-      ),
-    ).toBe('starter_replaced');
+    expect(requestProfessionalStarterServingChange('temp_minus_12', 'Maszyna profesjonalna')).toBe(
+      'starter_replaced',
+    );
     expect(useRecipeStore.getState()).toMatchObject({
       machineKind: 'professional',
       servingModeId: 'temp_minus_12',
@@ -291,19 +292,13 @@ describe('visible + Nowa receptura action', () => {
     const line = useRecipeStore.getState().items[0]!;
     useRecipeStore.getState().setPlannedGrams(line.id, line.planned_grams + 1);
 
-    expect(
-      requestProfessionalStarterServingChange(
-        'temp_minus_12',
-        'Maszyna profesjonalna',
-      ),
-    ).toBe('confirmation_required');
+    expect(requestProfessionalStarterServingChange('temp_minus_12', 'Maszyna profesjonalna')).toBe(
+      'confirmation_required',
+    );
     expect(useRecipeStore.getState().machineKind).toBe('home');
 
     rebuildNewProRecipeStarter({ servingModeId: 'temp_minus_12' });
-    applyProfessionalStarterMachineSelection(
-      'temp_minus_12',
-      'Maszyna profesjonalna',
-    );
+    applyProfessionalStarterMachineSelection('temp_minus_12', 'Maszyna profesjonalna');
     useRecipeProfileStore.getState().acknowledgeRecalculation();
     expect(useRecipeStore.getState()).toMatchObject({
       machineKind: 'professional',
@@ -321,8 +316,9 @@ describe('visible + Nowa receptura action', () => {
     useRecipeStore.setState({ dirty: true });
 
     expect(isUntouchedNewRecipeStarter()).toBe(true);
-    expect(requestNewRecipeStarterSettingsChange({ formulationStrategy: 'eco' }))
-      .toBe('starter_replaced');
+    expect(requestNewRecipeStarterSettingsChange({ formulationStrategy: 'eco' })).toBe(
+      'starter_replaced',
+    );
     expect(useRecipeStore.getState().items).toEqual(before);
   });
 
@@ -333,8 +329,9 @@ describe('visible + Nowa receptura action', () => {
     const beforeItems = structuredClone(useRecipeStore.getState().items);
     const beforeTemperature = useRecipeStore.getState().target_temperature_c;
 
-    expect(requestNewRecipeStarterSettingsChange({ servingModeId: 'temp_minus_13' }))
-      .toBe('confirmation_required');
+    expect(requestNewRecipeStarterSettingsChange({ servingModeId: 'temp_minus_13' })).toBe(
+      'confirmation_required',
+    );
     expect(useRecipeStore.getState().items).toEqual(beforeItems);
     expect(useRecipeStore.getState().target_temperature_c).toBe(beforeTemperature);
 
@@ -349,8 +346,9 @@ describe('visible + Nowa receptura action', () => {
     useRecipeStore.getState().removeItem(removedLineId);
     const afterRemoval = structuredClone(useRecipeStore.getState().items);
 
-    expect(requestNewRecipeStarterSettingsChange({ servingModeId: 'temp_minus_13' }))
-      .toBe('confirmation_required');
+    expect(requestNewRecipeStarterSettingsChange({ servingModeId: 'temp_minus_13' })).toBe(
+      'confirmation_required',
+    );
     expect(useRecipeStore.getState().items).toEqual(afterRemoval);
     expect(useRecipeStore.getState().items.some((item) => item.id === removedLineId)).toBe(false);
   });
@@ -361,20 +359,23 @@ describe('visible + Nowa receptura action', () => {
     // The behavior-authority gate normally owns Main selection in the UI; the
     // store-level role write isolates starter edit detection here.
     useRecipeStore.getState().setLockType(mainLine.id, 'main');
-    expect(requestNewRecipeStarterSettingsChange({ formulationStrategy: 'eco' }))
-      .toBe('confirmation_required');
+    expect(requestNewRecipeStarterSettingsChange({ formulationStrategy: 'eco' })).toBe(
+      'confirmation_required',
+    );
 
     startNewProRecipe('gelato');
     const toppingIngredient = useRecipeStore.getState().items[0]!.ingredient;
     useRecipeStore.getState().addTopping(toppingIngredient, 0);
-    expect(requestNewRecipeStarterSettingsChange({ targetBatchGrams: 5_000 }))
-      .toBe('confirmation_required');
+    expect(requestNewRecipeStarterSettingsChange({ targetBatchGrams: 5_000 })).toBe(
+      'confirmation_required',
+    );
 
     startNewProRecipe('gelato');
     const unavailableLine = useRecipeStore.getState().items[0]!;
     useRecipeStore.getState().markIngredientUnavailable(unavailableLine.id);
-    expect(requestNewRecipeStarterSettingsChange({ servingModeId: 'fresh' }))
-      .toBe('confirmation_required');
+    expect(requestNewRecipeStarterSettingsChange({ servingModeId: 'fresh' })).toBe(
+      'confirmation_required',
+    );
   });
 
   it('treats Required/role metadata and pending direction work as material starter edits', () => {
@@ -383,14 +384,16 @@ describe('visible + Nowa receptura action', () => {
     useIngredientTableUxStore.getState().toggleRequired(lineId);
 
     expect(isUntouchedNewRecipeStarter()).toBe(false);
-    expect(requestNewRecipeStarterSettingsChange({ servingModeId: 'temp_minus_13' }))
-      .toBe('confirmation_required');
+    expect(requestNewRecipeStarterSettingsChange({ servingModeId: 'temp_minus_13' })).toBe(
+      'confirmation_required',
+    );
 
     startNewProRecipe('gelato');
     useRecipeProfileStore.getState().markRecalculationRequired();
     expect(isUntouchedNewRecipeStarter()).toBe(false);
-    expect(requestNewRecipeStarterSettingsChange({ formulationStrategy: 'eco' }))
-      .toBe('confirmation_required');
+    expect(requestNewRecipeStarterSettingsChange({ formulationStrategy: 'eco' })).toBe(
+      'confirmation_required',
+    );
   });
 
   it('requires confirmation before replacing an edited starter', () => {

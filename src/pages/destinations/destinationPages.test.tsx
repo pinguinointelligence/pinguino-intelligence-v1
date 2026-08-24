@@ -7,7 +7,6 @@ import { copy } from '@/copy/en';
 import { landingCopy } from '@/pages/landing/landingCopy';
 import { APIPage } from './APIPage';
 import { CreateIngredientPage } from './CreateIngredientPage';
-import { CreateLabelPage } from './CreateLabelPage';
 import { RecipesHubPage } from './RecipesHubPage';
 import { SubscriptionPage } from './SubscriptionPage';
 import { WorkWithUsPage } from './WorkWithUsPage';
@@ -26,7 +25,6 @@ describe('Slice 3 destination pages', () => {
   it('uses the same white editorial shell across destination pages', () => {
     for (const el of [
       <WorkWithUsPage key="w" />,
-      <CreateLabelPage key="l" />,
       <APIPage key="a" />,
       <CreateIngredientPage key="i" />,
       <RecipesHubPage key="r" />,
@@ -60,16 +58,6 @@ describe('Slice 3 destination pages', () => {
     // Light-first: renders on the paper surface, not the dark legacy shell.
     expect(html).toContain('bg-paper');
     expect(/stripe/i.test(html)).toBe(false); // no payment provider wired
-  });
-
-  it('Create Label renders a real EU nutrition declaration from the sample recipe', () => {
-    const html = render(<CreateLabelPage />);
-    expect(html).toContain(copy.nav.label.title);
-    expect(html).toContain(copy.nav.label.sampleHeading); // 'Sample recipe'
-    expect(html).toContain(copy.studio.metrics.kcal); // 'Energy'
-    expect(html).toContain(copy.studio.metrics.saturated); // 'of which saturated'
-    expect(html).toContain(copy.nav.label.downloadCsv); // 'Download CSV'
-    expect(html).toContain('kcal'); // energy declared in kJ + kcal
   });
 
   it('API page lists the informational links', () => {
@@ -116,7 +104,6 @@ describe('Slice 3 destination pages', () => {
     for (const el of [
       <WorkWithUsPage key="w" />,
       <SubscriptionPage key="s" />,
-      <CreateLabelPage key="l" />,
       <APIPage key="a" />,
       <CreateIngredientPage key="i" />,
       <RecipesHubPage key="r" />,

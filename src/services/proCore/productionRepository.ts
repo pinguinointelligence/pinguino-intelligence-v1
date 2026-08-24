@@ -24,6 +24,7 @@ import type {
   ProductionStatus,
 } from '@/features/pro-core/productionContracts';
 import type { InMemoryProduction } from './inMemoryProduction';
+import type { ProductionCompletionSnapshot } from '@/features/production-workspace/productionSession';
 
 export interface CreateRunArgs {
   ownerUserId: string;
@@ -39,6 +40,12 @@ export type RecordActualArgs = Omit<RecordActualInput, 'at' | 'eventId'> & {
   /** CAS basis carried by the operator's hydrated session, never refreshed by the adapter. */
   expectedActualRevision: number;
   expectedRescueRevision: number;
+  /** Exact operator intent persisted beside the canonical actual vector. */
+  eventContext?: {
+    action: 'confirm' | 'record_correction' | 'top_up';
+    lineId: string;
+    previousActualG: number | null;
+  };
 };
 export interface AuthorizeProductionRescueArgs {
   runId: string;
@@ -98,12 +105,16 @@ export interface ProductionRepository {
   consumeRescue(input: ConsumeProductionRescueArgs): Promise<ProductionRun>;
   /**
    * OWNER RULE §2 — record the operator's single "OK" for this run's heat
-   * reminder. It changes no gram and gates nothing; it only stops the reminder
-   * from reappearing on every reload of the same batch.
+   * reminder. It changes no gram; verified positive information must be
+   * acknowledged before Start and then remains confirmed for this run.
    */
   acknowledgeHeatInformation(runId: string): Promise<ProductionRun>;
-  /** Atomically records the final complete actual vector and closes the run. */
-  completeRun(runId: string, input: RecordActualArgs): Promise<ProductionRun>;
+  /** Atomically records the final actual vector, closes the run and freezes its ACTUAL snapshot. */
+  completeRun(
+    runId: string,
+    input: RecordActualArgs,
+    snapshot: ProductionCompletionSnapshot,
+  ): Promise<ProductionRun>;
   amend(runId: string, input: AmendArgs): Promise<ProductionRun>;
   getRun(runId: string, ownerUserId?: string): Promise<ProductionRun | null>;
   listRuns(ownerUserId: string, query?: ProductionHistoryQuery): Promise<ProductionHistoryPage>;

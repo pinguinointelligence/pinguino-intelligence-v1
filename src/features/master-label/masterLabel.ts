@@ -4,12 +4,11 @@ import {
   type NutritionDeclaration,
 } from '@/data/label/nutritionLabel';
 import type { ProductionCompletionSnapshot } from '@/features/production-workspace/productionSession';
-import { buildRecipeBehaviorAuthority, recipeBehaviorModuleGate } from '@/features/product-intelligence';
 import {
-  marketProfile,
-  type MarketProfileCode,
-  type MasterLabelFieldId,
-} from './marketProfiles';
+  buildRecipeBehaviorAuthority,
+  recipeBehaviorModuleGate,
+} from '@/features/product-intelligence';
+import { marketProfile, type MarketProfileCode, type MasterLabelFieldId } from './marketProfiles';
 
 export type LabelLanguageTag = string;
 
@@ -57,6 +56,9 @@ export interface MasterLabelData {
   labelLanguages: string[];
   productName: MultilingualText;
   legalProductName: MultilingualText;
+  businessName: string;
+  /** Private owner-scoped storage path, never inline image bytes. */
+  logoPath: string | null;
   ingredients: MasterLabelIngredient[];
   allergens: {
     status: 'complete' | 'incomplete';
@@ -98,6 +100,9 @@ export interface BuildMasterLabelInput {
   uiLanguage: string;
   labelLanguages: string[];
   facilityDefaults?: Partial<FacilityDefaults>;
+  businessName?: string;
+  logoPath?: string | null;
+  presentation?: Partial<Pick<MasterLabelData, 'format' | 'size' | 'copies'>>;
 }
 
 const emptyFacility = (): FacilityDefaults => ({
@@ -122,7 +127,9 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
   });
   const behaviorGate = recipeBehaviorModuleGate(behaviorAuthority, 'MASTER_LABEL');
   if (!behaviorGate.ready) {
-    throw new Error(`master_label_behavior_authority_required:${behaviorGate.blockedLineIds.join(',')}`);
+    throw new Error(
+      `master_label_behavior_authority_required:${behaviorGate.blockedLineIds.join(',')}`,
+    );
   }
   const profile = marketProfile(input.market);
   const languages = input.labelLanguages.length > 0 ? [...new Set(input.labelLanguages)] : ['pl'];
@@ -157,8 +164,12 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
       existing.sourceAllergensText ??= frozenAllergens?.allergensText ?? null;
       existing.labelEvidenceVerified ||= frozenAllergens !== null;
       existing.allergenSourceRevision ??= frozenAllergens?.evidenceVersion ?? null;
-      existing.declared = [...new Set([...existing.declared, ...(frozenAllergens?.declared ?? [])])];
-      existing.mayContain = [...new Set([...existing.mayContain, ...(frozenAllergens?.mayContain ?? [])])];
+      existing.declared = [
+        ...new Set([...existing.declared, ...(frozenAllergens?.declared ?? [])]),
+      ];
+      existing.mayContain = [
+        ...new Set([...existing.mayContain, ...(frozenAllergens?.mayContain ?? [])]),
+      ];
     } else {
       declarationLines.set(key, {
         lineId: item.id,
@@ -178,9 +189,8 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
     .sort((a, b) => b.grams - a.grams)
     .map((item) => {
       const canonicalId = item.canonicalId;
-      const embeddedEvidenceStatus: IngredientAllergenEvidence['status'] = item.labelEvidenceVerified
-        ? 'verified'
-        : 'missing';
+      const embeddedEvidenceStatus: IngredientAllergenEvidence['status'] =
+        item.labelEvidenceVerified ? 'verified' : 'missing';
       const declarationName = item.sourceIngredientsText
         ? `${item.name} (${item.sourceIngredientsText})`
         : item.name;
@@ -196,13 +206,22 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
         sourceAllergensText: item.sourceAllergensText,
       };
     });
-  const allergenComplete = ingredients.length > 0
-    && ingredients.every((item) => item.allergenEvidenceStatus === 'verified');
-  const declared = [...new Set([...declarationLines.values()].flatMap((item) => item.declared))].sort();
-  const mayContain = [...new Set([...declarationLines.values()].flatMap((item) => item.mayContain))].sort();
-  const labelStatements = [...new Set(
-    ingredients.map((item) => item.sourceAllergensText?.trim()).filter((item): item is string => Boolean(item)),
-  )];
+  const allergenComplete =
+    ingredients.length > 0 &&
+    ingredients.every((item) => item.allergenEvidenceStatus === 'verified');
+  const declared = [
+    ...new Set([...declarationLines.values()].flatMap((item) => item.declared)),
+  ].sort();
+  const mayContain = [
+    ...new Set([...declarationLines.values()].flatMap((item) => item.mayContain)),
+  ].sort();
+  const labelStatements = [
+    ...new Set(
+      ingredients
+        .map((item) => item.sourceAllergensText?.trim())
+        .filter((item): item is string => Boolean(item)),
+    ),
+  ];
   const facility = { ...emptyFacility(), ...input.facilityDefaults };
   const completedDate = snapshot.productionCompletedAt.slice(0, 10);
 
@@ -217,6 +236,8 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
     labelLanguages: languages,
     productName: translated(snapshot.source.recipeName, languages),
     legalProductName: translated('', languages),
+    businessName: input.businessName ?? '',
+    logoPath: input.logoPath ?? null,
     ingredients,
     allergens: {
       status: allergenComplete ? 'complete' : 'incomplete',
@@ -230,8 +251,10 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
     nutritionDeclaration: buildNutritionDeclaration(
       snapshot.finalProduct.labelNutritionPer100g ?? snapshot.finalProduct.nutritionPer100g,
     ),
-    // Batch mass is not package net quantity. Never fabricate this field.
-    netQuantityG: null,
+    // Owner closeout: a run label starts from the ACTUAL completed product,
+    // including toppings and any Rescue scale-up. The operator can still edit
+    // this when the physical batch is split into smaller consumer packages.
+    netQuantityG: snapshot.actualFinalMassG,
     servingQuantityG: null,
     productionDate: completedDate,
     productionDateReviewed: false,
@@ -248,9 +271,9 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
     origin: translated('', languages),
     customerNote: translated(snapshot.customerLabelNote, languages),
     enabledOptionalFields: snapshot.customerLabelNote ? ['customer_note'] : [],
-    format: 'rectangle',
-    size: { widthMm: 90, heightMm: 60 },
-    copies: 1,
+    format: input.presentation?.format ?? 'rectangle',
+    size: input.presentation?.size ?? { widthMm: 90, heightMm: 60 },
+    copies: input.presentation?.copies ?? 1,
     systemPrinter: 'system',
     preflightAcknowledged: false,
   };
@@ -275,7 +298,12 @@ const hasEveryLanguage = (value: MultilingualText, languages: readonly string[])
   languages.every((language) => (value[language] ?? '').trim().length > 0);
 
 function fieldReadiness(data: MasterLabelData, field: MasterLabelFieldId): LabelPreflightItem {
-  const ready = (label: string): LabelPreflightItem => ({ field, status: 'ready', label, message: 'Gotowe' });
+  const ready = (label: string): LabelPreflightItem => ({
+    field,
+    status: 'ready',
+    label,
+    message: 'Gotowe',
+  });
   const missing = (label: string, message: string): LabelPreflightItem => ({
     field,
     status: 'missing',
@@ -292,7 +320,8 @@ function fieldReadiness(data: MasterLabelData, field: MasterLabelFieldId): Label
         ? ready('Nazwa prawna')
         : missing('Nazwa prawna', 'Wymaga wyboru właściwej nazwy prawnej produktu.');
     case 'ingredients':
-      return data.ingredients.length > 0 && data.ingredients.every((item) => item.canonicalIngredientId)
+      return data.ingredients.length > 0 &&
+        data.ingredients.every((item) => item.canonicalIngredientId)
         ? ready('Składniki')
         : missing('Składniki', 'Brakuje składników lub canonical ID.');
     case 'allergens':
@@ -300,11 +329,16 @@ function fieldReadiness(data: MasterLabelData, field: MasterLabelFieldId): Label
         ? ready('Alergeny')
         : missing('Alergeny', 'WYMAGA WERYFIKACJI — dane są niepełne lub niepotwierdzone.');
     case 'nutrition':
-      return data.nutritionDeclaration ? ready('Nutrition') : missing('Nutrition', 'Brak obliczeń Nutrition.');
+      return data.nutritionDeclaration
+        ? ready('Nutrition')
+        : missing('Nutrition', 'Brak obliczeń Nutrition.');
     case 'net_quantity':
       return data.netQuantityG !== null && data.netQuantityG > 0
         ? ready('Masa netto')
-        : missing('Masa netto', 'Podaj masę opakowania; masa partii nie jest masą netto opakowania.');
+        : missing(
+            'Masa netto',
+            'Podaj masę opakowania; masa partii nie jest masą netto opakowania.',
+          );
     case 'operator':
       return data.operator.operatorName.trim() && data.operator.address.trim()
         ? ready('Operator')
@@ -314,9 +348,14 @@ function fieldReadiness(data: MasterLabelData, field: MasterLabelFieldId): Label
         ? ready('Przechowywanie')
         : missing('Przechowywanie', 'Uzupełnij instrukcję w każdym języku etykiety.');
     case 'date_mark':
-      return data.dateMark.kind !== 'unresolved' && data.dateMark.date && data.dateMark.reviewedByUser
+      return data.dateMark.kind !== 'unresolved' &&
+        data.dateMark.date &&
+        data.dateMark.reviewedByUser
         ? ready('Data trwałości')
-        : missing('Data trwałości', 'WYMAGA POTWIERDZENIA — PINGÜINO nie wylicza trwałości bez podstawy.');
+        : missing(
+            'Data trwałości',
+            'WYMAGA POTWIERDZENIA — PINGÜINO nie wylicza trwałości bez podstawy.',
+          );
     case 'lot':
       return data.lotCode.trim() ? ready('LOT') : missing('LOT', 'Uzupełnij identyfikator partii.');
     case 'origin':
@@ -347,8 +386,8 @@ export function buildLabelPreflight(data: MasterLabelData): LabelPreflight {
         profile.status === 'VERIFIED'
           ? 'Profil regulacyjny zweryfikowany.'
           : profile.status === 'RESEARCH_REQUIRED'
-          ? 'Profil wymaga weryfikacji.'
-          : profile.rendererLimitation,
+            ? 'Profil wymaga weryfikacji.'
+            : profile.rendererLimitation,
     },
     ...required,
     {
@@ -361,7 +400,9 @@ export function buildLabelPreflight(data: MasterLabelData): LabelPreflight {
     },
   ];
   const missingCount = required.filter((item) => item.status === 'missing').length;
-  const reviewCount = items.filter((item) => item.status === 'review' || item.status === 'research').length;
+  const reviewCount = items.filter(
+    (item) => item.status === 'review' || item.status === 'research',
+  ).length;
   const regulatoryProfileVerified = profile.status === 'VERIFIED';
   return {
     items,
@@ -390,7 +431,10 @@ export function requestFieldRemoval(
   };
 }
 
-export function addOptionalField(data: MasterLabelData, field: MasterLabelFieldId): MasterLabelData {
+export function addOptionalField(
+  data: MasterLabelData,
+  field: MasterLabelFieldId,
+): MasterLabelData {
   if (data.enabledOptionalFields.includes(field)) return data;
   return { ...data, enabledOptionalFields: [...data.enabledOptionalFields, field] };
 }

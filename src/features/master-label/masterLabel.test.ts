@@ -304,6 +304,8 @@ describe('Master Label — one actual-batch source model', () => {
     expect(actual.ingredients[0]!.percent).not.toBe(planned.ingredients[0]!.percent);
     expect(actual.nutritionSource).not.toEqual(planned.nutritionSource);
     expect(actual.sourceCompletionSessionId).toBe('run-label');
+    expect(planned.netQuantityG).toBe(1000);
+    expect(actual.netQuantityG).toBe(1020);
   });
 
   it('uses actual toppings and legal mass order independently from manual UI order', () => {
@@ -504,8 +506,11 @@ describe('Master Label — one actual-batch source model', () => {
       const preflight = buildLabelPreflight(data);
       expect(preflight.readyForSystemPrint).toBe(true);
       expect(preflight.regulatoryProfileVerified).toBe(true);
-      const html = buildMasterLabelPrintHtml(data);
+      const branded = { ...data, businessName: 'Gellatti Lab', logoPath: 'owner/logo.png' };
+      const html = buildMasterLabelPrintHtml(branded, 'https://example.test/private-logo.png');
       expect(html.match(/<article class="label">/g)).toHaveLength(3);
+      expect(html).toContain('Gellatti Lab');
+      expect(html).toContain('https://example.test/private-logo.png');
       expect(html).not.toContain('Koszt');
       expect(html).not.toContain('Never print me.');
     } finally {

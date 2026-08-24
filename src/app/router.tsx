@@ -41,6 +41,7 @@ import {
   CreateIngredientPage,
   FranchisePage,
   HowItWorksPage,
+  LabelsHubPage,
   ProductImportPage,
   ProductScanPage,
   ProductScannerV1Page,
@@ -172,14 +173,10 @@ export function AppRoutes() {
       {/* Canonical member hubs. Contextual recipe/production tools remain available by deep link. */}
       <Route path="/products" element={<ProductsHubPage />} />
       <Route path="/production" element={<ProductionHubPage />} />
+      <Route path="/labels" element={<LabelsHubPage />} />
       <Route path="/account" element={<AccountSettingsPage />} />
       <Route path="/machine" element={<MachineProfilePage />} />
-      <Route
-        path="/label"
-        element={
-          <LegacyDestinationRedirect pathname="/production" forcedSearch={{ tab: 'labels' }} />
-        }
-      />
+      <Route path="/label" element={<LegacyDestinationRedirect pathname="/labels" />} />
 
       {/* Existing destination functions preserved, but no longer promoted as global menu items. */}
       <Route path="/api" element={<APIPage />} />
@@ -188,10 +185,7 @@ export function AppRoutes() {
       <Route path="/create-ingredient" element={<CreateIngredientPage />} />
 
       {/* Profil → Moja maszyna (UIUX Slice B §8.6) — view/change the saved Home machine. */}
-      <Route
-        path="/profile/machine"
-        element={<LegacyDestinationRedirect pathname="/machine" />}
-      />
+      <Route path="/profile/machine" element={<LegacyDestinationRedirect pathname="/machine" />} />
 
       {/* Product catalog intake — direct-URL / internal-first (no nav entry yet). */}
       <Route path="/products/import" element={<ProductImportPage />} />

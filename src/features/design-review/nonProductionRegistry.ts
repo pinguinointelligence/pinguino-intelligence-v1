@@ -20,7 +20,6 @@
 export type NonProductionItemId =
   | 'start-ready-catalogue'
   | 'start-ready-draft'
-  | 'label-sample-recipe'
   | 'pro-demo-library'
   | 'preview-reference-template'
   | 'recipes-hub-tiles'
@@ -56,15 +55,6 @@ export const NON_PRODUCTION_ITEMS: readonly NonProductionItem[] = [
       'Szkic roboczy zbudowany na karcie testowej — struktura poglądowa bez wyliczonych przez silnik ilości.',
     replacement:
       'Szkic z prawdziwej receptury katalogowej (pełny skład + wyliczenia silnika) po podłączeniu katalogu.',
-  },
-  {
-    id: 'label-sample-recipe',
-    file: 'src/data/label/sampleLabelRecipe.ts',
-    identifier: 'SAMPLE_LABEL_RESULT',
-    reason:
-      'Cała strona /label renderuje stałą przykładową recepturę (preset demo „milk-base” policzony silnikiem) — wartości odżywcze, skład i koszty NIE dotyczą receptury użytkownika.',
-    replacement:
-      'Etykieta generowana z wybranej, zapisanej receptury użytkownika (Moje receptury / PINGÜINO Pro).',
   },
   {
     id: 'pro-demo-library',

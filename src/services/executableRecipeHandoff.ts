@@ -28,7 +28,6 @@ import {
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { useProductionSessionStore } from '@/features/production-workspace/productionSessionStore';
-import { useMasterLabelStore } from '@/features/master-label/masterLabelStore';
 import { currentUserHasOwnerReviewAccess } from '@/services/ownerReviewAccess';
 import { hasUnsavedProRecipeChanges } from '@/pages/destinations/startNewProRecipe';
 
@@ -385,6 +384,5 @@ export async function openExecutableRecipeTemplate(
   useConstraintStudioStore.getState().resetDraftSession();
   useConstraintStudioStore.setState({ proCoreRecipeId: null, lastSavedVersion: null });
   useProductionSessionStore.getState().clear();
-  useMasterLabelStore.getState().clear();
   return materialized;
 }

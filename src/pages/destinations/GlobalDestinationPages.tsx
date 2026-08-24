@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
 import { buttonClasses } from '@/components/ui/buttonStyles';
@@ -6,7 +7,8 @@ import { useAuthStore } from '@/stores/authStore';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { proCoreCapabilitiesFor } from '@/features/pro-core/proCoreCapabilities';
 import { useProductionSessionStore } from '@/features/production-workspace/productionSessionStore';
-import { MasterLabelEditor } from '@/features/master-label/MasterLabelEditor';
+import { LabelWorkspace } from '@/features/master-label/LabelWorkspace';
+import { resolveLabelRepository, type RunLabelSnapshot } from '@/services/labels/labelRepository';
 import { AccountRecipeDefaults } from '@/features/pro-workbench/AccountRecipeDefaults';
 import { AccountProductMarkets } from '@/features/global-catalog/AccountProductMarkets';
 import { GlobalCatalogSearchPanel } from '@/features/global-catalog/GlobalCatalogSearchPanel';
@@ -102,7 +104,9 @@ export function ProductsHubPage() {
         <>
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-ink/10 pb-6">
             <div>
-              <h2 className="text-xl font-semibold tracking-[-0.025em] text-ink">Katalog produktów</h2>
+              <h2 className="text-xl font-semibold tracking-[-0.025em] text-ink">
+                Katalog produktów
+              </h2>
               <p className="mt-1 text-sm text-stone-500">
                 Jedna biblioteka; wszystkie metody dodawania trafiają do tego samego procesu intake.
               </p>
@@ -189,14 +193,17 @@ export function ProductionHubPage() {
                 onKeyDown={(event) => {
                   let nextIndex: number | null = null;
                   if (event.key === 'ArrowRight') nextIndex = (index + 1) % productionTabs.length;
-                  else if (event.key === 'ArrowLeft') nextIndex = (index - 1 + productionTabs.length) % productionTabs.length;
+                  else if (event.key === 'ArrowLeft')
+                    nextIndex = (index - 1 + productionTabs.length) % productionTabs.length;
                   else if (event.key === 'Home') nextIndex = 0;
                   else if (event.key === 'End') nextIndex = productionTabs.length - 1;
                   if (nextIndex === null) return;
                   event.preventDefault();
                   const next = productionTabs[nextIndex]!;
                   setParams(next.id === 'current' ? {} : { tab: next.id });
-                  queueMicrotask(() => document.getElementById(`production-hub-${next.id}-tab`)?.focus());
+                  queueMicrotask(() =>
+                    document.getElementById(`production-hub-${next.id}-tab`)?.focus(),
+                  );
                 }}
                 className={cn(
                   'min-h-12 border-b-2 px-4 text-xs font-semibold tracking-[0.08em]',
@@ -296,7 +303,7 @@ export function ProductionHubPage() {
               <h2 className="text-xl font-semibold text-ink">Etykiety z zakończonych partii</h2>
               {snapshot ? (
                 <div className="mt-6 border border-ink/10">
-                  <MasterLabelEditor snapshot={snapshot} printLabel="Drukuj ponownie" />
+                  <LabelWorkspace snapshot={snapshot} />
                 </div>
               ) : (
                 <p className="mt-5 text-sm text-stone-500">
@@ -308,6 +315,87 @@ export function ProductionHubPage() {
           ) : null}
         </>
       )}
+    </DestinationSurface>
+  );
+}
+
+export function LabelsHubPage() {
+  const [params] = useSearchParams();
+  const requestedRunId = params.get('run');
+  const repository = useMemo(() => resolveLabelRepository(), []);
+  const session = useProductionSessionStore((state) => state.session);
+  const activeSnapshot = session?.status === 'completed' ? session.completionSnapshot : null;
+  const [history, setHistory] = useState<RunLabelSnapshot[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void repository
+      .listRunLabelSnapshots()
+      .then((items) => {
+        if (!cancelled) setHistory(items);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [repository]);
+
+  const selectedActive =
+    activeSnapshot && (!requestedRunId || requestedRunId === activeSnapshot.sessionId)
+      ? activeSnapshot
+      : null;
+  const selectedRunId = requestedRunId ?? selectedActive?.sessionId ?? history[0]?.runId ?? null;
+
+  return (
+    <DestinationSurface
+      eyebrow="PINGÜINO Pro"
+      title="Etykiety"
+      blurb="Jedno miejsce dla domyślnego profilu konta i niezmiennych etykiet z faktycznie zakończonych partii."
+    >
+      <LabelWorkspace profileOnly repository={repository} />
+
+      <section className="mt-10 border-t border-ink/10 pt-8">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold text-ink">Etykieta zakończonej partii</h2>
+            <p className="mt-1 text-sm text-stone-500">
+              Źródłem jest wyłącznie immutable ACTUAL Production Snapshot.
+            </p>
+          </div>
+          {history.length > 0 ? (
+            <nav
+              aria-label="Historia etykiet"
+              className="flex max-w-full gap-2 overflow-x-auto pb-1"
+            >
+              {history.map((item) => (
+                <Link
+                  key={item.runId}
+                  to={`/labels?run=${encodeURIComponent(item.runId)}`}
+                  className={cn(
+                    buttonClasses(item.runId === selectedRunId ? 'primary' : 'ghost', 'sm'),
+                    'min-h-11 shrink-0',
+                  )}
+                >
+                  {new Date(item.createdAt).toLocaleDateString('pl-PL')}
+                </Link>
+              ))}
+            </nav>
+          ) : null}
+        </div>
+        <div className="mt-6">
+          <LabelWorkspace
+            snapshot={selectedActive}
+            runId={selectedRunId}
+            repository={repository}
+            onSaved={(item) =>
+              setHistory((current) => [
+                item,
+                ...current.filter((entry) => entry.runId !== item.runId),
+              ])
+            }
+          />
+        </div>
+      </section>
     </DestinationSurface>
   );
 }

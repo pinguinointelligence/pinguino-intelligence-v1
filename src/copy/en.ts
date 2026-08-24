@@ -366,6 +366,7 @@ export const copy = {
       proWorkspace: 'PINGÜINO Pro',
       recipes: 'Receptury',
       production: 'Produkcja',
+      labels: 'Etykiety',
       products: 'Produkty',
       machine: 'Maszyna',
       workWithUs: 'Współpraca',

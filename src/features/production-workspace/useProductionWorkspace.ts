@@ -6,6 +6,8 @@ import { buildRecipeInput, recipeContext } from '@/features/studio/buildRecipeIn
 import { monitorScoreView } from '@/features/pro-workbench/monitorSummaryView';
 import {
   buildProductionForecastInput,
+  buildFinalActualInput,
+  completeProductionSession,
   confirmProductionLine,
   hydrateProductionSessionFromRun,
   mergePendingProductionDrafts,
@@ -353,6 +355,9 @@ export function useProductionWorkspace(enabled: boolean) {
   );
   const [rescueAuthorizationClock, setRescueAuthorizationClock] = useState(() => Date.now());
   const [reconcileRevision, setReconcileRevision] = useState(0);
+  const [preStartHeatAcknowledgementKey, setPreStartHeatAcknowledgementKey] = useState<
+    string | null
+  >(null);
   const sessionRef = useRef(session);
   useEffect(() => {
     sessionRef.current = session;
@@ -787,7 +792,12 @@ export function useProductionWorkspace(enabled: boolean) {
   const heatAdvisories = processReadiness.advisories.filter(
     (advisory) => advisory.code === 'HEAT_TREATMENT_INDICATED',
   );
-  const canStartProduction = productionPrerequisite === null;
+  const heatInformationAcknowledged =
+    heatAdvisories.length === 0 ||
+    (session
+      ? session.heatInformationAcknowledgedAt !== null
+      : preStartHeatAcknowledgementKey === behaviorValidationKey);
+  const canStartProduction = productionPrerequisite === null && heatInformationAcknowledged;
   const corrections = useMemo(
     () =>
       proposeCorrections({
@@ -969,8 +979,7 @@ export function useProductionWorkspace(enabled: boolean) {
      * event: it stays under the product `?` and renders nothing here.
      */
     heatInformation: heatAdvisories,
-    heatInformationAcknowledged:
-      heatAdvisories.length === 0 || session?.heatInformationAcknowledgedAt !== null,
+    heatInformationAcknowledged,
     practicalReady: canStartProduction,
     prerequisite: productionPrerequisite,
     sessionStarting: sessionStart.busy || recoveryPending,
@@ -979,7 +988,13 @@ export function useProductionWorkspace(enabled: boolean) {
     persistenceError: persistence.error,
     currentSourceFingerprint,
     acknowledgeHeatInformation: async () => {
-      if (!session || !repositoryState.repository || persistence.busy) return;
+      if (!session) {
+        if (heatAdvisories.length > 0) {
+          setPreStartHeatAcknowledgementKey(behaviorValidationKey);
+        }
+        return;
+      }
+      if (!repositoryState.repository || persistence.busy) return;
       if (session.heatInformationAcknowledgedAt) return;
       setPersistence({ busy: true, error: null });
       try {
@@ -1045,13 +1060,22 @@ export function useProductionWorkspace(enabled: boolean) {
     },
     confirmLine: async (lineId: string) => {
       if (!session || !repositoryState.repository || persistence.busy) return;
+      const previous = [...session.lines, ...session.addonLines].find(
+        (line) => line.lineId === lineId,
+      );
+      if (!previous) return;
       const candidate = confirmProductionLine(session, lineId, new Date().toISOString());
       setPersistence({ busy: true, error: null });
       try {
-        const durableRun = await repositoryState.repository.recordActual(
-          session.sessionId,
-          durableActual(candidate, ownerUserId ?? ''),
-        );
+        const durableRun = await repositoryState.repository.recordActual(session.sessionId, {
+          ...durableActual(candidate, ownerUserId ?? ''),
+          eventContext: {
+            action: previous.recordCorrectionCount > 0 ? 'record_correction' : 'confirm',
+            lineId,
+            previousActualG:
+              previous.recordCorrectionCount > 0 ? previous.physicalAddedGrams : null,
+          },
+        });
         replaceSession(
           mergePendingProductionDrafts(
             hydrateProductionSessionFromRun(durableRun, source, plannedInput, plannedComposition),
@@ -1080,10 +1104,16 @@ export function useProductionWorkspace(enabled: boolean) {
       const candidate = topUpProductionLine(session, lineId, totalGrams, new Date().toISOString());
       setPersistence({ busy: true, error: null });
       try {
-        const durableRun = await repositoryState.repository.recordActual(
-          session.sessionId,
-          durableActual(candidate, ownerUserId ?? ''),
-        );
+        const durableRun = await repositoryState.repository.recordActual(session.sessionId, {
+          ...durableActual(candidate, ownerUserId ?? ''),
+          eventContext: {
+            action: 'top_up',
+            lineId,
+            previousActualG:
+              [...session.lines, ...session.addonLines].find((line) => line.lineId === lineId)
+                ?.physicalAddedGrams ?? null,
+          },
+        });
         replaceSession(
           mergePendingProductionDrafts(
             hydrateProductionSessionFromRun(durableRun, source, plannedInput, plannedComposition),
@@ -1100,42 +1130,38 @@ export function useProductionWorkspace(enabled: boolean) {
         setPersistence((current) => ({ ...current, busy: false }));
       }
     },
-    reopenRecord: async (lineId: string) => {
-      if (!session || !repositoryState.repository || persistence.busy) return;
-      const candidate = reopenProductionRecord(session, lineId);
-      setPersistence({ busy: true, error: null });
-      try {
-        const durableRun = await repositoryState.repository.recordActual(
-          session.sessionId,
-          durableActual(candidate, ownerUserId ?? ''),
-        );
-        replaceSession(
-          mergePendingProductionDrafts(
-            hydrateProductionSessionFromRun(durableRun, source, plannedInput, plannedComposition),
-            candidate,
-          ),
-        );
-      } catch {
-        setPersistence({
-          busy: false,
-          error: 'Nie udało się trwale otworzyć korekty zapisu. Spróbuj ponownie.',
-        });
-        setReconcileRevision((current) => current + 1);
-      } finally {
-        setPersistence((current) => ({ ...current, busy: false }));
-      }
+    reopenRecord: (lineId: string) => {
+      if (!session || persistence.busy) return;
+      // Opening the editor is a local draft operation. The last confirmed
+      // physical fact stays durable until the operator explicitly confirms a
+      // corrected entry, so reload can never turn a real amount into null.
+      replaceSession(reopenProductionRecord(session, lineId));
     },
     complete: async () => {
       if (!session || !repositoryState.repository || persistence.busy) return;
       setPersistence({ busy: true, error: null });
       try {
+        const completionCandidate = completeProductionSession(
+          session,
+          calculateRecipe(buildFinalActualInput(session)),
+          new Date().toISOString(),
+          ownerUserId,
+        );
+        if (!completionCandidate.completionSnapshot) {
+          throw new Error('Completed Production snapshot was not created.');
+        }
         const durableRun = await repositoryState.repository.completeRun(
           session.sessionId,
           durableActual(session, ownerUserId ?? ''),
+          completionCandidate.completionSnapshot,
         );
-        replaceSession(
-          hydrateProductionSessionFromRun(durableRun, source, plannedInput, plannedComposition),
+        const completedSession = hydrateProductionSessionFromRun(
+          durableRun,
+          source,
+          plannedInput,
+          plannedComposition,
         );
+        replaceSession(completedSession);
       } catch {
         setPersistence({
           busy: false,
@@ -1230,9 +1256,19 @@ export function useProductionWorkspace(enabled: boolean) {
           capabilities: productionCapabilitiesFor(persona),
           by: ownerUserId,
         });
+        const acknowledgedRun =
+          heatAdvisories.length > 0
+            ? await repositoryState.repository.acknowledgeHeatInformation(activeRun.runId)
+            : activeRun;
         restoreDurableSession(
-          hydrateProductionSessionFromRun(activeRun, source, plannedInput, plannedComposition),
+          hydrateProductionSessionFromRun(
+            acknowledgedRun,
+            source,
+            plannedInput,
+            plannedComposition,
+          ),
         );
+        setPreStartHeatAcknowledgementKey(null);
       } catch {
         setSessionStart({
           busy: false,

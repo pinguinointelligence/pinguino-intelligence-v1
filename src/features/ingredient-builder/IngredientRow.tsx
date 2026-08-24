@@ -1013,12 +1013,16 @@ function ProductionRow({
           aria-live="polite"
         >
           {correctionMode
-            ? 'Korekta zapisu'
+            ? 'POPRAW WPIS'
             : owesTopUp
-              ? `Dodaj jeszcze ${formatProductionMassG(topUpGrams)} g`
+              ? `DODAJ JESZCZE ${formatProductionMassG(topUpGrams)} g`
               : line.confirmed
-                ? 'Potwierdzono'
-                : 'Dodawanie'}
+                ? line.recordCorrectionCount > 0
+                  ? 'SKORYGOWANO'
+                  : exact
+                    ? 'DODANO'
+                    : 'RÓŻNICA'
+                : 'DO DODANIA'}
         </span>
         {line.physicalAddedGrams > 0 && (!line.confirmed || owesTopUp) ? (
           <span className="mt-0.5 block text-xs text-stone-600">
@@ -1057,9 +1061,21 @@ function ProductionRow({
           correctionMode={correctionMode}
           disabled={actions.disabled}
           onChange={setValue}
-          onConfirm={() =>
-            line.confirmed ? actions.reopenRecord(line.lineId) : actions.confirmLine(line.lineId)
-          }
+          onConfirm={() => {
+            if (line.confirmed) {
+              actions.reopenRecord(line.lineId);
+              return;
+            }
+            if (
+              correctionMode &&
+              value < line.physicalAddedGrams - 0.000001 &&
+              typeof window !== 'undefined' &&
+              !window.confirm('Czy poprzednia wartość była błędnym wpisem?')
+            ) {
+              return;
+            }
+            actions.confirmLine(line.lineId);
+          }}
           describedBy={correctionMode ? `production-correction-${line.lineId}` : undefined}
         />
         {correctionMode ? (

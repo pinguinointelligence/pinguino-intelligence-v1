@@ -11,7 +11,6 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router';
 import type { ReactElement } from 'react';
 import { describe, expect, it } from 'vitest';
-import { CreateLabelPage } from '@/pages/destinations/CreateLabelPage';
 import { RecipesHubPage } from '@/pages/destinations/RecipesHubPage';
 import { LandingPage } from '@/pages/landing/LandingPage';
 import { ConstraintPreviewCard } from '@/features/constraint-studio/ui/ConstraintPreviewCard';
@@ -31,13 +30,6 @@ const render = (el: ReactElement) => renderToStaticMarkup(<MemoryRouter>{el}</Me
  * ------------------------------------------------------------------ */
 
 describe('pink markers render on marked surfaces', () => {
-  it('/label — the sample-recipe page carries the block marker + badge', () => {
-    const html = render(<CreateLabelPage />);
-    expect(html).toContain('data-testid="nonprod-marked-label-sample-recipe"');
-    expect(html).toContain(NON_PRODUCTION_BADGE_LABEL);
-    expect(html).toContain('src/data/label/sampleLabelRecipe.ts'); // tooltip source
-  });
-
   it('/recipes — normal customer mode does not expose owner-review state', () => {
     const html = render(<RecipesHubPage />);
     expect(html).not.toContain('data-testid="nonprod-marked-recipes-hub-tiles"');
