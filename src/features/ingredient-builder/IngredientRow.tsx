@@ -56,7 +56,7 @@ export const ROW_GRID =
 export const COMPACT_ROW_GRID =
   'grid grid-cols-1 items-center gap-x-2 gap-y-3 md:grid-cols-[minmax(300px,1fr)_142px_150px_96px_28px]';
 export const PRODUCTION_ROW_GRID =
-  'grid grid-cols-1 items-center gap-x-3 gap-y-2 md:grid-cols-[minmax(140px,1.4fr)_78px_minmax(220px,1.2fr)_76px]';
+  'grid grid-cols-1 items-center gap-x-2 gap-y-2 md:grid-cols-[minmax(140px,1.15fr)_76px_minmax(220px,1fr)_80px] xl:grid-cols-[minmax(200px,1.25fr)_88px_minmax(240px,1fr)_88px]';
 
 export interface IngredientRowActions {
   setPlannedGrams: (lineId: string, grams: number) => void;
@@ -1000,12 +1000,25 @@ function ProductionRow({
       data-production-mode={correctionMode ? 'correction' : 'addition'}
     >
       <div className="min-w-0">
-        <span className="block truncate text-[13px] font-semibold text-ink">
-          {item.ingredient.name}
+        <span className="flex min-w-0 items-center gap-1.5">
+          <span
+            aria-hidden
+            className="grid size-6 shrink-0 place-items-center rounded-full bg-stone-100 text-stone-600"
+          >
+            <IngredientCategoryIcon
+              symbol={ingredientCategorySymbolFor({ category: item.ingredient.category })}
+            />
+          </span>
+          <HoverPreview
+            text={item.ingredient.name}
+            className="min-w-0 truncate text-[13px] font-semibold text-ink"
+          >
+            {item.ingredient.name}
+          </HoverPreview>
         </span>
         <span
           className={cn(
-            'mt-1 inline-flex min-h-6 items-center rounded-full border px-2 text-[10px] font-semibold',
+            'mt-1 inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] leading-tight font-semibold tracking-[0.03em]',
             correctionMode
               ? 'border-attention/30 bg-pro-amber text-attention'
               : line.confirmed
@@ -1047,9 +1060,12 @@ function ProductionRow({
           </button>
         ) : null}
       </div>
-      <div className="rounded-[14px] border border-ink/8 bg-stone-50 px-3 py-2 text-left md:text-right">
+      <div
+        className="min-w-0 px-1 text-left md:text-right"
+        data-production-cell="planned"
+      >
         <span className="block text-[10px] font-semibold text-stone-600 md:block">Plan</span>
-        <strong className="font-mono text-sm tabular-nums text-ink">
+        <strong className="block font-mono text-sm font-semibold tabular-nums text-ink">
           {formatProductionMassG(line.targetGrams)} g
         </strong>
       </div>
@@ -1097,12 +1113,11 @@ function ProductionRow({
       </div>
       <div
         className={cn(
-          'rounded-[14px] border px-3 py-2 md:text-right',
-          exact
-            ? 'border-ink/8 bg-stone-50 text-stone-600'
-            : 'border-attention/25 bg-pro-amber/65 text-attention',
+          'min-w-0 px-1 md:text-right',
+          exact ? 'text-stone-600' : 'text-attention',
         )}
         data-testid={`production-difference-${line.lineId}`}
+        data-production-cell="deviation"
         data-production-difference={exact ? 'exact' : difference > 0 ? 'over' : 'under'}
         role="status"
         aria-live="polite"
@@ -1170,7 +1185,7 @@ export function IngredientRow({
     <div
       className={cn(
         mode === 'production'
-          ? 'mx-2 mb-2 rounded-[20px] border border-ink/[0.08] bg-white/95 px-3 py-3 shadow-pro-e1 transition-colors hover:border-ink/15'
+          ? 'border-b border-ink/[0.075] px-[var(--pro-mobile-gutter)] py-2 transition-colors hover:bg-stone-50 lg:px-3 lg:py-1.5'
           : 'border-b border-ink/[0.075] px-[var(--pro-mobile-gutter)] py-1 transition-colors hover:bg-stone-50 lg:px-3 lg:py-1.5',
         mode === 'recipe' &&
           customerRoleFor(item.lock_type, meta) === 'main' &&
@@ -1184,6 +1199,7 @@ export function IngredientRow({
         mode === 'recipe' && changed && 'ingredient-line-changed',
       )}
       data-ingredient-mode={mode}
+      data-production-row-family={mode === 'production' ? 'recipe-table' : undefined}
       data-changed={mode === 'recipe' && changed ? 'true' : undefined}
       data-unavailable={mode === 'recipe' && meta.unavailable ? 'true' : undefined}
       data-line-id={item.id}

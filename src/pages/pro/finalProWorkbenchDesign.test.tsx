@@ -185,6 +185,8 @@ describe('recipe and production table modes', () => {
     const html = renderIngredients('production');
     for (const label of ['Planowane', 'Faktycznie', 'Różnica', 'Status'])
       expect(html).toContain(label);
+    expect(html).toContain('data-testid="production-table-header"');
+    expect(html).toContain('data-table-family="recipe"');
     expect(html).not.toContain('Szukaj składników');
     expect(html).not.toContain('Cena/kg');
     expect(html).toContain('data-readiness="W PRZYGOTOWANIU"');

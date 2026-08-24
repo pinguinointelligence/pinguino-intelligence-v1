@@ -24,13 +24,13 @@ interface DirectNumberControlProps {
   /**
    * `compact` is the DESKTOP recipe-table density (owner 2026-08-24): the row
    * was dominated by its controls, leaving long catalog names truncated far too
-   * early. It shrinks the segments from 44 px to 32 px and tightens the value
+   * early. It shrinks the segments from 44 px to 28 px and tightens the value
    * column, recovering ~90 px per row for the ingredient name.
    *
    * It is deliberately NOT used on touch surfaces — the mobile sheet keeps the
    * comfortable 44 px targets.
    */
-  density?: 'comfortable' | 'compact';
+  density?: 'comfortable' | 'compact' | 'responsive';
   /** Optional fourth segment. It stays operable while the numeric segments are locked. */
   lockSegment?: {
     pressed: boolean;
@@ -81,13 +81,14 @@ export function DirectNumberControl({
   lockSegment,
 }: DirectNumberControlProps) {
   const compact = density === 'compact';
+  const responsive = density === 'responsive';
   /**
    * Compact shrinks the HOUSING, not the typography (owner, 2026-08-24): the
    * shell drops to 28 px while the value keeps its readable size, so rows get
    * shorter because the container tightened around the numbers rather than
    * because everything became tiny.
    */
-  const segment = compact ? 'h-7 w-7' : 'size-11';
+  const segment = compact ? 'h-7 w-7' : responsive ? 'size-11 lg:h-7 lg:w-7' : 'size-11';
   const accessibleValue = Number(value.toFixed(decimals));
   const valueRef = useRef(value);
   const [draft, setDraft] = useState(value.toFixed(decimals));
@@ -175,11 +176,16 @@ export function DirectNumberControl({
       className={cn(
         'grid min-w-0 max-w-full items-center overflow-hidden rounded-2xl border border-ink/12 bg-white shadow-pro-sm transition-[border-color,background-color,box-shadow] focus-within:border-ink/30 focus-within:shadow-pro-md',
         compact && 'h-7',
+        responsive && 'lg:h-7 lg:rounded-xl lg:shadow-none',
         widthPreset === 'percent' &&
           (compact
             ? lockSegment
               ? 'w-[142px] grid-cols-[28px_58px_28px_28px]'
               : 'w-[114px] grid-cols-[28px_58px_28px]'
+            : responsive
+              ? lockSegment
+                ? 'w-[204px] grid-cols-[44px_72px_44px_44px] lg:w-[142px] lg:grid-cols-[28px_58px_28px_28px]'
+                : 'w-[160px] grid-cols-[44px_72px_44px] lg:w-[114px] lg:grid-cols-[28px_58px_28px]'
             : lockSegment
               ? 'w-[204px] grid-cols-[44px_72px_44px_44px]'
               : 'w-[160px] grid-cols-[44px_72px_44px]'),
@@ -188,19 +194,32 @@ export function DirectNumberControl({
             ? lockSegment
               ? 'w-[150px] grid-cols-[28px_66px_28px_28px]'
               : 'w-[122px] grid-cols-[28px_66px_28px]'
+            : responsive
+              ? lockSegment
+                ? 'w-[220px] grid-cols-[44px_88px_44px_44px] lg:w-[150px] lg:grid-cols-[28px_66px_28px_28px]'
+                : 'w-[176px] grid-cols-[44px_88px_44px] lg:w-[122px] lg:grid-cols-[28px_66px_28px]'
             : lockSegment
               ? 'w-[220px] grid-cols-[44px_88px_44px_44px]'
               : 'w-[176px] grid-cols-[44px_88px_44px]'),
         widthPreset === 'fluid' &&
-          (lockSegment
-            ? 'w-full grid-cols-[44px_minmax(80px,1fr)_44px_44px]'
-            : 'w-full grid-cols-[44px_minmax(80px,1fr)_44px]'),
+          (compact
+            ? lockSegment
+              ? 'w-full grid-cols-[28px_minmax(66px,1fr)_28px_28px]'
+              : 'w-full grid-cols-[28px_minmax(66px,1fr)_28px]'
+            : responsive
+              ? lockSegment
+                ? 'w-full grid-cols-[44px_minmax(80px,1fr)_44px_44px] lg:grid-cols-[28px_minmax(66px,1fr)_28px_28px]'
+                : 'w-full grid-cols-[44px_minmax(80px,1fr)_44px] lg:grid-cols-[28px_minmax(66px,1fr)_28px]'
+              : lockSegment
+                ? 'w-full grid-cols-[44px_minmax(80px,1fr)_44px_44px]'
+                : 'w-full grid-cols-[44px_minmax(80px,1fr)_44px]'),
         compact ? 'rounded-xl shadow-none' : null,
         lockSegment?.pressed
           ? 'border-stone-400/70 bg-stone-100 shadow-[inset_0_1px_2px_rgb(16_17_19_/_0.06)]'
           : disabled && 'bg-stone-50',
       )}
       data-testid={testId}
+      data-control-density={density}
       data-preserve-precision={preservePrecision ? 'true' : undefined}
       data-control-capacity={
         widthPreset === 'percent' ? '100.0%' : widthPreset === 'grams' ? '10000g' : 'fluid'
@@ -231,7 +250,7 @@ export function DirectNumberControl({
           className={cn(
             'row-start-1 grid place-items-center font-light text-ink transition-colors hover:bg-stone-100 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-gold disabled:cursor-not-allowed disabled:text-stone-400',
             segment,
-            compact ? 'text-base' : 'text-xl',
+            compact ? 'text-base' : responsive ? 'text-xl lg:text-base' : 'text-xl',
             direction > 0 && 'col-start-3',
           )}
         >
@@ -241,7 +260,7 @@ export function DirectNumberControl({
       <label
         className={cn(
           'col-start-2 row-start-1 flex h-full min-w-0 items-center justify-center border-x border-ink/18',
-          compact ? 'px-1.5' : 'px-2',
+          compact ? 'px-1.5' : responsive ? 'px-2 lg:px-1.5' : 'px-2',
         )}
       >
         <span className="sr-only">{ariaLabel}</span>
@@ -297,14 +316,18 @@ export function DirectNumberControl({
           data-scrubbable="horizontal"
           className={cn(
             'h-full min-w-0 flex-1 touch-pan-y select-none bg-transparent text-right font-mono leading-none font-semibold tabular-nums text-ink outline-none disabled:cursor-not-allowed',
-            compact ? 'text-[13px]' : 'text-sm',
+            compact ? 'text-[13px]' : responsive ? 'text-sm lg:text-[13px]' : 'text-sm',
           )}
         />
         <span
           aria-hidden
           className={cn(
             'shrink-0 font-semibold text-stone-600',
-            compact ? 'ml-0.5 text-[10px]' : 'ml-1 text-xs',
+            compact
+              ? 'ml-0.5 text-[10px]'
+              : responsive
+                ? 'ml-1 text-xs lg:ml-0.5 lg:text-[10px]'
+                : 'ml-1 text-xs',
           )}
         >
           {suffix}
@@ -322,7 +345,7 @@ export function DirectNumberControl({
           className={cn(
             'col-start-4 row-start-1 inline-flex items-center justify-center gap-0.5 border-l border-ink/18 font-mono font-semibold transition-colors focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-gold',
             segment,
-            compact ? 'text-[9px]' : 'text-[11px]',
+            compact ? 'text-[9px]' : responsive ? 'text-[11px] lg:text-[9px]' : 'text-[11px]',
             lockSegment.pressed
               ? 'bg-stone-200 text-ink'
               : 'bg-white text-stone-500 hover:bg-stone-100 hover:text-ink',

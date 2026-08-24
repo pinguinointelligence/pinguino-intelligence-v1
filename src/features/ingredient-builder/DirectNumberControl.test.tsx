@@ -164,4 +164,27 @@ describe('DirectNumberControl', () => {
     expect(html).toContain('leading-none');
     expect(html).toContain('w-[114px] grid-cols-[28px_58px_28px]');
   });
+
+  it('can keep touch targets comfortable while matching compact Recipe geometry on table widths', () => {
+    const html = renderToStaticMarkup(
+      <DirectNumberControl
+        value={670}
+        step={1}
+        decimals={0}
+        suffix="g"
+        ariaLabel="Milk — faktyczna gramatura"
+        onChange={() => {}}
+        testId="responsive-production-grams"
+        widthPreset="fluid"
+        density="responsive"
+      />,
+    );
+
+    expect(html).toContain('data-control-density="responsive"');
+    expect(html).toContain('grid-cols-[44px_minmax(80px,1fr)_44px]');
+    expect(html).toContain('lg:grid-cols-[28px_minmax(66px,1fr)_28px]');
+    expect(html).toContain('size-11 lg:h-7 lg:w-7');
+    expect(html).toContain('text-xl lg:text-base');
+    expect(html).toContain('text-sm lg:text-[13px]');
+  });
 });

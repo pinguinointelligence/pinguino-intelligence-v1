@@ -65,6 +65,32 @@ const recipeActions: IngredientRowActions = {
 };
 
 describe('Production workspace touch-first UI', () => {
+  it('uses the Recipe table family instead of nesting the Production row in floating cards', () => {
+    const html = renderToStaticMarkup(
+      <IngredientRow
+        item={result.items[0]!}
+        totalBatchG={result.total_batch_g}
+        actions={recipeActions}
+        mode="production"
+        productionLine={session.lines[0]!}
+        productionActions={{ setDraftActual: vi.fn(), confirmLine: vi.fn(), reopenRecord: vi.fn() }}
+      />,
+    );
+
+    expect(html).toContain('data-production-row-family="recipe-table"');
+    expect(html).toContain('data-production-control-family="recipe-direct-number"');
+    expect(html).toContain('data-production-cell="planned"');
+    expect(html).toContain('data-production-cell="deviation"');
+    expect(html).toContain('border-b border-ink/[0.075]');
+    expect(html).toContain('data-control-density="responsive"');
+    expect(html).toContain('lg:min-h-7');
+    expect(html).toContain('data-category-symbol=');
+    expect(html).toContain('text-[10px] leading-tight');
+    expect(html).not.toContain('text-[9px] leading-none');
+    expect(html).not.toContain('mx-2 mb-2 rounded-[20px]');
+    expect(html).not.toContain('grid-cols-[minmax(0,1fr)_48px]');
+  });
+
   it('renders the binding always-visible [−] actual [+] [✓] controls with 44px touch targets', () => {
     const html = renderToStaticMarkup(
       <IngredientRow

@@ -36,15 +36,9 @@ export function ProductionActualControl({
 }: ProductionActualControlProps) {
   return (
     <div
-      className={cn(
-        'grid min-w-0 grid-cols-[minmax(0,1fr)_48px] items-stretch gap-2 rounded-[20px] p-1.5 transition-colors',
-        correctionMode
-          ? 'border border-attention/35 bg-pro-amber/70'
-          : confirmed
-            ? 'border border-status-ideal/25 bg-pro-sage/65'
-            : 'border border-ink/8 bg-white/78',
-      )}
+      className="grid min-w-0 grid-cols-[minmax(0,1fr)_44px] items-stretch gap-1.5 lg:grid-cols-[minmax(0,1fr)_28px] lg:gap-1"
       data-testid={`production-actual-control-${lineId}`}
+      data-production-control-family="recipe-direct-number"
       data-production-control-state={
         correctionMode ? 'correction' : confirmed ? 'confirmed' : 'addition'
       }
@@ -61,6 +55,7 @@ export function ProductionActualControl({
         testId={`production-stepper-${lineId}`}
         ariaDescribedBy={describedBy}
         preservePrecision
+        density="responsive"
       />
       <button
         type="button"
@@ -76,10 +71,12 @@ export function ProductionActualControl({
         onClick={onConfirm}
         disabled={disabled}
         className={cn(
-          'pro-focus-ring grid min-h-11 place-items-center rounded-[14px] border text-base font-semibold shadow-pro-e1 transition-transform enabled:hover:-translate-y-px',
+          'pro-focus-ring grid min-h-11 min-w-11 place-items-center rounded-xl border text-base font-semibold transition-colors lg:min-h-7 lg:min-w-7 lg:rounded-lg lg:text-sm',
           confirmed
-            ? 'border-status-ideal/35 bg-white text-status-ideal'
-            : 'border-ink bg-ink text-white',
+            ? 'border-status-ideal/35 bg-white text-status-ideal enabled:hover:bg-pro-sage'
+            : correctionMode
+              ? 'border-attention bg-attention text-white enabled:hover:bg-attention/90'
+              : 'border-ink bg-ink text-white enabled:hover:bg-ink/90',
         )}
       >
         {confirmed ? '↺' : '✓'}

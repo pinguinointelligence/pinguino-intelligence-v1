@@ -42,8 +42,11 @@ describe('D1 — no dead strip above the first ingredient', () => {
 
 describe('D2/D4/D5 — smaller housings, unchanged typography', () => {
   it('the compact shell is 28 px and the segments with it', () => {
-    expect(control).toContain("compact ? 'h-7 w-7' : 'size-11'");
+    expect(control).toContain(
+      "compact ? 'h-7 w-7' : responsive ? 'size-11 lg:h-7 lg:w-7' : 'size-11'",
+    );
     expect(control).toContain("compact && 'h-7'");
+    expect(control).toContain("responsive && 'lg:h-7 lg:rounded-xl lg:shadow-none'");
   });
 
   it('BOTH steppers actually request the compact density', () => {
@@ -59,7 +62,9 @@ describe('D2/D4/D5 — smaller housings, unchanged typography', () => {
   it('D3 — the readable type sizes are NOT reduced', () => {
     // Ingredient name and the numeric value keep 13px.
     expect(row).toContain('text-[13px] font-semibold text-ink');
-    expect(control).toContain("compact ? 'text-[13px]' : 'text-sm'");
+    expect(control).toContain(
+      "compact ? 'text-[13px]' : responsive ? 'text-sm lg:text-[13px]' : 'text-sm'",
+    );
   });
 });
 

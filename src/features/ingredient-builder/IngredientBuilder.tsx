@@ -392,7 +392,11 @@ export function IngredientBuilder({
 
   const header =
     mode === 'production' ? (
-      <div className={`${PRODUCTION_ROW_GRID} px-3 py-2`}>
+      <div
+        className={`${PRODUCTION_ROW_GRID} px-[var(--pro-mobile-gutter)] py-2 lg:px-3`}
+        data-testid="production-table-header"
+        data-table-family="recipe"
+      >
         {['Składnik', 'Planowane', 'Faktycznie · Status / potwierdź', 'Różnica'].map(
           (label, index) => (
             <span
