@@ -7,6 +7,13 @@ const migration = readFileSync(
   resolve(root, 'supabase/migrations/20260824160000_intimport_mapper_binding_authority.sql'),
   'utf8',
 );
+const matchMethodMigration = readFileSync(
+  resolve(
+    root,
+    'supabase/migrations/20260824161000_intimport_mapper_match_method_constraint.sql',
+  ),
+  'utf8',
+);
 const edge = readFileSync(resolve(root, 'supabase/functions/catalog-submit/index.ts'), 'utf8');
 const importer = readFileSync(resolve(root, 'src/services/productCatalogImport.ts'), 'utf8');
 const mapperBefore = readFileSync(resolve(root, 'docs/ingredients/validation/mapper_basement.csv'));
@@ -55,6 +62,12 @@ describe('INTIMPORT Mapper binding is a distinct server authority', () => {
     expect(migration).toContain("'intimport_whole_profile_match'");
     expect(edge).not.toContain('productMatcher');
     expect(importer).not.toContain('matchAndSaveProduct(');
+  });
+
+  it('admits the dedicated authority in the products match-method vocabulary', () => {
+    expect(matchMethodMigration).toContain("'intimport_whole_profile_match'::text");
+    expect(matchMethodMigration).toContain('validate constraint products_match_method_check');
+    expect(matchMethodMigration).not.toMatch(/(insert\s+into|update)\s+public\.mapper_basement/i);
   });
 
   it('supports binding-only backfill without inserting a product or Mapper row', () => {
