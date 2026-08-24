@@ -5184,12 +5184,35 @@ function buildFormulationPreviewInternal(
           : [];
       })();
 
+  // GLOBAL TARGET-MASS INVARIANT. A successful executable proposal must land on
+  // `target_batch_grams`. When the draft already satisfies every band AND the
+  // active Direction preference, the solver makes no move, so an off-target draft
+  // could previously be handed straight back as an ok:true proposal that still
+  // missed the batch (fuzz seed 454174848: a 951 g draft against a 1000 g target,
+  // returned unchanged; the same draft with Direction inactive reconciled to
+  // 1000 g, which is what made the bypass visible). Restore the batch through the
+  // SAME normaliser the solver seed uses — it preserves the Main group and the
+  // user's intent, so this cannot buy mass by breaking a higher authority.
+  const rankedOnTargetBatch = ((): RecipeInput => {
+    const candidate = rankedMainObjective.input;
+    const target = input.target_batch_grams;
+    if (!(target > 0)) return candidate;
+    if (Math.abs(plannedSum(candidate) - target) <= BATCH_SUM_TOLERANCE_G) return candidate;
+    const restored = rescalePreservingMainGroup(
+      input,
+      candidate,
+      solverHolds(candidate, set, options),
+      target,
+    );
+    return restored.ok ? restored.input : candidate;
+  })();
+
   const preview = finishPreview(
     'optimize',
     copy.preview.kindLabels.optimize,
     input,
     set,
-    rankedMainObjective.input,
+    rankedOnTargetBatch,
     set,
     violationsBefore,
     explanation,
@@ -5682,6 +5705,32 @@ function improveDirectionNearestVector(
  * envelopes. It can only ever return a result the normal pipeline already
  * considers legal, and it never relaxes a hard constraint to reach a target.
  */
+/**
+ * FINAL TARGET-MASS BOUNDARY. Every executable `ok:true` Preview leaves the
+ * pipeline through `buildOptimizePreview`, so this is the one place that can
+ * guarantee the global invariant for every profile and every route:
+ *
+ *   abs(sum(proposed grams) - target_batch_grams) <= BATCH_SUM_TOLERANCE_G
+ *
+ * Routes are expected to produce batch-true candidates on their own (they are
+ * normalised at the producer). This is the backstop: if one ever does not, the
+ * honest answer is a truthful non-success, never a successful Preview the Apply
+ * door would have to reject. It never repairs mass here — repairing at the exit
+ * would bypass the per-route safety checks that made the candidate acceptable.
+ */
+function enforceTargetBatchInvariant(
+  input: RecipeInput,
+  result: BuildPreviewResult,
+): BuildPreviewResult {
+  if (!result.ok) return result;
+  const target = input.target_batch_grams;
+  if (!(target > 0)) return result;
+  if (Math.abs(plannedSum(result.preview.proposedInput) - target) <= BATCH_SUM_TOLERANCE_G) {
+    return result;
+  }
+  return { ok: false, code: 'no_proposal' };
+}
+
 export function buildOptimizePreview(
   input: RecipeInput,
   set: ConstraintSet,
@@ -5691,28 +5740,34 @@ export function buildOptimizePreview(
   const direct = buildOptimizePreviewWithDirection(input, set, createdAt, options);
   if (
     direct.ok ||
-    direct.code !== 'unsafe_proposal' ||
+    // An unreachable preference dead-ends in two distinct ways, and BOTH must
+    // degrade to a truthful NEAREST rather than leave the user with no recipe:
+    // the search can end on an illegal candidate (`unsafe_proposal`) or find no
+    // candidate at all (`no_proposal`). `already_clean` is a real answer and is
+    // deliberately not retried.
+    (direct.code !== 'unsafe_proposal' && direct.code !== 'no_proposal') ||
     input.goals?.direction_targets_active !== true ||
     // The Rescue advisor's internal simulations only need the DIRECT answer:
     // they measure whether adding one ingredient helps, and a NEAREST fallback
     // would double the pipeline for every simulated candidate without changing
     // the decision. The user-facing call still gets the fallback.
-    (options.rescueSimulationLineIds?.length ?? 0) > 0 ||
-    // Only a draft that was ALREADY outside its bands can reach `unsafe_proposal`
-    // through an unreachable preference — a native-safe draft already returns the
-    // truthful `no_proposal` / `directionTargetUnreached` result above. Scoping the
-    // retry this way keeps it off the hot path for healthy drafts, so the second
-    // pipeline run happens only where it can actually change the answer.
-    detectViolations(calculateRecipe(input)).length === 0
+    (options.rescueSimulationLineIds?.length ?? 0) > 0
   ) {
-    return direct;
+    return enforceTargetBatchInvariant(input, direct);
   }
+  // NOTE: this retry is deliberately NOT scoped to drafts that already violate.
+  // The 1800-state Vegan Direction matrix found two natively SAFE drafts that
+  // still dead-ended — R12 caramel -11 (sweetness -1, softness 0) returning
+  // `unsafe_proposal`, and R13 salted caramel -11 (sweetness -1, softness -2)
+  // returning `no_proposal` — both with zero starting violations. The retry
+  // still only runs when the direct attempt already failed, so healthy previews
+  // are unaffected.
   const withoutPreference: RecipeInput = {
     ...input,
     goals: { ...input.goals, direction_targets_active: false },
   };
   const nearest = buildOptimizePreviewWithDirection(withoutPreference, set, createdAt, options);
-  if (!nearest.ok) return direct;
+  if (!nearest.ok) return enforceTargetBatchInvariant(input, direct);
   nearest.preview.directionTargetUnreached = true;
   // REBASE onto the working state the user is actually on. This Preview was
   // built against `withoutPreference`, which differs from `input` only in the
@@ -5726,7 +5781,7 @@ export function buildOptimizePreview(
   // could never be applied.
   nearest.preview.baseFingerprint = workingStateFingerprint(input, set);
   nearest.preview.proposedInput = { ...nearest.preview.proposedInput, goals: input.goals };
-  return nearest;
+  return enforceTargetBatchInvariant(input, nearest);
 }
 
 function buildOptimizePreviewWithDirection(
