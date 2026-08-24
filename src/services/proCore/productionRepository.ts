@@ -96,6 +96,12 @@ export interface ProductionRepository {
   authorizeRescue(input: AuthorizeProductionRescueArgs): Promise<ProductionRescueAuthorization>;
   /** Consume one trusted authorization. No candidate recipe or grams are accepted from the browser. */
   consumeRescue(input: ConsumeProductionRescueArgs): Promise<ProductionRun>;
+  /**
+   * OWNER RULE §2 — record the operator's single "OK" for this run's heat
+   * reminder. It changes no gram and gates nothing; it only stops the reminder
+   * from reappearing on every reload of the same batch.
+   */
+  acknowledgeHeatInformation(runId: string): Promise<ProductionRun>;
   /** Atomically records the final complete actual vector and closes the run. */
   completeRun(runId: string, input: RecordActualArgs): Promise<ProductionRun>;
   amend(runId: string, input: AmendArgs): Promise<ProductionRun>;
@@ -145,6 +151,7 @@ export function inMemoryProductionRepository(svc: InMemoryProduction): Productio
     consumeRescue: async () => {
       throw new Error('Trusted Production Rescue consumption is unavailable in local memory.');
     },
+    acknowledgeHeatInformation: async (runId) => svc.acknowledgeHeatInformation(runId),
     completeRun: async (runId, input) => {
       assertActualBasis(runId, input.expectedActualRevision, input.expectedRescueRevision);
       const recorded = svc.recordActual(runId, input);

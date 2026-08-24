@@ -15,6 +15,8 @@ import {
   productionSourceFingerprint,
   toppingProductionProgress,
   productionStepForGrams,
+  productionTopUpGrams,
+  topUpProductionLine,
   reopenProductionRecord,
   setDraftActualGrams,
 } from './productionSession';
@@ -69,6 +71,79 @@ function session() {
     startedAt: '2026-08-09T10:00:00.000Z',
   });
 }
+
+describe('topping up a line the operator under-added (§12/§19/§20)', () => {
+  const shortSession = () => {
+    const base = session();
+    const line = base.lines[0]!;
+    return confirmProductionLine(
+      setDraftActualGrams(base, line.lineId, line.targetGrams - 5),
+      line.lineId,
+      '2026-08-24T10:00:00.000Z',
+    );
+  };
+
+  it('states exactly how much is still owed under the current plan', () => {
+    const shorted = shortSession();
+    expect(productionTopUpGrams(shorted.lines[0]!)).toBeCloseTo(5, 6);
+    // A line with nothing in the vessel is still to be ADDED, not topped up.
+    expect(productionTopUpGrams(shorted.lines[1]!)).toBe(0);
+  });
+
+  it('grows the committed physical mass and clears the shortfall', () => {
+    const shorted = shortSession();
+    const line = shorted.lines[0]!;
+    const topped = topUpProductionLine(
+      shorted,
+      line.lineId,
+      line.targetGrams,
+      '2026-08-24T10:05:00.000Z',
+    );
+    const after = topped.lines[0]!;
+    expect(after.physicalAddedGrams).toBeCloseTo(line.targetGrams, 6);
+    expect(after.confirmed).toBe(true);
+    expect(productionTopUpGrams(after)).toBe(0);
+    // The frozen plan is never rewritten by what physically happened.
+    expect(after.plannedGrams).toBe(line.plannedGrams);
+  });
+
+  it('refuses to take material back out of the vessel', () => {
+    const shorted = shortSession();
+    const line = shorted.lines[0]!;
+    expect(() =>
+      topUpProductionLine(
+        shorted,
+        line.lineId,
+        line.physicalAddedGrams - 1,
+        '2026-08-24T10:05:00.000Z',
+      ),
+    ).toThrow(/cannot remove physically added/i);
+  });
+
+  it('is not a substitute for the ordinary actual-grams control', () => {
+    const base = session();
+    expect(() =>
+      topUpProductionLine(base, base.lines[0]!.lineId, 100, '2026-08-24T10:05:00.000Z'),
+    ).toThrow(/confirmed line/i);
+  });
+
+  it('leaves the vessel mass and the remaining plan honest throughout', () => {
+    const shorted = shortSession();
+    const line = shorted.lines[0]!;
+    const before = productionProgress(shorted);
+    expect(before.confirmedMassG).toBeCloseTo(line.targetGrams - 5, 6);
+    const topped = topUpProductionLine(
+      shorted,
+      line.lineId,
+      line.targetGrams,
+      '2026-08-24T10:05:00.000Z',
+    );
+    const after = productionProgress(topped);
+    expect(after.confirmedMassG).toBeCloseTo(before.confirmedMassG + 5, 6);
+    expect(after.remainingMassG).toBeCloseTo(before.remainingMassG - 5, 6);
+    expect(after.targetChanged).toBe(false);
+  });
+});
 
 describe('production session physical-reality contract', () => {
   it('rehydrates confirmed actuals from the exact durable run without inventing pending grams', () => {

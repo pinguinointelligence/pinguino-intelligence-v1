@@ -9,6 +9,62 @@ import { CatalogVerificationBadge } from '@/features/global-catalog/CatalogVerif
 const formatPhysicalMassG = (value: number): string =>
   Number.isInteger(value) ? value.toFixed(0) : value.toFixed(3).replace(/\.?0+$/, '');
 
+/**
+ * OWNER RULE §2 — HEAT INFORMATION IS A REMINDER, NOT A ROUTE.
+ *
+ * This renders only when authoritative metadata POSITIVELY indicates that a
+ * named product is meant to be heated. It selects no process, changes no gram,
+ * touches no ProductBehavior and blocks nothing. An unknown process renders
+ * nothing at all (§3) — that fact belongs under the product `?`.
+ */
+function HeatInformationCard({ production }: { production: ProductionWorkspaceView }) {
+  const advisories = production.heatInformation ?? [];
+  const products = [
+    ...new Set(
+      advisories
+        .map((detail) => detail.productName?.trim())
+        .filter((name): name is string => Boolean(name)),
+    ),
+  ];
+  if (products.length === 0) return null;
+  const acknowledged = production.heatInformationAcknowledged;
+  return (
+    <section
+      className={`rounded-[12px] border px-3 py-3 text-ink ${
+        acknowledged
+          ? 'border-status-ideal/30 bg-status-ideal/[0.07]'
+          : 'border-[#d9c49a] bg-[#fbf8f1]'
+      }`}
+      role="status"
+      data-testid="production-heat-information"
+      data-acknowledged={acknowledged ? 'true' : 'false'}
+    >
+      <p className="text-xs font-semibold leading-relaxed">
+        {acknowledged ? 'Informacja potwierdzona' : 'Pamiętaj o obróbce'}
+      </p>
+      <p className="mt-1 text-[11px] leading-relaxed text-stone-600">
+        Dla poniższych składników wskazana jest obróbka na ciepło:
+      </p>
+      <ul className="mt-2 space-y-1 text-xs text-stone-700">
+        {products.map((productName) => (
+          <li key={productName}>{productName}</li>
+        ))}
+      </ul>
+      {acknowledged ? null : (
+        <button
+          type="button"
+          onClick={() => void production.acknowledgeHeatInformation()}
+          disabled={production.persistenceBusy}
+          className="pro-focus-ring mt-3 min-h-11 rounded-[12px] bg-ink px-4 py-2 text-xs font-semibold text-white shadow-pro-sm disabled:cursor-wait disabled:opacity-60"
+          data-testid="acknowledge-production-heat-information"
+        >
+          OK
+        </button>
+      )}
+    </section>
+  );
+}
+
 export function ProductionCockpit({
   production,
   onOpenPreview,
@@ -203,6 +259,7 @@ export function ProductionCockpit({
           {production.persistenceError}
         </p>
       ) : null}
+      <HeatInformationCard production={production} />
       <section className="overflow-hidden rounded-[18px] border border-ink/10 bg-white p-4 shadow-pro-e0">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -247,7 +304,7 @@ export function ProductionCockpit({
               className="font-mono font-semibold tabular-nums text-ink"
               data-testid="production-current-plan-mass"
             >
-              {formatPhysicalMassG(progress.forecastFinalMassG)} g
+              {formatPhysicalMassG(progress.currentPlanMassG)} g
             </dd>
           </div>
           <div>
@@ -265,8 +322,8 @@ export function ProductionCockpit({
             className="mt-2 text-[11px] leading-relaxed text-stone-600"
             data-testid="production-target-changed"
           >
-            Partia została powiększona z {formatPhysicalMassG(progress.originalTargetMassG)} g do{' '}
-            {formatPhysicalMassG(progress.forecastFinalMassG)} g.
+            Partia została zmieniona z {formatPhysicalMassG(progress.originalTargetMassG)} g na{' '}
+            {formatPhysicalMassG(progress.currentPlanMassG)} g.
           </p>
         ) : null}
         {/* §51 SCORE TRUTH — this figure describes the PLAN, not the vessel. */}
@@ -321,6 +378,17 @@ export function ProductionCockpit({
               {rescueAuthorization.authorization.preview.scoreDisplay}
             </span>
           </div>
+          {/* §16 — a scale-up is a real loss of the planned batch. Name it. */}
+          {rescueAuthorization.authorization.preview.finalMassG >
+          progress.originalTargetMassG + 0.1 ? (
+            <p
+              className="mt-2 text-xs leading-relaxed text-[#8a5b23]"
+              data-testid="production-original-batch-lost"
+            >
+              Partia {formatPhysicalMassG(progress.originalTargetMassG)} g nie jest już możliwa. To
+              jest najmniejsza większa partia potwierdzona przez Engine.
+            </p>
+          ) : null}
           {rescueAuthorization.authorization.preview.instructions.length > 0 ? (
             <ul className="mt-3 space-y-1 rounded-[12px] border border-ink/8 bg-white/80 p-2.5">
               {rescueAuthorization.authorization.preview.instructions.map((instruction, index) => (

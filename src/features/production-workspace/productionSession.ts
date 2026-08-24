@@ -117,6 +117,8 @@ export interface ProductionSession {
   thermalMode: ProductionThermalMode | null;
   processReadiness: 'READY' | 'READY_WITH_INFO' | null;
   processAdvisories: ProductProcessReadinessDetail[];
+  /** §2 — the operator's single confirmation that they read the heat reminder. */
+  heatInformationAcknowledgedAt: string | null;
   /** Timestamp of the latest Rescue snapshot durably accepted by the server. */
   durableRescueAcceptedAt: string | null;
   /** Monotonic durable Rescue revision used for lost-response reconciliation. */
@@ -143,6 +145,7 @@ export interface CreateProductionSessionInput {
   thermalMode?: ProductionThermalMode | null;
   processReadiness?: 'READY' | 'READY_WITH_INFO' | null;
   processAdvisories?: ProductProcessReadinessDetail[];
+  heatInformationAcknowledgedAt?: string | null;
   startedAt: string;
 }
 
@@ -236,6 +239,7 @@ export function createProductionSession(input: CreateProductionSessionInput): Pr
     thermalMode: input.thermalMode ?? null,
     processReadiness: input.processReadiness ?? null,
     processAdvisories: structuredClone(input.processAdvisories ?? []),
+    heatInformationAcknowledgedAt: input.heatInformationAcknowledgedAt ?? null,
     durableRescueAcceptedAt: null,
     durableRescueRevision: 0,
     durableActualRevision: 0,
@@ -376,6 +380,48 @@ export function reopenProductionRecord(
   });
 }
 
+/**
+ * OWNER RULE §12/§19/§20 — how much more of this line the operator still has to
+ * put in the vessel under the CURRENT plan. Zero once the line is at or above
+ * its target; a line that was never added has nothing to "top up" — it is
+ * simply still to be added.
+ */
+export function productionTopUpGrams(line: ProductionLineState): number {
+  if (line.physicalAddedGrams <= PRODUCTION_GRAMS_EPSILON) return 0;
+  return Math.max(0, line.targetGrams - line.physicalAddedGrams);
+}
+
+/**
+ * OWNER RULE §12/§20 — the operator physically added more of a line that was
+ * already confirmed. This is not a record correction and not a rescue: the
+ * committed physical mass simply grows. It can never shrink, because nothing
+ * can be taken back out of the vessel.
+ */
+export function topUpProductionLine(
+  session: ProductionSession,
+  lineId: string,
+  totalGrams: number,
+  at: string,
+): ProductionSession {
+  requireActive(session);
+  requireAddonStageIfNeeded(session, lineId);
+  if (!Number.isFinite(totalGrams)) throw new Error('Actual grams must be finite.');
+  return updateLine(session, lineId, (line) => {
+    if (!line.confirmed) {
+      throw new Error('Only a confirmed line can be topped up; use the actual-grams control.');
+    }
+    if (totalGrams + PRODUCTION_GRAMS_EPSILON < line.physicalAddedGrams) {
+      throw new Error('A top-up cannot remove physically added material.');
+    }
+    return {
+      ...line,
+      physicalAddedGrams: totalGrams,
+      draftActualGrams: totalGrams,
+      confirmedAt: at,
+    };
+  });
+}
+
 export function correctRecordedPhysicalGrams(
   session: ProductionSession,
   lineId: string,
@@ -435,12 +481,15 @@ export interface ProductionProgress {
   forecastFinalMassG: number;
   originalTargetMassG: number;
   /**
-   * OWNER RULE §22 — what is still to be added under the CURRENT plan. After an
-   * accepted scale-up this is measured against the new target, never the
-   * original one, and it is never negative.
+   * OWNER RULE §22 — the batch the operator is executing RIGHT NOW: the sum of
+   * the current line targets. It equals the original batch until a Rescue is
+   * accepted, and it deliberately does not drift with a recorded deviation —
+   * that drift is the forecast's job, not the plan's.
    */
+  currentPlanMassG: number;
+  /** What is still to be added under that current plan. Never negative. */
   remainingMassG: number;
-  /** True once the current plan target differs from the batch the run started with. */
+  /** True once an accepted Rescue moved the plan away from the original batch. */
   targetChanged: boolean;
   coherent: boolean;
 }
@@ -454,6 +503,7 @@ export function productionProgress(session: ProductionSession): ProductionProgre
     0,
   );
   const originalTargetMassG = session.plannedInput.target_batch_grams;
+  const currentPlanMassG = session.lines.reduce((sum, line) => sum + line.targetGrams, 0);
   return {
     confirmedCount: confirmed.length,
     totalCount: session.lines.length,
@@ -464,8 +514,9 @@ export function productionProgress(session: ProductionSession): ProductionProgre
     confirmedMassG,
     forecastFinalMassG,
     originalTargetMassG,
-    remainingMassG: Math.max(0, forecastFinalMassG - confirmedMassG),
-    targetChanged: Math.abs(forecastFinalMassG - originalTargetMassG) > PRODUCTION_GRAMS_EPSILON,
+    currentPlanMassG,
+    remainingMassG: Math.max(0, currentPlanMassG - confirmedMassG),
+    targetChanged: Math.abs(currentPlanMassG - originalTargetMassG) > 0.05,
     coherent: session.lines.length > 0 && confirmed.length === session.lines.length,
   };
 }
@@ -718,6 +769,7 @@ export function hydrateProductionSessionFromRun(
     thermalMode: run.thermalMode ?? null,
     processReadiness: run.processReadiness ?? null,
     processAdvisories: run.processAdvisories ?? [],
+    heatInformationAcknowledgedAt: run.heatInformationAcknowledgedAt ?? null,
     startedAt: run.events.find((event) => event.type === 'started')?.at ?? run.createdAt,
   });
   if (run.rescue) {

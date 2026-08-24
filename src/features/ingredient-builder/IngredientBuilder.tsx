@@ -531,6 +531,7 @@ export function IngredientBuilder({
           setDraftActual: production.setDraftActual,
           confirmLine: production.confirmLine,
           reopenRecord: production.reopenRecord,
+          topUpLine: production.topUpLine,
           disabled: production.persistenceBusy,
         }
       : mode === 'production'

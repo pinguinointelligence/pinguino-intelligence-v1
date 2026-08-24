@@ -11,6 +11,7 @@ import {
 } from './IngredientPriceControl';
 import {
   productionStepForGrams,
+  productionTopUpGrams,
   type ProductionLineState,
 } from '@/features/production-workspace/productionSession';
 import {
@@ -118,6 +119,8 @@ export interface ProductionRowActions {
   setDraftActual: (lineId: string, grams: number) => void;
   confirmLine: (lineId: string) => void;
   reopenRecord: (lineId: string) => void;
+  /** §12/§20 — the operator physically added the missing grams. */
+  topUpLine?: (lineId: string, totalGrams: number) => void;
   disabled?: boolean;
 }
 
@@ -980,6 +983,11 @@ function ProductionRow({
   const correctionMode = !line.confirmed && line.recordCorrectionCount > 0;
   const minimum = correctionMode ? 0 : line.physicalAddedGrams;
   const setValue = (next: number) => actions.setDraftActual(line.lineId, Math.max(minimum, next));
+  // §10/§12/§19/§20 — material is already in the vessel but the current plan
+  // asks for more of this line. Production is a live plan, not a frozen list of
+  // checkboxes, so the row says exactly what is still owed.
+  const topUpGrams = productionTopUpGrams(line);
+  const owesTopUp = topUpGrams > 0.05;
 
   return (
     <div
@@ -1004,12 +1012,31 @@ function ProductionRow({
           role="status"
           aria-live="polite"
         >
-          {correctionMode ? 'Korekta zapisu' : line.confirmed ? 'Potwierdzono' : 'Dodawanie'}
+          {correctionMode
+            ? 'Korekta zapisu'
+            : owesTopUp
+              ? `Dodaj jeszcze ${formatProductionMassG(topUpGrams)} g`
+              : line.confirmed
+                ? 'Potwierdzono'
+                : 'Dodawanie'}
         </span>
-        {line.physicalAddedGrams > 0 && !line.confirmed ? (
+        {line.physicalAddedGrams > 0 && (!line.confirmed || owesTopUp) ? (
           <span className="mt-0.5 block text-xs text-stone-600">
             W naczyniu: {formatProductionMassG(line.physicalAddedGrams)} g
           </span>
+        ) : null}
+        {/* §20 — the most direct correction is offered first: put the missing
+            grams in and the line is simply back on plan. */}
+        {owesTopUp && line.confirmed && actions.topUpLine ? (
+          <button
+            type="button"
+            disabled={actions.disabled}
+            onClick={() => actions.topUpLine!(line.lineId, line.targetGrams)}
+            className="pro-focus-ring mt-1.5 min-h-11 rounded-[12px] border border-ink/15 bg-white px-3 py-2 text-xs font-semibold text-ink shadow-pro-sm disabled:cursor-wait disabled:opacity-60"
+            data-testid={`production-top-up-${line.lineId}`}
+          >
+            Dodaj brakujące {formatProductionMassG(topUpGrams)} g
+          </button>
         ) : null}
       </div>
       <div className="rounded-[14px] border border-ink/8 bg-stone-50 px-3 py-2 text-left md:text-right">

@@ -191,6 +191,19 @@ export function updateMeta(
   };
 }
 
+/**
+ * OWNER RULE §2 — record that the operator read this run's heat reminder.
+ * Idempotent: the first acknowledgement is the one that stands. It carries no
+ * permission, so it deliberately does not touch status, plan or actuals.
+ */
+export function acknowledgeHeatInformation(run: ProductionRun, at: string): ProductionRun {
+  if (run.status !== 'in_progress') {
+    throw new Error('Heat information can only be acknowledged on an active run.');
+  }
+  if (run.heatInformationAcknowledgedAt) return run;
+  return { ...run, heatInformationAcknowledgedAt: at, updatedAt: at };
+}
+
 /* ── actuals (recorded, never replacing the plan) ─────────────────────────────── */
 
 export interface RecordActualInput {

@@ -38,7 +38,11 @@ const composition = (
 
 const audit = (recipe: RecipeInput, cycle = 0) =>
   readPracticalRecipeAudit(
-    attachPracticalRecipeAudit(recipe, recipe, `2026-08-21T10:${String(cycle).padStart(2, '0')}:00.000Z`),
+    attachPracticalRecipeAudit(
+      recipe,
+      recipe,
+      `2026-08-21T10:${String(cycle).padStart(2, '0')}:00.000Z`,
+    ),
   )!;
 
 const editBase = (recipe: RecipeInput, delta: number): RecipeInput => ({
@@ -101,9 +105,7 @@ describe('Production recipe lifecycle state machine', () => {
     const withPrice = {
       ...recipe,
       items: recipe.items.map((item, index) =>
-        index === 0
-          ? { ...item, ingredient: { ...item.ingredient, cost_per_kg: 999 } }
-          : item,
+        index === 0 ? { ...item, ingredient: { ...item.ingredient, cost_per_kg: 999 } } : item,
       ),
     };
 
@@ -202,10 +204,7 @@ describe('Production recipe lifecycle state machine', () => {
           workingInput: changed,
           practicalAudit: audit(base),
           calculationStale: true,
-          currentProductionFingerprint: productionVersionFingerprint(
-            changed,
-            composition(changed),
-          ),
+          currentProductionFingerprint: productionVersionFingerprint(changed, composition(changed)),
           savedProductionFingerprint: productionVersionFingerprint(base, composition(base)),
           savedVersionId: 'version-1',
         }),

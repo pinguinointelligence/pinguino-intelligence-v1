@@ -85,7 +85,9 @@ export interface ProductionRescueSnapshot {
 
 /** Stable public option ids accepted by the trusted Rescue authorization endpoint. */
 export type ProductionRescueStableOptionId =
-  'keep_original_batch' | 'enlarge_batch' | 'leave_as_is';
+  | 'keep_original_batch'
+  | 'enlarge_batch'
+  | 'leave_as_is';
 
 export type ProductionEventType =
   | 'created'
@@ -132,6 +134,12 @@ export interface ProductionRun {
   thermalMode?: ProductionThermalMode | null;
   processReadiness?: Exclude<ProductionProcessReadinessStatus, 'BLOCKED'> | null;
   processAdvisories?: ProductProcessReadinessDetail[];
+  /**
+   * OWNER RULE §2 — when the operator has confirmed they read this run's heat
+   * reminder. It is a receipt, never a permission: production runs with or
+   * without it.
+   */
+  heatInformationAcknowledgedAt?: string | null;
   plannedDate: string | null;
   machine: string | null;
   location: string | null;

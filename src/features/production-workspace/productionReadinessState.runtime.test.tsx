@@ -110,15 +110,17 @@ describe('Production readiness runtime state machine', () => {
     const state = useRecipeStore.getState();
     const input = buildRecipeInput(state, 'planning');
     const composition = recipeCompositionFromState(state);
-    useRecipeStore.getState().markSaved(
-      'readiness-recipe',
-      state.savedRecipeName ?? 'Readiness QA',
-      version,
-      `2026-08-21T12:${String(version).padStart(2, '0')}:00.000Z`,
-      state.practicalRecipeAudit,
-      `readiness-version-${version}`,
-      productionVersionFingerprint(input, composition),
-    );
+    useRecipeStore
+      .getState()
+      .markSaved(
+        'readiness-recipe',
+        state.savedRecipeName ?? 'Readiness QA',
+        version,
+        `2026-08-21T12:${String(version).padStart(2, '0')}:00.000Z`,
+        state.practicalRecipeAudit,
+        `readiness-version-${version}`,
+        productionVersionFingerprint(input, composition),
+      );
   };
 
   const jsonbStyleRoundTrip = <T,>(value: T): T => {
@@ -137,8 +139,9 @@ describe('Production readiness runtime state machine', () => {
   };
 
   beforeEach(() => {
-    (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT =
-      true;
+    (
+      globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
     host = document.createElement('div');
     document.body.append(host);
     root = createRoot(host);
@@ -203,7 +206,9 @@ describe('Production readiness runtime state machine', () => {
     await render();
     await vi.waitFor(() => expect(view?.prerequisite).toBeNull());
 
-    act(() => useRecipeStore.getState().addTopping(useRecipeStore.getState().items[0]!.ingredient, 20));
+    act(() =>
+      useRecipeStore.getState().addTopping(useRecipeStore.getState().items[0]!.ingredient, 20),
+    );
     await render();
     expect(view?.prerequisite).toMatchObject({ code: 'saved_version_required' });
     expect(view?.prerequisite?.code).not.toBe('preview_required');

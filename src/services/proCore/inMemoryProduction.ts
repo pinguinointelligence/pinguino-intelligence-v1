@@ -16,6 +16,7 @@ import {
 } from '@/features/pro-core/recipeScaling';
 import type { ProductionCapabilities } from '@/features/pro-core/productionContracts';
 import {
+  acknowledgeHeatInformation,
   amendRun,
   buildProductionRun,
   computeDeviation,
@@ -97,6 +98,12 @@ export class InMemoryProduction {
 
   updateMeta(runId: string, patch: Partial<ProductionMeta>): ProductionRun {
     const next = updateMeta(this.require(runId), patch, this.now());
+    this.runs.set(runId, next);
+    return next;
+  }
+
+  acknowledgeHeatInformation(runId: string): ProductionRun {
+    const next = acknowledgeHeatInformation(this.require(runId), this.now());
     this.runs.set(runId, next);
     return next;
   }

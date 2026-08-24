@@ -342,7 +342,10 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     expect(dock).toContain('WorkbenchIntelligenceHeader');
     expect(header).toContain('Dopasowanie techniczne receptury');
     expect(dock).not.toContain('production.score');
-    expect(production).toContain('Przewidywane dopasowanie partii');
+    // §51 SCORE TRUTH — the Production figure names the composition it describes:
+    // the plan that is still being executed, never the unfinished vessel.
+    expect(production).toContain('Przewidywany wynik po zakończeniu planu');
+    expect(production).not.toContain('Przewidywane dopasowanie partii');
     expect(theme).toContain(':focus-visible');
     expect(theme).toContain('prefers-reduced-motion: reduce');
   });

@@ -13,6 +13,7 @@ import {
   productionSourceFingerprint,
   reopenProductionRecord,
   toppingProductionProgress,
+  topUpProductionLine,
   type ProductionSession,
 } from './productionSession';
 import { useProductionSessionStore } from './productionSessionStore';
@@ -39,7 +40,10 @@ import type {
   ProductionRescueAuthorization,
   RecordActualArgs,
 } from '@/services/proCore/productionRepository';
-import { isProductionRescueAuthorizationRefreshError } from '@/services/proCore/supabaseProduction';
+import {
+  isProductionRescueAuthorizationRefreshError,
+  isProductionRescueOptionUnavailableError,
+} from '@/services/proCore/supabaseProduction';
 import type {
   ProductionRescueStableOptionId,
   ProductionRun,
@@ -99,6 +103,30 @@ export const productionRescueAuthorizationInvalidation = (
   }
   const expiresAtMs = Date.parse(authorization.expiresAt);
   return !Number.isFinite(expiresAtMs) || expiresAtMs <= nowMs ? 'expired' : null;
+};
+
+/**
+ * OWNER RULE §16 — when the original batch can no longer be saved, say exactly
+ * that, with its mass, instead of a generic authorization failure.
+ */
+export const rescueOptionUnavailableMessage = (
+  stableOptionId: ProductionRescueStableOptionId,
+  originalTargetG: number,
+  error: unknown,
+): string => {
+  if (!isProductionRescueOptionUnavailableError(error)) {
+    return 'Nie udało się pobrać autoryzowanego Preview Rescue.';
+  }
+  const target = Number.isInteger(originalTargetG)
+    ? originalTargetG.toFixed(0)
+    : originalTargetG.toFixed(1);
+  if (stableOptionId === 'keep_original_batch') {
+    return `Nie da się już zachować partii ${target} g przy tym, co jest w naczyniu. Wybierz powiększenie partii.`;
+  }
+  if (stableOptionId === 'enlarge_batch') {
+    return 'Engine nie potwierdził żadnej większej partii, która zachowuje fizycznie dodane składniki.';
+  }
+  return 'Bieżąca partia nie mieści się już w zatwierdzonych zakresach — potrzebna jest korekta.';
 };
 
 const productionRescueIdempotencyKey = (): string =>
@@ -756,6 +784,9 @@ export function useProductionWorkspace(enabled: boolean) {
           };
         })()
       : { schemaVersion: 1, status: 'READY', blockers: [], advisories: [] };
+  const heatAdvisories = processReadiness.advisories.filter(
+    (advisory) => advisory.code === 'HEAT_TREATMENT_INDICATED',
+  );
   const canStartProduction = productionPrerequisite === null;
   const corrections = useMemo(
     () =>
@@ -821,7 +852,7 @@ export function useProductionWorkspace(enabled: boolean) {
         refreshRequired: false,
         error: null,
       });
-    } catch {
+    } catch (error) {
       const pending = rescueAuthorizationRef.current;
       if (
         pending.status !== 'authorizing' ||
@@ -836,7 +867,11 @@ export function useProductionWorkspace(enabled: boolean) {
         expectedActualRevision: currentSession.durableActualRevision,
         expectedRescueRevision: currentSession.durableRescueRevision,
         authorizeIdempotencyKey,
-        message: 'Nie udało się pobrać autoryzowanego Preview Rescue.',
+        message: rescueOptionUnavailableMessage(
+          stableOptionId,
+          currentSession.plannedInput.target_batch_grams,
+          error,
+        ),
       });
       setPersistence({
         busy: false,
@@ -928,6 +963,14 @@ export function useProductionWorkspace(enabled: boolean) {
     score,
     corrections,
     processReadiness,
+    /**
+     * OWNER RULE §2/§3 — Production speaks only about heat that is POSITIVELY
+     * indicated by verified metadata. An unknown process is not a Production
+     * event: it stays under the product `?` and renders nothing here.
+     */
+    heatInformation: heatAdvisories,
+    heatInformationAcknowledged:
+      heatAdvisories.length === 0 || session?.heatInformationAcknowledgedAt !== null,
     practicalReady: canStartProduction,
     prerequisite: productionPrerequisite,
     sessionStarting: sessionStart.busy || recoveryPending,
@@ -935,6 +978,31 @@ export function useProductionWorkspace(enabled: boolean) {
     persistenceBusy: persistence.busy,
     persistenceError: persistence.error,
     currentSourceFingerprint,
+    acknowledgeHeatInformation: async () => {
+      if (!session || !repositoryState.repository || persistence.busy) return;
+      if (session.heatInformationAcknowledgedAt) return;
+      setPersistence({ busy: true, error: null });
+      try {
+        const durableRun = await repositoryState.repository.acknowledgeHeatInformation(
+          session.sessionId,
+        );
+        replaceSession(
+          mergePendingProductionDrafts(
+            hydrateProductionSessionFromRun(durableRun, source, plannedInput, plannedComposition),
+            session,
+          ),
+        );
+      } catch {
+        setPersistence({
+          busy: false,
+          error: 'Nie zapisano potwierdzenia informacji o obróbce. Partia pozostaje bez zmian.',
+        });
+        setReconcileRevision((current) => current + 1);
+        return;
+      } finally {
+        setPersistence((current) => ({ ...current, busy: false }));
+      }
+    },
     archiveStaleSession: async () => {
       if (!session || persistence.busy) return;
       if (recoveryOrphanedLocal) {
@@ -998,6 +1066,36 @@ export function useProductionWorkspace(enabled: boolean) {
         });
         setReconcileRevision((current) => current + 1);
         return;
+      } finally {
+        setPersistence((current) => ({ ...current, busy: false }));
+      }
+    },
+    /**
+     * OWNER RULE §12/§20 — the operator added the missing grams. The committed
+     * physical mass grows to the current plan target; it never shrinks, and the
+     * frozen plan is untouched.
+     */
+    topUpLine: async (lineId: string, totalGrams: number) => {
+      if (!session || !repositoryState.repository || persistence.busy) return;
+      const candidate = topUpProductionLine(session, lineId, totalGrams, new Date().toISOString());
+      setPersistence({ busy: true, error: null });
+      try {
+        const durableRun = await repositoryState.repository.recordActual(
+          session.sessionId,
+          durableActual(candidate, ownerUserId ?? ''),
+        );
+        replaceSession(
+          mergePendingProductionDrafts(
+            hydrateProductionSessionFromRun(durableRun, source, plannedInput, plannedComposition),
+            candidate,
+          ),
+        );
+      } catch {
+        setPersistence({
+          busy: false,
+          error: 'Nie zapisano dodanej ilości. Wartość w naczyniu pozostaje bez zmian.',
+        });
+        setReconcileRevision((current) => current + 1);
       } finally {
         setPersistence((current) => ({ ...current, busy: false }));
       }

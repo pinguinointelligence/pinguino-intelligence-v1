@@ -7367,6 +7367,7 @@ function createProductionSession(input) {
 		thermalMode: input.thermalMode ?? null,
 		processReadiness: input.processReadiness ?? null,
 		processAdvisories: structuredClone(input.processAdvisories ?? []),
+		heatInformationAcknowledgedAt: input.heatInformationAcknowledgedAt ?? null,
 		durableRescueAcceptedAt: null,
 		durableRescueRevision: 0,
 		durableActualRevision: 0,
@@ -7589,6 +7590,7 @@ function hydrateProductionSessionFromRun(run, source, plannedInput, plannedCompo
 		thermalMode: run.thermalMode ?? null,
 		processReadiness: run.processReadiness ?? null,
 		processAdvisories: run.processAdvisories ?? [],
+		heatInformationAcknowledgedAt: run.heatInformationAcknowledgedAt ?? null,
 		startedAt: run.events.find((event) => event.type === "started")?.at ?? run.createdAt
 	});
 	if (run.rescue) {

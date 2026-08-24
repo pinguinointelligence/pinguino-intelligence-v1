@@ -436,6 +436,163 @@ describe('Production workspace touch-first UI', () => {
     expect(html).not.toContain('Brakuje składnika · automatyczne etapy');
   });
 
+  // §10/§12/§19/§20 — a confirmed row is not a frozen checkbox. When the plan
+  // still asks for more of it, the row says so and offers the direct fix.
+  it('asks a short-added row for the missing grams and never for fewer', () => {
+    const line = session.lines[0]!;
+    const shorted = confirmProductionLine(
+      setDraftActualGrams(session, line.lineId, line.plannedGrams - 5),
+      line.lineId,
+      '2026-08-24T10:00:00.000Z',
+    );
+    const topUpLine = vi.fn();
+    const html = renderToStaticMarkup(
+      <IngredientRow
+        item={result.items[0]!}
+        totalBatchG={result.total_batch_g}
+        actions={recipeActions}
+        mode="production"
+        productionLine={shorted.lines[0]!}
+        productionActions={{
+          setDraftActual: vi.fn(),
+          confirmLine: vi.fn(),
+          reopenRecord: vi.fn(),
+          topUpLine,
+        }}
+      />,
+    );
+    expect(html).toContain('Dodaj jeszcze 5 g');
+    expect(html).toContain('Dodaj brakujące 5 g');
+    expect(html).toContain(`data-testid="production-top-up-${line.lineId}"`);
+    // The physical floor stays visible, so nobody can read this as "remove 5 g".
+    expect(html).toContain('W naczyniu:');
+    expect(html).toContain('data-production-difference="under"');
+  });
+
+  it('shows no top-up affordance on a row that is exactly on plan', () => {
+    const line = session.lines[0]!;
+    const exact = confirmProductionLine(session, line.lineId, '2026-08-24T10:00:00.000Z');
+    const html = renderToStaticMarkup(
+      <IngredientRow
+        item={result.items[0]!}
+        totalBatchG={result.total_batch_g}
+        actions={recipeActions}
+        mode="production"
+        productionLine={exact.lines[0]!}
+        productionActions={{
+          setDraftActual: vi.fn(),
+          confirmLine: vi.fn(),
+          reopenRecord: vi.fn(),
+          topUpLine: vi.fn(),
+        }}
+      />,
+    );
+    expect(html).toContain('Potwierdzono');
+    expect(html).not.toContain('Dodaj jeszcze');
+    expect(html).not.toContain('Dodaj brakujące');
+  });
+
+  // §2 OWNER RULE — a POSITIVE heat fact is a one-time reminder with an OK.
+  it('reminds the operator about verified heat treatment and takes one OK', () => {
+    const forecast = assessProductionRescue(session);
+    const acknowledge = vi.fn();
+    const view = (acknowledged: boolean) =>
+      ({
+        session,
+        progress: productionProgress(session),
+        toppingProgress: null,
+        rescue: forecast,
+        score: monitorScoreView(forecast.forecastResult, forecast.forecastInput).match,
+        plannedInput: input,
+        source: session.source,
+        heatInformation: [
+          {
+            code: 'HEAT_TREATMENT_INDICATED',
+            productId: 'product-chocolate',
+            mapperIngredientId: 'PI-ING-000087',
+            decision: 'HEAT_REQUIRED_FOR_FUNCTION',
+            verificationStatus: 'verified',
+            productName: 'DARK CHOCOLATE 55%',
+          },
+        ],
+        heatInformationAcknowledged: acknowledged,
+        acknowledgeHeatInformation: acknowledge,
+        setDraftActual: vi.fn(),
+        confirmLine: vi.fn(),
+        reopenRecord: vi.fn(),
+        rescueAuthorization: { status: 'idle' },
+        requestRescueAuthorization: vi.fn(),
+        refreshRescueAuthorization: vi.fn(),
+        consumeAuthorizedRescue: vi.fn(),
+        dismissRescueAuthorization: vi.fn(),
+        complete: vi.fn(),
+      }) as unknown as ProductionWorkspaceView;
+
+    const pending = renderToStaticMarkup(
+      <ProductionCockpit
+        production={view(false)}
+        onOpenPreview={vi.fn()}
+        onRecalculate={vi.fn()}
+        onReturnToRecipe={vi.fn()}
+      />,
+    );
+    expect(pending).toContain('Pamiętaj o obróbce');
+    expect(pending).toContain('DARK CHOCOLATE 55%');
+    expect(pending).toContain('data-testid="acknowledge-production-heat-information"');
+    expect(pending).toContain('data-acknowledged="false"');
+    // It is a reminder, never a gate: completion is not held by it.
+    expect(pending).not.toContain('data-testid="production-process-blocked"');
+
+    const confirmed = renderToStaticMarkup(
+      <ProductionCockpit
+        production={view(true)}
+        onOpenPreview={vi.fn()}
+        onRecalculate={vi.fn()}
+        onReturnToRecipe={vi.fn()}
+      />,
+    );
+    expect(confirmed).toContain('Informacja potwierdzona');
+    expect(confirmed).toContain('data-acknowledged="true"');
+    expect(confirmed).not.toContain('data-testid="acknowledge-production-heat-information"');
+  });
+
+  // §3 — an unknown process is still nothing, even next to a known heat fact.
+  it('shows no heat card when nothing is positively indicated', () => {
+    const forecast = assessProductionRescue(session);
+    const html = renderToStaticMarkup(
+      <ProductionCockpit
+        production={
+          {
+            session,
+            progress: productionProgress(session),
+            toppingProgress: null,
+            rescue: forecast,
+            score: monitorScoreView(forecast.forecastResult, forecast.forecastInput).match,
+            plannedInput: input,
+            source: session.source,
+            heatInformation: [],
+            heatInformationAcknowledged: true,
+            acknowledgeHeatInformation: vi.fn(),
+            setDraftActual: vi.fn(),
+            confirmLine: vi.fn(),
+            reopenRecord: vi.fn(),
+            rescueAuthorization: { status: 'idle' },
+            requestRescueAuthorization: vi.fn(),
+            refreshRescueAuthorization: vi.fn(),
+            consumeAuthorizedRescue: vi.fn(),
+            dismissRescueAuthorization: vi.fn(),
+            complete: vi.fn(),
+          } as unknown as ProductionWorkspaceView
+        }
+        onOpenPreview={vi.fn()}
+        onRecalculate={vi.fn()}
+        onReturnToRecipe={vi.fn()}
+      />,
+    );
+    expect(html).not.toContain('data-testid="production-heat-information"');
+    expect(html).not.toContain('Pamiętaj o obróbce');
+  });
+
   it('opens an existing Preview without starting a new recalculation', () => {
     const hook = readFileSync(resolve(import.meta.dirname, 'useProductionWorkspace.ts'), 'utf8');
     const cockpit = readFileSync(resolve(import.meta.dirname, 'ProductionCockpit.tsx'), 'utf8');

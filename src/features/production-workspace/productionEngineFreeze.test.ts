@@ -30,7 +30,9 @@ describe('Production UI Engine freeze', () => {
       plannedInput: planned,
       startedAt: '2026-08-09T10:00:00.000Z',
     });
-    const vector = planned.items.map((item, index) => item.planned_grams + (index === 0 ? 2 : index === 1 ? -2 : 0));
+    const vector = planned.items.map(
+      (item, index) => item.planned_grams + (index === 0 ? 2 : index === 1 ? -2 : 0),
+    );
     for (const [index, line] of session.lines.entries()) {
       session = setDraftActualGrams(session, line.lineId, vector[index]!);
       session = confirmProductionLine(session, line.lineId, `2026-08-09T10:0${index}:00.000Z`);

@@ -76,6 +76,7 @@ const AUTHORIZE_RESCUE_FUNCTION = 'production-rescue-authorize';
 const CONSUME_RESCUE_RPC = 'production_consume_rescue_authorization_v1';
 const COMPLETE_RUN_RPC = 'production_complete_run_v1';
 const APPEND_AMENDMENT_RPC = 'production_append_amendment_v1';
+const ACKNOWLEDGE_HEAT_RPC = 'production_acknowledge_heat_information_v1';
 
 /** Tunable seams (defaults are production-safe; tests inject deterministic ones). */
 export interface SupabaseProductionOptions {
@@ -101,7 +102,8 @@ interface RunRow {
   thermal_mode?: import('@/features/product-intelligence').ProductionThermalMode | null;
   process_readiness?: 'READY' | 'READY_WITH_INFO' | null;
   process_advisories?:
-    import('@/features/product-intelligence').ProductProcessReadinessDetail[] | null;
+    | import('@/features/product-intelligence').ProductProcessReadinessDetail[]
+    | null;
   planned_date: string | null;
   machine: string | null;
   location: string | null;
@@ -236,6 +238,7 @@ function assembleRun(
     thermalMode: run.thermal_mode ?? null,
     processReadiness: run.process_readiness ?? null,
     processAdvisories: structuredClone(run.process_advisories ?? []),
+    heatInformationAcknowledgedAt: run.heat_information_acknowledged_at ?? null,
     plannedDate: run.planned_date,
     machine: run.machine,
     location: run.location,
@@ -350,6 +353,18 @@ const edgeFunctionError = async (error: unknown): Promise<ProductionPersistenceE
     .join(': ');
   return persistenceError(message || 'Production Rescue authorization failed.');
 };
+
+/**
+ * OWNER RULE §16 — the trusted runtime refuses an option it can no longer prove.
+ * The operator deserves the specific reason ("the original batch is gone"), not a
+ * generic failure, so the code is recovered from the Edge payload.
+ */
+export const isProductionRescueOptionUnavailableError = (error: unknown): boolean =>
+  error instanceof Error &&
+  error.message
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .includes('stable_rescue_option_stale');
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -711,6 +726,12 @@ export function supabaseProductionRepository(
           'Trusted Production Rescue consumption did not return a run id.',
         );
       }
+      return requireRun(owner, runId);
+    },
+
+    async acknowledgeHeatInformation(runId: string): Promise<ProductionRun> {
+      const owner = await uid();
+      await mutate(ACKNOWLEDGE_HEAT_RPC, { p_run_id: runId });
       return requireRun(owner, runId);
     },
 
