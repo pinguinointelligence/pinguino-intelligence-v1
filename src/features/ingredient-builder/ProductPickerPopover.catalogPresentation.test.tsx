@@ -222,8 +222,9 @@ describe('ProductPickerPopover catalog presentation', () => {
     expect(text).not.toContain('PI-ING-000520');
     expect(text).not.toContain('Status danych ·');
     expect(text).toContain('Znaleziono 3 składników');
-    expect(document.querySelectorAll('[data-picker-segment="featured"]')).toHaveLength(1);
-    expect(document.querySelectorAll('[data-picker-segment="remaining"]')).toHaveLength(1);
+    // Empty box: what the user reached for most recently leads.
+    expect(document.querySelectorAll('[data-picker-segment="recent"]')).toHaveLength(1);
+    expect(document.querySelectorAll('[data-picker-segment="all"]')).toHaveLength(1);
     for (const forbidden of [
       'Nr art.',
       'Dane szacowane',
@@ -298,7 +299,8 @@ describe('ProductPickerPopover catalog presentation', () => {
       }
     });
     expect(document.body.textContent).toContain('Znaleziono 1 składnik');
-    expect(document.querySelectorAll('[data-picker-segment="featured"]')).toHaveLength(1);
+    // Query active: the one hit is a favourite, so it leads under ULUBIONE.
+    expect(document.querySelectorAll('[data-picker-segment="favorites"]')).toHaveLength(1);
     expect(document.querySelectorAll('[data-picker-segment="remaining"]')).toHaveLength(0);
 
     await act(async () => {
@@ -317,7 +319,7 @@ describe('ProductPickerPopover catalog presentation', () => {
     });
     await act(async () => list.dispatchEvent(new Event('scroll', { bubbles: true })));
     expect(mocks.loadMore).toHaveBeenCalledTimes(1);
-    expect(document.querySelectorAll('[data-picker-segment="featured"]')).toHaveLength(1);
-    expect(document.querySelectorAll('[data-picker-segment="remaining"]')).toHaveLength(1);
+    expect(document.querySelectorAll('[data-picker-segment="recent"]')).toHaveLength(1);
+    expect(document.querySelectorAll('[data-picker-segment="all"]')).toHaveLength(1);
   });
 });

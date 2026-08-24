@@ -2,8 +2,11 @@ import type { CatalogProductSearchHit } from '@/features/global-catalog/contract
 
 export const PRODUCT_PICKER_SEGMENT_LABELS = {
   featured: 'ULUBIONE I OSTATNIO UŻYWANE',
+  favorites: 'ULUBIONE',
+  recent: 'OSTATNIO UŻYWANE',
   remaining: 'POZOSTAŁE SKŁADNIKI',
   ingredients: 'SKŁADNIKI',
+  all: 'WSZYSTKIE SKŁADNIKI',
 } as const;
 
 export type ProductPickerSegmentId = keyof typeof PRODUCT_PICKER_SEGMENT_LABELS;
@@ -52,6 +55,7 @@ export function formatDataConfidencePercent(value: number | null): string {
  */
 export function buildProductPickerSegments<T extends SegmentableCatalogProduct>(
   products: readonly T[],
+  { activeQuery = false }: { activeQuery?: boolean } = {},
 ): ProductPickerSegment<T>[] {
   const indexById = new Map<string, number>();
   const unique: T[] = [];
@@ -59,10 +63,7 @@ export function buildProductPickerSegments<T extends SegmentableCatalogProduct>(
     const existingIndex = indexById.get(product.canonicalId);
     if (existingIndex !== undefined) {
       const existing = unique[existingIndex]!;
-      if (
-        (product.favorite && !existing.favorite) ||
-        (product.recent && !existing.recent)
-      ) {
+      if ((product.favorite && !existing.favorite) || (product.recent && !existing.recent)) {
         unique[existingIndex] = {
           ...existing,
           favorite: existing.favorite || product.favorite,
@@ -75,31 +76,51 @@ export function buildProductPickerSegments<T extends SegmentableCatalogProduct>(
     unique.push(product);
   }
 
-  const featured = unique.filter((product) => product.favorite || product.recent);
-  if (featured.length === 0) {
+  // A query changes what the sections MEAN.
+  //
+  // While searching, the only reason to lift something to the top is that it
+  // matches AND the user already favours it. Being favourite or recently used
+  // is not a reason to appear at all — every row here already matches, and a
+  // recent-but-less-relevant row must not push the best answer down.
+  //
+  // With an empty box there is no relevance to sort by, so the useful default is
+  // what the user actually reaches for: recently used first, then the catalogue.
+  // Recency is used rather than favourites because people reuse an ingredient
+  // many times without ever marking it.
+  const leadBy = activeQuery ? (product: T) => product.favorite : (product: T) => product.recent;
+  const leadLabel = activeQuery
+    ? PRODUCT_PICKER_SEGMENT_LABELS.favorites
+    : PRODUCT_PICKER_SEGMENT_LABELS.recent;
+  const leadId: ProductPickerSegmentId = activeQuery ? 'favorites' : 'recent';
+  const restLabel = activeQuery
+    ? PRODUCT_PICKER_SEGMENT_LABELS.remaining
+    : PRODUCT_PICKER_SEGMENT_LABELS.all;
+
+  const lead = unique.filter(leadBy);
+  if (lead.length === 0) {
     return unique.length === 0
       ? []
-      : [{
-          id: 'ingredients',
-          label: PRODUCT_PICKER_SEGMENT_LABELS.ingredients,
-          items: unique,
-        }];
+      : [
+          {
+            id: 'ingredients',
+            label: PRODUCT_PICKER_SEGMENT_LABELS.ingredients,
+            items: unique,
+          },
+        ];
   }
 
-  const featuredIds = new Set(featured.map((product) => product.canonicalId));
-  const remaining = unique.filter((product) => !featuredIds.has(product.canonicalId));
+  const leadIds = new Set(lead.map((product) => product.canonicalId));
+  const remaining = unique.filter((product) => !leadIds.has(product.canonicalId));
   return [
-    {
-      id: 'featured',
-      label: PRODUCT_PICKER_SEGMENT_LABELS.featured,
-      items: featured,
-    },
+    { id: leadId, label: leadLabel, items: lead },
     ...(remaining.length > 0
-      ? [{
-          id: 'remaining' as const,
-          label: PRODUCT_PICKER_SEGMENT_LABELS.remaining,
-          items: remaining,
-        }]
+      ? [
+          {
+            id: (activeQuery ? 'remaining' : 'all') as ProductPickerSegmentId,
+            label: restLabel,
+            items: remaining,
+          },
+        ]
       : []),
   ];
 }

@@ -1,3 +1,4 @@
+import { intimportWorkbookToCsv, isWorkbookFile } from '@/data/products/intimportWorkbook';
 /**
  * Product import controller (Mapper Slice D5C4A) — the PURE, presentation-free logic
  * behind the CSV upload page. No React, no DB, no service: it wraps the existing pure
@@ -59,7 +60,11 @@ function intimportToIntakeCandidate(
   const skip = INTIMPORT_NOT_IMPORTABLE.has(candidate.state);
   return {
     rowIndex: candidate.rowIndex,
-    status: skip ? 'skip' : candidate.reasons.length > 0 || candidate.warnings.length > 0 ? 'warning' : 'valid',
+    status: skip
+      ? 'skip'
+      : candidate.reasons.length > 0 || candidate.warnings.length > 0
+        ? 'warning'
+        : 'valid',
     insert: candidate.insert,
     warnings: [...candidate.warnings, ...candidate.reasons],
     skipReason: skip ? `${candidate.state}: ${candidate.reasons.join('; ')}` : null,
@@ -132,7 +137,10 @@ export function importPreviewRedFlags(result: ProductIntakeResult): IntakeRedFla
 }
 
 /** Import is allowed only when signed in AND there is at least one importable row. */
-export function canImport(args: { isSignedIn: boolean; result: ProductIntakeResult | null }): boolean {
+export function canImport(args: {
+  isSignedIn: boolean;
+  result: ProductIntakeResult | null;
+}): boolean {
   return args.isSignedIn && args.result != null && importableCount(args.result) > 0;
 }
 
@@ -140,8 +148,16 @@ export function canImport(args: { isSignedIn: boolean; result: ProductIntakeResu
  * Read a chosen .csv file as TEXT, in the browser, via Blob.text(). No upload, no
  * storage bucket, no readAsArrayBuffer — text only (leading zeros survive the pure parser).
  */
-export function readCsvFile(file: File): Promise<string> {
-  return file.text();
+/**
+ * Read an intake file as canonical CSV text.
+ *
+ * A workbook is converted here and nowhere else: everything downstream sees the
+ * same CSV the owner used to have to export by hand.
+ */
+export async function readCsvFile(file: File): Promise<string> {
+  if (!isWorkbookFile(file.name, file.type)) return file.text();
+  const { csv } = intimportWorkbookToCsv(await file.arrayBuffer());
+  return csv;
 }
 
 export function errorMessage(error: unknown): string {

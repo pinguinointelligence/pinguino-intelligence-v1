@@ -1289,7 +1289,7 @@ export const copy = {
     },
     inputLabel: 'Paste or upload CSV',
     pastePlaceholder: 'Paste CSV rows here — the first line is the header…',
-    fileLabel: 'Choose a .csv file',
+    fileLabel: 'Choose a .csv or .xlsx file',
     parse: 'Parse CSV',
     import: 'Import products',
     signIn: 'Sign in to import',

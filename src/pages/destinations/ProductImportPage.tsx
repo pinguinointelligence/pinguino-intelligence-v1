@@ -36,6 +36,10 @@ import {
   type IntimportDedupPlan,
 } from '@/features/product-intelligence/intimportDedup';
 import {
+  IntimportSheetAmbiguousError,
+  intimportWorkbookToCsv,
+} from '@/data/products/intimportWorkbook';
+import {
   canImport,
   canParse,
   DEFAULT_SOURCE,
@@ -86,6 +90,8 @@ export function ProductImportPage() {
   // events are themselves the liveness signal, arriving about once a second, and
   // a stalled import is visible as a timestamp that stops advancing.
   const [lastProgressAt, setLastProgressAt] = useState<string | null>(null);
+  // A workbook whose sheets are genuinely tied: the owner chooses, we never guess.
+  const [sheetChoice, setSheetChoice] = useState<{ file: File; sheets: string[] } | null>(null);
   const [importPlan, setImportPlan] = useState<{
     total: number;
     engineUsable: number;
@@ -110,7 +116,27 @@ export function ProductImportPage() {
 
   const onFile = async (file: File | undefined) => {
     if (!file) return;
-    setCsvText(await readCsvFile(file));
+    setSheetChoice(null);
+    try {
+      setCsvText(await readCsvFile(file));
+      reset();
+    } catch (error: unknown) {
+      // Several sheets carry the INTIMPORT headers and none covers more of the
+      // schema than the others. Guessing here would silently import the wrong
+      // half of a workbook, so the owner picks.
+      if (error instanceof IntimportSheetAmbiguousError) {
+        setSheetChoice({ file, sheets: error.sheets });
+        return;
+      }
+      throw error;
+    }
+  };
+
+  const onPickSheet = async (sheet: string) => {
+    if (!sheetChoice) return;
+    const buffer = await sheetChoice.file.arrayBuffer();
+    setCsvText(intimportWorkbookToCsv(buffer, sheet).csv);
+    setSheetChoice(null);
     reset();
   };
 
@@ -294,7 +320,7 @@ export function ProductImportPage() {
             <label className="cursor-pointer text-sm text-ivory/60 underline decoration-ivory/30 underline-offset-4 transition-colors hover:text-ivory">
               <input
                 type="file"
-                accept=".csv,text/csv"
+                accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 className="sr-only"
                 onChange={(event) => {
                   void onFile(event.target.files?.[0]);
@@ -303,6 +329,27 @@ export function ProductImportPage() {
               />
               {c.fileLabel}
             </label>
+            {sheetChoice ? (
+              <div className="w-full space-y-2" data-testid="intimport-sheet-choice">
+                <p className="text-xs text-[#8a7f6d]">
+                  Ten skoroszyt ma kilka arkuszy z nagłówkami INTIMPORT. Wybierz właściwy:
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  {sheetChoice.sheets.map((sheet) => (
+                    <button
+                      key={sheet}
+                      type="button"
+                      onClick={() => {
+                        void onPickSheet(sheet);
+                      }}
+                      className="rounded-md border border-ivory/20 px-3 py-1 text-xs text-ivory/80 transition-colors hover:border-ivory/50"
+                    >
+                      {sheet}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             <Button
               variant="ivory"
               size="sm"

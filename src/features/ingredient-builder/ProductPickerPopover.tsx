@@ -323,7 +323,10 @@ export function ProductPickerPopover({
     query,
     scope,
   ]);
-  const segments = useMemo(() => buildProductPickerSegments(options), [options]);
+  const segments = useMemo(
+    () => buildProductPickerSegments(options, { activeQuery: query.trim() !== '' }),
+    [options, query],
+  );
   const visibleOptions = useMemo(() => segments.flatMap((segment) => segment.items), [segments]);
   const uniqueOptionCount = uniqueCatalogProductCount(segments);
   const safeActiveIndex =

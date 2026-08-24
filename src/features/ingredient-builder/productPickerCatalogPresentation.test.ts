@@ -94,8 +94,8 @@ describe('stable catalog segments', () => {
     ]);
 
     expect(segments.map((segment) => segment.label)).toEqual([
-      PRODUCT_PICKER_SEGMENT_LABELS.featured,
-      PRODUCT_PICKER_SEGMENT_LABELS.remaining,
+      PRODUCT_PICKER_SEGMENT_LABELS.recent,
+      PRODUCT_PICKER_SEGMENT_LABELS.all,
     ]);
     expect(segments[0]?.items.map((item) => item.canonicalId)).toEqual(['PI-ING-000345']);
     expect(segments[0]?.items[0]).toMatchObject({ favorite: true, recent: true });
@@ -103,14 +103,13 @@ describe('stable catalog segments', () => {
   });
 
   it('F renders exactly the two accepted headings and never PINGÜINO Base', () => {
-    const labels = buildProductPickerSegments([
-      product('favorite', { favorite: true }),
-      product('ordinary'),
-    ]).map((segment) => segment.label);
-    expect(labels).toEqual([
-      'ULUBIONE I OSTATNIO UŻYWANE',
-      'POZOSTAŁE SKŁADNIKI',
-    ]);
+    // A favourite leads only while a query is active — that is what makes it a
+    // MATCHING favourite rather than an unrelated one.
+    const labels = buildProductPickerSegments(
+      [product('favorite', { favorite: true }), product('ordinary')],
+      { activeQuery: true },
+    ).map((segment) => segment.label);
+    expect(labels).toEqual(['ULUBIONE', 'POZOSTAŁE SKŁADNIKI']);
     expect(labels).not.toContain('PINGÜINO Base');
   });
 
@@ -130,7 +129,7 @@ describe('stable catalog segments', () => {
       product('paste-rest', { category: 'paste' }),
       product('fruit-hidden', { category: 'fruit' }),
     ].filter((item) => item.category === 'paste');
-    const segments = buildProductPickerSegments(filtered);
+    const segments = buildProductPickerSegments(filtered, { activeQuery: true });
     expect(segments.flatMap((segment) => segment.items).every((item) => item.category === 'paste'))
       .toBe(true);
     expect(segments).toHaveLength(2);
@@ -153,18 +152,17 @@ describe('stable catalog segments', () => {
 
     expect(segments.length).toBeLessThanOrEqual(2);
     expect(segments.map((segment) => segment.label)).toEqual([
-      'ULUBIONE I OSTATNIO UŻYWANE',
-      'POZOSTAŁE SKŁADNIKI',
+      'OSTATNIO UŻYWANE',
+      'WSZYSTKIE SKŁADNIKI',
     ]);
     expect(uniqueCatalogProductCount(segments)).toBe(240);
   });
 
   it('J counts unique IDs, not favorites, recents, duplicates, or headings', () => {
-    const segments = buildProductPickerSegments([
-      product('same', { favorite: true }),
-      product('same', { recent: true }),
-      product('other'),
-    ]);
+    const segments = buildProductPickerSegments(
+      [product('same', { favorite: true }), product('same', { recent: true }), product('other')],
+      { activeQuery: true },
+    );
     expect(uniqueCatalogProductCount(segments)).toBe(2);
   });
 });
