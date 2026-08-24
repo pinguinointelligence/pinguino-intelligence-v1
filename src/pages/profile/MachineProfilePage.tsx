@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 /**
  * Profile → „Moja maszyna” (`/profile/machine`, §8.6).
  *
@@ -14,7 +15,8 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { CustomerSurface } from '@/features/customer-shell/ui/CustomerSurface';
-import { CustomerMenu } from '@/features/customer-shell/ui/CustomerMenu';
+import { AppShell } from '@/features/shell/AppShell';
+import { APP_PAGE_MEASURE, APP_PAGE_WORKSPACE } from '@/features/shell/shellGeometry';
 import { TouchButton } from '@/features/customer-shell/ui/TouchButton';
 import {
   MachineOnboarding,
@@ -82,21 +84,29 @@ export function MachineProfilePage() {
     return preference.save(next);
   };
 
+  // Maszyna is an authenticated destination reached from the one drawer, so it
+  // wears the one shell — it used to render the customer menu instead, which is
+  // why its hamburger sat in a different place from every other page.
+  const shell = (children: ReactNode) => (
+    <div className="pro-studio-radius-system theme-pro-light">
+      <AppShell>
+        <div className={`${APP_PAGE_WORKSPACE} pb-24 pt-8`}>
+          <div className={APP_PAGE_MEASURE}>
+            <CustomerSurface>{children}</CustomerSurface>
+          </div>
+        </div>
+      </AppShell>
+    </div>
+  );
+
   if (preference.status === 'loading') {
-    return (
-      <CustomerSurface>
-        <CustomerMenu />
-      </CustomerSurface>
-    );
+    return shell(null);
   }
 
   if (mode === 'onboarding' || mode === 'edit_custom') {
-    return (
-      <CustomerSurface>
-        {/* Owner hotfix §2: the global menu belongs on EVERY customer route —
-            this page used to be a lone white sheet with no way back. */}
-        <CustomerMenu />
-        <div className="py-8">
+    return shell(
+      <>
+        <div>
           <MachineOnboarding
             onComplete={(completion) => void handleComplete(completion)}
             submitLabel={machineOnboardingCopy.settings.saveAndGoToRecipe}
@@ -110,14 +120,13 @@ export function MachineProfilePage() {
             </TouchButton>
           </div>
         </div>
-      </CustomerSurface>
+      </>,
     );
   }
 
-  return (
-    <CustomerSurface>
-      <CustomerMenu />
-      <div className="py-8">
+  return shell(
+    <>
+      <div>
         {defaultChangedName !== null ? (
           <p
             role="status"
@@ -140,6 +149,6 @@ export function MachineProfilePage() {
             : {})}
         />
       </div>
-    </CustomerSurface>
+    </>,
   );
 }

@@ -126,7 +126,11 @@ describe('canonical PINGÜINO Pro — menu (proofs 4–6, 17–18)', () => {
     // pro and all destinations mount AppShell — one drawer everywhere.
     expect(read('pages', 'landing', 'LandingPage.tsx')).toContain('CustomerMenu');
     expect(read('features', 'customer-shell', 'CustomerShellV1.tsx')).toContain('CustomerMenu');
-    expect(read('pages', 'profile', 'MachineProfilePage.tsx')).toContain('CustomerMenu');
+    // Maszyna moved onto the ONE authenticated shell (owner „global subpage
+    // style unification", 2026-08-24): it is reached from the same drawer as
+    // every other destination, so it must wear the same header — it previously
+    // rendered the customer menu and put its hamburger somewhere else entirely.
+    expect(read('pages', 'profile', 'MachineProfilePage.tsx')).toContain('AppShell');
     expect(read('pages', 'destinations', 'SubscriptionPage.tsx')).toContain('CustomerMenu');
     expect(read('pages', 'recipes', 'MyRecipesPage.tsx')).toContain('AppShell');
     expect(read('pages', 'pro', 'ProWorkspacePage.tsx')).toContain('AppShell');
