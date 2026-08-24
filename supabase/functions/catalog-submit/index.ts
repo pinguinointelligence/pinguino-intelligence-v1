@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 import { Image } from 'https://deno.land/x/imagescript@1.2.15/mod.ts';
 import { evidenceImageDimensionsAllowed } from '../_shared/evidenceImageDimensions.ts';
+import { authorizeLiveOverlayIdentity } from '../_shared/liveOverlayIdentity.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -682,5 +683,17 @@ Deno.serve(async (request) => {
       return json({ error: 'idempotency_payload_mismatch' }, 409);
     return json({ error: 'product_ingest_failed' }, 400);
   }
-  return json(data);
+  // The same last hop the Scanner takes. INTIMPORT and a manual entry reach identical
+  // capability because they reach it through identical authority — not a copy of it.
+  const ingested = data && typeof data === 'object' ? (data as Record<string, unknown>) : {};
+  const ingestedProductId =
+    typeof ingested.productId === 'string' ? ingested.productId : null;
+  const liveOverlay = ingestedProductId
+    ? await authorizeLiveOverlayIdentity({
+        service,
+        actorUserId: auth.user.id,
+        productId: ingestedProductId,
+      })
+    : { authorized: false, reason: 'product_id_missing' };
+  return json({ ...ingested, liveOverlay });
 });

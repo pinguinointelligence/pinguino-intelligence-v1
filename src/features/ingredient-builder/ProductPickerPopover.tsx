@@ -56,6 +56,7 @@ import {
   uniqueCatalogProductCount,
 } from './productPickerCatalogPresentation';
 import {
+  engineIngredientForCatalogSelection,
   filterCurrentMapperCatalogHits,
   resolveCurrentMapperCatalogSelection,
   scannedProductRecipeTarget,
@@ -441,7 +442,7 @@ export function ProductPickerPopover({
           setUnavailableNotice(resolvedSelection.message);
           return;
         }
-        ingredient = ingredientRowToEngineIngredient(resolvedSelection.row);
+        ingredient = engineIngredientForCatalogSelection(option.catalog, resolvedSelection);
       } else if (!ingredient) {
         ingredient = await getEngineApprovedIngredientById(option.id).then((row) =>
           row ? ingredientRowToEngineIngredient(row) : null,
@@ -577,7 +578,7 @@ export function ProductPickerPopover({
         setUnavailableNotice(selection.message);
         return;
       }
-      const ingredient = ingredientRowToEngineIngredient(selection.row);
+      const ingredient = engineIngredientForCatalogSelection(hit, selection);
       if (scope === 'BASE_FORMULATION' && onPreflightDuplicate) {
         const duplicate = onPreflightDuplicate(ingredient as EngineIngredient);
         if (duplicate?.focusLineId) {

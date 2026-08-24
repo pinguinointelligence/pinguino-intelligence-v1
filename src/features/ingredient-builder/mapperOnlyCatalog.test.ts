@@ -208,13 +208,31 @@ describe('Mapper-only product catalog', () => {
   });
 
   it('J rejects forged snapshots before a recipe row, dirty state or Undo can be created', async () => {
+    // A catalogue product may now carry an AUTHORIZED Mapper identity (owner decision
+    // 2026-08-24 §1), so the refusal moves to where it belongs: the current Mapper row
+    // is loaded and must actually exist. A snapshot alone still authorizes nothing.
     const load = vi.fn(async () => null);
     const outcome = await resolveCurrentMapperCatalogSelection(
-      hit({ entityKind: 'commercial_product', mappedIngredientId: 'PI-ING-000001' }),
+      hit({ entityKind: 'commercial_product', status: 'verified', mappedIngredientId: 'PI-ING-000001' }),
       'BASE',
       load,
     );
     expect(outcome).toEqual({ ok: false, message: MAPPER_ONLY_CATALOG_ERROR });
+    expect(load).toHaveBeenCalledWith('PI-ING-000001');
+  });
+
+  it('J refuses a blocked or unmapped catalogue product before anything is loaded', async () => {
+    const load = vi.fn(async () => null);
+    for (const forged of [
+      hit({ entityKind: 'commercial_product', status: 'blocked', mappedIngredientId: 'PI-ING-000001' }),
+      hit({ entityKind: 'commercial_product', status: 'verified', mappedIngredientId: null }),
+      hit({ entityKind: 'commercial_product', status: 'verified', mappedIngredientId: 'not-a-mapper-id' }),
+    ]) {
+      expect(await resolveCurrentMapperCatalogSelection(forged, 'BASE', load)).toEqual({
+        ok: false,
+        message: MAPPER_ONLY_CATALOG_ERROR,
+      });
+    }
     expect(load).not.toHaveBeenCalled();
   });
 

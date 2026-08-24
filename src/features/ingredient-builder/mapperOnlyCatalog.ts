@@ -1,3 +1,5 @@
+import type { EngineIngredient } from '@/engine';
+import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import type { CatalogProductSearchHit } from '@/features/global-catalog/contracts';
 
@@ -17,16 +19,23 @@ export type CatalogRelation = {
 
 const canonicalPiId = /^PI-ING-\d{6}$/;
 
-/** A picker hit is only a candidate at this point. The authoritative current
- * row is loaded again by exact Mapper ID before selection is accepted. */
+/**
+ * The engine-usable identity a picker hit resolves to, or null.
+ *
+ * A recipe line's physics always belong to a verified Mapper row — that part never
+ * moves. What changed is where the CATALOGUE entry may come from: a hit no longer has
+ * to BE a Mapper Basement row, it has to RESOLVE to one through the shared Product
+ * Intelligence authority. A commercial product carries `mappedIngredientId` only when
+ * that mapping was authorized, and the server behaviour resolver re-checks the whole
+ * chain before the line is accepted, so this is a widening of the catalogue, not of the
+ * authority (owner decision 2026-08-24 §1).
+ */
 export function currentMapperCatalogId(
   hit: CatalogProductSearchHit,
   context: MapperCatalogContext,
 ): string | null {
   const id = hit.mappedIngredientId;
   if (
-    hit.entityKind !== 'pi_base' ||
-    hit.status !== 'pi_base' ||
     typeof hit.currentVersionId !== 'string' ||
     hit.currentVersionId.trim() === '' ||
     typeof id !== 'string' ||
@@ -34,20 +43,37 @@ export function currentMapperCatalogId(
     hit.publicData.lifecycleRejected === true
   )
     return null;
+  // A Mapper row must still present itself as one; a catalogue product must not be
+  // blocked. Neither may enter a scope it is not usable in.
+  if (hit.entityKind === 'pi_base') {
+    if (hit.status !== 'pi_base') return null;
+  } else if (hit.entityKind === 'commercial_product') {
+    if (hit.status === 'blocked') return null;
+  } else return null;
   if (context === 'BASE' ? !hit.usableInBase : !hit.usableAsTopping) return null;
   return id;
+}
+
+/** True when the hit is a catalogue product borrowing an authorized Mapper identity. */
+export function isMappedCatalogProduct(hit: CatalogProductSearchHit): boolean {
+  return hit.entityKind === 'commercial_product' && typeof hit.mappedIngredientId === 'string';
 }
 
 export function filterCurrentMapperCatalogHits(
   hits: readonly CatalogProductSearchHit[],
   context: MapperCatalogContext,
 ): CatalogProductSearchHit[] {
-  const byMapperId = new Map<string, CatalogProductSearchHit>();
+  const byIdentity = new Map<string, CatalogProductSearchHit>();
   for (const hit of hits) {
     const mapperId = currentMapperCatalogId(hit, context);
-    if (mapperId && !byMapperId.has(mapperId)) byMapperId.set(mapperId, hit);
+    if (!mapperId) continue;
+    // Mapper rows collapse to one entry per identity, as before. A catalogue product
+    // keyed by its own id stands beside its Mapper row rather than hiding it: they are
+    // two catalogue entries for the same physics, and the owner picked one of them.
+    const key = hit.entityKind === 'pi_base' ? `mapper:${mapperId}` : `product:${hit.id}`;
+    if (!byIdentity.has(key)) byIdentity.set(key, hit);
   }
-  return [...byMapperId.values()];
+  return [...byIdentity.values()];
 }
 
 /** Favorites/recents are ranking references, never product snapshots. Unknown,
@@ -92,6 +118,30 @@ export async function resolveCurrentMapperCatalogSelection(
   )
     return { ok: false, message: MAPPER_ONLY_CATALOG_ERROR };
   return { ok: true, mapperId, row };
+}
+
+/**
+ * The recipe line for an accepted selection.
+ *
+ * The scientific row is the Mapper row, untouched — composition, POD/PAC, category and
+ * flags all come from it, so the Engine sees exactly what it saw before. Only the NAME
+ * follows the catalogue entry the owner actually chose: someone who scanned a specific
+ * product should see that product in their recipe, not the generic ingredient behind it.
+ * Identity for deduplication stays the Mapper id.
+ */
+export function engineIngredientForCatalogSelection(
+  hit: CatalogProductSearchHit,
+  selection: { mapperId: string; row: IngredientRow },
+): EngineIngredient {
+  const ingredient = ingredientRowToEngineIngredient(selection.row);
+  if (!isMappedCatalogProduct(hit)) return ingredient;
+  const displayName = hit.displayName.trim();
+  return {
+    ...ingredient,
+    canonical_ingredient_id: selection.mapperId,
+    identity_provenance: 'reference',
+    ...(displayName ? { name: displayName } : {}),
+  };
 }
 
 /** What a finished scan hands the recipe: the canonical product and the code it carries. */

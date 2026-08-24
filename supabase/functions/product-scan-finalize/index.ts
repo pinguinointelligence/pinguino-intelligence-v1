@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 import { sha256Text, stableJson } from '../_shared/productScanner.ts';
+import { authorizeLiveOverlayIdentity } from '../_shared/liveOverlayIdentity.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -307,5 +308,13 @@ Deno.serve(async (request) => {
     p_result: result,
   });
   if (completionError) return json({ error: 'scanner_overlay_finalize_failed' }, 503);
-  return json(result);
+  // The last hop (§37): an ordinary, safe, fully-declared product is given its engine
+  // identity here, so the owner can put what they just scanned into the recipe instead of
+  // waiting for a review. Anything else stays exactly as it was — saved, and pending.
+  const liveOverlay = await authorizeLiveOverlayIdentity({
+    service,
+    actorUserId: auth.user.id,
+    productId,
+  });
+  return json({ ...result, liveOverlay });
 });
