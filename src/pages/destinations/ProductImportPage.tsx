@@ -331,6 +331,11 @@ export function ProductImportPage() {
                   onEnrich={() => {
                     void onEnrich();
                   }}
+                  onImport={() => {
+                    void onImport();
+                  }}
+                  canImport={canImport({ isSignedIn, result })}
+                  importBusy={busy}
                   busy={enriching}
                   progress={
                     enrichProgress

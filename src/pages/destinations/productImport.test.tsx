@@ -8,7 +8,9 @@ import type { ProductImportSummary } from '@/services/productCatalogImport';
 
 /** Mock the ONE service the page writes through, so no DB/Supabase is loaded. */
 const h = vi.hoisted(() => ({ importProductCatalog: vi.fn() }));
-vi.mock('@/services/productCatalogImport', () => ({ importProductCatalog: h.importProductCatalog }));
+vi.mock('@/services/productCatalogImport', () => ({
+  importProductCatalog: h.importProductCatalog,
+}));
 
 import {
   canImport,
@@ -21,6 +23,7 @@ import { runProductImport } from './runProductImport';
 import {
   ImportActionBar,
   ImportSummaryView,
+  IntimportLocalIntelligenceView,
   ParsePreview,
 } from './productImportView';
 import { ProductImportPage } from './ProductImportPage';
@@ -51,8 +54,20 @@ const makeSummary = (): ProductImportSummary => ({
   productCodes: ['PR-ING-000001', 'PR-ING-000099'],
   warnings: ['matching unavailable after row 2: boom'],
   rowResults: [
-    { rowIndex: 1, outcome: 'created', productId: 'id-1', productCode: 'PR-ING-000001', warnings: [] },
-    { rowIndex: 2, outcome: 'existing', productId: 'old-1', productCode: 'PR-ING-000099', warnings: [] },
+    {
+      rowIndex: 1,
+      outcome: 'created',
+      productId: 'id-1',
+      productCode: 'PR-ING-000001',
+      warnings: [],
+    },
+    {
+      rowIndex: 2,
+      outcome: 'existing',
+      productId: 'old-1',
+      productCode: 'PR-ING-000099',
+      warnings: [],
+    },
     { rowIndex: 3, outcome: 'failed', error: 'kaboom', warnings: [] },
   ],
 });
@@ -76,7 +91,9 @@ describe('productImportController — parse + gating', () => {
   });
 
   it('maps each source to its source_type (generic→catalog_import, mercadona, colin→colin_catalog)', () => {
-    expect(parseIntake(CSV_ONE, 'generic').candidates[0]!.insert.source_type).toBe('catalog_import');
+    expect(parseIntake(CSV_ONE, 'generic').candidates[0]!.insert.source_type).toBe(
+      'catalog_import',
+    );
     expect(parseIntake(CSV_ONE, 'mercadona').candidates[0]!.insert.source_type).toBe('mercadona');
     expect(parseIntake(CSV_ONE, 'colin').candidates[0]!.insert.source_type).toBe('colin_catalog');
   });
@@ -124,23 +141,51 @@ describe('ImportActionBar — auth gating', () => {
   const noop = () => {};
   it('shows the unavailable note when auth is not configured', () => {
     const html = shellRender(
-      <ImportActionBar available={false} isSignedIn={false} canImport={false} busy={false} onImport={noop} onSignIn={noop} />,
+      <ImportActionBar
+        available={false}
+        isSignedIn={false}
+        canImport={false}
+        busy={false}
+        onImport={noop}
+        onSignIn={noop}
+      />,
     );
     expect(visibleText(html)).toContain(c.unavailable);
   });
   it('shows a "Sign in to import" action when signed out', () => {
     const html = shellRender(
-      <ImportActionBar available isSignedIn={false} canImport={false} busy={false} onImport={noop} onSignIn={noop} />,
+      <ImportActionBar
+        available
+        isSignedIn={false}
+        canImport={false}
+        busy={false}
+        onImport={noop}
+        onSignIn={noop}
+      />,
     );
     expect(visibleText(html)).toContain(c.signIn);
   });
   it('disables Import when signed in but nothing is importable, enables it otherwise', () => {
     const disabled = shellRender(
-      <ImportActionBar available isSignedIn canImport={false} busy={false} onImport={noop} onSignIn={noop} />,
+      <ImportActionBar
+        available
+        isSignedIn
+        canImport={false}
+        busy={false}
+        onImport={noop}
+        onSignIn={noop}
+      />,
     );
     expect(disabled).toContain('disabled');
     const enabled = shellRender(
-      <ImportActionBar available isSignedIn canImport busy={false} onImport={noop} onSignIn={noop} />,
+      <ImportActionBar
+        available
+        isSignedIn
+        canImport
+        busy={false}
+        onImport={noop}
+        onSignIn={noop}
+      />,
     );
     expect(enabled).not.toContain('disabled');
   });
@@ -200,7 +245,9 @@ describe('Parse CSV enablement + visibility (bugfix)', () => {
   });
 
   it('file-loaded CSV text also enables Parse (file path → same predicate)', async () => {
-    const text = await readCsvFile(new File(['Brand,Product Name\nB,N'], 'x.csv', { type: 'text/csv' }));
+    const text = await readCsvFile(
+      new File(['Brand,Product Name\nB,N'], 'x.csv', { type: 'text/csv' }),
+    );
     expect(canParse(text)).toBe(true);
   });
 
@@ -218,7 +265,10 @@ describe('Parse CSV enablement + visibility (bugfix)', () => {
     expect(m, 'Parse CSV button present').not.toBeNull();
     const btn = m![0];
     expect(btn.includes('bg-ivory'), 'uses the shell-visible ivory variant').toBe(true);
-    expect(btn.includes('border-ink/15'), 'must NOT use the paper-tone ghost border on the shell').toBe(false);
+    expect(
+      btn.includes('border-ink/15'),
+      'must NOT use the paper-tone ghost border on the shell',
+    ).toBe(false);
     // initial state: the box is empty, so Parse is correctly disabled
     expect(/\bdisabled\b/.test(btn)).toBe(true);
   });
@@ -228,5 +278,65 @@ describe('Parse CSV enablement + visibility (bugfix)', () => {
     expect(canImport({ isSignedIn: true, result: null })).toBe(false); // parsed not yet → disabled
     expect(canImport({ isSignedIn: false, result })).toBe(false); // signed out → disabled
     expect(canImport({ isSignedIn: true, result })).toBe(true); // both satisfied → enabled
+  });
+});
+
+describe('INTIMPORT direct import is never gated by web enrichment', () => {
+  /** A file where almost every row could still be enriched from the web. */
+  const summary = {
+    products: 820,
+    existingExact: 0,
+    readyLocalNoWeb: 3,
+    webRecommended: 0,
+    webRequired: 817,
+    reviewRequired: 0,
+    familyMatches: 229,
+    estimatedMaxExternalCalls: 817,
+  } as never;
+
+  it('offers Importuj produkty as a live action while 817 rows are web-required', () => {
+    const html = shellRender(
+      <IntimportLocalIntelligenceView
+        summary={summary}
+        onEnrich={() => {}}
+        onImport={() => {}}
+        canImport
+      />,
+    );
+    expect(html).toContain('intimport-direct-import-action');
+    expect(visibleText(html)).toContain('Importuj produkty');
+    // The import action must NOT be disabled just because the web could add more.
+    const button = html.slice(html.indexOf('intimport-direct-import-action') - 300);
+    expect(button.slice(0, 400)).not.toContain('disabled');
+  });
+
+  it('demotes enrichment to an optional, clearly-labelled action', () => {
+    const text = visibleText(
+      shellRender(
+        <IntimportLocalIntelligenceView
+          summary={summary}
+          onEnrich={() => {}}
+          onImport={() => {}}
+          canImport
+        />,
+      ),
+    );
+    expect(text).toContain('Opcjonalnie wzbogać dane');
+    expect(text).not.toContain('Wzbogać i przygotuj import');
+  });
+
+  it('says plainly that web-required does not block the import', () => {
+    const text = visibleText(
+      shellRender(
+        <IntimportLocalIntelligenceView
+          summary={summary}
+          onEnrich={() => {}}
+          onImport={() => {}}
+          canImport
+        />,
+      ),
+    );
+    expect(text).toContain('nie');
+    expect(text).toContain('blokuje importu');
   });
 });

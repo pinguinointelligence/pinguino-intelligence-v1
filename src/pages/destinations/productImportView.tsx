@@ -10,13 +10,14 @@ import { SectionLabel } from '@/components/shared/SectionLabel';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { copy } from '@/copy/en';
 import { cn } from '@/lib/cn';
-import type {
-  ProductIntakeResult,
-  ProductIntakeSource,
-} from '@/data/products/productTableParser';
+import type { ProductIntakeResult, ProductIntakeSource } from '@/data/products/productTableParser';
 import type { ImportRowResult, ProductImportSummary } from '@/services/productCatalogImport';
 import type { IntimportResult, IntimportRowState } from '@/data/products/intimport';
-import { importPreviewRedFlags, SOURCE_OPTIONS, type IntakeRedFlagRow } from './productImportController';
+import {
+  importPreviewRedFlags,
+  SOURCE_OPTIONS,
+  type IntakeRedFlagRow,
+} from './productImportController';
 
 const c = copy.productsImport;
 
@@ -99,7 +100,9 @@ export function RedFlagPreview({ rows }: { rows: IntakeRedFlagRow[] }) {
             <li key={row.rowIndex} className="py-2 text-sm leading-relaxed text-ivory/70">
               <span className="font-mono text-ivory/40">#{row.rowIndex}</span>{' '}
               <span className="text-status-risky">{row.codes.join(', ')}</span>
-              {row.blocksAutoVerify ? <span className="text-ivory/40"> · will not auto-verify</span> : null}
+              {row.blocksAutoVerify ? (
+                <span className="text-ivory/40"> · will not auto-verify</span>
+              ) : null}
               <span className="block text-ivory/50">{row.reasons.join(' ')}</span>
             </li>
           ))}
@@ -163,10 +166,7 @@ export function ImportSummaryView({ summary }: { summary: ProductImportSummary }
         <SectionLabel tone="ivory">{c.rowResultsLabel}</SectionLabel>
         <ul className="mt-3 divide-y divide-ivory/10">
           {summary.rowResults.map((row) => (
-            <li
-              key={row.rowIndex}
-              className="flex items-center justify-between gap-4 py-2 text-sm"
-            >
+            <li key={row.rowIndex} className="flex items-center justify-between gap-4 py-2 text-sm">
               <span className="font-mono text-ivory/40">#{row.rowIndex}</span>
               <span className="min-w-0 flex-1 truncate text-ivory/60">{rowReason(row)}</span>
               <span className="shrink-0 text-ivory/70">{c.outcomes[row.outcome]}</span>
@@ -275,7 +275,9 @@ export function IntimportPreview({ result }: { result: IntimportResult }) {
         <span className="tracking-label text-ivory uppercase">Format: {result.format}</span>
         <span>Country: {s.countries.length > 0 ? s.countries.join(', ') : '—'}</span>
         <span className={result.headerOk ? 'text-ivory/60' : 'text-status-risky'}>
-          {result.headerOk ? 'All 36 official columns recognized' : 'Header does not match the official contract'}
+          {result.headerOk
+            ? 'All 36 official columns recognized'
+            : 'Header does not match the official contract'}
         </span>
       </div>
 
@@ -294,11 +296,7 @@ export function IntimportPreview({ result }: { result: IntimportResult }) {
         <WarningList label="Header" items={headerProblems} empty="" />
       ) : null}
 
-      <WarningList
-        label="Why rows are not ready"
-        items={reasonLines}
-        empty="Every row is ready."
-      />
+      <WarningList label="Why rows are not ready" items={reasonLines} empty="Every row is ready." />
       <WarningList label="Warnings" items={warningLines} empty="No warnings." />
 
       <div>
@@ -330,6 +328,9 @@ export function IntimportPreview({ result }: { result: IntimportResult }) {
 export function IntimportLocalIntelligenceView({
   summary,
   onEnrich,
+  onImport,
+  canImport = false,
+  importBusy = false,
   busy = false,
   progress,
   runSummary = null,
@@ -350,6 +351,10 @@ export function IntimportLocalIntelligenceView({
     selfContradictory?: number;
   };
   onEnrich?: () => void;
+  /** Import everything the local analysis accounted for. No external call. */
+  onImport?: () => void;
+  canImport?: boolean;
+  importBusy?: boolean;
   busy?: boolean;
   progress?: { processed: number; total: number; callsUsed: number } | null;
   runSummary?: {
@@ -379,9 +384,9 @@ export function IntimportLocalIntelligenceView({
       </div>
 
       <p className="text-sm leading-relaxed text-ivory/60">
-        {summary.readyLocalNoWeb} product(s) already reach the no-web threshold and will be
-        skipped entirely. Enrichment would look at {needsWeb} product(s), only for the fields
-        that are actually missing.
+        {summary.readyLocalNoWeb} product(s) already reach the no-web threshold and will be skipped
+        entirely. Enrichment would look at {needsWeb} product(s), only for the fields that are
+        actually missing.
       </p>
 
       {summary.valueReadiness ? (
@@ -389,14 +394,17 @@ export function IntimportLocalIntelligenceView({
           <SectionLabel tone="ivory">Engine composition (Mapper-first)</SectionLabel>
           <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
             <CountStat label="Measured — ready" value={summary.valueReadiness.READY} />
-            <CountStat label="Estimated ≥85% — ready" value={summary.valueReadiness.ESTIMATED_READY} />
+            <CountStat
+              label="Estimated ≥85% — ready"
+              value={summary.valueReadiness.ESTIMATED_READY}
+            />
             <CountStat label="Composition review" value={summary.valueReadiness.REVIEW} />
             <CountStat label="Mapper supplied ≥1 field" value={summary.mapperContributed ?? 0} />
           </div>
           <p className="text-sm leading-relaxed text-ivory/60">
             Composition readiness is reported separately from technical dosage authority: a
-            professional product can have a complete profile and still be blocked from dosing,
-            and the reverse is equally valid.
+            professional product can have a complete profile and still be blocked from dosing, and
+            the reverse is equally valid.
             {summary.selfContradictory
               ? ` ${summary.selfContradictory} product(s) declare values that contradict each other and need a source fix.`
               : ''}
@@ -430,22 +438,52 @@ export function IntimportLocalIntelligenceView({
       ) : null}
 
       {error ? (
-        <p className="text-sm leading-relaxed text-status-risky" data-testid="intimport-enrichment-error">
+        <p
+          className="text-sm leading-relaxed text-status-risky"
+          data-testid="intimport-enrichment-error"
+        >
           {error}
         </p>
       ) : null}
 
-      {onEnrich ? (
-        <button
-          type="button"
-          disabled={busy || needsWeb === 0}
-          onClick={onEnrich}
-          data-testid="intimport-enrich-action"
-          className={cn(buttonClasses('ivory', 'md'), (busy || needsWeb === 0) && 'opacity-50')}
-        >
-          {busy ? 'Wzbogacanie…' : 'Wzbogać i przygotuj import'}
-        </button>
-      ) : null}
+      <div className="space-y-3">
+        {/* Web evidence enriches a product; it does not decide whether the
+            catalogue may hold it. Import is the primary action and never waits
+            on an external call. */}
+        <p className="text-sm leading-relaxed text-ivory/60">
+          „Web required" oznacza tylko, że dane można jeszcze wzbogacić w internecie — nie blokuje
+          importu. Wszystkie rozliczone produkty można zaimportować od razu: gotowe kompozycyjnie
+          trafiają do Product Catalog jako gotowe dla Engine, pozostałe trafiają do katalogu bez
+          gotowości dla Engine.
+        </p>
+        <div className="flex flex-wrap items-center gap-4">
+          {onImport ? (
+            <button
+              type="button"
+              disabled={!canImport || importBusy}
+              onClick={onImport}
+              data-testid="intimport-direct-import-action"
+              className={cn(
+                buttonClasses('ivory', 'md'),
+                (!canImport || importBusy) && 'opacity-50',
+              )}
+            >
+              {importBusy ? 'Importowanie…' : 'Importuj produkty'}
+            </button>
+          ) : null}
+          {onEnrich ? (
+            <button
+              type="button"
+              disabled={busy || needsWeb === 0}
+              onClick={onEnrich}
+              data-testid="intimport-enrich-action"
+              className={cn(buttonClasses('ghost', 'md'), (busy || needsWeb === 0) && 'opacity-50')}
+            >
+              {busy ? 'Wzbogacanie…' : 'Opcjonalnie wzbogać dane'}
+            </button>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
