@@ -228,8 +228,14 @@ describe('recipe and production table modes', () => {
     expect(picker).toContain('Nie znalazłeś produktu?');
     expect(picker).toContain('Skanuj produkt');
     expect(picker).toContain('to="/products/scan"');
-    expect(picker).toContain('mapperOnly: true');
+    // The rule changed twice on 2026-08-24 and this guard now pins BOTH halves:
+    // the picker searches the whole eligible catalogue, including the products the
+    // owner imported or scanned…
+    expect(picker).toContain('mapperOnly: false');
+    // …and a product still becomes a recipe line only through the current Mapper
+    // identity it resolves to.
     expect(picker).toContain('resolveCurrentMapperCatalogSelection');
+    expect(picker).toContain('engineIngredientForCatalogSelection');
     expect(picker).toContain('event.stopPropagation()');
     expect(picker).not.toMatch(/`Produkt \$\{option\.name\} · ID/);
     expect(picker).not.toContain('Mapper ${entity.entityId}');
