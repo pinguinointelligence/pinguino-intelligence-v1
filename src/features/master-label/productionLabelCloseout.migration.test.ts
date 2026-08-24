@@ -16,6 +16,13 @@ const FLOOR_GUARD_SQL = readFileSync(
   ),
   'utf8',
 );
+const RESCUE_FINGERPRINT_GUARD_SQL = readFileSync(
+  resolve(
+    import.meta.dirname,
+    '../../../supabase/migrations/20260824200000_production_rescue_preview_fingerprint_guard.sql',
+  ),
+  'utf8',
+);
 
 describe('Production / Label closeout migration', () => {
   it('extends the one append-only Production history with every required event', () => {
@@ -90,5 +97,14 @@ describe('Production / Label closeout migration', () => {
     expect(FLOOR_GUARD_SQL).toContain("candidate->>'actualGrams' is not null");
     expect(FLOOR_GUARD_SQL).toContain('physically recorded material cannot become null');
     expect(FLOOR_GUARD_SQL).toContain('before update of actual_items');
+  });
+
+  it('does not let the Preview audit event invalidate its own Rescue authorization', () => {
+    expect(RESCUE_FINGERPRINT_GUARD_SQL).toContain(
+      'private.production_rescue_source_fingerprint_v1',
+    );
+    expect(RESCUE_FINGERPRINT_GUARD_SQL).toContain("event.event_type <> 'rescue_previewed'");
+    expect(RESCUE_FINGERPRINT_GUARD_SQL).toContain("'actualRevision', run.actual_revision");
+    expect(RESCUE_FINGERPRINT_GUARD_SQL).toContain("'rescueRevision', run.rescue_revision");
   });
 });

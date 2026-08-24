@@ -44,6 +44,7 @@ class FakeStore {
   rescueAuthorizations: Record<string, Row> = {};
   rescueAuthorizationResponsePatch: Row = {};
   rpcErrorMessages: Record<string, string> = {};
+  hangingRpcNames = new Set<string>();
 }
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v));
@@ -212,6 +213,9 @@ function fakeClient(store: FakeStore, userId: string | null) {
     rpc: async (name: string, args: Record<string, unknown>) => {
       if (!userId) return { data: null, error: { message: 'authentication required' } };
       store.rpcCalls.push({ name, args: clone(args) });
+      if (store.hangingRpcNames.has(name)) {
+        await new Promise<never>(() => undefined);
+      }
       const rpcFailure = store.fail.has(`rpc:${name}`);
       if (rpcFailure) return { data: null, error: { message: `boom ${name}` } };
       if (store.rpcErrorMessages[name]) {
@@ -1211,6 +1215,30 @@ describe('supabaseProduction — atomic served start, Rescue, and completion', (
       throw new Error('expected trusted Rescue expiry');
     } catch (error) {
       expect(isProductionRescueAuthorizationRefreshError(error)).toBe(true);
+    }
+  });
+
+  it('bounds a stalled Rescue consume request and releases the operator UI', async () => {
+    store.hangingRpcNames.add('production_consume_rescue_authorization_v1');
+    const repo = supabaseProductionRepository(fakeClient(store, U1), {
+      ...seams('timeout'),
+      consumeTimeoutMs: 5,
+    });
+
+    try {
+      await repo.consumeRescue({
+        authorizationId: 'authorization-stalled',
+        expectedActualRevision: 0,
+        expectedRescueRevision: 0,
+        idempotencyKey: 'consume-stalled',
+      });
+      throw new Error('expected bounded Rescue timeout');
+    } catch (error) {
+      expect(isProductionRescueAuthorizationRefreshError(error)).toBe(true);
+      expect(error).toHaveProperty(
+        'message',
+        'Production Rescue consumption timed out; request a fresh Preview.',
+      );
     }
   });
 

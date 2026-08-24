@@ -84,6 +84,7 @@ const ACKNOWLEDGE_HEAT_RPC = 'production_acknowledge_heat_information_v1';
 export interface SupabaseProductionOptions {
   now?: () => string;
   newId?: () => string;
+  consumeTimeoutMs?: number;
 }
 
 /* ── raw row shapes (exactly the migration-0028 columns) ─────────────────────── */
@@ -320,6 +321,7 @@ const rescueErrorCode = (value: unknown): ProductionRescueAuthorizationErrorCode
   if (
     normalized.includes('caller_basis_does_not_match') ||
     normalized.includes('authorization_source_is_stale') ||
+    normalized.includes('authorization_source_fingerprint_is_stale') ||
     normalized.includes('authorization_engine_config_is_stale') ||
     normalized.includes('productbehavior_authority_is_stale') ||
     normalized.includes('authorization_consumption_conflict') ||
@@ -482,6 +484,7 @@ export function supabaseProductionRepository(
 ): ProductionRepository {
   const now = options.now ?? (() => new Date().toISOString());
   const newId = options.newId ?? (() => globalThis.crypto.randomUUID());
+  const consumeTimeoutMs = options.consumeTimeoutMs ?? 15_000;
 
   /** The signed-in auth user id — the RLS owner scope. Throws honestly when not signed in. */
   async function uid(): Promise<string> {
@@ -529,10 +532,46 @@ export function supabaseProductionRepository(
   }
 
   /** Execute one server-authoritative transactional mutation. */
-  async function mutate(name: string, args: Record<string, unknown>): Promise<unknown> {
-    const { data, error } = await client.rpc(name, args);
-    if (error) throw persistenceError(error.message);
-    return data;
+  async function mutate(
+    name: string,
+    args: Record<string, unknown>,
+    timeoutMs?: number,
+  ): Promise<unknown> {
+    const request = client.rpc(name, args);
+    if (timeoutMs === undefined) {
+      const { data, error } = await request;
+      if (error) throw persistenceError(error.message);
+      return data;
+    }
+
+    const controller = new AbortController();
+    const abortable = request as typeof request & {
+      abortSignal?: (signal: AbortSignal) => typeof request;
+    };
+    const rpcPromise = Promise.resolve(
+      typeof abortable.abortSignal === 'function'
+        ? abortable.abortSignal(controller.signal)
+        : request,
+    );
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        controller.abort();
+        reject(
+          new ProductionRescueAuthorizationError(
+            'authorization_expired',
+            'Production Rescue consumption timed out; request a fresh Preview.',
+          ),
+        );
+      }, timeoutMs);
+    });
+    try {
+      const { data, error } = await Promise.race([rpcPromise, timeout]);
+      if (error) throw persistenceError(error.message);
+      return data;
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+    }
   }
 
   return {
@@ -715,12 +754,16 @@ export function supabaseProductionRepository(
 
     async consumeRescue(input: ConsumeProductionRescueArgs): Promise<ProductionRun> {
       const owner = await uid();
-      const result = await mutate(CONSUME_RESCUE_RPC, {
-        p_authorization_id: input.authorizationId,
-        p_expected_actual_revision: input.expectedActualRevision,
-        p_expected_rescue_revision: input.expectedRescueRevision,
-        p_idempotency_key: input.idempotencyKey,
-      });
+      const result = await mutate(
+        CONSUME_RESCUE_RPC,
+        {
+          p_authorization_id: input.authorizationId,
+          p_expected_actual_revision: input.expectedActualRevision,
+          p_expected_rescue_revision: input.expectedRescueRevision,
+          p_idempotency_key: input.idempotencyKey,
+        },
+        consumeTimeoutMs,
+      );
       const runId =
         typeof result === 'string'
           ? result
