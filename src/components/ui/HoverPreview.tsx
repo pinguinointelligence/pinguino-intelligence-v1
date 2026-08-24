@@ -24,6 +24,8 @@ export function HoverPreview({
   children,
   className,
   focusable = false,
+  align = 'start',
+  maxWidthPx,
 }: {
   text: string;
   children: ReactNode;
@@ -34,13 +36,25 @@ export function HoverPreview({
    * add a tab stop per row for information already present in the DOM.
    */
   focusable?: boolean;
+  /** Keep edge-adjacent previews inside their owning side of the workspace. */
+  align?: 'start' | 'end';
+  /** A tighter content-specific cap than the default long-name preview. */
+  maxWidthPx?: number;
 }) {
-  const [anchor, setAnchor] = useState<{ left: number; top: number } | null>(null);
+  const [anchor, setAnchor] = useState<{
+    left?: number;
+    right?: number;
+    top: number;
+  } | null>(null);
   const id = useId();
 
   const show = (element: HTMLElement) => {
     const rect = element.getBoundingClientRect();
-    setAnchor({ left: Math.max(8, rect.left), top: rect.bottom + 6 });
+    setAnchor(
+      align === 'end'
+        ? { right: Math.max(8, window.innerWidth - rect.right), top: rect.bottom + 6 }
+        : { left: Math.max(8, rect.left), top: rect.bottom + 6 },
+    );
   };
 
   return (
@@ -63,10 +77,17 @@ export function HoverPreview({
             <span
               id={id}
               role="tooltip"
-              style={{ left: anchor.left, top: anchor.top, maxWidth: 'min(30rem, 92vw)' }}
+              style={{
+                left: anchor.left,
+                right: anchor.right,
+                top: anchor.top,
+                maxWidth: maxWidthPx
+                  ? `min(${maxWidthPx}px, calc(100vw - 16px))`
+                  : 'min(30rem, calc(100vw - 16px))',
+              }}
               className={cn(
                 'pointer-events-none fixed z-[90] rounded-[10px] border border-ink/12 bg-charcoal',
-                'px-2.5 py-1.5 text-xs leading-snug text-white shadow-pro-e2',
+                'px-2.5 py-1.5 text-xs leading-snug break-words text-white shadow-pro-e2',
               )}
               data-testid="hover-preview"
             >

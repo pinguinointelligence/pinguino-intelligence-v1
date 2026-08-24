@@ -120,7 +120,7 @@ describe('DirectNumberControl', () => {
     );
     expect(html).toContain('data-control-capacity="100.0%"');
     expect(html).toContain('data-control-locked="true"');
-    expect(html).toContain('grid-cols-[44px_60px_44px_44px]');
+    expect(html).toContain('grid-cols-[44px_72px_44px_44px]');
     expect(html).toContain('bg-stone-100');
     expect(html).toContain('data-testid="compact-percent-lock"');
     expect(html).toContain('aria-pressed="true"');
@@ -140,8 +140,28 @@ describe('DirectNumberControl', () => {
       />,
     );
     expect(html).toContain('data-control-capacity="10000g"');
-    expect(html).toContain('w-[160px]');
-    expect(html).toContain('grid-cols-[44px_72px_44px]');
+    expect(html).toContain('w-[176px]');
+    expect(html).toContain('grid-cols-[44px_88px_44px]');
     expect(html).toContain('value="10000"');
+  });
+
+  it('reserves explicit inner breathing room so values and suffixes cannot touch the rim', () => {
+    const html = renderToStaticMarkup(
+      <DirectNumberControl
+        value={100}
+        step={0.1}
+        decimals={1}
+        suffix="%"
+        ariaLabel="Udział"
+        onChange={() => {}}
+        testId="padded-percent"
+        widthPreset="percent"
+        density="compact"
+      />,
+    );
+    expect(html).toContain('data-value-padding="roomy"');
+    expect(html).toContain('px-1.5');
+    expect(html).toContain('leading-none');
+    expect(html).toContain('w-[114px] grid-cols-[28px_58px_28px]');
   });
 });

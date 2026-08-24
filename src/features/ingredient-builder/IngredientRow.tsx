@@ -49,12 +49,12 @@ export type IngredientTableMode = 'recipe' | 'production';
  * Cream · Chilled" — truncated after a few words. The compact stepper density
  * and a tighter price cell give that space back to the NAME, which is the row's
  * primary identity: the name column's floor roughly doubles (164 → 300 px, and
- * 260 → 420 px at 2xl) without removing any information.
+ * 260 → 400 px at 2xl) without removing any information.
  */
 export const ROW_GRID =
-  'grid grid-cols-1 items-center gap-x-2 gap-y-3 md:grid-cols-[minmax(320px,1fr)_130px_138px_96px_28px] 2xl:grid-cols-[minmax(420px,1fr)_130px_138px_96px_28px]';
+  'grid grid-cols-1 items-center gap-x-2 gap-y-3 md:grid-cols-[minmax(300px,1fr)_142px_150px_96px_28px] 2xl:grid-cols-[minmax(400px,1fr)_142px_150px_96px_28px]';
 export const COMPACT_ROW_GRID =
-  'grid grid-cols-1 items-center gap-x-2 gap-y-3 md:grid-cols-[minmax(320px,1fr)_130px_138px_96px_28px]';
+  'grid grid-cols-1 items-center gap-x-2 gap-y-3 md:grid-cols-[minmax(300px,1fr)_142px_150px_96px_28px]';
 export const PRODUCTION_ROW_GRID =
   'grid grid-cols-1 items-center gap-x-3 gap-y-2 md:grid-cols-[minmax(140px,1.4fr)_78px_minmax(220px,1.2fr)_76px]';
 

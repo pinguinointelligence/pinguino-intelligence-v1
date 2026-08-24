@@ -178,23 +178,23 @@ export function DirectNumberControl({
         widthPreset === 'percent' &&
           (compact
             ? lockSegment
-              ? 'w-[130px] grid-cols-[28px_46px_28px_28px]'
-              : 'w-[102px] grid-cols-[28px_46px_28px]'
-            : lockSegment
-              ? 'w-[192px] grid-cols-[44px_60px_44px_44px]'
-              : 'w-[148px] grid-cols-[44px_60px_44px]'),
-        widthPreset === 'grams' &&
-          (compact
-            ? lockSegment
-              ? 'w-[138px] grid-cols-[28px_54px_28px_28px]'
-              : 'w-[110px] grid-cols-[28px_54px_28px]'
+              ? 'w-[142px] grid-cols-[28px_58px_28px_28px]'
+              : 'w-[114px] grid-cols-[28px_58px_28px]'
             : lockSegment
               ? 'w-[204px] grid-cols-[44px_72px_44px_44px]'
               : 'w-[160px] grid-cols-[44px_72px_44px]'),
+        widthPreset === 'grams' &&
+          (compact
+            ? lockSegment
+              ? 'w-[150px] grid-cols-[28px_66px_28px_28px]'
+              : 'w-[122px] grid-cols-[28px_66px_28px]'
+            : lockSegment
+              ? 'w-[220px] grid-cols-[44px_88px_44px_44px]'
+              : 'w-[176px] grid-cols-[44px_88px_44px]'),
         widthPreset === 'fluid' &&
           (lockSegment
-            ? 'w-full grid-cols-[44px_minmax(68px,1fr)_44px_44px]'
-            : 'w-full grid-cols-[44px_minmax(68px,1fr)_44px]'),
+            ? 'w-full grid-cols-[44px_minmax(80px,1fr)_44px_44px]'
+            : 'w-full grid-cols-[44px_minmax(80px,1fr)_44px]'),
         compact ? 'rounded-xl shadow-none' : null,
         lockSegment?.pressed
           ? 'border-stone-400/70 bg-stone-100 shadow-[inset_0_1px_2px_rgb(16_17_19_/_0.06)]'
@@ -206,6 +206,7 @@ export function DirectNumberControl({
         widthPreset === 'percent' ? '100.0%' : widthPreset === 'grams' ? '10000g' : 'fluid'
       }
       data-control-locked={lockSegment?.pressed ? 'true' : 'false'}
+      data-value-padding="roomy"
     >
       <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
         {ariaLabel}: {value.toFixed(decimals)} {suffix}
@@ -239,8 +240,8 @@ export function DirectNumberControl({
       ))}
       <label
         className={cn(
-          'col-start-2 row-start-1 flex min-w-0 items-center justify-center border-x border-ink/18',
-          compact ? 'px-0.5' : 'px-1',
+          'col-start-2 row-start-1 flex h-full min-w-0 items-center justify-center border-x border-ink/18',
+          compact ? 'px-1.5' : 'px-2',
         )}
       >
         <span className="sr-only">{ariaLabel}</span>
@@ -295,7 +296,7 @@ export function DirectNumberControl({
           onPointerCancel={onScrubEnd}
           data-scrubbable="horizontal"
           className={cn(
-            'min-w-0 flex-1 touch-pan-y select-none bg-transparent text-right font-mono font-semibold tabular-nums text-ink outline-none disabled:cursor-not-allowed',
+            'h-full min-w-0 flex-1 touch-pan-y select-none bg-transparent text-right font-mono leading-none font-semibold tabular-nums text-ink outline-none disabled:cursor-not-allowed',
             compact ? 'text-[13px]' : 'text-sm',
           )}
         />

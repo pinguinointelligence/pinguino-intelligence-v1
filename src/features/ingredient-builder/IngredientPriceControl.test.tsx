@@ -46,10 +46,12 @@ describe('customer price input', () => {
     // Owner 2026-08-24: the „Moja" badge is gone — it broke the shape of the
     // price block and had to be re-read on every row. A custom price is now a
     // small dot that explains itself on hover.
-    expect(html).not.toContain('Moja');
+    expect(html).not.toContain('>Moja<');
     expect(html).toContain('customer-price-indicator');
     expect(html).toContain('data-price-source="customer_override"');
-    expect(html).toContain('Cena własna');
+    expect(html).toContain('Moja cena');
+    expect(html).toContain('Bazowa: 0,97 EUR/kg');
+    expect(html).not.toContain('wprowadzona przez Ciebie');
     expect(html).not.toContain('W PRZYGOTOWANIU');
   });
 
@@ -88,9 +90,33 @@ describe('customer price input', () => {
   it('keeps the editor compact with save and true reset actions', () => {
     const html = renderToStaticMarkup(<CustomerPriceEditor view={view()} />);
     expect(html).toContain('data-testid="customer-price-editor"');
+    expect(html).toContain('data-active-price-source="customer_override"');
+    expect(html).toContain('Moja cena');
+    expect(html).toContain('Bazowa: 0,97 EUR/kg');
     expect(html).toContain('Cena za kg');
     expect(html).toContain('Zapisz');
     expect(html).toContain('Przywróć cenę bazową');
+  });
+
+  it('shows one active base-price state and no meaningless reset action', () => {
+    const html = renderToStaticMarkup(
+      <CustomerPriceEditor
+        view={{
+          ...view(),
+          cost: {
+            ...view().cost,
+            pricePerKg: 0.97,
+            source: 'mapper_reference',
+            customerOverridePerKg: null,
+            overrideId: null,
+          },
+        }}
+      />,
+    );
+    expect(html).toContain('data-active-price-source="mapper_reference"');
+    expect(html).toContain('Cena bazowa');
+    expect(html).toContain('0,97 EUR/kg');
+    expect(html).not.toContain('Przywróć cenę bazową');
   });
 
   it('names catalog-price reset as deletion when no shared base price exists', () => {

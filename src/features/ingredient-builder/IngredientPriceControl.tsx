@@ -21,9 +21,8 @@ export function IngredientPriceCell({ view }: { view: IngredientPriceView }) {
   const { cost, lineCost } = view;
   const own = cost.source === 'customer_override';
   const base = cost.mapperPricePerKg;
-  const ownPriceExplanation = `Cena własna — wprowadzona przez Ciebie.${
-    base === null ? '' : ` Cena bazowa: ${money(base)} ${cost.currency}/kg.`
-  }`;
+  const ownPriceExplanation =
+    base === null ? 'Moja cena' : `Moja cena · Bazowa: ${money(base)} ${cost.currency}/kg`;
   return (
     <div
       className="min-w-0 text-right leading-tight"
@@ -51,6 +50,8 @@ export function IngredientPriceCell({ view }: { view: IngredientPriceView }) {
           <HoverPreview
             text={ownPriceExplanation}
             focusable
+            align="end"
+            maxWidthPx={224}
             className="pro-focus-ring -my-1 inline-flex size-4 shrink-0 items-center justify-center rounded-full"
           >
             {/* The MARK stays 5 px; the target around it is 16 px and keyboard
@@ -81,8 +82,8 @@ export function CustomerPriceEditor({
    * hydrates asynchronously), so the marker composes this state instead. */
   lineId?: string;
 }) {
-  const initial = view?.cost.customerOverridePerKg ?? view?.cost.pricePerKg ?? 0;
-  const [raw, setRaw] = useState(String(initial).replace('.', ','));
+  const initial = view?.cost.customerOverridePerKg ?? view?.cost.pricePerKg ?? null;
+  const [raw, setRaw] = useState(initial === null ? '' : String(initial).replace('.', ','));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const setPriceDirty = useCustomerPriceDirtyStore((state) => state.setDirty);
@@ -128,8 +129,8 @@ export function CustomerPriceEditor({
     setError(null);
     try {
       await onReset();
-      const base = view.cost.mapperPricePerKg ?? 0;
-      setRaw(String(base).replace('.', ','));
+      const base = view.cost.mapperPricePerKg;
+      setRaw(base === null ? '' : String(base).replace('.', ','));
       if (lineId) setPriceDirty(lineId, false);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
@@ -138,12 +139,35 @@ export function CustomerPriceEditor({
     }
   };
 
+  const own = view.cost.source === 'customer_override';
+  const base = view.cost.mapperPricePerKg;
+  const activePrice = view.cost.pricePerKg;
+
   return (
-    <div className="mb-2 border border-ink/10 p-2" data-testid="customer-price-editor">
-      <p className="text-xs font-semibold text-ink">Moja cena</p>
-      <label className="mt-1 grid grid-cols-[1fr_auto] items-center gap-2 text-xs text-stone-600">
+    <div
+      className="mb-2 rounded-lg border border-ink/10 bg-stone-50/70 p-3"
+      data-testid="customer-price-editor"
+      data-active-price-source={view.cost.source}
+    >
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        <p className="text-xs font-semibold text-ink">
+          {own
+            ? 'Moja cena'
+            : view.cost.source === 'mapper_reference'
+              ? 'Cena bazowa'
+              : 'Brak ceny'}
+        </p>
+        <p className="shrink-0 font-mono text-[10px] leading-relaxed tabular-nums text-stone-500">
+          {own && base !== null
+            ? `Bazowa: ${money(base)} ${view.cost.currency}/kg`
+            : activePrice !== null
+              ? `${money(activePrice)} ${view.cost.currency}/kg`
+              : '—'}
+        </p>
+      </div>
+      <label className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 text-xs text-stone-600">
         <span>Cena za kg</span>
-        <span className="flex items-center gap-1">
+        <span className="flex min-w-0 items-center gap-1.5">
           <input
             value={raw}
             inputMode="decimal"
@@ -152,26 +176,28 @@ export function CustomerPriceEditor({
               setRaw(event.currentTarget.value);
               markDirtyFromInput(event.currentTarget.value);
             }}
-            className="h-11 w-20 rounded-lg border border-ink/15 px-2 text-right font-mono text-xs text-ink focus:border-ink/40 focus:outline-none"
+            className="h-11 w-24 rounded-lg border border-ink/15 bg-white px-3 text-right font-mono text-xs leading-none tabular-nums text-ink focus:border-ink/40 focus:outline-none"
           />
           {view.cost.currency}
         </span>
       </label>
       {error ? <p className="mt-1 text-xs text-status-error">{error}</p> : null}
-      <div className="mt-2 flex items-center justify-between gap-2">
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => void reset()}
-          className="min-h-11 text-xs text-stone-600 underline decoration-stone-300 underline-offset-2 disabled:opacity-40"
-        >
-          {view.resetLabel ?? 'Przywróć cenę bazową'}
-        </button>
+      <div className="mt-3 flex min-h-11 items-center justify-end gap-3">
+        {own ? (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void reset()}
+            className="min-h-11 px-1 text-xs text-stone-600 underline decoration-stone-300 underline-offset-2 transition-colors hover:text-ink disabled:opacity-40"
+          >
+            {view.resetLabel ?? 'Przywróć cenę bazową'}
+          </button>
+        ) : null}
         <button
           type="button"
           disabled={busy}
           onClick={() => void save()}
-          className="min-h-11 rounded-lg bg-ink px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
+          className="min-h-11 rounded-lg bg-ink px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-charcoal disabled:opacity-40"
         >
           Zapisz
         </button>

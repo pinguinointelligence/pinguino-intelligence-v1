@@ -65,9 +65,9 @@ describe('D2/D4/D5 — smaller housings, unchanged typography', () => {
 
 describe('D6/D9/D10 — protected price column, name gets the rest', () => {
   it('the grid reserves width for price and action, and flexes the name', () => {
-    for (const track of ['minmax(320px,1fr)_130px_138px_96px_28px'])
+    for (const track of ['minmax(300px,1fr)_142px_150px_96px_28px'])
       expect(row, track).toContain(track);
-    expect(row).toContain('2xl:grid-cols-[minmax(420px,1fr)_130px_138px_96px_28px]');
+    expect(row).toContain('2xl:grid-cols-[minmax(400px,1fr)_142px_150px_96px_28px]');
   });
 
   it('every row uses the SAME grid, so columns cannot drift between rows', () => {
@@ -94,13 +94,20 @@ describe('D7/D8 — the „Moja" badge is gone, the mark explains itself', () =>
     // 5 px mark, 16 px target, keyboard reachable.
     expect(price).toContain('size-4 shrink-0 items-center justify-center');
     expect(price).toContain('focusable');
-    expect(price).toContain('Cena własna');
+    expect(price).toContain('Moja cena');
+    expect(price).toContain('Bazowa:');
   });
 
   it('the base price survives without the native title', () => {
     // It used to live in `title`; it must stay in the accessible name.
     expect(price).toContain('aria-label={ownPriceExplanation}');
     expect(price).toContain('Cena bazowa');
+  });
+
+  it('anchors the short price preview inward so it cannot cover the right panel', () => {
+    expect(price).toContain('align="end"');
+    expect(price).toContain('maxWidthPx={224}');
+    expect(price).not.toContain('wprowadzona przez Ciebie');
   });
 
   it('the source is exposed for QA without reading colour', () => {

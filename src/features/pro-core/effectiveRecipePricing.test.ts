@@ -59,6 +59,39 @@ const override = (pricePerKg = 1.12, currency = 'EUR'): CustomerIngredientPriceO
 });
 
 describe('effective customer pricing', () => {
+  it('keeps one active price across the row, line cost, Engine result and recipe summary', () => {
+    const input: RecipeInput = {
+      items: [
+        {
+          id: 'milk',
+          ingredient: ingredient(),
+          planned_grams: 500,
+          actual_grams: null,
+          lock_type: 'unlocked',
+        },
+      ],
+      mode: 'classic',
+      category: 'milk_gelato',
+      target_temperature_c: -11,
+      target_batch_grams: 500,
+      machine_capacity_grams: null,
+      goals: { formulation_strategy: 'eco' },
+    };
+    const overrides = { 'PI-ING-000236': override() };
+    const active = effectiveCostForIngredient(input.items[0]!.ingredient, overrides);
+    const projected = applyEffectiveCustomerPrices(input, overrides);
+    const result = calculateRecipe(projected);
+    const summary = summarizeEffectiveRecipeCost(input, overrides);
+
+    expect(active.pricePerKg).toBe(1.12);
+    expect(projected.items[0]!.ingredient.cost_per_kg).toBe(active.pricePerKg);
+    expect(effectiveLineCost(500, active)).toBeCloseTo(0.56, 10);
+    expect(result.costs).not.toBeNull();
+    expect(result.costs!.total_cost).toBeCloseTo(0.56, 10);
+    expect(summary.totalCost).toBeCloseTo(0.56, 10);
+    expect(result.costs!.cost_per_kg).toBe(summary.costPerKg);
+  });
+
   it('uses private override before Mapper and computes exact line contribution', () => {
     const cost = effectiveCostForIngredient(ingredient(), {
       'PI-ING-000236': override(),
