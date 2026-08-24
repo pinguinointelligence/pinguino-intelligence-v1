@@ -181,3 +181,23 @@ authenticated Pro recipe ("QA Lost PL.zoltka UNLOCKED v2", 8 base lines).
    display-only — nothing re-enters the Engine or any saved value. Regression
    test: "compares at the precision the row SHOWS, so an invisible residue is
    not marked".
+
+4. **A persisted baseline outliving its signature format.** The precision fix in
+   (3) changed the signature string, and the baseline is persisted — so on the
+   first load after that deploy every stored line differed and all 8 rows of the
+   real recipe lit up at once. On a real rollout this would have hit every user
+   who already had a baseline. Fixed: the persisted store carries
+   `SIGNATURE_FORMAT_VERSION` with a `migrate` that DISCARDS an incompatible
+   baseline, so the session falls back to a cold start and marks nothing until
+   the draft is next clean — the honest answer, because the application
+   genuinely no longer knows what the accepted state was. The constant must be
+   bumped whenever `ingredientChangeSignature` changes shape. Regression test:
+   "discards a persisted baseline written by an older signature format".
+
+### Why the marker needed four passes
+
+Each fault was invisible to the previous layer of testing: unit tests cannot see
+asynchronous price hydration, the DEV demo preset cannot edit grams at all (see
+the separate BASE_RECIPE bug), and only a REAL saved recipe with owner prices,
+a gram-locked line and a percentage rebalance exercises the combination. This is
+the value the owner's mandatory served gram/% proof was asking for.

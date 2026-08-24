@@ -5,6 +5,11 @@ import { useRecipeStore } from '@/stores/recipeStore';
 import { changedIngredientLineIds, type IngredientSignatureMap } from './ingredientChangeHighlight';
 
 /**
+ * Bump when `ingredientChangeSignature` changes shape — see the persist config.
+ */
+const SIGNATURE_FORMAT_VERSION = 1;
+
+/**
  * Baseline of the last CLEAN ingredient state, so a changed line can be marked
  * subtly in the list (owner mobile UX §8). Presentation state only — it is
  * persisted so a reload does not silently erase „I changed something here",
@@ -23,7 +28,24 @@ export const useIngredientChangeStore = create<IngredientChangeState>()(
       captureBaseline: (baselineByLineId) => set({ baselineByLineId }),
       reset: () => set({ baselineByLineId: {} }),
     }),
-    { name: 'pinguino-ingredient-change-baseline' },
+    {
+      name: 'pinguino-ingredient-change-baseline',
+      /**
+       * The baseline is a comparison of SIGNATURE STRINGS, so the persisted
+       * value is only meaningful against the exact signature format that wrote
+       * it. Served staging QA proved the hazard: changing the gram precision
+       * inside `ingredientChangeSignature` made every stored line differ, and
+       * all 8 rows of a real recipe lit up on the first load after the deploy.
+       *
+       * BUMP THIS VERSION whenever `ingredientChangeSignature` changes shape.
+       * An incompatible baseline is DISCARDED rather than misread: the hook
+       * then treats the session as a cold start and marks nothing until the
+       * draft is next clean, which is the honest answer — the application
+       * genuinely does not know what the accepted state was.
+       */
+      version: SIGNATURE_FORMAT_VERSION,
+      migrate: () => ({ baselineByLineId: {} }),
+    },
   ),
 );
 

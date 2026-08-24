@@ -141,6 +141,15 @@ describe('collapsed mobile recipe line', () => {
     expect(store).toContain('state.dirty');
   });
 
+  it('discards a persisted baseline written by an older signature format', () => {
+    // Served staging QA: changing the gram precision inside the signature made
+    // every stored line differ, so all 8 rows of a real recipe lit up on the
+    // first load after the deploy. A version bump now resets to a cold start.
+    const store = read('features', 'ingredient-builder', 'ingredientChangeStore.ts');
+    expect(store).toContain('version: SIGNATURE_FORMAT_VERSION');
+    expect(store).toContain('migrate: () => ({ baselineByLineId: {} })');
+  });
+
   it('marks a changed line with the existing attention accent, never a new colour', () => {
     expect(row).toContain("mode === 'recipe' && changed && 'ingredient-line-changed'");
     expect(row).toContain("data-changed={mode === 'recipe' && changed ? 'true' : undefined}");
