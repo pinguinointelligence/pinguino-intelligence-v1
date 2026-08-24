@@ -1000,7 +1000,7 @@ function ProductionRow({
       data-production-mode={correctionMode ? 'correction' : 'addition'}
     >
       <div className="min-w-0">
-        <span className="flex min-w-0 items-center gap-1.5">
+        <span className="flex min-w-0 flex-wrap items-center gap-x-1.5">
           <span
             aria-hidden
             className="grid size-6 shrink-0 place-items-center rounded-full bg-stone-100 text-stone-600"
@@ -1011,35 +1011,35 @@ function ProductionRow({
           </span>
           <HoverPreview
             text={item.ingredient.name}
-            className="min-w-0 truncate text-[13px] font-semibold text-ink"
+            className="min-w-0 flex-1 truncate text-[13px] font-semibold text-ink"
           >
             {item.ingredient.name}
           </HoverPreview>
-        </span>
-        <span
-          className={cn(
-            'mt-1 inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] leading-tight font-semibold tracking-[0.03em]',
-            correctionMode
-              ? 'border-attention/30 bg-pro-amber text-attention'
-              : line.confirmed
-                ? 'border-status-ideal/25 bg-pro-sage text-status-ideal'
-                : 'border-ink/10 bg-stone-50 text-stone-600',
-          )}
-          data-testid={`production-mode-${line.lineId}`}
-          role="status"
-          aria-live="polite"
-        >
-          {correctionMode
-            ? 'POPRAW WPIS'
-            : owesTopUp
-              ? `DODAJ JESZCZE ${formatProductionMassG(topUpGrams)} g`
-              : line.confirmed
-                ? line.recordCorrectionCount > 0
-                  ? 'SKORYGOWANO'
-                  : exact
-                    ? 'DODANO'
-                    : 'RÓŻNICA'
-                : 'DO DODANIA'}
+          <span
+            className={cn(
+              'mt-1 ml-7 inline-flex basis-full lg:mt-0 lg:ml-auto lg:basis-auto items-center rounded-md border px-1.5 py-0.5 text-[10px] leading-tight font-semibold tracking-[0.03em]',
+              correctionMode
+                ? 'border-attention/30 bg-pro-amber text-attention'
+                : line.confirmed
+                  ? 'border-status-ideal/25 bg-pro-sage text-status-ideal'
+                  : 'border-ink/10 bg-stone-50 text-stone-600',
+            )}
+            data-testid={`production-mode-${line.lineId}`}
+            role="status"
+            aria-live="polite"
+          >
+            {correctionMode
+              ? 'POPRAW WPIS'
+              : owesTopUp
+                ? `DODAJ JESZCZE ${formatProductionMassG(topUpGrams)} g`
+                : line.confirmed
+                  ? line.recordCorrectionCount > 0
+                    ? 'SKORYGOWANO'
+                    : exact
+                      ? 'DODANO'
+                      : 'RÓŻNICA'
+                  : 'DO DODANIA'}
+          </span>
         </span>
         {line.physicalAddedGrams > 0 && (!line.confirmed || owesTopUp) ? (
           <span className="mt-0.5 block text-xs text-stone-600">

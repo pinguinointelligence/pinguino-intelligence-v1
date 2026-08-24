@@ -86,6 +86,7 @@ describe('Production workspace touch-first UI', () => {
     expect(html).toContain('lg:min-h-7');
     expect(html).toContain('data-category-symbol=');
     expect(html).toContain('text-[10px] leading-tight');
+    expect(html).toContain('basis-full lg:mt-0 lg:ml-auto lg:basis-auto');
     expect(html).not.toContain('text-[9px] leading-none');
     expect(html).not.toContain('mx-2 mb-2 rounded-[20px]');
     expect(html).not.toContain('grid-cols-[minmax(0,1fr)_48px]');
