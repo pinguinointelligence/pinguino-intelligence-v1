@@ -105,6 +105,12 @@ function mapSearchRow(row: SearchRow): CatalogProductSearchHit {
     : null;
   return {
     id: row.id,
+    productCode:
+      row.entity_kind === 'commercial_product' &&
+      typeof row.public_data?.productCode === 'string' &&
+      row.public_data.productCode.trim().length > 0
+        ? row.public_data.productCode.trim()
+        : null,
     currentVersionId: row.current_version_id,
     entityKind: row.entity_kind,
     status: row.status,

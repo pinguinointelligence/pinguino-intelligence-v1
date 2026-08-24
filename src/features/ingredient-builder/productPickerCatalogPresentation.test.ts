@@ -83,6 +83,16 @@ describe('neutral catalog data presentation', () => {
     expect(canonicalCatalogProductId(hit({ id: 'existing-product-root', mappedIngredientId: null })))
       .toBe('existing-product-root');
   });
+
+  it('keeps the commercial product code primary and never substitutes its Mapper binding', () => {
+    expect(canonicalCatalogProductId(hit({
+      id: '0cfa39a9-e683-4dea-b4b9-7f732a7c9c08',
+      entityKind: 'commercial_product',
+      productCode: 'PR-ING-006308',
+      mappedIngredientId: 'PI-ING-000091',
+      displayName: 'Baitz Baton choco cocos',
+    }))).toBe('PR-ING-006308');
+  });
 });
 
 describe('stable catalog segments', () => {

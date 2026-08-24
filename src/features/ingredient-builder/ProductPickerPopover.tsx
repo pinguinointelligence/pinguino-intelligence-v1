@@ -1086,12 +1086,25 @@ export function ProductPickerPopover({
                             <dl className="mt-5 grid gap-4">
                               <div>
                                 <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-500">
-                                  ID
+                                  {informationOption.entityKind === 'commercial_product'
+                                    ? 'ID produktu'
+                                    : 'ID'}
                                 </dt>
                                 <dd className="mt-1 font-mono text-sm font-semibold">
                                   {informationOption.canonicalId}
                                 </dd>
                               </div>
+                              {informationOption.entityKind === 'commercial_product' &&
+                              informationOption.catalog?.mappedIngredientId ? (
+                                <div>
+                                  <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-500">
+                                    Profil Gellatti / Mapper
+                                  </dt>
+                                  <dd className="mt-1 font-mono text-sm font-semibold">
+                                    {informationOption.catalog.mappedIngredientId}
+                                  </dd>
+                                </div>
+                              ) : null}
                               <div>
                                 <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-500">
                                   Status danych

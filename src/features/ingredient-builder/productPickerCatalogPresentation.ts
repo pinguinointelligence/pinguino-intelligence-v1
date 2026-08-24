@@ -23,12 +23,14 @@ export interface SegmentableCatalogProduct {
   recent: boolean;
 }
 
-/** The canonical Mapper identity wins when a commercial catalog row is bound
- * to one; otherwise the catalog's existing product root is the identity. */
+/** Primary customer-facing identity follows the entity, never its binding.
+ * A commercial row owns its PR-ING code; a Mapper reference owns its PI-ING id. */
 export function canonicalCatalogProductId(
-  hit: Pick<CatalogProductSearchHit, 'id' | 'mappedIngredientId'>,
+  hit: Pick<CatalogProductSearchHit, 'id' | 'entityKind' | 'productCode' | 'mappedIngredientId'>,
 ): string {
-  return hit.mappedIngredientId?.trim() || hit.id;
+  return hit.entityKind === 'commercial_product'
+    ? hit.productCode?.trim() || hit.id
+    : hit.mappedIngredientId?.trim() || hit.id;
 }
 
 /** Public search results already carry the Mapper confidence projection in

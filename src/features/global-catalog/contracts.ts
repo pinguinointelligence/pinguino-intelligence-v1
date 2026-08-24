@@ -89,6 +89,8 @@ export interface DuplicateCandidate {
 
 export interface CatalogProductSearchHit {
   id: string;
+  /** Customer-facing commercial catalogue identity. Mapper references use mappedIngredientId. */
+  productCode?: string | null;
   currentVersionId?: string | null;
   entityKind: CatalogEntityKind;
   status: CatalogStatus | 'pi_base';

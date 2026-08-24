@@ -275,6 +275,41 @@ describe('ProductPickerPopover catalog presentation', () => {
     expect(onAdd).toHaveBeenCalledWith(engineIngredient, undefined);
   });
 
+  it('shows Baitz commercial identity separately from its Mapper profile', async () => {
+    mocks.hits = [
+      catalogHit({
+        id: '0cfa39a9-e683-4dea-b4b9-7f732a7c9c08',
+        entityKind: 'commercial_product',
+        productCode: 'PR-ING-006308',
+        displayName: 'Baitz Baton choco cocos',
+        mappedIngredientId: 'PI-ING-000091',
+        status: 'manual_unverified',
+        verificationMethod: 'mapper_estimated',
+      }),
+    ];
+    await renderPicker();
+    const search = document.querySelector<HTMLInputElement>('input[role="combobox"]');
+    await act(async () => {
+      if (search) {
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+        setter?.call(search, 'Baitz Baton choco cocos');
+        search.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    });
+    const info = document.querySelector<HTMLButtonElement>(
+      'button[aria-label="Pokaż status danych produktu: Baitz Baton choco cocos"]',
+    );
+    await act(async () => info?.click());
+    const dialog = document.querySelector<HTMLElement>(
+      '[data-testid="product-data-status-dialog"]',
+    );
+
+    expect(dialog?.textContent).toContain('ID produktu');
+    expect(dialog?.textContent).toContain('PR-ING-006308');
+    expect(dialog?.textContent).toContain('Profil Gellatti / Mapper');
+    expect(dialog?.textContent).toContain('PI-ING-000091');
+  });
+
   it('G/H/I keeps one or two segments through filtering, searching, and long scroll', async () => {
     await renderPicker();
     const pastes = Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(
