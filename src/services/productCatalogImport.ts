@@ -16,7 +16,10 @@
  *     isolated and tallied (no silent failures); in-batch duplicates are detected by the
  *     pure identity key (the same one D5B dedupes on).
  */
-import { createProductWithIdentityResult } from '@/services/products';
+import {
+  bindExistingIntimportWholeProfile,
+  createProductWithIdentityResult,
+} from '@/services/products';
 import { productIdentityKey, productInsertToIdentityInput } from '@/data/products/productIdentity';
 import type { ProductIntakeCandidate } from '@/data/products/productTableParser';
 
@@ -42,6 +45,11 @@ export interface ImportProductCatalogOptions {
    * helps nobody and buries the reason.
    */
   stopAfterRepeatedFailures?: number;
+  /**
+   * Operator backfill: bind accepted INTIMPORT proposals only to canonical
+   * products that already exist. It never calls the create/upsert adapter.
+   */
+  bindExistingIntimportMapperOnly?: boolean;
 }
 
 export interface ImportProgress {
@@ -113,6 +121,7 @@ export async function importProductCatalog(
   const runMatch = options.runMatch === true;
   const continueOnError = options.continueOnError !== false;
   const stopAfter = options.stopAfterRepeatedFailures ?? 5;
+  const bindExistingOnly = options.bindExistingIntimportMapperOnly === true;
   let lastFailure: string | null = null;
   let repeatedFailures = 0;
 
@@ -150,6 +159,80 @@ export async function importProductCatalog(
       summary.skipped += 1;
       summary.rowResults.push(row);
       emitProgress(candidate);
+      continue;
+    }
+
+    if (bindExistingOnly) {
+      const extracted =
+        candidate.insert.extracted_json && typeof candidate.insert.extracted_json === 'object'
+          ? (candidate.insert.extracted_json as Record<string, unknown>)
+          : {};
+      const intelligence =
+        extracted.productIntelligence && typeof extracted.productIntelligence === 'object'
+          ? (extracted.productIntelligence as Record<string, unknown>)
+          : {};
+      const proposal = intelligence.intimportWholeProfileProposal;
+      if (candidate.forceDistinctIdentity) {
+        row.outcome = 'skipped';
+        row.skipReason = 'force-distinct source row has no resolvable current base identity';
+        summary.skipped += 1;
+        summary.rowResults.push(row);
+        emitProgress(candidate);
+        continue;
+      }
+      if (!proposal || typeof proposal !== 'object') {
+        row.outcome = 'skipped';
+        row.skipReason = 'no accepted INTIMPORT whole-profile proposal';
+        summary.skipped += 1;
+        summary.rowResults.push(row);
+        emitProgress(candidate);
+        continue;
+      }
+      try {
+        const ingest = await bindExistingIntimportWholeProfile(candidate.insert);
+        row.outcome = 'existing';
+        row.productId = ingest.productId ?? undefined;
+        row.productCode = ingest.productCode ?? undefined;
+        summary.existingDuplicates += 1;
+        if (row.productId) summary.productIds.push(row.productId);
+        if (row.productCode) summary.productCodes.push(row.productCode);
+        summary.rowResults.push(row);
+        lastFailure = null;
+        repeatedFailures = 0;
+      } catch (error) {
+        const message = errorMessage(error);
+        if (
+          message.includes('intimport_mapper_authority_rejected') ||
+          message.includes('intimport_existing_product_not_found')
+        ) {
+          row.outcome = 'skipped';
+          row.skipReason = message.includes('intimport_existing_product_not_found')
+            ? 'current canonical product identity not found'
+            : 'whole-profile target is not eligible for canonical binding';
+          summary.skipped += 1;
+          summary.rowResults.push(row);
+          lastFailure = null;
+          repeatedFailures = 0;
+        } else {
+          row.outcome = 'failed';
+          row.error = message;
+          summary.failed += 1;
+          summary.rowResults.push(row);
+          if (!continueOnError) throw error;
+          repeatedFailures = row.error === lastFailure ? repeatedFailures + 1 : 1;
+          lastFailure = row.error;
+        }
+      }
+      emitProgress(candidate);
+      if (stopAfter > 0 && repeatedFailures >= stopAfter) {
+        const handled = summary.rowResults.length;
+        summary.stopped = {
+          reason: lastFailure ?? 'powtarzający się błąd backfillu',
+          afterRowIndex: candidate.rowIndex,
+          remaining: candidates.length - handled,
+        };
+        break;
+      }
       continue;
     }
 

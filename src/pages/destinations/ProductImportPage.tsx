@@ -71,6 +71,9 @@ export function ProductImportPage() {
   const available = useAuthStore((state) => state.available);
   const isSignedIn = useAuthStore((state) => state.status === 'authed');
   const openAuthModal = useAuthModalStore((state) => state.open);
+  const mapperBackfillMode =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('mode') === 'intimport-mapper-backfill';
 
   const [source, setSource] = useState<ProductIntakeSource>(DEFAULT_SOURCE);
   const [csvText, setCsvText] = useState('');
@@ -290,6 +293,7 @@ export function ProductImportPage() {
     setProgress(null);
     setLastProgressAt(null);
     const outcome = await runProductImport(candidates, {
+      bindExistingIntimportMapperOnly: source === 'intimport' && mapperBackfillMode,
       onProgress: (next) => {
         setProgress(next);
         setLastProgressAt(new Date().toLocaleTimeString('pl-PL'));

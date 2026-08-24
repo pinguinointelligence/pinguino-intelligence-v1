@@ -6,11 +6,13 @@ import type { ProductIntakeCandidate } from '@/data/products/productTableParser'
  * real in-batch dedup runs. */
 const h = vi.hoisted(() => ({
   createWithIdentityResult: vi.fn(),
+  bindExistingIntimport: vi.fn(),
   matchAndSave: vi.fn(),
 }));
 
 vi.mock('@/services/products', () => ({
   createProductWithIdentityResult: h.createWithIdentityResult,
+  bindExistingIntimportWholeProfile: h.bindExistingIntimport,
 }));
 vi.mock('@/services/productMapper', () => ({
   matchAndSaveProduct: h.matchAndSave,
@@ -44,6 +46,73 @@ beforeEach(() => {
     return Promise.resolve({ product, ingest: { kind: 'created' } });
   });
   h.matchAndSave.mockResolvedValue({});
+  h.bindExistingIntimport.mockResolvedValue({
+    productId: 'existing-pl-1',
+    productCode: 'PR-ING-009999',
+    kind: 'updated',
+  });
+});
+
+describe('importProductCatalog — existing-only INTIMPORT Mapper backfill', () => {
+  const withProposal = (rowIndex: number, forceDistinctIdentity = false) =>
+    candidate({
+      rowIndex,
+      forceDistinctIdentity,
+      insert: {
+        brand: 'B',
+        product_name_display: `N ${rowIndex}`,
+        source_type: 'catalog_import',
+        catalog_source: 'INTIMPORT',
+        extracted_json: {
+          productIntelligence: {
+            intimportWholeProfileProposal: {
+              mapperIngredientId: 'PI-ING-000456',
+              sourceProductId: `PL-${rowIndex}`,
+              matchInput: { name: `N ${rowIndex}`, brand: 'B', knownMacros: {} },
+            },
+          },
+        },
+      },
+    });
+
+  it('binds an existing product without traversing the create/upsert path', async () => {
+    const summary = await importProductCatalog([withProposal(1)], {
+      bindExistingIntimportMapperOnly: true,
+    });
+    expect(h.bindExistingIntimport).toHaveBeenCalledOnce();
+    expect(h.createWithIdentityResult).not.toHaveBeenCalled();
+    expect(summary.created).toBe(0);
+    expect(summary.existingDuplicates).toBe(1);
+    expect(summary.productIds).toEqual(['existing-pl-1']);
+  });
+
+  it('skips rows without an accepted profile and unresolved force-distinct history', async () => {
+    const noProposal = candidate({ rowIndex: 1 });
+    const summary = await importProductCatalog(
+      [noProposal, withProposal(2, true)],
+      { bindExistingIntimportMapperOnly: true },
+    );
+    expect(h.bindExistingIntimport).not.toHaveBeenCalled();
+    expect(h.createWithIdentityResult).not.toHaveBeenCalled();
+    expect(summary.skipped).toBe(2);
+    expect(summary.rowResults.map((row) => row.skipReason)).toEqual([
+      'no accepted INTIMPORT whole-profile proposal',
+      'force-distinct source row has no resolvable current base identity',
+    ]);
+  });
+
+  it('counts a server-rejected/nonexistent target as unmatched instead of a systemic failure', async () => {
+    h.bindExistingIntimport
+      .mockRejectedValueOnce(new Error('intimport_mapper_authority_rejected (HTTP 409)'))
+      .mockRejectedValueOnce(new Error('intimport_existing_product_not_found (HTTP 409)'));
+    const summary = await importProductCatalog(
+      [withProposal(1), withProposal(2)],
+      { bindExistingIntimportMapperOnly: true },
+    );
+    expect(summary.skipped).toBe(2);
+    expect(summary.failed).toBe(0);
+    expect(summary.stopped).toBeUndefined();
+  });
 });
 
 describe('importProductCatalog — snapshots (best-effort)', () => {

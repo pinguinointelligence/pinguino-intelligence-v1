@@ -393,3 +393,34 @@ export async function createProductWithIdentityResult(
   const product_identity_hash = productIdentityKey(productInsertToIdentityInput(input));
   return createProductWithResult({ ...input, product_identity_hash }, options);
 }
+
+/**
+ * Apply only an INTIMPORT whole-profile proposal to an already-existing
+ * canonical product. catalog-submit resolves the exact base identity and the
+ * database refuses a miss, so this path can never create a product/version.
+ */
+export async function bindExistingIntimportWholeProfile(
+  input: ProductInsert,
+): Promise<ProductIngestResult> {
+  const request = canonicalIngestFromLegacyProduct(input);
+  if (
+    request.source !== 'catalog_import' ||
+    typeof request.input.intimportWholeProfileProposal !== 'object' ||
+    request.input.intimportWholeProfileProposal === null
+  ) {
+    throw new Error('Accepted INTIMPORT whole-profile proposal required.');
+  }
+  request.input.operation = 'bind_intimport_mapper';
+  const idempotencyKey = await productIngestIdempotencyKey(
+    request.source,
+    request.input,
+    'intimport-mapper-backfill',
+  );
+  const ingest = await ingestProduct({
+    ...request,
+    idempotencyKey,
+    operation: 'bind_intimport_mapper',
+  });
+  if (!ingest.productId) throw new Error('INTIMPORT Mapper backfill did not resolve a product.');
+  return ingest;
+}

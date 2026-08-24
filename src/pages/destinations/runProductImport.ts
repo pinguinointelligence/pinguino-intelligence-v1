@@ -19,7 +19,10 @@ export type RunImportResult =
 /** Import parsed candidates via the existing service. No options → no matching. */
 export async function runProductImport(
   candidates: ProductIntakeCandidate[],
-  options?: Pick<ImportProductCatalogOptions, 'onProgress'>,
+  options?: Pick<
+    ImportProductCatalogOptions,
+    'onProgress' | 'bindExistingIntimportMapperOnly'
+  >,
 ): Promise<RunImportResult> {
   try {
     const summary = await importProductCatalog(candidates, options);

@@ -54,7 +54,7 @@ export interface ProductIngestRequest {
   privateOverlay?: Record<string, unknown>;
   /** Existing canonical identity for an explicit correction/retirement. */
   productId?: string | null;
-  operation?: 'upsert' | 'retire';
+  operation?: 'upsert' | 'retire' | 'bind_intimport_mapper';
   ocrSessionId?: string | null;
   market?: string | null;
   retailer?: string | null;
@@ -173,6 +173,35 @@ export function canonicalIngestFromLegacyProduct(
       ? extracted.mayContainText
       : reviewedAuditValue(extracted, 'may_contain_text');
   const labelLanguages = textArray(extracted.labelLanguages);
+  const productIntelligence =
+    typeof extracted.productIntelligence === 'object' && extracted.productIntelligence !== null
+      ? (extracted.productIntelligence as Record<string, unknown>)
+      : {};
+  const intimportProposal =
+    typeof productIntelligence.intimportWholeProfileProposal === 'object' &&
+    productIntelligence.intimportWholeProfileProposal !== null
+      ? (productIntelligence.intimportWholeProfileProposal as Record<string, unknown>)
+      : {};
+  const proposedMapperIngredientId =
+    typeof intimportProposal.mapperIngredientId === 'string'
+      ? intimportProposal.mapperIngredientId
+      : null;
+  const intimportMatchInput =
+    typeof intimportProposal.matchInput === 'object' && intimportProposal.matchInput !== null
+      ? intimportProposal.matchInput
+      : null;
+  const isIntimport = input.source_type === 'catalog_import' && input.catalog_source === 'INTIMPORT';
+  const catalogImportIdentity =
+    isIntimport && intimportMatchInput
+      ? {
+          system: 'INTIMPORT',
+          sourceProductId:
+            typeof intimportProposal.sourceProductId === 'string'
+              ? intimportProposal.sourceProductId
+              : null,
+          matchInput: intimportMatchInput,
+        }
+      : null;
   return {
     source: sourceFromLegacyProduct(input.source_type),
     input: {
@@ -191,6 +220,13 @@ export function canonicalIngestFromLegacyProduct(
       ean: input.ean_code ?? null,
       barcode: input.barcode ?? null,
       provenance: input.source_type ?? 'manual',
+      ...(isIntimport && proposedMapperIngredientId
+        ? {
+            intimportWholeProfileProposal: {
+              mapperIngredientId: proposedMapperIngredientId,
+            },
+          }
+        : {}),
       facts: {
         packageSize: input.package_size ?? null,
         allergensText,
@@ -231,6 +267,7 @@ export function canonicalIngestFromLegacyProduct(
         vegan: input.vegan ?? null,
         dairyFree: input.dairy_free ?? null,
         glutenFree: input.gluten_free ?? null,
+        ...(catalogImportIdentity ? { catalogImportIdentity } : {}),
       },
     },
     privateOverlay: {

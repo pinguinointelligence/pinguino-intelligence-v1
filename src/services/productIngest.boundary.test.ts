@@ -17,10 +17,17 @@ describe('canonical product ingest boundary', () => {
     expect(importer).not.toContain('snapshotSourceChange');
   });
 
-  it('makes catalog-submit an evidence adapter with exactly one product-authority RPC', () => {
+  it('keeps existing-only identity resolution separate from the one product-authority RPC', () => {
     const edge = read('supabase/functions/catalog-submit/index.ts');
     const calls = [...edge.matchAll(/service\.rpc\(\s*'([^']+)'/g)].map((match) => match[1]);
-    expect(calls).toEqual(['preflight_product_ingest_v1', 'ingest_product_v1']);
+    expect(calls).toEqual([
+      'resolve_intimport_existing_product_v1',
+      'preflight_product_ingest_v1',
+      'ingest_product_v1',
+    ]);
+    expect(edge.indexOf("'resolve_intimport_existing_product_v1'")).toBeLessThan(
+      edge.indexOf("'preflight_product_ingest_v1'"),
+    );
     expect(edge.indexOf("'preflight_product_ingest_v1'")).toBeLessThan(
       edge.indexOf('evidence = await captureOwnedEvidence('),
     );
@@ -79,6 +86,38 @@ describe('canonical product ingest boundary', () => {
     expect(facts.mayContainAllergens).toEqual(['MILCH', 'LAIT']);
     expect(facts.labelLanguages).toEqual(['de', 'fr']);
     expect(facts.nutrition).toBeNull();
+  });
+
+  it('sends an INTIMPORT donor only as a proposal with stable source identity', () => {
+    const request = canonicalIngestFromLegacyProduct({
+      source_type: 'catalog_import',
+      catalog_source: 'INTIMPORT',
+      product_name_display: 'Inulina',
+      brand: 'Test',
+      extracted_json: {
+        productIntelligence: {
+          intimportWholeProfileProposal: {
+            mapperIngredientId: 'PI-ING-000456',
+            sourceProductId: 'PL-COM-1',
+            matchInput: {
+              name: 'Inulina',
+              brand: 'Test',
+              category: 'fiber',
+              knownMacros: {},
+              technical: true,
+            },
+          },
+        },
+      },
+    });
+    expect(request.input.intimportWholeProfileProposal).toEqual({
+      mapperIngredientId: 'PI-ING-000456',
+    });
+    expect(request.input).not.toHaveProperty('mapperDecision');
+    expect((request.input.facts as Record<string, unknown>).catalogImportIdentity).toMatchObject({
+      system: 'INTIMPORT',
+      sourceProductId: 'PL-COM-1',
+    });
   });
 });
 

@@ -27,7 +27,12 @@ import {
 } from './mapperFamilyInference';
 import { classifySourceAuthority, type SourceAuthorityAssessment } from './sourceAuthority';
 import { buildResearchPlan, type ResearchPlan } from './researchPlan';
-import type { MapperKnowledge } from './mapperValueInference';
+import {
+  profileDonor,
+  PROFILE_MATCH_FLOOR,
+  type MapperKnowledge,
+  type ProfileMatchInput,
+} from './mapperValueInference';
 import {
   resolveProductWorkingValues,
   type ProductWorkingValues,
@@ -88,6 +93,8 @@ export interface IntimportProductIntelligence {
    * Null only when the caller supplied no Mapper — the layer never invents one.
    */
   workingValues: ProductWorkingValues | null;
+  /** Exact public inputs used by the frozen whole-profile matcher. */
+  profileMatchInput: ProfileMatchInput;
 }
 
 /** Source Product Type / Category values that mean "professional / technical". */
@@ -327,6 +334,30 @@ export function assessIntimportProduct(
         mapper,
       )
     : null;
+  const declared = declaredNumericValues(candidate);
+  const profileMatchInput: ProfileMatchInput = {
+    name: candidate.displayName,
+    variant: candidate.source['Variant Original'] ?? candidate.source['Variant English'],
+    brand: candidate.source.Brand,
+    category: candidate.sourceCategory,
+    subcategory: candidate.sourceSubcategory,
+    barcode: candidate.ean,
+    knownMacros: Object.fromEntries(
+      (
+        [
+          'fat_percent',
+          'protein_percent',
+          'carbohydrate_percent',
+          'total_sugars_percent',
+          'fiber_percent',
+          'salt_percent',
+        ] as const
+      ).flatMap((field) =>
+        typeof declared[field] === 'number' ? [[field, declared[field]]] : [],
+      ),
+    ),
+    technical: kind === 'technical',
+  };
 
   return {
     rowIndex: candidate.rowIndex,
@@ -358,6 +389,7 @@ export function assessIntimportProduct(
     enrichmentTargets: targets,
     insert: candidate.insert,
     workingValues,
+    profileMatchInput,
   };
 }
 
@@ -531,6 +563,13 @@ export function planIntimportImport(
     }
 
     const existing = (insert.extracted_json ?? {}) as Record<string, unknown>;
+    const acceptedProfile =
+      values?.profileMatch &&
+      values.profileMatch.confidence >= PROFILE_MATCH_FLOOR &&
+      values.profileMatch.rejected === null
+        ? values.profileMatch
+        : null;
+    const selectedProfile = acceptedProfile ? profileDonor(acceptedProfile) : null;
     (insert as Record<string, unknown>).extracted_json = {
       ...existing,
       productIntelligence: {
@@ -549,6 +588,16 @@ export function planIntimportImport(
               confidence: values.profileMatch.confidence,
               basis: values.profileMatch.basis,
               references: values.profileMatch.references,
+              selectedMapperIngredientId: selectedProfile?.ingredient_id ?? null,
+            }
+          : null,
+        // This is a proposal, never an authorization. catalog-submit recomputes
+        // the match server-side and will reject any different donor/confidence.
+        intimportWholeProfileProposal: selectedProfile
+          ? {
+              mapperIngredientId: selectedProfile.ingredient_id,
+              matchInput: row.profileMatchInput,
+              sourceProductId: row.sourceProductId,
             }
           : null,
         fields: provenance,
