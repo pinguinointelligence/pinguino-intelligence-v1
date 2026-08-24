@@ -64,6 +64,7 @@ import {
   mainBehaviorBlockReason,
   resolveMainCapability,
   productBehaviorRequiredLineIds,
+  productBehaviorIsManaged,
   productBehaviorModuleGate,
   snapshotServerResolvedProductBehavior,
   type ProductBehaviorSnapshot,
@@ -196,12 +197,18 @@ export function IngredientBuilder({
       const requiredLineIds = productBehaviorRequiredLineIds({
         items: [{ ...line, planned_grams: requestedGrams }],
       });
-      const behaviorGate = productBehaviorModuleGate(
-        state.productBehaviorSnapshots,
-        'BASE_RECIPE',
-        requiredLineIds,
-      );
-      if (!behaviorGate.ready) {
+      // The managed check is the same authority `setPlannedGrams` and
+      // `setPlannedGramsVector` apply in the store. Without it this wrapper was
+      // strictly stricter than the action it wraps: an unresolved workspace
+      // (signed-out, or the demo preset cold-open) has no snapshot for any
+      // canonical line, so every grams edit was refused as "permission denied"
+      // while the percent control — which routes through the store vector and
+      // does carry the check — kept editing the very same lines. Save and
+      // Production stay unconditional, so nothing unresolved can be persisted.
+      const behaviorGate = productBehaviorIsManaged(state.productBehaviorSnapshots)
+        ? productBehaviorModuleGate(state.productBehaviorSnapshots, 'BASE_RECIPE', requiredLineIds)
+        : null;
+      if (behaviorGate && !behaviorGate.ready) {
         setPickerNotice(
           behaviorGate.reason ??
             `${line.ingredient.name}: wymagane jest ponowne zatwierdzenie ProductBehavior.`,

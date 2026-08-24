@@ -21,6 +21,27 @@ const LEGACY_READ_ONLY_MODULES = new Set<ProductBehaviorModule>([
 ]);
 
 /**
+ * Is this workspace under managed product-behavior resolution?
+ *
+ * A workspace acquires managed status the moment the server resolver freezes
+ * its first snapshot. While it holds none at all, no resolution has been
+ * attempted (signed-out, demo/preset cold-open, or a pure Engine fixture) and
+ * an absent snapshot is "not yet resolved", not "permission denied".
+ *
+ * The distinction matters because draft editing must not become dependent on
+ * session/database state, while every boundary that publishes or persists the
+ * draft must stay unconditional. Callers that guard on this are therefore only
+ * the in-memory draft seams; SAVE, PRODUCTION and the recipe-wide constraint
+ * authority deliberately gate with no managed check, so an unresolved
+ * workspace can still be edited locally but can never be saved or produced.
+ */
+export function productBehaviorIsManaged(
+  snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>,
+): boolean {
+  return Object.keys(snapshots).length > 0;
+}
+
+/**
  * Trustless recipe boundary for resolved products. Callers pass every line ID
  * whose product lineage requires a Unified Product Intelligence snapshot; a
  * missing snapshot and a denied module permission fail through the same gate.

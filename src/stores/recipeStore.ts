@@ -76,6 +76,7 @@ import {
 } from '@/features/recipe-composition/labelTopping';
 import {
   mainBehaviorBlockReason,
+  productBehaviorIsManaged,
   productBehaviorModuleGate,
   productBehaviorRequiredLineIds,
   type ProductBehaviorSnapshot,
@@ -1380,7 +1381,7 @@ export const useRecipeStore = create<RecipeState>()(
             items: [{ ...line, planned_grams: requestedGrams }],
           });
           if (
-            Object.keys(state.productBehaviorSnapshots).length > 0 &&
+            productBehaviorIsManaged(state.productBehaviorSnapshots) &&
             required.length > 0 &&
             !productBehaviorModuleGate(state.productBehaviorSnapshots, 'BASE_RECIPE', required)
               .ready
@@ -1455,7 +1456,7 @@ export const useRecipeStore = create<RecipeState>()(
           const proposed = buildRecipeInput({ ...state, items: proposedItems });
           const required = productBehaviorRequiredLineIds({ items: proposed.items });
           if (
-            Object.keys(state.productBehaviorSnapshots).length > 0 &&
+            productBehaviorIsManaged(state.productBehaviorSnapshots) &&
             required.length > 0 &&
             !productBehaviorModuleGate(state.productBehaviorSnapshots, 'BASE_RECIPE', required)
               .ready

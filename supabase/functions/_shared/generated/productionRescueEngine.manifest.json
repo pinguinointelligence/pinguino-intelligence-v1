@@ -173,7 +173,7 @@
     },
     {
       "path": "src/features/product-intelligence/productBehaviorAccess.ts",
-      "sha256": "d1713b491d0d1db672668a5e0f65fce50163e508beae0593cf4588cdeaf7b9e0"
+      "sha256": "0b4405aa2866c5ef3f65018082587b060af734d72fd76cd2f5fc8e5b83b30926"
     },
     {
       "path": "src/features/product-intelligence/productBehaviorResolver.ts",
@@ -260,5 +260,5 @@
       "sha256": "5523e8a79f059b81594793260535fc3b4a85185fe9f5020de87c2c7782a44fdb"
     }
   ],
-  "sourceClosureSha256": "7d7c9842c77d9f560971e9fe11a93aa6080fd9582c6fbdf84e4d48f28bc3c254"
+  "sourceClosureSha256": "48f72933a84d868d269c004ce810a60ced8e38f5be0d1c7b857b08cfcbe8edc2"
 }
