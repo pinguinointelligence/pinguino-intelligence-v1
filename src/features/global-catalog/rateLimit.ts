@@ -1,4 +1,12 @@
-export type CatalogRateAction = 'ocr_scan' | 'manual_candidate' | 'review_escalation' | 'duplicate_dispute';
+export type CatalogRateAction =
+  | 'ocr_scan'
+  | 'manual_candidate'
+  | 'review_escalation'
+  | 'duplicate_dispute'
+  /** Bulk catalogue import. Carries NO product-count quota: a catalogue is as
+   * long as it is. Earned server-side from the actor's entitlement, never from
+   * a field the client sends. */
+  | 'catalog_import';
 
 export interface CatalogRateEvent {
   accountId: string;
@@ -23,7 +31,11 @@ export interface CatalogRateDecision {
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
 
-function within(events: readonly CatalogRateEvent[], now: number, duration: number): CatalogRateEvent[] {
+function within(
+  events: readonly CatalogRateEvent[],
+  now: number,
+  duration: number,
+): CatalogRateEvent[] {
   return events.filter((event) => now - new Date(event.at).getTime() < duration);
 }
 
@@ -37,34 +49,54 @@ export function evaluateCatalogRateLimit(input: {
 }): CatalogRateDecision {
   const now = new Date(input.now).getTime();
   const multiplier = input.trust?.trusted ? Math.max(1, input.trust.multiplier ?? 5) : 1;
-  const mine = input.events.filter((event) => event.accountId === input.accountId && event.action === input.action);
+  const mine = input.events.filter(
+    (event) => event.accountId === input.accountId && event.action === input.action,
+  );
+  // A catalogue import has no product-count quota, and a repeated payload
+  // inside one file is dedup's business rather than a rate denial.
+  if (input.action === 'catalog_import') return { allowed: true, reason: 'ok', retryAt: null };
   if (input.payloadHash && mine.some((event) => event.payloadHash === input.payloadHash)) {
     return { allowed: false, reason: 'duplicate_payload', retryAt: null };
   }
-  const firstBlockedRetry = (events: readonly CatalogRateEvent[], duration: number): string | null => {
+  const firstBlockedRetry = (
+    events: readonly CatalogRateEvent[],
+    duration: number,
+  ): string | null => {
     const earliest = events.map((event) => new Date(event.at).getTime()).sort((a, b) => a - b)[0];
     return earliest === undefined ? null : new Date(earliest + duration).toISOString();
   };
   if (input.action === 'ocr_scan') {
     const minute = within(mine, now, 60_000);
-    if (minute.length >= 3 * multiplier) return { allowed: false, reason: 'burst', retryAt: firstBlockedRetry(minute, 60_000) };
+    if (minute.length >= 3 * multiplier)
+      return { allowed: false, reason: 'burst', retryAt: firstBlockedRetry(minute, 60_000) };
     const hour = within(mine, now, HOUR);
-    if (hour.length >= 20 * multiplier) return { allowed: false, reason: 'hourly', retryAt: firstBlockedRetry(hour, HOUR) };
+    if (hour.length >= 20 * multiplier)
+      return { allowed: false, reason: 'hourly', retryAt: firstBlockedRetry(hour, HOUR) };
     const day = within(mine, now, DAY);
-    if (day.length >= 100 * multiplier) return { allowed: false, reason: 'daily', retryAt: firstBlockedRetry(day, DAY) };
+    if (day.length >= 100 * multiplier)
+      return { allowed: false, reason: 'daily', retryAt: firstBlockedRetry(day, DAY) };
   } else if (input.action === 'manual_candidate') {
     const day = within(mine, now, DAY);
-    if (day.length >= 10 * multiplier) return { allowed: false, reason: 'daily', retryAt: firstBlockedRetry(day, DAY) };
+    if (day.length >= 10 * multiplier)
+      return { allowed: false, reason: 'daily', retryAt: firstBlockedRetry(day, DAY) };
   } else if (input.action === 'duplicate_dispute') {
     const day = within(mine, now, DAY);
-    if (day.length >= 2 * multiplier) return { allowed: false, reason: 'daily', retryAt: firstBlockedRetry(day, DAY) };
+    if (day.length >= 2 * multiplier)
+      return { allowed: false, reason: 'daily', retryAt: firstBlockedRetry(day, DAY) };
   } else {
     const day = within(mine, now, DAY);
-    if (day.length >= 2 * multiplier) return { allowed: false, reason: 'daily', retryAt: firstBlockedRetry(day, DAY) };
+    if (day.length >= 2 * multiplier)
+      return { allowed: false, reason: 'daily', retryAt: firstBlockedRetry(day, DAY) };
     const last = mine.map((event) => new Date(event.at).getTime()).sort((a, b) => b - a)[0];
-    if (last !== undefined && now - last < HOUR) return { allowed: false, reason: 'cooldown', retryAt: new Date(last + HOUR).toISOString() };
+    if (last !== undefined && now - last < HOUR)
+      return { allowed: false, reason: 'cooldown', retryAt: new Date(last + HOUR).toISOString() };
     const rolling = within(mine, now, 30 * DAY);
-    if (rolling.length >= 10 * multiplier) return { allowed: false, reason: 'rolling_30d', retryAt: firstBlockedRetry(rolling, 30 * DAY) };
+    if (rolling.length >= 10 * multiplier)
+      return {
+        allowed: false,
+        reason: 'rolling_30d',
+        retryAt: firstBlockedRetry(rolling, 30 * DAY),
+      };
   }
   return { allowed: true, reason: 'ok', retryAt: null };
 }
