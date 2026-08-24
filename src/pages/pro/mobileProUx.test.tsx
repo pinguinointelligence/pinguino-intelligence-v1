@@ -131,6 +131,16 @@ describe('collapsed mobile recipe line', () => {
     expect(block).not.toContain('items.map(');
   });
 
+  it('keeps the baseline on the CLEAN draft, so async hydration cannot fake a change', () => {
+    // Served staging QA: the owner's „MOJA CENA" overrides are fetched after
+    // first paint, so a baseline frozen at first render marked every own-priced
+    // line as changed (5 of 8 on a real recipe). The baseline therefore tracks
+    // the signatures for as long as the draft is clean.
+    const store = read('features', 'ingredient-builder', 'ingredientChangeStore.ts');
+    expect(store).toContain('if (!dirty || !known) captureBaseline(parsed);');
+    expect(store).toContain('state.dirty');
+  });
+
   it('marks a changed line with the existing attention accent, never a new colour', () => {
     expect(row).toContain("mode === 'recipe' && changed && 'ingredient-line-changed'");
     expect(row).toContain("data-changed={mode === 'recipe' && changed ? 'true' : undefined}");

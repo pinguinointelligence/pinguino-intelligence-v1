@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { useRecipeStore } from '@/stores/recipeStore';
@@ -30,34 +30,36 @@ export const useIngredientChangeStore = create<IngredientChangeState>()(
 /**
  * The line ids to mark as changed.
  *
- * The baseline is re-captured at the three moments the application itself
- * treats as „this is now the accepted state":
+ * THE RULE: a line is marked when it differs from the last ACCEPTED state of
+ * the draft, and „accepted" is exactly what `recipeStore.dirty === false`
+ * means — a load, a reopened version, or a successful save.
  *
- *  1. a cold start with nothing to compare against;
- *  2. the EDGE where the draft returns to clean (a successful save, an accepted
- *     load) — not merely „is clean", because some tracked values (own price,
- *     required, unavailable) legitimately never set the draft's dirty flag and
- *     would otherwise be swallowed by the baseline the instant they changed;
- *  3. a different recipe/version being opened (`draftContextSeq`).
+ * So the baseline tracks the signatures continuously WHILE the draft is clean.
+ * That is not a detail: the row's own values arrive asynchronously (the owner's
+ * „MOJA CENA" overrides are fetched after first paint, and the UX meta store
+ * rehydrates from storage), so a baseline frozen at first render would mark
+ * every own-priced line as changed the moment its price landed — which is
+ * precisely what served staging QA showed (5 of 8 lines on a real recipe).
+ *
+ * The consequence is deliberate and honest: a value that never dirties the
+ * draft — an account-level price, the required/unavailable UX flags — is
+ * absorbed into the accepted state instead of being marked, because the
+ * application persists it immediately and there would be no pending state for
+ * the marker to clear on. Everything the recipe vector owns (grams and
+ * therefore %, the exclusive lock, the Main crown, a substituted product) does
+ * dirty the draft and is marked until it is saved or applied.
  */
 export function useChangedIngredientLines(signatures: IngredientSignatureMap): ReadonlySet<string> {
   const dirty = useRecipeStore((state) => state.dirty);
-  const draftContextSeq = useRecipeStore((state) => state.draftContextSeq);
   const baseline = useIngredientChangeStore((state) => state.baselineByLineId);
   const captureBaseline = useIngredientChangeStore((state) => state.captureBaseline);
   const signatureKey = JSON.stringify(signatures);
-  const previous = useRef<{ dirty: boolean; draftContextSeq: number } | null>(null);
 
   useEffect(() => {
     const parsed = JSON.parse(signatureKey) as IngredientSignatureMap;
-    const before = previous.current;
-    previous.current = { dirty, draftContextSeq };
-    const coldStart =
-      Object.keys(useIngredientChangeStore.getState().baselineByLineId).length === 0;
-    const returnedToClean = before !== null && before.dirty && !dirty;
-    const openedAnotherRecipe = before !== null && before.draftContextSeq !== draftContextSeq;
-    if (coldStart || returnedToClean || openedAnotherRecipe) captureBaseline(parsed);
-  }, [captureBaseline, dirty, draftContextSeq, signatureKey]);
+    const known = Object.keys(useIngredientChangeStore.getState().baselineByLineId).length > 0;
+    if (!dirty || !known) captureBaseline(parsed);
+  }, [captureBaseline, dirty, signatureKey]);
 
   return useMemo(
     () => changedIngredientLineIds(JSON.parse(signatureKey) as IngredientSignatureMap, baseline),

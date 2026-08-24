@@ -144,13 +144,27 @@ RLS, API or persistence change. The only store added is a presentation baseline.
 Both were invisible on the DEV demo preset and only appeared against a real
 authenticated Pro recipe ("QA Lost PL.zoltka UNLOCKED v2", 8 base lines).
 
-1. **False change markers on every module switch.** The §8 signatures were read
-   from the `items` the surface was RENDERING. Produkcja hands `IngredientBuilder`
-   the production forecast instead of the planning result, so opening Produkcja
-   and returning marked 5 of 8 lines as changed. Fixed: the signatures now read
-   the CANONICAL recipe vector (`storeItems`), which is identical in every
-   module. Regression test: "reads the change signature from the CANONICAL
-   recipe vector, not the rendered one".
+1. **Five of eight lines falsely marked as changed.** Two independent causes,
+   both found only against real data:
+   a. the signatures were read from the `items` the surface was RENDERING, and
+   Produkcja hands `IngredientBuilder` the production forecast instead of the
+   planning result — so a module switch looked like an edit. Fixed by reading
+   the CANONICAL recipe vector (`storeItems`), identical in every module.
+   b. the real cause of the 5/8: the baseline was frozen at first render, but
+   the owner's „MOJA CENA" overrides are FETCHED AFTER first paint. The five
+   marked lines were exactly the five carrying a „Moja" price — proven by
+   dumping the stored baseline (`…|1.2000|mapper_reference`) against the
+   hydrated value. Fixed by making the rule explicit: a line is marked when
+   it differs from the last ACCEPTED state, and the baseline therefore tracks
+   the signatures for as long as `recipeStore.dirty === false`. Any async
+   hydration is absorbed; every real edit still dirties the draft and stays
+   marked until saved or applied.
+   Deliberate, documented consequence: a value that never dirties the draft — an
+   account-level price, the required/unavailable UX flags — is absorbed rather
+   than marked, because the app persists it immediately and there would be no
+   pending state for the marker to clear on. Regression tests: "reads the change
+   signature from the CANONICAL recipe vector, not the rendered one" and "keeps
+   the baseline on the CLEAN draft, so async hydration cannot fake a change".
 2. **The sheet header truncated the catalog name.** Real Mapper names
    ("CREAM 30% · Mlekovita Cream · Chilled") are longer than a phone line, and
    the detail view truncated too — so the full name was unreachable on mobile.
