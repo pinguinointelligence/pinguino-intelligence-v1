@@ -10,7 +10,6 @@ import {
 } from '../../../src/features/product-intelligence/mapperValueInference.ts';
 import {
   assessProductConfidence,
-  isAutoImportEligible,
   type ProductEvidenceInput,
   type ProductEvidenceField,
   type EvidenceSource,
@@ -25,6 +24,11 @@ import {
   type FieldTruthState,
   type WorkingNumericField,
 } from '../../../src/features/product-intelligence/productFieldTruth.ts';
+import {
+  classifyCarbonation,
+  type CarbonationEvidence,
+  type CarbonationProfile,
+} from '../../../src/data/products/carbonation.ts';
 
 export const INTIMPORT_WHOLE_PROFILE_AUTHORITY = 'INTIMPORT_WHOLE_PROFILE_MATCH' as const;
 
@@ -75,6 +79,7 @@ export interface IntimportTrustedProductProfile {
   /** Exact, server-validated evidence used for the deterministic score. */
   evidence: ProductEvidenceInput;
   evidenceProvenance: Partial<Record<ProductEvidenceField, IntimportTrustedEvidenceProvenance>>;
+  carbonation: CarbonationProfile;
   readiness: ProductReadiness;
   engineUsable: boolean;
   criticalReadiness: boolean;
@@ -114,6 +119,8 @@ export interface IntimportProductProfileProposalInput {
   evidenceProvenance?: Partial<
     Record<ProductEvidenceField, IntimportTrustedEvidenceProvenance>
   >;
+  /** Server-derived exact assertions only. Browser product names never enter. */
+  carbonationEvidence?: readonly CarbonationEvidence[];
   /** Deliberately ignored. It exists only so callers/tests can prove that a
    * browser-supplied final profile has no authority at this boundary. */
   proposedTechnicalComposition?: Record<string, unknown>;
@@ -278,8 +285,12 @@ export function validateIntimportProductProfileProposal(
       materialConflicts: [...input.evidence.materialConflicts],
     },
     evidenceProvenance: structuredClone(input.evidenceProvenance ?? {}),
+    carbonation: classifyCarbonation(input.carbonationEvidence ?? []),
     readiness: resolved.readiness,
-    engineUsable: resolved.engineReady && isAutoImportEligible(assessment),
+    // Historical contract: Product Accuracy routes enrichment/automatic import
+    // handling, while Engine admission is decided by the resolved critical
+    // physical profile. Do not fold the aggregate evidence score into physics.
+    engineUsable: resolved.engineReady,
     criticalReadiness: assessment.criticalReadiness,
     missingCritical: [...assessment.missingCritical],
     missingEngineFields: [...resolved.missingEngineFields],

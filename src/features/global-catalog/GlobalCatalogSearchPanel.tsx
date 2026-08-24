@@ -4,6 +4,7 @@ import { cn } from '@/lib/cn';
 import { productPickerVerificationView } from '@/features/ingredient-builder/productPickerModel';
 import { preserveServerProductRank } from './ranking';
 import { useGlobalCatalogPicker } from './useGlobalCatalogPicker';
+import { CarbonationBubbles } from '@/components/product/CarbonationBubbles';
 
 const badgeTone = (status: string, blocked: boolean, directMapper: boolean): string => {
   if (blocked) return 'bg-red-100 text-red-700';
@@ -126,7 +127,7 @@ export function GlobalCatalogSearchPanel() {
                 <span aria-hidden>{technicallyBlocked ? '!' : verification.status === 'PINGÜINO — SPRAWDZONY' ? 'PI' : '✎'}</span>
               </span>
               <span className="min-w-0 flex-1">
-                <strong className="block truncate text-sm font-semibold text-ink">{hit.displayName}</strong>
+                <strong className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-ink"><span className="truncate">{hit.displayName}</span><CarbonationBubbles status={hit.carbonationStatus} /></strong>
                 <span
                   className={cn('block truncate text-xs', technicallyBlocked ? 'text-status-error' : 'text-stone-600')}
                   data-catalog-block-reason={technicallyBlocked ? verification.reason ?? undefined : undefined}
@@ -158,7 +159,7 @@ export function GlobalCatalogSearchPanel() {
               <span aria-hidden>{technicallyBlocked ? '!' : verification.status === 'PINGÜINO — SPRAWDZONY' ? '✓' : '✎'}</span>
             </span>
             <span className="min-w-0 flex-1">
-              <strong className="block truncate text-sm font-semibold text-ink">{hit.displayName}</strong>
+              <strong className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-ink"><span className="truncate">{hit.displayName}</span><CarbonationBubbles status={hit.carbonationStatus} /></strong>
               <span
                 className={cn('block truncate text-xs', technicallyBlocked ? 'text-status-error' : 'text-stone-600')}
                 data-catalog-block-reason={technicallyBlocked ? verification.reason ?? undefined : undefined}

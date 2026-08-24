@@ -13,7 +13,6 @@ import type { IntimportCandidate } from '@/data/products/intimport';
 import {
   AUTO_IMPORT_FLOOR,
   assessProductConfidence,
-  isAutoImportEligible,
   routeBeforeWeb,
   type EnrichmentRoute,
   type EvidenceSource,
@@ -42,6 +41,11 @@ import {
 } from './productWorkingValues';
 import { WORKING_NUMERIC_FIELDS, type WorkingNumericField } from './productFieldTruth';
 import type { ProductInsert } from '@/data/products/productRow';
+import {
+  classifyCarbonation,
+  type CarbonationEvidence,
+  type CarbonationProfile,
+} from '@/data/products/carbonation';
 import {
   productBehaviorModuleGate,
 } from './productBehaviorAccess';
@@ -89,6 +93,8 @@ export interface IntimportProductIntelligence {
   /** The exact evidence this assessment was computed from. Enrichment merges
    * new facts into THIS, so the caller never rebuilds it and cannot drift. */
   evidence: ProductEvidenceInput;
+  /** Same exact-evidence carbonation profile used by Scanner and runtime. */
+  carbonation: CarbonationProfile;
   /** Server-owned research ledger keys. Empty before explicit enrichment. */
   enrichmentEvidenceReceipts: string[];
   route: EnrichmentRoute;
@@ -249,6 +255,53 @@ function declaredNumericValues(
   return declared;
 }
 
+function intimportCarbonationEvidence(
+  candidate: IntimportCandidate,
+  sourceAuthority: SourceAuthorityAssessment,
+): CarbonationEvidence[] {
+  const source = candidate.source;
+  const sourceUrl = source['Primary Source URL'] ?? source['Technical PDF URL'] ?? null;
+  const common = {
+    sourceUrl,
+    sourceDomain: sourceAuthority.domain,
+    sourceAuthorityClass: sourceAuthority.authority,
+    evidenceReceipt: null,
+    retrievedAt: source['Checked At'] ?? null,
+  };
+  const evidence: CarbonationEvidence[] = [];
+  const labelAssertion = source['Ingredients Original'] ?? source['Ingredients English'];
+  if (labelAssertion?.trim()) {
+    evidence.push({
+      ...common,
+      source: 'EXACT_LABEL',
+      assertion: labelAssertion,
+      assertionPath: source['Ingredients Original']
+        ? 'Ingredients Original'
+        : 'Ingredients English',
+    });
+  }
+  const technicalAssertion = source['Technical Parameters'];
+  if (technicalAssertion?.trim()) {
+    const exactSource =
+      sourceAuthority.authority === 'AUTHORITATIVE_RETAILER'
+        ? 'EXACT_AUTHORITATIVE_RETAILER'
+        : sourceAuthority.authority === 'STRUCTURED_PRODUCT_DATABASE'
+          ? 'EXACT_EAN_PRODUCT'
+          : sourceAuthority.authority.startsWith('OFFICIAL_')
+            ? 'EXACT_MANUFACTURER'
+            : null;
+    if (exactSource) {
+      evidence.push({
+        ...common,
+        source: exactSource,
+        assertion: technicalAssertion,
+        assertionPath: 'Technical Parameters',
+      });
+    }
+  }
+  return evidence;
+}
+
 export function assessIntimportProduct(
   candidate: IntimportCandidate,
   index: IntimportCanonicalIndex = {},
@@ -366,6 +419,9 @@ export function assessIntimportProduct(
     ),
     technical: kind === 'technical',
   };
+  const carbonation = classifyCarbonation(
+    intimportCarbonationEvidence(candidate, sourceAuthority),
+  );
 
   return {
     rowIndex: candidate.rowIndex,
@@ -393,6 +449,7 @@ export function assessIntimportProduct(
     },
     researchPlan,
     evidence,
+    carbonation,
     enrichmentEvidenceReceipts: [],
     route,
     enrichmentTargets: targets,
@@ -532,6 +589,7 @@ export interface IntimportReadinessSummary {
   /** Profile passed, but a later authority (normally ProductBehavior) blocks it. */
   blocked: number;
   other: number;
+  carbonation: Record<'CARBONATED' | 'NON_CARBONATED' | 'UNKNOWN', number>;
 }
 
 /**
@@ -562,11 +620,12 @@ export function planIntimportImport(
 
   for (const row of rows) {
     const values = row.workingValues;
-    const admittedByEvidence = isAutoImportEligible(row.assessment);
     // Composition decides. A professional product is not held back for missing
-    // dosage or process — those are informational and carry no authority. The
-    // existing 85% Product Accuracy gate remains independent and must also pass.
-    const state: ImportedProductState = !values || !admittedByEvidence
+    // dosage or process — those are informational and carry no authority.
+    // Product Accuracy remains independent routing/enrichment information; the
+    // historical Engine contract admits the product-owned profile on resolved
+    // critical physics, not on the aggregate Product Accuracy score.
+    const state: ImportedProductState = !values
       ? 'REVIEW'
       : values.valueReadiness === 'READY'
         ? 'READY_VERIFIED'
@@ -646,6 +705,7 @@ export function planIntimportImport(
         },
         fields: provenance,
       },
+      carbonation: row.carbonation,
     };
 
     byState[state] += 1;
@@ -693,6 +753,13 @@ export function summarizeIntimportReadiness(
   }
   const review = plan.byState.REVIEW;
   const blocked = plan.engineUsable - engineReady;
+  const carbonation = rows.reduce(
+    (counts, row) => {
+      counts[row.carbonation?.status ?? 'UNKNOWN'] += 1;
+      return counts;
+    },
+    { CARBONATED: 0, NON_CARBONATED: 0, UNKNOWN: 0 },
+  );
   return {
     sourceAnalyzed: rows.length,
     workingProfileComplete: rows.filter(
@@ -710,5 +777,6 @@ export function summarizeIntimportReadiness(
     review,
     blocked,
     other: Math.max(0, rows.length - review - blocked - engineReady),
+    carbonation,
   };
 }

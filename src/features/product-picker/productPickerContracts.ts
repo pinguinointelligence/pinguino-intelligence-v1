@@ -20,6 +20,7 @@
 import type { ReadinessProductInput } from '@/features/ingredient-resolution';
 import type { ReferenceEngineValues } from '@/data/products/productEngineResolver';
 import type { ProductStatus } from '@/data/products/productRow';
+import type { CarbonationStatus } from '@/data/products/carbonation';
 
 /**
  * One catalogue entry the picker can display and resolve. The `readiness` +
@@ -40,6 +41,7 @@ export interface PickerCatalogueEntry {
   imageUrl: string | null;
   /** Lifecycle status (drives the readable Polish status label — never shown raw). */
   status: ProductStatus;
+  carbonationStatus?: CarbonationStatus;
   /** The subset of fields the engine-readiness gate reads (engine values + red-flag text). */
   readiness: ReadinessProductInput;
   /** The matched `mapper_basement` reference looked up by the caller, or null. */

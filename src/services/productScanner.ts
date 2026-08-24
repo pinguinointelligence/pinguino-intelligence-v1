@@ -11,6 +11,7 @@ import type {
   ProductScanOverlayState,
   ProductScanResult,
 } from '@/features/product-scanner/contracts';
+import type { CarbonationStatus } from '@/data/products/carbonation';
 
 const UNAVAILABLE = 'Skaner produktu nie jest dostępny w tej konfiguracji.';
 
@@ -116,6 +117,7 @@ export interface ScanExactProduct {
   brand: string | null;
   entityKind: 'pi_base' | 'commercial_product';
   status: 'pi_base' | 'verified' | 'manual_unverified' | 'blocked';
+  carbonationStatus?: CarbonationStatus;
 }
 
 /**

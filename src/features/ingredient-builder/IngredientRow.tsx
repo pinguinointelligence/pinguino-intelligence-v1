@@ -31,6 +31,7 @@ import {
   MobileIngredientSheet,
 } from './IngredientLineControls';
 import { IngredientCategoryIcon } from './IngredientCategoryIcon';
+import { CarbonationBubbles } from '@/components/product/CarbonationBubbles';
 import { ingredientCategorySymbolFor } from './ingredientCategorySymbols';
 import { ProductionActualControl } from '@/features/production-workspace/ProductionActualControl';
 import { productProcessPl, productRecommendedDosagePl } from '@/features/product-intelligence';
@@ -710,6 +711,10 @@ function RecipeRow({
               >
                 {item.ingredient.name}
               </HoverPreview>
+              <CarbonationBubbles
+                status={item.ingredient.carbonation_status}
+                className="2xl:order-4"
+              />
               {estimated ? (
                 <span
                   aria-label={t.data.estimatedHint}
@@ -1015,6 +1020,7 @@ function ProductionRow({
           >
             {item.ingredient.name}
           </HoverPreview>
+          <CarbonationBubbles status={item.ingredient.carbonation_status} />
           <span
             className={cn(
               'mt-1 ml-7 inline-flex basis-full lg:mt-0 lg:ml-auto lg:basis-auto items-center rounded-md border px-1.5 py-0.5 text-[10px] leading-tight font-semibold tracking-[0.03em]',

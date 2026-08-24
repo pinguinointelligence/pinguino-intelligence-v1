@@ -143,6 +143,9 @@ export interface EngineIngredient {
    * POD/PAC 0, and only the declared subcategory tells them apart.
    */
   source_subcategory?: string | null;
+  /** Product-process metadata carried with Recipe/Production. Engine math must
+   * never inspect this field. */
+  carbonation_status?: import('@/data/products/carbonation').CarbonationStatus;
   name: string;
   category: IngredientCategory;
   composition: IngredientComponentProfile;

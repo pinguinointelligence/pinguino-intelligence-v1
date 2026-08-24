@@ -7323,7 +7323,8 @@ function productionSourceFingerprint(input, composition) {
 			ingredientId: item.ingredient.canonical_ingredient_id ?? item.ingredient.id,
 			grams: item.planned_grams,
 			lockType: item.lock_type,
-			productionStep: item.production_step ?? null
+			productionStep: item.production_step ?? null,
+			carbonationStatus: item.ingredient.carbonation_status ?? "UNKNOWN"
 		})),
 		composition: composition ? {
 			baseOrder: composition.baseOrder,
@@ -7371,6 +7372,10 @@ function createProductionSession(input) {
 		processReadiness: input.processReadiness ?? null,
 		processAdvisories: structuredClone(input.processAdvisories ?? []),
 		heatInformationAcknowledgedAt: input.heatInformationAcknowledgedAt ?? null,
+		degassingRequired: input.degassingRequired ?? false,
+		degassingAcknowledged: input.degassingAcknowledged ?? false,
+		degassingAcknowledgedAt: input.degassingAcknowledgedAt ?? null,
+		carbonatedProductIds: [...input.carbonatedProductIds ?? []],
 		durableRescueAcceptedAt: null,
 		durableRescueRevision: 0,
 		durableActualRevision: 0,
@@ -7595,6 +7600,10 @@ function hydrateProductionSessionFromRun(run, source, plannedInput, plannedCompo
 		processReadiness: run.processReadiness ?? null,
 		processAdvisories: run.processAdvisories ?? [],
 		heatInformationAcknowledgedAt: run.heatInformationAcknowledgedAt ?? null,
+		degassingRequired: run.degassingRequired === true,
+		degassingAcknowledged: run.degassingAcknowledged === true,
+		degassingAcknowledgedAt: run.degassingAcknowledgedAt ?? null,
+		carbonatedProductIds: [...run.carbonatedProductIds ?? []],
 		startedAt: run.events.find((event) => event.type === "started")?.at ?? run.createdAt
 	});
 	if (run.rescue) {

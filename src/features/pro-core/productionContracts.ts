@@ -101,6 +101,7 @@ export type ProductionEventType =
   | 'note_added'
   | 'production_started'
   | 'heat_information_acknowledged'
+  | 'degassing_acknowledged'
   | 'ingredient_actual_confirmed'
   | 'actual_entry_corrected'
   | 'variance_detected'
@@ -152,6 +153,11 @@ export interface ProductionRun {
    * without it.
    */
   heatInformationAcknowledgedAt?: string | null;
+  /** Frozen from the exact recipe version when this run starts. */
+  degassingRequired?: boolean;
+  degassingAcknowledged?: boolean;
+  degassingAcknowledgedAt?: string | null;
+  carbonatedProductIds?: string[];
   plannedDate: string | null;
   machine: string | null;
   location: string | null;

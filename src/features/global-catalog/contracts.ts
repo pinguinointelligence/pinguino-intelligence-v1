@@ -1,3 +1,5 @@
+import type { CarbonationStatus } from '@/data/products/carbonation';
+
 export type CatalogStatus = 'verified' | 'manual_unverified' | 'blocked';
 
 export type CatalogProvenance =
@@ -119,6 +121,8 @@ export interface CatalogProductSearchHit {
   verificationMethod: CatalogVerificationMethod | MapperVerificationPresentationMethod | 'pi_base';
   /** Public label facts only. Never contains private price/supplier/notes/stock. */
   publicData: Record<string, unknown>;
+  /** Canonical projection duplicated from publicData only for typed consumers. */
+  carbonationStatus?: CarbonationStatus;
   /** Caller-private projection from owner-RLS data; never part of shared facts. */
   privatePricePerKg?: number | null;
   privatePriceCurrency?: string | null;

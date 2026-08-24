@@ -11,6 +11,8 @@ import {
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router';
 import type { EngineIngredient } from '@/engine';
+import type { CarbonationStatus } from '@/data/products/carbonation';
+import { CarbonationBubbles } from '@/components/product/CarbonationBubbles';
 import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
 import { getEngineApprovedIngredientById } from '@/services/ingredients';
@@ -88,6 +90,7 @@ interface PickerOption {
   canonicalId: string;
   confidencePercent: number | null;
   selectable: boolean;
+  carbonationStatus: CarbonationStatus;
 }
 
 const PICKER_FILTERS: ReadonlyArray<{ id: IngredientCategoryFilterId; label: string }> = [
@@ -302,6 +305,7 @@ export function ProductPickerPopover({
             canonicalId: canonicalCatalogProductId(hit),
             confidencePercent: catalogDataConfidencePercent(hit),
             selectable: scope === 'BASE_FORMULATION' ? hit.usableInBase : hit.usableAsTopping,
+            carbonationStatus: hit.carbonationStatus ?? 'UNKNOWN',
           }))
         : [];
       // The RPC is relevance-first. Do not sort or filter by presentation group
@@ -332,6 +336,7 @@ export function ProductPickerPopover({
         confidencePercent:
           item.confidence_score > 0 ? normalizeDataConfidencePercent(item.confidence_score) : null,
         selectable: true,
+        carbonationStatus: item.carbonation_status ?? 'UNKNOWN',
         verification: { status: 'PINGÜINO — SPRAWDZONY' as const, reason: null },
       }))
       .filter((option) => matchesPickerFilter(option, activeFilter));
@@ -1002,8 +1007,9 @@ export function ProductPickerPopover({
                                           )}
                                         </span>
                                         <span className="min-w-0 flex-1">
-                                          <span className="block truncate text-sm font-semibold">
-                                            {option.name}
+                                          <span className="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
+                                            <span className="truncate">{option.name}</span>
+                                            <CarbonationBubbles status={option.carbonationStatus} />
                                           </span>
                                           <span className="block truncate text-[11px] text-stone-500">
                                             {[option.brand, pickerCategoryLabel(option)]

@@ -1044,24 +1044,24 @@ describe('INTIMPORT import handoff', () => {
     expect(plan.engineUsable).toBe(0);
   });
 
-  it('keeps a technically complete product out of circulation below the existing 85% floor', () => {
+  it('keeps Product Accuracy separate from historical Engine profile admission', () => {
     const entry = planIntimportImport([row('ESTIMATED_READY', false, 84.99)]).rows[0]!;
-    expect(entry.state).toBe('REVIEW');
-    expect(entry.engineUsable).toBe(false);
+    expect(entry.state).toBe('READY_ESTIMATED');
+    expect(entry.engineUsable).toBe(true);
     expect(intelligenceOf(entry).productAccuracy).toBe(84.99);
   });
 
-  it('separates an ESTIMATED_READY working profile at 72.8% from Engine readiness', () => {
+  it('reports low Product Accuracy separately from profile and ProductBehavior readiness', () => {
     const summary = summarizeIntimportReadiness([row('ESTIMATED_READY', false, 72.8)]);
     expect(summary).toMatchObject({
       sourceAnalyzed: 1,
       workingProfileComplete: 1,
       productAccuracyPass: 0,
-      productProfileReady: 0,
+      productProfileReady: 1,
       productBehaviorAuthorityPass: 0,
       engineReady: 0,
-      review: 1,
-      blocked: 0,
+      review: 0,
+      blocked: 1,
     });
   });
 

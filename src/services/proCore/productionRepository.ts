@@ -109,6 +109,8 @@ export interface ProductionRepository {
    * acknowledged before Start and then remains confirmed for this run.
    */
   acknowledgeHeatInformation(runId: string): Promise<ProductionRun>;
+  /** Persist the operator's one confirmation for the run's frozen carbonated products. */
+  acknowledgeDegassing(runId: string): Promise<ProductionRun>;
   /** Atomically records the final actual vector, closes the run and freezes its ACTUAL snapshot. */
   completeRun(
     runId: string,
@@ -163,6 +165,7 @@ export function inMemoryProductionRepository(svc: InMemoryProduction): Productio
       throw new Error('Trusted Production Rescue consumption is unavailable in local memory.');
     },
     acknowledgeHeatInformation: async (runId) => svc.acknowledgeHeatInformation(runId),
+    acknowledgeDegassing: async (runId) => svc.acknowledgeDegassing(runId),
     completeRun: async (runId, input) => {
       assertActualBasis(runId, input.expectedActualRevision, input.expectedRescueRevision);
       const recorded = svc.recordActual(runId, input);

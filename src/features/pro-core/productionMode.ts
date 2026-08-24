@@ -109,6 +109,10 @@ export function buildProductionRun(input: BuildRunInput): ProductionRun {
     thermalMode: meta?.thermalMode ?? null,
     processReadiness: null,
     processAdvisories: [],
+    degassingRequired: false,
+    degassingAcknowledged: false,
+    degassingAcknowledgedAt: null,
+    carbonatedProductIds: [],
     plannedDate: meta?.plannedDate ?? null,
     machine: meta?.machine ?? null,
     location: meta?.location ?? null,
@@ -202,6 +206,22 @@ export function acknowledgeHeatInformation(run: ProductionRun, at: string): Prod
   }
   if (run.heatInformationAcknowledgedAt) return run;
   return { ...run, heatInformationAcknowledgedAt: at, updatedAt: at };
+}
+
+/** Same durable acknowledgement pattern as heat information; no grams or
+ * lifecycle transitions are changed. */
+export function acknowledgeDegassing(run: ProductionRun, at: string): ProductionRun {
+  if (run.status !== 'in_progress') {
+    throw new Error('Degassing can only be acknowledged on an active run.');
+  }
+  if (!run.degassingRequired) return run;
+  if (run.degassingAcknowledgedAt) return run;
+  return {
+    ...run,
+    degassingAcknowledged: true,
+    degassingAcknowledgedAt: at,
+    updatedAt: at,
+  };
 }
 
 /* ── actuals (recorded, never replacing the plan) ─────────────────────────────── */

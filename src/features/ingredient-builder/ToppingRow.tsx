@@ -3,6 +3,7 @@ import { cn } from '@/lib/cn';
 import type { RecipeToppingItem } from '@/features/recipe-composition/recipeCompositionPersistence';
 import { DirectNumberControl } from './DirectNumberControl';
 import { IngredientCategoryIcon } from './IngredientCategoryIcon';
+import { CarbonationBubbles } from '@/components/product/CarbonationBubbles';
 import { ingredientCategorySymbolFor } from './ingredientCategorySymbols';
 import {
   CustomerPriceEditor,
@@ -93,6 +94,7 @@ export function ToppingRow({
             >
               {item.ingredient.name}
             </strong>
+            <CarbonationBubbles status={item.ingredient.carbonation_status} />
           </span>
           {catalogLabel ? (
             <span

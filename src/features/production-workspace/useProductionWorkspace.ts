@@ -58,6 +58,7 @@ import {
   productionRecipeLifecycleState,
   productionVersionFingerprint,
 } from './productionReadinessState';
+import { carbonatedProductsForRecipe } from './productionDegassing';
 
 export type ProductionRescueAuthorizationInvalidation = 'expired' | 'revision_mismatch' | null;
 
@@ -366,6 +367,9 @@ export function useProductionWorkspace(enabled: boolean) {
   const [rescueAuthorizationClock, setRescueAuthorizationClock] = useState(() => Date.now());
   const [reconcileRevision, setReconcileRevision] = useState(0);
   const [preStartHeatAcknowledgementKey, setPreStartHeatAcknowledgementKey] = useState<
+    string | null
+  >(null);
+  const [preStartDegassingAcknowledgementKey, setPreStartDegassingAcknowledgementKey] = useState<
     string | null
   >(null);
   const sessionRef = useRef(session);
@@ -802,7 +806,30 @@ export function useProductionWorkspace(enabled: boolean) {
     (session
       ? session.heatInformationAcknowledgedAt !== null
       : preStartHeatAcknowledgementKey === behaviorValidationKey);
-  const canStartProduction = productionPrerequisite === null && heatInformationAcknowledged;
+  const carbonatedProducts = useMemo(
+    () => carbonatedProductsForRecipe(plannedInput, plannedComposition),
+    [plannedComposition, plannedInput],
+  );
+  const degassingAcknowledgementKey = useMemo(
+    () =>
+      JSON.stringify({
+        behaviorValidationKey,
+        products: carbonatedProducts.map((product) => [product.productId, product.grams]),
+      }),
+    [behaviorValidationKey, carbonatedProducts],
+  );
+  const degassingRequired = session
+    ? session.degassingRequired
+    : carbonatedProducts.length > 0;
+  const degassingAcknowledged =
+    !degassingRequired ||
+    (session
+      ? session.degassingAcknowledged && session.degassingAcknowledgedAt !== null
+      : preStartDegassingAcknowledgementKey === degassingAcknowledgementKey);
+  const canStartProduction =
+    productionPrerequisite === null &&
+    heatInformationAcknowledged &&
+    degassingAcknowledged;
   const corrections = useMemo(
     () =>
       proposeCorrections({
@@ -985,6 +1012,9 @@ export function useProductionWorkspace(enabled: boolean) {
      */
     heatInformation: heatAdvisories,
     heatInformationAcknowledged,
+    carbonatedProducts,
+    degassingRequired,
+    degassingAcknowledged,
     practicalReady: canStartProduction,
     prerequisite: productionPrerequisite,
     sessionStarting: sessionStart.busy || recoveryPending,
@@ -1016,6 +1046,36 @@ export function useProductionWorkspace(enabled: boolean) {
         setPersistence({
           busy: false,
           error: 'Nie zapisano potwierdzenia informacji o obróbce. Partia pozostaje bez zmian.',
+        });
+        setReconcileRevision((current) => current + 1);
+        return;
+      } finally {
+        setPersistence((current) => ({ ...current, busy: false }));
+      }
+    },
+    acknowledgeDegassing: async () => {
+      if (!degassingRequired) return;
+      if (!session) {
+        setPreStartDegassingAcknowledgementKey(degassingAcknowledgementKey);
+        return;
+      }
+      if (!repositoryState.repository || persistence.busy) return;
+      if (session.degassingAcknowledgedAt) return;
+      setPersistence({ busy: true, error: null });
+      try {
+        const durableRun = await repositoryState.repository.acknowledgeDegassing(
+          session.sessionId,
+        );
+        replaceSession(
+          mergePendingProductionDrafts(
+            hydrateProductionSessionFromRun(durableRun, source, plannedInput, plannedComposition),
+            session,
+          ),
+        );
+      } catch {
+        setPersistence({
+          busy: false,
+          error: 'Nie zapisano potwierdzenia odgazowania. Partia pozostaje bez zmian.',
         });
         setReconcileRevision((current) => current + 1);
         return;
@@ -1261,10 +1321,14 @@ export function useProductionWorkspace(enabled: boolean) {
           capabilities: productionCapabilitiesFor(persona),
           by: ownerUserId,
         });
-        const acknowledgedRun =
+        const heatAcknowledgedRun =
           heatAdvisories.length > 0
             ? await repositoryState.repository.acknowledgeHeatInformation(activeRun.runId)
             : activeRun;
+        const acknowledgedRun =
+          carbonatedProducts.length > 0
+            ? await repositoryState.repository.acknowledgeDegassing(heatAcknowledgedRun.runId)
+            : heatAcknowledgedRun;
         restoreDurableSession(
           hydrateProductionSessionFromRun(
             acknowledgedRun,
@@ -1274,6 +1338,7 @@ export function useProductionWorkspace(enabled: boolean) {
           ),
         );
         setPreStartHeatAcknowledgementKey(null);
+        setPreStartDegassingAcknowledgementKey(null);
       } catch {
         setSessionStart({
           busy: false,

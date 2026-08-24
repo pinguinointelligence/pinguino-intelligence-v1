@@ -570,6 +570,48 @@ describe('Production workspace touch-first UI', () => {
     );
   });
 
+  it('renders one persisted degassing card and blocks Start until confirmation', () => {
+    const render = (acknowledged: boolean) => renderToStaticMarkup(
+      <ProductionCockpit
+        production={{
+          session: null,
+          progress: null,
+          prerequisite: null,
+          practicalReady: acknowledged,
+          source: session.source,
+          plannedInput: input,
+          heatInformation: [],
+          heatInformationAcknowledged: true,
+          carbonatedProducts: [
+            { productId: 'PR-ING-000001', name: 'Cola Zero', grams: 350 },
+            { productId: 'PM-ING-000002', name: 'Woda gazowana', grams: 50 },
+          ],
+          degassingRequired: true,
+          degassingAcknowledged: acknowledged,
+          acknowledgeDegassing: vi.fn(),
+          startNewSession: vi.fn(),
+        } as unknown as ProductionWorkspaceView}
+        onOpenPreview={vi.fn()}
+        onRecalculate={vi.fn()}
+        onReturnToRecipe={vi.fn()}
+      />,
+    );
+    const pending = render(false);
+    expect(pending.match(/data-testid="production-degassing"/g)).toHaveLength(1);
+    expect(pending).toContain('Przed użyciem należy całkowicie odgazować');
+    expect(pending).toContain('Cola Zero');
+    expect(pending).toContain('350 g');
+    expect(pending).toContain('Woda gazowana');
+    expect(pending).toContain('✓ Odgazowane');
+    expect(pending).toMatch(/<button[^>]*disabled[^>]*data-testid="start-production-session"/);
+
+    const confirmed = render(true);
+    expect(confirmed).toContain('data-acknowledged="true"');
+    const startTag = confirmed.match(/<button[^>]*data-testid="start-production-session"[^>]*>/)?.[0];
+    expect(startTag).toBeDefined();
+    expect(startTag).not.toContain(' disabled=');
+  });
+
   it('reminds the operator about verified heat treatment and takes one OK', () => {
     const forecast = assessProductionRescue(session);
     const acknowledge = vi.fn();

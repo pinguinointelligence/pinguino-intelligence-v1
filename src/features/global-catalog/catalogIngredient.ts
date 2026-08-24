@@ -3,6 +3,7 @@ import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMa
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import type { CatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
 import type { CatalogProductSearchHit } from './contracts';
+import { carbonationProfileFromPublicData } from '@/data/products/carbonation';
 
 export function mappedCatalogIngredient(
   hit: CatalogProductSearchHit,
@@ -18,6 +19,8 @@ export function mappedCatalogIngredient(
       : `catalog:${hit.id}`,
     identity_provenance: 'reference',
     name: hit.brand ? `${hit.brand} · ${hit.displayName}` : hit.displayName,
+    carbonation_status:
+      hit.carbonationStatus ?? carbonationProfileFromPublicData(hit.publicData).status,
     source_type: hit.status === 'verified' ? 'producer_label' : 'manual',
     is_verified: hit.status === 'verified',
     confidence_score: hit.status === 'verified' ? 95 : 65,
@@ -89,6 +92,8 @@ export function labelOnlyCatalogToppingIngredient(
     catalog_product_id: hit.id,
     catalog_version_id: hit.currentVersionId ?? null,
     verification_status: hit.status === 'verified' ? 'verified' : 'manual_unverified',
+    carbonation_status:
+      hit.carbonationStatus ?? carbonationProfileFromPublicData(hit.publicData).status,
     label_nutrition_per_100g: {
       basis: 'per_100g',
       energyKcal: energy!,

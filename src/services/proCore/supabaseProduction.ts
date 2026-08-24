@@ -79,6 +79,7 @@ const CONSUME_RESCUE_RPC = 'production_consume_rescue_authorization_v1';
 const COMPLETE_RUN_RPC = 'production_complete_run_v2';
 const APPEND_AMENDMENT_RPC = 'production_append_amendment_v1';
 const ACKNOWLEDGE_HEAT_RPC = 'production_acknowledge_heat_information_v1';
+const ACKNOWLEDGE_DEGASSING_RPC = 'production_acknowledge_degassing_v1';
 
 /** Tunable seams (defaults are production-safe; tests inject deterministic ones). */
 export interface SupabaseProductionOptions {
@@ -108,6 +109,10 @@ interface RunRow {
     | import('@/features/product-intelligence').ProductProcessReadinessDetail[]
     | null;
   heat_information_acknowledged_at?: string | null;
+  degassing_required?: boolean;
+  degassing_acknowledged?: boolean;
+  degassing_acknowledged_at?: string | null;
+  carbonated_product_ids?: string[] | null;
   planned_date: string | null;
   machine: string | null;
   location: string | null;
@@ -243,6 +248,10 @@ function assembleRun(
     processReadiness: run.process_readiness ?? null,
     processAdvisories: structuredClone(run.process_advisories ?? []),
     heatInformationAcknowledgedAt: run.heat_information_acknowledged_at ?? null,
+    degassingRequired: run.degassing_required === true,
+    degassingAcknowledged: run.degassing_acknowledged === true,
+    degassingAcknowledgedAt: run.degassing_acknowledged_at ?? null,
+    carbonatedProductIds: [...(run.carbonated_product_ids ?? [])],
     plannedDate: run.planned_date,
     machine: run.machine,
     location: run.location,
@@ -781,6 +790,12 @@ export function supabaseProductionRepository(
     async acknowledgeHeatInformation(runId: string): Promise<ProductionRun> {
       const owner = await uid();
       await mutate(ACKNOWLEDGE_HEAT_RPC, { p_run_id: runId });
+      return requireRun(owner, runId);
+    },
+
+    async acknowledgeDegassing(runId: string): Promise<ProductionRun> {
+      const owner = await uid();
+      await mutate(ACKNOWLEDGE_DEGASSING_RPC, { p_run_id: runId });
       return requireRun(owner, runId);
     },
 

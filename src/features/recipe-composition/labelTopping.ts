@@ -1,4 +1,5 @@
 import type { EngineIngredient } from '@/engine';
+import type { CarbonationStatus } from '@/data/products/carbonation';
 
 /** Standard facts copied from a commercial label. This deliberately excludes
  * water, solids, individual sugar fractions, PAC/POD and every Engine approval. */
@@ -25,6 +26,8 @@ export interface CatalogLabelToppingIngredient {
   catalog_product_id: string;
   catalog_version_id: string | null;
   verification_status: 'verified' | 'manual_unverified';
+  /** Legacy saved toppings omit it and therefore mean UNKNOWN. */
+  carbonation_status?: CarbonationStatus;
   label_nutrition_per_100g: CatalogLabelNutritionPer100g;
   ingredients_text: string;
   allergens_text: string;

@@ -77,6 +77,55 @@ function HeatInformationCard({ production }: { production: ProductionWorkspaceVi
   );
 }
 
+function DegassingCard({ production }: { production: ProductionWorkspaceView }) {
+  if (!production.degassingRequired || production.carbonatedProducts.length === 0) return null;
+  const acknowledged = production.degassingAcknowledged;
+  return (
+    <section
+      className={cn(
+        'rounded-[14px] border px-4 py-4 text-ink shadow-pro-e0',
+        acknowledged
+          ? 'border-status-ideal/25 bg-status-ideal/[0.06]'
+          : 'border-sky-200 bg-[linear-gradient(145deg,#f8fcff_0%,#eef8ff_100%)]',
+      )}
+      role="status"
+      data-testid="production-degassing"
+      data-acknowledged={acknowledged ? 'true' : 'false'}
+    >
+      <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-sky-700">
+        Napój gazowany
+      </p>
+      <p className="mt-2 text-xs font-semibold leading-relaxed text-ink">
+        Przed użyciem należy całkowicie odgazować:
+      </p>
+      <ul className="mt-2 space-y-1.5 text-xs text-stone-700">
+        {production.carbonatedProducts.map((product) => (
+          <li key={product.productId} className="flex items-baseline justify-between gap-3">
+            <span>• {product.name}</span>
+            <span className="shrink-0 font-mono font-semibold tabular-nums text-ink">
+              {formatPhysicalMassG(product.grams)} g
+            </span>
+          </li>
+        ))}
+      </ul>
+      <button
+        type="button"
+        onClick={() => void production.acknowledgeDegassing()}
+        disabled={acknowledged || production.persistenceBusy}
+        className={cn(
+          'pro-focus-ring mt-4 min-h-11 w-full rounded-[12px] px-4 py-2 text-xs font-semibold shadow-pro-sm',
+          acknowledged
+            ? 'cursor-default border border-status-ideal/25 bg-white text-status-ideal'
+            : 'bg-ink text-white disabled:cursor-wait disabled:opacity-60',
+        )}
+        data-testid="acknowledge-production-degassing"
+      >
+        ✓ Odgazowane
+      </button>
+    </section>
+  );
+}
+
 export function ProductionCockpit({
   production,
   onOpenPreview,
@@ -158,6 +207,7 @@ export function ProductionCockpit({
     return (
       <div className="space-y-3 p-3 text-ink">
         <HeatInformationCard production={production} />
+        <DegassingCard production={production} />
         <section
           className="rounded-[18px] border border-ink/10 bg-white p-5 shadow-pro-e0"
           data-testid="production-start-ready"
@@ -201,6 +251,8 @@ export function ProductionCockpit({
           >
             {production.sessionStarting
               ? 'Uruchamianie partii…'
+              : production.degassingRequired && !production.degassingAcknowledged
+                ? 'Najpierw potwierdź odgazowanie'
               : (production.heatInformation?.length ?? 0) > 0 &&
                   !production.heatInformationAcknowledged
                 ? 'Najpierw potwierdź informację'
@@ -293,6 +345,7 @@ export function ProductionCockpit({
         </p>
       ) : null}
       <HeatInformationCard production={production} />
+      <DegassingCard production={production} />
       <section className="overflow-hidden rounded-[18px] border border-ink/10 bg-white p-4 shadow-pro-e0">
         <div className="flex items-start justify-between gap-3">
           <div>

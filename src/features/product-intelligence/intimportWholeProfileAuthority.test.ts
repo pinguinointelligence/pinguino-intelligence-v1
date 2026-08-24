@@ -199,7 +199,7 @@ describe('INTIMPORT trusted product-owned profile', () => {
     expect(authority?.articleIdentity).toBe('PRODUCT_OWNED');
   });
 
-  it('derives accuracy from evidence and applies the existing 85% admission rule', () => {
+  it('derives Product Accuracy but admits Engine profiles on critical physics', () => {
     const accepted = validateIntimportProductProfileProposal({
       proposedMapperIngredientId: 'PI-ING-TEST-001',
       matchInput: input(),
@@ -221,7 +221,31 @@ describe('INTIMPORT trusted product-owned profile', () => {
       rows: [baseRow()],
     });
     expect(weak?.productAccuracy).toBeLessThan(85);
-    expect(weak?.engineUsable).toBe(false);
+    expect(weak?.engineUsable).toBe(true);
+  });
+
+  it('uses one exact-evidence carbonation classifier for PR and PM', () => {
+    const carbonationEvidence = [{
+      source: 'EXACT_LABEL' as const,
+      assertion: 'Składniki: woda, dwutlenek węgla, aromaty',
+      assertionPath: 'ingredientsText',
+      sourceUrl: null,
+      sourceDomain: null,
+      sourceAuthorityClass: 'label',
+      evidenceReceipt: null,
+      retrievedAt: null,
+    }];
+    const profile = (origin: 'PR' | 'PM') => validateIntimportProductProfileProposal({
+      origin,
+      proposedMapperIngredientId: 'PI-ING-TEST-001',
+      matchInput: input(),
+      declared: {},
+      evidence: completeEvidence,
+      carbonationEvidence,
+      rows: [baseRow()],
+    });
+    expect(profile('PR')?.carbonation).toEqual(profile('PM')?.carbonation);
+    expect(profile('PR')?.carbonation.status).toBe('CARBONATED');
   });
 
   it('ignores a forged browser final composition and publishes only the recomputed profile', () => {

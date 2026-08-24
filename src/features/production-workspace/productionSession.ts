@@ -131,6 +131,11 @@ export interface ProductionSession {
   processAdvisories: ProductProcessReadinessDetail[];
   /** §2 — the operator's single confirmation that they read the heat reminder. */
   heatInformationAcknowledgedAt: string | null;
+  /** Frozen server truth for this run; acknowledgement survives reload. */
+  degassingRequired: boolean;
+  degassingAcknowledged: boolean;
+  degassingAcknowledgedAt: string | null;
+  carbonatedProductIds: string[];
   /** Timestamp of the latest Rescue snapshot durably accepted by the server. */
   durableRescueAcceptedAt: string | null;
   /** Monotonic durable Rescue revision used for lost-response reconciliation. */
@@ -158,6 +163,10 @@ export interface CreateProductionSessionInput {
   processReadiness?: 'READY' | 'READY_WITH_INFO' | null;
   processAdvisories?: ProductProcessReadinessDetail[];
   heatInformationAcknowledgedAt?: string | null;
+  degassingRequired?: boolean;
+  degassingAcknowledged?: boolean;
+  degassingAcknowledgedAt?: string | null;
+  carbonatedProductIds?: string[];
   startedAt: string;
 }
 
@@ -192,6 +201,7 @@ export function productionSourceFingerprint(
       grams: item.planned_grams,
       lockType: item.lock_type,
       productionStep: item.production_step ?? null,
+      carbonationStatus: item.ingredient.carbonation_status ?? 'UNKNOWN',
     })),
     composition: composition
       ? {
@@ -252,6 +262,10 @@ export function createProductionSession(input: CreateProductionSessionInput): Pr
     processReadiness: input.processReadiness ?? null,
     processAdvisories: structuredClone(input.processAdvisories ?? []),
     heatInformationAcknowledgedAt: input.heatInformationAcknowledgedAt ?? null,
+    degassingRequired: input.degassingRequired ?? false,
+    degassingAcknowledged: input.degassingAcknowledged ?? false,
+    degassingAcknowledgedAt: input.degassingAcknowledgedAt ?? null,
+    carbonatedProductIds: [...(input.carbonatedProductIds ?? [])],
     durableRescueAcceptedAt: null,
     durableRescueRevision: 0,
     durableActualRevision: 0,
@@ -783,6 +797,10 @@ export function hydrateProductionSessionFromRun(
     processReadiness: run.processReadiness ?? null,
     processAdvisories: run.processAdvisories ?? [],
     heatInformationAcknowledgedAt: run.heatInformationAcknowledgedAt ?? null,
+    degassingRequired: run.degassingRequired === true,
+    degassingAcknowledged: run.degassingAcknowledged === true,
+    degassingAcknowledgedAt: run.degassingAcknowledgedAt ?? null,
+    carbonatedProductIds: [...(run.carbonatedProductIds ?? [])],
     startedAt: run.events.find((event) => event.type === 'started')?.at ?? run.createdAt,
   });
   if (run.rescue) {

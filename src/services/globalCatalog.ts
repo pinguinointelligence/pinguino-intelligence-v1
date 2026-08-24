@@ -7,6 +7,7 @@ import type {
   CatalogProductSearchHit,
   CatalogSubmissionResult,
 } from '@/features/global-catalog/contracts';
+import { carbonationProfileFromPublicData } from '@/data/products/carbonation';
 import { ingestProduct } from '@/services/productIngest';
 
 const UNAVAILABLE = 'Global product catalog is not available in this build.';
@@ -103,6 +104,7 @@ function mapSearchRow(row: SearchRow): CatalogProductSearchHit {
   const nutritionBasis = nutrition && typeof nutrition === 'object'
     ? (nutrition as Record<string, unknown>).basis
     : null;
+  const publicData = row.public_data ?? {};
   return {
     id: row.id,
     productCode:
@@ -146,7 +148,8 @@ function mapSearchRow(row: SearchRow): CatalogProductSearchHit {
         : []),
     ],
     verificationMethod: row.verification_method,
-    publicData: row.public_data ?? {},
+    publicData,
+    carbonationStatus: carbonationProfileFromPublicData(publicData).status,
     privatePricePerKg: row.private_price,
     privatePriceCurrency: row.private_currency,
   };

@@ -1046,6 +1046,11 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
           brand: identity.brand ?? null,
           entityKind: 'commercial_product',
           status: 'manual_unverified',
+          carbonationStatus:
+            result.carbonationStatus === 'CARBONATED' ||
+            result.carbonationStatus === 'NON_CARBONATED'
+              ? result.carbonationStatus
+              : 'UNKNOWN',
           barcode: current.barcode?.lookupValue ?? null,
         });
       }

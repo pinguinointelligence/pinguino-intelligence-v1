@@ -17,6 +17,7 @@ import {
 import type { ProductionCapabilities } from '@/features/pro-core/productionContracts';
 import {
   acknowledgeHeatInformation,
+  acknowledgeDegassing,
   amendRun,
   buildProductionRun,
   computeDeviation,
@@ -38,6 +39,7 @@ import type {
 } from '@/features/pro-core/productionContracts';
 import type { RecipeInput } from '@/engine';
 import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
+import { carbonatedProductsForRecipe } from '@/features/production-workspace/productionDegassing';
 
 export interface CreateRunInput {
   ownerUserId: string;
@@ -77,7 +79,7 @@ export class InMemoryProduction {
     }
     const scaled = scaleRecipeVersion(input.version, input.target, input.scaleOptions);
     if (!scaled.ok) throw new Error(scaled.message);
-    const run = buildProductionRun({
+    const baseRun = buildProductionRun({
       ownerUserId: input.ownerUserId,
       scaled,
       meta: input.meta,
@@ -86,6 +88,17 @@ export class InMemoryProduction {
       runId: this.nextId(),
       eventId: this.nextId(),
     });
+    const carbonatedProducts = carbonatedProductsForRecipe(
+      input.version.recipeInput,
+      input.version.productComposition ?? { toppings: [] },
+    );
+    const run: ProductionRun = {
+      ...baseRun,
+      degassingRequired: carbonatedProducts.length > 0,
+      degassingAcknowledged: false,
+      degassingAcknowledgedAt: null,
+      carbonatedProductIds: carbonatedProducts.map((product) => product.productId),
+    };
     this.runs.set(run.runId, run);
     return run;
   }
@@ -104,6 +117,12 @@ export class InMemoryProduction {
 
   acknowledgeHeatInformation(runId: string): ProductionRun {
     const next = acknowledgeHeatInformation(this.require(runId), this.now());
+    this.runs.set(runId, next);
+    return next;
+  }
+
+  acknowledgeDegassing(runId: string): ProductionRun {
+    const next = acknowledgeDegassing(this.require(runId), this.now());
     this.runs.set(runId, next);
     return next;
   }

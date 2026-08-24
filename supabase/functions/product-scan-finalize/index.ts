@@ -17,6 +17,7 @@ import type {
   ProductEvidenceInput,
 } from '../../../src/features/product-intelligence/productEvidenceConfidence.ts';
 import type { WorkingNumericField } from '../../../src/features/product-intelligence/productFieldTruth.ts';
+import type { CarbonationEvidence } from '../../../src/data/products/carbonation.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -311,6 +312,31 @@ async function trustedPmProfile(input: {
         )
       : [],
   };
+  const carbonationEvidence: CarbonationEvidence[] = [];
+  const ingredientsAssertion = text(input.result.ingredientsText);
+  const ingredientsSource = sourceForPath(input.result, 'ingredientsText', confirmed);
+  const exactCarbonationSource =
+    ingredientsSource === 'label'
+      ? 'EXACT_LABEL'
+      : ingredientsSource === 'manufacturer'
+        ? 'EXACT_MANUFACTURER'
+        : ingredientsSource === 'barcode_registry'
+          ? 'EXACT_EAN_PRODUCT'
+          : ingredientsSource === 'retailer'
+            ? 'EXACT_AUTHORITATIVE_RETAILER'
+            : null;
+  if (ingredientsAssertion && exactCarbonationSource) {
+    carbonationEvidence.push({
+      source: exactCarbonationSource,
+      assertion: ingredientsAssertion,
+      assertionPath: 'ingredientsText',
+      sourceUrl: null,
+      sourceDomain: null,
+      sourceAuthorityClass: ingredientsSource,
+      evidenceReceipt: null,
+      retrievedAt: null,
+    });
+  }
   const authority = validateIntimportProductProfileProposal({
     origin: 'PM',
     proposedMapperIngredientId: null,
@@ -318,6 +344,7 @@ async function trustedPmProfile(input: {
     declared,
     declaredBasis,
     evidence,
+    carbonationEvidence,
     rows: await loadMapperAuthorityRows(input.service),
   });
   if (!authority) throw new Error('pm_product_profile_rejected');
@@ -653,5 +680,7 @@ Deno.serve(async (request) => {
     missingEngineFields: productProfileAuthority.missingEngineFields,
     allergenEvidenceStatus: productProfileAuthority.allergenEvidenceStatus,
     ingredientsEvidenceStatus: productProfileAuthority.ingredientsEvidenceStatus,
+    carbonationStatus: productProfileAuthority.carbonation.status,
+    carbonation: productProfileAuthority.carbonation,
   });
 });

@@ -21,6 +21,8 @@
  * source_values_json) is deliberately still ABSENT — deferred to a later slice.
  */
 
+import type { CarbonationEvidence, CarbonationStatus } from './carbonation';
+
 /** Product lifecycle (0007 `status` CHECK). */
 export type ProductStatus =
   | 'draft'
@@ -138,6 +140,9 @@ export interface ProductRow {
   gluten_free: ProductBooleanOrUnknown | null;
   contains_alcohol: ProductBooleanOrUnknown | null;
   storage_type: ProductStorageType | null;
+  /** Process metadata only; never participates in Engine formulas. */
+  carbonation_status?: CarbonationStatus;
+  carbonation_evidence?: CarbonationEvidence[];
   shelf_life_days: number | null;
   usage_notes: string | null;
   engine_notes: string | null;

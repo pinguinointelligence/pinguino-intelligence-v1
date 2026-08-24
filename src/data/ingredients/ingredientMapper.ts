@@ -67,6 +67,7 @@ export function ingredientRowToEngineIngredient(row: IngredientRow): EngineIngre
     identity_provenance: 'mapper',
     // classification evidence only — never an Engine formula input
     source_subcategory: row.ingredient_subcategory?.trim() || null,
+    carbonation_status: row.carbonation_status ?? 'UNKNOWN',
     name: row.ingredient_name_display.trim() || row.ingredient_name_internal,
     category,
     composition,

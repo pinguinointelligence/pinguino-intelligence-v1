@@ -5,6 +5,7 @@ import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import { labelOnlyCatalogToppingIngredient } from '@/features/global-catalog/catalogIngredient';
 import type { CatalogProductSearchHit } from '@/features/global-catalog/contracts';
 import type { CatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
+import { carbonationProfileFromPublicData } from '@/data/products/carbonation';
 
 /** Immutable source pin for the current PI catalog. */
 export const CURRENT_MAPPER_CATALOG_CACHE_KEY =
@@ -187,6 +188,8 @@ function catalogProductEngineIngredient(
     private_product_id: `catalog:${hit.id}:version:${selection.productVersionId}`,
     identity_provenance: 'private_product',
     source_subcategory: hit.productForm?.trim() || null,
+    carbonation_status:
+      hit.carbonationStatus ?? carbonationProfileFromPublicData(hit.publicData).status,
     name: hit.displayName,
     category,
     composition,

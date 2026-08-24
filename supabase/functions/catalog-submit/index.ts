@@ -27,6 +27,7 @@ import {
 } from '../../../src/features/product-intelligence/mapperFamilyInference.ts';
 import { isValidGtin } from '../../../src/features/global-catalog/normalization.ts';
 import { classifySourceAuthority } from '../_shared/sourceAuthority.ts';
+import type { CarbonationEvidence } from '../../../src/data/products/carbonation.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -329,6 +330,7 @@ function serverProductProfileProposal(
 type TrustedIntimportEvidence = {
   evidence: ProductEvidenceInput;
   provenance: Partial<Record<ProductEvidenceField, IntimportTrustedEvidenceProvenance>>;
+  carbonationEvidence: CarbonationEvidence[];
 };
 
 const evidenceValuePresent = (value: unknown): boolean =>
@@ -368,6 +370,7 @@ async function trustedIntimportEvidence(input: {
   });
   const fields: Partial<Record<ProductEvidenceField, EvidenceSource>> = {};
   const provenance: Partial<Record<ProductEvidenceField, IntimportTrustedEvidenceProvenance>> = {};
+  const carbonationEvidence: CarbonationEvidence[] = [];
   const direct = (field: ProductEvidenceField, value: unknown) => {
     if (!evidenceValuePresent(value)) return;
     fields[field] = sourceAuthority.evidenceSource;
@@ -393,6 +396,41 @@ async function trustedIntimportEvidence(input: {
   direct('dosage', source.dosage);
   direct('technicalParameters', source.technicalParameters);
   direct('technicalSource', source.technicalPdfUrl ?? source.primarySourceUrl);
+
+  const ingredientsAssertion = clippedText(source.ingredients ?? facts.ingredientsText, 2_000);
+  if (ingredientsAssertion) {
+    carbonationEvidence.push({
+      source: 'EXACT_LABEL',
+      assertion: ingredientsAssertion,
+      assertionPath: 'catalogImportSourceEvidence.ingredients',
+      sourceUrl,
+      sourceDomain: sourceAuthority.domain,
+      sourceAuthorityClass: sourceAuthority.authority,
+      evidenceReceipt: null,
+      retrievedAt: null,
+    });
+  }
+  const technicalAssertion = clippedText(source.technicalParameters, 2_000);
+  const technicalCarbonationSource =
+    sourceAuthority.authority === 'AUTHORITATIVE_RETAILER'
+      ? 'EXACT_AUTHORITATIVE_RETAILER'
+      : sourceAuthority.authority === 'STRUCTURED_PRODUCT_DATABASE'
+        ? 'EXACT_EAN_PRODUCT'
+        : sourceAuthority.authority.startsWith('OFFICIAL_')
+          ? 'EXACT_MANUFACTURER'
+          : null;
+  if (technicalAssertion && technicalCarbonationSource) {
+    carbonationEvidence.push({
+      source: technicalCarbonationSource,
+      assertion: technicalAssertion,
+      assertionPath: 'catalogImportSourceEvidence.technicalParameters',
+      sourceUrl,
+      sourceDomain: sourceAuthority.domain,
+      sourceAuthorityClass: sourceAuthority.authority,
+      evidenceReceipt: null,
+      retrievedAt: null,
+    });
+  }
 
   const nutritionBasis = String(source.nutritionBasis ?? '').toLowerCase().replace(/\s+/g, '');
   const per100g = nutritionBasis === '100g' || nutritionBasis === 'per100g';
@@ -507,6 +545,28 @@ async function trustedIntimportEvidence(input: {
           retrievedAt: clippedText(fact.retrievedAt, 80),
           evidenceReceipt: receipt,
         };
+        if (field === 'ingredients') {
+          const exactSource =
+            authority.authority === 'AUTHORITATIVE_RETAILER'
+              ? 'EXACT_AUTHORITATIVE_RETAILER'
+              : authority.authority === 'STRUCTURED_PRODUCT_DATABASE'
+                ? 'EXACT_EAN_PRODUCT'
+                : authority.authority.startsWith('OFFICIAL_')
+                  ? 'EXACT_MANUFACTURER'
+                  : null;
+          if (exactSource) {
+            carbonationEvidence.push({
+              source: exactSource,
+              assertion: String(fact.value).slice(0, 2_000),
+              assertionPath: 'enrichment.ingredients',
+              sourceUrl: factSourceUrl,
+              sourceDomain: authority.domain,
+              sourceAuthorityClass: authority.authority,
+              evidenceReceipt: receipt,
+              retrievedAt: clippedText(fact.retrievedAt, 80),
+            });
+          }
+        }
       }
     }
   }
@@ -527,7 +587,7 @@ async function trustedIntimportEvidence(input: {
   // Reject stale or forged browser evidence. A valid enriched client object is
   // an exact transport copy of the independently rebuilt server truth.
   if (stableJson(evidence) !== stableJson(input.proposal.evidence)) return null;
-  return { evidence, provenance };
+  return { evidence, provenance, carbonationEvidence };
 }
 
 function serverManualProductProfileProposal(
@@ -1255,6 +1315,7 @@ Deno.serve(async (request) => {
         declared: proposal.declared,
         evidence: trustedEvidence.evidence,
         evidenceProvenance: trustedEvidence.provenance,
+        carbonationEvidence: trustedEvidence.carbonationEvidence,
         proposedTechnicalComposition: objectValue(objectValue(canonicalInput.facts).technicalComposition),
         rows: await loadMapperAuthorityRows(service),
       });
