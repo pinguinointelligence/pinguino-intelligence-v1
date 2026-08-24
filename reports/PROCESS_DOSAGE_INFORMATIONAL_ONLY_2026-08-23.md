@@ -251,3 +251,102 @@ Served verification after apply: `product_process_readiness_v1` returns
 `READY_WITH_INFO` with zero blockers for an UNKNOWN-process product with no
 advisory row; `mapper_process_metadata` 2088 rows, advisory registry 3 rows and
 `mapper_basement` 2088 rows all intact.
+
+---
+
+# Served QA — 2026-08-24, staging `ff85601`, bundle `index-DETgucLw.js`
+
+Real authenticated TEST PRO session (`pro@pro.com`, pre-existing in the browser
+profile — no credentials were typed). Recipe: **QA Lost PL zoltka UNLOCKED v2**,
+Gelato / OPTIMAL / −11 °C / 1000 g. Stabilizer line: **TARA GUM · Stabilizer**
+(PI-ING-000492), starting at 2 g — a CLEAN state inside PINGÜINO's 2–5 g
+aggregate band for this batch.
+
+## Grams / percent parity — 8/8
+
+| requested | 0 g | 1 g | 2 g | 3 g | 4 g | 5 g | 6 g | 12 g |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| as % of 1000 g | 0 | 0.1 | 0.2 | 0.3 | 0.4 | 0.5 | 0.6 | 1.2 |
+| **grams control** | 0 | 1 | 2 | 3 | 4 | 5 | **5** | **5** |
+| **percent control** | 0 | 1 | 2 | 3 | 4 | 5 | **5** | **5** |
+
+Both converge on the same executable grams at every point. The percent control
+holds the batch at exactly 1000 g by proportional rebalance (620 → 618.71 …)
+while the grams control lets the batch drift (1000 → 1002), which is the
+long-standing difference between "an amount" and "a share of the batch" and is
+not a stabilizer question.
+
+## Clamp
+
+PINGÜINO's aggregate ceiling is **5 g** at this batch. 6 g and 12 g clamp to 5 g
+through BOTH controls. The whole-gram rule holds on both. The manufacturer's own
+window is **0.2 %–1 %** = 2–10 g, so 6 g is INSIDE what the producer recommends
+and was still clamped to 5 g — the ceiling is PINGÜINO's, not the producer's.
+
+## Invalid under PINGÜINO science
+
+1 g is below PINGÜINO's 2 g aggregate minimum. **Both** controls accept it —
+editing is permissive on both, exactly as the grams control has always been.
+The verdict then arrives where it belongs: Preview proposed
+
+    TARA GUM · Stabilizer   1 g → 2 g   (+1 g)
+
+correcting the amount back into the band, with the locked yolk held at
+`40 g BEZ ZMIAN · ZABLOKOWANE`. Applied cleanly; result 2 g, whole grams,
+total 1000 g.
+
+## THE DEFECT THIS QA CAUGHT
+
+On the previous bundle (`index-C8zeBh9Q.js`) the 1 g case DIVERGED: grams wrote
+1 g, percent was silently refused and stayed at 2 g. The offline regression had
+missed it because `ownerSameInputRecipe()` starts at 1.9 g — already below the
+minimum — so the same edit introduced no new issue and the two paths agreed by
+accident. Served staging starts CLEAN at 2 g, where the edit does introduce one.
+
+Fixed in `ff85601`: the vector seam now applies the same
+`clampOwnerStabilizerComponentGrams` the single-line grams seam applies and
+nothing more, so both seams enforce identical science (ceiling + whole grams)
+and neither enforces the minimum, which is a Preview/Apply/Save verdict. The
+suite gained a clean-baseline matrix that fails without the fix.
+
+## Product `?` dialog
+
+    Źródło                            verified_db
+    Status                            Zweryfikowane
+    Pewność                           98%
+    Obróbka                           Na ciepło
+    Zalecane dawkowanie producenta    0.2%–1%
+    ID                                PI-ING-000492
+
+Warning-styled nodes: **0**. `data-readiness`: **absent**. `role="alert"`:
+**absent**. Both facts are plain rows requiring no acknowledgement.
+
+## Production
+
+With **no thermal mode selected** and five products carrying no process
+information at all (EGGS CHICKEN YOLK DRIED, INULIN, CREAM 30 %, MILK 3.5 %,
+SKIMMED MILK), **`Rozpocznij partię` is ENABLED**. That exact state was
+`PROCESS_THERMAL_MODE_REQUIRED` + `PROCESS_ADVISORY_AUTHORITY_MISSING` → BLOCKED
+before this work. The panel now reads "Sposób przygotowania bazy (opcjonalnie) …
+Nie warunkuje startu produkcji — o obróbce decydujesz Ty" beside a neutral
+"Informacja o obróbce" list. `production-process-blocked` does not exist in the
+served DOM.
+
+## Save → reload → reopen
+
+Saved as **version 3** (Codex's v2 preserved — versioning is additive). Local
+draft cleared, reopened from the server via My Recipes: v3 loads with TARA GUM
+at **2 g**, total 1000 g, all eight lines intact, `dirty: false`.
+
+## Stale copy
+
+Zero hits for `dowod/dowód`, `NIEWYSTARCZAJĄCE DANE`, `Twarde dawki produktu`,
+`Wybierz sposób przygotowania bazy`, `zatwierdzony zakres`, `zablokowanym
+użyciem technicznym`, `bezpieczną dawkę` across Receptura, Monitor and
+Produkcja.
+
+## Environment
+
+Staging `ff85601`, bundle `index-DETgucLw.js`, deploy
+`dpl_CWLxp2EofBbAebin4AzgacowUnFX` READY. Production `main` `4dfb097`,
+untouched. Mapper unchanged.
