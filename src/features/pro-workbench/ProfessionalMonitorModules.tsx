@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { cn } from '@/lib/cn';
+import {
+  FatCreaminessIcon,
+  FreezingIcon,
+  ProteinStructureIcon,
+  StabilityRisksIcon,
+  SweetnessIcon,
+  WaterSolidsIcon,
+  type PinguinoIconProps,
+} from '@/components/icons/PinguinoIcons';
+import { PINGUINO_ICON_CIRCLE } from '@/components/icons/pinguinoIconTokens';
 import type {
   ProfessionalMonitorMetric,
   ProfessionalMonitorModule,
@@ -15,20 +25,21 @@ const STORAGE_KEY = 'pinguino:pro-monitor-expanded:v1';
 const formatValue = (value: number) =>
   value.toLocaleString('pl-PL', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
-const ICON: Record<string, string> = {
-  freezing: '❄',
-  'water-solids': '◉',
-  fat: '◇',
-  protein: '⌘',
-  stability: '♧',
-};
-
-const ACCENT: Record<string, string> = {
-  freezing: 'text-[#1676f3]',
-  'water-solids': 'text-[#1676f3]',
-  fat: 'text-[#f58a07]',
-  protein: 'text-[#bb1684]',
-  stability: 'text-[#18a83a]',
+/**
+ * The approved PINGÜINO Monitor marks (owner reference sheet, 2026-08-24).
+ *
+ * These were Unicode glyphs — ❄ ◉ ◇ ⌘ ♧ — so the Monitor rendered in whatever
+ * symbol font the device happened to have, at whatever weight that font chose.
+ * They are now the shared vector set, which carries its own approved colour, so
+ * the `ACCENT` text-colour map they needed is gone with them.
+ */
+const ICON: Record<string, (props: PinguinoIconProps) => React.ReactElement> = {
+  freezing: FreezingIcon,
+  sugars: SweetnessIcon,
+  'water-solids': WaterSolidsIcon,
+  fat: FatCreaminessIcon,
+  protein: ProteinStructureIcon,
+  stability: StabilityRisksIcon,
 };
 
 function initialExpanded(): string[] {
@@ -248,14 +259,13 @@ export function ProfessionalMonitorModules({
               }
               className="monitor-module-row monitor-summary-grid pro-focus-ring grid w-full items-center gap-3 px-3 py-2 text-left disabled:cursor-default"
             >
-              <span
-                aria-hidden
-                className={cn(
-                  'grid size-8 place-items-center text-xl font-semibold',
-                  ACCENT[module.id] ?? 'text-ink',
-                )}
-              >
-                {ICON[module.id] ?? '•'}
+              {/* The approved pale circular container from the reference sheet:
+                  a premium indicator, never a dashboard button. */}
+              <span aria-hidden className={cn('size-8', PINGUINO_ICON_CIRCLE)}>
+                {(() => {
+                  const ModuleIcon = ICON[module.id];
+                  return ModuleIcon ? <ModuleIcon className="size-[18px]" /> : null;
+                })()}
               </span>
               <span className="min-w-0">
                 <strong className="block truncate text-sm font-semibold text-ink">
