@@ -38,6 +38,13 @@ reading it:
 
 ## 2. What was built
 
+### Findable and selectable are two different questions
+A parallel change (`7b74792`) opened the picker's SEARCH to imported products, because
+817 of them were invisible. This change answers the other half: which of them may become
+a recipe line. They compose — an imported product is now findable, and one without an
+authorized Mapper identity renders as not selectable with the reason that is actually
+true: *„jest w katalogu produktów, ale nie ma jeszcze przypisanej tożsamości Mapper"*.
+
 ### The picker resolves, it no longer requires
 `currentMapperCatalogId` now admits a catalogue product that **resolves** to a current
 Mapper identity, alongside the Mapper rows themselves. The physics are untouched:

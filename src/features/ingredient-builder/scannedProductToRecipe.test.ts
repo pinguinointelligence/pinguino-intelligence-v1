@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 import type { CatalogProductSearchHit } from '@/features/global-catalog/contracts';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import {
+  currentMapperCatalogId,
   engineIngredientForCatalogSelection,
   filterCurrentMapperCatalogHits,
   scannedProductRecipeTarget,
@@ -96,11 +97,7 @@ describe('a scanned product returning to the recipe', () => {
     // J. Same GTIN, imported earlier: exactly one selectable row comes back.
     const imported = hit({ displayName: 'MLEKO 3,2% (INTIMPORT)' });
     const duplicateOfSameMapperId = hit({ id: 'e1b3f4a0-0000-4000-8000-000000000003' });
-    const target = scannedProductRecipeTarget(
-      [imported, duplicateOfSameMapperId],
-      scanned,
-      'BASE',
-    );
+    const target = scannedProductRecipeTarget([imported, duplicateOfSameMapperId], scanned, 'BASE');
     expect(target?.mappedIngredientId).toBe('PI-ING-000123');
     expect(target?.id).toBe(imported.id);
   });
@@ -179,9 +176,15 @@ describe('a scanned product returning to the recipe', () => {
 
   it('refuses a rejected or version-less row', () => {
     expect(
-      scannedProductRecipeTarget([hit({ publicData: { lifecycleRejected: true } })], scanned, 'BASE'),
+      scannedProductRecipeTarget(
+        [hit({ publicData: { lifecycleRejected: true } })],
+        scanned,
+        'BASE',
+      ),
     ).toBeNull();
-    expect(scannedProductRecipeTarget([hit({ currentVersionId: null })], scanned, 'BASE')).toBeNull();
+    expect(
+      scannedProductRecipeTarget([hit({ currentVersionId: null })], scanned, 'BASE'),
+    ).toBeNull();
   });
 
   it('returns nothing rather than the wrong product when the code matches none of them', () => {
@@ -192,5 +195,29 @@ describe('a scanned product returning to the recipe', () => {
         'BASE',
       ),
     ).toBeNull();
+  });
+
+  it('A a Mapper-backed catalogue product is selectable in the scope it is usable in', () => {
+    // The picker shows imported products so they can be FOUND (Codex 7b74792); this is
+    // the other half — whether one may actually become a recipe line.
+    const mapped = hit({
+      entityKind: 'commercial_product',
+      status: 'verified',
+      mappedIngredientId: 'PI-ING-000123',
+      usableInBase: true,
+      usableAsTopping: false,
+    });
+    expect(currentMapperCatalogId(mapped, 'BASE')).toBe('PI-ING-000123');
+    expect(currentMapperCatalogId(mapped, 'TOPPING')).toBeNull();
+  });
+
+  it('an imported product with no identity is findable but never selectable', () => {
+    const unmapped = hit({
+      entityKind: 'commercial_product',
+      status: 'manual_unverified',
+      mappedIngredientId: null,
+    });
+    expect(currentMapperCatalogId(unmapped, 'BASE')).toBeNull();
+    expect(scannedProductRecipeTarget([unmapped], scanned, 'BASE')).toBeNull();
   });
 });

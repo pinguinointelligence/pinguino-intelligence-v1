@@ -120,10 +120,17 @@ const pickerCategoryLabel = (option: PickerOption): string => {
   return CATEGORY_LABELS[category.toLocaleLowerCase('en-US')] ?? category.replaceAll('_', ' ');
 };
 
-const publicPickerUnavailableReason = (option: PickerOption, scope: ProductPickerScope): string =>
-  scope === 'BASE_FORMULATION'
+const publicPickerUnavailableReason = (option: PickerOption, scope: ProductPickerScope): string => {
+  // A catalogue product that carries no Mapper identity is not "incomplete data" — it is
+  // a product the Engine has no physics for yet, and saying so is the difference between
+  // an owner who knows what to do next and one who refreshes the list forever.
+  if (option.catalog?.entityKind === 'commercial_product' && !option.catalog.mappedIngredientId) {
+    return `${option.name} jest w katalogu produktów, ale nie ma jeszcze przypisanej tożsamości Mapper — do receptury trafi dopiero po jej przypisaniu.`;
+  }
+  return scope === 'BASE_FORMULATION'
     ? `${option.name} nie ma obecnie kompletnego zatwierdzenia do bazy receptury. Odśwież dane lub wybierz inny produkt.`
     : `${option.name} nie ma obecnie kompletnych danych do użycia jako topping. Uzupełnij dane lub wybierz inny produkt.`;
+};
 
 const matchesPickerFilter = (option: PickerOption, filter: IngredientCategoryFilterId): boolean =>
   ingredientCategoryMatchesFilter(
