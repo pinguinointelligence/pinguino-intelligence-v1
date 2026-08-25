@@ -7612,11 +7612,18 @@ function hydrateProductionSessionFromRun(run, source, plannedInput, plannedCompo
 		startedAt: run.events.find((event) => event.type === "started")?.at ?? run.createdAt
 	});
 	if (run.rescue) {
+		const rescueBaseSnapshots = Object.fromEntries(run.rescue.recipeInput.items.flatMap((item) => {
+			const snapshot = run.rescue?.productComposition.behaviorSnapshots?.[item.id];
+			return snapshot ? [[item.id, snapshot]] : [];
+		}));
 		session = {
 			...session,
 			plannedComposition: {
 				...session.plannedComposition,
-				behaviorSnapshots: run.rescue.productComposition.behaviorSnapshots
+				behaviorSnapshots: {
+					...session.plannedComposition.behaviorSnapshots ?? {},
+					...rescueBaseSnapshots
+				}
 			}
 		};
 		session = applyVerifiedRescueInput(session, run.rescue.recipeInput);
