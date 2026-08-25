@@ -818,10 +818,7 @@ describe('Production trusted Rescue runtime races', () => {
     } as ProductionSession;
     useProductionSessionStore.setState({ session: completed, archivedSessions: [] });
     useRecipeStore.getState().loadRecipeInput(
-      {
-        ...attached.plannedInput,
-        target_batch_grams: attached.plannedInput.target_batch_grams + 1,
-      },
+      attached.plannedInput,
       {
         savedId: attached.source.recipeId,
         savedName: attached.source.recipeName,

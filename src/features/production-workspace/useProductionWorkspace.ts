@@ -506,7 +506,8 @@ export function useProductionWorkspace(enabled: boolean) {
   const staleSource = Boolean(
     session &&
     !sessionOwnerMismatch &&
-    session.sourceFingerprint !== currentSourceFingerprint,
+    (session.source.recipeVersionId !== source.recipeVersionId ||
+      session.sourceFingerprint !== currentSourceFingerprint),
   );
   const requiredBehaviorLineIds = useMemo(
     () =>
@@ -706,6 +707,14 @@ export function useProductionWorkspace(enabled: boolean) {
           'return_to_recipe',
           'Wróć do receptury',
         )
+      : recoveryOrphanedLocal
+        ? prerequisite(
+            'repository_recovery',
+            'Lokalna sesja nie ma trwałego runu',
+            'Zachowaj osieroconą sesję w lokalnej historii i odłącz ją, aby bezpiecznie sprawdzić lub rozpocząć partię dla zapisanej wersji.',
+            'archive_stale_session',
+            'Zachowaj i odłącz lokalną sesję',
+          )
       : staleSource
         ? prerequisite(
             'stale_source',
