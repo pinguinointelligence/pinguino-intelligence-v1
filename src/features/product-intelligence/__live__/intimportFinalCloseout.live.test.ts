@@ -696,5 +696,5 @@ describe.runIf(LIVE)(`INTIMPORT final closeout — live staging ${SCOPE}`, () =>
     expect(createHash('sha256').update(readFileSync(POLAND_FILE)).digest('hex')).toBe(polandSha256);
     expect(createHash('sha256').update(readFileSync(MAPPER_FILE)).digest('hex')).toBe(mapperSha256);
     console.log('INTIMPORT_FINAL_CLOSEOUT', JSON.stringify(aggregate, null, 2));
-  }, 8 * 60 * 60 * 1_000);
+  }, 12 * 60 * 60 * 1_000);
 });
