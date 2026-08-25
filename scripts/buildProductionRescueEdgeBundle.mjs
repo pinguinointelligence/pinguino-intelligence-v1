@@ -29,6 +29,11 @@ const EXPECTED_SOURCE_CLOSURE = [
   'src/engine/config/version.ts',
   'src/engine/corrections/apply.ts',
   'src/engine/corrections/candidates.ts',
+  // REVIEWED 2026-08-25 (Production recovery objectives). Pure, deterministic
+  // add-only candidate generation over the already frozen RecipeInput. It has
+  // no IO, dataset access, ProductBehavior mutation or independent formula;
+  // every candidate is accepted only after calculateRecipe/detectViolations.
+  'src/engine/corrections/recovery.ts',
   'src/engine/corrections/redact.ts',
   'src/engine/corrections/solver.ts',
   'src/engine/corrections/verify.ts',

@@ -17,12 +17,12 @@
     "engine": "0.4.0",
     "config": "0.7.0",
     "practicalRecipe": "pro-whole-gram-v1",
-    "productionRescue": "production-rescue-v1",
+    "productionRescue": "production-rescue-v2",
     "productionSessionSchema": 2
   },
   "bundle": {
-    "bytes": 310694,
-    "sha256": "507f9e2e7bfffaaa4c73d7e17f055d1c97d87b6b6ae809d5a2a40c4c2be9152b",
+    "bytes": 323458,
+    "sha256": "6b45dce312b321ea279b0d8bd402886dfba654b2499426d86f77a57c92781196",
     "externalImports": 0,
     "dynamicImports": 0
   },
@@ -82,6 +82,10 @@
     {
       "path": "src/engine/corrections/candidates.ts",
       "sha256": "29433bd7f4269baf1001734b6f8c3b12ee44473ccab01288320f9d82fa1b0592"
+    },
+    {
+      "path": "src/engine/corrections/recovery.ts",
+      "sha256": "2f02fbac908929ab4c3b2100c03343f98074d679662f97b9570c403997e850c1"
     },
     {
       "path": "src/engine/corrections/redact.ts",
@@ -189,11 +193,11 @@
     },
     {
       "path": "src/features/production-workspace/productionRescue.ts",
-      "sha256": "f7131e6c4cde543ec55ffd9e3fe063f68cd2b8278f97d630d910e40ab01a0e05"
+      "sha256": "f25cc4d26008a8d3cd0dc8482187e2aee27d34c347329616c5a9261eeb4c769a"
     },
     {
       "path": "src/features/production-workspace/productionSession.ts",
-      "sha256": "6c887fc5eceaa358d75a1d17831522501241df6f8841edf85907d8a115fc1132"
+      "sha256": "5f6bd974bc34d0427d54dfaf654f3168f53ee7c92610763128a5652e773655d5"
     },
     {
       "path": "src/features/protein-gelato/proteinAuthority.ts",
@@ -264,5 +268,5 @@
       "sha256": "5523e8a79f059b81594793260535fc3b4a85185fe9f5020de87c2c7782a44fdb"
     }
   ],
-  "sourceClosureSha256": "7b082d9fb3db5f84a4f8b49d5401bec1a8475e1f52ef574227906969b8e885bb"
+  "sourceClosureSha256": "bf19cf4da5070ab8e07d18c97ac891b12f26719b1f22d2134c0f4ec2a736d4f0"
 }

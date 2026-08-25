@@ -416,7 +416,12 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const isFiniteNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value);
 
-const rescueOptionIds = new Set(['keep_original_batch', 'enlarge_batch', 'leave_as_is']);
+const rescueOptionIds = new Set([
+  'keep_original_batch',
+  'enlarge_batch',
+  'restore_original_recipe',
+  'leave_as_is',
+]);
 
 function parseRescueAuthorization(
   data: unknown,

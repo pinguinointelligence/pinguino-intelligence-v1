@@ -212,7 +212,7 @@ describe('Production Rescue Edge request boundary', () => {
 });
 
 describe('trusted Production Rescue authorization', () => {
-  it('executes the canonical Engine option and persists only its whole-gram candidate', async () => {
+  it('executes the canonical Engine option and persists only scale-supported 0.1 g values', async () => {
     let persisted: PersistTrustedAuthorizationInput | null = null;
     const result = await authorizeTrustedProductionRescue(
       OWNER,
@@ -222,11 +222,14 @@ describe('trusted Production Rescue authorization', () => {
       }),
     );
     expect(result.preview.scoreDisplay).toBe('10/10');
-    expect(result.preview.finalMassG).toBe(1278);
+    expect(result.preview.finalMassG).toBe(1236.2);
     expect(result.candidateFingerprint).toMatch(/^[0-9a-f]{64}$/);
     expect(persisted).not.toBeNull();
     expect(persisted!.recipeInput.items).toSatisfy((items: unknown[]) =>
-      items.every((item) => Number.isInteger((item as { planned_grams: number }).planned_grams)),
+      items.every((item) => {
+        const tenths = (item as { planned_grams: number }).planned_grams * 10;
+        return Math.abs(tenths - Math.round(tenths)) <= 1e-8;
+      }),
     );
   });
 
@@ -235,7 +238,9 @@ describe('trusted Production Rescue authorization', () => {
     expect(result.stableOptionId).toBe('enlarge_batch');
     // §16/§17 — the trusted preview names the exact verified batch, never a
     // generic direction and never a tidied-up round number.
-    expect(result.preview.title).toBe(`Powiększ do ${result.preview.finalMassG.toFixed(0)} g`);
+    expect(result.preview.title).toBe(
+      `Minimalna bezpieczna korekta · ${result.preview.finalMassG.toFixed(1)} g`,
+    );
   });
 
   it('rejects a no-longer-available stable option without storing authorization', async () => {
@@ -328,7 +333,7 @@ describe('trusted Production Rescue authorization', () => {
       engineVersion: '0.4.0',
       configVersion: '0.7.0',
       practicalRecipeVersion: 'pro-whole-gram-v1',
-      rescueModelVersion: 'production-rescue-v1',
+      rescueModelVersion: 'production-rescue-v2',
       bundlerVersion: '1.0.3',
       ttlSeconds: 300,
     });

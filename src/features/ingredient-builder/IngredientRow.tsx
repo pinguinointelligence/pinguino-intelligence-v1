@@ -987,20 +987,28 @@ function ProductionRow({
   actions: ProductionRowActions;
 }) {
   const [recordCorrectionDialogOpen, setRecordCorrectionDialogOpen] = useState(false);
-  const [additionalAmountDialogOpen, setAdditionalAmountDialogOpen] = useState(false);
-  const [additionalGrams, setAdditionalGrams] = useState(0);
-  const value = line.confirmed ? line.physicalAddedGrams : line.draftActualGrams;
-  const difference = value - line.targetGrams;
-  const exact = Math.abs(difference) <= 0.05;
-  const step = productionStepForGrams(line.targetGrams);
-  const correctionMode = !line.confirmed && line.recordCorrectionCount > 0;
-  const minimum = correctionMode ? 0 : line.physicalAddedGrams;
-  const setValue = (next: number) => actions.setDraftActual(line.lineId, Math.max(minimum, next));
   // §10/§12/§19/§20 — material is already in the vessel but the current plan
   // asks for more of this line. Production is a live plan, not a frozen list of
   // checkboxes, so the row says exactly what is still owed.
   const topUpGrams = productionTopUpGrams(line);
   const owesTopUp = topUpGrams > 0.05;
+  const correctionMode = !line.confirmed && line.recordCorrectionCount > 0;
+  const activeTopUp =
+    !line.confirmed && !correctionMode && line.physicalAddedGrams > 0 && owesTopUp;
+  const cumulativeValue = line.confirmed ? line.physicalAddedGrams : line.draftActualGrams;
+  const value = activeTopUp
+    ? Math.max(0, cumulativeValue - line.physicalAddedGrams)
+    : cumulativeValue;
+  const effectiveCumulativeValue = activeTopUp ? line.physicalAddedGrams + value : value;
+  const difference = effectiveCumulativeValue - line.targetGrams;
+  const exact = Math.abs(difference) <= 0.05;
+  const step = productionStepForGrams(activeTopUp ? topUpGrams : line.targetGrams);
+  const minimum = correctionMode || activeTopUp ? 0 : line.physicalAddedGrams;
+  const setValue = (next: number) =>
+    actions.setDraftActual(
+      line.lineId,
+      activeTopUp ? line.physicalAddedGrams + Math.max(0, next) : Math.max(minimum, next),
+    );
 
   const physicalStatus = correctionMode
     ? 'DO POTWIERDZENIA'
@@ -1026,7 +1034,7 @@ function ProductionRow({
       <div
         className={PRODUCTION_ROW_GRID}
         data-production-confirmed={line.confirmed ? 'true' : 'false'}
-        data-production-mode={correctionMode ? 'correction' : 'addition'}
+        data-production-mode={correctionMode ? 'correction' : activeTopUp ? 'top-up' : 'addition'}
       >
         <div className="min-w-0">
           <span className="flex min-w-0 flex-wrap items-center gap-x-1.5">
@@ -1051,12 +1059,12 @@ function ProductionRow({
               <span className="block">
                 W naczyniu: {formatProductionMassG(line.physicalAddedGrams)} g
               </span>
-              {owesTopUp ? (
+              {activeTopUp ? (
                 <strong
                   className="block font-mono font-semibold tabular-nums text-attention"
                   data-testid={`production-required-top-up-${line.lineId}`}
                 >
-                  Dodaj jeszcze +{formatProductionMassG(topUpGrams)} g
+                  Dodaj teraz +{formatProductionMassG(topUpGrams)} g
                 </strong>
               ) : null}
             </span>
@@ -1076,39 +1084,17 @@ function ProductionRow({
           >
             {physicalStatus}
           </span>
-          {!actions.settled && owesTopUp && line.confirmed && actions.topUpLine ? (
-            <button
-              type="button"
-              disabled={actions.disabled}
-              onClick={() => actions.topUpLine!(line.lineId, line.targetGrams)}
-              className="pro-focus-ring mt-1 block min-h-9 rounded-lg border border-ink/15 bg-white px-2 py-1 text-[10px] font-semibold text-ink disabled:cursor-wait disabled:opacity-60"
-              data-testid={`production-top-up-${line.lineId}`}
-            >
-              Dodaj brakujące {formatProductionMassG(topUpGrams)} g
-            </button>
-          ) : !actions.settled && line.confirmed && actions.topUpLine ? (
-            <button
-              type="button"
-              disabled={actions.disabled}
-              onClick={() => {
-                setAdditionalGrams(step);
-                setAdditionalAmountDialogOpen(true);
-              }}
-              className="pro-focus-ring mt-1 block min-h-9 text-left text-[10px] font-semibold text-stone-600 underline decoration-ink/20 underline-offset-2 disabled:opacity-50"
-              data-testid={`production-add-more-${line.lineId}`}
-            >
-              Dodaj kolejną ilość
-            </button>
-          ) : null}
         </div>
         <div className="min-w-0 px-1 text-left md:text-right" data-production-cell="planned">
-          <span className="block text-[10px] font-semibold text-stone-600 md:block">Plan</span>
+          <span className="block text-[10px] font-semibold text-stone-600 md:block">
+            {activeTopUp ? 'Docelowo' : 'Plan'}
+          </span>
           <strong className="block font-mono text-sm font-semibold tabular-nums text-ink">
             {formatProductionMassG(line.targetGrams)} g
           </strong>
         </div>
         <div>
-          <FieldLabel>Faktycznie</FieldLabel>
+          <FieldLabel>{activeTopUp ? 'Dodaj teraz' : 'Faktycznie'}</FieldLabel>
           <ProductionActualControl
             lineId={line.lineId}
             ingredientName={item.ingredient.name}
@@ -1117,6 +1103,7 @@ function ProductionRow({
             step={step}
             confirmed={line.confirmed}
             correctionMode={correctionMode}
+            topUpMode={activeTopUp}
             disabled={actions.disabled}
             onChange={setValue}
             onConfirm={confirmActual}
@@ -1157,6 +1144,7 @@ function ProductionRow({
             ingredientName={item.ingredient.name}
             confirmed={line.confirmed}
             correctionMode={correctionMode}
+            topUpMode={activeTopUp}
             disabled={actions.disabled}
             settled={actions.settled}
             onConfirm={confirmActual}
@@ -1215,69 +1203,6 @@ function ProductionRow({
                 className="pro-focus-ring min-h-11 rounded-[10px] bg-ink px-4 text-xs font-semibold text-white"
               >
                 Popraw błędny wpis
-              </button>
-            </div>
-          </div>
-        </DialogShell>
-      ) : null}
-
-      {additionalAmountDialogOpen && actions.topUpLine ? (
-        <DialogShell
-          label={`Dodaj kolejną ilość — ${item.ingredient.name}`}
-          testId="production-additional-amount-dialog"
-          placement="responsive"
-          onClose={() => setAdditionalAmountDialogOpen(false)}
-        >
-          <div className="p-5 sm:p-0">
-            <p className="text-[10px] font-semibold tracking-[0.08em] text-[#8a5b23] uppercase">
-              Dodatkowe ważenie
-            </p>
-            <h2 className="mt-2 text-lg font-semibold text-ink">Dodaj kolejną ilość</h2>
-            <p className="mt-2 text-xs leading-relaxed text-stone-600">
-              W naczyniu pozostaje {formatProductionMassG(line.physicalAddedGrams)} g. Podaj tylko
-              ilość, którą teraz fizycznie dodajesz.
-            </p>
-            <label className="mt-4 block text-xs font-semibold text-stone-700">
-              Dodatkowa ilość
-              <span className="mt-1 flex items-center rounded-[10px] border border-ink/15 bg-white px-3">
-                <input
-                  type="number"
-                  min={step}
-                  step={step}
-                  value={additionalGrams}
-                  onChange={(event) =>
-                    setAdditionalGrams(Math.max(0, Number(event.currentTarget.value)))
-                  }
-                  className="h-11 min-w-0 flex-1 bg-transparent text-right font-mono text-sm tabular-nums outline-none"
-                />
-                <span className="ml-1 text-xs text-stone-500">g</span>
-              </span>
-            </label>
-            <p className="mt-3 text-xs text-stone-600">
-              Po dodaniu w naczyniu będzie{' '}
-              <strong className="font-mono tabular-nums text-ink">
-                {formatProductionMassG(line.physicalAddedGrams + additionalGrams)} g
-              </strong>
-              .
-            </p>
-            <div className="mt-5 grid gap-2 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={() => setAdditionalAmountDialogOpen(false)}
-                className="pro-focus-ring min-h-11 rounded-[10px] border border-ink/15 bg-white px-4 text-xs font-semibold text-ink"
-              >
-                Anuluj
-              </button>
-              <button
-                type="button"
-                disabled={additionalGrams <= 0}
-                onClick={() => {
-                  actions.topUpLine!(line.lineId, line.physicalAddedGrams + additionalGrams);
-                  setAdditionalAmountDialogOpen(false);
-                }}
-                className="pro-focus-ring min-h-11 rounded-[10px] bg-ink px-4 text-xs font-semibold text-white disabled:opacity-40"
-              >
-                Potwierdź dodanie
               </button>
             </div>
           </div>

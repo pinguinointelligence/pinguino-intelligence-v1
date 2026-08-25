@@ -10,6 +10,7 @@ interface ProductionActualControlProps {
   step: number;
   confirmed: boolean;
   correctionMode: boolean;
+  topUpMode?: boolean;
   disabled?: boolean;
   onChange: (value: number) => void;
   onConfirm: () => void;
@@ -21,6 +22,7 @@ interface ProductionConfirmationActionProps {
   ingredientName: string;
   confirmed: boolean;
   correctionMode: boolean;
+  topUpMode?: boolean;
   disabled?: boolean;
   settled?: boolean;
   onConfirm: () => void;
@@ -32,6 +34,7 @@ export function ProductionConfirmationAction({
   ingredientName,
   confirmed,
   correctionMode,
+  topUpMode = false,
   disabled = false,
   settled = false,
   onConfirm,
@@ -52,12 +55,16 @@ export function ProductionConfirmationAction({
     <button
       type="button"
       aria-label={
-        confirmed ? `${ingredientName} — popraw zapis` : `${ingredientName} — potwierdź dodanie`
+        confirmed
+          ? `${ingredientName} — popraw zapis`
+          : `${ingredientName} — ${topUpMode ? 'potwierdź dolewkę' : 'potwierdź dodanie'}`
       }
       title={
         confirmed
           ? 'Zmienia zapis faktycznej ilości — użyj tylko jeśli poprzednia wartość została wpisana błędnie.'
-          : 'Potwierdź, że ta ilość została fizycznie dodana.'
+          : topUpMode
+            ? 'Potwierdź, że pokazana dodatkowa ilość została teraz fizycznie dodana.'
+            : 'Potwierdź, że ta ilość została fizycznie dodana.'
       }
       aria-describedby={describedBy}
       onClick={onConfirm}
@@ -89,6 +96,7 @@ export function ProductionActualControl({
   step,
   confirmed,
   correctionMode,
+  topUpMode = false,
   disabled = false,
   onChange,
   onConfirm,
@@ -106,7 +114,7 @@ export function ProductionActualControl({
       data-testid={`production-actual-control-${lineId}`}
       data-production-control-family="recipe-direct-number"
       data-production-control-state={
-        correctionMode ? 'correction' : confirmed ? 'confirmed' : 'addition'
+        correctionMode ? 'correction' : topUpMode ? 'top-up' : confirmed ? 'confirmed' : 'addition'
       }
     >
       <DirectNumberControl
@@ -115,7 +123,7 @@ export function ProductionActualControl({
         min={minimum}
         decimals={productionControlDecimals(value, step)}
         suffix="g"
-        ariaLabel={`${ingredientName} — faktyczna gramatura`}
+        ariaLabel={`${ingredientName} — ${topUpMode ? 'dodaj teraz' : 'faktyczna gramatura'}`}
         disabled={confirmed || disabled}
         onChange={onChange}
         testId={`production-stepper-${lineId}`}
@@ -129,6 +137,7 @@ export function ProductionActualControl({
           ingredientName={ingredientName}
           confirmed={confirmed}
           correctionMode={correctionMode}
+          topUpMode={topUpMode}
           disabled={disabled}
           onConfirm={onConfirm}
           describedBy={describedBy}

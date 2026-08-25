@@ -1,8 +1,13 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import type { RecipeInput } from '@/engine';
+import { detectViolations, evaluateAdditiveRecoveryNeighborhood, type RecipeInput } from '@/engine';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
+import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
+import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import { buildCanonicalNewRecipeStarter } from '@/features/recipes/newRecipeStarter';
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
+import { parseCsv } from '@/lib/csv';
 import {
   confirmProductionLine,
   createProductionSession,
@@ -71,7 +76,298 @@ const makeOwnerScenario = (formulationStrategy: 'optimal' | 'eco' = 'optimal') =
     startedAt: '2026-08-25T10:00:00.000Z',
   });
 
+const [mapperHeader = [], ...mapperRecords] = parseCsv(
+  readFileSync(resolve(process.cwd(), 'docs/ingredients/validation/mapper_basement.csv'), 'utf8'),
+);
+const mapperIndex = new Map(mapperHeader.map((name, position) => [name, position]));
+const mapperRecordsById = new Map(
+  mapperRecords.map((record) => [record[mapperIndex.get('ingredient_id')!]!, record]),
+);
+const mapperTriStateFields = new Set(['vegan', 'dairy_free', 'gluten_free', 'contains_alcohol']);
+const mapperNumericFields = new Set(
+  mapperHeader.filter((field) =>
+    /_percent$|_value$|_factor$|brix|kcal|cost_per_kg|shelf_life_days|stabilizer_activity/.test(
+      field,
+    ),
+  ),
+);
+
+/**
+ * Read the immutable Mapper source of truth instead of approximating the owner
+ * recipe with demo ingredients. PI-ING-000270 is skimmed-milk powder, not milk.
+ */
+const verifiedMapperIngredient = (ingredientId: string) => {
+  const record = mapperRecordsById.get(ingredientId);
+  if (!record) throw new Error(`Missing immutable Mapper row ${ingredientId}`);
+  const row = Object.fromEntries(
+    mapperHeader.map((field, position) => {
+      const raw = record[position]?.trim() ?? '';
+      if (mapperTriStateFields.has(field)) return [field, raw.toLocaleLowerCase('en')];
+      if (mapperNumericFields.has(field)) return [field, raw === '' ? null : Number(raw)];
+      if (
+        field === 'approved_for_base' ||
+        field === 'approved_for_engines' ||
+        field === 'is_active'
+      ) {
+        return [field, raw.toLocaleLowerCase('en') === 'true'];
+      }
+      if (field === 'verification_date' || field === 'last_reviewed_at') {
+        return [field, raw || null];
+      }
+      return [field, raw];
+    }),
+  ) as unknown as IngredientRow;
+  return ingredientRowToEngineIngredient(row);
+};
+
+const exactOwnerEightLineInput = (): RecipeInput => {
+  const rows = [
+    ['milk', 'PI-ING-000236', 584],
+    ['cream', 'PI-ING-000180', 98],
+    ['skimmed_milk_powder', 'PI-ING-000270', 56],
+    ['sucrose', 'PI-ING-000514', 59],
+    ['dextrose', 'PI-ING-000494', 64],
+    ['tara', 'PI-ING-000492', 3],
+    ['fructose', 'PI-ING-000496', 5],
+    ['banana', 'PI-ING-000345', 131],
+  ] as const;
+  return {
+    items: rows.map(([id, ingredientId, grams]) => ({
+      id,
+      ingredient: verifiedMapperIngredient(ingredientId),
+      planned_grams: grams,
+      actual_grams: null,
+      lock_type: id === 'banana' ? ('main' as const) : ('unlocked' as const),
+    })),
+    mode: 'classic',
+    category: 'milk_gelato',
+    target_temperature_c: -11,
+    target_batch_grams: 1_000,
+    machine_capacity_grams: null,
+    goals: { formulation_strategy: 'optimal' },
+  };
+};
+
+const makeExactOwnerEightLineSession = () =>
+  createProductionSession({
+    sessionId: 'run-owner-eight-line-plus-2-5',
+    ownerUserId: 'owner',
+    source: {
+      recipeId: 'recipe-owner-eight-line',
+      recipeVersionId: 'version-owner-eight-line',
+      recipeVersionNumber: 1,
+      recipeName: 'Owner banana gelato',
+    },
+    plannedInput: exactOwnerEightLineInput(),
+    startedAt: '2026-08-25T12:00:00.000Z',
+  });
+
+const exactOwnerSessionAtCheckpoint = (confirmedCount: 1 | 3 | 6, smpOverageG: number) => {
+  let run = makeExactOwnerEightLineSession();
+  const confirmations =
+    confirmedCount === 1
+      ? ([['skimmed_milk_powder', 56 + smpOverageG]] as const)
+      : ([
+          ['milk', 584],
+          ['cream', 98],
+          ['skimmed_milk_powder', 56 + smpOverageG],
+          ...(confirmedCount === 6
+            ? ([
+                ['sucrose', 59],
+                ['dextrose', 64],
+                ['tara', 3],
+              ] as const)
+            : []),
+        ] as const);
+  confirmations.forEach(([lineId, grams], index) => {
+    run = confirmProductionLine(
+      setDraftActualGrams(run, lineId, grams),
+      lineId,
+      `2026-08-25T13:${String(index + 1).padStart(2, '0')}:00.000Z`,
+    );
+  });
+  return run;
+};
+
 describe('production rescue orchestration', () => {
+  it('permanently reproduces the owner 3/8 confirmed skimmed-milk +2.5 g incident against the completed forecast', () => {
+    let run = makeExactOwnerEightLineSession();
+    for (const [lineId, grams, minute] of [
+      ['milk', 584, '01'],
+      ['cream', 98, '02'],
+      ['skimmed_milk_powder', 58.5, '03'],
+    ] as const) {
+      run = confirmProductionLine(
+        setDraftActualGrams(run, lineId, grams),
+        lineId,
+        `2026-08-25T12:${minute}:00.000Z`,
+      );
+    }
+
+    expect(run.lines.filter((line) => line.confirmed)).toHaveLength(3);
+    expect(run.lines.reduce((sum, line) => sum + line.physicalAddedGrams, 0)).toBe(740.5);
+    const assessment = assessProductionRescue(run);
+    expect(
+      assessment.forecastInput.items.reduce(
+        (sum, item) => sum + (item.actual_grams ?? item.planned_grams),
+        0,
+      ),
+    ).toBe(1002.5);
+    expect(assessment.state).toBe('options');
+    expect(assessment.options.length).toBeGreaterThan(0);
+    expect(
+      detectViolations(assessment.forecastResult).map((violation) => violation.reason),
+    ).toEqual(['protein_in_solids_high', 'lactose_high']);
+    const minimum = assessment.options.find((option) => option.id === 'enlarge_batch');
+    expect(minimum).toMatchObject({ finalMassG: 1007, scoreDisplay: '10/10' });
+    expect(minimum?.instructions).toEqual([
+      expect.objectContaining({ lineId: 'sucrose', grams: 4.5, finalTargetGrams: 63.5 }),
+    ]);
+    const restore = assessment.options.find((option) => option.id === 'restore_original_recipe');
+    expect(restore).toMatchObject({ finalMassG: 1045, scoreDisplay: '10/10' });
+    expect(restore?.instructions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ lineId: 'milk', grams: 26, finalTargetGrams: 610 }),
+        expect.objectContaining({ lineId: 'cream', grams: 4, finalTargetGrams: 102 }),
+        expect.objectContaining({
+          lineId: 'skimmed_milk_powder',
+          grams: 0.5,
+          finalTargetGrams: 59,
+        }),
+      ]),
+    );
+    expect(assessment.options.some((option) => option.id === 'leave_as_is')).toBe(false);
+    expect(assessment.strategyTrace.enlarge_batch).toMatchObject({
+      generatedSafeCandidateCount: expect.any(Number),
+      acceptedCandidateCount: expect.any(Number),
+      finalCandidateGrams: expect.arrayContaining([1007]),
+    });
+  });
+
+  it('records the +1 / +2.5 / +5 / +10 g skimmed-milk neighborhood at 1/8, 3/8 and 6/8 confirmations', () => {
+    const matrix = ([1, 3, 6] as const).flatMap((confirmedCount) =>
+      [1, 2.5, 5, 10].map((overageG) => {
+        const assessment = assessProductionRescue(
+          exactOwnerSessionAtCheckpoint(confirmedCount, overageG),
+        );
+        return {
+          confirmedCount,
+          overageG,
+          preserve: (assessment.strategyTrace.keep_original_batch?.acceptedCandidateCount ?? 0) > 0,
+          enlarge: (assessment.strategyTrace.enlarge_batch?.acceptedCandidateCount ?? 0) > 0,
+          restore:
+            (assessment.strategyTrace.restore_original_recipe?.acceptedCandidateCount ?? 0) > 0,
+          unchanged: assessment.options.some((option) => option.id === 'leave_as_is'),
+          hardReasons: detectViolations(assessment.forecastResult).map(
+            (violation) => violation.reason,
+          ),
+          candidateCount: assessment.strategyTrace.enlarge_batch?.acceptedCandidateCount ?? 0,
+          finalCandidateGrams: assessment.strategyTrace.enlarge_batch?.finalCandidateGrams ?? [],
+        };
+      }),
+    );
+    expect(matrix).toHaveLength(12);
+    const expectedByOverage = {
+      1: {
+        preserve: false,
+        enlarge: true,
+        restore: true,
+        unchanged: true,
+        hardReasons: [],
+        candidateCount: 12,
+        minimumFinalG: 1001.1,
+      },
+      2.5: {
+        preserve: false,
+        enlarge: true,
+        restore: true,
+        unchanged: false,
+        hardReasons: ['protein_in_solids_high', 'lactose_high'],
+        candidateCount: 2,
+        minimumFinalG: 1007,
+      },
+      5: {
+        preserve: false,
+        enlarge: true,
+        restore: true,
+        unchanged: false,
+        hardReasons: ['protein_in_solids_high', 'lactose_high'],
+        candidateCount: 2,
+        minimumFinalG: 1054.8,
+      },
+      10: {
+        preserve: false,
+        enlarge: true,
+        restore: true,
+        unchanged: false,
+        hardReasons: ['protein_in_solids_high', 'lactose_high', 'lactose_sandiness_risk_high'],
+        candidateCount: 2,
+        minimumFinalG: 1140.2,
+      },
+    } as const;
+    for (const row of matrix) {
+      const expected = expectedByOverage[row.overageG as keyof typeof expectedByOverage];
+      expect({
+        preserve: row.preserve,
+        enlarge: row.enlarge,
+        restore: row.restore,
+        unchanged: row.unchanged,
+        hardReasons: row.hardReasons,
+        candidateCount: row.candidateCount,
+        minimumFinalG: Math.min(...row.finalCandidateGrams),
+      }).toEqual(expected);
+    }
+
+    const exactThreeOfEight = exactOwnerSessionAtCheckpoint(3, 2.5);
+    const diagnostic = evaluateAdditiveRecoveryNeighborhood(
+      assessProductionRescue(exactThreeOfEight).forecastInput,
+      [1, 2.5, 5, 10],
+    ).filter((row) => row.lineId === 'dextrose');
+    expect(diagnostic.map((row) => [row.additionG, row.hardSafe])).toEqual([
+      [1, false],
+      [2.5, false],
+      [5, false],
+      [10, false],
+    ]);
+  });
+
+  it('keeps the accepted +1 g Dextrose unchanged branch available', () => {
+    const directed = exactOwnerEightLineInput();
+    directed.goals = {
+      ...directed.goals,
+      direction_targets_active: true,
+      direction_targets: { sweetness: -2, softness: -2, creaminess: 0, flavor: 0 },
+    };
+    let run = createProductionSession({
+      sessionId: 'run-owner-dextrose-plus-one-control',
+      ownerUserId: 'owner',
+      source: {
+        recipeId: 'recipe-owner-dextrose-control',
+        recipeVersionId: 'version-owner-dextrose-control',
+        recipeVersionNumber: 1,
+        recipeName: 'Owner Dextrose control',
+      },
+      plannedInput: directed,
+      startedAt: '2026-08-25T14:00:00.000Z',
+    });
+    for (const [lineId, grams, minute] of [
+      ['milk', 584, '01'],
+      ['cream', 98, '02'],
+      ['skimmed_milk_powder', 56, '03'],
+      ['sucrose', 59, '04'],
+      ['dextrose', 65, '05'],
+    ] as const) {
+      run = confirmProductionLine(
+        setDraftActualGrams(run, lineId, grams),
+        lineId,
+        `2026-08-25T14:${minute}:00.000Z`,
+      );
+    }
+    const assessment = assessProductionRescue(run);
+    expect(assessment.forecastScoreDisplay).toBe('8/10');
+    expect(assessment.options.find((option) => option.id === 'leave_as_is')).toBeDefined();
+  });
+
   it('does not propose rescue for exact production', () => {
     const run = make();
     const confirmed = confirmProductionLine(run, run.lines[0]!.lineId, '2026-08-09T10:01:00.000Z');
@@ -146,7 +442,7 @@ describe('production rescue orchestration', () => {
     );
   });
 
-  it('reproduces the accepted 130 g → 180 g sucrose rescue without rewriting physical history', () => {
+  it('replaces the former 1278 g rescue with the smallest Engine-proven safe addition', () => {
     const run = make();
     const sucrose = run.lines.find((candidate) =>
       candidate.name.toLowerCase().includes('sucrose'),
@@ -165,19 +461,22 @@ describe('production rescue orchestration', () => {
       (item) => item.id === sucrose.lineId,
     )!;
     expect(rescuedSucrose.actual_grams ?? rescuedSucrose.planned_grams).toBe(180);
-    expect(enlarge!.finalMassG).toBe(1278);
+    expect(enlarge!.finalMassG).toBe(1236.2);
+    expect(enlarge!.finalMassG).toBeLessThan(1278);
     expect(
-      enlarge!.candidateInput.items.every((item) => Number.isInteger(item.planned_grams)),
+      enlarge!.candidateInput.items.every(
+        (item) => Math.abs(item.planned_grams * 10 - Math.round(item.planned_grams * 10)) <= 1e-8,
+      ),
     ).toBe(true);
     expect(enlarge!.candidateInput.items.every((item) => item.actual_grams === null)).toBe(true);
-    expect(enlarge!.practicalAudit.executableResult).not.toBe(enlarge!.practicalAudit.exactResult);
+    expect(enlarge!.practicalAudit.modelVersion).toBe('production-tenth-gram-v1');
     expect(enlarge!.practicalAudit.hardGatePassed).toBe(true);
     expect(enlarge!.scoreDisplay).toBe('10/10');
     const creamInstructions = enlarge!.instructions.filter((instruction) =>
       instruction.ingredientName.toLowerCase().includes('cream'),
     );
     expect(creamInstructions).toHaveLength(1);
-    expect(creamInstructions[0]!.grams).toBe(228);
+    expect(creamInstructions[0]!.grams).toBeCloseTo(186.2, 8);
     const exactCream = enlarge!.exactCandidateInput.items.find((item) =>
       item.ingredient.name.toLowerCase().includes('cream'),
     )!;
@@ -187,7 +486,7 @@ describe('production rescue orchestration', () => {
     expect(
       (exactCream.actual_grams ?? exactCream.planned_grams) -
         (beforeCream.actual_grams ?? beforeCream.planned_grams),
-    ).toBeCloseTo(227.75342952471976, 8);
+    ).toBeCloseTo(186.2, 8);
     const canonicalIds = enlarge!.candidateInput.items.map((item) =>
       canonicalIngredientId(item.ingredient),
     );
@@ -223,7 +522,7 @@ describe('production rescue orchestration', () => {
       enlarge!.candidateInput.items.find((item) => item.id === 'dextrose')!.planned_grams,
     ).toBeGreaterThanOrEqual(59.5);
     expect(enlarge!.instructions).toEqual(
-      expect.arrayContaining([expect.objectContaining({ lineId: 'dextrose', kind: 'add' })]),
+      expect.arrayContaining([expect.objectContaining({ kind: 'add' })]),
     );
   });
 

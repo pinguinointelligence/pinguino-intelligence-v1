@@ -20,7 +20,7 @@ import {
 } from '@/features/recipe-constraints/__fixtures__/sorbetAuthorityFixture';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
 import { ProfessionalMonitorModules } from './ProfessionalMonitorModules';
-import { buildProfessionalMonitorModules } from './professionalMonitorModel';
+import { buildProfessionalMonitorModules, formatMonitorValue } from './professionalMonitorModel';
 
 vi.mock('@/access/useAccess', () => ({
   useAccess: () => ({
@@ -177,18 +177,21 @@ describe('professional Monitor — final owner-approved information architecture
     expect(text).not.toContain('Przypnij');
   });
 
-  it('labels the freezing headline as ice fraction with percent, never as PAC', () => {
+  it('keeps PAC primary and ice fraction visibly secondary without duplicating PAC', () => {
     const input = starterMilkBase();
     const result = calculateRecipe(input);
+    if (result.pac_points === null || result.ice_fraction_percent === null) {
+      throw new Error('starter fixture requires PAC and ice fraction');
+    }
     const freezing = buildProfessionalMonitorModules(
       result,
       input.target_temperature_c,
       input,
     ).find((module) => module.id === 'freezing');
-    const headline = freezing?.primary.find((metric) => metric.id === 'ice_fraction');
+    const ice = freezing?.primary.find((metric) => metric.id === 'ice_fraction');
     const pac = freezing?.primary.find((metric) => metric.id === 'pac');
 
-    expect(headline).toMatchObject({
+    expect(ice).toMatchObject({
       id: 'ice_fraction',
       rawMetric: 'ice_fraction',
       label: 'Frakcja lodu',
@@ -202,10 +205,17 @@ describe('professional Monitor — final owner-approved information architecture
         modules={buildProfessionalMonitorModules(result, input.target_temperature_c, input)}
       />,
     );
-    expect(html).toContain('data-headline-metric="ice_fraction"');
-    expect(html).toContain('data-headline-unit="%"');
-    expect(html).toContain('data-headline-label="Frakcja lodu"');
-    expect(textOf(html)).toContain('Frakcja lodu');
+    expect(html).toContain('data-headline-metric="pac"');
+    expect(html).toContain('data-headline-label="PAC"');
+    expect(html).toContain('data-secondary-metric="ice_fraction"');
+    expect(html).toContain('data-secondary-unit="%"');
+    expect(html).toContain('data-secondary-label="Frakcja lodu"');
+    const text = textOf(html);
+    expect(text).toMatch(new RegExp(`PAC\\s+${formatMonitorValue(result.pac_points)}`));
+    expect(text).toMatch(
+      new RegExp(`Frakcja lodu\\s+${formatMonitorValue(result.ice_fraction_percent)}\\s+%`),
+    );
+    expect(html).not.toContain('data-testid="monitor-metric-pac"');
   });
 
   it('uses one non-wrapping right value column for summary and expanded detail rows', () => {

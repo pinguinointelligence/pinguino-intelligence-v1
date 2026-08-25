@@ -85,7 +85,10 @@ export interface ProductionRescueSnapshot {
 
 /** Stable public option ids accepted by the trusted Rescue authorization endpoint. */
 export type ProductionRescueStableOptionId =
-  'keep_original_batch' | 'enlarge_batch' | 'leave_as_is';
+  | 'keep_original_batch'
+  | 'enlarge_batch'
+  | 'restore_original_recipe'
+  | 'leave_as_is';
 
 export type ProductionEventType =
   | 'created'

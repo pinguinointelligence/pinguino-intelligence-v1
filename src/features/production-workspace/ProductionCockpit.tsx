@@ -612,9 +612,15 @@ export function ProductionCockpit({
                 },
                 {
                   id: 'enlarge_batch',
-                  title: 'Powiększ partię',
+                  title: 'Minimalna bezpieczna korekta',
                   explanation:
-                    'Dodamy odpowiednie ilości, aby zachować możliwie ten sam profil receptury.',
+                    'Dodamy najmniejszą ilość materiału, która przywraca twarde zakresy.',
+                },
+                {
+                  id: 'restore_original_recipe',
+                  title: 'Przywróć oryginalną recepturę',
+                  explanation:
+                    'Dodamy odpowiednie ilości wszystkich potrzebnych produktów, aby wrócić do wyjściowych proporcji.',
                 },
                 {
                   id: 'leave_as_is',
@@ -665,7 +671,9 @@ export function ProductionCockpit({
                       <span className="flex flex-wrap items-center gap-2">
                         <strong className="text-xs text-ink">
                           {preview && option.id === 'enlarge_batch'
-                            ? `Powiększ partię do ${formatPhysicalMassG(preview.finalMassG)} g`
+                            ? `Minimalna bezpieczna korekta · ${formatPhysicalMassG(preview.finalMassG)} g`
+                            : preview && option.id === 'restore_original_recipe'
+                              ? `Przywróć oryginalną recepturę · ${formatPhysicalMassG(preview.finalMassG)} g`
                             : option.title}
                         </strong>
                         {recommended ? (
@@ -794,6 +802,8 @@ export function ProductionCockpit({
                 ? 'Akceptuję wynik i kontynuuję'
                 : production.selectedRescueOptionId === 'enlarge_batch'
                   ? 'Zastosuj nową partię'
+                  : production.selectedRescueOptionId === 'restore_original_recipe'
+                    ? 'Przywróć proporcje'
                   : 'Zastosuj korektę'}
           </button>
         </section>

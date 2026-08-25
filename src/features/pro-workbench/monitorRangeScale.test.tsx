@@ -310,11 +310,12 @@ describe('MonitorRangeScale — authoritative normalized geometry', () => {
       input,
     );
     const html = renderToStaticMarkup(<ProfessionalMonitorModules modules={modules} />);
-    expect(html).toContain('data-headline-metric="ice_fraction"');
+    expect(html).toContain('data-headline-metric="pac"');
+    expect(html).toContain('data-secondary-metric="ice_fraction"');
+    expect(html).toContain('data-scale-metric="ice_fraction"');
     expect(html).toContain('data-headline-metric="water"');
     expect(html).toContain('data-headline-metric="fat"');
     expect(html).toContain('data-headline-metric="aerating_protein"');
     expect(html).toContain('data-headline-metric="lactose_sandiness_risk"');
-    expect(html).not.toContain('data-headline-metric="pac"');
   });
 });

@@ -178,10 +178,11 @@ function MetricDetail({ metric }: { metric: ProfessionalMonitorMetric }) {
 function summaryFor(module: ProfessionalMonitorModule): {
   metric: ProfessionalMonitorMetric;
   scaleMetric: ProfessionalMonitorMetric;
+  secondaryMetric: ProfessionalMonitorMetric | null;
 } {
   const headlineId =
     module.id === 'freezing'
-      ? 'ice_fraction'
+      ? 'pac'
       : module.id === 'water-solids'
         ? 'water'
         : module.id === 'fat'
@@ -195,7 +196,14 @@ function summaryFor(module: ProfessionalMonitorModule): {
     module.primary.find((candidate) => candidate.id === headlineId) ?? module.primary[0]!;
   return {
     metric,
-    scaleMetric: metric,
+    scaleMetric:
+      module.id === 'freezing'
+        ? (module.primary.find((candidate) => candidate.id === 'ice_fraction') ?? metric)
+        : metric,
+    secondaryMetric:
+      module.id === 'freezing'
+        ? (module.primary.find((candidate) => candidate.id === 'ice_fraction') ?? null)
+        : null,
   };
 }
 
@@ -233,7 +241,7 @@ export function ProfessionalMonitorModules({
         const summary = summaryFor(module);
         const previewSummary = previewModule ? summaryFor(previewModule) : null;
         const detailRows = [...module.primary, ...module.secondary].filter(
-          (metric) => metric.id !== summary.metric.id,
+          (metric) => metric.id !== summary.metric.id && metric.id !== summary.secondaryMetric?.id,
         );
         const open = expanded.includes(module.id);
         const hasDetails = detailRows.length > 0;
@@ -246,6 +254,9 @@ export function ProfessionalMonitorModules({
             data-headline-metric={summary.metric.id}
             data-headline-label={summary.metric.label}
             data-headline-unit={summary.metric.unit || undefined}
+            data-secondary-metric={summary.secondaryMetric?.id}
+            data-secondary-label={summary.secondaryMetric?.label}
+            data-secondary-unit={summary.secondaryMetric?.unit || undefined}
             data-expanded={open ? 'true' : 'false'}
           >
             <button
@@ -290,7 +301,24 @@ export function ProfessionalMonitorModules({
                   summary.metric.displayText === undefined && 'font-mono tabular-nums',
                 )}
               >
-                {metricValueText(summary.metric)}
+                {summary.secondaryMetric ? (
+                  <>
+                    <span className="flex items-baseline justify-end gap-1.5">
+                      <span className="rounded-[8px] border border-ink/8 bg-stone-50 px-1.5 py-0.5 font-sans text-[10px] font-semibold">
+                        {summary.metric.label}
+                      </span>
+                      <span>{metricValueText(summary.metric)}</span>
+                    </span>
+                    <span className="mt-0.5 block font-sans text-[10px] font-medium text-stone-600">
+                      {summary.secondaryMetric.label}{' '}
+                      <span className="font-mono tabular-nums">
+                        {metricValueText(summary.secondaryMetric)}
+                      </span>
+                    </span>
+                  </>
+                ) : (
+                  metricValueText(summary.metric)
+                )}
               </span>
               {hasDetails ? (
                 <span

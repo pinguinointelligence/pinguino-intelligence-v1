@@ -20,7 +20,8 @@ export const PRODUCTION_RESCUE_TRANSPORT_DEADLINE_MS = 17_000;
 export const PRODUCTION_RESCUE_AUTHORIZATION_TTL_SECONDS = 300;
 const FRUCTOSE_CANONICAL_ID = 'PI-ING-000496';
 
-export type StableRescueOptionId = 'keep_original_batch' | 'enlarge_batch' | 'leave_as_is';
+export type StableRescueOptionId =
+  'keep_original_batch' | 'enlarge_batch' | 'restore_original_recipe' | 'leave_as_is';
 
 export interface AuthorizeRescueRequest {
   runId: string;
@@ -261,6 +262,7 @@ export function parseAuthorizeRescueRequest(value: unknown): AuthorizeRescueRequ
   if (
     stableOptionId !== 'keep_original_batch' &&
     stableOptionId !== 'enlarge_batch' &&
+    stableOptionId !== 'restore_original_recipe' &&
     stableOptionId !== 'leave_as_is'
   ) {
     throw new RescueAuthorizationError('unknown_stable_option', 400);
@@ -514,15 +516,19 @@ export async function authorizeTrustedProductionRescue(
     items: Array<Record<string, unknown>>;
     target_batch_grams: number;
   };
+  const isSupportedProductionMass = (value: unknown): boolean => {
+    const grams = Number(value);
+    return (
+      Number.isFinite(grams) && grams >= 0 && Math.abs(grams * 10 - Math.round(grams * 10)) <= 1e-8
+    );
+  };
+  const candidateTotal = candidate.items.reduce((sum, item) => sum + Number(item.planned_grams), 0);
   if (
     !candidate.items.every(
-      (item) =>
-        Number.isInteger(item.planned_grams) &&
-        Number(item.planned_grams) >= 0 &&
-        item.actual_grams === null,
+      (item) => isSupportedProductionMass(item.planned_grams) && item.actual_grams === null,
     ) ||
-    candidate.items.reduce((sum, item) => sum + Number(item.planned_grams), 0) !==
-      candidate.target_batch_grams
+    !isSupportedProductionMass(candidate.target_batch_grams) ||
+    Math.abs(candidateTotal - candidate.target_batch_grams) > 1e-8
   ) {
     throw new RescueAuthorizationError('engine_candidate_not_practical', 409);
   }

@@ -165,6 +165,18 @@ export {
 export { redactProposal } from './corrections/redact';
 export type { ApplyAutoFixArgs, ApplyAutoFixResult, ProposeAutoFixArgs } from './corrections/apply';
 export { applyAutoFix, proposeAutoFix } from './corrections/apply';
+export type {
+  AdditiveRecoveryNeighborhoodEvaluation,
+  BatchRecoveryCandidate,
+  BatchRecoveryObjective,
+  BatchRecoveryRequest,
+  BatchRecoveryResult,
+  BatchRecoveryTrace,
+} from './corrections/recovery';
+export {
+  evaluateAdditiveRecoveryNeighborhood,
+  proposeBatchRecovery,
+} from './corrections/recovery';
 
 /** The assembled default configuration (spec §7–§11, §17) — pure data aggregation. */
 export const DEFAULT_ENGINE_CONFIG: EngineConfig = {

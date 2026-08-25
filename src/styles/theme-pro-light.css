@@ -63,7 +63,9 @@
     1.25rem;
 }
 
-/* Summary and expanded details share one physical, non-wrapping numeric axis. */
+/* Monitor values share one physical right-side column in summary and detail
+   rows. The fixed capacity is intentionally modest: enough for "-11 °C" and
+   "100,00 %", without opening a dashboard-sized void beside short values. */
 .monitor-value-column {
   min-width: 6.75rem;
   white-space: nowrap;

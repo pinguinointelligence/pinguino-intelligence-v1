@@ -151,7 +151,10 @@ export const rescueOptionUnavailableMessage = (
     return `Niedostępne — potwierdzonych ilości nie można już dopasować do partii ${target} g.`;
   }
   if (stableOptionId === 'enlarge_batch') {
-    return 'Niedostępne — istniejący Engine nie znalazł bezpiecznej większej partii dla obecnych ilości.';
+    return 'Niedostępne — nie znaleziono minimalnej bezpiecznej dolewki dla obecnych ilości.';
+  }
+  if (stableOptionId === 'restore_original_recipe') {
+    return 'Niedostępne — obecnych ilości nie można bezpiecznie przeskalować do wyjściowych proporcji.';
   }
   const details = productionRescueOptionUnavailableDetails(error);
   if (details?.reasonCode === 'machine_capacity_exceeded') {
@@ -192,8 +195,13 @@ const productionRescueChoices = [
   },
   {
     id: 'enlarge_batch',
-    title: 'Powiększ partię',
-    explanation: 'Dodamy potrzebne ilości, aby zachować możliwie ten sam profil.',
+    title: 'Minimalna bezpieczna korekta',
+    explanation: 'Użyjemy najmniejszej ilości dodatkowego materiału zaakceptowanej przez Engine.',
+  },
+  {
+    id: 'restore_original_recipe',
+    title: 'Przywróć oryginalną recepturę',
+    explanation: 'Przeskalujemy wszystkie potrzebne produkty do wyjściowych proporcji.',
   },
   {
     id: 'leave_as_is',
@@ -748,52 +756,54 @@ export function useProductionWorkspace(enabled: boolean) {
             'archive_stale_session',
             'Zachowaj i odłącz lokalną sesję',
           )
-      : staleSource
-        ? prerequisite(
-            'stale_source',
-            'Źródło Produkcji jest nieaktualne',
-            'Receptura zmieniła się po przygotowaniu tej sesji. Zarchiwizuj starą sesję, aby zachować jej zapis i przygotować nową partię.',
-            'archive_stale_session',
-            'Zarchiwizuj starą sesję',
-          )
-        : (practicalGate.prerequisite ??
-          (practicalGate.ready && source.recipeVersionId === null
-            ? prerequisite(
-                'saved_version_required',
-                'Zapisz wersję wykonawczą',
-                'Produkcja wymaga dokładnej, niezmiennej wersji receptury. Zapisz zastosowaną recepturę przed rozpoczęciem partii.',
-                'return_to_recipe',
-                'Wróć i zapisz recepturę',
-              )
-            : null) ??
-          (practicalGate.ready && !behaviorServerReady
-            ? prerequisite(
-                behaviorServerMessage ? 'product_authority_required' : 'server_validation_pending',
-                behaviorServerMessage
-                  ? 'Nie udało się potwierdzić produktów'
-                  : 'Potwierdzamy aktualną recepturę',
-                behaviorServerMessage ??
-                  'Trwa bezpieczna weryfikacja produktów dla bieżącej receptury wykonawczej.',
-                'return_to_recipe',
-                'Wróć do receptury',
-              )
-            : null) ??
-          (practicalGate.ready && (recoveryPending || recoveryError)
-            ? prerequisite(
-                'repository_recovery',
-                recoveryOrphanedLocal
-                  ? 'Lokalna sesja nie ma trwałego runu'
-                  : recoveryError
-                    ? 'Nie udało się odzyskać partii'
-                    : 'Odzyskujemy partię',
-                recoveryOrphanedLocal
-                  ? 'Zachowaj osieroconą sesję w lokalnej historii i odłącz ją, aby bezpiecznie sprawdzić lub rozpocząć partię dla zapisanej wersji.'
-                  : (recoveryError ??
-                      'Sprawdzamy trwały zapis, aby nie uruchomić drugi raz tej samej partii.'),
-                recoveryOrphanedLocal ? 'archive_stale_session' : 'return_to_recipe',
-                recoveryOrphanedLocal ? 'Zachowaj i odłącz lokalną sesję' : 'Wróć do receptury',
-              )
-            : null));
+        : staleSource
+          ? prerequisite(
+              'stale_source',
+              'Źródło Produkcji jest nieaktualne',
+              'Receptura zmieniła się po przygotowaniu tej sesji. Zarchiwizuj starą sesję, aby zachować jej zapis i przygotować nową partię.',
+              'archive_stale_session',
+              'Zarchiwizuj starą sesję',
+            )
+          : (practicalGate.prerequisite ??
+            (practicalGate.ready && source.recipeVersionId === null
+              ? prerequisite(
+                  'saved_version_required',
+                  'Zapisz wersję wykonawczą',
+                  'Produkcja wymaga dokładnej, niezmiennej wersji receptury. Zapisz zastosowaną recepturę przed rozpoczęciem partii.',
+                  'return_to_recipe',
+                  'Wróć i zapisz recepturę',
+                )
+              : null) ??
+            (practicalGate.ready && !behaviorServerReady
+              ? prerequisite(
+                  behaviorServerMessage
+                    ? 'product_authority_required'
+                    : 'server_validation_pending',
+                  behaviorServerMessage
+                    ? 'Nie udało się potwierdzić produktów'
+                    : 'Potwierdzamy aktualną recepturę',
+                  behaviorServerMessage ??
+                    'Trwa bezpieczna weryfikacja produktów dla bieżącej receptury wykonawczej.',
+                  'return_to_recipe',
+                  'Wróć do receptury',
+                )
+              : null) ??
+            (practicalGate.ready && (recoveryPending || recoveryError)
+              ? prerequisite(
+                  'repository_recovery',
+                  recoveryOrphanedLocal
+                    ? 'Lokalna sesja nie ma trwałego runu'
+                    : recoveryError
+                      ? 'Nie udało się odzyskać partii'
+                      : 'Odzyskujemy partię',
+                  recoveryOrphanedLocal
+                    ? 'Zachowaj osieroconą sesję w lokalnej historii i odłącz ją, aby bezpiecznie sprawdzić lub rozpocząć partię dla zapisanej wersji.'
+                    : (recoveryError ??
+                        'Sprawdzamy trwały zapis, aby nie uruchomić drugi raz tej samej partii.'),
+                  recoveryOrphanedLocal ? 'archive_stale_session' : 'return_to_recipe',
+                  recoveryOrphanedLocal ? 'Zachowaj i odłącz lokalną sesję' : 'Wróć do receptury',
+                )
+              : null));
 
   const forecastInput = useMemo(
     () =>
@@ -961,9 +971,9 @@ export function useProductionWorkspace(enabled: boolean) {
   );
   const recommendedRescueOptionId = rescueOptionsCalculating
     ? undefined
-    : productionRescueChoices.find(
-        (option) => currentRescueOptionsEvaluation[option.id]?.status === 'available',
-      )?.id;
+    : (
+        ['leave_as_is', 'keep_original_batch', 'enlarge_batch', 'restore_original_recipe'] as const
+      ).find((optionId) => currentRescueOptionsEvaluation[optionId]?.status === 'available');
   const effectiveSelectedRescueOptionId =
     (selectedRescueOption.basisKey === rescueOptionsEvaluationKey
       ? selectedRescueOption.optionId
@@ -1410,8 +1420,7 @@ export function useProductionWorkspace(enabled: boolean) {
             .some(
               (line) =>
                 line.lineId === lineId &&
-                line.physicalAddedGrams >
-                  previous.physicalAddedGrams + PRODUCTION_GRAMS_EPSILON,
+                line.physicalAddedGrams > previous.physicalAddedGrams + PRODUCTION_GRAMS_EPSILON,
             );
         const actualAction =
           previous.recordCorrectionCount > 0
@@ -1424,8 +1433,7 @@ export function useProductionWorkspace(enabled: boolean) {
           eventContext: {
             action: actualAction,
             lineId,
-            previousActualG:
-              actualAction === 'confirm' ? null : previous.physicalAddedGrams,
+            previousActualG: actualAction === 'confirm' ? null : previous.physicalAddedGrams,
           },
         });
         replaceSession(

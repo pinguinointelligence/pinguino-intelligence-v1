@@ -60,7 +60,11 @@ export interface ProductionLineState {
 }
 
 export interface ProductionDeviationDecision {
-  strategy: 'keep_original_batch' | 'enlarge_batch' | 'leave_as_is';
+  strategy:
+    | 'keep_original_batch'
+    | 'enlarge_batch'
+    | 'restore_original_recipe'
+    | 'leave_as_is';
   acceptedAt: string;
   sourceActualRevision: number;
   rescueRevision: number;
@@ -876,6 +880,7 @@ export function hydrateProductionSessionFromRun(
     decisionEvent &&
     (strategy === 'keep_original_batch' ||
       strategy === 'enlarge_batch' ||
+      strategy === 'restore_original_recipe' ||
       strategy === 'leave_as_is') &&
     typeof decision?.sourceActualRevision === 'number' &&
     typeof decision?.rescueRevision === 'number' &&

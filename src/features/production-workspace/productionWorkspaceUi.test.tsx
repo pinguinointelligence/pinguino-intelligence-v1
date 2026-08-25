@@ -530,16 +530,13 @@ describe('Production workspace touch-first UI', () => {
     expect(html).not.toContain('Brakuje składnika · automatyczne etapy');
   });
 
-  // §10/§12/§19/§20 — a confirmed row is not a frozen checkbox. When the plan
-  // still asks for more of it, the row says so and offers the direct fix.
-  it('asks a short-added row for the missing grams and never for fewer', () => {
+  it('keeps a completed short-added row compact without a permanent top-up action', () => {
     const line = session.lines[0]!;
     const shorted = confirmProductionLine(
       setDraftActualGrams(session, line.lineId, line.plannedGrams - 5),
       line.lineId,
       '2026-08-24T10:00:00.000Z',
     );
-    const topUpLine = vi.fn();
     const html = renderToStaticMarkup(
       <IngredientRow
         item={result.items[0]!}
@@ -551,16 +548,51 @@ describe('Production workspace touch-first UI', () => {
           setDraftActual: vi.fn(),
           confirmLine: vi.fn(),
           reopenRecord: vi.fn(),
-          topUpLine,
         }}
       />,
     );
     expect(html).toContain('DODANO');
-    expect(html).toContain('Dodaj brakujące 5 g');
-    expect(html).toContain(`data-testid="production-top-up-${line.lineId}"`);
+    expect(html).not.toContain('Dodaj brakujące');
+    expect(html).not.toContain('Dodaj kolejną ilość');
     // The physical floor stays visible, so nobody can read this as "remove 5 g".
     expect(html).toContain('W naczyniu:');
     expect(html).toContain('data-production-difference="under"');
+  });
+
+  it('shows only the grams to weigh now in an authorized confirmed-line top-up', () => {
+    const line = session.lines[0]!;
+    const confirmed = confirmProductionLine(session, line.lineId, '2026-08-24T10:00:00.000Z');
+    const rescuedLine = {
+      ...confirmed.lines[0]!,
+      targetGrams: line.plannedGrams + 267,
+      draftActualGrams: line.plannedGrams + 267,
+      confirmed: false,
+      confirmedAt: null,
+      confirmationOrder: null,
+    };
+    const html = renderToStaticMarkup(
+      <IngredientRow
+        item={result.items[0]!}
+        totalBatchG={result.total_batch_g}
+        actions={recipeActions}
+        mode="production"
+        productionLine={rescuedLine}
+        productionActions={{
+          setDraftActual: vi.fn(),
+          confirmLine: vi.fn(),
+          reopenRecord: vi.fn(),
+        }}
+      />,
+    );
+
+    expect(html).toContain('data-production-mode="top-up"');
+    expect(html).toContain('Docelowo');
+    expect(html).toContain('Dodaj teraz');
+    expect(html).toContain('data-production-control-state="top-up"');
+    expect(html).toContain('value="267"');
+    expect(html).toContain(`W naczyniu: ${line.plannedGrams} g`);
+    expect(html).not.toContain(`value="${line.plannedGrams + 267}"`);
+    expect(html).not.toContain('Dodaj kolejną ilość');
   });
 
   it('shows no top-up affordance on a row that is exactly on plan', () => {
@@ -1024,7 +1056,7 @@ describe('Production workspace touch-first UI', () => {
       /<button(?=[^>]*data-testid="production-decision-leave_as_is")(?=[^>]*disabled="")/,
     );
     expect(html).toContain('Ta opcja nie jest bezpieczna dla obecnej partii.');
-    expect(html).toContain('Powiększ partię do 1050 g');
+    expect(html).toContain('Minimalna bezpieczna korekta · 1050 g');
     expect(html).toContain('Rekomendowane');
     expect(html).toContain('tabindex="-1"');
     expect(html).toContain('Nowy plan · Cream');
