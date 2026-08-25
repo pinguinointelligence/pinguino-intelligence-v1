@@ -300,6 +300,37 @@ describe('one production-oriented Product Accuracy authority', () => {
     expect(result.baseEngineReady).toBe(false);
   });
 
+  it('does not grant the topping physics exemption before ProductBehavior approval', () => {
+    const toppingRecognition = {
+      ...recognition,
+      intendedUsageRole: 'TOPPING_ONLY' as const,
+    };
+    const result = assessProductProductionAccuracy(
+      baseInput({
+        recognition: toppingRecognition,
+        engineUsable: false,
+        criticalPhysicsBlockers: ['UNRESOLVED_SWEETENING_FREEZING_PATH'],
+        sweetnessPath: {
+          kind: 'unresolved',
+          resolved: false,
+          reason: 'widmo cukrów pozostaje nierozstrzygnięte',
+        },
+        behavior: {
+          classificationOutcome: 'unknown_requires_review',
+          baseRecipeEligible: false,
+          toppingEligible: false,
+          intendedUsageRole: 'TOPPING_ONLY',
+          dosageInterpretation: toppingRecognition.dosage,
+          classificationReasonCodes: ['product_semantics_unresolved'],
+        },
+      }),
+    );
+
+    expect(result.components.enginePhysics.earnedPoints).toBeLessThan(25);
+    expect(result.criticalBlockers).toContain('product_semantics_unresolved');
+    expect(result.roleReadiness).toBe('REVIEW');
+  });
+
   it('does not award a generic web-search bonus', () => {
     const withoutWeb = assessProductProductionAccuracy(baseInput());
     const withUnrelatedWebReceipt = assessProductProductionAccuracy(

@@ -288,7 +288,15 @@ export function assessProductProductionAccuracy(
   for (const [field, weight] of nutritionWeights) addTruth('nutrition', field, weight);
 
   const role = recognition?.intendedUsageRole ?? input.behavior.intendedUsageRole;
-  const toppingOnly = role === 'TOPPING_ONLY';
+  // A semantic role is a request, not permission. The topping-only exemption
+  // from base freezing physics exists only after the shared ProductBehavior
+  // authority has accepted that exact role. Otherwise provisional recognition
+  // would receive 25/25 before the role gate that is meant to authorize it.
+  const toppingOnly =
+    role === 'TOPPING_ONLY' &&
+    input.behavior.classificationOutcome === 'classified' &&
+    input.behavior.toppingEligible === true &&
+    input.behavior.baseRecipeEligible === false;
 
   // Engine physics — 25. For a true topping, base-freezing physics is outside
   // the accepted role and therefore not a missing requirement.

@@ -156,7 +156,8 @@ const EVIDENCE_SOURCES = new Set<EvidenceSource>([
 
 const EVIDENCE_FIELDS = new Set<ProductEvidenceField>([
   'identity', 'brand', 'manufacturer', 'variant', 'netQuantity', 'ingredients', 'allergens',
-  'nutritionBasis', 'energyKcal', 'fat', 'carbohydrate', 'sugars', 'fiber', 'protein', 'salt',
+  'description', 'claims', 'packageCount',
+  'nutritionBasis', 'energyKcal', 'fat', 'saturatedFat', 'carbohydrate', 'sugars', 'fiber', 'protein', 'salt',
   'barcode', 'countryOfOrigin',
   'dosage', 'technicalParameters', 'technicalSource',
 ]);
@@ -528,6 +529,7 @@ async function trustedIntimportEvidence(input: {
     nutritionBasis: 'basis',
     energyKcal: 'kcal',
     fat: 'fat_g',
+    saturatedFat: 'saturated_fat_g',
     carbohydrate: 'carbohydrate_g',
     sugars: 'sugars_g',
     fiber: 'fiber_g',
@@ -541,6 +543,14 @@ async function trustedIntimportEvidence(input: {
   ) => {
     const text = String(value).trim();
     if (field === 'ingredients') recognitionEvidence.ingredients = text;
+    else if (field === 'brand') recognitionEvidence.brand = text;
+    else if (field === 'variant') recognitionEvidence.variant = text;
+    else if (field === 'description') recognitionEvidence.description = text;
+    else if (field === 'claims') {
+      recognitionEvidence.description = [recognitionEvidence.description, `claims: ${text}`]
+        .filter(Boolean)
+        .join(' | ');
+    }
     else if (field === 'dosage') recognitionEvidence.dosage = text;
     else if (field === 'technicalParameters') recognitionEvidence.technicalParameters = text;
     else if (field === 'manufacturer') recognitionEvidence.manufacturer = text;
@@ -770,6 +780,7 @@ async function trustedIntimportEvidence(input: {
             'nutritionBasis',
             'energyKcal',
             'fat',
+            'saturatedFat',
             'carbohydrate',
             'sugars',
             'fiber',
@@ -784,7 +795,7 @@ async function trustedIntimportEvidence(input: {
             authority: authority.authority,
           });
         }
-        if (field === 'ingredients') {
+        if (['ingredients', 'claims', 'description', 'technicalParameters'].includes(field)) {
           const exactSource =
             authority.authority === 'AUTHORITATIVE_RETAILER'
               ? 'EXACT_AUTHORITATIVE_RETAILER'
@@ -797,7 +808,7 @@ async function trustedIntimportEvidence(input: {
             carbonationEvidence.push({
               source: exactSource,
               assertion: String(fact.value).slice(0, 2_000),
-              assertionPath: 'enrichment.ingredients',
+              assertionPath: `enrichment.${field}`,
               sourceUrl: factSourceUrl,
               sourceDomain: authority.domain,
               sourceAuthorityClass: authority.authority,
@@ -823,6 +834,7 @@ async function trustedIntimportEvidence(input: {
   const workingFieldByFact: Readonly<Partial<Record<ProductEvidenceField, WorkingNumericField>>> = {
     energyKcal: 'kcal_per_100g',
     fat: 'fat_percent',
+    saturatedFat: 'saturated_fat_percent',
     carbohydrate: 'carbohydrate_percent',
     sugars: 'total_sugars_percent',
     fiber: 'fiber_percent',

@@ -39,6 +39,7 @@ import type { CardContribution } from './productSourceCard';
 import type {
   ProductionAccuracyEvidenceProvenance,
 } from './productProductionAccuracy';
+import type { CarbonationEvidence, CarbonationEvidenceSource } from '@/data/products/carbonation';
 import {
   canonicalizeProductSemanticEvidence,
   classifyProductSemantics,
@@ -176,6 +177,7 @@ const NUTRITION_SEMANTIC_LABELS: Readonly<Record<string, string>> = {
   nutritionBasis: 'basis',
   energyKcal: 'kcal',
   fat: 'fat_g',
+  saturatedFat: 'saturated_fat_g',
   carbohydrate: 'carbohydrate_g',
   sugars: 'sugars_g',
   fiber: 'fiber_g',
@@ -201,6 +203,12 @@ function mergeSemanticFacts(
     const value = fact.value === null ? null : String(fact.value).trim();
     if (!value) continue;
     if (fact.field === 'ingredients') merged.ingredients = value;
+    else if (fact.field === 'brand') merged.brand = value;
+    else if (fact.field === 'variant') merged.variant = value;
+    else if (fact.field === 'description') merged.description = value;
+    else if (fact.field === 'claims') {
+      merged.description = [merged.description, `claims: ${value}`].filter(Boolean).join(' | ');
+    }
     else if (fact.field === 'dosage') merged.dosage = value;
     else if (fact.field === 'technicalParameters') merged.technicalParameters = value;
     else if (fact.field === 'manufacturer') merged.manufacturer = value;
@@ -249,6 +257,7 @@ const WORKING_FIELD_BY_FACT: Readonly<Partial<Record<ProductEvidenceField, Worki
   Object.freeze({
     energyKcal: 'kcal_per_100g',
     fat: 'fat_percent',
+    saturatedFat: 'saturated_fat_percent',
     carbohydrate: 'carbohydrate_percent',
     sugars: 'total_sugars_percent',
     fiber: 'fiber_percent',
@@ -338,12 +347,40 @@ function reassessmentOverride(
       },
     ]),
   );
+  const carbonationEvidence = product.appliedFacts.flatMap((fact): CarbonationEvidence[] => {
+    if (
+      fact.value === null ||
+      !['ingredients', 'claims', 'description', 'technicalParameters'].includes(fact.field)
+    ) return [];
+    const source: CarbonationEvidenceSource | null =
+      fact.sourceAuthorityClass === 'STRUCTURED_PRODUCT_DATABASE'
+        ? 'EXACT_EAN_PRODUCT'
+        : fact.sourceAuthorityClass === 'AUTHORITATIVE_RETAILER' ||
+            fact.sourceAuthorityClass === 'OFFICIAL_PRIVATE_LABEL'
+          ? 'EXACT_AUTHORITATIVE_RETAILER'
+          : fact.sourceAuthorityClass?.startsWith('OFFICIAL_')
+            ? 'EXACT_MANUFACTURER'
+            : null;
+    return source
+      ? [{
+          source,
+          assertion: String(fact.value).slice(0, 2_000),
+          assertionPath: `enrichment.${fact.field}`,
+          sourceUrl: fact.sourceUrl ?? null,
+          sourceDomain: fact.sourceDomain ?? null,
+          sourceAuthorityClass: fact.sourceAuthorityClass ?? null,
+          evidenceReceipt: null,
+          retrievedAt: fact.retrievedAt ?? null,
+        }]
+      : [];
+  });
   return {
     evidence: product.evidence,
     sourceCard: sourceCardFromEnrichment(candidate, product),
     evidenceProvenance,
     enrichmentEvidenceReceipts: product.enrichmentEvidenceReceipts,
     semanticEvidenceReceipt,
+    carbonationEvidence,
   };
 }
 

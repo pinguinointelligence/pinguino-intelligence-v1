@@ -61,11 +61,16 @@ const WORST_CASE_SEARCHES_PER_CALL = 3;
 const RESEARCHABLE = new Set([
   'ingredients',
   'allergens',
+  'brand',
+  'variant',
+  'description',
+  'claims',
   // The Scanner's exact-GTIN lookup asks for the basis explicitly: nutrition numbers
   // without one are not a measurement, and per-100 ml never silently becomes per-100 g.
   'nutritionBasis',
   'energyKcal',
   'fat',
+  'saturatedFat',
   'carbohydrate',
   'sugars',
   'fiber',
@@ -74,6 +79,7 @@ const RESEARCHABLE = new Set([
   'barcode',
   'manufacturer',
   'netQuantity',
+  'packageCount',
   'countryOfOrigin',
   'dosage',
   'technicalParameters',
@@ -121,7 +127,7 @@ const ENRICHMENT_SCHEMA = {
     },
     facts: {
       type: 'array',
-      maxItems: 20,
+      maxItems: 32,
       items: {
         type: 'object',
         additionalProperties: false,
@@ -148,7 +154,7 @@ const ENRICHMENT_SCHEMA = {
       },
     },
     /** Fields the model looked for and genuinely could not find. */
-    notFound: { type: 'array', maxItems: 20, items: { type: 'string' } },
+    notFound: { type: 'array', maxItems: 32, items: { type: 'string' } },
   },
 } as const;
 
@@ -641,9 +647,16 @@ Deno.serve(async (request) => {
       allergens: offProduct.allergens ?? (Array.isArray(offProduct.allergens_tags)
         ? offProduct.allergens_tags.map(String).join(', ')
         : null),
+      brand: offProduct.brands,
+      variant: offProduct.abbreviated_product_name,
+      description: offProduct.generic_name_pl ?? offProduct.generic_name,
+      claims: Array.isArray(offProduct.labels_tags)
+        ? offProduct.labels_tags.map(String).join(', ')
+        : offProduct.labels,
       nutritionBasis: Object.keys(nutriments).some((key) => key.endsWith('_100g')) ? '100 g' : null,
       energyKcal: nutriments['energy-kcal_100g'],
       fat: nutriments.fat_100g,
+      saturatedFat: nutriments['saturated-fat_100g'],
       carbohydrate: nutriments.carbohydrates_100g,
       sugars: nutriments.sugars_100g,
       fiber: nutriments.fiber_100g,
@@ -652,6 +665,9 @@ Deno.serve(async (request) => {
       barcode: exactBarcode ? observedCode : null,
       manufacturer: offProduct.manufacturer,
       netQuantity: offProduct.quantity,
+      packageCount: offProduct.product_quantity_unit === 'piece'
+        ? offProduct.product_quantity
+        : null,
       countryOfOrigin: offProduct.origins ?? (Array.isArray(offProduct.origins_tags)
         ? offProduct.origins_tags.map(String).join(', ')
         : null),

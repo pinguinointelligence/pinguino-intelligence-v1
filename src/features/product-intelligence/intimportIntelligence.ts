@@ -84,6 +84,7 @@ export interface IntimportReassessmentOverride {
   >;
   enrichmentEvidenceReceipts: readonly string[];
   semanticEvidenceReceipt?: string | null;
+  carbonationEvidence?: readonly CarbonationEvidence[];
 }
 
 export type IntimportFinalResult =
@@ -219,6 +220,7 @@ export function semanticEvidenceFromIntimportCandidate(
     ['basis', candidate.source['Nutrition Basis']],
     ['kcal', candidate.source['Energy kcal']],
     ['fat_g', candidate.source['Fat g']],
+    ['saturated_fat_g', candidate.source['Saturated Fat g']],
     ['carbohydrate_g', candidate.source['Carbohydrates g']],
     ['sugars_g', candidate.source['Sugars g']],
     ['protein_g', candidate.source['Protein g']],
@@ -276,8 +278,10 @@ function evidenceFields(
   put('manufacturer', s.Manufacturer);
   put('variant', s['Variant Original'] ?? s['Variant English']);
   put('netQuantity', s['Net Quantity Value'] && s['Net Quantity Unit']);
+  put('packageCount', s['Package Count']);
   put('ingredients', s['Ingredients Original'] ?? s['Ingredients English']);
   put('allergens', s.Allergens);
+  put('description', labelledTechnicalValue(s['Technical Parameters'], 'Opis') ?? s.Notes);
   put('countryOfOrigin', s['Country of Origin']);
   put('dosage', s['Professional Dosage']);
   put('technicalParameters', s['Technical Parameters']);
@@ -290,6 +294,7 @@ function evidenceFields(
     put('nutritionBasis', s['Nutrition Basis']);
     put('energyKcal', s['Energy kcal']);
     put('fat', s['Fat g']);
+    put('saturatedFat', s['Saturated Fat g']);
     put('carbohydrate', s['Carbohydrates g']);
     put('sugars', s['Sugars g']);
     put('fiber', s['Fibre g']);
@@ -317,10 +322,15 @@ function evidenceFields(
 const SEARCHABLE_BY_KIND: Readonly<Record<ProductKind, readonly ProductEvidenceField[]>> =
   Object.freeze({
     normal_food: [
+      'brand',
+      'variant',
+      'description',
+      'claims',
       'ingredients',
       'nutritionBasis',
       'energyKcal',
       'fat',
+      'saturatedFat',
       'carbohydrate',
       'sugars',
       'fiber',
@@ -330,15 +340,21 @@ const SEARCHABLE_BY_KIND: Readonly<Record<ProductKind, readonly ProductEvidenceF
       'barcode',
       'manufacturer',
       'netQuantity',
+      'packageCount',
       'countryOfOrigin',
     ],
     technical: [
+      'brand',
+      'variant',
+      'description',
+      'claims',
       'dosage',
       'technicalParameters',
       'technicalSource',
       'ingredients',
       'nutritionBasis',
       'fat',
+      'saturatedFat',
       'carbohydrate',
       'sugars',
       'fiber',
@@ -348,6 +364,7 @@ const SEARCHABLE_BY_KIND: Readonly<Record<ProductKind, readonly ProductEvidenceF
       'manufacturer',
       'barcode',
       'netQuantity',
+      'packageCount',
       'countryOfOrigin',
       'energyKcal',
     ],
@@ -622,7 +639,10 @@ export function assessIntimportProduct(
     technical: kind === 'technical',
     semantic: recognition,
   };
-  const carbonation = classifyCarbonation(intimportCarbonationEvidence(candidate, sourceAuthority));
+  const carbonation = classifyCarbonation([
+    ...intimportCarbonationEvidence(candidate, sourceAuthority),
+    ...(reassessmentOverride?.carbonationEvidence ?? []),
+  ]);
   const productBehaviorAuthority = classifyProspectiveProductBehavior({
     kind,
     engineUsable: workingValues?.engineReady === true,

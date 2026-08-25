@@ -18,7 +18,7 @@ import {
   assessIntimportProduct,
   runIntimportLocalIntelligence,
 } from './intimportIntelligence';
-import { runIntimportEnrichment } from './intimportEnrichment';
+import { reassessIntimportAfterEnrichment, runIntimportEnrichment } from './intimportEnrichment';
 import { buildResearchPlan } from './researchPlan';
 
 const semanticEvidence = (
@@ -331,7 +331,10 @@ describe('final INTIMPORT closeout — package normalization and per-product res
   });
 
   it('requests the complete missing-field set in one product step, not three fields', async () => {
-    const candidate = parseINTIMPORT(csv([row()])).candidates[0]!;
+    const candidate = parseINTIMPORT(csv([row({
+      Brand: 'not_found',
+      'Package Count': 'not_found',
+    })])).candidates[0]!;
     const intelligence = assessIntimportProduct(candidate);
     const provider = vi.fn(async () => ({ facts: [], calls: 1, researchOutcome: 'SEARCH_EXHAUSTED' as const }));
     await runIntimportEnrichment([{ intelligence, barcode: null }], provider, {
@@ -342,7 +345,8 @@ describe('final INTIMPORT closeout — package normalization and per-product res
     expect(provider).toHaveBeenCalled();
     const requested = provider.mock.calls[0]![0].fields;
     expect(requested).toEqual(expect.arrayContaining([
-      'ingredients', 'nutritionBasis', 'energyKcal', 'fat', 'carbohydrate', 'sugars', 'protein', 'salt',
+      'brand', 'variant', 'description', 'claims', 'ingredients', 'nutritionBasis', 'energyKcal',
+      'fat', 'saturatedFat', 'carbohydrate', 'sugars', 'protein', 'salt', 'packageCount',
     ]));
     expect(requested.length).toBeGreaterThan(3);
   });
@@ -364,5 +368,42 @@ describe('final INTIMPORT closeout — package normalization and per-product res
     expect(result.summary.pending).toBe(2);
     expect(result.products).toHaveLength(2);
     expect(result.summary.products).toBe(4);
+  });
+
+  it('recomputes exact-evidence carbonation after enrichment', async () => {
+    const candidate = parseINTIMPORT(csv([row({
+      Brand: 'not_found',
+      'Product Name Original': 'Napój testowy',
+      Category: 'Beverages',
+    })])).candidates[0]!;
+    const local = runIntimportLocalIntelligence([candidate]);
+    const enriched = await runIntimportEnrichment(
+      local.rows.map((intelligence) => ({ intelligence, barcode: null })),
+      async () => ({
+        facts: [{
+          field: 'ingredients',
+          value: 'woda, dwutlenek węgla',
+          source: 'retailer',
+          sourceUrl: 'https://zakupy.biedronka.pl/produkt/test',
+          sourceDomain: 'zakupy.biedronka.pl',
+          sourceTitle: 'Napój testowy',
+          sourceAuthorityClass: 'AUTHORITATIVE_RETAILER',
+          retrievedAt: '2026-08-26T00:00:00.000Z',
+        }],
+        calls: 1,
+        researchOutcome: 'ENRICHED',
+      }),
+      { maxCallsPerImport: 100, maxSpendUsd: 10, concurrency: 1 },
+    );
+    const final = reassessIntimportAfterEnrichment({
+      candidates: [candidate],
+      enrichedProducts: enriched.products,
+      mapper: null,
+    });
+
+    expect(final.rows[0]?.carbonation).toMatchObject({
+      status: 'CARBONATED',
+      decision: 'EXPLICIT_CARBONATED_ASSERTION',
+    });
   });
 });
