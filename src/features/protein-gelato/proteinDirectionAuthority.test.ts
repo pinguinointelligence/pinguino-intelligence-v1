@@ -101,9 +101,16 @@ const sweep = (serving: Serving, strategy: 'optimal' | 'eco'): Delivered[] =>
     const input = draft(serving, strategy, level);
     const band = sweetnessBand(input);
     const built = buildOptimizePreview(input, NONE, AT, {});
-    expect(built.ok).toBe(true);
-    if (!built.ok) throw new Error('preview failed');
-    const proposed = built.preview.proposedInput;
+    // If the exact executable starter already satisfies the requested band,
+    // `already_clean` is the correct no-Apply state. Never manufacture a diff
+    // merely to keep the button visible (owner §23).
+    if (!built.ok) {
+      expect(
+        built.code,
+        `${serving}/${strategy}/sweetness=${level}: ${JSON.stringify(built).slice(0, 800)}`,
+      ).toBe('already_clean');
+    }
+    const proposed = built.ok ? built.preview.proposedInput : input;
     const protein = assessProteinFormulation(proposed, calculateRecipe(proposed));
     const pod = podOf(proposed);
     return {
@@ -221,10 +228,10 @@ describe('the delivered candidate is scored against the REQUESTED band', () => {
       for (const level of LEVELS) {
         const input = draft(serving, 'optimal', level);
         const built = buildOptimizePreview(input, NONE, AT, {});
-        expect(built.ok).toBe(true);
-        if (!built.ok) continue;
+        if (!built.ok) expect(built.code).toBe('already_clean');
+        const proposed = built.ok ? built.preview.proposedInput : input;
         const bands = requestedDirectionBands(input);
-        const measure = directionDistance(built.preview.proposedInput, bands);
+        const measure = directionDistance(proposed, bands);
         const inBand = measure.total === 0;
         expect(measure.missedAxes === 0).toBe(inBand);
       }

@@ -1005,10 +1005,11 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           snapshots,
           technicalOnlyMainLineIds,
         );
-        // Owner 2026-08-22 — rescue ingredient advisor: only when the exact
-        // Direction target is NOT reached with the current ingredients (a
-        // nearest-achievable candidate or an honest no-correction). Pure
-        // simulation; it never adds an ingredient to the draft.
+        // Rescue receives every genuine solver-exhaustion state, not only an
+        // unreached Direction target. The advisor itself decides between a
+        // Direction trigger and an operational hard-band trigger, simulates
+        // only approved absent ingredients and returns null without material
+        // evidence. Pure simulation; it never adds a line to the draft.
         const rescueAdviceFor = (bestCurrent: ConstraintPreview | null) =>
           assessRescueIngredientAdvice({
             input: draft.input,
@@ -1094,7 +1095,10 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
               : {
                   preview: result.preview,
                   directionBestCandidate: null,
-                  rescueAdvice: null,
+                  rescueAdvice:
+                    result.preview.diagnosticOnly === true
+                      ? rescueAdviceFor(result.preview)
+                      : null,
                   directionConsent: null,
                   substitutionConsent: null,
                   substitutionAuthorization: null,
@@ -1112,7 +1116,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
             preview: null,
             directionBestCandidate: null,
             rescueAdvice:
-              result.code === 'no_proposal' && result.directionTargetUnreached === true
+              result.code === 'no_proposal' || result.code === 'unsafe_proposal'
                 ? rescueAdviceFor(null)
                 : null,
             directionConsent: null,

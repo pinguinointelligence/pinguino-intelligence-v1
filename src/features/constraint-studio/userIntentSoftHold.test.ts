@@ -550,7 +550,7 @@ describe('§17/§18 representative user-intent types across profiles', () => {
     },
   );
 
-  it('weighs an identity line above a pure balancing line', () => {
+  it('gives every positive Standard line equal preservation weight regardless of role', () => {
     const set: ConstraintSet = { byLineId: {} };
     const mk = (ingredientId: string) => ({
       id: 'x:line',
@@ -571,7 +571,7 @@ describe('§17/§18 representative user-intent types across profiles', () => {
     });
     const yolkWeight = buildUserIntentBaseline(asInput(IDS.yolk), set).get('x:line')!.weight;
     const milkWeight = buildUserIntentBaseline(asInput(IDS.milk), set).get('x:line')!.weight;
-    expect(yolkWeight).toBeGreaterThan(milkWeight);
+    expect(yolkWeight).toBe(milkWeight);
     expect(milkWeight).toBeGreaterThan(0);
   });
 });

@@ -137,22 +137,14 @@ describe('buildOptimizePreview (§12.4 → §19.1)', () => {
     });
   });
 
-  it('builds a cheaper, still-clean ECO Preview directly from a clean current recipe', () => {
+  it('keeps a clean ECO recipe when only the secondary cost objective prefers another point', () => {
     const input = structuredClone(starterMilkBase());
     input.goals = { ...input.goals, formulation_strategy: 'eco' };
     const beforeCost = effectiveInputCostPerKg(input);
     const result = buildOptimizePreview(input, NO_CONSTRAINTS, 'now');
 
     expect(beforeCost).not.toBeNull();
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.preview.violationsBefore).toBe(0);
-    expect(result.preview.violationsAfter).toBe(0);
-    expect(result.preview.diagnosticOnly).toBe(false);
-    expect(
-      result.preview.proposedInput.items.reduce((sum, item) => sum + item.planned_grams, 0),
-    ).toBe(1000);
-    expect(effectiveInputCostPerKg(result.preview.proposedInput)).toBeLessThan(beforeCost!);
+    expect(result).toMatchObject({ ok: false, code: 'already_clean' });
     expect(input.items.map((item) => item.planned_grams)).toEqual([670, 130, 35, 130, 30, 5]);
   });
 

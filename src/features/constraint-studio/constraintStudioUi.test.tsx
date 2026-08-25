@@ -419,6 +419,40 @@ describe('ConstraintPreviewCard (§19.1)', () => {
     expect(rendered).toContain('Wynik jest bliżej zakresu');
     expect(rendered).not.toContain('Engine potwierdził poprawę techniczną: 1 → 1');
   });
+
+  it('never labels a diagnostic Protein candidate as an achieved applicable profile', () => {
+    const preview = syntheticPreview();
+    preview.proposedInput = {
+      ...preview.proposedInput,
+      category: 'protein_gelato',
+      goals: {
+        ...preview.proposedInput.goals,
+        direction_targets_active: true,
+        direction_targets: { sweetness: 0, softness: 0, creaminess: 0, flavor: 0 },
+      },
+    };
+    preview.directionAssessment = {
+      active: true,
+      reached: true,
+      supportedAxisCount: 1,
+      reachedAxisCount: 1,
+      score: 10,
+      residuals: [],
+      blockedAxes: [],
+    };
+    preview.diagnosticOnly = true;
+    preview.diagnosticReason = 'protein_claim_residual';
+
+    const rendered = render(
+      <ConstraintPreviewCard preview={preview} onApply={noop} onCancel={noop} />,
+    );
+    expect(rendered).toContain('10/10');
+    expect(rendered).toContain(
+      'Kierunek osiągnięty tylko w podglądzie diagnostycznym. Receptura nadal nie jest gotowa do Apply.',
+    );
+    expect(rendered).not.toContain('PI osiągnęło wybrany profil.');
+    expect(rendered).toContain('data-testid="preview-apply-disabled"');
+  });
 });
 
 /* ── blocked notice (the owner-mandated block) ───────────────────────────── */

@@ -670,8 +670,16 @@ export async function resolveRecipeProposalBehaviorSnapshots(input: {
     const line = input.recipe.items.find((candidate) => candidate.id === lineId);
     const topping = toppings.find((candidate) => candidate.id === lineId);
     const snapshot = snapshots[lineId];
-    if ((!line && !topping) || !snapshot || snapshot.resolutionState !== 'RESOLVED') return true;
     const processScope = line ? 'BASE_FORMULATION' : 'POST_PROCESS_ADDON';
+    if (
+      (!line && !topping) ||
+      !snapshot ||
+      snapshot.resolutionState !== 'RESOLVED' ||
+      snapshot.lineId !== lineId ||
+      snapshot.processScope !== processScope
+    ) {
+      return true;
+    }
     const effectiveModule = line ? requestedModule : 'TOPPING';
     const expectedRole = recipeAuthorityRequestedRole(
       effectiveModule,

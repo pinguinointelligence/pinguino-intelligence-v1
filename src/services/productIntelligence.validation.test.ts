@@ -631,6 +631,147 @@ describe('recipe behavior server validation', () => {
     });
   });
 
+  it('refreshes stale POST_PROCESS scope when Vegan formulation promotes Coconut Oil into the Base', async () => {
+    const addedLineId = 'formulation-PI-ING-000163';
+    const proposed: RecipeInput = {
+      ...recipe,
+      category: 'vegan_gelato',
+      items: [
+        {
+          ...recipe.items[1]!,
+          id: addedLineId,
+          ingredient: {
+            ...recipe.items[1]!.ingredient,
+            id: 'PI-ING-000163',
+            canonical_ingredient_id: 'PI-ING-000163',
+            name: 'REFINED COCONUT OIL · Elstar Fats Coconut · Dry',
+          },
+          planned_grams: 112,
+        },
+      ],
+    };
+    const context = {
+      accountId: 'account-1',
+      productProfile: 'vegan_gelato' as const,
+      temperatureC: -12,
+      mode: 'optimal' as const,
+      processScope: 'BASE_FORMULATION' as const,
+      requestedRole: 'STANDARD' as const,
+      module: 'OPTIMAL' as const,
+    };
+    // Historical CROSS failure: the context was Base-current but the durable
+    // snapshot still carried the former topping scope. The database correctly
+    // refused Save for this exact formulation line id.
+    const staleScope: ProductBehaviorSnapshot = {
+      ...snapshot(addedLineId, 'PI-ING-000163'),
+      processScope: 'POST_PROCESS_ADDON',
+      resolutionContext: context,
+    };
+    const resolveSelection = vi.fn().mockResolvedValue({
+      ...snapshot(addedLineId, 'PI-ING-000163'),
+      state: 'eligible',
+      entityKind: 'mapper',
+      entityId: 'PI-ING-000163',
+      module: 'OPTIMAL',
+      context,
+    });
+
+    const result = await resolveRecipeProposalBehaviorSnapshots({
+      recipe: proposed,
+      snapshots: { [addedLineId]: staleScope },
+      accountId: 'account-1',
+      module: 'OPTIMAL',
+      resolveSelection,
+    });
+
+    expect(resolveSelection).toHaveBeenCalledTimes(1);
+    expect(result.unresolvedLineIds).toEqual([]);
+    expect(result.snapshots[addedLineId]).toMatchObject({
+      lineId: addedLineId,
+      mapperIngredientId: 'PI-ING-000163',
+      processScope: 'BASE_FORMULATION',
+      resolutionContext: { processScope: 'BASE_FORMULATION', module: 'OPTIMAL' },
+    });
+  });
+
+  it('revalidates the complete 8-run Vegan Apply→Save F11 matrix as Base formulation authority', async () => {
+    const historicalRuns = [
+      ['classic-raspberry', 'optimal', ['PI-ING-000163']],
+      ['classic-raspberry', 'eco', ['PI-ING-000163']],
+      ['classic-guava-sorbet', 'optimal', ['PI-ING-000163']],
+      ['classic-guava-sorbet', 'eco', ['PI-ING-000163']],
+      ['classic-mango', 'optimal', ['PI-ING-001565', 'PI-ING-000163']],
+      ['classic-mango', 'eco', ['PI-ING-001565', 'PI-ING-000163']],
+      ['cocktail-whisky-sour', 'optimal', ['PI-ING-001565', 'PI-ING-000163']],
+      ['cocktail-whisky-sour', 'eco', ['PI-ING-001565', 'PI-ING-000163']],
+    ] as const;
+
+    for (const [recipeId, mode, canonicalIds] of historicalRuns) {
+      const module: 'ECO' | 'OPTIMAL' = mode === 'eco' ? 'ECO' : 'OPTIMAL';
+      const items = canonicalIds.map((canonicalId, index) => ({
+        ...recipe.items[1]!,
+        id: `formulation-${canonicalId}`,
+        ingredient: {
+          ...recipe.items[1]!.ingredient,
+          id: canonicalId,
+          canonical_ingredient_id: canonicalId,
+        },
+        planned_grams: index === 0 ? 98 : 116,
+      }));
+      const proposed: RecipeInput = {
+        ...recipe,
+        category: 'vegan_gelato',
+        goals: { formulation_strategy: mode },
+        items,
+      };
+      const snapshots = Object.fromEntries(
+        items.map((item) => [
+          item.id,
+          {
+            ...snapshot(item.id, item.ingredient.canonical_ingredient_id!),
+            processScope: 'POST_PROCESS_ADDON' as const,
+            resolutionContext: {
+              accountId: 'account-1',
+              productProfile: 'vegan_gelato' as const,
+              temperatureC: -12,
+              mode,
+              processScope: 'BASE_FORMULATION' as const,
+              requestedRole: 'STANDARD' as const,
+              module,
+            },
+          },
+        ]),
+      );
+      const resolveSelection = vi.fn().mockImplementation(async ({ entity, context }) => ({
+        ...snapshot(`formulation-${entity.entityId}`, entity.entityId),
+        state: 'eligible',
+        entityKind: 'mapper',
+        entityId: entity.entityId,
+        module: context.module,
+        context,
+      }));
+
+      const result = await resolveRecipeProposalBehaviorSnapshots({
+        recipe: proposed,
+        snapshots,
+        accountId: 'account-1',
+        module,
+        resolveSelection,
+      });
+
+      expect(result.unresolvedLineIds, `${recipeId}/${mode}`).toEqual([]);
+      expect(resolveSelection, `${recipeId}/${mode}`).toHaveBeenCalledTimes(canonicalIds.length);
+      for (const item of items) {
+        expect(result.snapshots[item.id], `${recipeId}/${mode}/${item.id}`).toMatchObject({
+          lineId: item.id,
+          mapperIngredientId: item.ingredient.canonical_ingredient_id,
+          processScope: 'BASE_FORMULATION',
+          resolutionContext: { processScope: 'BASE_FORMULATION', module },
+        });
+      }
+    }
+  });
+
   it('fails closed and creates no synthetic authority when a solver-added line cannot resolve', async () => {
     const addedLineId = 'correction-inulin-0';
     const proposed: RecipeInput = {

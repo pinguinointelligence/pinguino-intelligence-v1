@@ -633,17 +633,30 @@ describe('B. Global rescue ingredient advisor (simulation-based, never auto-adds
     useConstraintStudioStore.getState().createOptimizePreview();
     const state = useConstraintStudioStore.getState();
     expect(useRecipeStore.getState().items.map((item) => item.id)).toEqual(linesBefore);
+    // Store wiring proof: the optimizer's nearest/current candidate and exact
+    // violations reached the advisor; this is not merely a direct unit call.
+    expect(
+      state.rescueAdvice,
+      JSON.stringify({
+        previewIssue: state.previewIssue,
+        hasPreview: state.preview !== null,
+        hasDirectionBestCandidate: state.directionBestCandidate !== null,
+        terminal: state.recalculationTerminal,
+      }).slice(0, 1_500),
+    ).not.toBeNull();
+    expect(state.rescueAdvice!.candidate.canonicalIngredientId).toBe('PI-ING-000494');
+    expect(state.rescueAdvice!.current.severityPoints).toBeGreaterThan(
+      state.rescueAdvice!.rescue.severityPoints,
+    );
     const candidate = state.preview ?? state.directionBestCandidate;
     if (candidate) {
       expect(candidate.proposedInput.items.some((item) => item.id.startsWith('rescue-sim:'))).toBe(
         false,
       );
     }
-    if (state.rescueAdvice) {
-      expect(useRecipeStore.getState().items.map((item) => item.id)).not.toContain(
-        `rescue-sim:${state.rescueAdvice.candidate.canonicalIngredientId}`,
-      );
-    }
+    expect(useRecipeStore.getState().items.map((item) => item.id)).not.toContain(
+      `rescue-sim:${state.rescueAdvice!.candidate.canonicalIngredientId}`,
+    );
   }, 120_000);
 
   it('14. a rescue candidate whose simulation fails the hard gates is never shown', () => {

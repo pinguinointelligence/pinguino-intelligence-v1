@@ -58,6 +58,7 @@ import {
   type DraftStateMeasure,
   type DraftSweepResult,
 } from './draftCandidateVector';
+import { experimentalNeighborhoodSearch } from './experimentalNeighborhoodSearch';
 import { effectiveInputCostPerKg, sweepEcoDraftCost } from './ecoDraftCostSweep';
 import {
   applyEffectiveCustomerPrices,
@@ -2141,11 +2142,12 @@ function iterateSolverToFixedPoint(
   // the canonical corrector, draft-vector, ECO and Protein paths. The hold is
   // deliberately not persisted as a user-visible §17 lock.
   const solverSet = solverHolds(start, set, { productBehaviorSnapshots });
-  // THE USER-INTENT BASELINE of this solve (owner §9). Captured ONCE, from the
-  // recipe the user is actually looking at, and never re-derived from an
-  // intermediate candidate — otherwise drift would be measured candidate-against-
-  // candidate and every step would look small.
-  const userIntentBaseline = buildUserIntentBaseline(start, solverSet);
+  // THE USER-INTENT BASELINE of this solve (owner §9). `base` is the recipe the
+  // user actually entered; `start` may already be a full-formulation TEMPLATE
+  // seed. Anchoring to `start` made every later move look close to the template
+  // and erased the user's vector before ranking even began. Capture `x_user`
+  // once and never re-derive it from a seed or intermediate candidate.
+  const userIntentBaseline = buildUserIntentBaseline(base, solverSet);
   const measure = (candidate: RecipeInput): DraftStateMeasure => {
     const list = recipeDirectionViolations(candidate);
     return {
@@ -2505,6 +2507,20 @@ function refineProteinFormulation(
 ): RecipeInput {
   if (candidate.category !== 'protein_gelato') return candidate;
   if (candidate.items.some((item) => item.actual_grams !== null)) return candidate;
+
+  // Qualification is the explicit Protein product request. Once the exact
+  // executable candidate is already hard-safe and qualified, a higher internal
+  // frontier rank is secondary to preserving x_user; continuing to climb here
+  // rewrote the technical Protein bases after the request had been satisfied.
+  const baselineAssessment = assessProteinFormulation(candidate);
+  if (
+    baselineAssessment.hardSafe &&
+    baselineAssessment.qualification.qualified &&
+    candidate.items.every((item) => item.planned_grams > 0) &&
+    recipeDirectionViolations(candidate).length === 0
+  ) {
+    return candidate;
+  }
 
   const baselineRank = proteinFrontierRank(candidate);
   if (baselineRank === null) return candidate;
@@ -5865,6 +5881,54 @@ function buildOptimizePreviewWithDirection(
         `${input.target_batch_grams.toFixed(1)} g. PI nie zmniejszyło tożsamości receptury po cichu.`,
     };
   }
+  // The exact current gram vector is the null hypothesis when the user has not
+  // selected a Main ingredient or asked for another explicit target. This gate
+  // deliberately runs BEFORE the profile mode router: a complete Vegan,
+  // Sorbet or Protein recipe must not be replaced by a generic template merely
+  // because that profile owns a full-formulation path. Every product-level hard
+  // authority is checked on the unchanged vector first; any unresolved goal,
+  // constraint, exclusion, practicalization or Rescue request keeps the normal
+  // pipeline in control.
+  const preRouteStrategy = normalizeFormulationStrategy(
+    input.goals?.formulation_strategy ?? input.mode,
+  );
+  const currentResult = calculateRecipe(input);
+  const currentProtein = assessProteinFormulation(input, currentResult);
+  const excludedCanonicalIds = new Set(
+    (options.excludedIngredientIds ?? []).map(canonicalIngredientIdFromSourceId),
+  );
+  const hasPendingManualTarget = input.items.some(
+    (item) =>
+      item.user_target_grams !== undefined &&
+      Number.isFinite(item.user_target_grams) &&
+      Math.abs(item.user_target_grams - item.planned_grams) > BATCH_SUM_TOLERANCE_G,
+  );
+  const hasPresentExcludedIngredient = input.items.some(
+    (item) =>
+      item.planned_grams > 0 && excludedCanonicalIds.has(canonicalIngredientId(item.ingredient)),
+  );
+  const exactNoCrownNullHypothesis =
+    preRouteStrategy !== 'eco' &&
+    mainIntent.length === 0 &&
+    options.requirePracticalPreview !== true &&
+    (options.rescueSimulationLineIds?.length ?? 0) === 0 &&
+    !hasPendingManualTarget &&
+    !hasPresentExcludedIngredient &&
+    !input.items.some((item) => item.actual_grams !== null) &&
+    input.items.every(
+      (item) => Number.isInteger(item.planned_grams) && item.planned_grams > 0,
+    ) &&
+    Math.abs(plannedSum(input) - input.target_batch_grams) <= BATCH_SUM_TOLERANCE_G &&
+    verifyConstraintsPreserved(set, input).ok &&
+    detectViolations(currentResult).length === 0 &&
+    !currentResult.warnings.some((warning) => warning.severity === 'critical') &&
+    !hasActiveExactDirectionObjective(input) &&
+    recipeDirectionViolations(input).length === 0 &&
+    ownerInulinPolicyIssues(input).length === 0 &&
+    internalStabilizerProfileIssues(input).length === 0 &&
+    (input.category !== 'vegan_gelato' || veganProfileConstraintIssues(input).length === 0) &&
+    (!currentProtein.applicable || currentProtein.qualification.qualified);
+  if (exactNoCrownNullHypothesis) return { ok: false, code: 'already_clean' };
   // Owner 2026-08-22 (Main-constrained NEAREST): a COMPLETE on-batch Sorbet
   // draft with an active exact Direction objective is solved on the SHARED
   // boundary BEFORE the mode router. The served Mapper scaffold routes through
@@ -5894,9 +5958,6 @@ function buildOptimizePreviewWithDirection(
     }
   }
   const routedDecision = routeFormulationMode(input, set);
-  const preRouteStrategy = normalizeFormulationStrategy(
-    input.goals?.formulation_strategy ?? input.mode,
-  );
   // The ECO null hypothesis fires whenever the router would hand this draft to
   // a TEMPLATE. It used to test `missing_hard_role` specifically — which, while
   // canonical Sucrose and Water mis-resolved, was simply what every complete
@@ -5942,6 +6003,78 @@ function buildOptimizePreviewWithDirection(
           ],
         }
       : routedDecision;
+
+  // A/B promotion (2026-08-25): for a complete on-batch recipe WITHOUT Main,
+  // retain several nearby paths and rank them by the product hierarchy before
+  // the historical single-path solver/template commits to one direction. The
+  // 136-recipe offline comparison showed materially lower x_user drift at the
+  // same hard validity; pure beam search did not match the certified Crown
+  // maximum, so every Main/Multi-Main draft deliberately stays on the existing
+  // frontier. A failed/refused neighborhood search is only evidence: the
+  // established pipeline still runs and keeps every honest fallback.
+  const behaviorModule = preRouteStrategy === 'eco' ? 'ECO' : 'OPTIMAL';
+  const behaviorRequiredLineIds = productBehaviorRequiredLineIds({ items: input.items });
+  const managedBehavior = Object.keys(options.productBehaviorSnapshots ?? {}).length > 0;
+  const behaviorReady =
+    !managedBehavior ||
+    productBehaviorModuleGate(
+      options.productBehaviorSnapshots ?? {},
+      behaviorModule,
+      behaviorRequiredLineIds,
+    ).ready;
+  const neighborhoodBands = classifyViolationBands(input);
+  const neighborhoodEligible =
+    decision.mode !== 'unsupported' &&
+    neighborhoodBands.bandSource === 'native' &&
+    !neighborhoodBands.temperatureFallback &&
+    input.goals?.formulation_strategy !== undefined &&
+    mainIntent.length === 0 &&
+    behaviorReady &&
+    !hasPendingManualTarget &&
+    !hasPresentExcludedIngredient &&
+    (options.rescueSimulationLineIds?.length ?? 0) === 0 &&
+    !hasActiveExactDirectionObjective(input) &&
+    !input.items.some((item) => item.actual_grams !== null) &&
+    input.items.every(
+      (item) => Number.isInteger(item.planned_grams) && item.planned_grams > 0,
+    ) &&
+    Math.abs(plannedSum(input) - input.target_batch_grams) <= BATCH_SUM_TOLERANCE_G;
+  if (neighborhoodEligible) {
+    const neighborhood = experimentalNeighborhoodSearch(input, set, {
+      beamWidth: 3,
+      evaluationBudget: 2_500,
+      excludedIngredientIds: options.excludedIngredientIds,
+      effectivePriceOverrides: options.effectivePriceOverrides,
+      externalHardGate: (candidate) =>
+        verifyConstraintsPreserved(set, candidate).ok &&
+        requiredLineContractViolations(input, candidate).length === 0 &&
+        (preRouteStrategy !== 'eco' ||
+          verifyEcoFlavourProtection(input, candidate, {
+            productBehaviorSnapshots: options.productBehaviorSnapshots,
+          }).ok),
+    });
+    if (neighborhood.status === 'no_change') {
+      return { ok: false, code: 'already_clean' };
+    }
+    if (neighborhood.status === 'candidate') {
+      const lockedNames = lockedIngredientNames(input, set);
+      const preview = finishPreview(
+        'optimize',
+        copy.preview.kindLabels.optimize,
+        input,
+        set,
+        neighborhood.input,
+        set,
+        violationCount(currentResult),
+        lockedNames.length > 0 ? [{ kind: 'locked_unchanged', ingredientNames: lockedNames }] : [],
+        createdAt,
+      );
+      preview.autoBalance = { batchRescaled: false, solverRounds: 0 };
+      preview.hardResidualMetrics = [];
+      preview.diagnosticOnly = false;
+      return mainSafePreview(input, preview, options.productBehaviorSnapshots);
+    }
+  }
   if (decision.mode === 'unsupported') {
     return { ok: false, code: 'unsupported_profile', reason: decision.reasons[0] ?? 'no_template' };
   }

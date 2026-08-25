@@ -21,7 +21,7 @@
  *
  * WHAT THIS MODULE IS (and is NOT)
  * --------------------------------
- * It is a MEASURE and a CLASSIFICATION, not a lock and not science. It reads
+ * It is a MEASURE and a diagnostic CLASSIFICATION, not a lock and not science. It reads
  * only authority that already exists — `lock_type`, the §17 constraint set,
  * Main, `resolveFunctionalRole`, and the product-layer intent sidecars
  * (`user_intent_anchor_grams` / `user_target_grams`). It contains no band, no
@@ -50,27 +50,28 @@ import { resolveFunctionalRole, type FunctionalRole } from './ingredientRoles';
 /* ── flexibility classes ─────────────────────────────────────────────────── */
 
 /**
- * How much preservation authority one line carries. Ordered from strongest to
- * weakest. The class is DERIVED from existing authority — never declared per
- * ingredient.
+ * Diagnostic origin/role class. Hard locks and Main remain outside this soft
+ * authority; every positive Standard user line has equal preservation weight.
+ * The class is DERIVED from existing authority and may explain a row, but must
+ * never create a hidden semantic priority between Standard ingredients.
  */
 export type UserLineFlexibilityClass =
   /** §17 padlock or engine-native non-unlocked hold: exact, never moves. */
   | 'hard_locked'
   /** Main. Governed by the Main contract, NOT by this module (§20). */
   | 'main_protected'
-  /** A user-held line that carries flavour or structural identity. */
+  /** A user-held line whose resolved role is flavour/structure (diagnostic). */
   | 'user_flavour_structure'
   /** A user-held line with no more specific authority. */
   | 'user_general'
-  /** A user-held line whose job IS to balance (water, base liquid, sugars). */
+  /** A user-held line whose resolved role is technical balancing (diagnostic). */
   | 'user_technical_balancer'
   /** PI put it there. Lowest preservation authority. */
   | 'pi_auto_added';
 
 /**
- * Role → class. Every role of `FunctionalRole` is listed explicitly so a new
- * role cannot silently inherit "balancer" (the most disposable class).
+ * Role → diagnostic class. Every role of `FunctionalRole` is listed explicitly
+ * so reporting remains stable. These classes do NOT alter candidate priority.
  *
  * The split is the EXISTING product distinction, not a new one: the roles that
  * define what the recipe IS versus the roles that exist to make the numbers
@@ -103,16 +104,17 @@ const ROLE_FLEXIBILITY: Readonly<Record<FunctionalRole, UserLineFlexibilityClass
 };
 
 /**
- * Preservation WEIGHT per class — the only tuning surface of this module, and
- * deliberately coarse. §10 is binding: every user-specified positive line has
- * NONZERO authority, so no user class may weigh 0.
+ * Preservation weight per class. All positive Standard user lines are exactly
+ * equal: the original gram vector is one product prior, and role resolution may
+ * not make water, sugar or spice silently more disposable. Hard locks and Main
+ * stay at 0 because their separate exact/priority authorities own them.
  */
 const CLASS_WEIGHT: Readonly<Record<UserLineFlexibilityClass, number>> = {
   hard_locked: 0, // never moves; its own authority is exact
   main_protected: 0, // §20 — the Main contract owns it, not this module
   user_flavour_structure: 1,
-  user_general: 0.7,
-  user_technical_balancer: 0.3,
+  user_general: 1,
+  user_technical_balancer: 1,
   pi_auto_added: 0,
 };
 

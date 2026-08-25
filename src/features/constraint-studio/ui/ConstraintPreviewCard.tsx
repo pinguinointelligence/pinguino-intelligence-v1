@@ -294,13 +294,15 @@ export function ConstraintPreviewCard({
           data-testid="preview-direction-score"
         >
           <span
-            className={`font-mono text-lg tabular-nums ${preview.directionAssessment.reached ? 'text-status-ideal' : 'text-gold-soft'}`}
+            className={`font-mono text-lg tabular-nums ${preview.directionAssessment.reached && !diagnostic ? 'text-status-ideal' : 'text-gold-soft'}`}
           >
             {preview.directionAssessment.score ?? '—'}/10
           </span>
           <p className="text-xs leading-relaxed text-ivory/70">
             {preview.directionAssessment.reached
-              ? 'PI osiągnęło wybrany profil.'
+              ? diagnostic
+                ? 'Kierunek osiągnięty tylko w podglądzie diagnostycznym. Receptura nadal nie jest gotowa do Apply.'
+                : 'PI osiągnęło wybrany profil.'
               : 'Najbliższy bezpieczny profil — zaakceptowany świadomie przed tym Preview.'}
           </p>
         </div>
