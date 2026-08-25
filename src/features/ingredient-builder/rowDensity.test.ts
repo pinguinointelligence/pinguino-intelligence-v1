@@ -23,6 +23,7 @@ const row = read('features', 'ingredient-builder', 'IngredientRow.tsx');
 const control = read('features', 'ingredient-builder', 'DirectNumberControl.tsx');
 const price = read('features', 'ingredient-builder', 'IngredientPriceControl.tsx');
 const builder = read('features', 'ingredient-builder', 'IngredientBuilder.tsx');
+const buttonStyles = read('components', 'ui', 'buttonStyles.ts');
 
 describe('D1 — no dead strip above the first ingredient', () => {
   it('the header band takes space only when it renders something', () => {
@@ -30,13 +31,15 @@ describe('D1 — no dead strip above the first ingredient', () => {
     // neither padding nor a divider unless a notice is actually present.
     expect(builder).toContain('hasRecipeNotice');
     expect(builder).toContain(
-      "mode === 'production'\n              ? 'border-b border-ink/10 px-3 py-2 xl:py-3'",
+      "mode === 'production' && production?.session?.status === 'in_progress'",
     );
+    expect(builder).toContain("? 'border-b border-ink/8 px-3 py-1.5'");
     expect(builder).toContain("? 'px-3 pt-2 pb-1'\n                : null");
   });
 
-  it('production mode KEEPS its real header spacing and border', () => {
-    expect(builder).toContain("'border-b border-ink/10 px-3 py-2 xl:py-3'");
+  it('production mode keeps compact reminder spacing only while a run is active', () => {
+    expect(builder).toContain('data-testid="production-execution-reminder"');
+    expect(builder).toContain("'border-b border-ink/8 px-3 py-1.5'");
   });
 });
 
@@ -55,7 +58,9 @@ describe('D2/D4/D5 — smaller housings, unchanged typography', () => {
   });
 
   it('the ••• action belongs to the same compact row', () => {
-    expect(row).toContain('grid size-7 place-items-center rounded-full');
+    expect(row).toContain("className={iconButtonClasses('xs')}");
+    expect(buttonStyles).toContain('grid shrink-0 place-items-center rounded-full');
+    expect(buttonStyles).toContain("size === 'xs' ? 'size-7 text-[11px]'");
     expect(row).not.toContain('grid size-11 place-items-center rounded-full border border-ink/10');
   });
 

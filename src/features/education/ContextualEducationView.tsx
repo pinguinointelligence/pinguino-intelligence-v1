@@ -1,141 +1,92 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import type { RecipeInput } from '@/engine';
+import { Button } from '@/components/ui/Button';
 import { educationCopy as copy } from '@/copy/education.pl';
 import {
   FRESH_GELATO_EDUCATION,
-  availableMachineEducationCategories,
-  contextualEducationPrompts,
-  genericMachineEducation,
-  ingredientExample,
   machineEducationById,
-  microIngredient,
-  topLevelEducationOrder,
-  verifiedPlantOriginsForRecipe,
   type EducationAudience,
   type EducationLessonId,
-  type HeatProcessClassification,
-  type IngredientExampleId,
-  type MachineEducationCategory,
-  type MicroIngredientId,
   type RecipeProcessEvidence,
 } from '.';
 import { processReasonText } from './processReasonText';
 import { useRecipeProcessRuntime } from './useRecipeProcessRuntime';
 
-type ActiveLesson = { id: EducationLessonId; focus?: string } | null;
+type KnowledgeView = 'summary' | 'process' | 'advanced';
 
-const entryCopy = {
-  ingredients: copy.entries.ingredients,
-  sugar: copy.entries.behavior,
-  process: copy.entries.process,
-} as const;
-
-function ArrowChain({ steps }: { steps: readonly string[] }) {
-  const heat = steps.some((step) => step.toLocaleLowerCase('pl-PL').includes('podgrzej'));
-  const phases = heat
-    ? ['Przygotuj', 'Podgrzej', 'Schłodź', 'Mroź']
-    : ['Przygotuj', 'Wlej', 'Mroź', 'Serwuj'];
-  return (
-    <ol className="relative grid gap-0 pl-2" data-testid="education-causal-chain">
-      {steps.map((step, index) => (
-        <li
-          key={`${step}-${index}`}
-          className="relative grid grid-cols-[2rem_1fr] gap-3 pb-3 last:pb-0"
-        >
-          {index < steps.length - 1 ? (
-            <span className="absolute bottom-0 left-[0.94rem] top-6 w-px bg-gold/35" aria-hidden />
-          ) : null}
-          <span className="relative z-10 grid size-8 place-items-center rounded-full border border-gold/35 bg-education-ivory font-mono text-xs font-semibold text-gold-deep shadow-pro-sm">
-            {index + 1}
-          </span>
-          <span className="rounded-[18px] border border-ink/9 bg-white px-3 py-3 shadow-pro-sm">
-            <strong className="block text-sm text-ink">
-              {phases[index] ?? `Etap ${index + 1}`}
-            </strong>
-            <span className="mt-1 block text-xs leading-relaxed text-stone-600">{step}</span>
-          </span>
-        </li>
-      ))}
-    </ol>
-  );
+interface RecipeIngredientFact {
+  id: string;
+  name: string;
+  summary: string;
+  detail: string;
 }
 
-function InlineChain({ steps }: { steps: readonly string[] }) {
-  return (
-    <ol className="flex flex-wrap items-center gap-1.5" data-testid="education-inline-chain">
-      {steps.map((step, index) => (
-        <li key={`${step}-${index}`} className="flex items-center gap-1.5">
-          <span className="rounded-lg border border-ink/10 bg-white px-2.5 py-2 text-xs leading-snug text-ink">
-            {step}
-          </span>
-          {index < steps.length - 1 ? (
-            <span className="text-xs text-stone-400" aria-hidden>
-              →
-            </span>
-          ) : null}
-        </li>
-      ))}
-    </ol>
-  );
-}
+const positive = (value: number | null | undefined): boolean => (value ?? 0) > 0;
 
-function useLessonTop(step: number) {
-  const ref = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    ref.current?.scrollIntoView({ block: 'start' });
-  }, [step]);
-  return ref;
-}
-
-function LessonProgress({ step, total }: { step: number; total: number }) {
-  return (
-    <div className="mb-3 flex items-center justify-between" aria-label={`${step + 1} / ${total}`}>
-      <span className="font-mono text-xs tabular-nums text-stone-600">
-        {step + 1} / {total}
-      </span>
-      <span className="flex gap-1" aria-hidden>
-        {Array.from({ length: total }, (_, index) => (
-          <span key={index} className={`h-1 w-6 ${index === step ? 'bg-ink' : 'bg-stone-200'}`} />
-        ))}
-      </span>
-    </div>
-  );
-}
-
-function DeckControls({
-  step,
-  total,
-  onStep,
-  canContinue = true,
-}: {
-  step: number;
-  total: number;
-  onStep: (step: number) => void;
-  canContinue?: boolean;
-}) {
-  return (
-    <div className="mt-4 flex items-center justify-between gap-2 border-t border-ink/10 pt-3">
-      <button
-        type="button"
-        onClick={() => onStep(Math.max(0, step - 1))}
-        disabled={step === 0}
-        className="min-h-11 rounded-lg px-3 text-xs font-semibold text-stone-600 disabled:invisible"
-      >
-        {copy.lesson.previous}
-      </button>
-      {step < total - 1 ? (
-        <button
-          type="button"
-          onClick={() => onStep(step + 1)}
-          disabled={!canContinue}
-          title={!canContinue ? copy.process.confirmations.required : undefined}
-          className="min-h-11 rounded-lg bg-ink px-4 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-35"
-        >
-          {copy.lesson.next}
-        </button>
-      ) : null}
-    </div>
-  );
+/** Qualitative education derived only from the open recipe's structured facts. */
+function recipeIngredientFacts(input: RecipeInput): RecipeIngredientFact[] {
+  return input.items
+    .filter((item) => item.planned_grams > 0)
+    .map((item) => {
+      const ingredient = item.ingredient;
+      const composition = ingredient.composition;
+      if (ingredient.category === 'fruit') {
+        return {
+          id: item.id,
+          name: ingredient.name,
+          summary: 'Owoc wnosi wodę i naturalne cukry do tej receptury.',
+          detail: positive(composition.fiber_percent)
+            ? 'Zawiera też błonnik. Wszystkie te składniki wpływają na odczucie i ilość zamarzającej wody.'
+            : 'Ich znaczenie jest oceniane razem z pozostałymi składnikami receptury.',
+        };
+      }
+      if (ingredient.category === 'dairy' || ingredient.flags?.is_dairy === true) {
+        const contributions = [
+          positive(composition.water_percent) ? 'wodę' : null,
+          positive(composition.lactose_percent) ? 'laktozę' : null,
+          positive(composition.protein_percent) ? 'białko' : null,
+          positive(composition.fat_percent) ? 'tłuszcz' : null,
+        ].filter((value): value is string => value !== null);
+        return {
+          id: item.id,
+          name: ingredient.name,
+          summary: `Ten produkt mleczny wnosi ${contributions.join(', ') || 'części stałe'} do mieszanki.`,
+          detail: 'Te elementy wspólnie wpływają na strukturę i odczucie gotowego produktu.',
+        };
+      }
+      if (ingredient.category === 'sugar') {
+        return {
+          id: item.id,
+          name: ingredient.name,
+          summary: 'Ten cukier wpływa jednocześnie na słodycz i zamarzanie wody.',
+          detail:
+            'Różne cukry nie działają identycznie, dlatego receptura ocenia je jako część całej mieszanki.',
+        };
+      }
+      if (ingredient.category === 'stabilizer') {
+        return {
+          id: item.id,
+          name: ingredient.name,
+          summary: 'Mała ilość stabilizatora pomaga kontrolować wodę i kryształki lodu.',
+          detail:
+            'Dokładne działanie zależy od konkretnego produktu i potwierdzonego procesu przygotowania.',
+        };
+      }
+      if (positive(composition.fat_percent) || positive(composition.protein_percent)) {
+        return {
+          id: item.id,
+          name: ingredient.name,
+          summary: 'Ten składnik wnosi tłuszcz lub białko, które budują części stałe mieszanki.',
+          detail: 'Ich efekt jest oceniany w kontekście całej receptury, nie osobno.',
+        };
+      }
+      return {
+        id: item.id,
+        name: ingredient.name,
+        summary: 'Ten składnik jest częścią bilansu wody i części stałych receptury.',
+        detail: 'PINGÜINO ocenia jego zatwierdzone dane razem z pozostałymi składnikami.',
+      };
+    });
 }
 
 function RelativeDots({ value, label }: { value: number; label: string }) {
@@ -152,506 +103,269 @@ function RelativeDots({ value, label }: { value: number; label: string }) {
   );
 }
 
-function SugarLesson() {
-  const [step, setStep] = useState(0);
-  const lessonRef = useLessonTop(step);
+function KnowledgeHome({ onOpen }: { onOpen: (view: KnowledgeView) => void }) {
+  const entries: readonly { id: KnowledgeView; title: string; note: string }[] = [
+    {
+      id: 'summary',
+      title: 'Twoja receptura w skrócie',
+      note: 'Najważniejsze fakty o składnikach, które są teraz w recepturze.',
+    },
+    {
+      id: 'process',
+      title: 'Jak ją przygotować',
+      note: 'Proces dla wybranego profilu i maszyny — bez ponownego wybierania urządzenia.',
+    },
+    {
+      id: 'advanced',
+      title: 'Dowiedz się więcej',
+      note: 'Woda, cukry, tłuszcz i inne tematy istotne dla tej mieszanki.',
+    },
+  ];
   return (
-    <section ref={lessonRef} data-testid="sugar-lesson">
-      <LessonProgress step={step} total={3} />
-      {step === 0 ? (
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-ink">{copy.sugar.title}</h2>
-          <p className="mt-2 text-sm leading-relaxed text-stone-600">{copy.sugar.intro}</p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div className="border border-ink/10 bg-paper p-3">
-              <h3 className="text-xs font-semibold text-ink">{copy.sugar.lessTitle}</h3>
-              <div className="mt-2">
-                <ArrowChain steps={copy.sugar.lessSteps} />
-              </div>
-            </div>
-            <div className="border border-ink/10 bg-education-ivory p-3">
-              <h3 className="text-xs font-semibold text-ink">{copy.sugar.moreTitle}</h3>
-              <div className="mt-2">
-                <ArrowChain steps={copy.sugar.moreSteps} />
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
-      {step === 1 ? (
-        <div>
-          <h2 className="text-xl font-semibold tracking-tight text-ink">
-            {copy.sugar.comparisonTitle}
-          </h2>
-          <p className="mt-2 text-xs leading-relaxed text-stone-500">{copy.sugar.comparisonLead}</p>
-          <div className="mt-3 divide-y divide-ink/10 border-y border-ink/10">
-            {copy.sugar.rows.map((row) => (
-              <div key={row.id} className="grid grid-cols-[1fr_auto] gap-3 py-2.5">
-                <strong className="text-xs text-ink">{row.name}</strong>
-                <span className="grid gap-1 text-xs text-stone-600">
-                  <span className="flex items-center justify-between gap-3">
-                    {copy.sugar.scaleSweetness}
-                    <RelativeDots value={row.sweetness} label={copy.sugar.scaleSweetness} />
-                  </span>
-                  <span className="flex items-center justify-between gap-3">
-                    {copy.sugar.scaleSoftening}
-                    <RelativeDots value={row.softening} label={copy.sugar.scaleSoftening} />
-                  </span>
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
-      {step === 2 ? (
-        <div>
-          <h2 className="text-xl font-semibold leading-tight text-ink">{copy.sugar.conclusion}</h2>
-          <details className="mt-4 border border-ink/10 bg-paper p-3">
-            <summary className="flex min-h-11 cursor-pointer items-center text-xs font-semibold text-ink">
-              {copy.lesson.technical}
-            </summary>
-            <p className="mt-2 text-xs leading-relaxed text-stone-600">
-              {copy.sugar.technicalCopy}
-            </p>
-          </details>
-        </div>
-      ) : null}
-      <DeckControls step={step} total={3} onStep={setStep} />
-    </section>
-  );
-}
-
-function IngredientExamples({ initialFocus }: { initialFocus?: string }) {
-  const initialExample: IngredientExampleId =
-    initialFocus === 'milk' || initialFocus === 'pistachio' ? initialFocus : 'mango';
-  const [exampleId, setExampleId] = useState<IngredientExampleId>(initialExample);
-  const example = ingredientExample(exampleId);
-  const [effectId, setEffectId] = useState<string>(example.effects[0].id);
-  const effect =
-    example.effects.find((candidate) => candidate.id === effectId) ?? example.effects[0];
-
-  const chooseExample = (next: IngredientExampleId) => {
-    setExampleId(next);
-    setEffectId(ingredientExample(next).effects[0].id);
-  };
-
-  return (
-    <div data-testid="ingredient-causal-lesson">
-      <h2 className="text-xl font-semibold tracking-tight text-ink">{copy.ingredient.title}</h2>
-      <p className="mt-1 text-xs text-stone-500">{copy.ingredient.select}</p>
-      <div className="mt-3 grid grid-cols-3 gap-1.5">
-        {(Object.keys(copy.ingredient.examples) as IngredientExampleId[]).map((id) => (
+    <div data-testid="contextual-learning-hub">
+      <p className="text-[10px] font-semibold tracking-[0.1em] text-stone-500 uppercase">
+        Wiedza o recepturze
+      </p>
+      <h1 className="mt-1 text-xl font-semibold leading-tight tracking-tight text-ink">
+        Odpowiedź najpierw. Szczegóły wtedy, gdy ich potrzebujesz.
+      </h1>
+      <div className="mt-4 divide-y divide-ink/10 border-y border-ink/10">
+        {entries.map((entry) => (
           <button
-            key={id}
+            key={entry.id}
             type="button"
-            onClick={() => chooseExample(id)}
-            aria-pressed={id === exampleId}
-            className={`min-h-11 rounded-lg border px-2 py-2 text-xs font-semibold ${id === exampleId ? 'border-ink bg-ink text-white' : 'border-ink/10 bg-white text-ink'}`}
+            onClick={() => onOpen(entry.id)}
+            className="pro-focus-ring flex min-h-16 w-full items-center justify-between gap-4 px-1 py-3 text-left"
+            data-testid="education-entry"
           >
-            {ingredientExample(id).name}
-          </button>
-        ))}
-      </div>
-      <div className="mt-3 flex flex-wrap gap-2">
-        {example.effects.map((candidate) => (
-          <button
-            key={candidate.id}
-            type="button"
-            onClick={() => setEffectId(candidate.id)}
-            aria-pressed={candidate.id === effect.id}
-            data-testid="ingredient-effect-chip"
-            className={`min-h-11 rounded-lg border px-3 py-2 text-xs font-semibold ${candidate.id === effect.id ? 'border-gold bg-education-ivory text-ink' : 'border-ink/10 bg-white text-stone-600'}`}
-          >
-            {candidate.label}
-          </button>
-        ))}
-      </div>
-      <div className="mt-3 border-l-2 border-gold bg-education-ivory/70 p-3">
-        <ArrowChain steps={effect.steps} />
-      </div>
-    </div>
-  );
-}
-
-function MicroIngredients({ initialFocus }: { initialFocus?: string }) {
-  const initial: MicroIngredientId =
-    initialFocus === 'inulin' || initialFocus === 'salt' ? initialFocus : 'stabilizer';
-  const [active, setActive] = useState<MicroIngredientId>(initial);
-  const item = microIngredient(active);
-  return (
-    <div data-testid="micro-ingredient-lesson">
-      <h2 className="text-xl font-semibold tracking-tight text-ink">{copy.micro.title}</h2>
-      <p className="mt-1 text-xs text-stone-500">{copy.micro.select}</p>
-      <div className="mt-3 grid grid-cols-3 gap-1.5">
-        {(Object.keys(copy.micro.items) as MicroIngredientId[]).map((id) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setActive(id)}
-            aria-pressed={id === active}
-            className={`min-h-11 rounded-lg border px-2 py-2 text-xs font-semibold ${id === active ? 'border-ink bg-ink text-white' : 'border-ink/10 bg-white text-ink'}`}
-          >
-            {microIngredient(id).name}
-          </button>
-        ))}
-      </div>
-      <div className="mt-4 border border-ink/10 bg-paper p-4">
-        <p className="text-base font-semibold text-ink">{item.lead}</p>
-        <p className="mt-2 text-xs leading-relaxed text-stone-600">{item.detail}</p>
-      </div>
-    </div>
-  );
-}
-
-function ENumberLesson({ input }: { input: RecipeInput }) {
-  const origins = verifiedPlantOriginsForRecipe(input);
-  return (
-    <div data-testid="stabilizer-e-number-lesson">
-      <h2 className="text-xl font-semibold tracking-tight text-ink">{copy.micro.eNumberTitle}</h2>
-      <p className="mt-2 text-sm leading-relaxed text-stone-600">{copy.micro.eNumberLead}</p>
-      {origins.length > 0 ? (
-        <div className="mt-4 space-y-2">
-          {origins.map((origin) => (
-            <div
-              key={`${origin.eNumber}-${origin.identity}`}
-              className="border border-ink/10 bg-paper p-3"
-              data-testid="plant-origin-claim"
-            >
-              <span className="text-xs font-semibold tracking-[0.04em] text-stone-600 uppercase">
-                {copy.micro.plantOrigin}
+            <span>
+              <strong className="block text-sm text-ink">{entry.title}</strong>
+              <span className="mt-0.5 block text-xs leading-relaxed text-stone-600">
+                {entry.note}
               </span>
-              <p className="mt-1 text-sm font-semibold text-ink">
-                {origin.identity} · {origin.eNumber}
-              </p>
-              <p className="mt-1 text-xs text-stone-600">{origin.sourcePlant}</p>
-            </div>
-          ))}
-        </div>
-      ) : null}
-      <div className="mt-4 border border-nonprod/30 border-l-2 border-l-nonprod bg-nonprod/[0.035] p-3">
-        <span
-          className="text-xs font-semibold tracking-[0.04em] text-nonprod uppercase"
-          data-readiness={copy.micro.futureFormula}
-        >
-          {copy.micro.futureFormula}
-        </span>
-        <p className="mt-1 text-xs text-stone-600">{copy.micro.futureFormulaNote}</p>
+            </span>
+            <span aria-hidden className="text-lg text-stone-400">
+              ›
+            </span>
+          </button>
+        ))}
       </div>
     </div>
   );
 }
 
-function IngredientsLesson({ input, initialFocus }: { input: RecipeInput; initialFocus?: string }) {
-  const initialStep = initialFocus === 'stabilizer' || initialFocus === 'inulin' ? 1 : 0;
-  const [step, setStep] = useState(initialStep);
-  const lessonRef = useLessonTop(step);
+function RecipeSummary({ input }: { input: RecipeInput }) {
+  const facts = recipeIngredientFacts(input);
   return (
-    <section ref={lessonRef}>
-      <LessonProgress step={step} total={3} />
-      {step === 0 ? <IngredientExamples initialFocus={initialFocus} /> : null}
-      {step === 1 ? <MicroIngredients initialFocus={initialFocus} /> : null}
-      {step === 2 ? <ENumberLesson input={input} /> : null}
-      <DeckControls step={step} total={3} onStep={setStep} />
+    <section data-testid="actual-recipe-knowledge">
+      <h2 className="text-xl font-semibold tracking-tight text-ink">Twoja receptura w skrócie</h2>
+      <p className="mt-1 text-xs leading-relaxed text-stone-600">
+        Poniżej są składniki z otwartej receptury — bez przykładowych smaków i bez zgadywania.
+      </p>
+      <div className="mt-4 divide-y divide-ink/10 border-y border-ink/10">
+        {facts.map((fact) => (
+          <article key={fact.id} className="py-3">
+            <h3 className="text-sm font-semibold text-ink">{fact.name}</h3>
+            <p className="mt-1 text-xs leading-relaxed text-stone-700">{fact.summary}</p>
+            <details className="mt-1.5">
+              <summary className="pro-focus-ring inline-flex min-h-10 cursor-pointer items-center text-xs font-semibold text-stone-600 underline underline-offset-4">
+                Dowiedz się więcej
+              </summary>
+              <p className="pb-1 text-xs leading-relaxed text-stone-600">{fact.detail}</p>
+            </details>
+          </article>
+        ))}
+      </div>
+      <p className="mt-4 rounded-[12px] bg-education-ivory/65 px-3 py-2.5 text-xs leading-relaxed text-stone-700">
+        Temperatura serwowania {input.target_temperature_c}°C zmienia wymagany bilans zamarzania.
+        Zmiana ustawienia wymaga ponownego przeliczenia receptury.
+      </p>
     </section>
   );
 }
 
-function ProcessStatus({
-  classification,
-  ingredientNamesById,
-  confirmed,
-  onConfirm,
+function ProcessKnowledge({
+  input,
+  machineId,
+  machineLabel,
+  processEvidence,
 }: {
-  classification: HeatProcessClassification;
-  ingredientNamesById: ReadonlyMap<string, string>;
-  confirmed: boolean;
-  onConfirm: () => void;
+  input: RecipeInput;
+  machineId: string | null;
+  machineLabel: string | null;
+  processEvidence?: readonly RecipeProcessEvidence[];
 }) {
+  const runtime = useRecipeProcessRuntime(input, processEvidence);
+  const classification = runtime.classification;
   const statusCopy = copy.process.statuses[classification.status];
   const heat = classification.status.startsWith('heat_required');
   const cold = classification.status === 'cold_process_ok';
+  const guide = machineEducationById(machineId) ?? FRESH_GELATO_EDUCATION;
+  const steps = heat ? copy.process.heatSteps : cold ? copy.process.coldSteps : guide.steps;
+
   return (
-    <div data-testid="process-classification" data-process-status={classification.status}>
-      <h2 className="text-xl font-semibold tracking-tight text-ink">{copy.process.question}</h2>
-      <div
-        className={`mt-3 rounded-[20px] border border-l-4 p-4 shadow-pro-sm ${classification.status === 'unknown' ? 'border-nonprod/30 border-l-nonprod bg-nonprod/[0.035]' : 'border-ink/10 border-l-gold bg-paper'}`}
-      >
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <strong className="text-base text-ink">{statusCopy.title}</strong>
-          {classification.status === 'unknown' ? (
-            <span
-              className="text-xs font-semibold tracking-[0.04em] text-nonprod uppercase"
-              data-readiness={copy.process.dataMissing}
-            >
-              {copy.process.dataMissing}
-            </span>
-          ) : null}
-        </div>
+    <section data-testid="process-knowledge" data-process-status={classification.status}>
+      <h2 className="text-xl font-semibold tracking-tight text-ink">Jak ją przygotować</h2>
+      <div className="mt-3 rounded-[12px] bg-education-ivory/65 px-3 py-2.5">
+        <p className="text-[10px] font-semibold tracking-[0.1em] text-stone-500 uppercase">
+          Proces tej receptury
+        </p>
+        <h3 className="mt-1 text-sm font-semibold text-ink">
+          {heat ? 'Ta receptura wymaga podgrzania.' : statusCopy.title}
+        </h3>
+        {heat ? <p className="mt-1 text-xs font-semibold text-ink">{statusCopy.title}</p> : null}
         <p className="mt-1 text-xs leading-relaxed text-stone-600">{statusCopy.note}</p>
+        {runtime.loading ? (
+          <p className="mt-2 text-xs text-stone-500">Sprawdzam potwierdzone dane procesu…</p>
+        ) : null}
         {classification.reasons.length > 0 ? (
-          <ul className="mt-3 space-y-2 border-t border-ink/10 pt-3">
+          <ul className="mt-2 space-y-1.5 border-t border-ink/10 pt-2">
             {classification.reasons.map((reason, index) => (
               <li
                 key={`${reason.type}-${reason.ingredientId ?? index}`}
-                className="text-xs text-stone-600"
+                className="text-xs text-stone-700"
               >
-                <strong className="text-ink">{copy.process.reasonLabels[reason.type]}:</strong>{' '}
-                {processReasonText(reason.ingredientId, reason.explanation, ingredientNamesById)}
+                {processReasonText(
+                  reason.ingredientId,
+                  reason.explanation,
+                  runtime.ingredientNamesById,
+                )}
               </li>
             ))}
-            {classification.status === 'unknown'
-              ? classification.affectedIngredientIds.slice(1).map((ingredientId) => (
-                  <li key={ingredientId} className="text-xs text-stone-600">
-                    <strong className="text-ink">{copy.process.reasonLabels.missing_data}:</strong>{' '}
-                    {ingredientNamesById.get(ingredientId) ?? ingredientId}
-                  </li>
-                ))
-              : null}
           </ul>
         ) : null}
       </div>
-      {cold || heat ? (
-        <div className="mt-3">
-          <ArrowChain steps={cold ? copy.process.coldSteps : copy.process.heatSteps} />
-        </div>
-      ) : null}
-      {heat ? (
-        <p className="mt-3 rounded-[16px] border border-ink/10 p-3 text-xs leading-relaxed text-stone-600">
-          {copy.process.exactParametersMissing}
-        </p>
-      ) : null}
-      <button
-        type="button"
-        onClick={onConfirm}
-        aria-pressed={confirmed}
-        data-testid="process-path-confirm"
-        className={`mt-3 min-h-11 w-full rounded-[14px] border px-3 py-2 text-xs font-semibold ${confirmed ? 'border-status-ok/40 bg-status-ok/[0.06] text-status-ok' : 'border-ink bg-ink text-white shadow-pro-sm'}`}
-      >
-        {confirmed
-          ? copy.process.confirmations.accepted
-          : classification.status === 'cold_process_ok'
-            ? copy.process.confirmations.cold
-            : classification.status === 'unknown'
-              ? copy.process.confirmations.unknown
-              : copy.process.confirmations.heat}
-      </button>
-    </div>
-  );
-}
 
-function MachineGuide({ machineId }: { machineId: string | null }) {
-  const selectedMachine = machineEducationById(machineId);
-  const initialCategory = selectedMachine?.category ?? 'fresh_gelato';
-  const [category, setCategory] = useState<MachineEducationCategory>(initialCategory);
-  const guide =
-    selectedMachine !== null && selectedMachine.category === category
-      ? selectedMachine
-      : genericMachineEducation(category);
-  return (
-    <div data-testid="machine-guide">
-      <h2 className="text-xl font-semibold tracking-tight text-ink">{copy.machine.title}</h2>
-      {machineId === null ? (
-        <p className="mt-1 text-xs text-stone-500">{copy.machine.unknownSelection}</p>
-      ) : null}
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {availableMachineEducationCategories().map((id) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setCategory(id)}
-            aria-pressed={category === id}
-            className={`min-h-11 rounded-lg border px-2.5 py-2 text-xs font-semibold ${category === id ? 'border-ink bg-ink text-white' : 'border-ink/10 bg-white text-ink'}`}
-          >
-            {genericMachineEducation(id).title}
-          </button>
-        ))}
-      </div>
-      <div
-        className="mt-3 border border-ink/10 bg-paper p-3"
-        data-testid={
-          guide === FRESH_GELATO_EDUCATION || category === 'fresh_gelato'
-            ? 'fresh-gelato-guide'
-            : undefined
-        }
-      >
-        <h3 className="text-sm font-semibold text-ink">{guide.title}</h3>
-        <div className="mt-2">
-          <InlineChain steps={guide.steps} />
-        </div>
+      <div className="mt-4" data-testid="selected-machine-guide">
+        <p className="text-[10px] font-semibold tracking-[0.1em] text-stone-500 uppercase">
+          Wybrana maszyna
+        </p>
+        <h3 className="mt-1 text-sm font-semibold text-ink">{machineLabel ?? guide.title}</h3>
+        <ol className="mt-3 divide-y divide-ink/10 border-y border-ink/10">
+          {steps.map((step, index) => (
+            <li key={`${step}-${index}`} className="grid grid-cols-[1.75rem_1fr] gap-2 py-2.5">
+              <span className="font-mono text-xs font-semibold text-stone-500">{index + 1}</span>
+              <span className="text-xs leading-relaxed text-ink">{step}</span>
+            </li>
+          ))}
+        </ol>
         {guide.timing.status === 'verified' ? (
           <p className="mt-3 text-xs font-semibold text-ink">{guide.timing.text}</p>
         ) : (
-          <div className="mt-3 flex items-center justify-between gap-2 border-t border-ink/10 pt-2">
-            <p className="text-xs text-stone-600">{guide.timing.text}</p>
-            <span
-              className="shrink-0 text-xs font-semibold tracking-[0.04em] text-nonprod uppercase"
-              data-testid="timing-readiness"
-              data-readiness={copy.machine.timingPending}
-            >
-              {copy.machine.timingPending}
-            </span>
-          </div>
+          <p className="mt-3 text-xs leading-relaxed text-stone-600" data-testid="timing-readiness">
+            Dokładny czas i temperatura nie są podane bez zatwierdzonego źródła.
+          </p>
         )}
       </div>
-    </div>
-  );
-}
-
-function ProcessComparison() {
-  const [choice, setChoice] = useState<(typeof copy.machine.timingChoices)[number]>(
-    copy.machine.timingChoices[0],
-  );
-  const processPaths = [
-    { id: 'classic', label: copy.machine.comparisonLabels[0], steps: copy.machine.classic },
-    { id: 'fresh', label: copy.machine.comparisonLabels[1], steps: copy.machine.fresh },
-    { id: 'home', label: copy.machine.comparisonLabels[2], steps: copy.machine.home },
-  ] as const;
-  const [activePath, setActivePath] = useState<(typeof processPaths)[number]['id']>('classic');
-  const selectedPath = processPaths.find((path) => path.id === activePath) ?? processPaths[0];
-  return (
-    <div data-testid="machine-process-comparison">
-      <h2 className="text-xl font-semibold tracking-tight text-ink">
-        {copy.machine.comparisonTitle}
-      </h2>
-      <div className="mt-3 grid grid-cols-3 gap-1.5">
-        {processPaths.map((path) => (
-          <button
-            key={path.id}
-            type="button"
-            onClick={() => setActivePath(path.id)}
-            aria-pressed={activePath === path.id}
-            className={`min-h-11 rounded-lg border px-1.5 py-2 text-xs font-semibold tracking-[0.03em] uppercase ${activePath === path.id ? 'border-ink bg-ink text-white' : 'border-ink/10 bg-white text-ink'}`}
-          >
-            {path.label}
-          </button>
-        ))}
-      </div>
-      <div className="mt-2 border border-ink/10 bg-paper p-3">
-        <InlineChain steps={selectedPath.steps} />
-      </div>
-      <div className="mt-4 border border-nonprod/30 border-l-2 border-l-nonprod bg-nonprod/[0.035] p-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-ink">{copy.machine.timingQuestion}</h3>
-          <span
-            className="text-xs font-semibold tracking-[0.04em] text-nonprod uppercase"
-            data-readiness={copy.machine.timingPending}
-          >
-            {copy.machine.timingPending}
-          </span>
-        </div>
-        <div className="mt-3 grid grid-cols-3 gap-1.5">
-          {copy.machine.timingChoices.map((item) => (
-            <button
-              key={item}
-              type="button"
-              onClick={() => setChoice(item)}
-              aria-pressed={choice === item}
-              className={`min-h-11 rounded-lg border px-1.5 py-2 text-xs font-semibold ${choice === item ? 'border-nonprod bg-white text-nonprod' : 'border-ink/10 bg-white text-stone-600'}`}
-            >
-              {item}
-            </button>
-          ))}
-        </div>
-        <p className="mt-2 text-xs text-stone-600">{copy.machine.timingPendingNote}</p>
-      </div>
-    </div>
-  );
-}
-
-function ProcessLesson({
-  classification,
-  ingredientNamesById,
-  machineId,
-}: {
-  classification: HeatProcessClassification;
-  ingredientNamesById: ReadonlyMap<string, string>;
-  machineId: string | null;
-}) {
-  const [step, setStep] = useState(0);
-  const [confirmed, setConfirmed] = useState(false);
-  const lessonRef = useLessonTop(step);
-  return (
-    <section ref={lessonRef}>
-      <LessonProgress step={step} total={3} />
-      {step === 0 ? (
-        <ProcessStatus
-          classification={classification}
-          ingredientNamesById={ingredientNamesById}
-          confirmed={confirmed}
-          onConfirm={() => setConfirmed(true)}
-        />
-      ) : null}
-      {step === 1 ? <MachineGuide machineId={machineId} /> : null}
-      {step === 2 ? <ProcessComparison /> : null}
-      <DeckControls step={step} total={3} onStep={setStep} canContinue={step !== 0 || confirmed} />
     </section>
   );
 }
 
-function EducationHub({
-  input,
-  audience,
-  onOpen,
-}: {
-  input: RecipeInput;
-  audience: EducationAudience;
-  onOpen: (lesson: ActiveLesson) => void;
-}) {
-  const prompts = contextualEducationPrompts(input);
+interface AdvancedTopic {
+  id: string;
+  title: string;
+  body: string;
+}
+
+function advancedTopics(input: RecipeInput): AdvancedTopic[] {
+  const items = input.items.filter((item) => item.planned_grams > 0);
+  const has = (field: keyof RecipeInput['items'][number]['ingredient']['composition']) =>
+    items.some((item) => positive(item.ingredient.composition[field] as number | null));
+  const topics: AdvancedTopic[] = [];
+  if (has('water_percent'))
+    topics.push({
+      id: 'water',
+      title: 'Woda',
+      body: 'Część wody zamarza. Pozostałe składniki i temperatura wpływają na to, ile lodu powstaje.',
+    });
+  if (has('sugar_percent'))
+    topics.push({
+      id: 'sugars',
+      title: 'Cukry',
+      body: 'Cukry wpływają na słodycz i zamarzanie, ale różne rodzaje nie działają identycznie.',
+    });
+  if (has('fat_percent'))
+    topics.push({
+      id: 'fat',
+      title: 'Tłuszcz',
+      body: 'Tłuszcz wnosi części stałe i wpływa na odczucie kremowości całej mieszanki.',
+    });
+  if (has('protein_percent'))
+    topics.push({
+      id: 'protein',
+      title: 'Białko',
+      body: 'Białko jest częścią struktury. Jego efekt zależy od źródła i pozostałych składników.',
+    });
+  if (items.some((item) => item.ingredient.category === 'stabilizer'))
+    topics.push({
+      id: 'stabilizer',
+      title: 'Stabilizator',
+      body: 'Stabilizator może pomagać kontrolować wodę i wzrost kryształków. Proces musi odpowiadać produktowi.',
+    });
+  if (items.some((item) => item.ingredient.category === 'fruit'))
+    topics.push({
+      id: 'fruit',
+      title: 'Owoce',
+      body: 'Owoce wnoszą jednocześnie wodę, naturalne cukry i — zależnie od produktu — błonnik.',
+    });
+  if (has('alcohol_percent'))
+    topics.push({
+      id: 'alcohol',
+      title: 'Alkohol',
+      body: 'Alkohol silnie wpływa na zamarzanie, dlatego jest oceniany w kontekście całej receptury.',
+    });
+  return topics;
+}
+
+function AdvancedKnowledge({ input }: { input: RecipeInput }) {
+  const topics = advancedTopics(input);
   return (
-    <div data-testid="contextual-learning-hub">
-      <h1 className="text-xl font-semibold leading-tight tracking-tight text-ink">
-        {copy.heading}
-      </h1>
-      <p className="mt-4 text-xs font-semibold tracking-[0.04em] text-stone-600 uppercase">
-        {copy.contextLabel}
+    <section data-testid="advanced-recipe-knowledge">
+      <p className="text-[10px] font-semibold tracking-[0.1em] text-stone-500 uppercase">
+        Wiedza Pro
       </p>
-      <div className="mt-2 grid gap-2 sm:grid-cols-3">
-        {prompts.map((prompt) => (
-          <button
-            key={prompt.id}
-            type="button"
-            onClick={() => onOpen({ id: prompt.lessonId, focus: prompt.focus })}
-            className="min-h-24 border border-ink/10 bg-paper p-3 text-left hover:border-ink/30"
-            data-testid="contextual-card"
-          >
-            <strong className="block text-xs leading-snug text-ink">{prompt.title}</strong>
-            <span className="mt-1 block text-xs leading-relaxed text-stone-600">{prompt.note}</span>
-          </button>
+      <h2 className="mt-1 text-xl font-semibold tracking-tight text-ink">Dowiedz się więcej</h2>
+      <div className="mt-4 divide-y divide-ink/10 border-y border-ink/10">
+        {topics.map((topic) => (
+          <details key={topic.id} className="py-2.5">
+            <summary className="pro-focus-ring flex min-h-10 cursor-pointer items-center justify-between text-sm font-semibold text-ink">
+              {topic.title}
+              <span aria-hidden className="text-stone-400">
+                ⌄
+              </span>
+            </summary>
+            <p className="pb-2 text-xs leading-relaxed text-stone-600">{topic.body}</p>
+            {topic.id === 'sugars' ? (
+              <div className="grid gap-1.5 border-t border-ink/8 pt-2 text-xs text-stone-600">
+                {copy.sugar.rows.map((row) => (
+                  <div key={row.id} className="flex flex-wrap items-center justify-between gap-3">
+                    <span className="font-medium text-ink">{row.name}</span>
+                    <span className="flex items-center gap-3">
+                      <RelativeDots value={row.sweetness} label={copy.sugar.scaleSweetness} />
+                      <RelativeDots value={row.softening} label={copy.sugar.scaleSoftening} />
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </details>
         ))}
       </div>
-      <p className="mt-5 text-xs font-semibold tracking-[0.04em] text-stone-600 uppercase">
-        {copy.entriesLabel}
-      </p>
-      <div className="mt-2 divide-y divide-ink/10 border-y border-ink/10">
-        {topLevelEducationOrder(audience).map((id) => {
-          const entry = entryCopy[id as keyof typeof entryCopy];
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => onOpen({ id })}
-              className="flex min-h-14 w-full items-center justify-between gap-3 px-1 py-2 text-left"
-              data-testid="education-entry"
-            >
-              <span>
-                <strong className="block text-sm text-ink">{entry.title}</strong>
-                <span className="mt-0.5 block text-xs text-stone-600">{entry.note}</span>
-              </span>
-              <span className="text-lg text-stone-400" aria-hidden>
-                ›
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
+    </section>
   );
 }
+
+const initialViewForLesson = (lesson: EducationLessonId | undefined): KnowledgeView | null => {
+  if (lesson === undefined) return null;
+  if (lesson === 'process' || lesson === 'machine') return 'process';
+  if (lesson === 'sugar') return 'advanced';
+  return 'summary';
+};
 
 export function ContextualEducationView({
   input,
   machineId = null,
+  machineLabel = null,
   audience = 'pro',
   initialLesson,
   processEvidence,
@@ -659,47 +373,43 @@ export function ContextualEducationView({
 }: {
   input: RecipeInput;
   machineId?: string | null;
+  machineLabel?: string | null;
   audience?: EducationAudience;
   initialLesson?: EducationLessonId;
   processEvidence?: readonly RecipeProcessEvidence[];
   onBack: () => void;
 }) {
-  const [active, setActive] = useState<ActiveLesson>(() =>
-    initialLesson === undefined ? null : { id: initialLesson },
-  );
-  const processRuntime = useRecipeProcessRuntime(input, processEvidence);
-  const directInitialLesson =
-    initialLesson !== undefined && active?.id === initialLesson && active.focus === undefined;
+  void audience;
+  const initialView = initialViewForLesson(initialLesson);
+  const [active, setActive] = useState<KnowledgeView | null>(initialView);
+  const directInitialLesson = initialLesson !== undefined && active === initialView;
 
   return (
     <div
       className="mx-auto min-h-full w-full max-w-none bg-[#f7f5f0] p-4 text-ink sm:p-5"
       data-testid="profile-education-view"
     >
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="sm"
+        className="mb-4"
         onClick={active === null || directInitialLesson ? onBack : () => setActive(null)}
-        className="mb-4 min-h-11 rounded-lg px-2 text-xs font-semibold text-ink underline underline-offset-4"
       >
         {active === null || directInitialLesson ? copy.backToRecipe : copy.backToHub}
-      </button>
+      </Button>
       {active === null ? (
-        <EducationHub input={input} audience={audience} onOpen={setActive} />
-      ) : active.id === 'sugar' ? (
-        <SugarLesson />
-      ) : active.id === 'ingredients' || active.id === 'micro' ? (
-        <IngredientsLesson
-          key={`${active.id}-${active.focus ?? ''}`}
+        <KnowledgeHome onOpen={setActive} />
+      ) : active === 'summary' ? (
+        <RecipeSummary input={input} />
+      ) : active === 'process' ? (
+        <ProcessKnowledge
           input={input}
-          initialFocus={active.focus}
+          machineId={machineId}
+          machineLabel={machineLabel}
+          processEvidence={processEvidence}
         />
       ) : (
-        <ProcessLesson
-          key={processRuntime.classification.status}
-          classification={processRuntime.classification}
-          ingredientNamesById={processRuntime.ingredientNamesById}
-          machineId={machineId}
-        />
+        <AdvancedKnowledge input={input} />
       )}
     </div>
   );

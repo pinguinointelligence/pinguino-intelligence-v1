@@ -13,6 +13,10 @@ import { MapperBatch6Page } from './MapperBatch6Page';
 
 const render = (el: ReactElement) => renderToStaticMarkup(<MemoryRouter>{el}</MemoryRouter>);
 const visibleText = (html: string) => html.replace(/<[^>]*>/g, ' ').replace(/&[a-z#0-9]+;/g, ' ');
+const runButtonIsDisabled = (html: string) => {
+  const button = html.match(/<button[^>]*>[^<]*(?:Run 6-product Mapper batch|Running)/)?.[0] ?? '';
+  return /\sdisabled(?:=""|(?=[\s>]))/.test(button);
+};
 
 afterEach(() => vi.clearAllMocks());
 
@@ -24,14 +28,29 @@ describe('MapperBatch6View — presentational', () => {
     expect(text).toMatch(/exactly 6 hardcoded products/i);
     expect(text).toMatch(/only the 11 Mapper result columns/i);
     expect(text).toMatch(/is not a full-catalog batch/i);
-    expect(html).not.toContain('disabled'); // enabled when idle
+    expect(runButtonIsDisabled(html)).toBe(false); // enabled when idle
   });
 
   it('disables the button while running and renders result rows', () => {
-    expect(render(<MapperBatch6View rows={[]} running count={6} onRun={() => {}} />)).toContain('disabled');
+    expect(
+      runButtonIsDisabled(
+        render(<MapperBatch6View rows={[]} running count={6} onRun={() => {}} />),
+      ),
+    ).toBe(true);
     const ok = render(
       <MapperBatch6View
-        rows={[{ code: 'PR-ING-000010', ok: true, mapper_status: 'needs_review', match_method: 'category_composition_similarity', match_confidence: 'needs_review', matched_basement_id: 'PI-ING-000180', candidate_count: 1, error: null }]}
+        rows={[
+          {
+            code: 'PR-ING-000010',
+            ok: true,
+            mapper_status: 'needs_review',
+            match_method: 'category_composition_similarity',
+            match_confidence: 'needs_review',
+            matched_basement_id: 'PI-ING-000180',
+            candidate_count: 1,
+            error: null,
+          },
+        ]}
         running={false}
         count={6}
         onRun={() => {}}

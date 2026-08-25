@@ -202,7 +202,7 @@ describe('Base/Topping owner entry points', () => {
     expect(topping).toContain('placement="bottom"');
     expect(topping).toContain('data-testid={`topping-mobile-line-${item.id}`}');
     expect(topping).toContain('testId={`topping-mobile-sheet-${item.id}`}');
-    expect(topping).toContain('grid size-7 place-items-center rounded-full');
+    expect(topping).toContain("className={iconButtonClasses('xs')}");
     expect(topping).not.toContain('bg-pro-sage/20 px-3 py-3');
   });
 

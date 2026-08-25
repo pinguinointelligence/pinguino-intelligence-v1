@@ -2,6 +2,7 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useRecipeProfileStore } from './recipeProfileStore';
@@ -36,7 +37,42 @@ describe('WorkbenchSettingsLine deferred batch editing', () => {
     host.remove();
   });
 
-  it('commits the complete batch only after blur and rebuilds the untouched starter at 2222 g', async () => {
+  const selectValue = async (testId: string, value: string) => {
+    const select = host.querySelector(`[data-testid="${testId}"]`) as HTMLSelectElement;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set?.call(
+        select,
+        value,
+      );
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+  };
+
+  const materialVector = () => {
+    const state = useRecipeStore.getState();
+    return {
+      lines: state.items.map((item) => ({
+        id: item.id,
+        ingredient: item.ingredient.id,
+        lockType: item.lock_type,
+      })),
+      toppings: state.toppings.map((item) => ({
+        id: item.id,
+        ingredient: item.ingredient.id,
+        grams: item.planned_grams,
+      })),
+    };
+  };
+
+  it('commits the complete batch only after blur and preserves the active starter vector', async () => {
+    useRecipeStore.getState().addTopping(useRecipeStore.getState().items[0]!.ingredient, 12);
+    useRecipeStore
+      .getState()
+      .setGramLock(
+        useRecipeStore.getState().items[0]!.id,
+        useRecipeStore.getState().items[0]!.planned_grams,
+      );
+    const before = materialVector();
     const input = host.querySelector('[aria-label="Docelowa partia"]') as HTMLInputElement;
     const setValue = (value: string) => {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, value);
@@ -52,7 +88,85 @@ describe('WorkbenchSettingsLine deferred batch editing', () => {
 
     await act(async () => input.blur());
     expect(useRecipeStore.getState().target_batch_grams).toBe(2_222);
-    expect(useRecipeStore.getState().newRecipeStarterKey?.targetBatchGrams).toBe(2_222);
+    expect(materialVector()).toEqual(before);
+  });
+
+  it('starts a new recipe in OPTIMAL and restores ECO from a saved recipe', async () => {
+    expect(useRecipeStore.getState().formulation_strategy).toBe('optimal');
+
+    const saved = starterMilkBase();
+    useRecipeStore.getState().loadRecipeInput(
+      {
+        ...saved,
+        mode: 'eco',
+        goals: { ...saved.goals, formulation_strategy: 'eco' },
+      },
+      { savedId: 'saved-eco', savedName: 'ECO Pistachio' },
+    );
+    await act(async () =>
+      root.render(
+        <WorkbenchSettingsLine
+          actualBatchG={useRecipeStore.getState().target_batch_grams}
+          compact
+        />,
+      ),
+    );
+
+    expect(useRecipeStore.getState().formulation_strategy).toBe('eco');
+    expect(
+      (host.querySelector('[data-testid="workbench-strategy"]') as HTMLSelectElement).value,
+    ).toBe('eco');
+  });
+
+  it('changes strategy without replacing ingredients, toppings or locks', async () => {
+    useRecipeStore.getState().addTopping(useRecipeStore.getState().items[0]!.ingredient, 12);
+    useRecipeStore
+      .getState()
+      .setGramLock(
+        useRecipeStore.getState().items[0]!.id,
+        useRecipeStore.getState().items[0]!.planned_grams,
+      );
+    const before = materialVector();
+
+    await selectValue('workbench-strategy', 'eco');
+
+    expect(useRecipeStore.getState().formulation_strategy).toBe('eco');
+    expect(materialVector()).toEqual(before);
+  });
+
+  it('changes serving temperature and machine without replacing the recipe vector', async () => {
+    useRecipeStore.getState().addTopping(useRecipeStore.getState().items[0]!.ingredient, 8);
+    const before = materialVector();
+
+    await selectValue('workbench-serving', 'temp_minus_12');
+    expect(useRecipeStore.getState().target_temperature_c).toBe(-12);
+    expect(materialVector()).toEqual(before);
+
+    const machine = Array.from(
+      (host.querySelector('[data-testid="workbench-machine"]') as HTMLSelectElement).options,
+    ).find((option) => option.value !== 'professional')!;
+    await selectValue('workbench-machine', machine.value);
+    expect(useRecipeStore.getState().machineKind).toBe('home');
+    expect(materialVector()).toEqual(before);
+  });
+
+  it('changes Gelato to Protein in place and returns to one dirty confirmation CTA', async () => {
+    useRecipeStore.getState().addTopping(useRecipeStore.getState().items[0]!.ingredient, 8);
+    const before = materialVector();
+
+    await selectValue('workbench-product-type', 'protein');
+
+    expect(useRecipeStore.getState().visibleProductType).toBe('protein');
+    expect(materialVector()).toEqual(before);
+    const confirm = host.querySelector(
+      '[data-testid="profile-settings-confirm"]',
+    ) as HTMLButtonElement;
+    expect(confirm).not.toBeNull();
+    await act(async () => confirm.click());
+    expect(host.querySelector('[data-testid="profile-settings-confirm"]')).toBeNull();
+    expect(host.querySelector('[data-testid="profile-settings-confirmed"]')?.textContent).toContain(
+      'Ustawienia potwierdzone',
+    );
   });
 });
 

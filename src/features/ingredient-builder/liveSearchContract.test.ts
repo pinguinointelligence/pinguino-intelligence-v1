@@ -31,17 +31,49 @@ let backendRows: unknown[] = [];
 function fakeClient() {
   return {
     from(table: string) {
-      const cap: Captured = { table, eq: [], ilike: [], or: [], order: [], range: null, aborted: false, select: '' };
+      const cap: Captured = {
+        table,
+        eq: [],
+        ilike: [],
+        or: [],
+        order: [],
+        range: null,
+        aborted: false,
+        select: '',
+      };
       captured.push(cap);
       const builder = {
-        select(cols: string) { cap.select = cols; return builder; },
-        eq(col: string, val: unknown) { cap.eq.push([col, val]); return builder; },
-        ilike(col: string, val: string) { cap.ilike.push([col, val]); return builder; },
-        or(expr: string) { cap.or.push(expr); return builder; },
-        order(col: string, opts: unknown) { cap.order.push([col, opts]); return builder; },
-        range(from: number, to: number) { cap.range = [from, to]; return builder; },
-        abortSignal(signal: AbortSignal) { cap.aborted = signal.aborted; return builder; },
-        in() { return builder; },
+        select(cols: string) {
+          cap.select = cols;
+          return builder;
+        },
+        eq(col: string, val: unknown) {
+          cap.eq.push([col, val]);
+          return builder;
+        },
+        ilike(col: string, val: string) {
+          cap.ilike.push([col, val]);
+          return builder;
+        },
+        or(expr: string) {
+          cap.or.push(expr);
+          return builder;
+        },
+        order(col: string, opts: unknown) {
+          cap.order.push([col, opts]);
+          return builder;
+        },
+        range(from: number, to: number) {
+          cap.range = [from, to];
+          return builder;
+        },
+        abortSignal(signal: AbortSignal) {
+          cap.aborted = signal.aborted;
+          return builder;
+        },
+        in() {
+          return builder;
+        },
         then(onOk: (v: { data: unknown[]; error: null }) => unknown) {
           const [from, to] = cap.range ?? [0, backendRows.length - 1];
           return Promise.resolve({ data: backendRows.slice(from, to + 1), error: null }).then(onOk);
@@ -57,7 +89,10 @@ vi.mock('@/lib/supabase/client', () => ({ supabase: fakeClient() }));
 import { SEARCH_DB_PAGE_ROWS, searchEngineApprovedIngredients } from '@/services/ingredients';
 import { isProductPickerSelectionCurrent } from './productPickerModel';
 
-beforeEach(() => { captured.length = 0; backendRows = []; });
+beforeEach(() => {
+  captured.length = 0;
+  backendRows = [];
+});
 
 describe('per-query server request (tests 3/4/5)', () => {
   it('every settled query issues a CURRENT backend request with per-token alias OR-groups', async () => {
@@ -91,10 +126,16 @@ describe('per-query server request (tests 3/4/5)', () => {
   });
 
   it('a client window past 1,000 pages via `.range` in sub-cap windows — no PostgREST max-rows truncation', async () => {
-    backendRows = Array.from({ length: 1150 }, (_, i) => ({ ingredient_id: `PI-ING-${String(i).padStart(6, '0')}` }));
+    backendRows = Array.from({ length: 1150 }, (_, i) => ({
+      ingredient_id: `PI-ING-${String(i).padStart(6, '0')}`,
+    }));
     const rows = await searchEngineApprovedIngredients('milk', { limit: 1200 });
     // Every physical request stays strictly below the 1,000-row PostgREST cap …
-    expect(captured.map((c) => c.range)).toEqual([[0, 499], [500, 999], [1000, 1199]]);
+    expect(captured.map((c) => c.range)).toEqual([
+      [0, 499],
+      [500, 999],
+      [1000, 1199],
+    ]);
     for (const c of captured) {
       expect(c.range![1] - c.range![0] + 1).toBeLessThanOrEqual(SEARCH_DB_PAGE_ROWS);
       expect(SEARCH_DB_PAGE_ROWS).toBeLessThan(1000);
@@ -105,14 +146,18 @@ describe('per-query server request (tests 3/4/5)', () => {
   });
 
   it('a short `.range` page ends paging early (no pointless extra requests)', async () => {
-    backendRows = Array.from({ length: 42 }, (_, i) => ({ ingredient_id: `PI-ING-${String(i).padStart(6, '0')}` }));
+    backendRows = Array.from({ length: 42 }, (_, i) => ({
+      ingredient_id: `PI-ING-${String(i).padStart(6, '0')}`,
+    }));
     const rows = await searchEngineApprovedIngredients('milk', { limit: 1200 });
     expect(rows.length).toBe(42);
     expect(captured.length).toBe(1); // first window [0,499] came back short → stop
   });
 
   it('every `.range` window repeats the SAME filters and deterministic order (stable paging)', async () => {
-    backendRows = Array.from({ length: 700 }, (_, i) => ({ ingredient_id: `PI-ING-${String(i).padStart(6, '0')}` }));
+    backendRows = Array.from({ length: 700 }, (_, i) => ({
+      ingredient_id: `PI-ING-${String(i).padStart(6, '0')}`,
+    }));
     await searchEngineApprovedIngredients('milk', { limit: 700 });
     expect(captured.length).toBe(2);
     for (const c of captured) {
@@ -142,11 +187,21 @@ describe('safe payload (test 23)', () => {
     await searchEngineApprovedIngredients('milk');
     const cols = captured[0]!.select.split(',');
     expect(cols).toEqual([
-      'ingredient_id', 'ingredient_name_display', 'ingredient_name_internal',
-      'ingredient_category', 'ingredient_subcategory',
-      'approved_for_base', 'approved_for_engines',
+      'ingredient_id',
+      'ingredient_name_display',
+      'ingredient_name_internal',
+      'ingredient_category',
+      'ingredient_subcategory',
+      'approved_for_base',
+      'approved_for_engines',
     ]);
-    for (const banned of ['pac_value', 'pod_value', 'water_percent', 'total_solids_percent', 'data_confidence_percent']) {
+    for (const banned of [
+      'pac_value',
+      'pod_value',
+      'water_percent',
+      'total_solids_percent',
+      'data_confidence_percent',
+    ]) {
       expect(captured[0]!.select).not.toContain(banned);
     }
   });
@@ -169,7 +224,11 @@ describe('source pins — the architecture cannot silently regress (tests 1/2 + 
   });
 
   it('no permanent catalogue storage: the search path never touches localStorage/indexedDB', () => {
-    for (const [folder, file] of [['global-catalog', 'useGlobalCatalogPicker.ts'], ['ingredient-builder', 'ProductPickerPopover.tsx'], ['ingredient-builder', 'useIngredientLibrary.ts']] as const) {
+    for (const [folder, file] of [
+      ['global-catalog', 'useGlobalCatalogPicker.ts'],
+      ['ingredient-builder', 'ProductPickerPopover.tsx'],
+      ['ingredient-builder', 'useIngredientLibrary.ts'],
+    ] as const) {
       const src = read('features', folder, file);
       expect(src).not.toMatch(/localStorage|indexedDB/i);
     }
@@ -229,7 +288,7 @@ describe('source pins — the architecture cannot silently regress (tests 1/2 + 
     expect(dialog).toContain('id={dialogId}');
     expect(dialog).toContain('ref={dialogRef}');
     expect(dialog).toContain('aria-modal="true"');
-    expect(src).toContain("dialogRef.current?.querySelectorAll<HTMLElement>");
+    expect(src).toContain('dialogRef.current?.querySelectorAll<HTMLElement>');
     expect(src).toContain('triggerRef.current?.focus({ preventScroll: true })');
   });
 
@@ -237,9 +296,12 @@ describe('source pins — the architecture cannot silently regress (tests 1/2 + 
     const hook = read('features', 'global-catalog', 'useGlobalCatalogPicker.ts');
     expect(hook).toContain('useDebouncedValue(input.query, 250)');
     expect(hook).toContain("['product-search-v1'");
-    expect(hook).toContain('queryFn: async () =>');
-    expect(hook).toContain('let cursor = 0');
-    expect(hook).toContain('cursor += batch.length');
+    expect(hook).toContain('useInfiniteQuery');
+    expect(hook).toContain('queryFn: async ({ pageParam }) =>');
+    expect(hook).toContain('initialPageParam: 0');
+    expect(hook).toContain('pageParam + batch.length');
+    expect(hook).toContain('mergeCatalogSearchPages');
+    expect(hook).not.toContain('requestedLimit');
   });
 
   it('pagination is an explicit server cursor, not a client-side catalogue snapshot', () => {

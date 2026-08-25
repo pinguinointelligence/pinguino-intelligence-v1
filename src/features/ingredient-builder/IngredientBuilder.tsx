@@ -76,6 +76,7 @@ import {
 } from '@/services/productIntelligence';
 import { type ProductDoseMeta } from './productDoseSuggestion';
 import { clampOwnerStabilizerComponentGrams } from '@/features/recipe-constraints';
+import { LegacyRecipeReferenceNotice } from './LegacyRecipeReferenceNotice';
 
 const b = copy.studio.builder;
 const headCell = 'text-xs font-medium tracking-[0.04em] text-ivory/70 uppercase';
@@ -144,6 +145,24 @@ export function IngredientBuilder({
   const [reorderNotice, setReorderNotice] = useState('');
   const library = useIngredientLibrary({ demo });
   const { lockFor, wrapActions } = useLineLockControls();
+  const legacyReferenceIssues = compositionMigrationAmbiguities.filter((issue) =>
+    issue.reason.startsWith('LEGACY_BEHAVIOR:'),
+  );
+  const compositionRoleIssues = compositionMigrationAmbiguities.filter(
+    (issue) => !issue.reason.startsWith('LEGACY_BEHAVIOR:'),
+  );
+
+  const inspectLegacyProduct = (lineId: string) => {
+    const row = Array.from(document.querySelectorAll<HTMLElement>('[data-line-id]')).find(
+      (candidate) => candidate.dataset.lineId === lineId,
+    );
+    row?.scrollIntoView?.({ block: 'nearest' });
+    const action = Array.from(row?.querySelectorAll<HTMLButtonElement>('button') ?? []).find(
+      (button) => button.getAttribute('aria-label')?.startsWith('Opcje składnika'),
+    );
+    action?.focus();
+    action?.click();
+  };
 
   const baseReorderNotice = (lineId: string, action: string): string => {
     const state = useRecipeStore.getState();
@@ -397,16 +416,14 @@ export function IngredientBuilder({
         data-testid="production-table-header"
         data-table-family="recipe"
       >
-        {['Składnik', 'Plan', 'Faktycznie', 'Status / potwierdzenie', 'Odchylenie'].map(
-          (label, index) => (
-            <span
-              key={label}
-              className={`${headCell} ${index === 1 || index === 4 ? 'text-right' : ''}`}
-            >
-              {label}
-            </span>
-          ),
-        )}
+        {['Składnik / status', 'Plan', 'Faktycznie', 'Odchylenie', ''].map((label, index) => (
+          <span
+            key={label}
+            className={`${headCell} ${index === 1 || index >= 3 ? 'text-right' : ''}`}
+          >
+            {label || '\u00a0'}
+          </span>
+        ))}
       </div>
     ) : (
       <div className={`${ROW_GRID} px-3 py-2`} data-testid="recipe-table-header">
@@ -538,6 +555,7 @@ export function IngredientBuilder({
           reopenRecord: production.reopenRecord,
           topUpLine: production.topUpLine,
           disabled: production.persistenceBusy,
+          settled: production.session?.status === 'completed',
         }
       : mode === 'production'
         ? {
@@ -823,59 +841,33 @@ export function IngredientBuilder({
   if (layout === 'workbench') {
     return (
       <div className="flex h-full min-h-0 flex-col" data-testid="ingredient-editor-pane">
-        {/* In recipe mode the heading is `sr-only`, but this wrapper used to keep
-            its padding and bottom border anyway — an empty ~40 px band with a
-            divider above the first ingredient (owner annotation, 2026-08-24).
-            It now takes space only when it actually has something to show. */}
+        {/* The shared Production header owns workflow state. This local wrapper
+            takes space only for an actionable execution reminder or recipe notice. */}
         <div
           className={cn(
             'shrink-0',
-            mode === 'production'
-              ? 'border-b border-ink/10 px-3 py-2 xl:py-3'
+            mode === 'production' && production?.session?.status === 'in_progress'
+              ? 'border-b border-ink/8 px-3 py-1.5'
               : hasRecipeNotice
                 ? 'px-3 pt-2 pb-1'
                 : null,
           )}
         >
-          <div
-            className={mode === 'recipe' ? 'sr-only' : 'flex items-center justify-between gap-3'}
-          >
+          <div className="sr-only">
             <SectionLabel>{mode === 'production' ? 'Produkcja' : 'Baza lodowa'}</SectionLabel>
             {demo || library.status === 'fallback' ? (
               <NonProductionBadge itemId="pro-demo-library" />
             ) : null}
           </div>
-          {mode === 'production' ? (
-            <div className="mt-2 border border-ink/10 bg-stone-50 px-3 py-2">
-              <div className="flex items-start justify-between gap-3">
-                <ol
-                  className="flex min-w-0 flex-wrap gap-x-4 gap-y-1 text-xs text-stone-700"
-                  aria-label="Kolejność ważenia składnika"
-                >
-                  <li>
-                    <strong className="font-mono text-ink">1.</strong> Odważ składnik
-                  </li>
-                  <li>
-                    <strong className="font-mono text-ink">2.</strong> Wpisz faktyczną ilość
-                  </li>
-                  <li>
-                    <strong className="font-mono text-ink">3.</strong> Potwierdź dodanie
-                  </li>
-                </ol>
-                <span className="shrink-0 font-mono text-xs tabular-nums text-ink">
-                  {production?.progress
-                    ? `${production.progress.confirmedCount}/${production.progress.totalCount}`
-                    : '0/0'}
-                </span>
-              </div>
-              <p className="mt-1 text-[11px] leading-relaxed text-stone-500">
-                Potwierdzonej ilości nie można odjąć od naczynia.
-              </p>
-              {!production ? (
-                <span className="sr-only" data-readiness="W PRZYGOTOWANIU">
-                  W PRZYGOTOWANIU
-                </span>
-              ) : null}
+          {mode === 'production' && production?.session?.status === 'in_progress' ? (
+            <div
+              className="flex min-w-0 items-center gap-2 text-[11px] leading-relaxed text-stone-500"
+              data-testid="production-execution-reminder"
+            >
+              <span aria-hidden className="font-mono text-stone-400">
+                i
+              </span>
+              <p>Potwierdzonej ilości nie można odjąć od naczynia.</p>
             </div>
           ) : null}
           {mode === 'recipe' && pickerNotice ? (
@@ -895,26 +887,31 @@ export function IngredientBuilder({
           >
             {reorderNotice}
           </p>
-          {mode === 'recipe' && compositionMigrationAmbiguities.length > 0 ? (
+          {mode === 'recipe' ? (
+            <LegacyRecipeReferenceNotice
+              issues={legacyReferenceIssues}
+              items={items}
+              onInspect={inspectLegacyProduct}
+            />
+          ) : null}
+          {mode === 'recipe' && compositionRoleIssues.length > 0 ? (
             <div
               className="mt-2 rounded-xl border border-attention/30 bg-attention/[0.07] px-3 py-2 text-xs text-stone-700"
               role="status"
               data-testid="composition-migration-ambiguity"
             >
               <p>
-                {compositionMigrationAmbiguities.length === 1
+                {compositionRoleIssues.length === 1
                   ? '1 historyczny wpis wymaga decyzji.'
-                  : `${compositionMigrationAmbiguities.length} historyczne wpisy wymagają decyzji.`}
+                  : `${compositionRoleIssues.length} historyczne wpisy wymagają decyzji.`}
               </p>
               <ul className="mt-1 space-y-1">
-                {compositionMigrationAmbiguities.map((issue) => {
+                {compositionRoleIssues.map((issue) => {
                   const line = items.find((item) => item.id === issue.lineId);
-                  const reason = issue.reason.startsWith('LEGACY_BEHAVIOR:')
-                    ? issue.reason.slice('LEGACY_BEHAVIOR:'.length)
-                    : 'Wybierz dla tej linii rolę Główny lub Standardowy.';
                   return (
                     <li key={`${issue.lineId}:${issue.reason}`}>
-                      {line?.ingredient.name ?? issue.lineId}: {reason}
+                      {line?.ingredient.name ?? 'Produkt historyczny'}: Wybierz dla tej linii rolę
+                      Główny lub Standardowy.
                     </li>
                   );
                 })}

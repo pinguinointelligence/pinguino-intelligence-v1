@@ -13,6 +13,8 @@ const mocks = vi.hoisted(() => ({
   toggleFavorite: vi.fn(),
   loadMore: vi.fn(),
   toEngine: vi.fn(),
+  isFetching: false,
+  isSettled: true,
 }));
 
 vi.mock('@/features/global-catalog/useGlobalCatalogPicker', () => ({
@@ -40,8 +42,8 @@ vi.mock('@/features/global-catalog/useGlobalCatalogPicker', () => ({
         preferredRetailers: [],
         defaultScope: 'global',
       },
-      isSettled: true,
-      isFetching: false,
+      isSettled: mocks.isSettled,
+      isFetching: mocks.isFetching,
       isError: false,
       hasMore: true,
       loadMore: mocks.loadMore,
@@ -179,6 +181,8 @@ describe('ProductPickerPopover catalog presentation', () => {
     }));
     mocks.toEngine.mockReturnValue(engineIngredient);
     mocks.markUsed.mockResolvedValue(undefined);
+    mocks.isFetching = false;
+    mocks.isSettled = true;
     Object.defineProperty(window, 'matchMedia', {
       configurable: true,
       value: () => ({
@@ -356,5 +360,17 @@ describe('ProductPickerPopover catalog presentation', () => {
     expect(mocks.loadMore).toHaveBeenCalledTimes(1);
     expect(document.querySelectorAll('[data-picker-segment="recent"]')).toHaveLength(1);
     expect(document.querySelectorAll('[data-picker-segment="all"]')).toHaveLength(1);
+  });
+
+  it('keeps loaded rows visible while the next page is being appended', async () => {
+    mocks.isFetching = true;
+
+    await renderPicker();
+
+    expect(document.body.textContent).toContain('BANANA · Fresh Fruit');
+    expect(document.body.textContent).toContain('CREAM 30% · Mlekovita Cream · Chilled');
+    expect(document.body.textContent).toContain('Znaleziono 3 składników');
+    expect(document.body.textContent).not.toContain('Znaleziono 0 składników');
+    expect(document.body.textContent).not.toContain('Nie znaleziono produktu.');
   });
 });

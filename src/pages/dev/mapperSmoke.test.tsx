@@ -13,6 +13,11 @@ import { MapperSmokePage } from './MapperSmokePage';
 
 const render = (el: ReactElement) => renderToStaticMarkup(<MemoryRouter>{el}</MemoryRouter>);
 const visibleText = (html: string) => html.replace(/<[^>]*>/g, ' ').replace(/&[a-z#0-9]+;/g, ' ');
+const runButtonIsDisabled = (html: string) => {
+  const button =
+    html.match(/<button[^>]*>[^<]*(?:Run one-product Mapper smoke|Running)/)?.[0] ?? '';
+  return /\sdisabled(?:=""|(?=[\s>]))/.test(button);
+};
 
 const baseProps = {
   productCode: 'PR-ING-000002',
@@ -34,19 +39,23 @@ describe('MapperSmokeView — presentational', () => {
     expect(text).toContain('18313d47-ddad-4e4e-b1f9-ba39c9ad9434');
     expect(text).toMatch(/only the 11 Mapper result columns/i);
     expect(text).toMatch(/is not a batch/i);
-    expect(html).not.toContain('disabled'); // enabled when idle
+    expect(runButtonIsDisabled(html)).toBe(false); // enabled when idle
   });
 
   it('disables the button while a match is running', () => {
     const html = render(<MapperSmokeView {...baseProps} running />);
-    expect(html).toContain('disabled');
+    expect(runButtonIsDisabled(html)).toBe(true);
     expect(visibleText(html)).toContain('Running');
   });
 
   it('renders the result JSON when present, and an error message when present', () => {
-    const ok = render(<MapperSmokeView {...baseProps} resultJson={'{"mapper_status":"unmatched"}'} />);
+    const ok = render(
+      <MapperSmokeView {...baseProps} resultJson={'{"mapper_status":"unmatched"}'} />,
+    );
     expect(visibleText(ok)).toContain('unmatched');
-    const bad = render(<MapperSmokeView {...baseProps} errorMessage="Product not found or not owned." />);
+    const bad = render(
+      <MapperSmokeView {...baseProps} errorMessage="Product not found or not owned." />,
+    );
     expect(visibleText(bad)).toContain('Product not found or not owned.');
   });
 });

@@ -529,9 +529,7 @@ const fromPreset = (preset: DemoPreset) => ({
   target_batch_grams: preset.target_batch_grams,
   machine_capacity_grams: preset.machine_capacity_grams,
   machine_capacity_source: (preset.machine_capacity_grams === null ? null : 'manual') as
-    | 'machine'
-    | 'manual'
-    | null,
+    'machine' | 'manual' | null,
   flavor_intensity: preset.flavor_intensity,
   cost_priority: preset.cost_priority,
   direction_targets: { ...DEFAULT_DIRECTION_TARGETS },
@@ -723,7 +721,7 @@ export const useRecipeStore = create<RecipeState>()(
         set((state) => ({
           visibleProductType: visible,
           // The internal Engine policy DERIVES from the visible type + real ingredients;
-          // 'protein' is honest-unsupported and keeps the previous category untouched.
+          // Every visible Pro family resolves through its native runtime policy.
           category: internalCategoryFor(visible, state.items, state.category),
           productBehaviorSnapshots: requireProductBehaviorRevalidation(
             state.productBehaviorSnapshots,

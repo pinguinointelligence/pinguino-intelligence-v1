@@ -277,15 +277,15 @@ describe('profile hierarchy and compact preflight', () => {
     );
   });
 
-  it('routes starter strategy, serving and batch changes through one protected rebuild flow', () => {
+  it('routes settings changes through non-destructive recipe setters', () => {
     const card = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
-    expect(card).toContain('requestNewRecipeStarterSettingsChange');
-    expect(card).toContain('starterSettingsPatch.serving');
-    expect(card).toContain('starterSettingsPatch.strategy');
-    expect(card).toContain('starterSettingsPatch.batch');
-    expect(card).toContain('Zmiana ustawień wymaga przebudowy składników.');
-    expect(card).toContain('rebuildNewProRecipeStarter(pendingStarterChange.patch)');
-    expect(card).not.toContain('startNewProRecipe(pendingProductType)');
+    expect(card).toContain('store.setFormulationStrategy(strategy)');
+    expect(card).toContain('store.setVisibleProductType(next)');
+    expect(card).toContain('store.setMachineSelection({');
+    expect(card).toContain('resizeBatchGrams(target)');
+    expect(card).not.toContain('requestNewRecipeStarterSettingsChange');
+    expect(card).not.toContain('rebuildNewProRecipeStarter');
+    expect(card).not.toContain('Zmiana ustawień wymaga przebudowy składników.');
   });
 
   it('renders serving immediately for Professional and capacity instead for a Home machine', () => {

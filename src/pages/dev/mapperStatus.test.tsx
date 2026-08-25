@@ -9,7 +9,9 @@ const h = vi.hoisted(() => ({
   setStatus: vi.fn(),
 }));
 vi.mock('@/services/products', () => ({ listMyProducts: h.listMyProducts }));
-vi.mock('@/services/ingredients', () => ({ listEngineApprovedIngredients: h.listEngineApprovedIngredients }));
+vi.mock('@/services/ingredients', () => ({
+  listEngineApprovedIngredients: h.listEngineApprovedIngredients,
+}));
 vi.mock('@/services/productStatusWrite', () => ({ setProductLifecycleStatus: h.setStatus }));
 
 import { MapperStatusView, type StatusRow } from './mapperStatusView';
@@ -18,21 +20,40 @@ import { explainPiVerified, filterStatusRows } from './mapperStatusFilters';
 
 const render = (el: ReactElement) => renderToStaticMarkup(<MemoryRouter>{el}</MemoryRouter>);
 const text = (html: string) => html.replace(/<[^>]*>/g, ' ').replace(/&[a-z#0-9]+;/g, ' ');
-const btnDisabled = (html: string, label: string) =>
-  new RegExp(`<button[^>]*\\sdisabled[^>]*>[^<]*${label}`).test(html);
+const btnDisabled = (html: string, label: string) => {
+  const button = html.match(new RegExp(`<button[^>]*>[^<]*${label}`))?.[0] ?? '';
+  return /\sdisabled(?:=""|(?=[\s>]))/.test(button);
+};
 
 const row = (over: Partial<StatusRow> = {}): StatusRow => ({
-  code: 'PR-ING-000010', id: 'p1', product_name: 'Nata', mapper_status: 'matched',
-  current_status: 'draft', recommended_status: 'pi_generated', customer_label: 'PI Generated',
-  engine_readiness: 'reference_linked', red_flag_codes: [], blockers: ['PI Verified needs independent data'],
+  code: 'PR-ING-000010',
+  id: 'p1',
+  product_name: 'Nata',
+  mapper_status: 'matched',
+  current_status: 'draft',
+  recommended_status: 'pi_generated',
+  customer_label: 'PI Generated',
+  engine_readiness: 'reference_linked',
+  red_flag_codes: [],
+  blockers: ['PI Verified needs independent data'],
   studio_eligible: true,
   ...over,
 });
 const base = {
-  rows: [] as StatusRow[], loading: false, loaded: false, busyId: null as string | null,
-  message: null as string | null, errorMessage: null as string | null, reasons: {} as Record<string, string>,
+  rows: [] as StatusRow[],
+  loading: false,
+  loaded: false,
+  busyId: null as string | null,
+  message: null as string | null,
+  errorMessage: null as string | null,
+  reasons: {} as Record<string, string>,
   attestations: {} as Record<string, boolean>,
-  onLoad: () => {}, onReasonChange: () => {}, onAttestChange: () => {}, onApply: () => {}, onManualAdjust: () => {}, onVerify: () => {},
+  onLoad: () => {},
+  onReasonChange: () => {},
+  onAttestChange: () => {},
+  onApply: () => {},
+  onManualAdjust: () => {},
+  onVerify: () => {},
 };
 
 afterEach(() => vi.clearAllMocks());
@@ -55,40 +76,76 @@ describe('MapperStatusView', () => {
     expect(btnDisabled(noReason, 'Apply')).toBe(true);
     expect(btnDisabled(noReason, 'Verify')).toBe(true);
     // a reason enables Apply, but Verify stays blocked because of the red flag
-    const withReason = render(<MapperStatusView {...base} rows={[flagged]} reasons={{ p1: 'owner override' }} loaded />);
+    const withReason = render(
+      <MapperStatusView {...base} rows={[flagged]} reasons={{ p1: 'owner override' }} loaded />,
+    );
     expect(btnDisabled(withReason, 'Apply')).toBe(false);
     expect(btnDisabled(withReason, 'Verify')).toBe(true);
   });
 
   it('a reference-linked row needs the independent-provenance attestation to enable Verify', () => {
     // reason alone is NOT enough for a reference-linked product
-    const reasonOnly = render(<MapperStatusView {...base} rows={[row()]} reasons={{ p1: 'producer technical sheet' }} loaded />);
+    const reasonOnly = render(
+      <MapperStatusView
+        {...base}
+        rows={[row()]}
+        reasons={{ p1: 'producer technical sheet' }}
+        loaded
+      />,
+    );
     expect(btnDisabled(reasonOnly, 'Verify')).toBe(true);
     expect(text(reasonOnly)).toMatch(/attest independent/i);
     // reason + attestation enables it
-    const attested = render(<MapperStatusView {...base} rows={[row()]} reasons={{ p1: 'producer technical sheet' }} attestations={{ p1: true }} loaded />);
+    const attested = render(
+      <MapperStatusView
+        {...base}
+        rows={[row()]}
+        reasons={{ p1: 'producer technical sheet' }}
+        attestations={{ p1: true }}
+        loaded
+      />,
+    );
     expect(btnDisabled(attested, 'Verify')).toBe(false);
   });
 
   it('a product-measured row enables Verify with a reason (no attestation needed)', () => {
-    const html = render(<MapperStatusView {...base} rows={[row({ engine_readiness: 'product_measured' })]} reasons={{ p1: 'own lab measurement' }} loaded />);
+    const html = render(
+      <MapperStatusView
+        {...base}
+        rows={[row({ engine_readiness: 'product_measured' })]}
+        reasons={{ p1: 'own lab measurement' }}
+        loaded
+      />,
+    );
     expect(btnDisabled(html, 'Verify')).toBe(false);
   });
 
   it('an up-to-date product shows no Apply button (Manual/Verify remain)', () => {
-    const t = text(render(<MapperStatusView {...base} rows={[row({ current_status: 'pi_generated' })]} loaded />));
+    const t = text(
+      render(
+        <MapperStatusView {...base} rows={[row({ current_status: 'pi_generated' })]} loaded />,
+      ),
+    );
     expect(t).toContain('status up to date');
     expect(t).not.toMatch(/Apply pi_generated/);
   });
 
   it('the warning states Verify is blocked for red-flagged products', () => {
-    expect(text(render(<MapperStatusView {...base} />))).toMatch(/blocked for any red-flagged product/i);
+    expect(text(render(<MapperStatusView {...base} />))).toMatch(
+      /blocked for any red-flagged product/i,
+    );
   });
 
   it('shows a Studio-eligibility badge per row and an eligible count', () => {
-    const t = text(render(
-      <MapperStatusView {...base} rows={[row(), row({ id: 'p2', code: 'PR-ING-000011', studio_eligible: false })]} loaded />,
-    ));
+    const t = text(
+      render(
+        <MapperStatusView
+          {...base}
+          rows={[row(), row({ id: 'p2', code: 'PR-ING-000011', studio_eligible: false })]}
+          loaded
+        />,
+      ),
+    );
     expect(t).toMatch(/Studio ✓/);
     expect(t).toMatch(/Studio ✗/);
     expect(t).toMatch(/1 \/ 2 Studio-eligible/);
@@ -124,7 +181,14 @@ describe('PI Verified eligibility', () => {
   });
 
   it('an already PI Verified row disables Verify and shows the verified state', () => {
-    const html = render(<MapperStatusView {...base} rows={[row({ current_status: 'pi_verified', recommended_status: 'pi_verified' })]} reasons={{ p1: 'x' }} loaded />);
+    const html = render(
+      <MapperStatusView
+        {...base}
+        rows={[row({ current_status: 'pi_verified', recommended_status: 'pi_verified' })]}
+        reasons={{ p1: 'x' }}
+        loaded
+      />,
+    );
     expect(text(html)).toMatch(/already PI Verified/);
     expect(btnDisabled(html, 'Verify')).toBe(true);
   });

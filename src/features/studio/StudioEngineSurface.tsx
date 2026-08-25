@@ -28,6 +28,7 @@ import { DEFAULT_PRESET } from '@/data/demoPresets';
 import { WorkbenchRecipeActionDock } from '@/features/pro-workbench/WorkbenchRecipeActionDock';
 import { WorkbenchModuleTabs } from '@/features/pro-workbench/WorkbenchModuleTabs';
 import { useProductionWorkspace } from '@/features/production-workspace/useProductionWorkspace';
+import { ProductionWorkspaceHeader } from '@/features/production-workspace/ProductionWorkspaceHeader';
 import {
   MOBILE_COCKPIT_QUERY,
   nextMobileCockpitState,
@@ -313,8 +314,11 @@ export function StudioEngineSurface({
         className="flex min-h-0 flex-col pb-[calc(var(--pro-bottom-nav-height)+4.75rem+env(safe-area-inset-bottom))] xl:flex-1 xl:overflow-hidden xl:pb-0"
         data-testid="pro-workbench"
       >
+        {activeTab === 'production' && production.session ? (
+          <ProductionWorkspaceHeader production={production} />
+        ) : null}
         {/* Main split — editor (60–65 %) | LIVE Monitor PI (35–40 %). */}
-        <div className="min-h-0 flex-1 xl:grid xl:h-full xl:grid-cols-[minmax(0,1.62fr)_minmax(400px,1fr)] xl:gap-[var(--pro-workbench-gap)] xl:py-3">
+        <div className="min-h-0 flex-1 xl:grid xl:h-full xl:grid-cols-[minmax(0,1.62fr)_minmax(400px,1fr)] xl:gap-[var(--pro-workbench-gap)] xl:pt-2 xl:pb-3">
           <span
             aria-hidden
             data-testid="workbench-divider-rail"

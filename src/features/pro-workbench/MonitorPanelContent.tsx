@@ -33,6 +33,7 @@ import {
   recipeBehaviorModuleGate,
   useMonitorRecipeBehaviorRefresh,
 } from '@/features/product-intelligence';
+import { WorkflowNotice } from '@/components/shared/WorkflowNotice';
 
 export function MonitorToppingSummary({
   toppings,
@@ -232,26 +233,32 @@ export function MonitorPanelContent({
       data-behavior-authority={monitorGate.ready ? 'ready' : 'revalidation-required'}
     >
       {(legacyInspection || !monitorGate.ready) && behaviorAuthority.requiredLineIds.length > 0 ? (
-        <div
-          role="status"
-          data-testid="monitor-behavior-revalidation"
-          className="rounded-lg border border-attention/20 bg-attention/[0.05] px-3 py-2 text-xs leading-relaxed text-stone-700"
-        >
-          <p>
-            {legacyInspection
-              ? 'Podgląd historyczny. Przed edycją lub produkcją utwórz nową wersję z walidacją produktów.'
-              : 'Monitor wymaga ponownej walidacji danych produktów użytych w tej recepturze.'}
-          </p>
-          {!legacyInspection && onOpenProfile ? (
-            <button
-              type="button"
-              onClick={onOpenProfile}
-              className="pro-focus-ring mt-2 min-h-10 rounded-lg border border-ink/12 bg-white px-3 py-2 font-semibold text-ink"
-            >
-              Wróć do receptury
-            </button>
-          ) : null}
-        </div>
+        <WorkflowNotice
+          eyebrow={legacyInspection ? 'Historia receptury' : 'Wymagane sprawdzenie'}
+          title={
+            legacyInspection
+              ? 'Podgląd historyczny'
+              : 'Monitor wymaga ponownej walidacji danych produktów użytych w tej recepturze.'
+          }
+          description={
+            legacyInspection
+              ? 'Przed edycją lub produkcją utwórz nową wersję z walidacją produktów.'
+              : 'Wróć do receptury, aby sprawdzić bieżące dane.'
+          }
+          variant="attention"
+          testId="monitor-behavior-revalidation"
+          action={
+            !legacyInspection && onOpenProfile ? (
+              <button
+                type="button"
+                onClick={onOpenProfile}
+                className="pro-focus-ring min-h-10 rounded-[10px] border border-ink/12 bg-white px-3 py-2 font-semibold text-ink"
+              >
+                Wróć do receptury
+              </button>
+            ) : null
+          }
+        />
       ) : null}
       {technicalViewAllowed ? (
         <MonitorLiveSummary

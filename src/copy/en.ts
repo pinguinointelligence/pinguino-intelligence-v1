@@ -541,7 +541,7 @@ export const copy = {
    * Przelicz z PI + Monitor PI + version/status). PL copy. */
   proWorkbar: {
     nameLabel: 'Nazwa receptury',
-    namePlaceholder: 'np. Pistacja Premium',
+    namePlaceholder: 'np. Pistachio Dream',
     saveNew: 'Zapisz recepturę',
     saveVersion: (v: number) => `Zapisz nową wersję (v${v})`,
     addNote: 'Dodaj notatkę',

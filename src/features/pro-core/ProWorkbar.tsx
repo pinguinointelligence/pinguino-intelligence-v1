@@ -10,6 +10,7 @@ import {
 } from '@/pages/destinations/startNewProRecipe';
 import { NewRecipeConfirmationDialog } from '@/features/recipes/NewRecipeConfirmationDialog';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
+import { iconButtonClasses } from '@/components/ui/buttonStyles';
 
 const w = copy.proWorkbar;
 const pm = copy.proMachine;
@@ -111,7 +112,7 @@ export function ProWorkbar({ variant = 'bar' }: { variant?: 'bar' | 'panel' }) {
       data-workbar-variant={variant}
       className={cn(
         variant === 'panel'
-          ? 'rounded-[16px] border border-ink/10 bg-white p-3 shadow-pro-e1'
+          ? 'rounded-[14px] border border-ink/10 bg-white p-2.5 shadow-pro-e0'
           : 'rounded-t-[22px] border border-ink/10 bg-white/97 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-pro-e2 backdrop-blur-xl lg:rounded-none lg:border-0 lg:bg-transparent lg:px-0 lg:shadow-none lg:backdrop-blur-none 2xl:!border-0 2xl:py-0 2xl:pt-px 2xl:!shadow-none',
       )}
     >
@@ -166,7 +167,9 @@ export function ProWorkbar({ variant = 'bar' }: { variant?: 'bar' | 'panel' }) {
           </button>
           <details className="relative shrink-0" data-testid="pro-workbar-menu">
             <summary
-              className="pro-focus-ring grid size-9 cursor-pointer list-none place-items-center rounded-full border border-ink/10 text-xs text-stone-500 hover:border-ink/35 hover:text-ink"
+              className={cn(iconButtonClasses('xs'), 'cursor-pointer list-none')}
+              aria-label={w.more}
+              title={w.more}
               data-workbar-action-size="compact"
             >
               •••
@@ -225,7 +228,7 @@ export function ProWorkbar({ variant = 'bar' }: { variant?: 'bar' | 'panel' }) {
               }}
               data-testid="pro-workbar-name"
               className={cn(
-                'w-full min-w-0 rounded-[14px] border border-ink/15 bg-white px-3 text-sm font-semibold text-ink shadow-pro-e0 placeholder:text-stone-600 focus:border-ink/45 focus:outline-none',
+                'w-full min-w-0 rounded-[10px] border border-ink/15 bg-white px-3 text-sm font-semibold text-ink shadow-pro-e0 placeholder:text-stone-500 focus:border-ink/45 focus:outline-none',
                 variant === 'panel' ? 'h-10' : 'h-11',
               )}
             />
