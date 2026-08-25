@@ -584,6 +584,28 @@ describe('Product Recognition V2 — Mapper semantic hard contradictions', () =>
     });
   });
 
+  it('does not let a broad Bakery & sweets container override the actual product identity', () => {
+    const gum = classifyProductSemantics(
+      evidence({
+        name: 'Airwaves Cool Cassis bezcukrowa guma do żucia',
+        brand: 'Airwaves',
+        category: 'Bakery & sweets',
+        subcategory: 'Słodycze — bieżący katalog online',
+        description: 'Guma do żucia o smaku czarnej porzeczki.',
+      }),
+    );
+
+    expect(gum).toMatchObject({
+      productArchetype: 'UNKNOWN',
+      ingredientFamily: 'unknown',
+      physicalForm: 'UNKNOWN',
+      intendedUsageRole: 'NEITHER_REVIEW',
+      classificationSource: 'REVIEW_REQUIRED',
+      modelRequired: true,
+    });
+    expect(gum.reasonCodes).not.toContain('ARCHETYPE_CONFECTIONERY');
+  });
+
   it('white chocolate rejects a dark-chocolate donor absent explicit equivalence', () => {
     const product = classifyProductSemantics(
       evidence({

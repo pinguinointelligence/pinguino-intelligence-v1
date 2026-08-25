@@ -39,6 +39,7 @@ import {
   type ProductWorkingValues,
   type ValueReadiness,
 } from './productWorkingValues';
+import type { CardContribution } from './productSourceCard';
 import { WORKING_NUMERIC_FIELDS, type WorkingNumericField } from './productFieldTruth';
 import type { ProductInsert } from '@/data/products/productRow';
 import {
@@ -70,6 +71,54 @@ export interface IntimportCanonicalIndex {
   byBarcode?: (lookupValues: readonly string[]) => string | null;
   /** Existing canonical product id for a deterministic identity key. */
   byIdentity?: (identityKey: string) => string | null;
+}
+
+/** Accepted post-research material used for one complete reassessment. The
+ * provider response is converted to this only after the enrichment layer has
+ * retained the stronger fact and pinned its source provenance. */
+export interface IntimportReassessmentOverride {
+  evidence: ProductEvidenceInput;
+  sourceCard: CardContribution | null;
+  evidenceProvenance: Partial<
+    Record<ProductEvidenceField, ProductionAccuracyEvidenceProvenance>
+  >;
+  enrichmentEvidenceReceipts: readonly string[];
+  semanticEvidenceReceipt?: string | null;
+}
+
+export type IntimportFinalResult =
+  | 'READY'
+  | 'REVIEW'
+  | 'BLOCKED'
+  | 'CONFLICT'
+  | 'TOPPING_ONLY';
+
+/** One final classifier for audits/UI. A semantic role is never itself proof
+ * that ProductBehavior approved the role. */
+export function classifyIntimportFinalResult(
+  row: IntimportProductIntelligence,
+): IntimportFinalResult {
+  if (
+    row.recognitionTrace.finalStatus === 'IDENTITY_CONFLICT' ||
+    row.productionAccuracy.roleReadiness === 'CONFLICT'
+  ) {
+    return 'CONFLICT';
+  }
+  if (row.productionAccuracy.roleReadiness === 'BLOCKED') return 'BLOCKED';
+  if (
+    row.recognition.intendedUsageRole === 'TOPPING_ONLY' &&
+    row.productBehaviorAuthority.toppingEligible === true &&
+    row.productionAccuracy.roleReadiness === 'TOPPING_READY'
+  ) {
+    return 'TOPPING_ONLY';
+  }
+  if (
+    row.productionAccuracy.roleReadiness === 'BASE_READY' &&
+    row.productionAccuracy.productAccuracy >= AUTO_IMPORT_FLOOR
+  ) {
+    return 'READY';
+  }
+  return 'REVIEW';
 }
 
 export interface IntimportProductIntelligence {
@@ -237,11 +286,16 @@ function evidenceFields(
 
   // Nutrition only counts when it is on a basis the product model can use.
   if (candidate.nutritionBasis === 'per_100g') {
+    put('nutritionBasis', s['Nutrition Basis']);
     put('energyKcal', s['Energy kcal']);
     put('fat', s['Fat g']);
     put('carbohydrate', s['Carbohydrates g']);
+    put('sugars', s['Sugars g']);
+    put('fiber', s['Fibre g']);
     put('protein', s['Protein g']);
     put('salt', s['Salt g']);
+  } else if (candidate.nutritionBasis === 'per_100ml') {
+    put('nutritionBasis', s['Nutrition Basis']);
   }
 
   // A strong family match can SUPPLEMENT missing evidence — never replace it, and
@@ -263,9 +317,12 @@ const SEARCHABLE_BY_KIND: Readonly<Record<ProductKind, readonly ProductEvidenceF
   Object.freeze({
     normal_food: [
       'ingredients',
+      'nutritionBasis',
       'energyKcal',
       'fat',
       'carbohydrate',
+      'sugars',
+      'fiber',
       'protein',
       'salt',
       'allergens',
@@ -417,6 +474,7 @@ export function assessIntimportProduct(
   mapper: MapperKnowledge | null = null,
   recognitionOverride: ProductSemanticClassification | null = null,
   recognitionEvidenceOverride: ProductSemanticEvidence | null = null,
+  reassessmentOverride: IntimportReassessmentOverride | null = null,
 ): IntimportProductIntelligence {
   const recognitionEvidence =
     recognitionEvidenceOverride ?? semanticEvidenceFromIntimportCandidate(candidate);
@@ -446,7 +504,7 @@ export function assessIntimportProduct(
     manufacturer: candidate.source.Manufacturer,
     ownerProvided: true,
   });
-  const fields = evidenceFields(
+  const baseFields = evidenceFields(
     candidate,
     family,
     familyApplied,
@@ -459,21 +517,28 @@ export function assessIntimportProduct(
       ? [`ambiguous identity vs row ${candidate.duplicateOfRow}`]
       : [];
 
-  const evidence: ProductEvidenceInput = {
-    kind,
-    fields,
-    validatedBarcode: candidate.ean !== null,
-    exactCanonicalMatch,
-    mapperFamilyMatch: familyApplied,
-    materialConflicts: conflicts,
-  };
+  const evidence: ProductEvidenceInput = reassessmentOverride
+    ? {
+        ...reassessmentOverride.evidence,
+        kind,
+        fields: { ...reassessmentOverride.evidence.fields },
+        materialConflicts: [...reassessmentOverride.evidence.materialConflicts],
+      }
+    : {
+        kind,
+        fields: baseFields,
+        validatedBarcode: candidate.ean !== null,
+        exactCanonicalMatch,
+        mapperFamilyMatch: familyApplied,
+        materialConflicts: conflicts,
+      };
 
   const assessment = assessProductConfidence(evidence);
   const route = routeBeforeWeb(assessment, { exactCanonicalMatch });
   const targets =
     route === 'EXISTING' || route === 'READY_LOCAL'
       ? []
-      : enrichmentTargets(kind, assessment, fields);
+      : enrichmentTargets(kind, assessment, evidence.fields);
   const researchPlan = buildResearchPlan({
     brand: candidate.source.Brand,
     manufacturer: candidate.source.Manufacturer,
@@ -496,6 +561,7 @@ export function assessIntimportProduct(
           // The declaration is only as strong as the source it was curated from,
           // which the confidence assessment has already judged (§9).
           declaredConfidence: assessment.confidence / 100,
+          sourceCard: reassessmentOverride?.sourceCard ?? null,
           identity: {
             name: candidate.displayName,
             variant: candidate.source['Variant Original'] ?? candidate.source['Variant English'],
@@ -514,7 +580,25 @@ export function assessIntimportProduct(
         mapper,
       )
     : null;
-  const declared = declaredNumericValues(candidate);
+  const verifiedWorkingMacros = workingValues
+    ? Object.fromEntries(
+        (
+          [
+            'fat_percent',
+            'protein_percent',
+            'carbohydrate_percent',
+            'total_sugars_percent',
+            'fiber_percent',
+            'salt_percent',
+          ] as const
+        ).flatMap((field) => {
+          const truth = workingValues.fields[field];
+          return truth.value !== null && truth.provenance.state === 'VERIFIED'
+            ? [[field, truth.value]]
+            : [];
+        }),
+      )
+    : {};
   const profileMatchInput: ProfileMatchInput = {
     name: candidate.displayName,
     variant: candidate.source['Variant Original'] ?? candidate.source['Variant English'],
@@ -522,18 +606,7 @@ export function assessIntimportProduct(
     category: candidate.sourceCategory,
     subcategory: candidate.sourceSubcategory,
     barcode: candidate.ean,
-    knownMacros: Object.fromEntries(
-      (
-        [
-          'fat_percent',
-          'protein_percent',
-          'carbohydrate_percent',
-          'total_sugars_percent',
-          'fiber_percent',
-          'salt_percent',
-        ] as const
-      ).flatMap((field) => (typeof declared[field] === 'number' ? [[field, declared[field]]] : [])),
-    ),
+    knownMacros: verifiedWorkingMacros,
     technical: kind === 'technical',
     semantic: recognition,
   };
@@ -547,11 +620,14 @@ export function assessIntimportProduct(
   });
   const productionAccuracy = assessProductProductionAccuracy({
     evidence,
-    evidenceProvenance: intimportProductionAccuracyProvenance(
-      evidence,
-      sourceAuthority,
-      candidate.source['Primary Source URL'] ?? candidate.source['Technical PDF URL'],
-    ),
+    evidenceProvenance: {
+      ...intimportProductionAccuracyProvenance(
+        evidence,
+        sourceAuthority,
+        candidate.source['Primary Source URL'] ?? candidate.source['Technical PDF URL'],
+      ),
+      ...(reassessmentOverride?.evidenceProvenance ?? {}),
+    },
     fieldTruth: workingValues ? productionAccuracyTruthFromWorkingFields(workingValues.fields) : {},
     mapperWholeProfileSimilarity: workingValues?.profileMatch?.confidence ?? null,
     recognition,
@@ -585,7 +661,7 @@ export function assessIntimportProduct(
     kind,
     recognition,
     recognitionEvidence,
-    semanticEvidenceReceipt: null,
+    semanticEvidenceReceipt: reassessmentOverride?.semanticEvidenceReceipt ?? null,
     family,
     familyApplied,
     exactCanonicalMatch,
@@ -609,7 +685,7 @@ export function assessIntimportProduct(
     researchPlan,
     evidence,
     carbonation,
-    enrichmentEvidenceReceipts: [],
+    enrichmentEvidenceReceipts: [...(reassessmentOverride?.enrichmentEvidenceReceipts ?? [])],
     route,
     enrichmentTargets: targets,
     insert: candidate.insert,
@@ -674,6 +750,7 @@ export function runIntimportLocalIntelligence(
   mapper: MapperKnowledge | null = null,
   recognitionOverrides: ReadonlyMap<number, ProductSemanticClassification> = new Map(),
   recognitionEvidenceOverrides: ReadonlyMap<number, ProductSemanticEvidence> = new Map(),
+  reassessmentOverrides: ReadonlyMap<number, IntimportReassessmentOverride> = new Map(),
 ): { rows: IntimportProductIntelligence[]; summary: IntimportLocalSummary } {
   // INVALID rows have no usable identity and are not products to research.
   const rows = candidates
@@ -685,6 +762,7 @@ export function runIntimportLocalIntelligence(
         mapper,
         recognitionOverrides.get(candidate.rowIndex) ?? null,
         recognitionEvidenceOverrides.get(candidate.rowIndex) ?? null,
+        reassessmentOverrides.get(candidate.rowIndex) ?? null,
       ),
     );
 

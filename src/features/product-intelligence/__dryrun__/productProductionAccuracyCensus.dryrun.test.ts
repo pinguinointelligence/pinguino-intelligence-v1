@@ -4,7 +4,10 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseINTIMPORT } from '@/data/products/intimport';
-import { runIntimportLocalIntelligence } from '../intimportIntelligence';
+import {
+  classifyIntimportFinalResult,
+  runIntimportLocalIntelligence,
+} from '../intimportIntelligence';
 import { buildMapperKnowledge } from '../mapperValueInference';
 import { loadMapperKnowledgeRows, MAPPER_FILE } from './mapperFixture';
 
@@ -80,14 +83,7 @@ describe.runIf(existsSync(POLAND_FILE) && existsSync(OLD_AUDIT))(
       const newScores = rows.map((row) => row.productionAccuracy.productAccuracy);
       const readiness = rows.reduce(
         (counts, row) => {
-          const role = row.recognition.intendedUsageRole;
-          const score = row.productionAccuracy;
-          if (row.recognitionTrace.finalStatus === 'IDENTITY_CONFLICT') counts.CONFLICT += 1;
-          else if (role === 'TOPPING_ONLY') counts.TOPPING_ONLY += 1;
-          else if (score.roleReadiness === 'BLOCKED') counts.BLOCKED += 1;
-          else if (score.roleReadiness === 'BASE_READY' && score.productAccuracy >= 85) {
-            counts.READY += 1;
-          } else counts.REVIEW += 1;
+          counts[classifyIntimportFinalResult(row)] += 1;
           return counts;
         },
         { READY: 0, REVIEW: 0, BLOCKED: 0, CONFLICT: 0, TOPPING_ONLY: 0 },

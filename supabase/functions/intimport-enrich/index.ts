@@ -66,6 +66,8 @@ const RESEARCHABLE = new Set([
   'energyKcal',
   'fat',
   'carbohydrate',
+  'sugars',
+  'fiber',
   'protein',
   'salt',
   'barcode',
