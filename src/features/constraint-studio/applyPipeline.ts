@@ -8792,6 +8792,11 @@ export class VerifiedApply {
       mainIdentityBase,
       currentConstraints,
     );
+    const userHeldMainIds = userHeldMainLineIds({
+      items: mainIdentityBase.items,
+      snapshots: verifiedProductBehaviorSnapshots,
+      excludeLineIds: technicalOnlyMainLineIds,
+    });
     // Sorbet exact five-step Direction (served QA 2026-08-22): the closed-form
     // projection moves only the canonical adjustable roles and keeps every Main
     // line byte-exact, so there is no Main frontier to certify — the Main
@@ -8804,18 +8809,37 @@ export class VerifiedApply {
       preview.kind === 'optimize' &&
       preview.mainHeldByExactDirection === true &&
       mainGroupLinesByteIdentical(mainIdentityBase, preview.proposedInput);
+    // An uncalibrated but semantically Main-capable product has no approved
+    // frontier to maximise. Preview therefore holds the owner's exact grams
+    // by contract. Apply must verify that contract and deterministically
+    // rebuild the same candidate instead of demanding a nonexistent maximum.
+    const mainHeldByUserContract =
+      preview.kind === 'optimize' &&
+      userHeldMainIds.length > 0 &&
+      preview.mainObjective?.status === 'held_by_contract' &&
+      mainGroupLinesByteIdentical(mainIdentityBase, preview.proposedInput);
     const requiresMainProof =
-      preview.kind === 'optimize' && adjustableMainIntent && !mainHeldByExactDirection;
-    if (mainHeldByExactDirection && adjustableMainIntent) {
+      preview.kind === 'optimize' &&
+      adjustableMainIntent &&
+      !mainHeldByExactDirection &&
+      !mainHeldByUserContract;
+    if ((mainHeldByExactDirection || mainHeldByUserContract) && adjustableMainIntent) {
       const rebuilt = buildOptimizePreview(current, currentConstraints, preview.createdAt, {
         ...rebuildOptions,
         excludedIngredientIds,
         productBehaviorSnapshots: verifiedProductBehaviorSnapshots,
         technicalOnlyMainLineIds,
       });
+      const rebuiltHeldContract =
+        mainHeldByUserContract &&
+        rebuilt.ok &&
+        rebuilt.preview.mainObjective?.status === 'held_by_contract' &&
+        mainGroupLinesByteIdentical(mainIdentityBase, rebuilt.preview.proposedInput);
       const rebuiltMatches =
         rebuilt.ok &&
-        rebuilt.preview.mainHeldByExactDirection === true &&
+        (mainHeldByExactDirection
+          ? rebuilt.preview.mainHeldByExactDirection === true
+          : rebuiltHeldContract) &&
         workingStateFingerprint(rebuilt.preview.proposedInput, rebuilt.preview.nextConstraints) ===
           workingStateFingerprint(preview.proposedInput, preview.nextConstraints);
       if (!rebuiltMatches) {

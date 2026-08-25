@@ -119,6 +119,7 @@ const IDS = {
   kiwi: 'PI-ING-000366',
   coffee: 'PI-ING-000166',
   water: 'PI-ING-001409',
+  hazelnut: 'PI-ING-000419',
 } as const;
 
 const line = (
@@ -485,6 +486,76 @@ describe('Main technical maximum — exact Watermelon authority', { timeout: SOL
     },
     20_000,
   );
+
+  it('trustlessly applies a sweetness target with the served Hazelnut Crown vector', () => {
+    const input: RecipeInput = {
+      mode: 'classic',
+      category: 'milk_gelato',
+      target_temperature_c: -11,
+      target_batch_grams: 1000,
+      machine_capacity_grams: null,
+      goals: {
+        formulation_strategy: 'eco',
+        direction_targets_active: true,
+        direction_targets: { sweetness: 1, softness: 0, creaminess: 0, flavor: 0 },
+      },
+      items: [
+        line('milk', IDS.milk, 480),
+        line('cream', IDS.cream, 214),
+        line('smp', IDS.smp, 48),
+        line('sucrose', IDS.sucrose, 109),
+        line('dextrose', IDS.dextrose, 46),
+        line('tara', IDS.tara, 3),
+        line('hazelnut', IDS.hazelnut, 100, 'main'),
+      ],
+    };
+    const snapshots = snapshotsWithApprovedEnvelope(input);
+    snapshots.hazelnut = {
+      ...snapshots.hazelnut!,
+      mainClassification: 'MAIN_BLOCKED_POLICY',
+      behaviorRole: 'MAIN_ALLOWED',
+      mainCapability: 'MAIN_CAPABLE_UNCALIBRATED',
+      mainAuthority: 'USER_HELD',
+      mainCalibrationLevel: 'NONE',
+      mainPolicyId: null,
+      mainPolicyVersion: null,
+      ecoFloorPercent: null,
+      optimalCeilingPercent: null,
+      hardLimitPercent: null,
+      mainEquivalentFactor: null,
+      mainBasis: null,
+      moduleEligibility: {
+        ...snapshots.hazelnut!.moduleEligibility,
+        MAIN: 'eligible',
+      },
+    };
+    const result = buildOptimizePreview(input, { byLineId: {} }, '2026-08-25T03:40:00.000Z', {
+      productBehaviorSnapshots: snapshots,
+      technicalOnlyMainLineIds: [],
+      requirePracticalPreview: true,
+    });
+    expect(result.ok, JSON.stringify(result)).toBe(true);
+    if (!result.ok) return;
+    expect(result.preview.mainObjective).toBeDefined();
+    expect(mainTotal(result.preview.proposedInput)).toBeGreaterThanOrEqual(100);
+
+    const committed = commitPreview(
+      input,
+      { byLineId: {} },
+      result.preview,
+      '2026-08-25T03:40:01.000Z',
+      'served-hazelnut-crown-direction',
+      [],
+      undefined,
+      null,
+      null,
+      null,
+      null,
+      snapshots,
+      [],
+    );
+    expect(committed.ok, JSON.stringify(committed)).toBe(true);
+  }, 30_000);
 
   // Full Direction sweep at 18 solver rounds — timeout budget only (see above).
   it('does not cross the 20% ECO Main floor to chase an extreme Direction target', () => {
