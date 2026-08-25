@@ -13,6 +13,7 @@ const SQL = readFileSync(
 describe('Production deviation decision audit migration', () => {
   it('extends the append-only run history without creating a second decision authority', () => {
     expect(SQL).toContain("'deviation_decision_accepted'");
+    expect(SQL).toContain("'degassing_acknowledged'");
     expect(SQL).toContain('insert into public.production_run_events');
     expect(SQL).not.toMatch(/create\s+table/i);
     expect(SQL).not.toMatch(/update\s+public\.mapper_basement/i);

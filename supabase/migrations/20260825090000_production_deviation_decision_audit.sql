@@ -13,6 +13,7 @@ alter table public.production_run_events
       'created','planned','started','actual_recorded','rescue_applied',
       'completed','cancelled','amended','note_added',
       'production_started','heat_information_acknowledged',
+      'degassing_acknowledged',
       'ingredient_actual_confirmed','actual_entry_corrected','variance_detected',
       'rescue_previewed','rescue_accepted','deviation_decision_accepted',
       'batch_target_changed','additional_ingredient_requested','ingredient_completed',
@@ -43,7 +44,8 @@ begin
     or (
       new.event_type in (
         'started','actual_recorded','rescue_applied','production_started',
-        'heat_information_acknowledged','ingredient_actual_confirmed',
+        'heat_information_acknowledged','degassing_acknowledged',
+        'ingredient_actual_confirmed',
         'actual_entry_corrected','variance_detected','rescue_previewed',
         'rescue_accepted','deviation_decision_accepted','batch_target_changed',
         'additional_ingredient_requested','ingredient_completed'
