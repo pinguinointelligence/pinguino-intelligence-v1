@@ -44,6 +44,24 @@ const unresolvedFormRecognition = classifyProductSemantics({
   sourceUrls: [],
 });
 
+const normalizedDosageRecognition = classifyProductSemantics({
+  name: 'Pasta orzechowa do lodów',
+  brand: 'Test',
+  manufacturer: 'Test',
+  manufacturerCode: null,
+  gtin: null,
+  productType: 'professional',
+  category: 'Professional gelato products',
+  subcategory: 'Pasty orzechowe',
+  variant: null,
+  ingredients: 'Orzechy laskowe 100%',
+  nutrition: null,
+  description: 'Pasta z orzechów laskowych.',
+  dosage: '100 g/L',
+  technicalParameters: null,
+  sourceUrls: [],
+});
+
 const behaviorRow = (
   overrides: Partial<MapperProductBehaviorAuthorityRow> = {},
 ): MapperProductBehaviorAuthorityRow => ({
@@ -176,6 +194,26 @@ describe('prospective ProductBehavior authority', () => {
     });
   });
 
+  it('carries the raw and normalized manufacturer dosage into ProductBehavior authority', () => {
+    const prospective = classifyProspectiveProductBehavior({
+      kind: 'normal_food',
+      engineUsable: true,
+      profileMatch: profileMatch(),
+      recognition: normalizedDosageRecognition,
+    });
+    expect(prospective.dosageInterpretation).toMatchObject({
+      evidence: '100 g/L',
+      normalizedMassPercent: 10,
+      normalizationBasis: 'GELLATTI_BASE_1000G',
+    });
+
+    const trusted = validateProductBehaviorAuthority({
+      productProfile: productProfile({ recognition: normalizedDosageRecognition }),
+      behaviorRows: [behaviorRow()],
+    });
+    expect(trusted.dosageInterpretation).toEqual(prospective.dosageInterpretation);
+  });
+
   it('accepts normal food only when the frozen whole-profile reference is eligible', () => {
     expect(
       classifyProspectiveProductBehavior({
@@ -203,6 +241,7 @@ describe('prospective ProductBehavior authority', () => {
       baseRecipeEligible: false,
       toppingEligible: false,
       intendedUsageRole: 'BASE_ONLY',
+      dosageInterpretation: null,
       referenceMapperIngredientId: null,
       classificationReasonCodes: ['family_and_form_evidence_missing'],
     });

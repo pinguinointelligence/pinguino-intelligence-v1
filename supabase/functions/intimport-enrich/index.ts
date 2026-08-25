@@ -3,6 +3,7 @@ import { classifySourceAuthority } from '../_shared/sourceAuthority.ts';
 import { sha256Text, stableJson } from '../_shared/productScanner.ts';
 import {
   PRODUCT_RECOGNITION_MODEL_SCHEMA,
+  PRODUCT_RECOGNITION_CACHE_REVISION,
   PRODUCT_RECOGNITION_VERSION,
   canonicalizeProductSemanticEvidence,
   classifyProductSemantics,
@@ -155,13 +156,24 @@ top-level evidence field names. reasonCodes are concise uppercase audit facts, n
 const semanticEvidenceFromRequest = (value: unknown): ProductSemanticEvidence | null => {
   const raw = objectValue(value);
   const allowed = new Set([
-    'name', 'brand', 'manufacturer', 'manufacturerCode', 'gtin', 'productType', 'category',
-    'subcategory', 'variant', 'ingredients', 'nutrition', 'description', 'dosage',
-    'technicalParameters', 'sourceUrls',
+    'name',
+    'brand',
+    'manufacturer',
+    'manufacturerCode',
+    'gtin',
+    'productType',
+    'category',
+    'subcategory',
+    'variant',
+    'ingredients',
+    'nutrition',
+    'description',
+    'dosage',
+    'technicalParameters',
+    'sourceUrls',
   ]);
   if (Object.keys(raw).some((key) => !allowed.has(key))) return null;
-  const textOrNull = (entry: unknown): string | null =>
-    typeof entry === 'string' ? entry : null;
+  const textOrNull = (entry: unknown): string | null => (typeof entry === 'string' ? entry : null);
   return canonicalizeProductSemanticEvidence({
     name: textOrNull(raw.name),
     brand: textOrNull(raw.brand),
@@ -234,11 +246,14 @@ Deno.serve(async (request) => {
 
     const semanticModel = Deno.env.get('INTIMPORT_ENRICHMENT_MODEL') || 'gpt-5.6-luna';
     const semanticCap = numberEnv('INTIMPORT_MAX_EXTERNAL_CALLS_PER_IMPORT', 40);
-    const idempotencyKey = await sha256Text(stableJson({
-      action: 'semantic_classification',
-      classifierVersion: PRODUCT_RECOGNITION_VERSION,
-      evidence,
-    }));
+    const idempotencyKey = await sha256Text(
+      stableJson({
+        action: 'semantic_classification',
+        classifierVersion: PRODUCT_RECOGNITION_VERSION,
+        cacheRevision: PRODUCT_RECOGNITION_CACHE_REVISION,
+        evidence,
+      }),
+    );
     const { data: cachedSemantic, error: cacheError } = await service
       .from('intimport_semantic_classification_usage')
       .select('result_json')
@@ -267,9 +282,10 @@ Deno.serve(async (request) => {
         cacheHit: true,
         calls: 0,
         model: semanticModel,
-        error: typeof cachedResult.error === 'string'
-          ? cachedResult.error
-          : 'semantic_attempt_not_repeated',
+        error:
+          typeof cachedResult.error === 'string'
+            ? cachedResult.error
+            : 'semantic_attempt_not_repeated',
       });
     }
 
@@ -287,10 +303,13 @@ Deno.serve(async (request) => {
     );
     if (semanticReservationError) return json({ error: 'semantic_usage_unavailable' }, 503);
     if (reservation === 'CAP_REACHED') {
-      return json({
-        error: 'intimport_semantic_call_cap_reached',
-        cap: semanticCap,
-      }, 429);
+      return json(
+        {
+          error: 'intimport_semantic_call_cap_reached',
+          cap: semanticCap,
+        },
+        429,
+      );
     }
     if (reservation !== 'RESERVED') {
       return json({
@@ -303,18 +322,20 @@ Deno.serve(async (request) => {
       });
     }
 
-    const finalizeSemanticAttempt = async (result: Record<string, unknown>) => service
-      .from('intimport_semantic_classification_usage')
-      .update({
-        input_tokens: Number(result.inputTokens ?? 0),
-        output_tokens: Number(result.outputTokens ?? 0),
-        latency_ms: Number(result.latencyMs ?? 0),
-        result_json: result,
-      })
-      .eq('user_id', auth.user.id)
-      .eq('idempotency_key', idempotencyKey);
+    const finalizeSemanticAttempt = async (result: Record<string, unknown>) =>
+      service
+        .from('intimport_semantic_classification_usage')
+        .update({
+          input_tokens: Number(result.inputTokens ?? 0),
+          output_tokens: Number(result.outputTokens ?? 0),
+          latency_ms: Number(result.latencyMs ?? 0),
+          result_json: result,
+        })
+        .eq('user_id', auth.user.id)
+        .eq('idempotency_key', idempotencyKey);
 
-    const prompt = `Exact product evidence (the only allowed source):\n${JSON.stringify(evidence)}\n` +
+    const prompt =
+      `Exact product evidence (the only allowed source):\n${JSON.stringify(evidence)}\n` +
       `Deterministic unresolved dimensions: ${deterministic.modelReasonCodes.join(', ') || 'none'}.`;
     const startedAt = Date.now();
     let semanticPayload: Record<string, unknown>;
@@ -364,11 +385,14 @@ Deno.serve(async (request) => {
       });
     }
     const outputText = Array.isArray(semanticPayload.output)
-      ? semanticPayload.output.flatMap((item) => {
-          const row = objectValue(item);
-          return Array.isArray(row.content) ? row.content : [];
-        }).map((part) => objectValue(part).text)
-          .filter((text): text is string => typeof text === 'string').join('')
+      ? semanticPayload.output
+          .flatMap((item) => {
+            const row = objectValue(item);
+            return Array.isArray(row.content) ? row.content : [];
+          })
+          .map((part) => objectValue(part).text)
+          .filter((text): text is string => typeof text === 'string')
+          .join('')
       : null;
     const modelOutput: unknown = (() => {
       try {
@@ -586,7 +610,13 @@ Deno.serve(async (request) => {
   } catch {
     // A single product's failure must never fail the batch (§26).
     return json(
-      { facts: [], sources: [], notFound: requestedFields, calls: 0, error: 'provider_unavailable' },
+      {
+        facts: [],
+        sources: [],
+        notFound: requestedFields,
+        calls: 0,
+        error: 'provider_unavailable',
+      },
       200,
     );
   }
@@ -651,9 +681,8 @@ Deno.serve(async (request) => {
   });
 
   const webCalls = Array.isArray(payload.output)
-    ? payload.output.filter((item) =>
-        String(objectValue(item).type ?? '').includes('web_search'),
-      ).length
+    ? payload.output.filter((item) => String(objectValue(item).type ?? '').includes('web_search'))
+        .length
     : 0;
   const usage = objectValue(payload.usage);
   const result = {

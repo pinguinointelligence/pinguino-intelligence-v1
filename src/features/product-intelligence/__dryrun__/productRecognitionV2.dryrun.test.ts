@@ -216,8 +216,13 @@ describe.runIf(existsSync(POLAND_FILE) && existsSync(ACCEPTED_OWNER_AUDIT))(
           dosage_dependent: row.recognition.isDosageDependent,
           dosage_semantics: row.recognition.dosage.semantics,
           dosage_value: row.recognition.dosage.value,
+          dosage_value_max: row.recognition.dosage.valueMax,
           dosage_unit: row.recognition.dosage.unit,
           dosage_basis: row.recognition.dosage.basis,
+          dosage_raw: row.recognition.dosage.evidence,
+          dosage_normalized_percent: row.recognition.dosage.normalizedMassPercent,
+          dosage_normalized_percent_max: row.recognition.dosage.normalizedMassPercentMax,
+          dosage_normalization_basis: row.recognition.dosage.normalizationBasis,
           density_resolved: row.recognition.dosage.densityResolved,
           mapper_candidates_before_filter: row.recognitionTrace.mapperCandidatesBeforeFilter,
           mapper_candidates_after_filter: row.recognitionTrace.mapperCandidatesAfterFilter,
@@ -327,14 +332,24 @@ describe.runIf(existsSync(POLAND_FILE) && existsSync(ACCEPTED_OWNER_AUDIT))(
       const mapperRoleCounts = countBy(mapperAudit.map((row) => row.proposed_role));
 
       const dosage = {
-        gPerLParsed: rows.filter((row) => row.recognition.dosage.unit === 'G_PER_L').length,
-        asDesired: rows.filter((row) => row.recognition.dosage.unit === 'AS_DESIRED').length,
-        densityResolved: rows.filter((row) => row.recognition.dosage.densityResolved).length,
-        basisUnknownOrReview: rows.filter(
+        gPerLFound: rows.filter((row) => row.recognition.dosage.unit === 'G_PER_L').length,
+        gPerLSuccessfullyNormalized: rows.filter(
           (row) =>
-            row.recognition.dosage.semantics === 'UNKNOWN' ||
-            (row.recognition.dosage.semantics === 'FIXED' &&
-              row.recognition.dosage.basis === 'UNKNOWN'),
+            row.recognition.dosage.unit === 'G_PER_L' &&
+            row.recognition.dosage.normalizedMassPercent !== null &&
+            row.recognition.dosage.normalizationBasis === 'GELLATTI_BASE_1000G',
+        ).length,
+        asDesired: rows.filter((row) => row.recognition.dosage.unit === 'AS_DESIRED').length,
+        otherNumericUnits: rows.filter((row) =>
+          ['G_PER_KG', 'G_PER_10_KG', 'PERCENT'].includes(row.recognition.dosage.unit),
+        ).length,
+        unresolvedMlPerL: rows.filter((row) => row.recognition.dosage.unit === 'ML_PER_L').length,
+        unknownOrNotStated: rows.filter((row) => row.recognition.dosage.unit === 'UNKNOWN').length,
+        sourceBasisUnknownButNormalized: rows.filter(
+          (row) =>
+            row.recognition.dosage.unit === 'G_PER_L' &&
+            row.recognition.dosage.basis === 'UNKNOWN' &&
+            row.recognition.dosage.normalizedMassPercent !== null,
         ).length,
       };
       const carbonation = countBy(rows.map((row) => row.carbonation.status));
@@ -421,6 +436,7 @@ describe.runIf(existsSync(POLAND_FILE) && existsSync(ACCEPTED_OWNER_AUDIT))(
       expect(Object.values(blockedCounts).reduce((sum, value) => sum + value, 0)).toBe(258);
       expect(Object.values(reviewCounts).reduce((sum, value) => sum + value, 0)).toBe(373);
       expect(Object.values(mapperRoleCounts).reduce((sum, value) => sum + value, 0)).toBe(2088);
+      expect(dosage.gPerLFound).toBe(dosage.gPerLSuccessfullyNormalized);
       expect(suspiciousReady).toHaveLength(0);
       expect(createHash('sha256').update(readFileSync(POLAND_FILE)).digest('hex')).toBe(
         polandBefore,

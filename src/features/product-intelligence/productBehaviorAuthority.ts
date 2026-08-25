@@ -20,6 +20,7 @@ export interface ProspectiveProductBehaviorAuthority {
   baseRecipeEligible: boolean;
   toppingEligible: boolean;
   intendedUsageRole: ProductIntendedUsageRole;
+  dosageInterpretation: ProductSemanticClassification['dosage'] | null;
   referenceMapperIngredientId: string | null;
   classificationReasonCodes: string[];
 }
@@ -54,6 +55,7 @@ export interface TrustedProductBehaviorAuthority {
   baseRecipeEligible: boolean;
   toppingEligible: boolean;
   intendedUsageRole: ProductIntendedUsageRole;
+  dosageInterpretation: ProductSemanticClassification['dosage'] | null;
   /** Audit/reference knowledge only. The canonical binding column stays null. */
   referenceMapperIngredientId: string | null;
   runtimeMapperIngredientId: null;
@@ -105,6 +107,7 @@ export function classifyProspectiveProductBehavior(input: {
   recognition?: ProductSemanticClassification | null;
 }): ProspectiveProductBehaviorAuthority {
   const intendedUsageRole = input.recognition?.intendedUsageRole ?? 'BASE_ONLY';
+  const dosageInterpretation = input.recognition?.dosage ?? null;
   const baseRequested = intendedUsageRole === 'BASE_ONLY' || intendedUsageRole === 'BASE_AND_TOPPING';
   const toppingRequested = intendedUsageRole === 'TOPPING_ONLY' || intendedUsageRole === 'BASE_AND_TOPPING';
   if (!input.engineUsable) {
@@ -113,6 +116,7 @@ export function classifyProspectiveProductBehavior(input: {
       baseRecipeEligible: false,
       toppingEligible: false,
       intendedUsageRole,
+      dosageInterpretation,
       referenceMapperIngredientId: null,
       classificationReasonCodes: ['product_owned_profile_missing'],
     };
@@ -123,6 +127,7 @@ export function classifyProspectiveProductBehavior(input: {
       baseRecipeEligible: false,
       toppingEligible: false,
       intendedUsageRole,
+      dosageInterpretation,
       referenceMapperIngredientId: null,
       classificationReasonCodes: [TECHNICAL_REASON],
     };
@@ -133,6 +138,7 @@ export function classifyProspectiveProductBehavior(input: {
       baseRecipeEligible: false,
       toppingEligible: false,
       intendedUsageRole,
+      dosageInterpretation,
       referenceMapperIngredientId: null,
       classificationReasonCodes: ['product_semantics_unresolved'],
     };
@@ -143,6 +149,7 @@ export function classifyProspectiveProductBehavior(input: {
       baseRecipeEligible: false,
       toppingEligible: false,
       intendedUsageRole,
+      dosageInterpretation,
       referenceMapperIngredientId: null,
       classificationReasonCodes: ['product_role_unresolved'],
     };
@@ -159,6 +166,7 @@ export function classifyProspectiveProductBehavior(input: {
       baseRecipeEligible: false,
       toppingEligible: false,
       intendedUsageRole,
+      dosageInterpretation,
       referenceMapperIngredientId: null,
       classificationReasonCodes: [REVIEW_REASON],
     };
@@ -170,6 +178,7 @@ export function classifyProspectiveProductBehavior(input: {
       baseRecipeEligible: false,
       toppingEligible: false,
       intendedUsageRole,
+      dosageInterpretation,
       referenceMapperIngredientId: null,
       classificationReasonCodes: [REVIEW_REASON],
     };
@@ -185,6 +194,7 @@ export function classifyProspectiveProductBehavior(input: {
       baseRecipeEligible: false,
       toppingEligible: false,
       intendedUsageRole,
+      dosageInterpretation,
       referenceMapperIngredientId: null,
       classificationReasonCodes: [MODULE_REASON],
     };
@@ -194,6 +204,7 @@ export function classifyProspectiveProductBehavior(input: {
     baseRecipeEligible: baseRequested,
     toppingEligible: toppingRequested,
     intendedUsageRole,
+    dosageInterpretation,
     referenceMapperIngredientId: reference.ingredient_id,
     classificationReasonCodes: [],
   };
@@ -250,6 +261,7 @@ function unresolvedAuthority(input: {
     baseRecipeEligible: false,
     toppingEligible: false,
     intendedUsageRole,
+    dosageInterpretation: input.profile.recognition?.dosage ?? null,
     referenceMapperIngredientId: reference?.mapper_ingredient_id ?? null,
     runtimeMapperIngredientId: null,
     mapperBehaviorBindingId: reference?.id ?? null,
@@ -355,6 +367,7 @@ export function validateProductBehaviorAuthority(input: {
     baseRecipeEligible: baseRequested,
     toppingEligible: toppingRequested,
     intendedUsageRole,
+    dosageInterpretation: recognition?.dosage ?? null,
     referenceMapperIngredientId: reference.mapper_ingredient_id,
     runtimeMapperIngredientId: null,
     mapperBehaviorBindingId: reference.id,

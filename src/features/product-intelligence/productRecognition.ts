@@ -13,6 +13,8 @@
 import { foldLatin, inferMapperFamily, type ProductFamilyId } from './mapperFamilyInference.ts';
 
 export const PRODUCT_RECOGNITION_VERSION = 'PRODUCT_RECOGNITION_V2' as const;
+/** Bumps the exact-evidence cache without changing the persisted V2 authority contract. */
+export const PRODUCT_RECOGNITION_CACHE_REVISION = 'DOSAGE_GELLATTI_BASE_1000G_COFFEE_V1' as const;
 
 export type ProductArchetype =
   | 'NORMAL_INGREDIENT'
@@ -20,6 +22,7 @@ export type ProductArchetype =
   | 'FRUIT_PRODUCT'
   | 'CHOCOLATE'
   | 'TEA'
+  | 'COFFEE'
   | 'CONFECTIONERY'
   | 'FLAVOR_PASTE'
   | 'FLAVOR_CONCENTRATE'
@@ -37,6 +40,7 @@ export type ProductArchetype =
 export type ProductSemanticFamily =
   | ProductFamilyId
   | 'tea'
+  | 'coffee'
   | 'confectionery'
   | 'variegato'
   | 'topping'
@@ -61,6 +65,7 @@ export type ProductFlavorDomain =
   | 'HAZELNUT'
   | 'COCONUT'
   | 'TEA'
+  | 'COFFEE'
   | 'FRUIT'
   | 'NEUTRAL'
   | 'UNKNOWN';
@@ -68,15 +73,24 @@ export type ProductFlavorDomain =
 export type ProductDosageBasis =
   'WATER' | 'MILK' | 'LIQUID_MIX' | 'FINISHED_MIX' | 'PRODUCT' | 'UNKNOWN';
 
-export type ProductDosageUnit = 'G_PER_L' | 'G_PER_KG' | 'PERCENT' | 'AS_DESIRED' | 'UNKNOWN';
+export type ProductDosageUnit =
+  'G_PER_L' | 'G_PER_KG' | 'G_PER_10_KG' | 'ML_PER_L' | 'PERCENT' | 'AS_DESIRED' | 'UNKNOWN';
+
+export type ProductDosageNormalizationBasis =
+  'GELLATTI_BASE_1000G' | 'SOURCE_G_PER_KG_1000G' | 'SOURCE_G_PER_10_KG_10000G' | 'SOURCE_PERCENT';
 
 export interface ProductDosageInterpretation {
   semantics: 'FIXED' | 'AS_DESIRED' | 'NONE' | 'UNKNOWN';
   value: number | null;
+  /** Upper source value when the manufacturer stated a range. */
+  valueMax: number | null;
   unit: ProductDosageUnit;
   basis: ProductDosageBasis;
-  /** Deliberately null for g/L unless an explicit density authority is supplied. */
+  /** Gellatti working percentage; never an automatic recipe dose or permission gate. */
   normalizedMassPercent: number | null;
+  normalizedMassPercentMax: number | null;
+  normalizationBasis: ProductDosageNormalizationBasis | null;
+  /** Retained for backward-compatible traces; no density subsystem is consulted. */
   densityResolved: boolean;
   evidence: string | null;
   reasonCodes: string[];
@@ -202,6 +216,7 @@ const PRODUCT_ARCHETYPES: readonly ProductArchetype[] = [
   'FRUIT_PRODUCT',
   'CHOCOLATE',
   'TEA',
+  'COFFEE',
   'CONFECTIONERY',
   'FLAVOR_PASTE',
   'FLAVOR_CONCENTRATE',
@@ -238,6 +253,7 @@ const SEMANTIC_FAMILIES: readonly ProductSemanticFamily[] = [
   'base_mix',
   'alcohol',
   'tea',
+  'coffee',
   'confectionery',
   'variegato',
   'topping',
@@ -273,6 +289,7 @@ const FLAVOR_DOMAINS: readonly ProductFlavorDomain[] = [
   'HAZELNUT',
   'COCONUT',
   'TEA',
+  'COFFEE',
   'FRUIT',
   'NEUTRAL',
   'UNKNOWN',
@@ -286,6 +303,8 @@ const DOSAGE_SEMANTICS: readonly ProductDosageInterpretation['semantics'][] = [
 const DOSAGE_UNITS: readonly ProductDosageUnit[] = [
   'G_PER_L',
   'G_PER_KG',
+  'G_PER_10_KG',
+  'ML_PER_L',
   'PERCENT',
   'AS_DESIRED',
   'UNKNOWN',
@@ -394,61 +413,122 @@ const dosageBasis = (text: string): ProductDosageBasis => {
   return 'UNKNOWN';
 };
 
-/** Parse the manufacturer's dosage literally. No density and no mass percentage are invented. */
+const dosageNumber = (value: string): number | null => {
+  const parsed = Number(value.replace(',', '.'));
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const normalizedPercent = (value: number | null, divisor: number): number | null =>
+  value === null ? null : Math.round((value / divisor) * 1_000_000) / 1_000_000;
+
+/**
+ * Parse the manufacturer's dosage literally and derive only the accepted
+ * Gellatti working percentage. Raw wording remains the source of truth and the
+ * derived percentage is informational — it never becomes an automatic dose.
+ */
 export function parseProductDosage(value: string | null | undefined): ProductDosageInterpretation {
   const raw = meaningful(value);
   if (!raw) {
     return {
       semantics: 'NONE',
       value: null,
+      valueMax: null,
       unit: 'UNKNOWN',
       basis: 'UNKNOWN',
       normalizedMassPercent: null,
+      normalizedMassPercentMax: null,
+      normalizationBasis: null,
       densityResolved: false,
       evidence: null,
       reasonCodes: ['DOSAGE_NOT_STATED'],
     };
   }
   const text = normalized(raw);
+  const dosageSyntax = foldLatin(raw)
+    .toLowerCase()
+    .replace(/[–—]/g, '-')
+    .replace(/[^a-z0-9%/.,\-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
   if (/\b(q\s*\.?\s*b\s*\.?|quanto basta|as desired|to taste|wedlug uznania)\b/.test(text)) {
     return {
       semantics: 'AS_DESIRED',
       value: null,
+      valueMax: null,
       unit: 'AS_DESIRED',
       basis: 'UNKNOWN',
       normalizedMassPercent: null,
+      normalizedMassPercentMax: null,
+      normalizationBasis: null,
       densityResolved: false,
       evidence: raw,
       reasonCodes: ['DOSAGE_AS_DESIRED'],
     };
   }
-  const fixed = text.match(/(\d+(?:[.,]\d+)?)\s*g\s*\/\s*(l|kg)\b/);
+  const range = dosageSyntax.match(
+    /(\d+(?:[.,]\d+)?)\s*(?:-|to|do)\s*(\d+(?:[.,]\d+)?)\s*g\s*\/\s*(10\s*kg|kg|l)\b/,
+  );
+  const fixed = dosageSyntax.match(/(\d+(?:[.,]\d+)?)\s*g\s*\/\s*(10\s*kg|kg|l)\b/);
   if (fixed) {
-    const parsed = Number(fixed[1]!.replace(',', '.'));
-    const unit: ProductDosageUnit = fixed[2] === 'l' ? 'G_PER_L' : 'G_PER_KG';
+    const parsed = dosageNumber(range?.[1] ?? fixed[1]!);
+    const parsedMax = range ? dosageNumber(range[2]!) : null;
+    const denominator = (range?.[3] ?? fixed[2]!).replace(/\s+/g, '');
+    const unit: ProductDosageUnit =
+      denominator === 'l' ? 'G_PER_L' : denominator === '10kg' ? 'G_PER_10_KG' : 'G_PER_KG';
+    const divisor = unit === 'G_PER_10_KG' ? 100 : 10;
+    const normalizationBasis: ProductDosageNormalizationBasis =
+      unit === 'G_PER_L'
+        ? 'GELLATTI_BASE_1000G'
+        : unit === 'G_PER_10_KG'
+          ? 'SOURCE_G_PER_10_KG_10000G'
+          : 'SOURCE_G_PER_KG_1000G';
     return {
       semantics: 'FIXED',
-      value: Number.isFinite(parsed) ? parsed : null,
+      value: parsed,
+      valueMax: parsedMax,
       unit,
       basis: dosageBasis(text),
-      // Even g/kg is kept literal here: its denominator may be a component,
-      // liquid mix or finished product and the basis belongs in a separate field.
-      normalizedMassPercent: null,
+      normalizedMassPercent: normalizedPercent(parsed, divisor),
+      normalizedMassPercentMax: normalizedPercent(parsedMax, divisor),
+      normalizationBasis,
       densityResolved: false,
       evidence: raw,
       reasonCodes:
-        unit === 'G_PER_L' ? ['DOSAGE_G_PER_L_PRESERVED'] : ['DOSAGE_G_PER_KG_PRESERVED'],
+        unit === 'G_PER_L'
+          ? ['DOSAGE_G_PER_L_NORMALIZED_GELLATTI_BASE_1000G']
+          : unit === 'G_PER_10_KG'
+            ? ['DOSAGE_G_PER_10_KG_NORMALIZED']
+            : ['DOSAGE_G_PER_KG_NORMALIZED'],
     };
   }
-  const percent = text.match(/(\d+(?:[.,]\d+)?)\s*%/);
-  if (percent) {
-    const parsed = Number(percent[1]!.replace(',', '.'));
+  const milliliters = dosageSyntax.match(/(\d+(?:[.,]\d+)?)\s*ml\s*\/\s*l\b/);
+  if (milliliters) {
     return {
       semantics: 'FIXED',
-      value: Number.isFinite(parsed) ? parsed : null,
+      value: dosageNumber(milliliters[1]!),
+      valueMax: null,
+      unit: 'ML_PER_L',
+      basis: dosageBasis(text),
+      normalizedMassPercent: null,
+      normalizedMassPercentMax: null,
+      normalizationBasis: null,
+      densityResolved: false,
+      evidence: raw,
+      reasonCodes: ['DOSAGE_ML_PER_L_REQUIRES_REVIEW'],
+    };
+  }
+  const percent = dosageSyntax.match(/(\d+(?:[.,]\d+)?)\s*%/);
+  if (percent) {
+    const parsed = dosageNumber(percent[1]!);
+    return {
+      semantics: 'FIXED',
+      value: parsed,
+      valueMax: null,
       unit: 'PERCENT',
       basis: dosageBasis(text),
       normalizedMassPercent: parsed,
+      normalizedMassPercentMax: null,
+      normalizationBasis: 'SOURCE_PERCENT',
       densityResolved: false,
       evidence: raw,
       reasonCodes: ['DOSAGE_PERCENT_EXACT'],
@@ -457,9 +537,12 @@ export function parseProductDosage(value: string | null | undefined): ProductDos
   return {
     semantics: 'UNKNOWN',
     value: null,
+    valueMax: null,
     unit: 'UNKNOWN',
     basis: 'UNKNOWN',
     normalizedMassPercent: null,
+    normalizedMassPercentMax: null,
+    normalizationBasis: null,
     densityResolved: false,
     evidence: raw,
     reasonCodes: ['DOSAGE_SEMANTICS_UNRESOLVED'],
@@ -503,9 +586,8 @@ const archetypeOf = (
   ) {
     return 'BASE_MIX';
   }
-  if (/\b(tea|herbat|te verde|te nero|matcha)\w*/.test(all)) return 'TEA';
   if (
-    /\b(bakery|sweets|slodycz|baton|wafer|wafel|cookie|biscuit|herbatnik|ciastk|praline bar)\b/.test(
+    /\b(bakery|sweets|slodycz\w*|baton\w*|wafer\w*|wafel\w*|cookie\w*|biscuit\w*|herbatnik\w*|ciastk\w*|praline bar)\b/.test(
       all,
     )
   ) {
@@ -519,6 +601,16 @@ const archetypeOf = (
     inferredFamily === 'flavor_paste'
   ) {
     return 'FLAVOR_PASTE';
+  }
+  // A retailer category such as "Coffee, tea & spices" is only a container.
+  // Identity/subcategory/description must identify the actual coffee or tea;
+  // otherwise spices and salts would silently become tea.
+  const beverageIdentity = `${identity} ${subcategory} ${description}`;
+  if (/\b(coffee|caffe|kaw(?:a|y|ie|owy|owa|owe)|espresso)\b/.test(beverageIdentity)) {
+    return 'COFFEE';
+  }
+  if (/\b(tea|herbata|herbaty|herbacian\w*|te verde|te nero|matcha)\b/.test(beverageIdentity)) {
+    return 'TEA';
   }
   if (inferredFamily === 'nut_paste') return 'NUT_PASTE';
   if (inferredFamily === 'fruit') return 'FRUIT_PRODUCT';
@@ -538,6 +630,7 @@ const semanticFamilyOf = (
   inferredFamily: ProductFamilyId | null,
 ): ProductSemanticFamily => {
   if (archetype === 'TEA') return 'tea';
+  if (archetype === 'COFFEE') return 'coffee';
   if (archetype === 'CONFECTIONERY') return 'confectionery';
   if (archetype === 'VARIEGATO') return 'variegato';
   if (archetype === 'TOPPING') return 'topping';
@@ -569,7 +662,9 @@ const formOf = (
   if (/\b(dry tea|dried leaves|suszon[a-z]* lisc|herbata sucha|lisciasta)\b/.test(all))
     return 'DRY';
   if (
-    /\b(baton|bar|wafer|wafel|cookie|biscuit|ciastk|chocolate tablet|tabliczk)\w*/.test(all) ||
+    /\b(baton\w*|bar\b|wafer\w*|wafel\w*|cookie\w*|biscuit\w*|ciastk\w*|chocolate tablet\w*|tabliczk\w*)/.test(
+      all,
+    ) ||
     archetype === 'CONFECTIONERY'
   )
     return 'SOLID';
@@ -577,10 +672,11 @@ const formOf = (
     return /\b(liquid|plyn)\b/.test(all) ? 'LIQUID' : 'POWDER';
   }
   if (archetype === 'TEA') return 'DRY';
+  if (archetype === 'COFFEE') return 'DRY';
   return 'UNKNOWN';
 };
 
-const flavorDomainOf = (text: string): ProductFlavorDomain => {
+const flavorDomainOf = (text: string, archetype: ProductArchetype): ProductFlavorDomain => {
   if (/\b(white chocolate|bial[a-z]* czekolad|cioccolato bianco)\b/.test(text))
     return 'CHOCOLATE_WHITE';
   if (/\b(dark chocolate|gorzka czekolad|czekolad[a-z]* ciemn|fondente)\b/.test(text))
@@ -590,7 +686,13 @@ const flavorDomainOf = (text: string): ProductFlavorDomain => {
   if (/\b(pistach|pistacj)\w*/.test(text)) return 'PISTACHIO';
   if (/\b(hazelnut|nocciol|orzech laskow)\w*/.test(text)) return 'HAZELNUT';
   if (/\b(coconut|cocos|kokos)\w*/.test(text)) return 'COCONUT';
-  if (/\b(tea|herbat|matcha)\w*/.test(text)) return 'TEA';
+  if (
+    archetype === 'COFFEE' ||
+    /\b(coffee|caffe|kaw(?:a|y|ie|owy|owa|owe)|espresso)\b/.test(text)
+  ) {
+    return 'COFFEE';
+  }
+  if (archetype === 'TEA') return 'TEA';
   if (/\b(fruit|owoc|puree|pulp|przecier)\w*/.test(text)) return 'FRUIT';
   if (/\b(chocolate|choco|czekolad|cocoa|kakao)\w*/.test(text)) return 'CHOCOLATE_GENERAL';
   if (/\b(neutral|neutralny|neutro)\b/.test(text)) return 'NEUTRAL';
@@ -620,7 +722,8 @@ const mapperCategoriesFor = (
     return ['inclusion', 'bakery_inclusion', 'confectionery_inclusion'];
   if (archetype === 'COATING') return ['coating', 'chocolate'];
   const map: Partial<Record<ProductSemanticFamily, string[]>> = {
-    tea: ['tea'],
+    tea: ['coffee_tea'],
+    coffee: ['coffee_tea'],
     nut_paste: ['nut', 'flavor_paste'],
     chocolate: ['chocolate', 'cocoa'],
     cocoa_butter: ['chocolate', 'cocoa', 'fat'],
@@ -664,7 +767,7 @@ export function classifyProductSemantics(
   const physicalForm = formOf(identity, category, subcategory, description, productArchetype);
   const dosage = parseProductDosage(input.dosage);
   const intendedUsageRole = roleOf(productArchetype, all);
-  const flavorDomain = flavorDomainOf(all);
+  const flavorDomain = flavorDomainOf(all, productArchetype);
   const productType = normalized(input.productType);
   const isProfessionalProduct =
     /\b(professional|technical)\b/.test(productType) ||

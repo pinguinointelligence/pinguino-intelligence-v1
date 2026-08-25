@@ -89,20 +89,66 @@ describe('Product Recognition V2 — deterministic semantic authority', () => {
     expect(result.intendedUsageRole).toBe('BASE_ONLY');
   });
 
-  it('parses g/L without inventing a percent or a density conversion', () => {
-    expect(parseProductDosage('100 g/L gotowej mieszanki')).toMatchObject({
-      semantics: 'FIXED',
+  it('normalizes manufacturer g/L against the final 1000 g Gellatti base rule', () => {
+    for (const [raw, value, percent] of [
+      ['3 g/L', 3, 0.3],
+      ['50g/l', 50, 5],
+      ['100 g/L gotowej mieszanki', 100, 10],
+      ['150 g/L', 150, 15],
+      ['450 g/L', 450, 45],
+    ] as const) {
+      expect(parseProductDosage(raw)).toMatchObject({
+        semantics: 'FIXED',
+        value,
+        valueMax: null,
+        unit: 'G_PER_L',
+        normalizedMassPercent: percent,
+        normalizedMassPercentMax: null,
+        normalizationBasis: 'GELLATTI_BASE_1000G',
+        densityResolved: false,
+        evidence: raw,
+      });
+    }
+    expect(parseProductDosage('100 g/L gotowej mieszanki').basis).toBe('FINISHED_MIX');
+  });
+
+  it('normalizes a g/L range while retaining the exact manufacturer wording', () => {
+    expect(parseProductDosage('100–250 g/L')).toMatchObject({
       value: 100,
+      valueMax: 250,
       unit: 'G_PER_L',
-      basis: 'FINISHED_MIX',
-      normalizedMassPercent: null,
-      densityResolved: false,
+      normalizedMassPercent: 10,
+      normalizedMassPercentMax: 25,
+      normalizationBasis: 'GELLATTI_BASE_1000G',
+      evidence: '100–250 g/L',
     });
-    expect(parseProductDosage('50g/l')).toMatchObject({
-      value: 50,
-      unit: 'G_PER_L',
-      basis: 'UNKNOWN',
+  });
+
+  it('normalizes other real mass units by their own denominator and never routes ml/L through g/L', () => {
+    expect(parseProductDosage('25 g/kg gotowego produktu')).toMatchObject({
+      value: 25,
+      unit: 'G_PER_KG',
+      normalizedMassPercent: 2.5,
+      normalizationBasis: 'SOURCE_G_PER_KG_1000G',
+    });
+    expect(parseProductDosage('30 g/10 kg mieszanki')).toMatchObject({
+      value: 30,
+      unit: 'G_PER_10_KG',
+      normalizedMassPercent: 0.3,
+      normalizationBasis: 'SOURCE_G_PER_10_KG_10000G',
+    });
+    expect(parseProductDosage('4% gotowej mieszanki')).toMatchObject({
+      value: 4,
+      unit: 'PERCENT',
+      normalizedMassPercent: 4,
+      normalizationBasis: 'SOURCE_PERCENT',
+    });
+    expect(parseProductDosage('20 ml/L')).toMatchObject({
+      value: 20,
+      unit: 'ML_PER_L',
       normalizedMassPercent: null,
+      normalizationBasis: null,
+      reasonCodes: ['DOSAGE_ML_PER_L_REQUIRES_REVIEW'],
     });
   });
 
@@ -122,6 +168,8 @@ describe('Product Recognition V2 — deterministic semantic authority', () => {
       semantics: 'AS_DESIRED',
       value: null,
       unit: 'AS_DESIRED',
+      normalizedMassPercent: null,
+      normalizationBasis: null,
     });
     expect(result.intendedUsageRole).toBe('TOPPING_ONLY');
     expect(result.isDosageDependent).toBe(false);
@@ -184,6 +232,55 @@ describe('Product Recognition V2 — deterministic semantic authority', () => {
     );
   });
 
+  it('lets validated model semantics narrow Mapper categories without selecting a row', () => {
+    const exact = evidence({
+      name: 'X-17',
+      productType: 'professional',
+      category: 'Professional gelato products',
+      description: 'Fine dry blend supplied for recipe use.',
+    });
+    const classified = validateProductSemanticModelOutput(exact, {
+      productArchetype: 'CHOCOLATE',
+      ingredientFamily: 'chocolate',
+      physicalForm: 'POWDER',
+      intendedUsageRole: 'BASE_ONLY',
+      flavorDomain: 'CHOCOLATE_GENERAL',
+      professional: true,
+      technical: false,
+      dosageDependent: false,
+      dosage: { semantics: 'NONE', value: null, unit: 'UNKNOWN', basis: 'UNKNOWN' },
+      compatibleMapperCategories: ['chocolate', 'cocoa'],
+      forbiddenMapperCategories: ['topping'],
+      confidence: 0.82,
+      reasonCodes: ['DRY_CHOCOLATE_COMPONENT'],
+      evidenceRefs: ['name', 'category', 'description'],
+    });
+
+    expect(classified).toMatchObject({
+      classificationSource: 'SERVER_MODEL',
+      productArchetype: 'CHOCOLATE',
+      ingredientFamily: 'chocolate',
+      physicalForm: 'POWDER',
+      compatibleMapperCategories: ['chocolate', 'cocoa'],
+      modelRequired: false,
+    });
+    expect(
+      evaluateMapperSemanticCompatibility(classified!, {
+        ingredientId: 'PI-TEST-SAUCE',
+        name: 'Pistachio rippling sauce',
+        category: 'topping',
+        subcategory: 'rippling_sauce',
+        brand: 'Test',
+      }),
+    ).toMatchObject({
+      compatible: false,
+      reasonCodes: expect.arrayContaining([
+        'SEMANTIC_FORM_CONTRADICTION',
+        'SEMANTIC_FORBIDDEN_CATEGORY',
+      ]),
+    });
+  });
+
   it('rejects a model evidence reference when that exact field is absent', () => {
     const exact = evidence({ name: 'Niejasny produkt' });
     expect(
@@ -204,6 +301,42 @@ describe('Product Recognition V2 — deterministic semantic authority', () => {
         evidenceRefs: ['dosage'],
       }),
     ).toBeNull();
+  });
+
+  it('keeps exact manufacturer variegato authority when the model proposes a base mix', () => {
+    const exact = evidence({
+      name: 'Amarena con pezzi',
+      productType: 'professional',
+      category: 'Professional gelato products',
+      subcategory: 'Variegatury',
+      description: 'Variegato wiśniowe z całymi owocami.',
+      dosage: 'q.b.',
+    });
+    const classified = validateProductSemanticModelOutput(exact, {
+      productArchetype: 'BASE_MIX',
+      ingredientFamily: 'base_mix',
+      physicalForm: 'POWDER',
+      intendedUsageRole: 'BASE_ONLY',
+      flavorDomain: 'FRUIT',
+      professional: true,
+      technical: true,
+      dosageDependent: false,
+      dosage: { semantics: 'AS_DESIRED', value: null, unit: 'AS_DESIRED', basis: 'UNKNOWN' },
+      compatibleMapperCategories: ['base_mix'],
+      forbiddenMapperCategories: [],
+      confidence: 0.9,
+      reasonCodes: ['MODEL_BASE_PROPOSAL'],
+      evidenceRefs: ['name', 'subcategory', 'description', 'dosage'],
+    });
+
+    expect(classified).toMatchObject({
+      productArchetype: 'VARIEGATO',
+      ingredientFamily: 'variegato',
+      physicalForm: 'SAUCE',
+      intendedUsageRole: 'TOPPING_ONLY',
+      compatibleMapperCategories: ['variegato', 'flavor_paste'],
+      isTechnicalProduct: false,
+    });
   });
 });
 
@@ -301,6 +434,62 @@ describe('Product Recognition V2 — Mapper semantic hard contradictions', () =>
       expect(decision.compatible).toBe(false);
       expect(decision.reasonCodes).toContain('SEMANTIC_FORM_CONTRADICTION');
     }
+  });
+
+  it('separates coffee, tea, confectionery and spices inside a broad retailer taxonomy', () => {
+    const coffee = classifyProductSemantics(
+      evidence({
+        name: 'Jacobs Krönung Kawa rozpuszczalna',
+        category: 'Coffee, tea & spices',
+        subcategory: 'coffee',
+      }),
+    );
+    expect(coffee).toMatchObject({
+      productArchetype: 'COFFEE',
+      ingredientFamily: 'coffee',
+      physicalForm: 'DRY',
+      flavorDomain: 'COFFEE',
+      compatibleMapperCategories: ['coffee_tea'],
+      modelRequired: false,
+    });
+
+    const biscuits = classifyProductSemantics(
+      evidence({
+        name: 'Bonitki Herbatniki Petit Beurre',
+        category: 'Słodycze',
+        subcategory: 'herbatniki',
+      }),
+    );
+    expect(biscuits).toMatchObject({
+      productArchetype: 'CONFECTIONERY',
+      ingredientFamily: 'confectionery',
+      physicalForm: 'SOLID',
+    });
+
+    const spice = classifyProductSemantics(
+      evidence({
+        name: 'Kamis Bazylia',
+        category: 'Coffee, tea & spices',
+        subcategory: 'spices',
+      }),
+    );
+    expect(spice.productArchetype).not.toBe('TEA');
+    expect(spice.ingredientFamily).not.toBe('tea');
+    expect(spice.modelRequired).toBe(true);
+
+    const coffeePaste = classifyProductSemantics(
+      evidence({
+        name: 'CAFFE Kawa',
+        category: 'Professional gelato products',
+        subcategory: 'Toppingi',
+        dosage: 'q.b.',
+      }),
+    );
+    expect(coffeePaste).toMatchObject({
+      productArchetype: 'FLAVOR_PASTE',
+      ingredientFamily: 'flavor_paste',
+      flavorDomain: 'COFFEE',
+    });
   });
 
   it('white chocolate rejects a dark-chocolate donor absent explicit equivalence', () => {
