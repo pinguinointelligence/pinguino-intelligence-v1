@@ -27,7 +27,7 @@ const PRIOR_V2_TRACE =
     homedir(),
     '.codex',
     'outputs',
-    'product_recognition_v2_20260825',
+    'product_recognition_v2_final_working',
     'POLAND_820_RECOGNITION_V2_TRACE.csv',
   );
 const OUTPUT_DIR =
