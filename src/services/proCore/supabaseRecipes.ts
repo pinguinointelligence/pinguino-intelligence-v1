@@ -873,6 +873,7 @@ export class SupabaseRecipes {
           createdAt: new Date().toISOString(),
           restoredFromVersion: targetVersionNumber,
           note: target.note,
+          ...versionIdentityFromInput(target.recipeInput),
         },
         '',
       );
