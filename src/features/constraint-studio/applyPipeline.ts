@@ -2815,6 +2815,57 @@ const polishDirectionVector = (
   return best.input;
 };
 
+/**
+ * Whole-gram practicalization is part of the executable contract, so it may
+ * change the Direction tier used by the pre-practicalization proximity rank.
+ * Re-run the same generic x_user polish once on the physical Preview vector
+ * and rebuild every candidate-derived field when a closer peer wins.
+ */
+const polishPracticalDirectionPreview = (
+  input: RecipeInput,
+  set: ConstraintSet,
+  preview: ConstraintPreview,
+  createdAt: string,
+  options: OptimizePreviewOptions,
+): ConstraintPreview => {
+  if (
+    !hasActiveExactDirectionObjective(input) ||
+    recipeDirectionViolations(preview.proposedInput).length === 0 ||
+    captureMainIngredientIntent(input).length > 0 ||
+    preview.formulation !== undefined ||
+    preview.diagnosticOnly === true ||
+    preview.batchReconciliationOnly === true ||
+    preview.practicalizationOnly === true ||
+    options.softAnchorPass === true ||
+    options.directionNearestPass === true
+  ) {
+    return preview;
+  }
+  const ranked = polishDirectionVector(input, set, preview.proposedInput, createdAt, options);
+  if (
+    workingStateFingerprint(ranked, preview.nextConstraints) ===
+    workingStateFingerprint(preview.proposedInput, preview.nextConstraints)
+  ) {
+    return preview;
+  }
+  const refreshed = finishPreview(
+    preview.kind,
+    preview.titlePl,
+    input,
+    set,
+    ranked,
+    preview.nextConstraints,
+    preview.violationsBefore,
+    preview.explanation,
+    preview.createdAt,
+  );
+  return {
+    ...preview,
+    ...refreshed,
+    hardResidualMetrics: classifyViolationBands(refreshed.proposedInput).hardMetrics,
+  };
+};
+
 export interface ManualIngredientTargetProof {
   lineId: string;
   requestedGrams: number;
@@ -6336,7 +6387,11 @@ function buildOptimizePreviewWithDirection(
     }
     if (neighborhood.status === 'candidate') {
       const lockedNames = lockedIngredientNames(input, set);
-      const preview = finishPreview(
+      const explanation: ConstraintExplanationEntry[] =
+        lockedNames.length > 0
+          ? [{ kind: 'locked_unchanged', ingredientNames: lockedNames }]
+          : [];
+      let preview = finishPreview(
         'optimize',
         copy.preview.kindLabels.optimize,
         input,
@@ -6344,9 +6399,10 @@ function buildOptimizePreviewWithDirection(
         neighborhood.input,
         set,
         violationCount(currentResult),
-        lockedNames.length > 0 ? [{ kind: 'locked_unchanged', ingredientNames: lockedNames }] : [],
+        explanation,
         createdAt,
       );
+      preview = polishPracticalDirectionPreview(input, set, preview, createdAt, options);
       preview.autoBalance = { batchRescaled: false, solverRounds: 0 };
       preview.hardResidualMetrics = [];
       preview.diagnosticOnly = false;
@@ -6999,7 +7055,7 @@ function buildOptimizePreviewWithDirection(
     options,
   );
 
-  const preview = finishPreview(
+  let preview = finishPreview(
     'optimize',
     copy.preview.kindLabels.optimize,
     input,
@@ -7010,6 +7066,7 @@ function buildOptimizePreviewWithDirection(
     explanation,
     createdAt,
   );
+  preview = polishPracticalDirectionPreview(input, set, preview, createdAt, options);
   attachMainObjective(preview, input, mainObjective.proof);
   preview.autoBalance = { batchRescaled, solverRounds };
   preview.iteration = iterated.diagnostics;

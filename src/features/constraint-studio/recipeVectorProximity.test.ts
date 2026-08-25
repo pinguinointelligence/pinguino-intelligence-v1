@@ -178,6 +178,33 @@ const hazelnut = (): RecipeInput => ({
   },
 });
 
+const directionFixture = (
+  category: RecipeInput['category'],
+  temperature: number,
+  sweetness: -2 | -1 | 0 | 1 | 2,
+  softness: -2 | -1 | 0 | 1 | 2,
+  lines: ReadonlyArray<readonly [string, string, number]>,
+): RecipeInput => ({
+  items: lines.map(([id, ingredientId, grams]) => ({
+    id,
+    ingredient: ingredient(ingredientId),
+    planned_grams: grams,
+    actual_grams: null,
+    lock_type: 'unlocked' as const,
+    user_intent_anchor_grams: grams,
+  })),
+  mode: 'classic',
+  category,
+  target_temperature_c: temperature,
+  target_batch_grams: 1000,
+  machine_capacity_grams: null,
+  goals: {
+    formulation_strategy: 'optimal',
+    direction_targets_active: true,
+    direction_targets: { sweetness, softness, creaminess: 0, flavor: 0 },
+  },
+});
+
 const cocktailSorbet = (
   recipe: 'dark-rum-ginger' | 'pina-colada',
   sweetness: -2 | -1 | 0 | 1 | 2,
@@ -695,6 +722,105 @@ describe('isolated multi-candidate neighborhood experiment — null hypothesis',
     expect(unchanged.normalizedDistanceFromUser).toBe(0);
     expect(rewritten.maximumFoldChange).toBe(24.5);
   });
+
+  it('never returns a high-drift Direction vector when a closer single-line x_user hold is equally valid', () => {
+    const hazelnutInput: RecipeInput = {
+      ...hazelnut(),
+      goals: {
+        ...hazelnut().goals,
+        direction_targets_active: true,
+        direction_targets: { sweetness: 2, softness: 1, creaminess: 0, flavor: 0 },
+      },
+    };
+    const cases: Array<{ label: string; input: RecipeInput; heldLineId: string }> = [
+      {
+        label: 'hazelnut-paste',
+        input: hazelnutInput,
+        heldLineId: 'hazelnut',
+      },
+      {
+        label: 'vanilla-paste',
+        input: directionFixture('milk_gelato', -11, 1, -2, [
+          ['milk', 'PI-ING-000236', 595],
+          ['cream', 'PI-ING-000180', 135],
+          ['smp', 'PI-ING-000270', 43],
+          ['sucrose', 'PI-ING-000514', 86],
+          ['dextrose', 'PI-ING-000494', 80],
+          ['inulin', 'PI-ING-000456', 54],
+          ['vanilla', 'PI-ING-001705', 5],
+          ['tara', 'PI-ING-000492', 2],
+        ]),
+        heldLineId: 'vanilla',
+      },
+      {
+        label: 'lemon-salt',
+        input: directionFixture('sorbet', -13, -2, -2, [
+          ['lemon', 'PI-ING-000368', 250],
+          ['water', 'PI-ING-001409', 474],
+          ['sucrose', 'PI-ING-000514', 120],
+          ['dextrose', 'PI-ING-000494', 95],
+          ['inulin', 'PI-ING-000456', 58],
+          ['salt', 'PI-ING-000458', 1],
+          ['tara', 'PI-ING-000492', 2],
+        ]),
+        heldLineId: 'salt',
+      },
+      {
+        label: 'pina-colada-pineapple',
+        input: cocktailSorbet('pina-colada', 1),
+        heldLineId: 'pineapple',
+      },
+    ];
+
+    for (const testCase of cases) {
+      const current = buildOptimizePreview(
+        testCase.input,
+        { byLineId: {} },
+        '2026-08-25T00:00:00.000Z',
+        { requirePracticalPreview: true },
+      );
+      const held = buildOptimizePreview(
+        testCase.input,
+        {
+          byLineId: {
+            [testCase.heldLineId]: {
+              mode: 'locked',
+              grams: testCase.input.items.find((item) => item.id === testCase.heldLineId)!
+                .planned_grams,
+            },
+          },
+        },
+        '2026-08-25T00:00:00.000Z',
+        { requirePracticalPreview: true, softAnchorPass: true },
+      );
+      expect(current.ok, `${testCase.label}: ${JSON.stringify(current)}`).toBe(true);
+      expect(held.ok, `${testCase.label}: ${JSON.stringify(held)}`).toBe(true);
+      if (!current.ok || !held.ok) continue;
+      const currentMeasure = evaluateExperimentalCandidate(
+        testCase.input,
+        current.preview.proposedInput,
+        { byLineId: {} },
+      );
+      const heldMeasure = evaluateExperimentalCandidate(
+        testCase.input,
+        held.preview.proposedInput,
+        { byLineId: {} },
+      );
+      expect(
+        compareExperimentalCandidateMeasures(currentMeasure, heldMeasure, 'optimal'),
+        `${testCase.label}: ${JSON.stringify({
+          currentMeasure,
+          heldMeasure,
+          currentPreview: {
+            directionTargetUnreached: current.preview.directionTargetUnreached,
+            autoBalance: current.preview.autoBalance,
+            formulation: current.preview.formulation,
+            outcome: current.preview.outcomeClassification,
+          },
+        })}`,
+      ).toBeLessThanOrEqual(0);
+    }
+  }, 120_000);
 
   it('proves the current Hazelnut path is avoidably farther than a hard-safe nearby candidate', () => {
     const input = hazelnut();
