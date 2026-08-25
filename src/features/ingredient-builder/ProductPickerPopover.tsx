@@ -692,8 +692,8 @@ export function ProductPickerPopover({
         className={cn(
           'pro-focus-ring relative inline-flex h-11 items-center justify-center rounded-xl px-4 text-xs font-semibold whitespace-nowrap transition-colors',
           scope === 'BASE_FORMULATION'
-            ? 'bg-ink text-white shadow-pro-e1 hover:bg-graphite'
-            : 'border border-status-ideal/30 bg-pro-sage text-ink hover:border-status-ideal/55',
+            ? 'border border-ink/20 bg-white text-ink hover:border-ink/40'
+            : 'border border-ink/10 bg-stone-50 text-stone-700 hover:border-ink/25',
         )}
         aria-haspopup="dialog"
         aria-expanded={open}
@@ -703,7 +703,7 @@ export function ProductPickerPopover({
         <span
           className={cn(
             'inline-flex items-center justify-center',
-            scope === 'BASE_FORMULATION' ? 'text-white' : '',
+            scope === 'BASE_FORMULATION' ? 'text-ink' : '',
           )}
           data-testid={scope === 'BASE_FORMULATION' ? 'ingredient-add-core' : undefined}
         >

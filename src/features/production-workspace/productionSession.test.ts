@@ -7,11 +7,13 @@ import {
   buildProductionForecastInput,
   completeProductionSession,
   confirmProductionLine,
+  confirmProductionTopUpTask,
   correctRecordedPhysicalGrams,
   createProductionSession,
   hydrateProductionSessionFromRun,
   mergePendingProductionDrafts,
   productionProgress,
+  pendingProductionTopUpTasks,
   productionSourceFingerprint,
   toppingProductionProgress,
   productionStepForGrams,
@@ -19,6 +21,7 @@ import {
   topUpProductionLine,
   reopenProductionRecord,
   setDraftActualGrams,
+  setProductionTopUpDraftGrams,
 } from './productionSession';
 import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
 import type { CatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
@@ -193,8 +196,7 @@ describe('production session physical-reality contract', () => {
           id: line.lineId,
           name: line.name,
           actualGrams: line.lineId === first.lineId ? first.plannedGrams : null,
-          confirmedAt:
-            line.lineId === first.lineId ? '2026-08-25T10:01:00.000Z' : null,
+          confirmedAt: line.lineId === first.lineId ? '2026-08-25T10:01:00.000Z' : null,
           confirmationOrder: line.lineId === first.lineId ? 1 : null,
         })),
         actualTotalMixG: first.plannedGrams,
@@ -230,8 +232,15 @@ describe('production session physical-reality contract', () => {
     expect(recoveredFirst).toMatchObject({
       physicalAddedGrams: first.plannedGrams,
       targetGrams: first.plannedGrams + 3,
-      confirmed: false,
+      confirmed: true,
     });
+    expect(pendingProductionTopUpTasks(recovered)).toEqual([
+      expect.objectContaining({
+        sourceRecipeLineId: first.lineId,
+        authorizedDeltaG: 3,
+        revisionId: 1,
+      }),
+    ]);
     expect(productionTopUpGrams(recoveredFirst)).toBe(3);
     expect(browserProductionRescueDecision(recovered).state).toBe('not_needed');
     expect(assessProductionRescue(recovered).state).toBe('not_needed');
@@ -510,12 +519,10 @@ describe('production session physical-reality contract', () => {
       currentComposition,
     );
 
-    expect(recovered.plannedComposition.behaviorSnapshots?.[topping.id]).toEqual(
-      toppingSnapshot,
+    expect(recovered.plannedComposition.behaviorSnapshots?.[topping.id]).toEqual(toppingSnapshot);
+    expect(recovered.plannedComposition.behaviorSnapshots?.[local.lines[0]!.lineId]).toEqual(
+      rescueComposition.behaviorSnapshots?.[local.lines[0]!.lineId],
     );
-    expect(
-      recovered.plannedComposition.behaviorSnapshots?.[local.lines[0]!.lineId],
-    ).toEqual(rescueComposition.behaviorSnapshots?.[local.lines[0]!.lineId]);
   });
 
   it('keeps server physical authority while preserving only compatible pending drafts', () => {
@@ -865,16 +872,25 @@ describe('production session physical-reality contract', () => {
     expect(rescued.lines[0]).toMatchObject({
       physicalAddedGrams: line.plannedGrams,
       targetGrams: line.plannedGrams + 3,
-      draftActualGrams: line.plannedGrams + 3,
-      confirmed: false,
+      draftActualGrams: line.plannedGrams,
+      confirmed: true,
     });
+    const topUpTask = pendingProductionTopUpTasks(rescued)[0]!;
+    expect(topUpTask).toMatchObject({ authorizedDeltaG: 3, draftDeltaG: 3 });
     expect(productionProgress(rescued)).toMatchObject({
-      confirmedCount: 0,
+      confirmedCount: 1,
       confirmedMassG: line.plannedGrams,
+      coherent: false,
     });
-    expect(() => setDraftActualGrams(rescued, line.lineId, line.plannedGrams - 1)).toThrow(
-      /cannot remove physically added/,
+    expect(() => setProductionTopUpDraftGrams(rescued, topUpTask.taskId, -1)).toThrow(
+      /non-negative/,
     );
+    const topped = confirmProductionTopUpTask(
+      rescued,
+      topUpTask.taskId,
+      '2026-08-09T10:02:00.000Z',
+    );
+    expect(topped.lines[0]!.physicalAddedGrams).toBe(line.plannedGrams + 3);
   });
 
   it('projects an authorized pending-plan reduction into the operator target and draft', () => {

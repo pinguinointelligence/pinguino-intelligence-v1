@@ -107,6 +107,34 @@ describe('visible + Nowa receptura action', () => {
     },
   );
 
+  it('routes an untouched fresh Gelato starter to the canonical P12 Protein vector', () => {
+    startNewProRecipe('gelato');
+
+    expect(requestNewRecipeProductTypeChange('protein')).toBe('starter_replaced');
+
+    const fresh = useRecipeStore.getState();
+    expect(fresh.visibleProductType).toBe('protein');
+    expect(fresh.category).toBe('protein_gelato');
+    expect(fresh.newRecipeStarterTemplateId).toBe('protein_dairy_neutral_minus12_v1');
+    expect(fresh.formulation_strategy).toBe('optimal');
+    expect(
+      Object.fromEntries(
+        fresh.items.map((item) => [
+          item.ingredient.canonical_ingredient_id ?? item.ingredient.id,
+          item.planned_grams,
+        ]),
+      ),
+    ).toEqual({
+      'PI-ING-000236': 522,
+      'PI-ING-000180': 114,
+      'PI-ING-000264': 81,
+      'PI-ING-001409': 104,
+      'PI-ING-000514': 71,
+      'PI-ING-000494': 106,
+      'PI-ING-000492': 2,
+    });
+  });
+
   it('clears every recipe-specific sidecar while retaining account-private prices and defaults', () => {
     const previous = useRecipeStore.getState();
     previous.addTopping(previous.items[0]!.ingredient, 12);
@@ -269,6 +297,35 @@ describe('visible + Nowa receptura action', () => {
       expect(useRecipeStore.getState().formulation_strategy).toBe(mode);
     },
   );
+
+  it('reopens a saved Protein ECO recipe as Protein ECO with its P12 ingredient identities', () => {
+    startNewProRecipe('protein');
+    const protein = useRecipeStore.getState();
+    const savedItems = structuredClone(protein.items);
+
+    protein.loadRecipeInput(
+      {
+        items: savedItems,
+        mode: 'classic',
+        category: 'protein_gelato',
+        target_temperature_c: -12,
+        target_batch_grams: 1_000,
+        machine_capacity_grams: null,
+        goals: { formulation_strategy: 'eco' },
+      },
+      { savedId: 'saved-protein-eco', savedName: 'Saved Protein ECO', versionNumber: 3 },
+    );
+
+    const reopened = useRecipeStore.getState();
+    expect(reopened.visibleProductType).toBe('protein');
+    expect(reopened.category).toBe('protein_gelato');
+    expect(reopened.formulation_strategy).toBe('eco');
+    expect(reopened.newRecipeStarterTemplateId).toBeNull();
+    expect(reopened.items).toEqual(savedItems);
+    expect(
+      reopened.items.some((item) => item.ingredient.canonical_ingredient_id === 'PI-ING-000264'),
+    ).toBe(true);
+  });
 
   it('uses OPTIMAL for a new/reset draft even when an old account default says ECO', () => {
     useRecipeProfileStore.getState().saveDefaults('local-device:gelato', {

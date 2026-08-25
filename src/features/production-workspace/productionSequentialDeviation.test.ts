@@ -14,9 +14,12 @@ import {
 import {
   applyVerifiedRescueInput,
   confirmProductionLine,
+  confirmProductionTopUpTask,
   correctRecordedPhysicalGrams,
   createProductionSession,
   productionTopUpGrams,
+  pendingProductionTopUpTasks,
+  setProductionTopUpDraftGrams,
   reopenProductionRecord,
   setDraftActualGrams,
   topUpProductionLine,
@@ -293,7 +296,7 @@ describe('Production sequential-deviation P0', () => {
     expect(assessProductionRescue(session).state).toBe('not_needed');
   });
 
-  it('SCENARIO 6 — reopens a confirmed Cream line for an authorized proportional top-up', () => {
+  it('SCENARIO 6 — materializes a confirmed Cream addition as an authorized top-up task', () => {
     let session = sessionFor('scenario-6-dairy', ownerObservedInput());
     session = confirmAtNextRevision(session, 'cream');
     session = confirmAtNextRevision(session, 'sucrose', 111);
@@ -307,17 +310,17 @@ describe('Production sequential-deviation P0', () => {
     expect(line(session, 'cream')).toMatchObject({
       physicalAddedGrams: 198,
       targetGrams: creamInstruction!.finalTargetGrams,
-      confirmed: false,
+      confirmed: true,
       confirmedAt: AT,
       confirmationOrder: 1,
     });
     expect(productionTopUpGrams(line(session, 'cream'))).toBe(creamInstruction!.grams);
-
-    session = confirmProductionLine(
-      setDraftActualGrams(session, 'cream', creamInstruction!.finalTargetGrams),
-      'cream',
-      AT,
+    const topUpTask = pendingProductionTopUpTasks(session).find(
+      (task) => task.sourceRecipeLineId === 'cream',
     );
+    expect(topUpTask).toMatchObject({ authorizedDeltaG: creamInstruction!.grams });
+
+    session = confirmProductionTopUpTask(session, topUpTask!.taskId, AT);
     expect(line(session, 'cream').physicalAddedGrams).toBe(creamInstruction!.finalTargetGrams);
     expect(productionTopUpGrams(line(session, 'cream'))).toBe(0);
   });
@@ -423,11 +426,19 @@ describe('Production sequential-deviation P0', () => {
         scoreDisplay: restore.scoreDisplay,
       },
     };
-    session = confirmAtNextRevision(
-      session,
-      reopenedInstruction!.lineId!,
-      reopenedInstruction!.finalTargetGrams + 1,
+    const task = pendingProductionTopUpTasks(session).find(
+      (candidate) => candidate.sourceRecipeLineId === reopenedInstruction!.lineId,
+    )!;
+    session = confirmProductionTopUpTask(
+      setProductionTopUpDraftGrams(session, task.taskId, task.authorizedDeltaG + 1),
+      task.taskId,
+      AT,
     );
+    session = {
+      ...session,
+      durableActualRevision: session.durableActualRevision + 1,
+      lastDeviationDecision: null,
+    };
 
     expect(productionRescueAuthorizationInvalidation(oldAuthorization, session)).toBe(
       'revision_mismatch',

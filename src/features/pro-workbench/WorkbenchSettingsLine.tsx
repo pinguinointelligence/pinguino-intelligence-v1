@@ -33,7 +33,10 @@ import {
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { classifyProfileTransition, PRO_VISIBLE_PRODUCT_TYPES } from './profileCompatibility';
 import { NewRecipeConfirmationDialog } from '@/features/recipes/NewRecipeConfirmationDialog';
-import { startNewProRecipe } from '@/pages/destinations/startNewProRecipe';
+import {
+  requestNewRecipeProductTypeChange,
+  startNewProRecipe,
+} from '@/pages/destinations/startNewProRecipe';
 
 const g = copy.studio.goal;
 const servingCopy = copy.proMachine.serving;
@@ -203,13 +206,21 @@ export function WorkbenchSettingsLine({
       setProfileNotice(decision.message);
       return;
     }
+    // Cross-family replacement keeps the established explicit confirmation.
+    // The helper below is authoritative for same-family routing, where a
+    // pristine starter and an opened user recipe intentionally diverge.
     if (decision.kind === 'new_base_required') {
       setProfileNotice(null);
       setPendingBaseProfile(next);
       return;
     }
+    const result = requestNewRecipeProductTypeChange(next);
+    if (result === 'confirmation_required') {
+      setProfileNotice(null);
+      setPendingBaseProfile(next);
+      return;
+    }
     setProfileNotice(null);
-    store.setVisibleProductType(next);
   };
 
   const changeStrategy = (strategy: FormulationStrategy) => {

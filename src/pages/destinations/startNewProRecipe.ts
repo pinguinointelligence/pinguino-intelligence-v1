@@ -66,9 +66,7 @@ export type NewRecipeStarterSettingsPatch = Partial<
 >;
 
 export type NewRecipeStarterSettingsChangeResult =
-  | 'starter_replaced'
-  | 'confirmation_required'
-  | 'existing_recipe';
+  'starter_replaced' | 'confirmation_required' | 'existing_recipe';
 
 const currentStarterKey = (): NewRecipeStarterKey => {
   const recipe = useRecipeStore.getState();
@@ -173,9 +171,7 @@ export function requestProfessionalStarterServingChange(
 }
 
 export type NewRecipeProductTypeChangeResult =
-  | 'starter_replaced'
-  | 'confirmation_required'
-  | 'recipe_profile_changed';
+  'starter_replaced' | 'confirmation_required' | 'recipe_profile_changed';
 
 /**
  * Product switches may replace only an explicit new-draft scaffold. Opened
@@ -187,18 +183,28 @@ export function requestNewRecipeProductTypeChange(
   next: VisibleProductType,
 ): NewRecipeProductTypeChangeResult {
   const recipe = useRecipeStore.getState();
-  if (recipe.newRecipeStarterKey === null) {
-    const decision = classifyProfileTransition(
-      buildRecipeInput(recipe),
-      next,
-      recipe.visibleProductType,
-    );
-    if (!decision.supported || decision.kind === 'new_base_required') {
-      return 'confirmation_required';
-    }
+  const decision = classifyProfileTransition(
+    buildRecipeInput(recipe),
+    next,
+    recipe.visibleProductType,
+  );
+  if (!decision.supported) return 'confirmation_required';
+
+  // A pristine explicit starter is still the profile's scaffold, not a user
+  // formulation. Selecting Protein here must replace Gelato G11 with native
+  // P12 even though opened dairy Gelato/Protein recipes are same-family.
+  if (recipe.newRecipeStarterKey !== null && isUntouchedNewRecipeStarter()) {
+    rebuildNewProRecipeStarter({ visibleProductType: next });
+    return 'starter_replaced';
+  }
+
+  // Once a starter has material edits (or a saved/history recipe is open), the
+  // established same-family contract owns the transition: keep the exact user
+  // vector and change only the authority/profile metadata. Cross-family still
+  // requires explicit replacement confirmation.
+  if (decision.kind !== 'new_base_required') {
     recipe.setVisibleProductType(next);
     return 'recipe_profile_changed';
   }
-  const result = requestNewRecipeStarterSettingsChange({ visibleProductType: next });
-  return result === 'existing_recipe' ? 'recipe_profile_changed' : result;
+  return 'confirmation_required';
 }

@@ -15,11 +15,14 @@ import {
   buildFinalActualInput,
   completeProductionSession,
   confirmProductionLine,
+  confirmProductionTopUpTask,
   hydrateProductionSessionFromRun,
   mergePendingProductionDrafts,
+  pendingProductionTopUpTasks,
   productionProgress,
   productionSourceFingerprint,
   reopenProductionRecord,
+  setProductionTopUpDraftGrams,
   toppingProductionProgress,
   topUpProductionLine,
   PRODUCTION_GRAMS_EPSILON,
@@ -215,10 +218,16 @@ const productionRescueChoices = [
 }>;
 
 export const browserProductionRescueDecision = (session: ProductionSession | null) => {
+  const pendingTopUpLineIds = new Set(
+    session ? pendingProductionTopUpTasks(session).map((task) => task.sourceRecipeLineId) : [],
+  );
   const hasConfirmedDeviation = Boolean(
     session?.status === 'in_progress' &&
     session.lines.some(
-      (line) => line.confirmed && Math.abs(line.physicalAddedGrams - line.targetGrams) > 0.000001,
+      (line) =>
+        line.confirmed &&
+        !pendingTopUpLineIds.has(line.lineId) &&
+        Math.abs(line.physicalAddedGrams - line.targetGrams) > 0.000001,
     ),
   );
   return hasConfirmedDeviation
@@ -241,7 +250,9 @@ export const reusableRescueAuthorizeKey = (
 
 export function durableActual(session: ProductionSession, by: string): RecordActualArgs {
   const durableLines = [...session.lines, ...session.addonLines];
-  const baseComplete = session.lines.every((line) => line.confirmed);
+  const baseComplete =
+    session.lines.every((line) => line.confirmed) &&
+    pendingProductionTopUpTasks(session).length === 0;
   return {
     by,
     expectedActualRevision: session.durableActualRevision,
@@ -288,7 +299,10 @@ export const durableRescueRequiresReconciliation = (
   Boolean(remote.rescue && local && remote.rescue.revision !== local.durableRescueRevision);
 
 export type DurableProductionRecoveryRelation =
-  'missing_remote' | 'new_rescue' | 'new_actual' | 'same';
+  | 'missing_remote'
+  | 'new_rescue'
+  | 'new_actual'
+  | 'same';
 
 class MissingDurableProductionRunError extends Error {
   constructor() {
@@ -348,7 +362,10 @@ export type ProductionPrerequisiteCode =
   | 'owner_mismatch';
 
 export type ProductionPrerequisiteAction =
-  'open_preview' | 'recalculate' | 'return_to_recipe' | 'archive_stale_session';
+  | 'open_preview'
+  | 'recalculate'
+  | 'return_to_recipe'
+  | 'archive_stale_session';
 
 export type ProductionPrerequisite = {
   code: ProductionPrerequisiteCode;
@@ -1413,6 +1430,41 @@ export function useProductionWorkspace(enabled: boolean) {
       if (persistence.busy) return;
       updateRescueAuthorization({ status: 'idle' });
       setDraftActual(lineId, grams);
+    },
+    setTopUpDraft: (taskId: string, deltaGrams: number) => {
+      if (!session || persistence.busy) return;
+      replaceSession(setProductionTopUpDraftGrams(session, taskId, deltaGrams));
+    },
+    confirmTopUpTask: async (taskId: string) => {
+      if (!session || !repositoryState.repository || persistence.busy) return;
+      const task = session.topUpTasks.find((candidate) => candidate.taskId === taskId);
+      if (!task || task.status !== 'pending') return;
+      const candidate = confirmProductionTopUpTask(session, taskId, new Date().toISOString());
+      setPersistence({ busy: true, error: null });
+      try {
+        const durableRun = await repositoryState.repository.recordActual(session.sessionId, {
+          ...durableActual(candidate, ownerUserId ?? ''),
+          eventContext: {
+            action: 'top_up',
+            lineId: task.sourceRecipeLineId,
+            previousActualG: task.physicalBaselineG,
+          },
+        });
+        replaceSession(
+          mergePendingProductionDrafts(
+            hydrateProductionSessionFromRun(durableRun, source, plannedInput, plannedComposition),
+            candidate,
+          ),
+        );
+      } catch {
+        setPersistence({
+          busy: false,
+          error: 'Nie zapisano uzupełnienia. Wartość w naczyniu pozostaje bez zmian.',
+        });
+        setReconcileRevision((current) => current + 1);
+      } finally {
+        setPersistence((current) => ({ ...current, busy: false }));
+      }
     },
     confirmLine: async (lineId: string) => {
       if (!session || !repositoryState.repository || persistence.busy) return;
