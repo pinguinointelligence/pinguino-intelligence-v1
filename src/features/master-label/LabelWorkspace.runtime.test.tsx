@@ -14,9 +14,12 @@ import {
   defaultAccountLabelProfile,
   inMemoryLabelRepository,
   resetInMemoryLabelRepositoryForTests,
+  type LabelRepository,
+  type RunLabelSnapshot,
 } from '@/services/labels/labelRepository';
 import { useAuthStore } from '@/stores/authStore';
 import { LabelWorkspace } from './LabelWorkspace';
+import { createCompleteLabel } from './masterLabelTestFixture';
 
 function completedSnapshot() {
   const input: RecipeInput = {
@@ -366,5 +369,56 @@ describe('LabelWorkspace unified actual-run surface', () => {
     )!;
     await swipe(settingsInput, 90, 200);
     expect(workspace.getAttribute('data-active-label-view')).toBe('settings');
+  });
+
+  it('starts a new version from the current profile without rewriting the selected snapshot', async () => {
+    const base = inMemoryLabelRepository('owner-label-workspace');
+    await base.saveAccountProfile({
+      ...defaultAccountLabelProfile('owner-label-workspace'),
+      market: 'WORLD',
+      uiLanguage: 'en',
+      labelLanguages: ['en'],
+      businessName: 'Gellatti Laboratory',
+    });
+    const actual = completedSnapshot();
+    const immutableLabel = createCompleteLabel('EU', {
+      sourceCompletionSessionId: actual.sessionId,
+      sourceCompletedAt: actual.productionCompletedAt,
+    });
+    const immutable: RunLabelSnapshot = {
+      snapshotId: 'snapshot-eu-v1',
+      version: 1,
+      contentHash: 'immutable-eu-hash',
+      runId: actual.sessionId,
+      ownerUserId: 'owner-label-workspace',
+      label: immutableLabel,
+      accountProfileSnapshot: { market: 'EU' },
+      logoPath: null,
+      createdAt: '2026-08-24T11:05:00.000Z',
+    };
+    const repository: LabelRepository = {
+      ...base,
+      getRunLabelSnapshot: async () => structuredClone(immutable),
+      getRunLabelSnapshotById: async (snapshotId) =>
+        snapshotId === immutable.snapshotId ? structuredClone(immutable) : null,
+    };
+
+    await act(async () => {
+      root.render(<LabelWorkspace snapshot={actual} repository={repository} />);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(host.textContent).toContain('European Union');
+    expect(button('Nowa wersja')).not.toBeUndefined();
+    await act(async () => button('Nowa wersja')!.click());
+
+    expect(host.querySelector('[data-active-label-view="settings"]')).not.toBeNull();
+    expect(
+      host.querySelector('[data-testid="label-settings-view"] [data-market-active="true"]')
+        ?.textContent,
+    ).toContain('World / Universal');
+    expect(immutable.label.market).toBe('EU');
+    expect(immutable.version).toBe(1);
   });
 });

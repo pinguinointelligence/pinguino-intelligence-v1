@@ -329,8 +329,9 @@ export function ProductionHubPage() {
 }
 
 export function LabelsHubPage() {
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const requestedRunId = params.get('run');
+  const requestedSnapshotId = params.get('snapshot');
   const repository = useMemo(() => resolveLabelRepository(), []);
   const session = useProductionSessionStore((state) => state.session);
   const activeSnapshot = session?.status === 'completed' ? session.completionSnapshot : null;
@@ -353,7 +354,18 @@ export function LabelsHubPage() {
     activeSnapshot && (!requestedRunId || requestedRunId === activeSnapshot.sessionId)
       ? activeSnapshot
       : null;
-  const selectedRunId = requestedRunId ?? selectedActive?.sessionId ?? history[0]?.runId ?? null;
+  const requestedHistoryItem = requestedSnapshotId
+    ? (history.find((item) => item.snapshotId === requestedSnapshotId) ?? null)
+    : null;
+  const selectedRunId =
+    requestedHistoryItem?.runId ??
+    requestedRunId ??
+    selectedActive?.sessionId ??
+    history[0]?.runId ??
+    null;
+  const selectedSnapshotId =
+    requestedHistoryItem?.snapshotId ??
+    (!requestedRunId && !selectedActive ? (history[0]?.snapshotId ?? null) : null);
 
   return (
     <DestinationSurface
@@ -378,14 +390,17 @@ export function LabelsHubPage() {
             >
               {history.map((item) => (
                 <Link
-                  key={item.runId}
-                  to={`/labels?run=${encodeURIComponent(item.runId)}`}
+                  key={item.snapshotId}
+                  to={`/labels?run=${encodeURIComponent(item.runId)}&snapshot=${encodeURIComponent(item.snapshotId)}`}
                   className={cn(
-                    buttonClasses(item.runId === selectedRunId ? 'primary' : 'ghost', 'sm'),
+                    buttonClasses(
+                      item.snapshotId === selectedSnapshotId ? 'primary' : 'ghost',
+                      'sm',
+                    ),
                     'min-h-11 shrink-0',
                   )}
                 >
-                  {new Date(item.createdAt).toLocaleDateString('pl-PL')}
+                  {new Date(item.createdAt).toLocaleDateString('pl-PL')} · v{item.version}
                 </Link>
               ))}
             </nav>
@@ -395,13 +410,15 @@ export function LabelsHubPage() {
           <LabelWorkspace
             snapshot={selectedActive}
             runId={selectedRunId}
+            savedSnapshotId={selectedSnapshotId}
             repository={repository}
-            onSaved={(item) =>
+            onSaved={(item) => {
               setHistory((current) => [
                 item,
-                ...current.filter((entry) => entry.runId !== item.runId),
-              ])
-            }
+                ...current.filter((entry) => entry.snapshotId !== item.snapshotId),
+              ]);
+              setParams({ run: item.runId, snapshot: item.snapshotId });
+            }}
           />
         </div>
       </section>

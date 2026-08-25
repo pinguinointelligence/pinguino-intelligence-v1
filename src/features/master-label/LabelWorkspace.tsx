@@ -114,6 +114,7 @@ function labelFromProfile(
 export function LabelWorkspace({
   snapshot: suppliedSnapshot = null,
   runId = null,
+  savedSnapshotId = null,
   profileOnly = false,
   repository: suppliedRepository,
   onSaved,
@@ -121,6 +122,7 @@ export function LabelWorkspace({
 }: {
   snapshot?: ProductionCompletionSnapshot | null;
   runId?: string | null;
+  savedSnapshotId?: string | null;
   profileOnly?: boolean;
   repository?: LabelRepository;
   onSaved?: (snapshot: RunLabelSnapshot) => void;
@@ -176,7 +178,12 @@ export function LabelWorkspace({
         let nextSaved: RunLabelSnapshot | null = null;
         if (!profileOnly && requestedRunId) {
           nextSnapshot = nextSnapshot ?? (await repository.getCompletedSnapshot(requestedRunId));
-          nextSaved = await repository.getRunLabelSnapshot(requestedRunId);
+          nextSaved = savedSnapshotId
+            ? await repository.getRunLabelSnapshotById(savedSnapshotId)
+            : await repository.getRunLabelSnapshot(requestedRunId);
+          if (nextSaved && nextSaved.runId !== requestedRunId) {
+            throw new Error('Wybrany snapshot etykiety nie należy do wskazanej partii.');
+          }
           if (nextSnapshot) await repository.freezeCompletedSnapshot(nextSnapshot);
         }
         if (cancelled) return;
@@ -199,7 +206,7 @@ export function LabelWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [authOwnerId, profileOnly, repository, requestedRunId, suppliedSnapshot]);
+  }, [authOwnerId, profileOnly, repository, requestedRunId, savedSnapshotId, suppliedSnapshot]);
 
   const activeLogoPath = label?.logoPath ?? profile?.logoPath ?? null;
   const logoUrl = activeLogoPath && resolvedLogo?.path === activeLogoPath ? resolvedLogo.url : null;
@@ -244,6 +251,15 @@ export function LabelWorkspace({
     } finally {
       setBusy(false);
     }
+  };
+
+  const startNewVersion = () => {
+    if (!snapshot || !profile || !saved) return;
+    setSaved(null);
+    setLabel(labelFromProfile(snapshot, profile));
+    setSaveAsDefault(true);
+    setTransitionDirection('forward');
+    setActiveView('settings');
   };
 
   const downloadPdf = async (draft: boolean) => {
@@ -410,14 +426,15 @@ export function LabelWorkspace({
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => openView('settings')}
-                    disabled={Boolean(saved)}
-                  >
-                    {saved ? 'Snapshot zapisany' : 'Ustawienia'}
-                  </Button>
+                  {saved ? (
+                    <Button variant="ghost" size="sm" onClick={startNewVersion}>
+                      Nowa wersja
+                    </Button>
+                  ) : (
+                    <Button variant="ghost" size="sm" onClick={() => openView('settings')}>
+                      Ustawienia
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="sm"
