@@ -506,7 +506,6 @@ export function useProductionWorkspace(enabled: boolean) {
   const staleSource = Boolean(
     session &&
     !sessionOwnerMismatch &&
-    session.status === 'in_progress' &&
     session.sourceFingerprint !== currentSourceFingerprint,
   );
   const requiredBehaviorLineIds = useMemo(
@@ -1295,6 +1294,13 @@ export function useProductionWorkspace(enabled: boolean) {
     },
     archiveStaleSession: async () => {
       if (!session || persistence.busy) return;
+      if (session.status === 'completed') {
+        // The durable completed run is immutable history. Detaching it from a
+        // newly saved recipe version is a local navigation operation, not a
+        // request to cancel or rewrite the finished production record.
+        archiveCurrentSession();
+        return;
+      }
       if (recoveryOrphanedLocal) {
         archiveCurrentSession();
         setRecovery((current) => ({

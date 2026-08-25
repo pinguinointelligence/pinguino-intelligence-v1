@@ -805,6 +805,63 @@ describe('Production trusted Rescue runtime races', () => {
     expect(useProductionSessionStore.getState().session?.sessionId).toBe('durable-run-after-save');
   });
 
+  it('detaches a completed run locally when the saved recipe version changes', async () => {
+    const attached = useProductionSessionStore.getState().session!;
+    const completed = {
+      ...attached,
+      status: 'completed',
+      completedAt: '2026-08-25T11:00:00.000Z',
+      completionSnapshot: {
+        actualFinalMassG: attached.plannedInput.target_batch_grams,
+        productComposition: attached.plannedComposition,
+      },
+    } as ProductionSession;
+    useProductionSessionStore.setState({ session: completed, archivedSessions: [] });
+    useRecipeStore.getState().loadRecipeInput(
+      {
+        ...attached.plannedInput,
+        target_batch_grams: attached.plannedInput.target_batch_grams + 1,
+      },
+      {
+        savedId: attached.source.recipeId,
+        savedName: attached.source.recipeName,
+        versionNumber: 2,
+        versionId: 'version-after-completed-run',
+        versionDate: '2026-08-25T11:05:00.000Z',
+        composition: attached.plannedComposition,
+      },
+    );
+    const transition = vi.fn();
+    const repository = {
+      getRun: vi.fn(async () => null),
+      transition,
+    } as unknown as ProductionRepository;
+    mocks.resolveProductionRepository.mockReturnValue({
+      repository,
+      mode: 'backend',
+      isLocalDev: false,
+      unavailable: false,
+    });
+
+    await act(async () => root.render(<EnabledHarness />));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(view?.prerequisite).toMatchObject({
+      code: 'stale_source',
+      action: 'archive_stale_session',
+      actionLabel: 'Zarchiwizuj starą sesję',
+    });
+
+    await act(async () => view!.archiveStaleSession());
+
+    expect(transition).not.toHaveBeenCalled();
+    expect(useProductionSessionStore.getState().session).toBeNull();
+    expect(useProductionSessionStore.getState().archivedSessions).toContainEqual(completed);
+  });
+
   it('keeps the local session attached when durable recovery fails for a repository error', async () => {
     useProductionSessionStore.getState().clear();
     const loadedInput = buildRecipeInput(useRecipeStore.getState(), 'planning');
