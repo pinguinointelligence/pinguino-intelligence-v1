@@ -64,10 +64,11 @@ describe('save contract — one product per accepted scan, retries included', ()
 describe('save contract — a failed save does not consume the scan', () => {
   it('releases the creation slot on every failure path after it was reserved', () => {
     const afterReservation = FINALIZE.slice(FINALIZE.indexOf('const releaseCreationSlot'));
-    // profile, preflight, rate-limit, ingest and invalid-result failures all release.
-    expect(afterReservation.match(/await releaseCreationSlot\(\);/g)?.length).toBe(5);
+    // profile, behavior, preflight, rate-limit, ingest and invalid-result failures all release.
+    expect(afterReservation.match(/await releaseCreationSlot\(\);/g)?.length).toBe(6);
     for (const failure of [
       'pm_product_profile_unavailable',
+      'pm_product_behavior_unavailable',
       'product_ingest_preflight_failed',
       'product_ingest_rate_limited',
       'product_ingest_failed',

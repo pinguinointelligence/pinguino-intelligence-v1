@@ -90,6 +90,9 @@ export interface IntimportTrustedProductProfile {
   technicalComposition: Record<string, number>;
   fieldTruth: Partial<Record<WorkingNumericField, IntimportTrustedFieldTruth>>;
   estimatedFromMapperIds: string[];
+  /** Exact server-selected profile used only as ProductBehavior evidence.
+   * It is never written to product mapper identity or used as runtime physics. */
+  profileReferenceMapperIngredientId: string | null;
   mapperSimilarity: number | null;
   mapperProfileBasis: Exclude<ProfileMatchBasis, 'none'> | null;
   mapperFingerprint: string;
@@ -255,6 +258,7 @@ export function validateIntimportProductProfileProposal(
     resolved.profileMatch.basis !== 'none'
       ? resolved.profileMatch
       : null;
+  const acceptedProfileReference = acceptedMatch ? profileDonor(acceptedMatch) : null;
 
   const technicalComposition: Record<string, number> = {};
   const fieldTruth: Partial<Record<WorkingNumericField, IntimportTrustedFieldTruth>> = {};
@@ -309,6 +313,7 @@ export function validateIntimportProductProfileProposal(
     technicalComposition,
     fieldTruth,
     estimatedFromMapperIds: [...resolved.mapperReferences],
+    profileReferenceMapperIngredientId: acceptedProfileReference?.ingredient_id ?? null,
     mapperSimilarity: acceptedMatch?.confidence ?? null,
     mapperProfileBasis:
       acceptedMatch && acceptedMatch.basis !== 'none' ? acceptedMatch.basis : null,

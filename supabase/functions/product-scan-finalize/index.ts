@@ -4,7 +4,6 @@ import {
   sha256Text,
   stableJson,
 } from '../_shared/productScanner.ts';
-import { authorizeLiveOverlayIdentity } from '../_shared/liveOverlayIdentity.ts';
 import {
   validateIntimportProductProfileProposal,
   type IntimportMapperAuthorityRow,
@@ -18,6 +17,11 @@ import type {
 } from '../../../src/features/product-intelligence/productEvidenceConfidence.ts';
 import type { WorkingNumericField } from '../../../src/features/product-intelligence/productFieldTruth.ts';
 import type { CarbonationEvidence } from '../../../src/data/products/carbonation.ts';
+import {
+  validateProductBehaviorAuthority,
+  type MapperProductBehaviorAuthorityRow,
+  type TrustedProductBehaviorAuthority,
+} from '../../../src/features/product-intelligence/productBehaviorAuthority.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -45,6 +49,14 @@ const MAPPER_AUTHORITY_COLUMNS = [
   'fructose_percent', 'lactose_percent', 'polyol_percent', 'fiber_percent',
   'salt_percent', 'alcohol_percent', 'kcal_per_100g', 'pod_value', 'pac_value',
   'sweetness_factor', 'freezing_factor',
+].join(',');
+
+const MAPPER_BEHAVIOR_AUTHORITY_COLUMNS = [
+  'id', 'mapper_ingredient_id', 'mapper_dataset_version', 'taxonomy_version_id',
+  'family_id', 'subfamily_id', 'form_id', 'main_eligibility', 'vegan_eligibility',
+  'protein_behavior', 'approved_liquid_dairy_carrier', 'profile_permissions',
+  'process_behavior', 'classifier_version', 'behavior_role', 'main_policy_status',
+  'profile_applicability', 'classification_reason_codes', 'is_current',
 ].join(',');
 
 const USER_NUMERIC_FIELDS: Readonly<Record<string, WorkingNumericField>> = Object.freeze({
@@ -150,6 +162,25 @@ async function loadMapperAuthorityRows(service: ReturnType<typeof createClient>)
       .range(offset, offset + 999);
     if (error) throw new Error('product_profile_mapper_read_failed');
     const page = (data ?? []) as unknown as IntimportMapperAuthorityRow[];
+    rows.push(...page);
+    if (page.length < 1000) break;
+  }
+  return rows;
+}
+
+async function loadMapperBehaviorAuthorityRows(
+  service: ReturnType<typeof createClient>,
+): Promise<MapperProductBehaviorAuthorityRow[]> {
+  const rows: MapperProductBehaviorAuthorityRow[] = [];
+  for (let offset = 0; ; offset += 1000) {
+    const { data, error } = await service
+      .from('mapper_product_behavior_bindings')
+      .select(MAPPER_BEHAVIOR_AUTHORITY_COLUMNS)
+      .eq('is_current', true)
+      .order('mapper_ingredient_id', { ascending: true })
+      .range(offset, offset + 999);
+    if (error) throw new Error('product_behavior_mapper_read_failed');
+    const page = (data ?? []) as unknown as MapperProductBehaviorAuthorityRow[];
     rows.push(...page);
     if (page.length < 1000) break;
   }
@@ -551,6 +582,7 @@ Deno.serve(async (request) => {
 
   const input = canonicalInput(scanResult);
   let productProfileAuthority: IntimportTrustedProductProfile;
+  let productBehaviorAuthority: TrustedProductBehaviorAuthority;
   try {
     productProfileAuthority = await trustedPmProfile({
       service,
@@ -561,6 +593,15 @@ Deno.serve(async (request) => {
   } catch {
     await releaseCreationSlot();
     return json({ error: 'pm_product_profile_unavailable' }, 503);
+  }
+  try {
+    productBehaviorAuthority = validateProductBehaviorAuthority({
+      productProfile: productProfileAuthority,
+      behaviorRows: await loadMapperBehaviorAuthorityRows(service),
+    });
+  } catch {
+    await releaseCreationSlot();
+    return json({ error: 'pm_product_behavior_unavailable' }, 503);
   }
   const privateValue = objectValue(body.privateOverlay);
   const privateOverlay = {
@@ -637,6 +678,7 @@ Deno.serve(async (request) => {
       rateReservationId: preflightResult.reservationId,
       preflightPayloadHash: payloadHash,
       productProfileAuthority,
+      productBehaviorAuthority,
     },
   });
   if (ingestError) {
@@ -663,17 +705,9 @@ Deno.serve(async (request) => {
     p_result: result,
   });
   if (completionError) return json({ error: 'scanner_overlay_finalize_failed' }, 503);
-  // The last hop (§37): an ordinary, safe, fully-declared product is given its engine
-  // identity here, so the owner can put what they just scanned into the recipe instead of
-  // waiting for a review. Anything else stays exactly as it was — saved, and pending.
-  const liveOverlay = await authorizeLiveOverlayIdentity({
-    service,
-    actorUserId: auth.user.id,
-    productId,
-  });
   return json({
     ...result,
-    liveOverlay,
+    productBehaviorAuthority,
     productAccuracy: productProfileAuthority.productAccuracy,
     readiness: productProfileAuthority.readiness,
     engineUsable: productProfileAuthority.engineUsable,

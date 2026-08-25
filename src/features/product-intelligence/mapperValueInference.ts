@@ -49,6 +49,11 @@ export interface MapperKnowledgeRow {
   ingredient_category?: string | null;
   ingredient_subcategory?: string | null;
   is_active?: boolean;
+  /** ProductBehavior admission metadata. Optional only for legacy fixtures;
+   * runtime and dry-run loaders project it from the immutable Mapper row. */
+  approved_for_base?: boolean;
+  approved_for_engines?: boolean;
+  verification_status?: string | null;
   ean_code?: string | null;
   water_percent: number | null;
   total_solids_percent: number | null;

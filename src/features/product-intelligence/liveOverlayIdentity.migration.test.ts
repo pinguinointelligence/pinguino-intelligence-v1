@@ -1,15 +1,13 @@
 /**
- * Migration 20260824150000 — the last hop from a scanned or imported product to a recipe.
+ * Migration 20260824150000 — forensic coverage for the retired PR→PI workaround.
  *
  * Owner decision (2026-08-24 §1): do NOT put EANs on the 2088 Mapper rows to make
  * Scanner → Recipe work. Implement it through the existing Product Intelligence /
  * Catalog / Live Overlay authority instead.
  *
- * The rule this pins: a product may enter a recipe when it RESOLVES to a verified Mapper
- * identity, not only when it IS a Mapper Basement row. The Engine still runs on the
- * Mapper row's composition; nothing here writes to `mapper_basement`, nothing is
- * scanner-specific, and anything ambiguous, high-risk, technical or incompletely
- * declared is refused and left for review.
+ * This migration remains in history and its evidence proposal stays read-only. Runtime
+ * authorization was later retired: current PR/PM ingestion freezes ProductBehavior
+ * semantics while retaining product-owned identity and composition.
  *
  * The A–D matrix is proved against the live authority in
  * `reports/LIVE_OVERLAY_ENGINE_IDENTITY_2026-08-24.md`; this file pins the contract the
@@ -79,7 +77,7 @@ describe('the identity is proposed from evidence, never from a name', () => {
   });
 });
 
-describe('authorization is the shared authority, not a scanner door', () => {
+describe('the historical authorization workaround is fully documented', () => {
   it('takes a product id and computes everything else itself', () => {
     expect(AUTHORIZE).toContain('p_actor_user_id uuid,\n  p_product_id uuid');
     expect(AUTHORIZE).toContain('public.propose_live_overlay_mapper_identity_v1');
@@ -124,7 +122,7 @@ describe('authorization is the shared authority, not a scanner door', () => {
   });
 });
 
-describe('both ingestion paths call the same authority', () => {
+describe('current ingestion paths share ProductBehavior authority, never PR→PI identity', () => {
   const scanner = readFileSync(
     join(REPO, 'supabase', 'functions', 'product-scan-finalize', 'index.ts'),
     'utf8',
@@ -133,19 +131,27 @@ describe('both ingestion paths call the same authority', () => {
     join(REPO, 'supabase', 'functions', 'catalog-submit', 'index.ts'),
     'utf8',
   );
-  const shared = readFileSync(
-    join(REPO, 'supabase', 'functions', '_shared', 'liveOverlayIdentity.ts'),
+  const sharedBehavior = readFileSync(
+    join(REPO, 'src', 'features', 'product-intelligence', 'productBehaviorAuthority.ts'),
+    'utf8',
+  );
+  const restore = readFileSync(
+    join(REPO, 'supabase', 'migrations', '20260825210000_product_behavior_authority_restore.sql'),
     'utf8',
   );
 
-  it('D: the Scanner and INTIMPORT reach it through one shared helper', () => {
-    expect(scanner).toContain("from '../_shared/liveOverlayIdentity.ts'");
-    expect(catalog).toContain("from '../_shared/liveOverlayIdentity.ts'");
-    expect(shared).toContain('authorize_live_overlay_mapper_identity_v1');
+  it('D: the Scanner and INTIMPORT reach one semantic-only helper', () => {
+    expect(scanner).toContain("from '../../../src/features/product-intelligence/productBehaviorAuthority.ts'");
+    expect(catalog).toContain("from '../../../src/features/product-intelligence/productBehaviorAuthority.ts'");
+    expect(scanner).not.toContain('authorizeLiveOverlayIdentity');
+    expect(catalog).not.toContain('authorizeLiveOverlayIdentity');
+    expect(sharedBehavior).toContain('runtimeMapperIngredientId: null');
+    expect(sharedBehavior).not.toContain("technicalComposition:");
   });
 
-  it('a refused identity never rolls back the product that was just saved', () => {
-    expect(shared).toContain('live_overlay_authorization_unavailable');
-    expect(shared).toContain('catch');
+  it('the old writer is a revoked, non-mutating tombstone', () => {
+    expect(restore).toContain('commercial Mapper runtime identity is retired');
+    expect(restore).toContain('authorize_live_overlay_mapper_identity_v1');
+    expect(restore).toMatch(/revoke all[\s\S]*authorize_live_overlay_mapper_identity_v1/);
   });
 });

@@ -89,9 +89,16 @@ for (const required of [
 }
 if (
   !boundary.includes(expectedHash) ||
-  !boundary.includes('loadCurrentRow(mapperId)') ||
-  !boundary.includes("hit.entityKind === 'commercial_product'") ||
-  !boundary.includes('hit.mappedIngredientId')
+  !boundary.includes('loadCurrentRow(articleId)') ||
+  !boundary.includes("kind: 'catalog_product'") ||
+  !boundary.includes('productVersionId: hit.currentVersionId!') ||
+  !boundary.includes('const canonicalProductId = /^(?:PR|PM)-ING-\\d{6}$/') ||
+  !boundary.includes(
+    "return hit.entityKind === 'pi_base' ? currentCatalogArticleId(hit, context) : null",
+  ) ||
+  !boundary.includes("kind: 'mapper'") ||
+  !boundary.includes('row.ingredient_id !== articleId') ||
+  !boundary.includes('row.approved_for_base !== true')
 ) {
   throw new Error('Selection boundary is not pinned to current Mapper authority');
 }
@@ -100,7 +107,7 @@ console.log('Mapper-resolved catalog validation PASS');
 console.log(`2088 mapper rows inspected (SHA-256 ${mapperHash})`);
 console.log(`${selectableIds.size} current Base-selectable Mapper products covered`);
 console.log('Shared commercial catalog discovery enabled');
-console.log('Commercial selections require a canonical Mapper PI ID');
+console.log('Commercial selections retain canonical PR/PM identity and immutable product version');
 console.log('0 stale favorite products rendered');
 console.log('0 stale recent products rendered');
-console.log('0 direct non-mapper additions accepted by the selection boundary');
+console.log('0 direct non-authoritative additions accepted by the selection boundary');

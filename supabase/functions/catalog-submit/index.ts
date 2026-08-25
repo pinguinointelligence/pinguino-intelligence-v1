@@ -1,7 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 import { Image } from 'https://deno.land/x/imagescript@1.2.15/mod.ts';
 import { evidenceImageDimensionsAllowed } from '../_shared/evidenceImageDimensions.ts';
-import { authorizeLiveOverlayIdentity } from '../_shared/liveOverlayIdentity.ts';
 import {
   INTIMPORT_PRODUCT_PROFILE_AUTHORITY,
   INTIMPORT_WHOLE_PROFILE_AUTHORITY,
@@ -28,6 +27,11 @@ import {
 import { isValidGtin } from '../../../src/features/global-catalog/normalization.ts';
 import { classifySourceAuthority } from '../_shared/sourceAuthority.ts';
 import type { CarbonationEvidence } from '../../../src/data/products/carbonation.ts';
+import {
+  validateProductBehaviorAuthority,
+  type MapperProductBehaviorAuthorityRow,
+  type TrustedProductBehaviorAuthority,
+} from '../../../src/features/product-intelligence/productBehaviorAuthority.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -115,7 +119,16 @@ const MAPPER_AUTHORITY_COLUMNS = [
   'freezing_factor',
 ].join(',');
 
+const MAPPER_BEHAVIOR_AUTHORITY_COLUMNS = [
+  'id', 'mapper_ingredient_id', 'mapper_dataset_version', 'taxonomy_version_id',
+  'family_id', 'subfamily_id', 'form_id', 'main_eligibility', 'vegan_eligibility',
+  'protein_behavior', 'approved_liquid_dairy_carrier', 'profile_permissions',
+  'process_behavior', 'classifier_version', 'behavior_role', 'main_policy_status',
+  'profile_applicability', 'classification_reason_codes', 'is_current',
+].join(',');
+
 let mapperAuthorityRowsCache: Promise<IntimportMapperAuthorityRow[]> | null = null;
+let mapperBehaviorAuthorityRowsCache: Promise<MapperProductBehaviorAuthorityRow[]> | null = null;
 
 const EVIDENCE_SOURCES = new Set<EvidenceSource>([
   'label',
@@ -157,6 +170,33 @@ async function loadMapperAuthorityRows(service: ServiceClient): Promise<Intimpor
     });
   }
   return mapperAuthorityRowsCache;
+}
+
+async function loadMapperBehaviorAuthorityRows(
+  service: ServiceClient,
+): Promise<MapperProductBehaviorAuthorityRow[]> {
+  if (!mapperBehaviorAuthorityRowsCache) {
+    mapperBehaviorAuthorityRowsCache = (async () => {
+      const rows: MapperProductBehaviorAuthorityRow[] = [];
+      for (let offset = 0; ; offset += 1000) {
+        const { data, error } = await service
+          .from('mapper_product_behavior_bindings')
+          .select(MAPPER_BEHAVIOR_AUTHORITY_COLUMNS)
+          .eq('is_current', true)
+          .order('mapper_ingredient_id', { ascending: true })
+          .range(offset, offset + 999);
+        if (error) throw new Error('product_behavior_mapper_read_failed');
+        const page = (data ?? []) as unknown as MapperProductBehaviorAuthorityRow[];
+        rows.push(...page);
+        if (page.length < 1000) break;
+      }
+      return rows;
+    })().catch((error: unknown) => {
+      mapperBehaviorAuthorityRowsCache = null;
+      throw error;
+    });
+  }
+  return mapperBehaviorAuthorityRowsCache;
 }
 
 const comparableText = (value: unknown): string | null =>
@@ -1288,6 +1328,7 @@ Deno.serve(async (request) => {
   let serverProductProfileAuthority: (IntimportTrustedProductProfile & {
     sourceProductId: string | null;
   }) | null = null;
+  let serverProductBehaviorAuthority: TrustedProductBehaviorAuthority | null = null;
   const productProfileProposal = objectValue(canonicalInput.intimportProductProfileProposal);
   delete canonicalInput.intimportProductProfileProposal;
   const manualProductProfileProposal = objectValue(canonicalInput.manualProductProfileProposal);
@@ -1352,6 +1393,17 @@ Deno.serve(async (request) => {
     }
   }
 
+  if (serverProductProfileAuthority) {
+    try {
+      serverProductBehaviorAuthority = validateProductBehaviorAuthority({
+        productProfile: serverProductProfileAuthority,
+        behaviorRows: await loadMapperBehaviorAuthorityRows(service),
+      });
+    } catch {
+      return json({ error: 'product_behavior_authority_unavailable' }, 503);
+    }
+  }
+
   let evidence: CapturedEvidence = {
     imagePhashes: [],
     archivedImagePaths: [],
@@ -1407,6 +1459,7 @@ Deno.serve(async (request) => {
       reviewReservationId: preflightResult.reviewReservationId ?? null,
       preflightPayloadHash,
       productProfileAuthority: serverProductProfileAuthority,
+      productBehaviorAuthority: serverProductBehaviorAuthority,
     },
   };
   const { data, error } = hasImportRunMetadata && importRunId
@@ -1441,21 +1494,10 @@ Deno.serve(async (request) => {
       return json({ error: 'import_cancellation_requested' }, 409);
     return json({ error: 'product_ingest_failed' }, 400);
   }
-  // The same last hop the Scanner takes. INTIMPORT and a manual entry reach identical
-  // capability because they reach it through identical authority — not a copy of it.
   const ingested = data && typeof data === 'object' ? (data as Record<string, unknown>) : {};
-  const ingestedProductId =
-    typeof ingested.productId === 'string' ? ingested.productId : null;
-  const liveOverlay = ingestedProductId
-    ? await authorizeLiveOverlayIdentity({
-        service,
-        actorUserId: auth.user.id,
-        productId: ingestedProductId,
-      })
-    : { authorized: false, reason: 'product_id_missing' };
   return json({
     ...ingested,
-    liveOverlay,
+    productBehaviorAuthority: serverProductBehaviorAuthority,
     ...(serverProductProfileAuthority
       ? {
           productAccuracy: serverProductProfileAuthority.productAccuracy,

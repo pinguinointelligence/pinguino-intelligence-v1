@@ -50,6 +50,10 @@ import {
   productBehaviorModuleGate,
 } from './productBehaviorAccess';
 import type { ProductBehaviorSnapshot } from './contracts';
+import {
+  classifyProspectiveProductBehavior,
+  type ProspectiveProductBehaviorAuthority,
+} from './productBehaviorAuthority';
 
 /** Canonical lookups the caller supplies. Kept injected so this stays pure. */
 export interface IntimportCanonicalIndex {
@@ -107,6 +111,9 @@ export interface IntimportProductIntelligence {
    * Null only when the caller supplied no Mapper — the layer never invents one.
    */
   workingValues: ProductWorkingValues | null;
+  /** Read-only, pre-ingest projection of the same semantic authority the
+   * server will recompute and freeze on the product version. */
+  productBehaviorAuthority: ProspectiveProductBehaviorAuthority;
   /** Exact public inputs used by the frozen whole-profile matcher. */
   profileMatchInput: ProfileMatchInput;
 }
@@ -422,6 +429,11 @@ export function assessIntimportProduct(
   const carbonation = classifyCarbonation(
     intimportCarbonationEvidence(candidate, sourceAuthority),
   );
+  const productBehaviorAuthority = classifyProspectiveProductBehavior({
+    kind,
+    engineUsable: workingValues?.engineReady === true,
+    profileMatch: workingValues?.profileMatch ?? null,
+  });
 
   return {
     rowIndex: candidate.rowIndex,
@@ -455,6 +467,7 @@ export function assessIntimportProduct(
     enrichmentTargets: targets,
     insert: candidate.insert,
     workingValues,
+    productBehaviorAuthority,
     profileMatchInput,
   };
 }
@@ -742,17 +755,28 @@ export function summarizeIntimportReadiness(
   const plan = planIntimportImport(rows);
   let productBehaviorAuthorityPass = 0;
   let engineReady = 0;
-  for (const planned of plan.rows) {
+  let behaviorReview = 0;
+  let behaviorBlocked = 0;
+  for (const [index, planned] of plan.rows.entries()) {
     if (!planned.engineUsable) continue;
     const lineId = `intimport-source:${planned.sourceProductId ?? planned.rowIndex}`;
     const gate = productBehaviorModuleGate(behaviorSnapshots, 'BASE_RECIPE', [lineId]);
-    if (gate.ready) {
+    const prospective = rows[index]?.productBehaviorAuthority;
+    const accepted = gate.ready || (
+      prospective?.classificationOutcome === 'classified' &&
+      prospective.baseRecipeEligible === true
+    );
+    if (accepted) {
       productBehaviorAuthorityPass += 1;
       engineReady += 1;
+    } else if (prospective?.classificationOutcome === 'blocked') {
+      behaviorBlocked += 1;
+    } else {
+      behaviorReview += 1;
     }
   }
-  const review = plan.byState.REVIEW;
-  const blocked = plan.engineUsable - engineReady;
+  const review = plan.byState.REVIEW + behaviorReview;
+  const blocked = behaviorBlocked;
   const carbonation = rows.reduce(
     (counts, row) => {
       counts[row.carbonation?.status ?? 'UNKNOWN'] += 1;

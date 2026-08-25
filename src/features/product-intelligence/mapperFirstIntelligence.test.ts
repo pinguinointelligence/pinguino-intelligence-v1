@@ -989,6 +989,7 @@ describe('INTIMPORT import handoff', () => {
       workingValues: {
         valueReadiness: readiness,
         readiness,
+        engineReady: readiness !== 'REVIEW',
         technicalAuthorityRequired: dosageUnproven,
         profileMatch: { confidence: 0.94, basis: 'neighbour_set', references: ['PI-1'] },
         fields: {
@@ -1001,6 +1002,12 @@ describe('INTIMPORT import handoff', () => {
             mapperReferences: ['PI-1'],
           }),
         },
+      },
+      productBehaviorAuthority: {
+        classificationOutcome: 'unknown_requires_review',
+        baseRecipeEligible: false,
+        referenceMapperIngredientId: null,
+        classificationReasonCodes: ['family_and_form_evidence_missing'],
       },
     }) as never;
 
@@ -1060,8 +1067,44 @@ describe('INTIMPORT import handoff', () => {
       productProfileReady: 1,
       productBehaviorAuthorityPass: 0,
       engineReady: 0,
+      review: 1,
+      blocked: 0,
+    });
+  });
+
+  it('admits complete PR physics only when prospective ProductBehavior is accepted', () => {
+    const accepted = row('ESTIMATED_READY', false, 72.8) as never as {
+      productBehaviorAuthority: {
+        classificationOutcome: 'classified';
+        baseRecipeEligible: true;
+        referenceMapperIngredientId: string;
+        classificationReasonCodes: string[];
+      };
+    };
+    accepted.productBehaviorAuthority = {
+      classificationOutcome: 'classified',
+      baseRecipeEligible: true,
+      referenceMapperIngredientId: 'PI-1',
+      classificationReasonCodes: [],
+    };
+    expect(summarizeIntimportReadiness([accepted as never])).toMatchObject({
+      productAccuracyPass: 0,
+      criticalPhysicsResolved: 1,
+      productBehaviorAuthorityPass: 1,
+      engineReady: 1,
       review: 0,
-      blocked: 1,
+      blocked: 0,
+    });
+  });
+
+  it('keeps complete PR physics out of Engine when ProductBehavior is insufficient', () => {
+    const summary = summarizeIntimportReadiness([row('ESTIMATED_READY')]);
+    expect(summary).toMatchObject({
+      criticalPhysicsResolved: 1,
+      productBehaviorAuthorityPass: 0,
+      engineReady: 0,
+      review: 1,
+      blocked: 0,
     });
   });
 

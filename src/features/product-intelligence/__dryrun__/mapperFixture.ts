@@ -82,6 +82,9 @@ export function loadMapperKnowledgeRows(): { rows: MapperKnowledgeRow[]; fingerp
         ingredient_category: at(row, 'ingredient_category') ?? null,
         ingredient_subcategory: at(row, 'ingredient_subcategory') ?? null,
         is_active: (at(row, 'is_active') ?? 'true').trim().toLowerCase() !== 'false',
+        approved_for_base: (at(row, 'approved_for_base') ?? 'false').trim().toLowerCase() === 'true',
+        approved_for_engines: (at(row, 'approved_for_engines') ?? 'false').trim().toLowerCase() === 'true',
+        verification_status: at(row, 'verification_status') ?? null,
         ean_code: at(row, 'ean_code') ?? null,
         ...numericFields,
       };

@@ -69,7 +69,7 @@ const ownProductProfile = {
   },
 };
 
-/** A minimal current Mapper row — the only source of a recipe line's physics. */
+/** A minimal current Mapper row used only to prove it is not the PR line's physics. */
 const mapperRow = {
   ingredient_id: 'PI-ING-000123',
   ingredient_name_display: 'MILK 3.2%',
@@ -137,20 +137,20 @@ describe('a scanned product returning to the recipe', () => {
     expect(scannedProductRecipeTarget([commercial], scanned, 'BASE')).toBeNull();
   });
 
-  it('B accepts the scanned product itself once its Mapper identity is authorized', () => {
-    // The catalogue entry and its physics both belong to the scanned article.
+  it('B accepts the scanned product with immutable ProductBehavior and no Mapper identity', () => {
+    // The catalogue entry, behavior binding and physics belong to the scanned article.
     const overlay = hit({
       id: 'c0ffee00-0000-4000-8000-000000000009',
       entityKind: 'commercial_product',
       status: 'manual_unverified',
       displayName: 'MLEKO 3,2% Łaciate 1 l',
       productCode: 'PR-ING-006306',
-      mappedIngredientId: 'PI-ING-000123',
+      mappedIngredientId: null,
       publicData: ownProductProfile,
     });
     const target = scannedProductRecipeTarget([overlay], scanned, 'BASE');
     expect(target?.id).toBe(overlay.id);
-    expect(target?.mappedIngredientId).toBe('PI-ING-000123');
+    expect(target?.mappedIngredientId).toBeNull();
   });
 
   it('B keeps the scanned product beside its Mapper row instead of hiding one of them', () => {
@@ -160,7 +160,7 @@ describe('a scanned product returning to the recipe', () => {
       status: 'manual_unverified',
       displayName: 'MLEKO 3,2% Łaciate 1 l',
       productCode: 'PR-ING-006306',
-      mappedIngredientId: 'PI-ING-000123',
+      mappedIngredientId: null,
       publicData: ownProductProfile,
     });
     expect(filterCurrentMapperCatalogHits([hit(), overlay], 'BASE')).toHaveLength(2);
@@ -172,7 +172,7 @@ describe('a scanned product returning to the recipe', () => {
       status: 'manual_unverified',
       displayName: 'MLEKO 3,2% Łaciate 1 l',
       productCode: 'PR-ING-006306',
-      mappedIngredientId: 'PI-ING-000123',
+      mappedIngredientId: null,
       publicData: ownProductProfile,
     });
     const ingredient = engineIngredientForCatalogSelection(overlay, {
@@ -198,7 +198,7 @@ describe('a scanned product returning to the recipe', () => {
       status: 'manual_unverified',
       displayName: 'Baitz Kakao',
       productCode: 'PR-ING-006308',
-      mappedIngredientId: 'PI-ING-000091',
+      mappedIngredientId: null,
       publicData: ownProductProfile,
     });
     const ingredient = engineIngredientForCatalogSelection(baitz, {
@@ -217,7 +217,7 @@ describe('a scanned product returning to the recipe', () => {
     const blocked = hit({
       entityKind: 'commercial_product',
       status: 'blocked',
-      mappedIngredientId: 'PI-ING-000123',
+      mappedIngredientId: null,
     });
     expect(scannedProductRecipeTarget([blocked], scanned, 'BASE')).toBeNull();
   });
