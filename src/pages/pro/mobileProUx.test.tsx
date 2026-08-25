@@ -9,7 +9,7 @@
  *     shared geometry module instead of per-page numbers.
  *  2. COLLAPSED MOBILE RECIPE — below `lg` a line shows name · % · g and
  *     nothing else; the five-column table is hidden rather than squeezed.
- *  3. INGREDIENT SHEET — identity + `?` + price + Main crown at the top, the
+ *  3. INGREDIENT SHEET — identity + `?` + price + Main role at the top, the
  *     `%` / `g` steppers in the bottom thumb zone, and the SAME options list
  *     the desktop ••• dialog renders.
  *  4. BOTTOM PREVIEW BAR — Receptura | Monitor | Produkcja | Etykieta, where
@@ -185,11 +185,13 @@ describe('mobile ingredient editing sheet', () => {
     expect(header).not.toContain('truncate');
   });
 
-  it('keeps identity, help, price and the Main crown at the top', () => {
+  it('keeps identity, help, price and the unified Main badge at the top', () => {
     expect(controls).toContain('data-testid={`row-mobile-help-${item.id}`}');
     expect(controls).toContain('data-testid={`row-mobile-price-${item.id}`}');
     expect(controls).toContain('data-testid={`row-mobile-main-toggle-${item.id}`}');
-    expect(controls).toContain('<MainRoleGlyph active={isMain} />');
+    expect(controls).toContain('<MainRoleBadge');
+    expect(controls).not.toContain('MainRoleGlyph');
+    expect(controls).not.toContain('data-crown-state');
     // „Zmień/Zapisz" reuses the existing customer-price editor, not a new one.
     expect(controls).toContain('<CustomerPriceEditor view={priceView} lineId={item.id} />');
   });
@@ -232,8 +234,12 @@ describe('mobile preview navigation', () => {
     // Read-only modules still collapse to Recipe. An in-progress Production
     // route stays mounted so its execution rows remain reachable underneath.
     expect(surface).toContain('collapsedMobileCockpitRoute(');
-    expect(surface).toContain("activeTab === 'production' && production.session?.status === 'in_progress'");
-    expect(surface).toContain('if (routeAfterCollapse !== activeTab) onTabChange(routeAfterCollapse)');
+    expect(surface).toContain(
+      "activeTab === 'production' && production.session?.status === 'in_progress'",
+    );
+    expect(surface).toContain(
+      'if (routeAfterCollapse !== activeTab) onTabChange(routeAfterCollapse)',
+    );
   });
 
   it('a BLOCKING dialog outranks the bottom stack it blocks', () => {

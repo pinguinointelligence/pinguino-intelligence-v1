@@ -16,26 +16,43 @@ const t = b.ingredientTable;
 const money = (value: number): string =>
   value.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-/** The Main („główny") crown, identical to the desktop glyph. */
-export function MainRoleGlyph({ active = true }: { active?: boolean }) {
-  return (
-    <svg
-      aria-hidden
-      width="14"
-      height="14"
-      viewBox="0 0 16 16"
-      fill="none"
-      className="text-gold"
-      data-crown-state={active ? 'active' : 'available'}
+/** The one customer-facing Main presentation shared by every ingredient row. */
+export function MainRoleBadge({
+  testId,
+  onClick,
+  ariaLabel = 'Składnik główny',
+  title = t.role.mainHint,
+}: {
+  testId: string;
+  onClick?: () => void;
+  ariaLabel?: string;
+  title?: string;
+}) {
+  const className =
+    'inline-flex h-6 shrink-0 items-center justify-center rounded-lg border border-gold/22 bg-education-ivory px-2 text-[11px] font-semibold text-gold';
+  return onClick ? (
+    <button
+      type="button"
+      aria-label={ariaLabel}
+      aria-pressed="true"
+      title={title}
+      onClick={onClick}
+      data-testid={testId}
+      data-main-presentation="badge"
+      className={cn('pro-focus-ring', className)}
     >
-      <path
-        d="M2 5.5 5.3 8 8 3l2.7 5L14 5.5l-1 6H3l-1-6Z"
-        fill={active ? 'currentColor' : 'none'}
-        stroke={active ? undefined : 'currentColor'}
-        strokeWidth={active ? undefined : 1.25}
-        strokeLinejoin="round"
-      />
-    </svg>
+      Główny
+    </button>
+  ) : (
+    <span
+      aria-label={ariaLabel}
+      title={title}
+      data-testid={testId}
+      data-main-presentation="badge"
+      className={className}
+    >
+      Główny
+    </span>
   );
 }
 
@@ -75,24 +92,24 @@ export function MobileIngredientLine({
       data-changed={changed ? 'true' : undefined}
       aria-label={`${item.ingredient.name} — otwórz edycję składnika`}
       className={cn(
-        'pro-focus-ring grid min-h-14 w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3 text-left transition-colors',
+        'pro-focus-ring grid min-h-14 w-full grid-cols-[minmax(0,1fr)_62px_62px_64px] items-center gap-x-2 text-left transition-colors',
         'active:bg-stone-50',
       )}
     >
       <span className="flex min-w-0 items-center gap-2">
-        <span
-          aria-hidden
-          className="grid size-7 shrink-0 place-items-center rounded-full bg-stone-100 text-stone-600"
-        >
+        <span className="relative grid size-7 shrink-0 place-items-center rounded-full bg-stone-100 text-stone-600">
           <IngredientCategoryIcon
             symbol={ingredientCategorySymbolFor({ category: item.ingredient.category })}
           />
+          {estimated ? (
+            <span
+              aria-label={t.data.estimatedHint}
+              title={t.data.estimatedHint}
+              className="absolute -right-0.5 -bottom-0.5 size-2 rounded-full border border-white bg-status-risky"
+              data-testid={`row-estimated-${item.id}`}
+            />
+          ) : null}
         </span>
-        {isMain ? (
-          <span className="shrink-0" aria-label="Składnik główny" title={t.role.mainHint}>
-            <MainRoleGlyph />
-          </span>
-        ) : null}
         <span className="truncate text-[13px] font-semibold text-ink">{item.ingredient.name}</span>
         {required ? (
           <span
@@ -108,14 +125,13 @@ export function MobileIngredientLine({
             {t.recipe.unavailableStatus}
           </span>
         ) : null}
-        {estimated ? (
-          <span
-            aria-label={t.data.estimatedHint}
-            title={t.data.estimatedHint}
-            className="size-1.5 shrink-0 rounded-full bg-status-risky"
-            data-testid={`row-estimated-${item.id}`}
-          />
-        ) : null}
+      </span>
+      <span
+        aria-hidden={isMain ? undefined : true}
+        className="flex w-[62px] shrink-0 justify-end"
+        data-testid={`row-mobile-main-slot-${item.id}`}
+      >
+        {isMain ? <MainRoleBadge testId={`row-mobile-main-badge-${item.id}`} /> : null}
       </span>
       <span
         className="w-[62px] shrink-0 text-right font-mono text-[13px] font-semibold tabular-nums text-ink"
@@ -145,7 +161,7 @@ function SheetSectionLabel({ children }: { children: ReactNode }) {
  * The mobile ingredient editing view (owner mobile UX §9/§10).
  *
  * Hierarchy is deliberate: identity, help and the rarely-changed metadata
- * (price, Main crown, „Zmień/Zapisz") sit at the TOP; the frequently used
+ * (price, Main role, „Zmień/Zapisz") sit at the TOP; the frequently used
  * `%` / `g` steppers sit at the BOTTOM, inside the thumb zone, using exactly
  * the desktop control (`DirectNumberControl`) so the meaning of −, +, the
  * value and the lock never changes between form factors.
@@ -230,30 +246,29 @@ export function MobileIngredientSheet({
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            {/* Main product — the existing crown metaphor and the existing authority. */}
-            {isMain || !mainUnavailableReason ? (
+            {/* Main product — one badge presentation; role authority is unchanged. */}
+            {isMain ? (
+              <MainRoleBadge
+                testId={`row-mobile-main-toggle-${item.id}`}
+                ariaLabel="Składnik Główny"
+                title={
+                  mainUserHeld
+                    ? 'Główny (Twoja decyzja) — PI nie zmienia jego gramatury samo z siebie.'
+                    : 'Główny'
+                }
+                onClick={() => onSetRole('standard')}
+              />
+            ) : !mainUnavailableReason ? (
               <button
                 type="button"
-                aria-label={isMain ? 'Składnik Główny' : 'Ustaw składnik jako Główny'}
-                aria-pressed={isMain}
-                onClick={() => onSetRole(isMain ? 'standard' : 'main')}
+                aria-label="Ustaw składnik jako Główny"
+                aria-pressed="false"
+                onClick={() => onSetRole('main')}
                 data-testid={`row-mobile-main-toggle-${item.id}`}
-                title={
-                  isMain
-                    ? mainUserHeld
-                      ? 'Główny (Twoja decyzja) — PI nie zmienia jego gramatury samo z siebie.'
-                      : 'Główny'
-                    : 'Ustaw jako Główny'
-                }
-                className={cn(
-                  'pro-focus-ring min-h-11 shrink-0 rounded-xl border text-xs font-semibold transition-colors',
-                  isMain
-                    ? 'inline-flex items-center gap-1.5 border-gold/22 bg-education-ivory px-3 text-gold'
-                    : 'grid size-11 place-items-center border-transparent bg-transparent text-gold hover:bg-education-ivory/55',
-                )}
+                title="Ustaw jako Główny"
+                className="pro-focus-ring inline-flex min-h-11 shrink-0 items-center rounded-xl border border-ink/12 bg-white px-3 text-xs font-semibold text-ink"
               >
-                <MainRoleGlyph active={isMain} />
-                {isMain ? 'Główny' : null}
+                Ustaw Główny
               </button>
             ) : null}
 

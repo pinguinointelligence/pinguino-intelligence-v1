@@ -11,7 +11,11 @@
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { productBehaviorSaveGateMessage, resolveSaveTarget } from './useCanonicalRecipeSave';
+import {
+  canonicalRecipeSaveErrorMessage,
+  productBehaviorSaveGateMessage,
+  resolveSaveTarget,
+} from './useCanonicalRecipeSave';
 
 const LINKED = { savedRecipeId: 'rc-1', savedRecipeName: 'Gelato waniliowe' };
 const UNLINKED = { savedRecipeId: null, savedRecipeName: null };
@@ -86,9 +90,7 @@ describe('handler invariants', () => {
     expect(SRC).toContain(
       'const practicalRecipeAudit = useRecipeStore((s) => s.practicalRecipeAudit);',
     );
-    expect(SRC).toContain(
-      '[constraints, draftRevision, options.buildInput, practicalRecipeAudit]',
-    );
+    expect(SRC).toContain('[constraints, draftRevision, options.buildInput, practicalRecipeAudit]');
     expect(SRC).toContain('practicalRecipeAuditMatchesInput(');
     expect(SRC).not.toContain('JSON.stringify(last.after.input)');
     expect(SRC).toContain('productionVersionFingerprint(recipeInput, productComposition)');
@@ -103,5 +105,20 @@ describe('fresh-native ProductBehavior Save copy', () => {
     expect(fresh).toMatch(/pierwszego przeliczenia/i);
     expect(fresh).not.toMatch(/ponownej walidacji|historycz/i);
     expect(existing).toMatch(/ponownej walidacji/i);
+  });
+
+  it('never renders the raw database scope diagnostic to a customer', () => {
+    const raw = 'recipe product behavior scope mismatch for new-recipe-2-PI-ING-000163';
+    const customer = canonicalRecipeSaveErrorMessage(new Error(raw));
+
+    expect(customer).toBe('Dane jednego ze składników wymagają ponownej walidacji.');
+    expect(customer).not.toContain(raw);
+    expect(customer).not.toContain('new-recipe-2-PI-ING-000163');
+  });
+
+  it('preserves unrelated actionable repository errors', () => {
+    expect(
+      canonicalRecipeSaveErrorMessage(new Error('Limit zapisanych receptur osiągnięty.')),
+    ).toBe('Limit zapisanych receptur osiągnięty.');
   });
 });

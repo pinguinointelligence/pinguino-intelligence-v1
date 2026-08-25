@@ -14,7 +14,7 @@ import {
   type IngredientRowActions,
   type IngredientRowLockView,
 } from './IngredientRow';
-import { MainRoleGlyph, MobileIngredientSheet } from './IngredientLineControls';
+import { MobileIngredientSheet } from './IngredientLineControls';
 import {
   DEFAULT_INGREDIENT_ROW_META,
   type IngredientRowMeta,
@@ -168,12 +168,15 @@ describe('Recipe ingredient table — quiet primary surface', () => {
     expect(text(row)).not.toContain('supplementary');
   });
 
-  it('shows a minimal Main icon and no Standard badge noise', () => {
+  it('shows the compact Main badge and no Standard badge noise', () => {
     const main = renderRow({ ...baseItem, lock_type: 'main' });
     expect(main).toContain('aria-label="Składnik główny"');
+    expect(main).toContain(`data-testid="row-main-badge-${baseItem.id}"`);
+    expect(main).not.toContain('data-crown-state');
     const standard = renderRow();
     expect(standard).not.toContain('aria-label="Dodatek"');
     expect(standard).not.toContain('aria-label="Składnik główny"');
+    expect(standard).not.toContain(`data-testid="row-main-badge-${baseItem.id}"`);
   });
 
   it('renders no crown action for a non-eligible ingredient while preserving its layout slot', () => {
@@ -184,48 +187,56 @@ describe('Recipe ingredient table — quiet primary surface', () => {
       'Ten składnik nie może być Główny.',
     );
 
-    expect(blocked).not.toContain(`data-testid="row-main-toggle-${baseItem.id}"`);
+    expect(blocked).not.toContain(`data-testid="row-main-badge-${baseItem.id}"`);
     expect(blocked).not.toContain('aria-label="Ustaw składnik jako Główny"');
     expect(blocked).toContain(`data-testid="row-main-slot-${baseItem.id}"`);
     expect(blocked).toContain('aria-hidden="true"');
   });
 
-  it('renders a gold outline crown for an eligible inactive ingredient', () => {
+  it('keeps the fixed Main slot empty for an eligible inactive ingredient', () => {
     const eligible = renderRow();
-    const crown =
-      eligible.match(/<button[^>]*data-testid="row-main-toggle-[\s\S]*?<\/button>/)?.[0] ?? '';
-
-    expect(crown).toContain('aria-label="Ustaw składnik jako Główny"');
-    expect(crown).toContain('aria-pressed="false"');
-    expect(crown).not.toContain('disabled');
-    expect(crown).toContain('title="Ustaw jako Główny"');
-    expect(crown).toContain('text-gold');
-    expect(crown).toContain('fill="none"');
-    expect(crown).toContain('stroke="currentColor"');
-    expect(crown).not.toContain('text-stone-300');
+    expect(eligible).toContain(`data-testid="row-main-slot-${baseItem.id}"`);
+    expect(eligible).not.toContain(`data-testid="row-main-badge-${baseItem.id}"`);
+    expect(eligible).not.toContain('data-crown-state');
   });
 
-  it('keeps the accepted filled-gold crown for every active Main state', () => {
+  it('keeps one fixed-slot Główny badge for every active Main state', () => {
     const active = renderRow({ ...baseItem, lock_type: 'main' });
-    const crown =
-      active.match(/<button[^>]*data-testid="row-main-toggle-[\s\S]*?<\/button>/)?.[0] ?? '';
+    const badge =
+      active.match(/<button[^>]*data-testid="row-main-badge-[\s\S]*?<\/button>/)?.[0] ?? '';
 
-    expect(crown).toContain('aria-label="Składnik Główny"');
-    expect(crown).toContain('aria-pressed="true"');
-    expect(crown).toContain('text-gold');
-    expect(crown).toContain('fill="currentColor"');
+    expect(active).toContain(`data-testid="row-main-slot-${baseItem.id}"`);
+    expect(badge).toContain('aria-label="Składnik Główny"');
+    expect(badge).toContain('aria-pressed="true"');
+    expect(text(badge)).toBe('Główny');
+    expect(badge).toContain('text-gold');
+    expect(badge).not.toContain('<svg');
+    expect(active).not.toContain('data-crown-state');
   });
 
-  it('uses one crown glyph with outline and filled variants, never a disabled-grey variant', () => {
-    const outline = renderToStaticMarkup(<MainRoleGlyph active={false} />);
-    const filled = renderToStaticMarkup(<MainRoleGlyph active />);
+  it.each([
+    ['fruit', 'fruit'],
+    ['nuts', 'nut_paste'],
+    ['oils', 'fat'],
+    ['dairy', 'dairy'],
+    ['dry ingredients', 'sugar'],
+    ['Protein', 'other'],
+    ['Vegan', 'other'],
+    ['Sorbet', 'water'],
+  ] as const)('uses the same fixed badge slot for Main %s rows', (label, category) => {
+    const id = `main-${label.replaceAll(' ', '-')}`;
+    const html = renderRow({
+      ...baseItem,
+      id,
+      lock_type: 'main',
+      ingredient: { ...baseItem.ingredient, name: label, category },
+    });
 
-    expect(outline).toContain('fill="none"');
-    expect(outline).toContain('stroke="currentColor"');
-    expect(outline).toContain('text-gold');
-    expect(outline).not.toContain('stone-300');
-    expect(filled).toContain('fill="currentColor"');
-    expect(filled).toContain('text-gold');
+    expect(html).toContain(`data-testid="row-main-slot-${id}"`);
+    expect(html).toContain(`data-testid="row-main-badge-${id}"`);
+    expect(html).toContain(`data-testid="row-mobile-main-slot-${id}"`);
+    expect(html).toContain(`data-testid="row-mobile-main-badge-${id}"`);
+    expect(html).not.toContain('data-crown-state');
   });
 
   it('removes a blocked Main crown from the mobile sheet accessibility tree', () => {
@@ -252,7 +263,7 @@ describe('Recipe ingredient table — quiet primary surface', () => {
     expect(text(sheet)).toContain('Ten składnik nie może być Główny.');
   });
 
-  it('keeps the mobile Main action keyboard-accessible when the outline crown is available', () => {
+  it('keeps the mobile Main action keyboard-accessible without a Crown glyph', () => {
     const sheet = renderToStaticMarkup(
       <MobileIngredientSheet
         item={baseItem}
@@ -270,13 +281,15 @@ describe('Recipe ingredient table — quiet primary surface', () => {
         menu={null}
       />,
     );
-    const crown =
+    const action =
       sheet.match(/<button[^>]*data-testid="row-mobile-main-toggle-[\s\S]*?<\/button>/)?.[0] ?? '';
 
-    expect(crown).toContain('aria-label="Ustaw składnik jako Główny"');
-    expect(crown).toContain('aria-pressed="false"');
-    expect(crown).not.toContain('disabled');
-    expect(crown).toContain('data-crown-state="available"');
+    expect(action).toContain('aria-label="Ustaw składnik jako Główny"');
+    expect(action).toContain('aria-pressed="false"');
+    expect(action).not.toContain('disabled');
+    expect(text(action)).toBe('Ustaw Główny');
+    expect(action).not.toContain('<svg');
+    expect(action).not.toContain('data-crown-state');
   });
 
   it('keeps a legacy Add-on line visible as an ambiguity, never as a new Base role', () => {
@@ -380,7 +393,7 @@ describe('Recipe ingredient table — locks, units and availability', () => {
     expect(html).toContain('data-control-capacity="10000g"');
   });
 
-  it('keeps the Main crown independent from the exact-gram lock and exposes an explicit ratio weight', () => {
+  it('keeps the Main badge independent from the exact-gram lock and exposes an explicit ratio weight', () => {
     const html = renderRow({ ...baseItem, lock_type: 'main', main_ratio_weight: 2 });
     const gramButton =
       html.match(/<button[^>]*data-testid="row-lock-grams-[\s\S]*?<\/button>/)?.[0] ?? '';
@@ -397,10 +410,8 @@ describe('Recipe ingredient table — locks, units and availability', () => {
     expect(text(ratio)).toContain('Waga odzwierciedla bieżącą proporcję gramów');
 
     const lockedStandard = renderRow(baseItem, DEFAULT_INGREDIENT_ROW_META, true);
-    const crown =
-      lockedStandard.match(/<button[^>]*data-testid="row-main-toggle-[\s\S]*?<\/button>/)?.[0] ??
-      '';
-    expect(crown).not.toMatch(/\sdisabled(?:=|>)/);
+    expect(lockedStandard).toContain(`data-testid="row-main-slot-${baseItem.id}"`);
+    expect(lockedStandard).not.toContain(`data-testid="row-main-badge-${baseItem.id}"`);
   });
 
   it('keeps executable quantity in canonical grams without an invisible unit focus stop', () => {

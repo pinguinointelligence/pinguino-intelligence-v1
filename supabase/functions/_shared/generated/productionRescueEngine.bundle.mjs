@@ -4210,6 +4210,7 @@ function productBehaviorSnapshotFingerprint(snapshots) {
 
 //#endregion
 //#region src/features/product-intelligence/productBehaviorAccess.ts
+const hasStableProductBehaviorIdentity = (ingredient) => [ingredient.id, ingredient.canonical_ingredient_id].some((identity) => hasCanonicalIngredientIdentity(identity) || typeof identity === "string" && /^PI-ING-\d{6}$/.test(identity));
 const LEGACY_READ_ONLY_MODULES = new Set([
 	"MONITOR",
 	"SUMMARY",
@@ -4245,13 +4246,15 @@ function productBehaviorModuleGate(snapshots, module, requiredLineIds) {
 		reason: `Brak zatwierdzonego uprawnienia ${module} dla: ${blockedLineIds.join(", ")}.`
 	};
 }
-/** A line created by Mapper/private/catalog intake, or by the closed exact
-* built-in-to-Mapper bridge, must carry the immutable resolver snapshot.
+/** A line created by Mapper/private/catalog intake, any native template that
+* already carries a stable PI identity, or by the closed exact built-in-to-
+* Mapper bridge must carry the immutable resolver snapshot. Native templates
+* are a representation provenance, not an exemption from ProductBehavior.
 * Only synthetic fixtures with no canonical product lineage stay outside the
 * persistence gate. */
 function productBehaviorRequiredLineIds(input) {
-	const base = input.items.filter(({ planned_grams, actual_grams, ingredient }) => (typeof planned_grams !== "number" || (actual_grams ?? planned_grams) > 0) && (hasCanonicalIngredientIdentity(ingredient.id) || ingredient.identity_provenance === "mapper" || ingredient.identity_provenance === "private_product" || ingredient.identity_provenance === "reference")).map(({ id }) => id);
-	const toppings = (input.toppings ?? []).filter(({ planned_grams, actual_grams, ingredient }) => (typeof planned_grams !== "number" || (actual_grams ?? planned_grams) > 0) && (ingredient.kind === "catalog_label_topping" || typeof ingredient.catalog_product_id === "string" || hasCanonicalIngredientIdentity(ingredient.id) || ingredient.identity_provenance === "mapper" || ingredient.identity_provenance === "private_product" || ingredient.identity_provenance === "reference")).map(({ id }) => id);
+	const base = input.items.filter(({ planned_grams, actual_grams, ingredient }) => (typeof planned_grams !== "number" || (actual_grams ?? planned_grams) > 0) && (hasStableProductBehaviorIdentity(ingredient) || ingredient.identity_provenance === "mapper" || ingredient.identity_provenance === "private_product" || ingredient.identity_provenance === "reference")).map(({ id }) => id);
+	const toppings = (input.toppings ?? []).filter(({ planned_grams, actual_grams, ingredient }) => (typeof planned_grams !== "number" || (actual_grams ?? planned_grams) > 0) && (ingredient.kind === "catalog_label_topping" || typeof ingredient.catalog_product_id === "string" || hasStableProductBehaviorIdentity(ingredient) || ingredient.identity_provenance === "mapper" || ingredient.identity_provenance === "private_product" || ingredient.identity_provenance === "reference")).map(({ id }) => id);
 	return [...new Set([...base, ...toppings])].sort();
 }
 /**

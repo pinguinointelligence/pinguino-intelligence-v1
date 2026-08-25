@@ -184,7 +184,8 @@ describe('ProWorkbar (sticky top workbar)', () => {
     expect(source).toContain('w.status[statusKey]');
     expect(source.match(/data-testid="pro-workbar-status"/g)).toHaveLength(1);
     expect(source).toContain("? 'text-status-risky'");
-    expect(ingredientRow).toContain('rounded-full bg-status-risky');
+    expect(ingredientRow).toContain('bg-status-risky');
+    expect(ingredientRow).toContain('data-testid={`row-estimated-${item.id}`}');
     expect(tokens).toContain('--color-status-risky: #9c8a55;');
   });
 });

@@ -38,7 +38,7 @@ describe('IngredientBuilder Main role integration', () => {
     useIngredientTableUxStore.getState().reset();
   });
 
-  it('removes the Main crown without deleting an independent exact-gram lock', () => {
+  it('removes the Main badge without deleting an independent exact-gram lock', () => {
     const state = useRecipeStore.getState();
     const calculated = calculateRecipe({
       mode: state.mode,
@@ -71,11 +71,11 @@ describe('IngredientBuilder Main role integration', () => {
       ),
     );
 
-    const crown = container.querySelector<HTMLButtonElement>(
-      `[data-testid="row-main-toggle-${main.id}"]`,
+    const badge = container.querySelector<HTMLButtonElement>(
+      `[data-testid="row-main-badge-${main.id}"]`,
     );
-    expect(crown).not.toBeNull();
-    act(() => crown!.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(badge).not.toBeNull();
+    act(() => badge!.dispatchEvent(new MouseEvent('click', { bubbles: true })));
 
     expect(useRecipeStore.getState().items.find((item) => item.id === main.id)).toMatchObject({
       lock_type: 'grams',
@@ -89,7 +89,7 @@ describe('IngredientBuilder Main role integration', () => {
     container.remove();
   });
 
-  it('transitions outline → filled → outline through the existing row Main action', () => {
+  it('transitions fixed empty slot → badge → fixed empty slot through the existing role actions', () => {
     const state = useRecipeStore.getState();
     const calculated = calculateRecipe({
       mode: state.mode,
@@ -128,27 +128,31 @@ describe('IngredientBuilder Main role integration', () => {
     const root = createRoot(container);
     act(() => root.render(<CrownHarness />));
 
-    let crown = container.querySelector<HTMLButtonElement>(
-      `[data-testid="row-main-toggle-${main.id}"]`,
+    expect(container.querySelector(`[data-testid="row-main-slot-${main.id}"]`)).not.toBeNull();
+    expect(container.querySelector(`[data-testid="row-main-badge-${main.id}"]`)).toBeNull();
+
+    const menu = container.querySelector<HTMLButtonElement>(
+      `[aria-label="Opcje składnika ${main.ingredient.name}"]`,
     );
-    expect(crown?.getAttribute('aria-pressed')).toBe('false');
-    expect(crown?.querySelector('[data-crown-state="available"]')).not.toBeNull();
-
-    act(() => crown!.dispatchEvent(new MouseEvent('click', { bubbles: true })));
-
-    crown = container.querySelector<HTMLButtonElement>(
-      `[data-testid="row-main-toggle-${main.id}"]`,
+    expect(menu).not.toBeNull();
+    act(() => menu!.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    const mainAction = [...document.querySelectorAll<HTMLButtonElement>('button')].find(
+      (button) => button.textContent?.trim() === 'Główny',
     );
-    expect(crown?.getAttribute('aria-pressed')).toBe('true');
-    expect(crown?.querySelector('[data-crown-state="active"]')).not.toBeNull();
+    expect(mainAction).not.toBeUndefined();
+    act(() => mainAction!.dispatchEvent(new MouseEvent('click', { bubbles: true })));
 
-    act(() => crown!.dispatchEvent(new MouseEvent('click', { bubbles: true })));
-
-    crown = container.querySelector<HTMLButtonElement>(
-      `[data-testid="row-main-toggle-${main.id}"]`,
+    const badge = container.querySelector<HTMLButtonElement>(
+      `[data-testid="row-main-badge-${main.id}"]`,
     );
-    expect(crown?.getAttribute('aria-pressed')).toBe('false');
-    expect(crown?.querySelector('[data-crown-state="available"]')).not.toBeNull();
+    expect(badge?.getAttribute('aria-pressed')).toBe('true');
+    expect(badge?.textContent?.trim()).toBe('Główny');
+    expect(badge?.querySelector('svg')).toBeNull();
+
+    act(() => badge!.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+
+    expect(container.querySelector(`[data-testid="row-main-badge-${main.id}"]`)).toBeNull();
+    expect(container.querySelector('[data-crown-state]')).toBeNull();
     act(() => root.unmount());
     container.remove();
   });

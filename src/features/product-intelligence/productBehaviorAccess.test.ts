@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { buildCanonicalNewRecipeStarter } from '@/features/recipes/newRecipeStarter';
 import type { ProductBehaviorSnapshot } from './contracts';
 import { productBehaviorModuleGate, productBehaviorRequiredLineIds } from './productBehaviorAccess';
 
@@ -39,6 +40,39 @@ const snapshot = (lineId: string): ProductBehaviorSnapshot => ({
 });
 
 describe('product behavior snapshot completeness', () => {
+  it.each(['gelato', 'sorbet', 'vegan', 'protein'] as const)(
+    'requires one ProductBehavior snapshot for every positive native %s starter line',
+    (visibleProductType) => {
+      const starter = buildCanonicalNewRecipeStarter({
+        visibleProductType,
+        servingModeId: 'fresh',
+      });
+
+      expect(productBehaviorRequiredLineIds({ items: starter.items })).toEqual(
+        starter.items.map((item) => item.id).sort(),
+      );
+    },
+  );
+
+  it('does not omit stable PI identities carried by native-template provenance', () => {
+    expect(
+      productBehaviorRequiredLineIds({
+        items: [
+          {
+            id: 'new-recipe-1-PI-ING-001565',
+            planned_grams: 250,
+            ingredient: { id: 'PI-ING-001565', identity_provenance: 'template' },
+          },
+          {
+            id: 'new-recipe-2-PI-ING-000163',
+            planned_grams: 53,
+            ingredient: { id: 'PI-ING-000163', identity_provenance: 'template' },
+          },
+        ],
+      }),
+    ).toEqual(['new-recipe-1-PI-ING-001565', 'new-recipe-2-PI-ING-000163']);
+  });
+
   it('requires snapshots for Mapper/private/catalog and exact accepted built-ins', () => {
     expect(
       productBehaviorRequiredLineIds({

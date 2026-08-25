@@ -82,10 +82,11 @@ describe('mobile dispatches through the desktop action object', () => {
     expect(mobile).toContain('lock.onToggle();');
   });
 
-  it('the Main crown and the price write through the existing flows', () => {
-    // The crown is routed to the row's own `setRole`, which owns the canonical
+  it('the Main badge and the price write through the existing flows', () => {
+    // The badge/actions route to the row's own `setRole`, which owns the canonical
     // main/standard authority (setCustomerRole → setMainIngredient / …).
-    expect(mobile).toContain('onSetRole(isMain ?');
+    expect(mobile).toContain("onSetRole('standard')");
+    expect(mobile).toContain("onSetRole('main')");
     expect(row).toContain('onSetRole={setRole}');
     // The price editor is the SAME component and the SAME view object, so
     // onSave/onReset remain the existing customer-price persistence.

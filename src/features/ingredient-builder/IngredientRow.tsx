@@ -27,7 +27,7 @@ import { DialogShell } from '@/components/ui/DialogShell';
 import { HoverPreview } from '@/components/ui/HoverPreview';
 import { DirectNumberControl } from './DirectNumberControl';
 import {
-  MainRoleGlyph,
+  MainRoleBadge,
   MobileIngredientLine,
   MobileIngredientSheet,
 } from './IngredientLineControls';
@@ -624,62 +624,39 @@ function RecipeRow({
           data-scope="BASE_FORMULATION"
         >
           <div className="min-w-0">
-            <span className="flex min-w-0 items-center gap-1.5 2xl:gap-1">
+            <span className="flex min-w-0 items-center gap-1.5">
               <span
                 aria-hidden
                 draggable
                 onDragStart={() => onDragStart?.(item.id)}
-                className="inline-grid size-11 shrink-0 cursor-grab select-none place-items-center text-base leading-none text-stone-400 active:cursor-grabbing md:size-5 2xl:order-1 2xl:size-4"
+                className="inline-grid size-11 shrink-0 cursor-grab select-none place-items-center text-base leading-none text-stone-400 active:cursor-grabbing md:size-5 2xl:size-4"
                 title="Przeciągnij, aby zmienić kolejność"
               >
                 ⠿
               </span>
-              {isMain || !mainUnavailableReason ? (
-                <button
-                  type="button"
-                  aria-label={isMain ? 'Składnik Główny' : 'Ustaw składnik jako Główny'}
-                  aria-pressed={isMain}
-                  title={
-                    isMain
-                      ? mainUserHeld
-                        ? 'Główny (Twoja decyzja) — PI nie zmienia jego gramatury samo z siebie. ' +
-                          'Kliknij, aby ustawić Standardowy.'
-                        : 'Główny'
-                      : 'Ustaw jako Główny'
-                  }
-                  onClick={() => setRole(isMain ? 'standard' : 'main')}
-                  data-testid={`row-main-toggle-${item.id}`}
-                  className={cn(
-                    'pro-focus-ring grid size-8 shrink-0 place-items-center rounded-lg border transition-colors 2xl:order-10 2xl:size-6',
-                    isMain && '2xl:flex 2xl:w-auto 2xl:gap-1 2xl:px-2',
-                    isMain
-                      ? 'border-gold/22 bg-education-ivory text-gold'
-                      : 'border-transparent bg-transparent text-gold hover:bg-education-ivory/55',
-                  )}
-                >
-                  <MainRoleGlyph active={isMain} />
-                  {isMain ? (
-                    <span className="hidden text-[11px] font-semibold text-gold 2xl:inline">
-                      Główny
-                    </span>
-                  ) : null}
-                </button>
-              ) : (
-                <span
-                  aria-hidden
-                  data-testid={`row-main-slot-${item.id}`}
-                  className="size-8 shrink-0 2xl:order-10 2xl:size-6"
+              <span className="relative grid size-7 shrink-0 place-items-center rounded-full bg-stone-100 text-stone-600 md:size-6 2xl:size-6">
+                <IngredientCategoryIcon
+                  symbol={ingredientCategorySymbolFor({
+                    category: item.ingredient.category,
+                  })}
                 />
-              )}
-              {isMain ? (
-                <span
-                  aria-label="Składnik główny"
-                  title={t.role.mainHint}
-                  className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-education-ivory px-2 py-1 text-xs font-semibold text-gold 2xl:hidden"
-                >
-                  <span>Główny</span>
-                </span>
-              ) : null}
+                {estimated ? (
+                  <span
+                    aria-label={t.data.estimatedHint}
+                    title={t.data.estimatedHint}
+                    className="absolute -right-0.5 -bottom-0.5 size-2 rounded-full border border-white bg-status-risky"
+                    data-testid={`row-estimated-${item.id}`}
+                  />
+                ) : null}
+              </span>
+              {/* Truncation is visual only — the full name stays in the DOM for
+                  assistive technology, and the hover preview serves the mouse. */}
+              <HoverPreview
+                text={item.ingredient.name}
+                className="min-w-0 flex-1 truncate text-[13px] font-semibold text-ink"
+              >
+                {item.ingredient.name}
+              </HoverPreview>
               {role === 'addition' ? (
                 <span
                   aria-label="Dawny Dodatek — wymaga decyzji"
@@ -699,31 +676,24 @@ function RecipeRow({
                 </span>
               ) : null}
               <span
-                aria-hidden
-                className="grid size-7 shrink-0 place-items-center rounded-full bg-stone-100 text-stone-600 md:size-6 2xl:order-2 2xl:size-6"
+                aria-hidden={isMain ? undefined : true}
+                data-testid={`row-main-slot-${item.id}`}
+                className="flex w-[62px] shrink-0 justify-end"
               >
-                <IngredientCategoryIcon
-                  symbol={ingredientCategorySymbolFor({
-                    category: item.ingredient.category,
-                  })}
-                />
+                {isMain ? (
+                  <MainRoleBadge
+                    testId={`row-main-badge-${item.id}`}
+                    ariaLabel="Składnik Główny"
+                    title={
+                      mainUserHeld
+                        ? 'Główny (Twoja decyzja) — PI nie zmienia jego gramatury samo z siebie. ' +
+                          'Kliknij, aby ustawić Standardowy.'
+                        : 'Główny'
+                    }
+                    onClick={() => setRole('standard')}
+                  />
+                ) : null}
               </span>
-              {/* Truncation is visual only — the full name stays in the DOM for
-                  assistive technology, and the hover preview serves the mouse. */}
-              <HoverPreview
-                text={item.ingredient.name}
-                className="min-w-0 truncate text-[13px] font-semibold text-ink 2xl:order-3"
-              >
-                {item.ingredient.name}
-              </HoverPreview>
-              {estimated ? (
-                <span
-                  aria-label={t.data.estimatedHint}
-                  title={t.data.estimatedHint}
-                  className="mr-auto size-1.5 shrink-0 rounded-full bg-status-risky 2xl:order-4"
-                  data-testid={`row-estimated-${item.id}`}
-                />
-              ) : null}
             </span>
             {meta.unavailable ? (
               <span className="mt-1 flex items-center gap-2 text-xs font-semibold text-status-error">

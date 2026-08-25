@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import type { EngineIngredient, RecipeInput } from '@/engine';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
 import type { RecipeToppingItem } from '@/features/recipe-composition/recipeCompositionPersistence';
+import { buildCanonicalNewRecipeStarter } from '@/features/recipes/newRecipeStarter';
 
 const h = vi.hoisted(() => ({ rpc: vi.fn() }));
 vi.mock('@/lib/supabase/client', () => ({
@@ -184,9 +185,7 @@ describe('recipe behavior server validation', () => {
       'MAIN',
       'STANDARD',
     ]);
-    expect(
-      built.groups.find((group) => group.context.requestedRole === 'MAIN')?.lines,
-    ).toEqual([
+    expect(built.groups.find((group) => group.context.requestedRole === 'MAIN')?.lines).toEqual([
       expect.objectContaining({
         lineId: 'main-line',
         entityKind: 'mapper',
@@ -630,6 +629,60 @@ describe('recipe behavior server validation', () => {
       factsFingerprint: `facts-${addedLineId}`,
     });
   });
+
+  it.each(['gelato', 'sorbet', 'vegan', 'protein'] as const)(
+    'hydrates every fresh %s native-starter line against the current Base context',
+    async (visibleProductType) => {
+      const starter = buildCanonicalNewRecipeStarter({
+        visibleProductType,
+        servingModeId: 'fresh',
+      });
+      const native: RecipeInput = {
+        items: starter.items,
+        mode: 'classic',
+        category: starter.category,
+        target_temperature_c: starter.targetTemperatureC,
+        target_batch_grams: starter.targetBatchGrams,
+        machine_capacity_grams: null,
+        goals: { formulation_strategy: starter.formulationStrategy },
+      };
+      const resolveSelection = vi.fn().mockImplementation(async ({ entity, context }) => ({
+        ...snapshot(entity.entityId, entity.entityId),
+        state: 'eligible',
+        entityKind: entity.entityKind,
+        entityId: entity.entityId,
+        module: context.module,
+        context,
+      }));
+
+      const result = await resolveRecipeProposalBehaviorSnapshots({
+        recipe: native,
+        snapshots: {},
+        accountId: 'new-working-recipe-account',
+        module: 'OPTIMAL',
+        resolveSelection,
+      });
+
+      expect(result.unresolvedLineIds).toEqual([]);
+      expect(resolveSelection).toHaveBeenCalledTimes(native.items.length);
+      expect(Object.keys(result.snapshots).sort()).toEqual(
+        native.items.map((item) => item.id).sort(),
+      );
+      for (const item of native.items) {
+        expect(result.snapshots[item.id]).toMatchObject({
+          lineId: item.id,
+          mapperIngredientId: item.ingredient.canonical_ingredient_id ?? item.ingredient.id,
+          processScope: 'BASE_FORMULATION',
+          resolutionContext: {
+            accountId: 'new-working-recipe-account',
+            productProfile: native.category,
+            processScope: 'BASE_FORMULATION',
+            module: 'OPTIMAL',
+          },
+        });
+      }
+    },
+  );
 
   it('refreshes stale POST_PROCESS scope when Vegan formulation promotes Coconut Oil into the Base', async () => {
     const addedLineId = 'formulation-PI-ING-000163';

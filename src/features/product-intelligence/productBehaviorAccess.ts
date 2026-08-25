@@ -8,6 +8,16 @@ export interface ProductBehaviorModuleGate {
   reason: string | null;
 }
 
+const hasStableProductBehaviorIdentity = (ingredient: {
+  id?: string;
+  canonical_ingredient_id?: string;
+}): boolean =>
+  [ingredient.id, ingredient.canonical_ingredient_id].some(
+    (identity) =>
+      hasCanonicalIngredientIdentity(identity) ||
+      (typeof identity === 'string' && /^PI-ING-\d{6}$/.test(identity)),
+  );
+
 const LEGACY_READ_ONLY_MODULES = new Set<ProductBehaviorModule>([
   'MONITOR',
   'SUMMARY',
@@ -82,8 +92,10 @@ export function productBehaviorModuleGate(
       };
 }
 
-/** A line created by Mapper/private/catalog intake, or by the closed exact
- * built-in-to-Mapper bridge, must carry the immutable resolver snapshot.
+/** A line created by Mapper/private/catalog intake, any native template that
+ * already carries a stable PI identity, or by the closed exact built-in-to-
+ * Mapper bridge must carry the immutable resolver snapshot. Native templates
+ * are a representation provenance, not an exemption from ProductBehavior.
  * Only synthetic fixtures with no canonical product lineage stay outside the
  * persistence gate. */
 export function productBehaviorRequiredLineIds(input: {
@@ -91,7 +103,11 @@ export function productBehaviorRequiredLineIds(input: {
     id: string;
     planned_grams?: number;
     actual_grams?: number | null;
-    ingredient: { id?: string; identity_provenance?: string };
+    ingredient: {
+      id?: string;
+      canonical_ingredient_id?: string;
+      identity_provenance?: string;
+    };
   }>;
   toppings?: ReadonlyArray<{
     id: string;
@@ -99,6 +115,7 @@ export function productBehaviorRequiredLineIds(input: {
     actual_grams?: number | null;
     ingredient: {
       id?: string;
+      canonical_ingredient_id?: string;
       identity_provenance?: string;
       kind?: string;
       catalog_product_id?: string;
@@ -109,7 +126,7 @@ export function productBehaviorRequiredLineIds(input: {
     .filter(
       ({ planned_grams, actual_grams, ingredient }) =>
         (typeof planned_grams !== 'number' || (actual_grams ?? planned_grams) > 0) &&
-        (hasCanonicalIngredientIdentity(ingredient.id) ||
+        (hasStableProductBehaviorIdentity(ingredient) ||
           ingredient.identity_provenance === 'mapper' ||
           ingredient.identity_provenance === 'private_product' ||
           ingredient.identity_provenance === 'reference'),
@@ -121,7 +138,7 @@ export function productBehaviorRequiredLineIds(input: {
         (typeof planned_grams !== 'number' || (actual_grams ?? planned_grams) > 0) &&
         (ingredient.kind === 'catalog_label_topping' ||
           typeof ingredient.catalog_product_id === 'string' ||
-          hasCanonicalIngredientIdentity(ingredient.id) ||
+          hasStableProductBehaviorIdentity(ingredient) ||
           ingredient.identity_provenance === 'mapper' ||
           ingredient.identity_provenance === 'private_product' ||
           ingredient.identity_provenance === 'reference'),

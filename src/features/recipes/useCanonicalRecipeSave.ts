@@ -71,14 +71,16 @@ const buildRecipeInputFromStore = (): RecipeInput => {
         const meta = ingredientRowMeta(metaByLineId, item.id);
         const ownsDose = meta.dose.provenance !== 'NONE';
         return meta.role === 'addition' || meta.required || ownsDose
-          ? [[
-              item.id,
-              {
-                role: meta.role,
-                required: meta.required,
-                ...(ownsDose ? { dose: { ...meta.dose } } : {}),
-              },
-            ] as const]
+          ? [
+              [
+                item.id,
+                {
+                  role: meta.role,
+                  required: meta.required,
+                  ...(ownsDose ? { dose: { ...meta.dose } } : {}),
+                },
+              ] as const,
+            ]
           : [];
       }),
     ),
@@ -122,6 +124,22 @@ export function productBehaviorSaveGateMessage(isFreshNativeStarter: boolean): s
   return isFreshNativeStarter
     ? 'Nowa receptura wymaga pierwszego przeliczenia produktów przed zapisem. Kliknij PI.'
     : 'Receptura zawiera produkt wymagający ponownej walidacji przed zapisem. Przelicz recepturę.';
+}
+
+const PRODUCT_BEHAVIOR_SCOPE_MISMATCH = /recipe product behavior scope mismatch\b/i;
+
+/** Keep the database's exact fail-closed diagnostic in developer logs while
+ * presenting a stable recovery message on customer surfaces. */
+export function canonicalRecipeSaveErrorMessage(caught: unknown): string {
+  const message =
+    caught instanceof Error
+      ? caught.message
+      : typeof caught === 'string'
+        ? caught
+        : 'Nie udało się zapisać.';
+  return PRODUCT_BEHAVIOR_SCOPE_MISMATCH.test(message)
+    ? 'Dane jednego ze składników wymagają ponownej walidacji.'
+    : message;
 }
 
 /**
@@ -284,9 +302,7 @@ export function useCanonicalRecipeSave(
       technicalOnlyMainLineIds: productComposition?.ownerReviewGate?.technicalOnlyMainLineIds,
     });
     if (!validation.ready) {
-      throw new Error(
-        'Zapis zablokowany: klasyfikacja produktu wymaga ponownego przeliczenia.',
-      );
+      throw new Error('Zapis zablokowany: klasyfikacja produktu wymaga ponownego przeliczenia.');
     }
   };
 
@@ -306,7 +322,14 @@ export function useCanonicalRecipeSave(
       await invalidate(linkedId);
       return true;
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Nie udało się zapisać.');
+      const customerMessage = canonicalRecipeSaveErrorMessage(caught);
+      if (caught instanceof Error && PRODUCT_BEHAVIOR_SCOPE_MISMATCH.test(caught.message)) {
+        console.error(
+          '[recipe-save] ProductBehavior scope guard rejected the canonical payload.',
+          caught,
+        );
+      }
+      setError(customerMessage);
       return false;
     } finally {
       setBusy(false);
