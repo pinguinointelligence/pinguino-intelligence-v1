@@ -149,6 +149,25 @@ function label(
 }
 
 describe('market-specific golden label structures', () => {
+  it.each(['EU', 'UK', 'AU_NZ'] as const)(
+    '%s fails closed before retail print at the clipped 100 × 70 mm geometry',
+    (market) => {
+      const data = label(market);
+      const clipped = {
+        ...data,
+        size: { widthMm: 100, heightMm: 70 },
+        printer: { ...data.printer, widthMm: 100, heightMm: 70 },
+      };
+
+      expect(buildLabelPreflight(clipped).items).toContainEqual(
+        expect.objectContaining({ field: 'geometry', status: 'missing' }),
+      );
+      expect(() => buildMasterLabelPrintHtml(clipped)).toThrow(
+        'Master Label preflight is incomplete.',
+      );
+    },
+  );
+
   it.each([
     ['EU', 'eu_declaration', 'nutrition eu'],
     ['UK', 'uk_declaration', 'nutrition eu'],

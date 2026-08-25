@@ -276,7 +276,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
       settings.querySelector('[data-testid="label-settings-missing-count"]')?.textContent ?? '';
     const missingFields = () => settings.querySelectorAll('[data-missing-required="true"]');
 
-    expect(missingCount()).toContain('Brakuje 7 wymaganych informacji');
+    expect(missingCount()).toContain('Brakuje 8 wymaganych informacji');
     expect(missingFields()).toHaveLength(5);
     expect(
       [...missingFields()].map((field) => field.getAttribute('data-label-field')).sort(),
@@ -292,7 +292,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
     };
 
     await fill('legal_product_name', ['Ice cream']);
-    expect(missingCount()).toContain('Brakuje 6 wymaganych informacji');
+    expect(missingCount()).toContain('Brakuje 7 wymaganych informacji');
     await act(async () =>
       settings.querySelector<HTMLInputElement>('[data-label-field="allergens"] input')!.click(),
     );
@@ -300,7 +300,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
     await fill('storage', ['Keep frozen']);
     await fill('date_mark', ['2026-09-24']);
 
-    expect(missingCount()).toContain('Brakuje 2 wymaganych informacji');
+    expect(missingCount()).toContain('Brakuje 3 wymaganych informacji');
     expect(missingFields()).toHaveLength(0);
   });
 

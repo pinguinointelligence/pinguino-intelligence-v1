@@ -296,7 +296,8 @@ function printable(data: MasterLabelData): MasterLabelData {
     storageInstructions: { es: 'Conservar congelado.', en: 'Keep frozen.' },
     lotCode: 'LOT-20260809-01',
     copies: 3,
-    printer: { ...data.printer, copies: 3 },
+    size: { widthMm: 102, heightMm: 152 },
+    printer: { ...data.printer, widthMm: 102, heightMm: 152, copies: 3 },
     regulatoryReview: {
       translations: true,
       ingredientOrderAndQuid: true,

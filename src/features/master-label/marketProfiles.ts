@@ -78,7 +78,10 @@ export const MARKET_PROFILES: Readonly<Record<MarketProfileCode, MarketProfile>>
       'https://food.ec.europa.eu/food-safety/labelling-and-nutrition/food-information-consumers-legislation/mandatory-food-information_en',
     ],
     requiredLanguages: [],
-    minimumLabel: { widthMm: 90, heightMm: 60, xHeightMm: 1.2 },
+    // Complete retail declarations clipped at the former 90 × 60 / 100 × 70
+    // software minima. Keep mandatory typography and fail closed onto the
+    // first verified full-content geometry instead of shrinking to fit.
+    minimumLabel: { widthMm: 102, heightMm: 152, xHeightMm: 1.2 },
     nutritionFormat: 'EU_100G',
     selectable: true,
     rendererLimitation: '',
@@ -148,7 +151,7 @@ export const MARKET_PROFILES: Readonly<Record<MarketProfileCode, MarketProfile>>
       'https://www.gov.uk/government/publications/packaging-and-labelling/packaging-and-labelling',
     ],
     requiredLanguages: ['en'],
-    minimumLabel: { widthMm: 90, heightMm: 60, xHeightMm: 1.2 },
+    minimumLabel: { widthMm: 102, heightMm: 152, xHeightMm: 1.2 },
     nutritionFormat: 'UK_100G',
     selectable: true,
     rendererLimitation: '',
@@ -170,7 +173,7 @@ export const MARKET_PROFILES: Readonly<Record<MarketProfileCode, MarketProfile>>
       'https://www.foodstandards.gov.au/consumer/labelling/panels',
     ],
     requiredLanguages: ['en'],
-    minimumLabel: { widthMm: 100, heightMm: 70, xHeightMm: 1.2 },
+    minimumLabel: { widthMm: 102, heightMm: 152, xHeightMm: 1.2 },
     nutritionFormat: 'AU_NZ_NIP',
     selectable: true,
     rendererLimitation: '',
