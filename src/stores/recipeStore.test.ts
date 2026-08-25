@@ -644,6 +644,74 @@ describe('saved percentage lock contract', () => {
     }
   });
 
+  it('hydrates a legacy Protein Multi-Main ratio from the saved user grams', () => {
+    const priorRecipe = useRecipeStore.getState();
+    const priorConstraint = useConstraintStudioStore.getState();
+    try {
+      const banana = {
+        ...findDemoIngredient('raspberry')!,
+        id: 'PI-ING-000345',
+        canonical_ingredient_id: 'PI-ING-000345',
+        name: 'BANANA · Fresh Fruit',
+      };
+      const cranberry = {
+        ...findDemoIngredient('raspberry')!,
+        id: 'PI-ING-001556',
+        canonical_ingredient_id: 'PI-ING-001556',
+        name: 'CRANBERRY · Fresh Fruit',
+      };
+      useConstraintStudioStore.getState().resetForTests();
+      useRecipeStore.getState().loadRecipeInput(
+        {
+          mode: 'classic',
+          category: 'protein_gelato',
+          target_temperature_c: -11,
+          target_batch_grams: 1_000,
+          machine_capacity_grams: null,
+          items: [
+            {
+              id: 'legacy-banana-main',
+              ingredient: banana,
+              planned_grams: 352,
+              actual_grams: null,
+              lock_type: 'main',
+            },
+            {
+              id: 'legacy-cranberry-main',
+              ingredient: cranberry,
+              planned_grams: 136,
+              actual_grams: null,
+              lock_type: 'main',
+            },
+          ],
+        },
+        {
+          savedId: 'legacy-protein-multi-main',
+          savedName: 'Legacy Banana + Cranberry',
+          versionNumber: 1,
+        },
+      );
+
+      const reopened = buildRecipeInput(useRecipeStore.getState());
+      const mains = reopened.items.filter((item) => item.lock_type === 'main');
+      expect(mains).toHaveLength(2);
+      expect(mains[0]?.main_ratio_weight).toBeCloseTo(352 / 136, 10);
+      expect(mains[1]?.main_ratio_weight).toBe(1);
+
+      useRecipeStore.getState().setVisibleProductType('gelato');
+      useRecipeStore.getState().setVisibleProductType('protein');
+      const switched = buildRecipeInput(useRecipeStore.getState());
+      expect(
+        switched.items
+          .filter((item) => item.lock_type === 'main')
+          .map((item) => item.main_ratio_weight),
+      ).toEqual(mains.map((item) => item.main_ratio_weight));
+    } finally {
+      useRecipeStore.setState(priorRecipe, true);
+      useConstraintStudioStore.setState(priorConstraint, true);
+    }
+  });
+
   it('restores canonical percentage grams after the batch field is cleared and re-entered', () => {
     const priorRecipe = useRecipeStore.getState();
     const priorConstraint = useConstraintStudioStore.getState();

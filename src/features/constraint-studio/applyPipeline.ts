@@ -3569,40 +3569,45 @@ function maximizeMainTechnicalObjective(
   // its user ratio and moves together through the Engine-verified frontier.
 
   const startingMainGrams = mainGroupTotal(contractInput, contractInput);
-  const startingProteinTarget = assessProteinFormulation(identityInput);
-  if (startingProteinTarget.applicable) {
-    // Protein has its own bounded formulation target. `technicalStart` is the
-    // complete Engine-checked toolbox candidate produced by that route;
-    // returning the sparse identity draft here discarded that valid work and
-    // made the generic Main frontier report an unsafe proposal. Keep the
-    // technical candidate while restoring the user's presentation strategy.
+  if (assessProteinFormulation(identityInput).applicable) {
+    // Protein's structural fitter owns only the supporting ingredients. Main
+    // still goes through the same bounded, ratio-coupled group search used by
+    // every other profile; the former zero-attempt return validated only the
+    // group total and left legacy/asymmetric vectors outside that authority.
     const technicalPresentationInput: RecipeInput = {
       ...technicalStart,
       mode: presentationInput.mode,
       goals: presentationInput.goals ? { ...presentationInput.goals } : undefined,
     };
-    const executableMainGrams = mainGroupTotal(contractInput, technicalPresentationInput);
+    const bounded = maximizeMainFromStart(
+      contractInput,
+      technicalPresentationInput,
+      set,
+      options,
+    );
+    if (!bounded.proof) return bounded;
+    const executableMainGrams = mainGroupTotal(contractInput, bounded.input);
     return {
-      input: technicalPresentationInput,
+      input: bounded.input,
       proof: {
+        ...bounded.proof,
+        // This search is deliberately bounded, so it is a reproducible BEST
+        // witness, never a mathematical maximum certificate. Apply rebuilds
+        // the same search and compares the complete vector before committing.
         status: 'best_achievable',
-        startingMainGrams,
         exactAcceptedMainGrams: executableMainGrams,
         executableMainGrams,
-        firstHigherRejectedGrams: null,
-        firstHigherRejectedReason: startingProteinTarget.qualification.qualified
-          ? null
-          : 'hard_gate',
-        technicalScore: recipeFitForInput(
-          technicalPresentationInput,
-          calculateRecipe(technicalPresentationInput),
-        ).score,
-        attempts: 0,
-        searchUpperBoundGrams: Math.max(1, Math.floor(identityInput.target_batch_grams)),
+        searchUpperBoundGrams: Math.max(
+          Math.round(executableMainGrams),
+          Math.floor(contractInput.target_batch_grams),
+        ),
         provenMaximum: false,
         testedHigherCandidateCount: 0,
-        limitingTechnicalRules: ['protein_claim_precedence'],
+        limitingTechnicalRules: [
+          bounded.proof.firstHigherRejectedReason ?? 'bounded_protein_group_search',
+        ],
         proofKind: 'heuristic_search',
+        certifiedUpperBoundGrams: undefined,
       },
     };
   }

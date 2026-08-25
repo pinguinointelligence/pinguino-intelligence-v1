@@ -138,6 +138,22 @@ const mainRatioWeightsFromCurrentGrams = (items: RecipeItem[]): RecipeItem[] => 
   );
 };
 
+/** Legacy saved drafts predate the explicit ratio snapshot. Their visible,
+ * positive Crown grams are the only truthful user-entered relationship left,
+ * so capture it once at hydration. A complete persisted ratio remains
+ * authoritative and is never recalculated from post-Preview grams. */
+const hydrateLegacyMainRatioWeights = (items: RecipeItem[]): RecipeItem[] => {
+  const mains = items.filter((item) => item.lock_type === 'main');
+  if (mains.length < 2) return items;
+  const completeRatio = mains.every(
+    (item) =>
+      typeof item.main_ratio_weight === 'number' &&
+      Number.isFinite(item.main_ratio_weight) &&
+      item.main_ratio_weight > 0,
+  );
+  return completeRatio ? items : mainRatioWeightsFromCurrentGrams(items);
+};
+
 type CostPriority = NonNullable<RecipeGoals['cost_priority']>;
 
 export type AddIngredientResult =
@@ -723,7 +739,11 @@ export function mergePersistedRecipeState(
     persistedState && typeof persistedState === 'object'
       ? (persistedState as Partial<RecipeState>)
       : {};
-  const merged = { ...currentState, ...persisted };
+  const merged = {
+    ...currentState,
+    ...persisted,
+    items: hydrateLegacyMainRatioWeights(persisted.items ?? currentState.items),
+  };
   const starterProfile =
     typeof merged.newRecipeStarterTemplateId === 'string'
       ? persistedStarterProfile(merged.newRecipeStarterKey)
@@ -1800,7 +1820,9 @@ export const useRecipeStore = create<RecipeState>()(
             ? unusedZeroGramLineIds({ ...input, items: healedItems }, { byLineId: {} })
             : [],
         );
-        const normalizedItems = healedItems.filter((item) => !legacyUnusedLineIds.has(item.id));
+        const normalizedItems = hydrateLegacyMainRatioWeights(
+          healedItems.filter((item) => !legacyUnusedLineIds.has(item.id)),
+        );
         const legacyAdditionItems = normalizedItems.filter(
           (item) => metadata?.ingredientUxByLineId?.[item.id]?.role === 'addition',
         );

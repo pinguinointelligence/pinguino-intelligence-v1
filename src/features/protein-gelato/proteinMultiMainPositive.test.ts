@@ -11,9 +11,9 @@
  * split with no weight was correctly renormalised back to equal grams. The ratio has to be STATED.
  * That one line is the whole difference between 0/252 and 201/252.
  *
- * Both Mains here are USER-HELD (`MAIN_CAPABLE_UNCALIBRATED` under the Global Main Authority): the
- * owner's grams and declared ratio are held exactly and the supporting ingredients are optimised
- * around them, so no percentage envelope is invented for them.
+ * Both Mains here are user-declared (`MAIN_CAPABLE_UNCALIBRATED` under the Global Main Authority):
+ * their identities and declared ratio are preserved as one group while their absolute grams may
+ * move together through the Engine-safe frontier. No percentage envelope is invented for them.
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -24,7 +24,12 @@ import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import { parseCsv } from '@/lib/csv';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/contracts';
-import { buildOptimizePreview, commitPreview } from '@/features/constraint-studio/applyPipeline';
+import { verifyMainIngredientIdentity } from '@/features/formulation/mainIngredientContract';
+import {
+  buildBatchRescalePreview,
+  buildOptimizePreview,
+  commitPreview,
+} from '@/features/constraint-studio/applyPipeline';
 
 const MAPPER = readFileSync(
   resolve(process.cwd(), 'docs/ingredients/validation/mapper_basement.csv'),
@@ -65,6 +70,9 @@ const ing = (id: string) => ({
 /** COCOA ALKALIZED 100 % + VANILLA paste — the sweep's first legal pair, at −11 OPTIMAL. */
 const COCOA = 'PI-ING-001578';
 const VANILLA = 'PI-ING-000334';
+const COFFEE = 'PI-ING-000167';
+const BANANA = 'PI-ING-000345';
+const CRANBERRY = 'PI-ING-001556';
 
 const line = (
   id: string,
@@ -117,9 +125,35 @@ const fixture = (ratio: number): RecipeInput => {
   } as unknown as RecipeInput;
 };
 
+const ownerBananaCranberryFixture = (): RecipeInput => {
+  const base = fixture(1);
+  const support = base.items.filter((item) => item.lock_type !== 'main');
+  const supportTotal = support.reduce((sum, item) => sum + item.planned_grams, 0);
+  const scaledSupport = support.map((item) => ({
+    ...item,
+    planned_grams: Math.round((item.planned_grams * 1_000) / supportTotal),
+  }));
+  const roundingDelta =
+    1_000 - scaledSupport.reduce((sum, item) => sum + item.planned_grams, 0);
+  scaledSupport[0] = {
+    ...scaledSupport[0]!,
+    planned_grams: scaledSupport[0]!.planned_grams + roundingDelta,
+  };
+  return {
+    ...base,
+    items: [
+      ...scaledSupport,
+      line('banana-main', BANANA, 352, 'main', 352 / 136),
+      line('cranberry-main', CRANBERRY, 136, 'main', 1),
+    ],
+  };
+};
+
 const snapshotsFor = (input: RecipeInput): Record<string, ProductBehaviorSnapshot> => {
   const snaps = productBehaviorTestSnapshots(input);
-  for (const id of ['mainA', 'mainB']) {
+  for (const id of input.items
+    .filter((item) => item.lock_type === 'main')
+    .map((item) => item.id)) {
     if (snaps[id]) {
       snaps[id] = {
         ...snaps[id]!,
@@ -205,6 +239,181 @@ describe.each([
     expect(a.planned_grams / b.planned_grams).toBeCloseTo(ratio, 2);
     expect(applied.items.filter((i) => i.planned_grams <= 0)).toHaveLength(0);
     expect(applied.items.reduce((s, i) => s + i.planned_grams, 0)).toBeCloseTo(1000, 3);
+  });
+});
+
+describe('Protein Crown group authority regressions', () => {
+  it('recalculates the exact off-batch Banana 352 g + Cranberry 136 g owner vector identically three times', () => {
+    const input = ownerBananaCranberryFixture();
+    const snapshots = snapshotsFor(input);
+    expect(input.items.reduce((sum, item) => sum + item.planned_grams, 0)).toBe(1_488);
+
+    const runs = Array.from({ length: 3 }, () =>
+      buildOptimizePreview(input, NONE, AT, {
+        productBehaviorSnapshots: snapshots,
+        technicalOnlyMainLineIds: [],
+      }),
+    );
+    for (const built of runs) {
+      expect(built.ok, JSON.stringify(built)).toBe(true);
+      if (!built.ok) continue;
+      expect(verifyMainIngredientIdentity(input, built.preview.proposedInput)).toMatchObject({
+        ok: true,
+      });
+      expect(
+        built.preview.proposedInput.items.reduce((sum, item) => sum + item.planned_grams, 0),
+      ).toBe(1_000);
+      expect(built.preview.mainObjective?.attempts).toBeGreaterThan(0);
+      expect(built.preview.mainObjective?.technicalScore).toBe(10);
+    }
+    const successful = runs.filter(
+      (run): run is Extract<(typeof runs)[number], { ok: true }> => run.ok,
+    );
+    expect(successful).toHaveLength(3);
+    if (successful.length !== 3) return;
+    const signature = (run: (typeof successful)[number]) =>
+      run.preview.proposedInput.items
+        .filter((item) => item.lock_type === 'main')
+        .map((item) => [item.id, item.planned_grams, item.main_ratio_weight]);
+    expect(signature(successful[1]!)).toEqual(signature(successful[0]!));
+    expect(signature(successful[2]!)).toEqual(signature(successful[0]!));
+  });
+
+  it('runs a single Crown through the shared Main frontier instead of the Protein shortcut', () => {
+    const base = fixture(1);
+    const removedMain = base.items.find((item) => item.id === 'mainB')!;
+    const input: RecipeInput = {
+      ...base,
+      items: base.items
+        .filter((item) => item.id !== 'mainB')
+        .map((item) =>
+          item.id === 'water'
+            ? { ...item, planned_grams: item.planned_grams + removedMain.planned_grams }
+            : item,
+        ),
+    };
+    const built = buildOptimizePreview(input, NONE, AT, {
+      productBehaviorSnapshots: snapshotsFor(input),
+      technicalOnlyMainLineIds: [],
+    });
+
+    expect(built.ok, JSON.stringify(built)).toBe(true);
+    if (!built.ok) return;
+    expect(built.preview.proposedInput.items.filter((item) => item.lock_type === 'main')).toHaveLength(
+      1,
+    );
+    expect(built.preview.mainObjective?.attempts).toBeGreaterThan(0);
+  });
+
+  it('keeps three Crowns as one 3:2:1 group', () => {
+    const base = fixture(1);
+    const input: RecipeInput = {
+      ...base,
+      items: [
+        ...base.items.map((item) =>
+          item.id === 'mainA'
+            ? { ...item, planned_grams: 30, main_ratio_weight: 3 }
+            : item.id === 'mainB'
+              ? { ...item, planned_grams: 20, main_ratio_weight: 2 }
+              : item,
+        ),
+        line('mainC', COFFEE, 10, 'main', 1),
+      ],
+    };
+    const built = buildOptimizePreview(input, NONE, AT, {
+      productBehaviorSnapshots: snapshotsFor(input),
+      technicalOnlyMainLineIds: [],
+    });
+
+    expect(built.ok, JSON.stringify(built)).toBe(true);
+    if (!built.ok) return;
+    const grams = ['mainA', 'mainB', 'mainC'].map(
+      (id) => built.preview.proposedInput.items.find((item) => item.id === id)!.planned_grams,
+    );
+    expect(grams.every((value) => value > 0)).toBe(true);
+    expect(verifyMainIngredientIdentity(input, built.preview.proposedInput)).toMatchObject({
+      ok: true,
+    });
+  });
+
+  it('preserves a 2:1 Protein Crown group through a batch change', () => {
+    const input = fixture(2);
+    const built = buildBatchRescalePreview(input, NONE, 1_200, AT);
+
+    expect(built.ok, JSON.stringify(built)).toBe(true);
+    if (!built.ok) return;
+    const a = built.preview.proposedInput.items.find((item) => item.id === 'mainA')!;
+    const b = built.preview.proposedInput.items.find((item) => item.id === 'mainB')!;
+    expect(a.planned_grams / b.planned_grams).toBeCloseTo(2, 2);
+    expect(verifyMainIngredientIdentity(input, built.preview.proposedInput)).toMatchObject({
+      ok: true,
+    });
+  });
+
+  it('returns the same coupled 1:1 vector on repeated Recalculate', () => {
+    const input = fixture(1);
+    const options = {
+      productBehaviorSnapshots: snapshotsFor(input),
+      technicalOnlyMainLineIds: [] as string[],
+    };
+    const first = buildOptimizePreview(input, NONE, AT, options);
+    const second = buildOptimizePreview(input, NONE, AT, options);
+
+    expect(first.ok, JSON.stringify(first)).toBe(true);
+    expect(second.ok, JSON.stringify(second)).toBe(true);
+    if (!first.ok || !second.ok) return;
+    const signature = (recipe: RecipeInput) =>
+      recipe.items
+        .filter((item) => item.lock_type === 'main')
+        .map((item) => [item.id, item.planned_grams, item.main_ratio_weight]);
+    expect(signature(second.preview.proposedInput)).toEqual(
+      signature(first.preview.proposedInput),
+    );
+    expect(verifyMainIngredientIdentity(input, second.preview.proposedInput)).toMatchObject({
+      ok: true,
+    });
+  });
+
+  it('rejects a materially broken Protein Multi-Main vector at the final Apply door', () => {
+    const input = fixture(1);
+    const snapshots = snapshotsFor(input);
+    const built = buildOptimizePreview(input, NONE, AT, {
+      productBehaviorSnapshots: snapshots,
+      technicalOnlyMainLineIds: [],
+    });
+    expect(built.ok, JSON.stringify(built)).toBe(true);
+    if (!built.ok) return;
+
+    const forged = structuredClone(built.preview);
+    forged.proposedInput = {
+      ...forged.proposedInput,
+      items: forged.proposedInput.items.map((item) =>
+        item.id === 'mainA'
+          ? { ...item, planned_grams: item.planned_grams + 1 }
+          : item.id === 'mainB'
+            ? { ...item, planned_grams: item.planned_grams - 1 }
+            : item,
+      ),
+    };
+    delete forged.practicalization;
+
+    const committed = commitPreview(
+      input,
+      NONE,
+      forged,
+      '2026-08-23T12:01:00.000Z',
+      'forged-protein-multi-main',
+      [],
+      undefined,
+      null,
+      null,
+      null,
+      null,
+      snapshots,
+    );
+    expect(committed.ok).toBe(false);
+    if (committed.ok) return;
+    expect(committed.code).toBe('main_identity_violated');
   });
 });
 
