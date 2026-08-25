@@ -832,8 +832,13 @@ describe('Production trusted Rescue runtime races', () => {
       },
     );
     const transition = vi.fn();
+    const completedRemote = {
+      ...durableRescuedRun(attached),
+      status: 'completed',
+      completedAt: '2026-08-25T11:00:00.000Z',
+    } as ProductionRun;
     const repository = {
-      getRun: vi.fn(async () => null),
+      getRun: vi.fn(async () => completedRemote),
       transition,
     } as unknown as ProductionRepository;
     mocks.resolveProductionRepository.mockReturnValue({
@@ -847,8 +852,10 @@ describe('Production trusted Rescue runtime races', () => {
     await act(async () => {
       await Promise.resolve();
       await Promise.resolve();
+      await Promise.resolve();
     });
 
+    expect(view?.session?.source.recipeVersionId).toBe(attached.source.recipeVersionId);
     expect(view?.prerequisite).toMatchObject({
       code: 'stale_source',
       action: 'archive_stale_session',

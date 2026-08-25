@@ -569,6 +569,14 @@ export function useProductionWorkspace(enabled: boolean) {
           if (localSession?.sessionId === remote.runId) archiveCurrentSession();
           return;
         }
+        if (remote.recipeVersionId !== source.recipeVersionId) {
+          // A local session may still be attached to the version that created
+          // it while the operator is viewing a newer saved version. Keep that
+          // frozen session intact so stale-source handling can offer the
+          // explicit archive flow. Hydrating it with the current input would
+          // silently relabel historical Production as the newer recipe.
+          return;
+        }
         const recoveryRelation = durableProductionRecoveryRelation(localSession, remote);
         if (shouldHydrateDurableProductionRecovery(recoveryRelation)) {
           const hydrated = hydrateProductionSessionFromRun(
