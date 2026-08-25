@@ -4,10 +4,12 @@ import { describe, expect, it } from 'vitest';
 import { calculateRecipe, detectViolations, type RecipeInput } from '@/engine';
 import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
+import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
+import { attachRecipeProfileMetadata } from '@/features/pro-workbench/recipeProfilePersistence';
 import { parseCsv } from '@/lib/csv';
 import { recipeTechnicalFit } from '@/features/recipe-score';
 import { normalizedLineDrift } from '@/features/formulation/userLineIntent';
-import { buildOptimizePreview } from './applyPipeline';
+import { buildOptimizePreview, commitPreview } from './applyPipeline';
 import {
   compareExperimentalCandidateMeasures,
   evaluateExperimentalCandidate,
@@ -254,6 +256,102 @@ describe('whole-recipe user-gram proximity — Horchata historical reproducer', 
     const built = buildOptimizePreview(input, { byLineId: {} }, '2026-08-25T00:00:00.000Z');
 
     expect(built).toEqual({ ok: false, code: 'already_clean' });
+  });
+
+  it('keeps the exact Horchata vector through the served Pro practical-preview Apply door', () => {
+    const source = horchata('optimal');
+    const input = attachRecipeProfileMetadata(
+      source,
+      {
+        visibleProductType: 'vegan',
+        mode: 'classic',
+        formulationStrategy: 'optimal',
+        targetBatchGrams: 1_000,
+        machineKind: 'professional',
+        machineId: null,
+        machineLabel: 'Maszyna profesjonalna',
+        servingModeId: 'temp_minus_11',
+        targetTemperatureC: -11,
+        machineCapacityGrams: null,
+        directionTargets: { sweetness: 0, softness: 0, creaminess: 0, flavor: 0 },
+        directionIntents: { sweetness: 0, softness: 0, creaminess: 0, flavor: 0 },
+      },
+      Object.fromEntries(
+        source.items.map((item) => [item.id, { role: 'standard' as const, required: false }]),
+      ),
+    );
+    const built = buildOptimizePreview(input, { byLineId: {} }, '2026-08-25T00:00:00.000Z', {
+      requirePracticalPreview: true,
+      productBehaviorSnapshots: productBehaviorTestSnapshots(input),
+    });
+
+    expect(built.ok, JSON.stringify(built)).toBe(true);
+    if (!built.ok) return;
+    expect(built.preview.practicalizationOnly).toBe(true);
+    expect(built.preview.proposedInput.items.map((item) => item.planned_grams)).toEqual(
+      input.items.map((item) => item.planned_grams),
+    );
+    expect(
+      built.preview.proposedInput.items.find((item) => item.id === 'cinnamon')?.planned_grams,
+    ).toBe(2);
+    expect(
+      commitPreview(
+        input,
+        { byLineId: {} },
+        built.preview,
+        '2026-08-25T00:00:01.000Z',
+        'served-pro-horchata-no-op',
+        [],
+        undefined,
+        null,
+        null,
+        null,
+        null,
+        {},
+        [],
+        null,
+        null,
+        { requirePracticalPreview: true },
+      ).ok,
+    ).toBe(true);
+  });
+
+  it('keeps the exact Horchata vector through the served Pro ECO Apply door', () => {
+    const source = horchata('eco');
+    const input = attachRecipeProfileMetadata(
+      source,
+      {
+        visibleProductType: 'vegan',
+        mode: 'classic',
+        formulationStrategy: 'eco',
+        targetBatchGrams: 1_000,
+        machineKind: 'professional',
+        machineId: null,
+        machineLabel: 'Maszyna profesjonalna',
+        servingModeId: 'temp_minus_11',
+        targetTemperatureC: -11,
+        machineCapacityGrams: null,
+        directionTargets: { sweetness: 0, softness: 0, creaminess: 0, flavor: 0 },
+        directionIntents: { sweetness: 0, softness: 0, creaminess: 0, flavor: 0 },
+      },
+      Object.fromEntries(
+        source.items.map((item) => [item.id, { role: 'standard' as const, required: false }]),
+      ),
+    );
+    const built = buildOptimizePreview(input, { byLineId: {} }, '2026-08-25T00:00:00.000Z', {
+      requirePracticalPreview: true,
+      productBehaviorSnapshots: productBehaviorTestSnapshots(input),
+      effectivePriceOverrides: HORCHATA_PRICES,
+    });
+
+    expect(built.ok, JSON.stringify(built)).toBe(true);
+    if (!built.ok) return;
+    expect(built.preview.proposedInput.items.map((item) => item.planned_grams)).toEqual(
+      input.items.map((item) => item.planned_grams),
+    );
+    expect(
+      built.preview.proposedInput.items.find((item) => item.id === 'cinnamon')?.planned_grams,
+    ).toBe(2);
   });
 
   it('keeps ECO closer to the complete entered vector than the rejected historical OPTIMAL rewrite', () => {

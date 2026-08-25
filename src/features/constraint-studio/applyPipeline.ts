@@ -5907,10 +5907,32 @@ function buildOptimizePreviewWithDirection(
     (item) =>
       item.planned_grams > 0 && excludedCanonicalIds.has(canonicalIngredientId(item.ingredient)),
   );
+  const buildIdentityPracticalPreview = (): BuildPreviewResult => {
+    // The served Pro workbench requires a Preview provenance token before
+    // Save/Production. That requirement is not permission to replace an
+    // already-valid recipe with a profile template: issue an identity
+    // practicalization Preview so Apply can attest the exact x_user vector
+    // byte-for-byte. The Apply door re-derives the same identity candidate.
+    const preview = finishPreview(
+      'optimize',
+      copy.preview.kindLabels.optimize,
+      input,
+      set,
+      input,
+      set,
+      violationCount(currentResult),
+      [],
+      createdAt,
+    );
+    preview.practicalizationOnly = true;
+    preview.autoBalance = { batchRescaled: false, solverRounds: 0 };
+    preview.hardResidualMetrics = [];
+    preview.diagnosticOnly = false;
+    return mainSafePreview(input, preview, options.productBehaviorSnapshots);
+  };
   const exactNoCrownNullHypothesis =
     preRouteStrategy !== 'eco' &&
     mainIntent.length === 0 &&
-    options.requirePracticalPreview !== true &&
     (options.rescueSimulationLineIds?.length ?? 0) === 0 &&
     !hasPendingManualTarget &&
     !hasPresentExcludedIngredient &&
@@ -5928,7 +5950,12 @@ function buildOptimizePreviewWithDirection(
     internalStabilizerProfileIssues(input).length === 0 &&
     (input.category !== 'vegan_gelato' || veganProfileConstraintIssues(input).length === 0) &&
     (!currentProtein.applicable || currentProtein.qualification.qualified);
-  if (exactNoCrownNullHypothesis) return { ok: false, code: 'already_clean' };
+  if (exactNoCrownNullHypothesis) {
+    if (options.requirePracticalPreview === true) {
+      return buildIdentityPracticalPreview();
+    }
+    return { ok: false, code: 'already_clean' };
+  }
   // Owner 2026-08-22 (Main-constrained NEAREST): a COMPLETE on-batch Sorbet
   // draft with an active exact Direction objective is solved on the SHARED
   // boundary BEFORE the mode router. The served Mapper scaffold routes through
@@ -6054,6 +6081,7 @@ function buildOptimizePreviewWithDirection(
           }).ok),
     });
     if (neighborhood.status === 'no_change') {
+      if (options.requirePracticalPreview === true) return buildIdentityPracticalPreview();
       return { ok: false, code: 'already_clean' };
     }
     if (neighborhood.status === 'candidate') {
