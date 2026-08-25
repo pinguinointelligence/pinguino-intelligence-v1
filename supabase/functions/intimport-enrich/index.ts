@@ -245,7 +245,10 @@ Deno.serve(async (request) => {
     }
 
     const semanticModel = Deno.env.get('INTIMPORT_ENRICHMENT_MODEL') || 'gpt-5.6-luna';
-    const semanticCap = numberEnv('INTIMPORT_MAX_EXTERNAL_CALLS_PER_IMPORT', 40);
+    // Semantic classification does not perform web search and must not inherit
+    // the much smaller web-enrichment budget. It has its own optional setting,
+    // with an absolute server ceiling of 40 classifications per import.
+    const semanticCap = Math.min(40, numberEnv('INTIMPORT_MAX_SEMANTIC_CALLS_PER_IMPORT', 40));
     const idempotencyKey = await sha256Text(
       stableJson({
         action: 'semantic_classification',

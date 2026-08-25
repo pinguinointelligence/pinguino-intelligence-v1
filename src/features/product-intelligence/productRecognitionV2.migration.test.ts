@@ -34,6 +34,9 @@ describe('Product Recognition V2 server boundary', () => {
     expect(edge).toContain("action: 'semantic_classification'");
     expect(edge).toContain('classifierVersion: PRODUCT_RECOGNITION_VERSION');
     expect(edge).toContain('cacheRevision: PRODUCT_RECOGNITION_CACHE_REVISION');
+    expect(edge).toContain("numberEnv('INTIMPORT_MAX_SEMANTIC_CALLS_PER_IMPORT', 40)");
+    expect(edge).toContain('const semanticCap = Math.min(');
+    expect(edge).toContain("numberEnv('INTIMPORT_MAX_EXTERNAL_CALLS_PER_IMPORT', 40)");
     expect(edge).toContain("'reserve_intimport_semantic_classification'");
     expect(migration).toContain('pg_advisory_xact_lock');
     expect(migration).toContain("return 'CAP_REACHED'");
