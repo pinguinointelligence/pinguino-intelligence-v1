@@ -185,7 +185,7 @@ describe('recipe and production table modes', () => {
 
   it('Production replaces builder controls with plan, actual, difference and status', () => {
     const html = renderIngredients('production');
-    for (const label of ['Planowane', 'Faktycznie', 'Różnica', 'Status'])
+    for (const label of ['Plan', 'Faktycznie', 'Odchylenie', 'Status / potwierdzenie'])
       expect(html).toContain(label);
     expect(html).toContain('data-testid="production-table-header"');
     expect(html).toContain('data-table-family="recipe"');
@@ -346,9 +346,11 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     expect(dock).toContain('WorkbenchIntelligenceHeader');
     expect(header).toContain('Dopasowanie techniczne receptury');
     expect(dock).not.toContain('production.score');
-    // §51 SCORE TRUTH — the Production figure names the composition it describes:
-    // the plan that is still being executed, never the unfinished vessel.
-    expect(production).toContain('Przewidywany wynik po zakończeniu planu');
+    // §51 SCORE TRUTH — Production presents the live forecast beside the
+    // physical vessel state, while the mass cards name plan and vessel separately.
+    expect(production).toContain('Przewidywany wynik');
+    expect(production).toContain('W naczyniu');
+    expect(production).toContain('>Cel</dt>');
     expect(production).not.toContain('Przewidywane dopasowanie partii');
     expect(theme).toContain(':focus-visible');
     expect(theme).toContain('prefers-reduced-motion: reduce');

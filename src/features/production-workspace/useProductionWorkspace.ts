@@ -376,8 +376,10 @@ export function useProductionWorkspace(enabled: boolean) {
   const [rescueAuthorizationClock, setRescueAuthorizationClock] = useState(() => Date.now());
   const [rescueOptionsEvaluation, setRescueOptionsEvaluation] =
     useState<ProductionRescueOptionsEvaluationState>({ basisKey: null, options: {} });
-  const [selectedRescueOptionId, setSelectedRescueOptionId] =
-    useState<ProductionRescueStableOptionId | null>(null);
+  const [selectedRescueOption, setSelectedRescueOption] = useState<{
+    basisKey: string | null;
+    optionId: ProductionRescueStableOptionId | null;
+  }>({ basisKey: null, optionId: null });
   const [rescueOptionsRetryRevision, setRescueOptionsRetryRevision] = useState(0);
   const [reconcileRevision, setReconcileRevision] = useState(0);
   const [preStartHeatAcknowledgementKey, setPreStartHeatAcknowledgementKey] = useState<
@@ -787,6 +789,9 @@ export function useProductionWorkspace(enabled: boolean) {
     session && rescue.state === 'options'
       ? `${session.sessionId}:${session.durableActualRevision}:${session.durableRescueRevision}`
       : null;
+  const rescueOptionsEvaluationKey = rescueOptionsBasisKey
+    ? `${rescueOptionsBasisKey}:${rescueOptionsRetryRevision}`
+    : null;
 
   useEffect(() => {
     if (
@@ -794,10 +799,9 @@ export function useProductionWorkspace(enabled: boolean) {
       !repositoryState.repository ||
       !session ||
       rescue.state !== 'options' ||
-      rescueOptionsBasisKey === null
+      rescueOptionsBasisKey === null ||
+      rescueOptionsEvaluationKey === null
     ) {
-      setRescueOptionsEvaluation({ basisKey: null, options: {} });
-      setSelectedRescueOptionId(null);
       return;
     }
     let cancelled = false;
@@ -805,9 +809,6 @@ export function useProductionWorkspace(enabled: boolean) {
     const loadingOptions = Object.fromEntries(
       productionRescueChoices.map((option) => [option.id, { status: 'loading' as const }]),
     );
-    setRescueOptionsEvaluation({ basisKey: rescueOptionsBasisKey, options: loadingOptions });
-    setSelectedRescueOptionId(null);
-
     for (const option of productionRescueChoices) {
       void repositoryState.repository
         .authorizeRescue({
@@ -828,7 +829,7 @@ export function useProductionWorkspace(enabled: boolean) {
             return;
           }
           setRescueOptionsEvaluation((current) =>
-            current.basisKey === rescueOptionsBasisKey
+            current.basisKey === rescueOptionsEvaluationKey
               ? {
                   ...current,
                   options: {
@@ -840,7 +841,17 @@ export function useProductionWorkspace(enabled: boolean) {
                     },
                   },
                 }
-              : current,
+              : {
+                  basisKey: rescueOptionsEvaluationKey,
+                  options: {
+                    ...loadingOptions,
+                    [option.id]: {
+                      status: 'available',
+                      authorization,
+                      consumeIdempotencyKey: productionRescueIdempotencyKey(),
+                    },
+                  },
+                },
           );
         })
         .catch((error) => {
@@ -853,7 +864,7 @@ export function useProductionWorkspace(enabled: boolean) {
               ? `Niedostępne — w naczyniu jest już więcej niż ${originalTarget.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} g.`
               : rescueOptionUnavailableMessage(option.id, originalTarget, error);
           setRescueOptionsEvaluation((current) =>
-            current.basisKey === rescueOptionsBasisKey
+            current.basisKey === rescueOptionsEvaluationKey
               ? {
                   ...current,
                   options: {
@@ -863,7 +874,15 @@ export function useProductionWorkspace(enabled: boolean) {
                       : { status: 'error', reason },
                   },
                 }
-              : current,
+              : {
+                  basisKey: rescueOptionsEvaluationKey,
+                  options: {
+                    ...loadingOptions,
+                    [option.id]: unavailable
+                      ? { status: 'unavailable', reason }
+                      : { status: 'error', reason },
+                  },
+                },
           );
         });
     }
@@ -875,14 +894,19 @@ export function useProductionWorkspace(enabled: boolean) {
     repositoryState.repository,
     rescue.state,
     rescueOptionsBasisKey,
+    rescueOptionsEvaluationKey,
     rescueOptionsRetryRevision,
     session,
   ]);
 
   const currentRescueOptionsEvaluation =
-    rescueOptionsEvaluation.basisKey === rescueOptionsBasisKey
-      ? rescueOptionsEvaluation.options
-      : {};
+    rescueOptionsEvaluationKey === null
+      ? {}
+      : rescueOptionsEvaluation.basisKey === rescueOptionsEvaluationKey
+        ? rescueOptionsEvaluation.options
+        : Object.fromEntries(
+            productionRescueChoices.map((option) => [option.id, { status: 'loading' as const }]),
+          );
   const rescueOptionsCalculating = Object.values(currentRescueOptionsEvaluation).some(
     (option) => option?.status === 'loading',
   );
@@ -892,7 +916,11 @@ export function useProductionWorkspace(enabled: boolean) {
         (option) => currentRescueOptionsEvaluation[option.id]?.status === 'available',
       )?.id;
   const effectiveSelectedRescueOptionId =
-    selectedRescueOptionId ?? recommendedRescueOptionId ?? null;
+    (selectedRescueOption.basisKey === rescueOptionsEvaluationKey
+      ? selectedRescueOption.optionId
+      : null) ??
+    recommendedRescueOptionId ??
+    null;
   const nameProcessDetails = (details: ProductProcessReadinessDetail[]) =>
     details.map((detail) => {
       const line = detail.lineId
@@ -946,18 +974,14 @@ export function useProductionWorkspace(enabled: boolean) {
       }),
     [behaviorValidationKey, carbonatedProducts],
   );
-  const degassingRequired = session
-    ? session.degassingRequired
-    : carbonatedProducts.length > 0;
+  const degassingRequired = session ? session.degassingRequired : carbonatedProducts.length > 0;
   const degassingAcknowledged =
     !degassingRequired ||
     (session
       ? session.degassingAcknowledged && session.degassingAcknowledgedAt !== null
       : preStartDegassingAcknowledgementKey === degassingAcknowledgementKey);
   const canStartProduction =
-    productionPrerequisite === null &&
-    heatInformationAcknowledged &&
-    degassingAcknowledged;
+    productionPrerequisite === null && heatInformationAcknowledged && degassingAcknowledged;
   const corrections = useMemo(
     () =>
       proposeCorrections({
@@ -1148,7 +1172,7 @@ export function useProductionWorkspace(enabled: boolean) {
   const selectRescueOption = (stableOptionId: ProductionRescueStableOptionId): void => {
     const evaluated = currentRescueOptionsEvaluation[stableOptionId];
     if (evaluated?.status !== 'available') return;
-    setSelectedRescueOptionId(stableOptionId);
+    setSelectedRescueOption({ basisKey: rescueOptionsEvaluationKey, optionId: stableOptionId });
     updateRescueAuthorization({
       status: 'preview',
       authorization: evaluated.authorization,
@@ -1251,9 +1275,7 @@ export function useProductionWorkspace(enabled: boolean) {
       if (session.degassingAcknowledgedAt) return;
       setPersistence({ busy: true, error: null });
       try {
-        const durableRun = await repositoryState.repository.acknowledgeDegassing(
-          session.sessionId,
-        );
+        const durableRun = await repositoryState.repository.acknowledgeDegassing(session.sessionId);
         replaceSession(
           mergePendingProductionDrafts(
             hydrateProductionSessionFromRun(durableRun, source, plannedInput, plannedComposition),
