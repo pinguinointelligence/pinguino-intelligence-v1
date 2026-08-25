@@ -7666,8 +7666,8 @@ function applyVerifiedRescueInput(session, candidate) {
 			draftActualGrams: line.confirmed && !needsTopUp ? line.physicalAddedGrams : candidateFinalGrams,
 			draftActualEdited: false,
 			confirmed: line.confirmed && !needsTopUp,
-			confirmedAt: line.confirmed && !needsTopUp ? line.confirmedAt : null,
-			confirmationOrder: line.confirmed && !needsTopUp ? line.confirmationOrder : null
+			confirmedAt: line.confirmed ? line.confirmedAt : null,
+			confirmationOrder: line.confirmed ? line.confirmationOrder : null
 		};
 	});
 	const originalIds = new Set(session.plannedInput.items.map((item) => item.id));
@@ -7846,8 +7846,8 @@ function hydrateProductionSessionFromRun(run, source, plannedInput, plannedCompo
 				draftActualEdited: false,
 				physicalAddedGrams: grams,
 				confirmed: !needsAuthorizedTopUp,
-				confirmedAt: needsAuthorizedTopUp ? null : recorded.item.confirmedAt ?? run.actual.recordedAt,
-				confirmationOrder: needsAuthorizedTopUp ? null : recorded.item.confirmationOrder ?? recorded.index + 1
+				confirmedAt: recorded.item.confirmedAt ?? run.actual.recordedAt,
+				confirmationOrder: recorded.item.confirmationOrder ?? recorded.index + 1
 			};
 		};
 		session = {

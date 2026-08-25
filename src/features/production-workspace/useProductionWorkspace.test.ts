@@ -96,6 +96,52 @@ describe('durable Production actual projection', () => {
     });
   });
 
+  it('preserves an already-confirmed physical floor while its rescue top-up control is open', () => {
+    const plannedInput = {
+      ...DEFAULT_PRESET,
+      items: DEFAULT_PRESET.items.map((item) => ({ ...item, actual_grams: null })),
+      machine_capacity_grams: null,
+    };
+    const started = createProductionSession({
+      sessionId: 'run-rescue-top-up',
+      ownerUserId: 'owner-1',
+      source: {
+        recipeId: 'recipe-1',
+        recipeVersionId: 'version-1',
+        recipeVersionNumber: 1,
+        recipeName: 'QA rescue top-up',
+      },
+      plannedInput,
+      startedAt: '2026-08-19T00:00:00.000Z',
+    });
+    const line = started.lines[0]!;
+    const confirmed = confirmProductionLine(
+      started,
+      line.lineId,
+      '2026-08-19T00:01:00.000Z',
+    );
+    const pendingTopUp = {
+      ...confirmed,
+      lines: confirmed.lines.map((item) =>
+        item.lineId === line.lineId
+          ? {
+              ...item,
+              targetGrams: item.physicalAddedGrams + 5,
+              draftActualGrams: item.physicalAddedGrams + 5,
+              confirmed: false,
+            }
+          : item,
+      ),
+    };
+
+    expect(durableActual(pendingTopUp, 'owner-1').items?.find((item) => item.id === line.lineId))
+      .toMatchObject({
+        actualGrams: line.plannedGrams,
+        confirmedAt: '2026-08-19T00:01:00.000Z',
+        confirmationOrder: 1,
+      });
+  });
+
   it('reconciles every newer durable Rescue, including the second accepted snapshot', () => {
     const remote = {
       rescue: {

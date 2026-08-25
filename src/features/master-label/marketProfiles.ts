@@ -43,6 +43,9 @@ export interface MarketProfile {
   rendererLimitation: string;
 }
 
+export const marketAvailabilityLabel = (profile: MarketProfile): string =>
+  profile.selectable ? 'Gotowe do druku' : 'W przygotowaniu';
+
 const COMMON_REQUIRED: readonly MasterLabelFieldId[] = [
   'product_name',
   'legal_product_name',

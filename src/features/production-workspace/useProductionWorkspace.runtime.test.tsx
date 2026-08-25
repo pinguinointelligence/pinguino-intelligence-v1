@@ -321,6 +321,45 @@ describe('Production trusted Rescue runtime races', () => {
     expect(view?.selectedRescueOptionId).toBe('leave_as_is');
   });
 
+  it('uses fresh authorization idempotency keys when the operator retries expired choices', async () => {
+    const local = useProductionSessionStore.getState().session!;
+    const authorizeRescue = vi.fn(
+      async (input: Parameters<ProductionRepository['authorizeRescue']>[0]) => {
+        if (authorizeRescue.mock.calls.length <= 4) throw new Error('authorization expired');
+        return {
+          ...authorization(local.sessionId),
+          authorizationId: `retry-${input.stableOptionId}`,
+          stableOptionId: input.stableOptionId,
+        };
+      },
+    );
+    mocks.resolveProductionRepository.mockReturnValue({
+      repository: { authorizeRescue } as unknown as ProductionRepository,
+      mode: 'backend',
+      isLocalDev: false,
+      unavailable: false,
+    });
+
+    await act(async () => root.render(<EnabledHarness />));
+    await act(async () => {
+      await vi.waitFor(() => expect(authorizeRescue).toHaveBeenCalledTimes(4));
+      await vi.waitFor(() =>
+        expect(
+          Object.values(view!.rescueOptionStates).filter((state) => state?.status === 'error'),
+        ).toHaveLength(4),
+      );
+    });
+    const firstKeys = authorizeRescue.mock.calls.map(([input]) => input.idempotencyKey);
+
+    act(() => view!.retryRescueOptions());
+    await act(async () => {
+      await vi.waitFor(() => expect(authorizeRescue).toHaveBeenCalledTimes(8));
+    });
+    const retryKeys = authorizeRescue.mock.calls.slice(4).map(([input]) => input.idempotencyKey);
+    expect(retryKeys).not.toEqual(firstKeys);
+    expect(new Set([...firstKeys, ...retryKeys]).size).toBe(8);
+  });
+
   it('blocks operator edits while authorizing and ignores a late response after invalidation', async () => {
     const pending = deferred<ProductionRescueAuthorization>();
     const repository = {

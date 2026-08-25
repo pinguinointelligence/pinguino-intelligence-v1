@@ -641,8 +641,12 @@ export function applyVerifiedRescueInput(
         line.confirmed && !needsTopUp ? line.physicalAddedGrams : candidateFinalGrams,
       draftActualEdited: false,
       confirmed: line.confirmed && !needsTopUp,
-      confirmedAt: line.confirmed && !needsTopUp ? line.confirmedAt : null,
-      confirmationOrder: line.confirmed && !needsTopUp ? line.confirmationOrder : null,
+      // A rescue top-up reopens the operator control, not the durable physical
+      // fact. Keep the original chronology so subsequent writes can preserve
+      // every already-in-vessel amount while another reopened line is topped
+      // up. Record corrections still clear chronology in reopenProductionRecord.
+      confirmedAt: line.confirmed ? line.confirmedAt : null,
+      confirmationOrder: line.confirmed ? line.confirmationOrder : null,
     };
   });
   // Rescue is cumulative. Compare with the immutable source plan, not the
@@ -919,12 +923,11 @@ export function hydrateProductionSessionFromRun(
         draftActualEdited: false,
         physicalAddedGrams: grams,
         confirmed: !needsAuthorizedTopUp,
-        confirmedAt: needsAuthorizedTopUp
-          ? null
-          : (recorded.item.confirmedAt ?? run.actual!.recordedAt),
-        confirmationOrder: needsAuthorizedTopUp
-          ? null
-          : (recorded.item.confirmationOrder ?? recorded.index + 1),
+        // Pending top-up is a UI-open state. The persisted amount, timestamp,
+        // and order remain immutable physical truth until the extra grams are
+        // explicitly confirmed.
+        confirmedAt: recorded.item.confirmedAt ?? run.actual!.recordedAt,
+        confirmationOrder: recorded.item.confirmationOrder ?? recorded.index + 1,
       };
     };
     session = {

@@ -164,6 +164,8 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(internal?.textContent).not.toContain('Składniki');
     expect(internal?.textContent).not.toContain('Wartości odżywcze');
     expect(host.textContent).not.toContain('none_declared');
+    expect(button('Pobierz podgląd')).not.toBeUndefined();
+    expect((button('Drukuj') as HTMLButtonElement | undefined)?.disabled).toBe(true);
   });
 
   it('opens the complete Settings state inside the same two-view workspace', async () => {
@@ -191,9 +193,15 @@ describe('LabelWorkspace unified actual-run surface', () => {
     const us = [...editor!.querySelectorAll('button')].find((button) =>
       button.textContent?.startsWith('USA'),
     );
-    expect(us?.disabled).toBe(true);
+    expect(us?.getAttribute('aria-disabled')).toBe('true');
+    const canada = [...editor!.querySelectorAll('button')].find((button) =>
+      button.textContent?.startsWith('Kanada'),
+    );
+    await act(async () => canada!.click());
+    expect(editor?.textContent).toContain('Profil Kanada jest jeszcze w przygotowaniu');
+    expect(editor?.querySelector('[data-market-active="true"]')?.textContent).toContain('UE');
     const uk = [...editor!.querySelectorAll('button')].find(
-      (button) => button.textContent === 'UK',
+      (button) => button.textContent?.startsWith('UK'),
     );
     await act(async () => uk!.click());
     const apply = [...editor!.querySelectorAll('button')].find(
@@ -307,7 +315,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
 
     const settings = host.querySelector('[data-testid="label-settings-view"]')!;
     const uk = [...settings.querySelectorAll('button')].find(
-      (candidate) => candidate.textContent === 'UK',
+      (candidate) => candidate.textContent?.startsWith('UK'),
     )!;
     await act(async () => uk.click());
     await act(async () => button('Anuluj')!.click());
@@ -321,7 +329,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(
       host.querySelector('[data-testid="label-settings-view"] [data-market-active="true"]')
         ?.textContent,
-    ).toBe('UE');
+    ).toContain('UE');
     await act(async () =>
       host.querySelector<HTMLButtonElement>('[data-testid="label-workspace-dot-label"]')!.click(),
     );
@@ -335,7 +343,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(
       workspace.querySelector('[data-testid="label-settings-view"] [data-market-active="true"]')
         ?.textContent,
-    ).toBe('UE');
+    ).toContain('UE');
 
     await swipe(workspace, 80, 170);
     expect(workspace.getAttribute('data-active-label-view')).toBe('label');

@@ -308,6 +308,8 @@ describe('Production sequential-deviation P0', () => {
       physicalAddedGrams: 198,
       targetGrams: creamInstruction!.finalTargetGrams,
       confirmed: false,
+      confirmedAt: AT,
+      confirmationOrder: 1,
     });
     expect(productionTopUpGrams(line(session, 'cream'))).toBe(creamInstruction!.grams);
 

@@ -20,6 +20,7 @@ import {
 import { printMasterLabel } from './masterLabelPrint';
 import {
   MARKET_PROFILES,
+  marketAvailabilityLabel,
   marketProfile,
   type MarketProfileCode,
   type MasterLabelFieldId,
@@ -43,6 +44,7 @@ import {
   type PrinterProfileId,
 } from './printerProfiles';
 import { assessCanadaFop } from './regulatoryNutrition';
+import { downloadMasterLabelPdf } from './masterLabelPdf';
 
 const MARKET_CODES: readonly MarketProfileCode[] = ['EU', 'US', 'CA', 'UK', 'AU_NZ', 'CUSTOM'];
 export type LabelWorkspaceView = 'label' | 'settings';
@@ -132,6 +134,7 @@ export function LabelWorkspace({
   );
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
   const [busy, setBusy] = useState(true);
+  const [pdfBusy, setPdfBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resolvedLogo, setResolvedLogo] = useState<{
     path: string;
@@ -230,6 +233,19 @@ export function LabelWorkspace({
       setError(caught instanceof Error ? caught.message : 'Nie zapisano etykiety.');
     } finally {
       setBusy(false);
+    }
+  };
+
+  const downloadPdf = async (draft: boolean) => {
+    if (!label || pdfBusy) return;
+    setPdfBusy(true);
+    setError(null);
+    try {
+      await downloadMasterLabelPdf(label, logoUrl, { draft });
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Nie pobrano pliku PDF.');
+    } finally {
+      setPdfBusy(false);
     }
   };
 
@@ -406,11 +422,23 @@ export function LabelWorkspace({
                     Druk testowy
                   </Button>
                   <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={pdfBusy}
+                    onClick={() => void downloadPdf(!preflight?.readyForSystemPrint)}
+                  >
+                    {pdfBusy
+                      ? 'Tworzę PDF…'
+                      : preflight?.readyForSystemPrint
+                        ? 'Pobierz PDF'
+                        : 'Pobierz podgląd'}
+                  </Button>
+                  <Button
                     size="sm"
                     disabled={!preflight?.readyForSystemPrint}
                     onClick={() => printMasterLabel(label, logoUrl)}
                   >
-                    PDF / druk systemowy
+                    Drukuj
                   </Button>
                 </div>
               </header>
@@ -451,8 +479,8 @@ export function LabelWorkspace({
                   <span>x-height profilu ≥ {activeMarket.minimumLabel.xHeightMm} mm</span>
                 </div>
                 <p className="mt-1 text-stone-500">
-                  Podgląd używa wybranych jednostek mm; PDF/system print korzysta z tej samej
-                  geometrii. Zapis do PDF jest dostępny w natywnym oknie drukowania.
+                  Podgląd, pobrany PDF i wydruk systemowy korzystają z tej samej fizycznej
+                  geometrii. PDF nie wymaga podłączonej drukarki.
                 </p>
               </div>
               <div className="overflow-x-auto p-4 sm:p-6" data-testid="consumer-print-boundary">
@@ -723,6 +751,7 @@ function RunLabelEditor({
 }) {
   const [draft, setDraft] = useState(label);
   const [uploading, setUploading] = useState(false);
+  const [marketNotice, setMarketNotice] = useState<MarketProfileCode | null>(null);
   const primaryLanguage = draft.labelLanguages[0] ?? 'pl';
   const draftPreflight = useMemo(() => buildLabelPreflight(draft), [draft]);
   const missingFields = useMemo(
@@ -859,20 +888,25 @@ function RunLabelEditor({
                   key={code}
                   type="button"
                   className={cn(
-                    'pro-focus-ring min-h-11 rounded-[10px] border px-2 text-xs font-semibold transition-colors',
+                    'pro-focus-ring grid min-h-12 content-center rounded-[10px] border px-2 py-1 text-xs font-semibold transition-colors',
                     draft.market === code
                       ? 'border-ink bg-ink text-white'
                       : 'border-ink/12 bg-white text-ink hover:bg-stone-50',
                   )}
                   data-market-active={draft.market === code ? 'true' : undefined}
-                  disabled={!MARKET_PROFILES[code].selectable}
+                  aria-disabled={!MARKET_PROFILES[code].selectable}
                   title={
                     MARKET_PROFILES[code].selectable
                       ? MARKET_PROFILES[code].jurisdiction
-                      : 'RESEARCH / NOT AVAILABLE'
+                      : MARKET_PROFILES[code].rendererLimitation
                   }
                   onClick={() => {
                     const nextProfile = MARKET_PROFILES[code];
+                    if (!nextProfile.selectable) {
+                      setMarketNotice(code);
+                      return;
+                    }
+                    setMarketNotice(null);
                     const labelLanguages = [
                       ...new Set([...nextProfile.requiredLanguages, ...draft.labelLanguages]),
                     ];
@@ -904,11 +938,30 @@ function RunLabelEditor({
                     });
                   }}
                 >
-                  {MARKET_PROFILES[code].label}
-                  {!MARKET_PROFILES[code].selectable ? ' · research' : ''}
+                  <span>{MARKET_PROFILES[code].label}</span>
+                  <span className="text-[9px] font-medium opacity-70">
+                    {marketAvailabilityLabel(MARKET_PROFILES[code])}
+                  </span>
                 </button>
               ))}
             </div>
+            {marketNotice ? (
+              <div
+                className="mt-3 rounded-[10px] border border-[#d8bb8d] bg-[#fbf8f1] px-3 py-2 text-xs text-stone-700"
+                role="status"
+                data-testid="market-availability-notice"
+              >
+                <strong className="block text-ink">
+                  {marketNotice === 'CA'
+                    ? 'Profil Kanada jest jeszcze w przygotowaniu'
+                    : `Profil ${MARKET_PROFILES[marketNotice].label} jest jeszcze w przygotowaniu`}
+                </strong>
+                <span className="mt-1 block">
+                  {MARKET_PROFILES[marketNotice].rendererLimitation} Dostępny jest wyłącznie
+                  podgląd roboczy z oznaczeniem DRAFT / NIE DO SPRZEDAŻY.
+                </span>
+              </div>
+            ) : null}
           </div>
           <label className="mt-3 block text-xs font-medium text-stone-600">
             Języki · po przecinku
@@ -1916,6 +1969,7 @@ function MarketAndIdentityFields({
   onAddress: (value: string) => void;
   onLogo: (file: File) => Promise<void>;
 }) {
+  const [marketNotice, setMarketNotice] = useState<MarketProfileCode | null>(null);
   return (
     <div className="mt-4 space-y-4">
       <div>
@@ -1925,13 +1979,34 @@ function MarketAndIdentityFields({
             <button
               key={code}
               type="button"
-              className={`min-h-11 rounded-[10px] border px-2 text-xs ${market === code ? 'border-ink bg-ink text-white' : 'border-ink/15 bg-white'}`}
-              onClick={() => onMarket(code)}
+              className={`grid min-h-12 content-center rounded-[10px] border px-2 py-1 text-xs ${market === code ? 'border-ink bg-ink text-white' : 'border-ink/15 bg-white'}`}
+              aria-disabled={!MARKET_PROFILES[code].selectable}
+              onClick={() => {
+                if (!MARKET_PROFILES[code].selectable) {
+                  setMarketNotice(code);
+                  return;
+                }
+                setMarketNotice(null);
+                onMarket(code);
+              }}
             >
-              {MARKET_PROFILES[code].label}
+              <span>{MARKET_PROFILES[code].label}</span>
+              <span className="text-[9px] opacity-70">
+                {marketAvailabilityLabel(MARKET_PROFILES[code])}
+              </span>
             </button>
           ))}
         </div>
+        {marketNotice ? (
+          <p className="mt-2 text-xs leading-relaxed text-stone-600" role="status">
+            <strong className="text-ink">
+              {marketNotice === 'CA'
+                ? 'Profil Kanada jest jeszcze w przygotowaniu. '
+                : `Profil ${MARKET_PROFILES[marketNotice].label} jest jeszcze w przygotowaniu. `}
+            </strong>
+            {MARKET_PROFILES[marketNotice].rendererLimitation}
+          </p>
+        ) : null}
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-xs text-stone-600">

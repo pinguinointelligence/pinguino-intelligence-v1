@@ -249,9 +249,21 @@ export function durableActual(session: ProductionSession, by: string): RecordAct
     items: durableLines.map((line) => ({
       id: line.lineId,
       name: line.name,
-      actualGrams: line.confirmed ? line.physicalAddedGrams : null,
-      confirmedAt: line.confirmed ? line.confirmedAt : null,
-      confirmationOrder: line.confirmed ? line.confirmationOrder : null,
+      // A server-authorized positive top-up deliberately reopens the control,
+      // but the previously confirmed amount must never disappear from the
+      // durable vector while a sibling top-up is being recorded.
+      actualGrams:
+        line.confirmed || line.physicalAddedGrams > PRODUCTION_GRAMS_EPSILON
+          ? line.physicalAddedGrams
+          : null,
+      confirmedAt:
+        line.confirmed || line.physicalAddedGrams > PRODUCTION_GRAMS_EPSILON
+          ? line.confirmedAt
+          : null,
+      confirmationOrder:
+        line.confirmed || line.physicalAddedGrams > PRODUCTION_GRAMS_EPSILON
+          ? line.confirmationOrder
+          : null,
     })),
     actualTotalMixG: baseComplete
       ? session.lines.reduce((sum, line) => sum + line.physicalAddedGrams, 0)
@@ -875,7 +887,7 @@ export function useProductionWorkspace(enabled: boolean) {
           stableOptionId: option.id,
           expectedActualRevision: basisSession.durableActualRevision,
           expectedRescueRevision: basisSession.durableRescueRevision,
-          idempotencyKey: `production-decision:${basisSession.sessionId}:${basisSession.durableActualRevision}:${basisSession.durableRescueRevision}:${option.id}`,
+          idempotencyKey: `production-decision:${basisSession.sessionId}:${basisSession.durableActualRevision}:${basisSession.durableRescueRevision}:${rescueOptionsRetryRevision}:${option.id}`,
         })
         .then((authorization) => {
           if (cancelled) return;
