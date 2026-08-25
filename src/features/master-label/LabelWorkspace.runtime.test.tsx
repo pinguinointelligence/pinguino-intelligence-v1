@@ -411,7 +411,11 @@ describe('LabelWorkspace unified actual-run surface', () => {
 
     expect(host.textContent).toContain('European Union');
     expect(button('Nowa wersja')).not.toBeUndefined();
-    await act(async () => button('Nowa wersja')!.click());
+    await act(async () => {
+      button('Nowa wersja')!.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
 
     expect(host.querySelector('[data-active-label-view="settings"]')).not.toBeNull();
     expect(

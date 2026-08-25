@@ -253,13 +253,23 @@ export function LabelWorkspace({
     }
   };
 
-  const startNewVersion = () => {
+  const startNewVersion = async () => {
     if (!snapshot || !profile || !saved) return;
-    setSaved(null);
-    setLabel(labelFromProfile(snapshot, profile));
-    setSaveAsDefault(true);
-    setTransitionDirection('forward');
-    setActiveView('settings');
+    setBusy(true);
+    setError(null);
+    try {
+      const latestProfile = (await repository.getAccountProfile()) ?? profile;
+      setProfile(latestProfile);
+      setSaved(null);
+      setLabel(labelFromProfile(snapshot, latestProfile));
+      setSaveAsDefault(true);
+      setTransitionDirection('forward');
+      setActiveView('settings');
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Nie rozpoczęto nowej wersji etykiety.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const downloadPdf = async (draft: boolean) => {
@@ -427,7 +437,12 @@ export function LabelWorkspace({
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {saved ? (
-                    <Button variant="ghost" size="sm" onClick={startNewVersion}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={busy}
+                      onClick={() => void startNewVersion()}
+                    >
                       Nowa wersja
                     </Button>
                   ) : (
