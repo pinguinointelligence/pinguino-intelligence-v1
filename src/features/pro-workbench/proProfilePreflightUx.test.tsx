@@ -277,11 +277,14 @@ describe('profile hierarchy and compact preflight', () => {
     );
   });
 
-  it('routes settings changes through non-destructive recipe authorities', () => {
+  it('routes every profile change through confirmation and the native hard-reset authority', () => {
     const card = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
     expect(card).toContain('store.setFormulationStrategy(strategy)');
     expect(card).toContain('requestNewRecipeProductTypeChange(next)');
+    expect(card).toContain('setPendingBaseProfile(next)');
+    expect(card).toContain('startNewProRecipe(pendingBaseProfile)');
     expect(card).not.toContain('store.setVisibleProductType(next)');
+    expect(card).not.toContain('classifyProfileTransition(');
     expect(card).toContain('store.setMachineSelection({');
     expect(card).toContain('resizeBatchGrams(target)');
     expect(card).not.toContain('requestNewRecipeStarterSettingsChange');

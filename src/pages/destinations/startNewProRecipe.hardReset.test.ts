@@ -20,7 +20,6 @@ import { recipePersistPartialize, useRecipeStore } from '@/stores/recipeStore';
 import {
   rebuildNewProRecipeStarter,
   requestNewRecipeProductTypeChange,
-  starterSettingsPatch,
   startNewProRecipe,
 } from './startNewProRecipe';
 
@@ -79,6 +78,21 @@ const NATIVE_MINUS_12 = {
     },
   },
 } as const;
+
+const ALL_PROFILE_TRANSITIONS = [
+  ['gelato', 'sorbet'],
+  ['gelato', 'vegan'],
+  ['gelato', 'protein'],
+  ['sorbet', 'gelato'],
+  ['sorbet', 'vegan'],
+  ['sorbet', 'protein'],
+  ['vegan', 'gelato'],
+  ['vegan', 'sorbet'],
+  ['vegan', 'protein'],
+  ['protein', 'gelato'],
+  ['protein', 'sorbet'],
+  ['protein', 'vegan'],
+] as const satisfies readonly (readonly [VisibleProductType, VisibleProductType])[];
 
 const SERVING_TEMPERATURE: Readonly<Record<NewRecipeServingModeId, number>> = {
   temp_minus_11: -11,
@@ -192,12 +206,9 @@ const contaminateWorkingRecipe = () => {
   useRecipeProfileStore.getState().markRecalculationRequired();
 };
 
-const confirmCrossFamilyChange = (to: VisibleProductType) => {
-  const result = requestNewRecipeProductTypeChange(to);
-  expect(['starter_replaced', 'confirmation_required']).toContain(result);
-  if (result === 'confirmation_required') {
-    rebuildNewProRecipeStarter(starterSettingsPatch.product(to));
-  }
+const confirmProfileChange = (to: VisibleProductType) => {
+  expect(requestNewRecipeProductTypeChange(to)).toBe('confirmation_required');
+  startNewProRecipe(to);
 };
 
 describe('P0 working-recipe hard reset', () => {
@@ -254,24 +265,38 @@ describe('P0 working-recipe hard reset', () => {
     expectCleanStarter('vegan');
   });
 
-  it.each([
-    ['gelato', 'sorbet'],
-    ['sorbet', 'vegan'],
-    ['vegan', 'protein'],
-    ['vegan', 'gelato'],
-  ] as const)('%s → %s loads only the target native starter after confirmation', (from, to) => {
-    startNewProRecipe(from);
+  it.each(ALL_PROFILE_TRANSITIONS)(
+    '%s → %s loads only the exact target-native starter after confirmation',
+    (from, to) => {
+      startNewProRecipe(from);
+      const source = structuredClone({
+        visibleProductType: useRecipeStore.getState().visibleProductType,
+        category: useRecipeStore.getState().category,
+        items: useRecipeStore.getState().items,
+      });
 
-    confirmCrossFamilyChange(to);
+      expect(requestNewRecipeProductTypeChange(to)).toBe('confirmation_required');
+      expect(useRecipeStore.getState()).toMatchObject({
+        visibleProductType: source.visibleProductType,
+        category: source.category,
+        items: source.items,
+      });
 
-    expectCleanStarter(to);
-  });
+      startNewProRecipe(to);
+
+      expectCleanStarter(to, 'temp_minus_12');
+      expect(useRecipeStore.getState().newRecipeStarterTemplateId).toBe(
+        NATIVE_MINUS_12[to].templateId,
+      );
+      expect(gramsByCanonicalId()).toEqual(NATIVE_MINUS_12[to].gramsByCanonicalId);
+    },
+  );
 
   it('confirmed profile change clears Crown, exact locks, toppings, saved identity, and stale ProductBehavior warnings', () => {
     startNewProRecipe('gelato');
     contaminateWorkingRecipe();
 
-    confirmCrossFamilyChange('sorbet');
+    confirmProfileChange('sorbet');
 
     expectCleanStarter('sorbet');
     const recipe = useRecipeStore.getState();
@@ -294,9 +319,11 @@ describe('P0 working-recipe hard reset', () => {
       versionId: 'version-3',
     });
 
-    confirmCrossFamilyChange('vegan');
+    confirmProfileChange('vegan');
 
     expectCleanStarter('vegan');
+    expect(opened.category).toBe('milk_gelato');
+    expect(opened.items).not.toEqual(useRecipeStore.getState().items);
   });
 
   it('reopening a saved recipe after a hard reset restores its vector, Crown, locks, toppings, profile, mode, and version identity', () => {

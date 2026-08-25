@@ -5,8 +5,6 @@ import { useIngredientTableUxStore } from '@/features/ingredient-builder/ingredi
 import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
 import type { VisibleProductType } from '@/features/studio/productType';
 import type { FormulationStrategy } from '@/features/formulation-strategy/strategy';
-import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
-import { classifyProfileTransition } from '@/features/pro-workbench/profileCompatibility';
 import {
   isNewRecipeServingModeId,
   newRecipeStarterMaterialFingerprint,
@@ -174,41 +172,21 @@ export function requestProfessionalStarterServingChange(
   return result;
 }
 
-export type NewRecipeProductTypeChangeResult =
-  'starter_replaced' | 'confirmation_required' | 'recipe_profile_changed';
+export type NewRecipeProductTypeChangeResult = 'confirmation_required' | 'no_change';
 
 /**
- * Product switches may replace only an explicit new-draft scaffold. Opened
- * saved/history/library recipes keep their exact lines; an in-place transition
- * is allowed only when the shared profile router proves the same formulation
- * family. Every cross-family request remains unchanged pending confirmation.
+ * A visible product-profile switch is always a structural new-working-recipe
+ * request. Internal Engine family compatibility must never relabel or carry the
+ * current customer vector across Gelato/Sorbet/Vegan/Protein in the UI.
+ *
+ * The caller presents confirmation and then invokes `startNewProRecipe(next)`,
+ * which preserves the source saved aggregate while loading the target's native
+ * starter through the single hard-reset lifecycle.
  */
 export function requestNewRecipeProductTypeChange(
   next: VisibleProductType,
 ): NewRecipeProductTypeChangeResult {
-  const recipe = useRecipeStore.getState();
-  const decision = classifyProfileTransition(
-    buildRecipeInput(recipe),
-    next,
-    recipe.visibleProductType,
-  );
-  if (!decision.supported) return 'confirmation_required';
-
-  // A pristine explicit starter is still the profile's scaffold, not a user
-  // formulation. Selecting Protein here must replace Gelato G11 with native
-  // P12 even though opened dairy Gelato/Protein recipes are same-family.
-  if (recipe.newRecipeStarterKey !== null && isUntouchedNewRecipeStarter()) {
-    rebuildNewProRecipeStarter({ visibleProductType: next });
-    return 'starter_replaced';
-  }
-
-  // Once a starter has material edits (or a saved/history recipe is open), the
-  // established same-family contract owns the transition: keep the exact user
-  // vector and change only the authority/profile metadata. Cross-family still
-  // requires explicit replacement confirmation.
-  if (decision.kind !== 'new_base_required') {
-    recipe.setVisibleProductType(next);
-    return 'recipe_profile_changed';
-  }
-  return 'confirmation_required';
+  return next === useRecipeStore.getState().visibleProductType
+    ? 'no_change'
+    : 'confirmation_required';
 }

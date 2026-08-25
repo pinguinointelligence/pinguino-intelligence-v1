@@ -30,8 +30,7 @@ import {
   isNewRecipeServingModeId,
   starterServingModeForTemperature,
 } from '@/features/recipes/newRecipeStarter';
-import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
-import { classifyProfileTransition, PRO_VISIBLE_PRODUCT_TYPES } from './profileCompatibility';
+import { PRO_VISIBLE_PRODUCT_TYPES } from './profileCompatibility';
 import { NewRecipeConfirmationDialog } from '@/features/recipes/NewRecipeConfirmationDialog';
 import {
   requestNewRecipeProductTypeChange,
@@ -123,7 +122,6 @@ export function WorkbenchSettingsLine({
   const openDraft = useRecipeProfileStore((state) => state.openDraft);
   const confirmSettings = useRecipeProfileStore((state) => state.confirmSettings);
   const [unit, setUnit] = useState<BatchUnit>('g');
-  const [profileNotice, setProfileNotice] = useState<string | null>(null);
   const [pendingBaseProfile, setPendingBaseProfile] = useState<VisibleProductType | null>(null);
   const activeHomeMachines = useMemo(() => listActiveHomeMachines(MACHINE_CATALOG), []);
   const selectedHome =
@@ -196,31 +194,11 @@ export function WorkbenchSettingsLine({
   };
 
   const changeProductType = (next: VisibleProductType) => {
-    if (next === store.visibleProductType) return;
-    const decision = classifyProfileTransition(
-      buildRecipeInput(store),
-      next,
-      store.visibleProductType,
-    );
-    if (!decision.supported) {
-      setProfileNotice(decision.message);
-      return;
-    }
-    // Cross-family replacement keeps the established explicit confirmation.
-    // The helper below is authoritative for same-family routing, where a
-    // pristine starter and an opened user recipe intentionally diverge.
-    if (decision.kind === 'new_base_required') {
-      setProfileNotice(null);
-      setPendingBaseProfile(next);
-      return;
-    }
     const result = requestNewRecipeProductTypeChange(next);
+    if (result === 'no_change') return;
     if (result === 'confirmation_required') {
-      setProfileNotice(null);
       setPendingBaseProfile(next);
-      return;
     }
-    setProfileNotice(null);
   };
 
   const changeStrategy = (strategy: FormulationStrategy) => {
@@ -290,11 +268,6 @@ export function WorkbenchSettingsLine({
             testid="workbench-product-type"
             stacked={compact}
           />
-          {profileNotice ? (
-            <p className="mt-1 text-[11px] leading-relaxed text-stone-600" role="status">
-              {profileNotice}
-            </p>
-          ) : null}
         </div>
 
         <div
@@ -471,7 +444,6 @@ export function WorkbenchSettingsLine({
           if (pendingBaseProfile === null) return;
           startNewProRecipe(pendingBaseProfile);
           setPendingBaseProfile(null);
-          setProfileNotice(null);
         }}
         title={`Zmienić typ receptury na ${pendingBaseProfile === null ? '' : g.productTypes[pendingBaseProfile]}?`}
         description={

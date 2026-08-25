@@ -107,10 +107,15 @@ describe('visible + Nowa receptura action', () => {
     },
   );
 
-  it('routes an untouched fresh Gelato starter to the canonical P12 Protein vector', () => {
+  it('requires confirmation before Gelato → Protein and loads canonical P12 only after confirm', () => {
     startNewProRecipe('gelato');
+    const gelato = structuredClone(useRecipeStore.getState().items);
 
-    expect(requestNewRecipeProductTypeChange('protein')).toBe('starter_replaced');
+    expect(requestNewRecipeProductTypeChange('protein')).toBe('confirmation_required');
+    expect(useRecipeStore.getState().visibleProductType).toBe('gelato');
+    expect(useRecipeStore.getState().items).toEqual(gelato);
+
+    startNewProRecipe('protein');
 
     const fresh = useRecipeStore.getState();
     expect(fresh.visibleProductType).toBe('protein');
@@ -215,16 +220,29 @@ describe('visible + Nowa receptura action', () => {
     expect(useRecipeProfileStore.getState().defaultsFor('local-device:gelato')).not.toBeNull();
   });
 
-  it('replaces an untouched explicit starter when the product type changes', () => {
+  it('never replaces an untouched starter before profile confirmation', () => {
     startNewProRecipe();
+    const gelato = structuredClone(useRecipeStore.getState().items);
 
-    expect(requestNewRecipeProductTypeChange('sorbet')).toBe('starter_replaced');
+    expect(requestNewRecipeProductTypeChange('sorbet')).toBe('confirmation_required');
+    expect(useRecipeStore.getState().visibleProductType).toBe('gelato');
+    expect(useRecipeStore.getState().items).toEqual(gelato);
+
+    startNewProRecipe('sorbet');
 
     const changed = useRecipeStore.getState();
     expect(changed.visibleProductType).toBe('sorbet');
     expect(changed.category).toBe('sorbet');
     expect(changed.newRecipeStarterTemplateId).toBe('S02');
     expect(changed.items.some((item) => /milk|cream/i.test(item.ingredient.name))).toBe(false);
+  });
+
+  it('treats selecting the already-active profile as a no-op', () => {
+    startNewProRecipe('protein');
+    const before = structuredClone(useRecipeStore.getState().items);
+
+    expect(requestNewRecipeProductTypeChange('protein')).toBe('no_change');
+    expect(useRecipeStore.getState().items).toEqual(before);
   });
 
   it.each([

@@ -316,7 +316,7 @@ describe('legacy recipe runtime resolution', () => {
     expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(false);
   });
 
-  it('keeps the full served-page Gelato starter replaceable by native Protein P12 after authority hydration', async () => {
+  it('requires full-page confirmation and then loads native Protein P12 after Gelato authority hydration', async () => {
     useRecipeStore.getState().startNewRecipe('gelato');
     const gelato = buildRecipeInput(useRecipeStore.getState());
     mockResolvedBehaviorFor(gelato);
@@ -329,6 +329,7 @@ describe('legacy recipe runtime resolution', () => {
     });
 
     expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(false);
+    const hydratedGelatoItems = structuredClone(useRecipeStore.getState().items);
     const select = host.querySelector(
       '[data-testid="workbench-product-type"]',
     ) as HTMLSelectElement;
@@ -339,6 +340,14 @@ describe('legacy recipe runtime resolution', () => {
       );
       select.dispatchEvent(new Event('change', { bubbles: true }));
     });
+
+    expect(useRecipeStore.getState().visibleProductType).toBe('gelato');
+    expect(useRecipeStore.getState().items).toEqual(hydratedGelatoItems);
+    expect(host.querySelector('[role="dialog"]')).not.toBeNull();
+
+    await act(async () =>
+      (host.querySelector('[data-testid="confirm-new-recipe"]') as HTMLButtonElement).click(),
+    );
 
     const protein = useRecipeStore.getState();
     expect(protein.visibleProductType).toBe('protein');
