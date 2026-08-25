@@ -1407,6 +1407,14 @@ export type BuildPreviewResult =
       code: 'product_behavior_invalid';
       violations: MainEnvelopeViolation[];
       messagePl: string;
+      /** Exact server reason codes retained for lifecycle routing. The normal
+       * UI renders product names only; immutable snapshot identifiers remain
+       * diagnostics/report data and are never shown to the customer. */
+      productBehaviorIssues?: Array<{
+        lineId: string;
+        lineName: string;
+        reasons: string[];
+      }>;
     }
   | {
       ok: false;

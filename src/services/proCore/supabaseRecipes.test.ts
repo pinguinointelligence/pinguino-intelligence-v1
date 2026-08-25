@@ -145,6 +145,38 @@ const labelComposition = (grams: number): RecipeCompositionMetadata => ({
   behaviorSnapshots: { 'top-label-sauce': labelBehaviorSnapshot },
   migrationAmbiguities: [],
 });
+const baseBehaviorSnapshot = (version: 'historical' | 'current'): ProductBehaviorSnapshot => ({
+  ...labelBehaviorSnapshot,
+  lineId: 'a',
+  productId: 'product-pi-water',
+  productVersionId: 'version-pi-water',
+  source: 'mapper',
+  factsFingerprint: `${version}-facts-pi-water`,
+  behaviorBindingId: 'binding-pi-water',
+  behaviorBindingVersion: version === 'historical' ? 'binding-v1' : 'binding-v2',
+  technicalAuthority: 'mapper_exact',
+  mapperIngredientId: 'PI-ING-001409',
+  mainClassification: 'STANDARD_ONLY',
+  moduleEligibility: { RECIPE_VERSION: 'eligible', SAVE: 'eligible', RESTORE: 'eligible' },
+  processScope: 'BASE_FORMULATION',
+  resolutionContext: {
+    accountId: 'user-1',
+    productProfile: 'milk_gelato',
+    temperatureC: -11,
+    mode: 'optimal',
+    processScope: 'BASE_FORMULATION',
+    requestedRole: 'STANDARD',
+    module: 'RECIPE_VERSION',
+  },
+});
+const baseComposition = (version: 'historical' | 'current'): RecipeCompositionMetadata => ({
+  schemaVersion: 1,
+  baseScope: 'BASE_FORMULATION',
+  baseOrder: ['a'],
+  toppings: [],
+  behaviorSnapshots: { a: baseBehaviorSnapshot(version) },
+  migrationAmbiguities: [],
+});
 
 /* ── tests (the in-memory fake SupabaseClient lives in ./supabaseRecipesFake) ── */
 
@@ -202,6 +234,49 @@ describe('supabase RecipesRepository adapter (fake client)', () => {
     expect((await repo.getRecipe(recipe.recipeId))?.latestVersionNumber).toBe(2);
     const v1 = await repo.getVersion(recipe.recipeId, 1);
     expect((v1!.recipeInput as unknown as { target_batch_grams: number }).target_batch_grams).toBe(1000);
+  });
+
+  it('Apply → Save → Reopen appends current PI authority while the stale version stays immutable', async () => {
+    const { db, repo } = seed();
+    const historicalInput = input(1000, [item('a', 'PI-ING-001409', 1000)]);
+    const { recipe, version: v1 } = await repo.createRecipe({
+      ownerUserId: 'user-1',
+      title: 'PI authority lifecycle',
+      recipeInput: historicalInput,
+      productComposition: baseComposition('historical'),
+      trace: TRACE,
+      by: 'user-1',
+      capabilities: PRO,
+    });
+    const immutableV1Row = JSON.stringify(db.recipe_versions[0]);
+
+    // The applied working copy changed grams and already carries the current
+    // ProductBehavior snapshot before entering the canonical version writer.
+    const appliedInput = input(1000, [item('a', 'PI-ING-001409', 975), item('b', 'PI-ING-000514', 25)]);
+    const v2 = await repo.saveNewVersion(
+      recipe.recipeId,
+      appliedInput,
+      TRACE,
+      'user-1',
+      undefined,
+      baseComposition('current'),
+    );
+    const reopenedV1 = await repo.getVersion(recipe.recipeId, 1);
+    const reopenedV2 = await repo.getVersion(recipe.recipeId, 2);
+
+    expect(v1.versionNumber).toBe(1);
+    expect(v2.versionNumber).toBe(2);
+    expect(JSON.stringify(db.recipe_versions[0])).toBe(immutableV1Row);
+    expect(reopenedV1?.productComposition?.behaviorSnapshots?.a?.factsFingerprint).toBe(
+      'historical-facts-pi-water',
+    );
+    expect(reopenedV2?.productComposition?.behaviorSnapshots?.a?.factsFingerprint).toBe(
+      'current-facts-pi-water',
+    );
+    expect(reopenedV2?.productComposition?.behaviorSnapshots?.a?.mapperIngredientId).toBe(
+      'PI-ING-001409',
+    );
+    expect(reopenedV2?.recipeInput.items.map((line) => line.planned_grams)).toEqual([975, 25]);
   });
 
   it('restore appends a NEW latest version derived from an old snapshot; history is never rewound', async () => {

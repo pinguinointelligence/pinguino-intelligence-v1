@@ -1920,6 +1920,11 @@ export function serverBehaviorPreviewIssue(
   return {
     ok: false,
     code: 'product_behavior_invalid',
+    productBehaviorIssues: issues.map((issue) => ({
+      lineId: issue.lineId,
+      lineName: issue.lineName,
+      reasons: [...issue.reasons],
+    })),
     violations: [
       {
         code: 'product_behavior_missing',

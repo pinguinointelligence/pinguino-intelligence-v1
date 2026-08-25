@@ -350,6 +350,30 @@ describe('PI visible terminal contract', () => {
       expect(document.body.textContent).toContain(action);
     }
   });
+
+  it('offers an immutable-version refresh for stale ProductBehavior facts', async () => {
+    const lines = useRecipeStore.getState().items.slice(0, 2);
+    const authorityIssues = lines.map((line) => ({
+      lineId: line.id,
+      lineName: line.ingredient.name,
+      reasons: ['facts_fingerprint_stale'],
+    }));
+    useConstraintStudioStore.setState({
+      previewIssue: serverBehaviorPreviewIssue(authorityIssues),
+      recalculationTerminal: productBehaviorTerminal(authorityIssues),
+    });
+    await renderPanel();
+
+    expect(document.body.textContent).toContain('Dane produktów w tej wersji są nieaktualne.');
+    expect(document.body.textContent).toContain('Historyczna wersja pozostanie bez zmian.');
+    expect(document.body.textContent).toContain(lines[0]!.ingredient.name);
+    expect(document.body.textContent).toContain(lines[1]!.ingredient.name);
+    expect(document.body.textContent).toContain(
+      'Utwórz nową wersję z aktualnymi danymi produktów',
+    );
+    expect(document.body.textContent).not.toContain('Wybierz inny produkt');
+    expect(document.body.textContent).not.toContain('Uzupełnij dane produktu');
+  });
 });
 
 describe('technical authority terminal classification', () => {

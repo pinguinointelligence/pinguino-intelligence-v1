@@ -9,7 +9,7 @@
  * stays intact. Preview rows render through the same pure ConstraintPreviewCard; failures render
  * the same honest Polish messages; a verify-failed apply renders the same BlockedApplyNotice.
  */
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { copy } from '@/copy/en';
 import { calculateRecipe } from '@/engine';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
@@ -23,6 +23,7 @@ import {
   applyPreviewWithServerAuthority,
   createExplicitStandardRemovalPreviewWithServerAuthority,
   isUndoAvailable,
+  runPiRecalculationWithTerminal,
   unlockConstraintAndRecalculate,
   useConstraintStudioStore,
   type PreviewIssue,
@@ -43,6 +44,10 @@ import { ConstraintPreviewCard } from '@/features/constraint-studio/ui/Constrain
 import type { RecipeInput } from '@/engine';
 import type { ConstraintSet } from '@/features/recipe-constraints';
 import type { RescueIngredientAdvice } from '@/features/constraint-studio/rescueIngredientAdvisor';
+import {
+  productBehaviorIssuesSupportWorkingCopyRefresh,
+  refreshCurrentRecipeBehaviorWorkingCopy,
+} from '@/features/product-intelligence/refreshRecipeBehaviorWorkingCopy';
 
 const r = copy.proWorkbar.recalcPanel;
 const d = constraintStudioCopy.diagnosis;
@@ -168,6 +173,9 @@ function RecalcDiagnosisView({
   onReturnToRecipe,
   onChooseOtherProduct,
   onCompleteProductData,
+  onRefreshProductBehavior,
+  refreshingProductBehavior,
+  productBehaviorRefreshError,
   onUnlockAndPreview,
   onRemoveStandardAndPreview,
   terminal,
@@ -181,6 +189,9 @@ function RecalcDiagnosisView({
   onReturnToRecipe: (lineId: string | null) => void;
   onChooseOtherProduct: () => void;
   onCompleteProductData: () => void;
+  onRefreshProductBehavior: () => void;
+  refreshingProductBehavior: boolean;
+  productBehaviorRefreshError: string | null;
   onUnlockAndPreview: (lineId: string) => void;
   onRemoveStandardAndPreview: (lineId: string) => void;
   terminal: RecalculationTerminalState;
@@ -256,8 +267,12 @@ function RecalcDiagnosisView({
   // messages — no lock table (locks are not the cause). Owner Agent 3:
   // `impossible_under_constraints` carries its complete message (conflicting
   // constraint + engine-verified nearest feasible value) the same way.
+  const productBehaviorRefreshable =
+    issue.code === 'product_behavior_invalid' &&
+    productBehaviorIssuesSupportWorkingCopyRefresh(issue.productBehaviorIssues ?? []);
   const productBehaviorNeedsProductActions =
     issue.code === 'product_behavior_invalid' &&
+    !productBehaviorRefreshable &&
     (terminal.state === 'PRODUCT_DATA_REQUIRED' || terminal.state === 'MAPPER_BINDING_REQUIRED');
 
   if (
@@ -272,9 +287,22 @@ function RecalcDiagnosisView({
   ) {
     return (
       <div className="space-y-2" data-testid="pro-recalc-diagnosis" data-code={issue.code}>
-        <p className="text-sm leading-relaxed text-ivory/85">
-          {customerPreviewIssueMessagePl(issue)}
-        </p>
+        {productBehaviorRefreshable && issue.code === 'product_behavior_invalid' ? (
+          <div className="space-y-1" data-testid="pro-recalc-product-behavior-refresh-copy">
+            <p className="text-sm leading-relaxed text-ivory/90">
+              Dane produktów w tej wersji są nieaktualne.
+            </p>
+            <p className="text-xs leading-relaxed text-ivory/70">
+              Dotyczy: {[
+                ...new Set(issue.productBehaviorIssues?.map((entry) => entry.lineName) ?? []),
+              ].join(', ')}. Historyczna wersja pozostanie bez zmian.
+            </p>
+          </div>
+        ) : (
+          <p className="text-sm leading-relaxed text-ivory/85">
+            {customerPreviewIssueMessagePl(issue)}
+          </p>
+        )}
         <p className="text-xs text-ivory/60" data-testid="pro-recalc-unchanged">
           {d.unchanged}
         </p>
@@ -310,6 +338,36 @@ function RecalcDiagnosisView({
             </button>
           </div>
         ) : null}
+        {productBehaviorRefreshable ? (
+          <div className="space-y-2" data-testid="pro-recalc-product-behavior-refresh">
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="inline-flex min-h-11 items-center justify-center rounded-lg bg-ivory px-4 py-2 text-sm font-semibold text-shell transition-colors hover:bg-ivory/90 disabled:cursor-wait disabled:opacity-60"
+                data-testid="pro-recalc-refresh-product-behavior"
+                disabled={refreshingProductBehavior}
+                onClick={onRefreshProductBehavior}
+              >
+                {refreshingProductBehavior
+                  ? 'Tworzę nową wersję roboczą…'
+                  : 'Utwórz nową wersję z aktualnymi danymi produktów'}
+              </button>
+              <button
+                type="button"
+                className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+                disabled={refreshingProductBehavior}
+                onClick={() => onReturnToRecipe(null)}
+              >
+                Wróć do receptury
+              </button>
+            </div>
+            {productBehaviorRefreshError ? (
+              <p className="text-xs leading-relaxed text-status-risky" role="alert">
+                {productBehaviorRefreshError}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
         {productBehaviorNeedsProductActions ? (
           <div className="flex flex-wrap gap-2" data-testid="pro-recalc-product-data-actions">
             <button
@@ -338,6 +396,7 @@ function RecalcDiagnosisView({
         {!(
           (issue.code === 'missing_required_role' && issue.role === 'product_dose') ||
           issue.code === 'impossible_under_constraints' ||
+          productBehaviorRefreshable ||
           productBehaviorNeedsProductActions
         ) ? (
           <button
@@ -527,6 +586,10 @@ export function DirectionBestDecision({
 export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
   const panelRef = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
+  const [refreshingProductBehavior, setRefreshingProductBehavior] = useState(false);
+  const [productBehaviorRefreshError, setProductBehaviorRefreshError] = useState<string | null>(
+    null,
+  );
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
@@ -662,6 +725,41 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
     void unlockConstraintAndRecalculate(lineId);
   };
 
+  const refreshProductBehavior = () => {
+    if (refreshingProductBehavior) return;
+    setRefreshingProductBehavior(true);
+    setProductBehaviorRefreshError(null);
+    void (async () => {
+      try {
+        const result = await refreshCurrentRecipeBehaviorWorkingCopy();
+        if (!result.ok) {
+          const names = [...new Set(result.issues.map((issue) => issue.lineName))];
+          const suffix = names.length > 0 ? ` Dotyczy: ${names.join(', ')}.` : '';
+          setProductBehaviorRefreshError(
+            result.code === 'current_authority_unresolved' ||
+              result.code === 'current_authority_invalid'
+              ? `Nie udało się potwierdzić aktualnych danych wszystkich produktów.${suffix}`
+              : result.code === 'recipe_changed'
+                ? 'Receptura zmieniła się podczas odświeżania. Uruchom tę operację ponownie.'
+                : result.code === 'authentication_required'
+                  ? 'Zaloguj się ponownie i uruchom tę operację jeszcze raz.'
+                  : result.code === 'saved_version_required'
+                    ? 'Ta operacja wymaga otwartej, zapisanej wersji receptury.'
+                    : 'Nie udało się utworzyć nowej wersji roboczej. Receptura pozostała bez zmian.',
+          );
+          return;
+        }
+        await runPiRecalculationWithTerminal();
+      } catch {
+        setProductBehaviorRefreshError(
+          'Nie udało się odświeżyć danych produktów. Receptura pozostała bez zmian.',
+        );
+      } finally {
+        setRefreshingProductBehavior(false);
+      }
+    })();
+  };
+
   if (!open) return null;
 
   // One-screen workbench (owner 2026-07-24): the recalculation is a COMPACT OVERLAY
@@ -766,6 +864,9 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
               onReturnToRecipe={returnToProductDose}
               onChooseOtherProduct={openBaseProductPicker}
               onCompleteProductData={goToProductData}
+              onRefreshProductBehavior={refreshProductBehavior}
+              refreshingProductBehavior={refreshingProductBehavior}
+              productBehaviorRefreshError={productBehaviorRefreshError}
               onUnlockAndPreview={unlockAndPreview}
               onRemoveStandardAndPreview={(lineId) => {
                 void createExplicitStandardRemovalPreviewWithServerAuthority(lineId);
