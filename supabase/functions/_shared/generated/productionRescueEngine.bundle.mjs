@@ -4273,6 +4273,60 @@ function mainBehaviorBlockReason(snapshot, snapshotRequired = false) {
 //#endregion
 //#region src/features/product-intelligence/mainEnvelope.ts
 const EPSILON = 1e-7;
+const mainRatioWeight = (item) => typeof item.main_ratio_weight === "number" && Number.isFinite(item.main_ratio_weight) && item.main_ratio_weight > 0 ? item.main_ratio_weight : 1;
+const validEnvelopeNumber = (value) => typeof value === "number" && Number.isFinite(value) && value >= 0;
+/**
+* Resolve Multi-Main authority without manufacturing a product-pair policy.
+*
+* A published shared combination cap remains authoritative when every member
+* carries that exact group/version/cap. Otherwise the feasible group range is
+* the conservative algebraic intersection of the already-published individual
+* hard envelopes:
+*
+*   derivedCombinedHardLimit = min(individualHardLimit_i)
+*
+* Since every positive member's equivalent contribution is at most the group
+* total, this guarantees that no member can exceed its own hard limit at any
+* ratio. The stored ratio and factors then convert that shared equivalent cap
+* into raw grams for search. This is O(N), creates no new scientific constant
+* and still fails closed when bases or family compatibility cannot be proven.
+*/
+function resolveMultiMainEnvelope(resolved) {
+	if (resolved.length < 2) return null;
+	const first = resolved[0].snapshot;
+	if (first.mainBasis === null || resolved.some(({ snapshot }) => snapshot.mainBasis !== first.mainBasis || !validEnvelopeNumber(snapshot.ecoFloorPercent) || !validEnvelopeNumber(snapshot.optimalCeilingPercent) || !validEnvelopeNumber(snapshot.hardLimitPercent) || !validEnvelopeNumber(snapshot.mainEquivalentFactor) || snapshot.mainEquivalentFactor <= 0 || snapshot.optimalCeilingPercent > snapshot.hardLimitPercent + EPSILON)) return null;
+	const families = [...new Set(resolved.map(({ snapshot }) => snapshot.familyId).filter(Boolean))];
+	const hasCompleteFamilyAuthority = resolved.every(({ snapshot }) => snapshot.familyId !== null);
+	const mixedFamiliesApproved = families.length <= 1 || families.every((family) => resolved.every(({ snapshot }) => snapshot.familyId === family || snapshot.approvedMixedFamilyIds.includes(family)));
+	const sharedPublishedPolicy = first.mainPolicyId !== null && first.mainPolicyVersion !== null && validEnvelopeNumber(first.multiMainHardLimitPercent) && resolved.every(({ snapshot }) => snapshot.mainPolicyId === first.mainPolicyId && snapshot.mainPolicyVersion === first.mainPolicyVersion && snapshot.mainBasis === first.mainBasis && snapshot.multiMainHardLimitPercent === first.multiMainHardLimitPercent);
+	if (!mixedFamiliesApproved || !sharedPublishedPolicy && !hasCompleteFamilyAuthority) return null;
+	const weighted = resolved.map(({ item, snapshot }) => ({
+		ratioWeight: mainRatioWeight(item),
+		weightedEquivalentFactor: mainRatioWeight(item) * snapshot.mainEquivalentFactor,
+		snapshot
+	}));
+	const totalRatioWeight = weighted.reduce((sum, value) => sum + value.ratioWeight, 0);
+	const totalWeightedEquivalentFactor = weighted.reduce((sum, value) => sum + value.weightedEquivalentFactor, 0);
+	if (!(totalRatioWeight > 0) || !(totalWeightedEquivalentFactor > 0)) return null;
+	const floorPercent = Math.max(...resolved.map(({ snapshot }) => snapshot.ecoFloorPercent));
+	if (sharedPublishedPolicy) return {
+		floorPercent,
+		optimalCeilingPercent: first.multiMainHardLimitPercent,
+		hardLimitPercent: first.multiMainHardLimitPercent,
+		policyId: first.mainPolicyId,
+		totalRatioWeight,
+		totalWeightedEquivalentFactor
+	};
+	const derivedCombinedHardLimit = Math.min(...resolved.map(({ snapshot }) => snapshot.hardLimitPercent));
+	return {
+		floorPercent,
+		optimalCeilingPercent: derivedCombinedHardLimit,
+		hardLimitPercent: derivedCombinedHardLimit,
+		policyId: null,
+		totalRatioWeight,
+		totalWeightedEquivalentFactor
+	};
+}
 const baseSnapshots = (snapshots) => Object.values(snapshots).filter((snapshot) => snapshot !== void 0 && snapshot.processScope === "BASE_FORMULATION");
 /** Technical product constraint shared by the LP, candidate generator and
 * final Preview/Apply gates. It deliberately ignores sensory Main policy
@@ -4353,39 +4407,20 @@ function verifyMainEnvelope(input) {
 	};
 	const first = resolved[0].snapshot;
 	const multi = resolved.length > 1;
-	if (resolved.some(({ snapshot }) => snapshot.mainPolicyId !== first.mainPolicyId || snapshot.mainPolicyVersion !== first.mainPolicyVersion || snapshot.mainBasis !== first.mainBasis || (multi ? snapshot.multiMainHardLimitPercent !== first.multiMainHardLimitPercent : snapshot.ecoFloorPercent !== first.ecoFloorPercent || snapshot.optimalCeilingPercent !== first.optimalCeilingPercent || snapshot.hardLimitPercent !== first.hardLimitPercent))) return {
-		ok: false,
-		violations: [{
-			code: multi ? "multi_main_policy_unknown" : "main_policy_inconsistent",
-			lineIds: managed.map((item) => item.id),
-			messagePl: multi ? "Brak zatwierdzonej wspólnej polityki dla tej grupy Main." : "Grupa Main nie ma jednego zgodnego zatwierdzonego zakresu."
-		}]
-	};
-	const families = [...new Set(resolved.map(({ snapshot }) => snapshot.familyId).filter(Boolean))];
-	if (families.length > 1) {
-		if (!families.every((family) => resolved.every(({ snapshot }) => snapshot.familyId === family || snapshot.approvedMixedFamilyIds.includes(family)))) return {
-			ok: false,
-			violations: [{
-				code: "multi_main_policy_unknown",
-				lineIds: managed.map((item) => item.id),
-				messagePl: "Brak zatwierdzonej polityki dla tej mieszanej grupy Main."
-			}]
-		};
-	}
-	const equivalentGrams = resolved.reduce((sum, { item, snapshot }) => sum + item.planned_grams * (snapshot.mainEquivalentFactor ?? 0), 0);
-	const equivalentPercent = input.recipe.target_batch_grams > 0 ? equivalentGrams / input.recipe.target_batch_grams * 100 : 0;
-	const floor = multi ? Math.max(...resolved.map(({ snapshot }) => snapshot.ecoFloorPercent ?? Number.POSITIVE_INFINITY)) : first.ecoFloorPercent;
-	const multiLimit = multi ? first.multiMainHardLimitPercent ?? null : null;
-	if (multi && multiLimit === null) return {
+	const multiEnvelope = multi ? resolveMultiMainEnvelope(resolved) : null;
+	if (multi && multiEnvelope === null) return {
 		ok: false,
 		violations: [{
 			code: "multi_main_policy_unknown",
 			lineIds: managed.map((item) => item.id),
-			messagePl: "Brak zatwierdzonego wspólnego limitu dla tej grupy Main."
+			messagePl: "Nie można bezpiecznie wyznaczyć wspólnego zakresu Main z dostępnych podstaw i rodzin produktów."
 		}]
 	};
-	const ceiling = multi ? multiLimit : first.optimalCeilingPercent;
-	const hard = multi ? multiLimit : first.hardLimitPercent;
+	const equivalentGrams = resolved.reduce((sum, { item, snapshot }) => sum + item.planned_grams * (snapshot.mainEquivalentFactor ?? 0), 0);
+	const equivalentPercent = input.recipe.target_batch_grams > 0 ? equivalentGrams / input.recipe.target_batch_grams * 100 : 0;
+	const floor = multi ? multiEnvelope.floorPercent : first.ecoFloorPercent;
+	const ceiling = multi ? multiEnvelope.optimalCeilingPercent : first.optimalCeilingPercent;
+	const hard = multi ? multiEnvelope.hardLimitPercent : first.hardLimitPercent;
 	if (input.enforceFloor !== false && equivalentPercent < floor - EPSILON) violations.push({
 		code: "main_below_floor",
 		lineIds: managed.map((item) => item.id),
@@ -4413,7 +4448,7 @@ function verifyMainEnvelope(input) {
 		equivalentPercent,
 		targetPercent: input.mode === "optimal" ? ceiling : floor,
 		hardLimitPercent: hard,
-		policyId: first.mainPolicyId
+		policyId: multi ? multiEnvelope.policyId : first.mainPolicyId
 	};
 }
 

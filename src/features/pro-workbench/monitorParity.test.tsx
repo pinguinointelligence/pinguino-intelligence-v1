@@ -450,7 +450,9 @@ describe('Monitor layout and integration seams', () => {
     expect(mainEnvelope).toContain('Product-layer Main contract');
     expect(mainEnvelope).toContain('mainBehaviorBlockReason(snapshot)');
     expect(mainEnvelope).toContain("code: 'main_above_optimal_ceiling'");
-    expect(mainEnvelope).toContain('Brak zatwierdzonego wspólnego limitu dla tej grupy Main.');
+    expect(mainEnvelope).toContain(
+      'Nie można bezpiecznie wyznaczyć wspólnego zakresu Main z dostępnych podstaw i rodzin produktów.',
+    );
     expect(mainEnvelope).not.toContain('wspÃ³lnego');
   });
 

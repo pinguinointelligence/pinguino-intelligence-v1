@@ -687,10 +687,11 @@ const activePiSignal = (generation: number): AbortSignal | undefined =>
   activePiAbortGeneration === generation ? activePiAbortController?.signal : undefined;
 
 /**
- * A mixed calibrated Multi-Main set cannot become authorized by changing
- * grams: its policy IDs and combined limit are immutable server facts. Detect
- * that one uncorrectable authority state before invoking the solver. All
- * amount-dependent Main verdicts still flow through the normal optimizer.
+ * A Multi-Main set whose bases or family compatibility cannot be proven cannot
+ * become authorized by changing grams. Detect that immutable authority state
+ * before invoking the solver. Compatible calibrated products without a shared
+ * group record use the generic individual-envelope intersection and continue
+ * to the normal amount-dependent optimizer.
  */
 export function uncorrectableMultiMainAuthorityViolation(
   recipe: RecipeInput,

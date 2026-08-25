@@ -11,6 +11,7 @@ import {
 import { findDemoIngredient } from '@/data/demoIngredients';
 import { IngredientRow } from '@/features/ingredient-builder/IngredientRow';
 import {
+  bindProductBehaviorToPreview,
   buildBatchRescalePreview,
   buildOptimizePreview,
   buildSuggestedFixPreview,
@@ -389,8 +390,8 @@ describe('owner runtime fixtures — identity and ratio are hard formulation int
       machine_capacity_grams: null,
       goals: { formulation_strategy: 'optimal' },
       items: [
-        line('line-banana', BANANA, 150),
-        line('line-cranberry', CRANBERRY, 150),
+        line('line-banana', BANANA, 150, 'main', 1),
+        line('line-cranberry', CRANBERRY, 150, 'main', 1),
         line('line-milk', findDemoIngredient('milk_3_5')!, 672, 'unlocked'),
         line('line-cream', findDemoIngredient('cream_30')!, 130, 'unlocked'),
         line('line-smp', findDemoIngredient('smp')!, 35, 'unlocked'),
@@ -436,7 +437,7 @@ describe('owner runtime fixtures — identity and ratio are hard formulation int
     expect(previewHtml).toContain('Multi-Main: BANANA : CRANBERRY = 1 : 1 — zachowane');
   });
 
-  it('fails closed on the exact served Banana/Cranberry pair until a shared Multi-Main policy is published', () => {
+  it('Preview → Apply accepts exact Banana/Cranberry 150:150 from compatible individual authority', () => {
     const input: RecipeInput = {
       mode: 'classic',
       category: 'milk_gelato',
@@ -445,8 +446,8 @@ describe('owner runtime fixtures — identity and ratio are hard formulation int
       machine_capacity_grams: null,
       goals: { formulation_strategy: 'optimal' },
       items: [
-        line('line-banana', BANANA, 150),
-        line('line-cranberry', CRANBERRY, 150),
+        line('line-banana', BANANA, 150, 'main', 1),
+        line('line-cranberry', CRANBERRY, 150, 'main', 1),
         line('line-milk', findDemoIngredient('milk_3_5')!, 672, 'unlocked'),
         line('line-cream', findDemoIngredient('cream_30')!, 130, 'unlocked'),
         line('line-smp', findDemoIngredient('smp')!, 35, 'unlocked'),
@@ -490,20 +491,105 @@ describe('owner runtime fixtures — identity and ratio are hard formulation int
       liquidDairyCarrierFloorPercent: 30,
       multiMainHardLimitPercent: null,
     };
+    snapshots['line-milk'] = {
+      ...snapshots['line-milk']!,
+      approvedLiquidDairyCarrier: true,
+    };
+    for (const lineId of [
+      'line-milk',
+      'line-cream',
+      'line-smp',
+      'line-sucrose',
+      'line-dextrose',
+      'line-tara',
+    ]) {
+      snapshots[lineId] = { ...snapshots[lineId]!, mapperIngredientId: null };
+    }
 
     expect(verifyMainEnvelope({ recipe: input, snapshots, mode: 'optimal' })).toMatchObject({
-      ok: false,
-      violations: [
-        expect.objectContaining({
-          code: 'multi_main_policy_unknown',
-          lineIds: ['line-banana', 'line-cranberry'],
-        }),
-      ],
+      ok: true,
+      equivalentPercent: 30,
+      targetPercent: 30,
+      hardLimitPercent: 30,
+      policyId: null,
     });
-    expect(uncorrectableMultiMainAuthorityViolation(input, snapshots)).toMatchObject({
-      code: 'multi_main_policy_unknown',
-      lineIds: ['line-banana', 'line-cranberry'],
+    expect(uncorrectableMultiMainAuthorityViolation(input, snapshots)).toBeNull();
+
+    const built = bindProductBehaviorToPreview(
+      buildOptimizePreview(input, NO, '2026-08-25T00:00:00.000Z', {
+        productBehaviorSnapshots: snapshots,
+      }),
+      snapshots,
+    );
+    expect(built.ok, JSON.stringify(built)).toBe(true);
+    if (!built.ok) return;
+    const expectCranberryRatioPreserved = (after: RecipeInput) => {
+      const banana = after.items.find((item) => item.id === 'line-banana');
+      const cranberry = after.items.find((item) => item.id === 'line-cranberry');
+      expect(banana?.planned_grams).toBeGreaterThan(0);
+      expect(cranberry?.planned_grams).toBeGreaterThan(0);
+      expect(banana!.planned_grams / cranberry!.planned_grams).toBeCloseTo(1, 8);
+      expect(verifyMainIngredientIdentity(input, after)).toMatchObject({ ok: true });
+    };
+    expect(plannedSum(built.preview.proposedInput)).toBe(1_000);
+    expectCranberryRatioPreserved(built.preview.proposedInput);
+    expect(
+      ['line-banana', 'line-cranberry'].map(
+        (lineId) =>
+          built.preview.proposedInput.items.find((item) => item.id === lineId)?.planned_grams,
+      ),
+    ).toEqual([150, 150]);
+    expect(
+      verifyMainEnvelope({
+        recipe: built.preview.proposedInput,
+        snapshots,
+        mode: 'optimal',
+      }),
+    ).toMatchObject({
+      ok: true,
+      equivalentPercent: 30,
     });
+
+    const applied = commitPreview(
+      input,
+      NO,
+      built.preview,
+      '2026-08-25T00:01:00.000Z',
+      'banana-cranberry-generic-multi-main',
+      [],
+      undefined,
+      null,
+      null,
+      null,
+      null,
+      snapshots,
+    );
+    expect(applied.ok, JSON.stringify(applied)).toBe(true);
+    if (!applied.ok) return;
+    expect(plannedSum(applied.verified.input)).toBe(1_000);
+    expectCranberryRatioPreserved(applied.verified.input);
+    expect(
+      ['line-banana', 'line-cranberry'].map(
+        (lineId) => applied.verified.input.items.find((item) => item.id === lineId)?.planned_grams,
+      ),
+    ).toEqual([150, 150]);
+
+    const untouchedSource = JSON.stringify(input);
+    useRecipeStore.getState().loadRecipeInput(structuredClone(applied.verified.input), {
+      savedId: 'banana-cranberry-generic-multi-main',
+      savedName: 'Banana + Cranberry',
+      versionNumber: 1,
+    });
+    const reopened = buildRecipeInput(useRecipeStore.getState());
+    expect(
+      reopened.items
+        .filter((item) => item.lock_type === 'main')
+        .map((item) => [item.id, item.planned_grams, item.main_ratio_weight]),
+    ).toEqual([
+      ['line-banana', 150, 1],
+      ['line-cranberry', 150, 1],
+    ]);
+    expect(JSON.stringify(input)).toBe(untouchedSource);
   });
 
   it.each([

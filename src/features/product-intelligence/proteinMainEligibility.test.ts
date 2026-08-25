@@ -97,7 +97,12 @@ const STRAWBERRY = (lineId = 'strawberry') =>
     hardLimitPercent: 49.5,
     multiMainHardLimitPercent: 20.7,
     mainEquivalentFactor: 1,
-    moduleEligibility: { MAIN: 'eligible', BASE_RECIPE: 'eligible', OPTIMAL: 'eligible', ECO: 'eligible' },
+    moduleEligibility: {
+      MAIN: 'eligible',
+      BASE_RECIPE: 'eligible',
+      OPTIMAL: 'eligible',
+      ECO: 'eligible',
+    },
   });
 
 const BANANA = (lineId = 'banana') =>
@@ -115,7 +120,12 @@ const BANANA = (lineId = 'banana') =>
     hardLimitPercent: 17.1,
     multiMainHardLimitPercent: 20.7,
     mainEquivalentFactor: 1,
-    moduleEligibility: { MAIN: 'eligible', BASE_RECIPE: 'eligible', OPTIMAL: 'eligible', ECO: 'eligible' },
+    moduleEligibility: {
+      MAIN: 'eligible',
+      BASE_RECIPE: 'eligible',
+      OPTIMAL: 'eligible',
+      ECO: 'eligible',
+    },
   });
 
 const COCOA = (lineId = 'cocoa') =>
@@ -131,7 +141,12 @@ const COCOA = (lineId = 'cocoa') =>
     optimalCeilingPercent: 6.1,
     hardLimitPercent: 6.1,
     mainEquivalentFactor: 1,
-    moduleEligibility: { MAIN: 'eligible', BASE_RECIPE: 'eligible', OPTIMAL: 'eligible', ECO: 'eligible' },
+    moduleEligibility: {
+      MAIN: 'eligible',
+      BASE_RECIPE: 'eligible',
+      OPTIMAL: 'eligible',
+      ECO: 'eligible',
+    },
   });
 
 const PISTACHIO = (lineId = 'pistachio') =>
@@ -147,7 +162,12 @@ const PISTACHIO = (lineId = 'pistachio') =>
     optimalCeilingPercent: 10,
     hardLimitPercent: 10,
     mainEquivalentFactor: 1,
-    moduleEligibility: { MAIN: 'eligible', BASE_RECIPE: 'eligible', OPTIMAL: 'eligible', ECO: 'eligible' },
+    moduleEligibility: {
+      MAIN: 'eligible',
+      BASE_RECIPE: 'eligible',
+      OPTIMAL: 'eligible',
+      ECO: 'eligible',
+    },
   });
 
 /** The whey concentrate the starter actually contains — a protein source, not a flavour. */
@@ -319,9 +339,9 @@ describe('Protein Multi-Main — groups the authority has NOT approved', () => {
     expect(result.ok === false && result.violations[0]!.code).toBe('multi_main_policy_unknown');
   });
 
-  it('refuses a pair whose policy publishes no combined limit', () => {
-    // Two nut lines share a policy but that policy has no multiMainHardLimitPercent, so there is
-    // no approved combined ceiling to hold them to. Fail closed, never guess one.
+  it('derives a conservative combined limit for two compatible nut lines', () => {
+    // No pair metadata is needed: min(10 %, 10 %) is the aggregate hard cap,
+    // so each positive member necessarily remains inside its individual limit.
     const result = verifyMainEnvelope({
       recipe: recipe([
         { id: 'pistachio', grams: 50 },
@@ -334,8 +354,13 @@ describe('Protein Multi-Main — groups the authority has NOT approved', () => {
       },
       mode: 'optimal',
     });
-    expect(result.ok).toBe(false);
-    expect(result.ok === false && result.violations[0]!.code).toBe('multi_main_policy_unknown');
+    expect(result).toMatchObject({
+      ok: true,
+      equivalentPercent: 10,
+      targetPercent: 10,
+      hardLimitPercent: 10,
+      policyId: null,
+    });
   });
 
   it('refuses a Main that carries no approved range at all', () => {

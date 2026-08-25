@@ -454,7 +454,7 @@ describe('versioned Main envelope', () => {
     });
   });
 
-  it('fails closed when one Sorbet Main lacks the shared exact authority', () => {
+  it('uses individual Sorbet envelopes when no shared combination cap exists', () => {
     const base = recipe(300, 0);
     const sorbetRecipe: RecipeInput = {
       ...base,
@@ -496,8 +496,11 @@ describe('versioned Main envelope', () => {
         mode: 'optimal',
       }),
     ).toMatchObject({
-      ok: false,
-      violations: [expect.objectContaining({ code: 'multi_main_policy_unknown' })],
+      ok: true,
+      equivalentPercent: 60,
+      targetPercent: 60,
+      hardLimitPercent: 60,
+      policyId: null,
     });
   });
 
