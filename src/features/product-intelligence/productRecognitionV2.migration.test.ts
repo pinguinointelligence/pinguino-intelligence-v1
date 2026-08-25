@@ -16,6 +16,10 @@ const catalogSubmit = readFileSync(
   resolve(root, 'supabase/functions/catalog-submit/index.ts'),
   'utf8',
 );
+const productScanFinalize = readFileSync(
+  resolve(root, 'supabase/functions/product-scan-finalize/index.ts'),
+  'utf8',
+);
 
 describe('Product Recognition V2 server boundary', () => {
   it('reuses the existing authenticated OpenAI backend with strict structured output', () => {
@@ -47,13 +51,16 @@ describe('Product Recognition V2 server boundary', () => {
   it('server-recomputes semantics instead of trusting the browser verdict', () => {
     expect(profileAuthority).toContain('classifyProductSemantics(input.recognitionEvidence)');
     expect(profileAuthority).toContain('semantic: recognition');
-    expect(profileAuthority).toContain(
-      'technical: recognition?.isTechnicalProduct ?? (input.matchInput.technical === true)',
+    expect(profileAuthority).toMatch(
+      /technical:\s*recognition\?\.isTechnicalProduct\s*\?\?\s*\(?input\.matchInput\.technical === true\)?/,
     );
     expect(catalogSubmit).toContain('recognitionEvidence: trustedEvidence.recognitionEvidence');
     expect(catalogSubmit).toContain('mergeRecognitionFact(field, fact.value, factSourceUrl)');
     expect(catalogSubmit).toContain("origin: 'PM'");
     expect(catalogSubmit).toContain('recognitionEvidence: proposal.recognitionEvidence');
+    expect(productScanFinalize).toContain(
+      'recognitionEvidence: productSemanticEvidenceFromScanResult(input.result)',
+    );
   });
 
   it('stores no secret and gives clients no write permission', () => {

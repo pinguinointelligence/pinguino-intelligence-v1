@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 import {
   missingFieldsAfterNotOnLabelConfirmation,
+  productSemanticEvidenceFromScanResult,
   sha256Text,
   stableJson,
 } from '../_shared/productScanner.ts';
@@ -372,6 +373,7 @@ async function trustedPmProfile(input: {
     origin: 'PM',
     proposedMapperIngredientId: null,
     matchInput,
+    recognitionEvidence: productSemanticEvidenceFromScanResult(input.result),
     declared,
     declaredBasis,
     evidence,
@@ -712,6 +714,13 @@ Deno.serve(async (request) => {
     readiness: productProfileAuthority.readiness,
     engineUsable: productProfileAuthority.engineUsable,
     missingEngineFields: productProfileAuthority.missingEngineFields,
+    criticalPhysicsBlockers: productProfileAuthority.criticalPhysicsBlockers,
+    sweetnessPath: productProfileAuthority.sweetnessPath,
+    mapperCandidatesBeforeFilter: productProfileAuthority.mapperCandidatesBeforeFilter,
+    mapperCandidatesAfterFilter: productProfileAuthority.mapperCandidatesAfterFilter,
+    mapperRejectedCandidates: productProfileAuthority.mapperRejectedCandidates,
+    selectedMapperDonor: productProfileAuthority.profileReferenceMapperIngredientId,
+    mapperSimilarity: productProfileAuthority.mapperSimilarity,
     allergenEvidenceStatus: productProfileAuthority.allergenEvidenceStatus,
     ingredientsEvidenceStatus: productProfileAuthority.ingredientsEvidenceStatus,
     carbonationStatus: productProfileAuthority.carbonation.status,

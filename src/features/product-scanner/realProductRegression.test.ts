@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   mergeProductScanResults,
+  productSemanticEvidenceFromScanResult,
   validateServerResult,
 } from '../../../supabase/functions/_shared/productScanner';
+import { validateIntimportProductProfileProposal } from '../../../supabase/functions/_shared/intimportWholeProfileAuthority';
+import type { IntimportMapperAuthorityRow } from '../../../supabase/functions/_shared/intimportWholeProfileAuthority';
+import { loadMapperKnowledgeRows } from '../product-intelligence/__dryrun__/mapperFixture';
 import type { ProductScanResult } from './contracts';
 
 /**
@@ -82,11 +86,203 @@ const empty = (): Record<string, unknown> => ({
 const nutrition = (root: Record<string, unknown>) => root.nutrition as Record<string, unknown>;
 const identity = (root: Record<string, unknown>) => root.identity as Record<string, unknown>;
 
+describe('La Chocolatera two-photo rounding and semantic handoff regression', () => {
+  const photo = (
+    assetId: string,
+    values: { saturatedFat: number; carbohydrate: number; protein: number },
+  ): Record<string, unknown> => {
+    const root = empty();
+    Object.assign(identity(root), {
+      displayName: 'Cacao Puro',
+      originalName: 'CACAO PURO',
+      brand: 'La Chocolatera',
+      category: 'cacao powder',
+      variant: 'Desgrasado en polvo',
+      labelLanguages: ['es', 'pt'],
+    });
+    Object.assign(root.package as Record<string, unknown>, {
+      netQuantity: 250,
+      unit: 'g',
+      netQuantityText: '250 g',
+    });
+    Object.assign(nutrition(root), {
+      basis: 'per_100g',
+      energyKj: 1556,
+      energyKcal: 375,
+      fat: 16,
+      saturatedFat: values.saturatedFat,
+      carbohydrate: values.carbohydrate,
+      sugars: 0.7,
+      fibre: 31.7,
+      protein: values.protein,
+      salt: 0.03,
+    });
+    root.ingredientsText =
+      'Ingredientes: Cacao desgrasado en polvo, correctores de acidez: carbonato de potasio, hidróxido de potasio.';
+    root.evidence = labelEvidence(assetId, [
+      'identity.displayName',
+      'identity.brand',
+      'identity.category',
+      'identity.variant',
+      'package.netQuantity',
+      'nutrition.energyKcal',
+      'nutrition.fat',
+      'nutrition.saturatedFat',
+      'nutrition.carbohydrate',
+      'nutrition.sugars',
+      'nutrition.fibre',
+      'nutrition.protein',
+      'nutrition.salt',
+      'ingredientsText',
+    ]);
+    return root;
+  };
+
+  const merged = mergeProductScanResults(
+    photo('photo-rounded', { saturatedFat: 10, carbohydrate: 16, protein: 26 }),
+    photo('photo-precise', { saturatedFat: 10.2, carbohydrate: 16.3, protein: 25.5 }),
+  );
+
+  it('retains every compatible higher-precision label value', () => {
+    expect(nutrition(merged)).toMatchObject({
+      saturatedFat: 10.2,
+      carbohydrate: 16.3,
+      protein: 25.5,
+    });
+    for (const field of ['nutrition.saturatedFat', 'nutrition.carbohydrate', 'nutrition.protein']) {
+      expect(merged.conflicts).toContainEqual(
+        expect.objectContaining({ field, retainedSource: 'label' }),
+      );
+    }
+  });
+
+  it('hands the exact verified package facts to Product Recognition', () => {
+    const semantic = productSemanticEvidenceFromScanResult(merged);
+    expect(semantic).toMatchObject({
+      name: 'Cacao Puro',
+      brand: 'La Chocolatera',
+      category: 'cacao powder',
+      variant: 'Desgrasado en polvo',
+      ingredients: expect.stringContaining('Cacao desgrasado en polvo'),
+      productType: 'consumer_scanner',
+    });
+    expect(semantic.nutrition).toContain('"saturatedFat":10.2');
+    expect(semantic.nutrition).toContain('"carbohydrate":16.3');
+    expect(semantic.nutrition).toContain('"protein":25.5');
+  });
+
+  it('creates a product-owned PM profile without replacing photo facts or hiding its blocker', () => {
+    const semantic = productSemanticEvidenceFromScanResult(merged);
+    const { rows } = loadMapperKnowledgeRows();
+    const declared = {
+      fat_percent: 16,
+      protein_percent: 25.5,
+      carbohydrate_percent: 16.3,
+      total_sugars_percent: 0.7,
+      fiber_percent: 31.7,
+      salt_percent: 0.03,
+      kcal_per_100g: 375,
+    } as const;
+    const authority = validateIntimportProductProfileProposal({
+      origin: 'PM',
+      proposedMapperIngredientId: null,
+      recognitionEvidence: semantic,
+      matchInput: {
+        name: semantic.name,
+        variant: semantic.variant,
+        brand: semantic.brand,
+        category: semantic.category,
+        subcategory: semantic.subcategory,
+        barcode: semantic.gtin,
+        knownMacros: {
+          fat_percent: 16,
+          protein_percent: 25.5,
+          carbohydrate_percent: 16.3,
+          total_sugars_percent: 0.7,
+          fiber_percent: 31.7,
+          salt_percent: 0.03,
+        },
+        technical: false,
+      },
+      declared,
+      declaredBasis: Object.fromEntries(
+        Object.keys(declared).map((field) => [field, 'product_declared']),
+      ),
+      evidence: {
+        kind: 'normal_food',
+        fields: {
+          identity: 'label',
+          brand: 'label',
+          variant: 'label',
+          netQuantity: 'label',
+          ingredients: 'label',
+          allergens: 'user_confirmed',
+          energyKcal: 'label',
+          fat: 'label',
+          carbohydrate: 'label',
+          protein: 'label',
+          salt: 'label',
+        },
+        validatedBarcode: false,
+        exactCanonicalMatch: false,
+        mapperFamilyMatch: false,
+        materialConflicts: [],
+      },
+      carbonationEvidence: [
+        {
+          source: 'EXACT_LABEL',
+          assertion: String(merged.ingredientsText),
+          assertionPath: 'ingredientsText',
+          sourceUrl: null,
+          sourceDomain: null,
+          sourceAuthorityClass: 'OWNER_PROVIDED_SOURCE',
+          evidenceReceipt: null,
+          retrievedAt: null,
+        },
+      ],
+      rows: rows as unknown as IntimportMapperAuthorityRow[],
+    });
+
+    expect(authority).not.toBeNull();
+    expect(authority?.recognition).toMatchObject({
+      productArchetype: 'COCOA_POWDER',
+      ingredientFamily: 'cocoa',
+      physicalForm: 'POWDER',
+      intendedUsageRole: 'BASE_ONLY',
+    });
+    expect(authority?.engineUsable).toBe(false);
+    expect(authority?.readiness).toBe('REVIEW');
+    expect(authority?.missingEngineFields).toEqual([]);
+    expect(authority?.criticalPhysicsBlockers).toEqual(['UNRESOLVED_SWEETENING_FREEZING_PATH']);
+    expect(authority?.sweetnessPath).toMatchObject({
+      kind: 'unresolved',
+      resolved: false,
+    });
+    for (const [field, value] of Object.entries(declared)) {
+      expect(authority?.fieldTruth[field as keyof typeof declared]).toMatchObject({
+        value,
+        state: 'VERIFIED',
+        basis: 'product_declared',
+      });
+    }
+    expect(authority?.profileReferenceMapperIngredientId).toBe('PI-ING-001313');
+    expect(authority?.mapperSimilarity).toBe(0.8689);
+    expect(authority?.mapperCandidatesBeforeFilter.length).toBeGreaterThan(
+      authority?.mapperCandidatesAfterFilter.length ?? 0,
+    );
+    expect(authority?.mapperCandidatesAfterFilter).toContain('PI-ING-001313');
+  });
+});
+
 describe('HARIBO Quaxi cumulative-evidence regression', () => {
   // Fast pass: strong identity, valid EAN, allergen statement — no ingredients.
   const fastPass = (): Record<string, unknown> => {
     const root = empty();
-    Object.assign(identity(root), { displayName: 'Quaxi', brand: 'HARIBO', labelLanguages: ['de'] });
+    Object.assign(identity(root), {
+      displayName: 'Quaxi',
+      brand: 'HARIBO',
+      labelLanguages: ['de'],
+    });
     Object.assign(root.package as Record<string, unknown>, {
       netQuantity: 175,
       unit: 'g',
@@ -282,9 +478,7 @@ describe('La Chocolatera allergen readiness regression', () => {
   it('derives the allergen summary from directly visible may-contain evidence', () => {
     const merged = mergeProductScanResults(null, scan());
     expect(merged.allergensText).toContain('mleko');
-    expect(merged.warnings).toContain(
-      'allergen_summary_derived_from_direct_may_contain_evidence',
-    );
+    expect(merged.warnings).toContain('allergen_summary_derived_from_direct_may_contain_evidence');
   });
 
   it('reaches a finalizable state instead of staying permanently draft', () => {

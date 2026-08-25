@@ -14,10 +14,15 @@ import { foldLatin, inferMapperFamily, type ProductFamilyId } from './mapperFami
 
 export const PRODUCT_RECOGNITION_VERSION = 'PRODUCT_RECOGNITION_V2' as const;
 /** Bumps the exact-evidence cache without changing the persisted V2 authority contract. */
-export const PRODUCT_RECOGNITION_CACHE_REVISION = 'DOSAGE_GELLATTI_BASE_1000G_COFFEE_V1' as const;
+export const PRODUCT_RECOGNITION_CACHE_REVISION = 'READY_ROLE_COCOA_BAKERY_NUT_V1' as const;
 
 export type ProductArchetype =
   | 'NORMAL_INGREDIENT'
+  | 'COCOA_POWDER'
+  | 'WHOLE_NUT'
+  | 'DRIED_MIX'
+  | 'SAVORY_SPREAD'
+  | 'BAKERY_MIX'
   | 'NUT_PASTE'
   | 'FRUIT_PRODUCT'
   | 'CHOCOLATE'
@@ -41,6 +46,10 @@ export type ProductSemanticFamily =
   | ProductFamilyId
   | 'tea'
   | 'coffee'
+  | 'cocoa'
+  | 'nut'
+  | 'savory_spread'
+  | 'bakery_mix'
   | 'confectionery'
   | 'variegato'
   | 'topping'
@@ -212,6 +221,11 @@ export interface ProductSemanticModelOutput {
 
 const PRODUCT_ARCHETYPES: readonly ProductArchetype[] = [
   'NORMAL_INGREDIENT',
+  'COCOA_POWDER',
+  'WHOLE_NUT',
+  'DRIED_MIX',
+  'SAVORY_SPREAD',
+  'BAKERY_MIX',
   'NUT_PASTE',
   'FRUIT_PRODUCT',
   'CHOCOLATE',
@@ -254,6 +268,10 @@ const SEMANTIC_FAMILIES: readonly ProductSemanticFamily[] = [
   'alcohol',
   'tea',
   'coffee',
+  'cocoa',
+  'nut',
+  'savory_spread',
+  'bakery_mix',
   'confectionery',
   'variegato',
   'topping',
@@ -558,6 +576,26 @@ const archetypeOf = (
 ): ProductArchetype => {
   const taxonomy = `${category} ${subcategory}`;
   const all = `${identity} ${taxonomy} ${description}`;
+  // Product identity beats a retail container or a flavour adjective. A cake
+  // mix described as chocolate is still a bakery mix, never chocolate.
+  if (
+    /\b(babeczk|muffin|cake mix|ciasto w proszku|mieszank[a-z]* do (?:ciast|wypiek)|krem do tort|proszek do pieczenia|drozdze instant|smietan fix)\w*/.test(
+      identity,
+    ) ||
+    (/\bbaking\b/.test(taxonomy) && /\b(babeczk|muffin|cake|ciast|wypiek)\w*/.test(identity))
+  ) {
+    return 'BAKERY_MIX';
+  }
+  if (/\b(hummus|humus)\b/.test(identity)) return 'SAVORY_SPREAD';
+  // Pure cocoa is intentionally identity-first. Mapper descriptions such as
+  // "NUTELLA · Cocoa Powder" cannot enter this family merely through a noisy
+  // subcategory suffix.
+  if (
+    /^(?:cacao|cocoa|kakao)\b/.test(identity) &&
+    /\b(powder|polvo|proszek|magro|desgrasad|defatted|odtluszcz|alkaliz|amaro)\w*/.test(identity)
+  ) {
+    return 'COCOA_POWDER';
+  }
   // Post-process roles precede generic chocolate/paste words. A chocolate
   // rippling sauce is a variegato, not a generic chocolate ingredient.
   if (/\b(variegat|rippl|layering|przeklad|marmoriz)\w*/.test(all)) return 'VARIEGATO';
@@ -602,6 +640,27 @@ const archetypeOf = (
   ) {
     return 'FLAVOR_PASTE';
   }
+  if (
+    /\b(mieszank[a-z]* bakali|trail mix|mixed nuts|nut mix)\w*/.test(identity) ||
+    (/\bmieszank\w*/.test(identity) && /\bbakali\w*/.test(taxonomy))
+  ) {
+    return 'DRIED_MIX';
+  }
+  // A directly named whole nut must not inherit the generic "nut_paste"
+  // family from its retail category. Post-process/inclusion identities have
+  // already been resolved above, and explicit paste/cream words remain paste.
+  if (
+    !/\b(paste|pasta|krem|cream|puree)\w*/.test(identity) &&
+    /\b(orzech|migdal|almond|cashew|pistach|hazelnut|walnut|macadam|pecan|brazil nut|peanut)\w*/.test(
+      identity,
+    ) &&
+    (/^(?:orzech|migdal|almond|cashew|pistach|hazelnut|walnut|macadam|pecan|brazil nut|peanut)\w*/.test(
+      identity,
+    ) ||
+      /^(?:nut|nuts)\b|\bnuts pastes\b|\borzechy i migdaly\b/.test(taxonomy))
+  ) {
+    return 'WHOLE_NUT';
+  }
   // A retailer category such as "Coffee, tea & spices" is only a container.
   // Identity/subcategory/description must identify the actual coffee or tea;
   // otherwise spices and salts would silently become tea.
@@ -629,6 +688,11 @@ const semanticFamilyOf = (
   archetype: ProductArchetype,
   inferredFamily: ProductFamilyId | null,
 ): ProductSemanticFamily => {
+  if (archetype === 'COCOA_POWDER') return 'cocoa';
+  if (archetype === 'WHOLE_NUT') return 'nut';
+  if (archetype === 'DRIED_MIX') return 'inclusion';
+  if (archetype === 'SAVORY_SPREAD') return 'savory_spread';
+  if (archetype === 'BAKERY_MIX') return 'bakery_mix';
   if (archetype === 'TEA') return 'tea';
   if (archetype === 'COFFEE') return 'coffee';
   if (archetype === 'CONFECTIONERY') return 'confectionery';
@@ -648,6 +712,9 @@ const formOf = (
   archetype: ProductArchetype,
 ): ProductPhysicalForm => {
   const all = `${identity} ${category} ${subcategory} ${description}`;
+  if (archetype === 'COCOA_POWDER' || archetype === 'BAKERY_MIX') return 'POWDER';
+  if (archetype === 'WHOLE_NUT' || archetype === 'DRIED_MIX') return 'DRY';
+  if (archetype === 'SAVORY_SPREAD') return 'PASTE';
   if (
     /\b(rippling sauce|sauce|sos|variegat)\w*/.test(all) ||
     archetype === 'VARIEGATO' ||
@@ -700,6 +767,9 @@ const flavorDomainOf = (text: string, archetype: ProductArchetype): ProductFlavo
 };
 
 const roleOf = (archetype: ProductArchetype, all: string): ProductIntendedUsageRole => {
+  if (archetype === 'WHOLE_NUT') return 'BASE_AND_TOPPING';
+  if (archetype === 'DRIED_MIX') return 'TOPPING_ONLY';
+  if (archetype === 'SAVORY_SPREAD' || archetype === 'BAKERY_MIX') return 'NEITHER_REVIEW';
   if (['VARIEGATO', 'TOPPING', 'INCLUSION', 'COATING', 'CONFECTIONERY'].includes(archetype)) {
     if (/\b(also in base|rowniez do bazy|base and topping)\b/.test(all)) return 'BASE_AND_TOPPING';
     return 'TOPPING_ONLY';
@@ -716,6 +786,10 @@ const mapperCategoriesFor = (
   family: ProductSemanticFamily,
   archetype: ProductArchetype,
 ): string[] => {
+  if (archetype === 'COCOA_POWDER') return ['cocoa', 'chocolate'];
+  if (archetype === 'WHOLE_NUT') return ['nut'];
+  if (archetype === 'DRIED_MIX') return ['inclusion', 'bakery_inclusion'];
+  if (archetype === 'SAVORY_SPREAD' || archetype === 'BAKERY_MIX') return [];
   if (archetype === 'VARIEGATO') return ['variegato', 'flavor_paste'];
   if (archetype === 'TOPPING') return ['topping', 'flavor_syrup', 'flavor_paste'];
   if (archetype === 'INCLUSION' || archetype === 'CONFECTIONERY')

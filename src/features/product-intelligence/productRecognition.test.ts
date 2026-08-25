@@ -72,6 +72,98 @@ const mapperRow = (
 });
 
 describe('Product Recognition V2 — deterministic semantic authority', () => {
+  it('classifies pure defatted cocoa before generic chocolate matching', () => {
+    const result = classifyProductSemantics(
+      evidence({
+        name: 'Cacao Puro',
+        brand: 'La Chocolatera',
+        category: 'cacao powder',
+        variant: 'Desgrasado en polvo',
+        ingredients: 'Cacao desgrasado en polvo, carbonato de potasio.',
+      }),
+    );
+
+    expect(result).toMatchObject({
+      classificationSource: 'DETERMINISTIC',
+      productArchetype: 'COCOA_POWDER',
+      ingredientFamily: 'cocoa',
+      physicalForm: 'POWDER',
+      intendedUsageRole: 'BASE_ONLY',
+      modelRequired: false,
+    });
+    expect(result.compatibleMapperCategories).toEqual(['cocoa', 'chocolate']);
+  });
+
+  it('keeps a chocolate-flavoured baking mix out of the chocolate family', () => {
+    const result = classifyProductSemantics(
+      evidence({
+        name: 'Dr. Oetker Babeczki czekoladowe ze skórką pomarańczy',
+        brand: 'Dr. Oetker',
+        category: 'Chocolate & cocoa',
+        subcategory: 'baking',
+      }),
+    );
+
+    expect(result).toMatchObject({
+      productArchetype: 'BAKERY_MIX',
+      ingredientFamily: 'bakery_mix',
+      physicalForm: 'POWDER',
+      intendedUsageRole: 'NEITHER_REVIEW',
+      modelRequired: false,
+    });
+    expect(result.compatibleMapperCategories).toEqual([]);
+  });
+
+  it('distinguishes whole nuts and dried mixes from nut paste', () => {
+    expect(
+      classifyProductSemantics(
+        evidence({
+          name: 'Migdały łuskane kalifornijskie',
+          category: 'Nuts & pastes',
+          subcategory: 'Orzechy i migdały',
+        }),
+      ),
+    ).toMatchObject({
+      productArchetype: 'WHOLE_NUT',
+      ingredientFamily: 'nut',
+      physicalForm: 'DRY',
+      intendedUsageRole: 'BASE_AND_TOPPING',
+    });
+    expect(
+      classifyProductSemantics(
+        evidence({
+          name: "Mieszanka egzotyczna BakaD'Or",
+          category: 'Nuts & pastes',
+          subcategory: 'Mieszanki bakaliowe',
+        }),
+      ),
+    ).toMatchObject({
+      productArchetype: 'DRIED_MIX',
+      ingredientFamily: 'inclusion',
+      physicalForm: 'DRY',
+      intendedUsageRole: 'TOPPING_ONLY',
+    });
+  });
+
+  it('does not let a protein retail category turn hummus into dairy protein', () => {
+    expect(
+      classifyProductSemantics(
+        evidence({
+          name: 'Hummus proteinowy GO Active',
+          category: 'Protein',
+          subcategory: 'Produkty wysokobiałkowe i proteinowe',
+          variant: 'klasyczny',
+        }),
+      ),
+    ).toMatchObject({
+      productArchetype: 'SAVORY_SPREAD',
+      ingredientFamily: 'savory_spread',
+      physicalForm: 'PASTE',
+      intendedUsageRole: 'NEITHER_REVIEW',
+      modelRequired: false,
+    });
+  });
+
   it('does not turn the professional market context into a technical classification', () => {
     const result = classifyProductSemantics(
       evidence({

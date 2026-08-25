@@ -1676,6 +1676,13 @@ Deno.serve(async (request) => {
           readiness: serverProductProfileAuthority.readiness,
           engineUsable: serverProductProfileAuthority.engineUsable,
           missingEngineFields: serverProductProfileAuthority.missingEngineFields,
+          criticalPhysicsBlockers: serverProductProfileAuthority.criticalPhysicsBlockers,
+          sweetnessPath: serverProductProfileAuthority.sweetnessPath,
+          mapperCandidatesBeforeFilter: serverProductProfileAuthority.mapperCandidatesBeforeFilter,
+          mapperCandidatesAfterFilter: serverProductProfileAuthority.mapperCandidatesAfterFilter,
+          mapperRejectedCandidates: serverProductProfileAuthority.mapperRejectedCandidates,
+          selectedMapperDonor: serverProductProfileAuthority.profileReferenceMapperIngredientId,
+          mapperSimilarity: serverProductProfileAuthority.mapperSimilarity,
           allergenEvidenceStatus: serverProductProfileAuthority.allergenEvidenceStatus,
           ingredientsEvidenceStatus: serverProductProfileAuthority.ingredientsEvidenceStatus,
         }
