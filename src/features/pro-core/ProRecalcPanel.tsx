@@ -453,7 +453,7 @@ function RecalcDiagnosisView({
         </div>
       ) : null}
 
-      {issue.code === 'no_proposal' && issue.directionTargetUnreached === true ? (
+      {rescueAdvice ? (
         <RescueAdviceHint advice={rescueAdvice ?? null} onAddIngredient={onAddRescueIngredient} />
       ) : null}
       <p className="text-xs text-ivory/60" data-testid="pro-recalc-unchanged">

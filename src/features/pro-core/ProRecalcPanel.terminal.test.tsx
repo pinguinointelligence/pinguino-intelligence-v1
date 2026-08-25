@@ -247,6 +247,54 @@ describe('PI visible terminal contract', () => {
     expect(document.querySelector('[data-testid="pro-recalc-return-to-recipe"]')).not.toBeNull();
   });
 
+  it('renders a simulation-proven Rescue action for an unsafe proposal', async () => {
+    useConstraintStudioStore.setState({
+      previewIssue: {
+        ok: false,
+        code: 'unsafe_proposal',
+        violatedMetrics: ['npac', 'pod'],
+        solverInvocations: 1,
+      },
+      rescueAdvice: {
+        trigger: 'operational',
+        candidate: {
+          canonicalIngredientId: 'PI-ING-000494',
+          namePl: 'Dekstroza',
+          ingredient: starterMilkBase().items[0]!.ingredient,
+          source: 'formulation_toolbox',
+        },
+        current: {
+          score: null,
+          reachedAxisCount: 0,
+          supportedAxisCount: 0,
+          severityPoints: 0,
+          hardMetricCount: 4,
+          engineSeverityPoints: 8,
+        },
+        rescue: {
+          score: 9,
+          reachedAxisCount: 1,
+          supportedAxisCount: 1,
+          severityPoints: 1,
+          hardMetricCount: 0,
+          engineSeverityPoints: 1,
+        },
+        simulatedGrams: 95,
+        reasonPl: 'Symulacja wykazała poprawę po dodaniu Dekstrozy.',
+        simulatedCandidateIds: ['PI-ING-000494'],
+      },
+      recalculationTerminal: {
+        state: 'BLOCKED_WITH_EXACT_ACTION',
+        code: 'unsafe_proposal',
+      },
+    });
+    await renderPanel();
+
+    expect(document.body.textContent).toContain('Możliwy kolejny krok: Dekstroza');
+    expect(document.body.textContent).toContain('PI nie doda tego składnika automatycznie');
+    expect(document.querySelector('[data-testid="direction-rescue-add-ingredient"]')).not.toBeNull();
+  });
+
   it('renders zero-gram Base feedback with the exact product and return action', async () => {
     const line = useRecipeStore.getState().items[0]!;
     const issue: PreviewIssue = {
