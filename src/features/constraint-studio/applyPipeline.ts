@@ -6063,8 +6063,14 @@ function buildOptimizePreviewWithDirection(
   // 136-recipe offline comparison showed materially lower x_user drift at the
   // same hard validity; pure beam search did not match the certified Crown
   // maximum, so every Main/Multi-Main draft deliberately stays on the existing
-  // frontier. A failed/refused neighborhood search is only evidence: the
-  // established pipeline still runs and keeps every honest fallback.
+  // frontier. The same bounded search is also authoritative when an exact
+  // Direction target is active: its comparator already ranks hard safety,
+  // requested-target fit and only then whole-vector distance from x_user. This
+  // closes the historical path where the first target-reaching greedy vector
+  // could turn a 2 g flavour line into a 49+ g composition lever even though a
+  // 28 g-total-movement, target-reaching vector existed. A failed/refused
+  // neighborhood search is only evidence: the established pipeline still runs
+  // and keeps every honest fallback.
   const behaviorModule = preRouteStrategy === 'eco' ? 'ECO' : 'OPTIMAL';
   const behaviorRequiredLineIds = productBehaviorRequiredLineIds({ items: input.items });
   const managedBehavior = Object.keys(options.productBehaviorSnapshots ?? {}).length > 0;
@@ -6086,7 +6092,6 @@ function buildOptimizePreviewWithDirection(
     !hasPendingManualTarget &&
     !hasPresentExcludedIngredient &&
     (options.rescueSimulationLineIds?.length ?? 0) === 0 &&
-    !hasActiveExactDirectionObjective(input) &&
     !input.items.some((item) => item.actual_grams !== null) &&
     input.items.every((item) => Number.isInteger(item.planned_grams) && item.planned_grams > 0) &&
     Math.abs(plannedSum(input) - input.target_batch_grams) <= BATCH_SUM_TOLERANCE_G;
@@ -6111,8 +6116,14 @@ function buildOptimizePreviewWithDirection(
           }).ok),
     });
     if (neighborhood.status === 'no_change') {
-      if (options.requirePracticalPreview === true) return buildIdentityPracticalPreview();
-      return { ok: false, code: 'already_clean' };
+      // An active Direction request that is already satisfied keeps its
+      // established route. That route owns accepted preview/authority semantics
+      // for neutral and overlapping bands; the neighborhood is promoted only
+      // when it has actually found a better vector.
+      if (!hasActiveExactDirectionObjective(input)) {
+        if (options.requirePracticalPreview === true) return buildIdentityPracticalPreview();
+        return { ok: false, code: 'already_clean' };
+      }
     }
     if (neighborhood.status === 'candidate') {
       const lockedNames = lockedIngredientNames(input, set);
@@ -6130,6 +6141,16 @@ function buildOptimizePreviewWithDirection(
       preview.autoBalance = { batchRescaled: false, solverRounds: 0 };
       preview.hardResidualMetrics = [];
       preview.diagnosticOnly = false;
+      // Whole-gram practicalization can move an exact in-memory candidate just
+      // outside a narrow Direction band. Preserve the same explicit-consent
+      // contract as every other NEAREST route so the served UI can never offer
+      // an Apply that the trustless commit door will reject for missing consent.
+      if (
+        hasActiveExactDirectionObjective(input) &&
+        recipeDirectionViolations(preview.proposedInput).length > 0
+      ) {
+        preview.directionTargetUnreached = true;
+      }
       return mainSafePreview(input, preview, options.productBehaviorSnapshots);
     }
   }

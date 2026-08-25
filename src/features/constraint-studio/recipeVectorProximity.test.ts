@@ -9,6 +9,7 @@ import { attachRecipeProfileMetadata } from '@/features/pro-workbench/recipeProf
 import { parseCsv } from '@/lib/csv';
 import { recipeTechnicalFit } from '@/features/recipe-score';
 import { normalizedLineDrift } from '@/features/formulation/userLineIntent';
+import { recipeDirectionViolations } from '@/features/recipe-direction/recipeDirectionTargets';
 import {
   buildOptimizePreview,
   commitPreview,
@@ -422,6 +423,48 @@ describe('whole-recipe user-gram proximity — Horchata historical reproducer', 
 });
 
 describe('isolated multi-candidate neighborhood experiment — null hypothesis', () => {
+  it('reaches an exact Horchata Direction target from x_user without a flavour-line explosion', () => {
+    const source = horchata('optimal');
+    const input: RecipeInput = {
+      ...source,
+      goals: {
+        ...source.goals,
+        direction_targets_active: true,
+        direction_targets: { sweetness: 0, softness: 0, creaminess: 0, flavor: 0 },
+      },
+    };
+    const built = buildOptimizePreview(input, { byLineId: {} }, '2026-08-25T00:00:00.000Z', {
+      requirePracticalPreview: true,
+    });
+    expect(built.ok, built.ok ? '' : built.code).toBe(true);
+    if (!built.ok) return;
+    expect(recipeDirectionViolations(built.preview.proposedInput)).toEqual([]);
+    expect(
+      built.preview.proposedInput.items.find((item) => item.id === 'cinnamon')?.planned_grams,
+    ).toBe(2);
+    expect(vectorDistance(input, built.preview.proposedInput)).toBeLessThan(0.5);
+    expect(
+      commitPreview(
+        input,
+        { byLineId: {} },
+        built.preview,
+        '2026-08-25T00:00:01.000Z',
+        'horchata-direction-neighborhood',
+        [],
+        undefined,
+        null,
+        null,
+        null,
+        null,
+        {},
+        [],
+        null,
+        null,
+        { requirePracticalPreview: true },
+      ),
+    ).toMatchObject({ ok: true });
+  });
+
   it('short-circuits at the original valid no-Crown vector without evaluating mutations', () => {
     const input = horchata('optimal');
     const result = experimentalNeighborhoodSearch(
