@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ReadinessFrame } from '@/features/design-review/ReadinessMarker';
 import type { ProductionWorkspaceView } from './useProductionWorkspace';
 import { ProductionActualControl } from './ProductionActualControl';
@@ -739,42 +740,45 @@ export function ProductionCockpit({
         </section>
       ) : null}
 
-      {cancelDialogOpen ? (
-        <DialogShell
-          label="Przerwać tę partię?"
-          testId="production-cancel-session-dialog"
-          placement="responsive"
-          onClose={() => setCancelDialogOpen(false)}
-        >
-          <div className="p-5 sm:p-0">
-            <h2 className="text-lg font-semibold text-ink">Przerwać tę partię?</h2>
-            <p className="mt-2 text-xs leading-relaxed text-stone-600">
-              Aktywny run zostanie oznaczony jako przerwany. Zapis pozostanie w historii, a
-              potwierdzone ilości nie zostaną przepisane ani usunięte.
-            </p>
-            <div className="mt-5 grid gap-2 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={() => setCancelDialogOpen(false)}
-                className="pro-focus-ring min-h-11 rounded-[10px] border border-ink/15 bg-white px-4 text-xs font-semibold text-ink"
-              >
-                Wróć do partii
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setCancelDialogOpen(false);
-                  void production.cancelCurrentSession();
-                }}
-                disabled={production.persistenceBusy}
-                className="pro-focus-ring min-h-11 rounded-[10px] bg-status-error px-4 text-xs font-semibold text-white disabled:cursor-wait disabled:opacity-60"
-              >
-                Przerwij partię
-              </button>
-            </div>
-          </div>
-        </DialogShell>
-      ) : null}
+      {cancelDialogOpen
+        ? createPortal(
+            <DialogShell
+              label="Przerwać tę partię?"
+              testId="production-cancel-session-dialog"
+              placement="responsive"
+              onClose={() => setCancelDialogOpen(false)}
+            >
+              <div className="p-5 sm:p-0">
+                <h2 className="text-lg font-semibold text-ink">Przerwać tę partię?</h2>
+                <p className="mt-2 text-xs leading-relaxed text-stone-600">
+                  Aktywny run zostanie oznaczony jako przerwany. Zapis pozostanie w historii, a
+                  potwierdzone ilości nie zostaną przepisane ani usunięte.
+                </p>
+                <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => setCancelDialogOpen(false)}
+                    className="pro-focus-ring min-h-11 rounded-[10px] border border-ink/15 bg-white px-4 text-xs font-semibold text-ink"
+                  >
+                    Wróć do partii
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCancelDialogOpen(false);
+                      void production.cancelCurrentSession();
+                    }}
+                    disabled={production.persistenceBusy}
+                    className="pro-focus-ring min-h-11 rounded-[10px] bg-status-error px-4 text-xs font-semibold text-white disabled:cursor-wait disabled:opacity-60"
+                  >
+                    Przerwij partię
+                  </button>
+                </div>
+              </div>
+            </DialogShell>,
+            document.body,
+          )
+        : null}
 
       <HeatInformationCard production={production} />
       <DegassingCard production={production} />

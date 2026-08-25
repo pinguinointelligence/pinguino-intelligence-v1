@@ -186,6 +186,7 @@ describe('Production correction decision accessibility', () => {
       '[data-testid="production-cancel-session-dialog"]',
     );
     expect(dialog?.textContent).toContain('Przerwać tę partię?');
+    expect(dialog?.parentElement).toBe(document.body);
     const confirm = [...(dialog?.querySelectorAll('button') ?? [])].find((button) =>
       button.textContent?.includes('Przerwij partię'),
     );
