@@ -3,7 +3,7 @@
 Date: 2026-08-25
 Environment: STAGING only
 Served-browser A–H runtime commit: `368fc3e9d28378a8b0f457a4cead6df8985f7830`
-Final integrated runtime and repository-gate commit: `e8142e30f81e03a2aaf40147db2f48886b8f636c`
+Final integrated runtime and repository-gate commit: `d913b7f05f7e85850aa013e68d3a44c96458b4dd`
 Staging application: <https://staging.pinguinoai.com>
 Staging Supabase project: `tunabqqrwabacxjcxxkz`
 Production Supabase project `riwipywgqobrulyzrzad` was not changed.
@@ -211,6 +211,10 @@ The decision-audit migration was updated to retain the already accepted `degassi
 
 The first complete repository run found that the newly integrated non-transactional recipe-restore fallback could append a legacy snapshot with `NULL` product identity, while the atomic RPC path derived that identity correctly. It also found that the committed Production Rescue bundle no longer matched its declared 59-file source closure. The canonical staging repair now injects `versionIdentityFromInput(target.recipeInput)` into the fallback `buildRecipeVersion` call, and the trusted bundle was regenerated. The recipe-save contract, bundle contract, focused Production suite, build, and exact-head full suite all pass afterward.
 
+### 11. Late Product Recognition integration introduced a lint-blocking escape
+
+Three concurrent Product Recognition commits added a dosage-normalization character class with an unnecessary escaped hyphen. Runtime tests passed, but the repository lint gate correctly failed at `productRecognition.ts:450`. Moving the hyphen to the safe terminal position removed only the redundant escape; 35 focused recognition tests, the combined 100-test integration set, typecheck, lint, build, audits, and the complete suite pass afterward.
+
 ## Served-browser scenarios
 
 The tests used the real signed-in PRO staging application and staging Supabase data.
@@ -272,6 +276,15 @@ npm test -- --run src/services/proCore/recipeSaveContract.test.ts src/features/p
 
 Result: `5/5 files, 65/65 tests`.
 
+Late-integration commands:
+
+```bash
+npm test -- --run src/features/product-intelligence/productBehaviorAuthority.test.ts src/features/product-intelligence/productRecognition.test.ts src/features/product-intelligence/productRecognitionV2.migration.test.ts src/services/proCore/recipeSaveContract.test.ts src/features/production-workspace/productionRescueEdgeBundle.test.ts src/features/production-workspace/useProductionWorkspace.runtime.test.tsx src/features/production-workspace/ProductionCockpit.runtime.test.tsx src/features/production-workspace/productionWorkspaceUi.test.tsx --reporter=dot --silent
+npm test -- --run src/features/product-intelligence/productRecognition.test.ts src/features/product-intelligence/productBehaviorAuthority.test.ts src/features/product-intelligence/productRecognitionV2.migration.test.ts --reporter=dot --silent
+```
+
+Results: `8/8 files, 100/100 tests` before the syntax-only lint repair; `3/3 files, 35/35 tests` after it.
+
 Final gates executed after the last runtime change:
 
 ```bash
@@ -288,13 +301,14 @@ npm run process:validate
 npm run toolbox:compositions:check
 ```
 
-Final exact-head result on `e8142e3`: `730/730` executed test files passed with `1` additional skipped file; `8,977/8,977` executed tests passed with `100` additional skipped tests; zero failures; duration `439.40 s`. The single-worker setting preserves every original test timeout while preventing cross-file CPU contention in the solver-heavy cases.
+Final exact-head result on runtime-equivalent `d913b7f`: `730/730` executed test files passed with `2` additional skipped files; `8,983/8,983` executed tests passed with `101` additional skipped tests; zero failures; duration `544.20 s`. The single-worker setting preserves every original test timeout while preventing cross-file CPU contention in the solver-heavy cases. One of the skipped files is the new live-only Product Recognition proof, which was not run against external services during this staging-safe repository gate. The tested `d3e07b2` and canonical `d913b7f` runtime trees are byte-identical across `src`, `supabase`, and package manifests.
 
 The gate history is intentionally retained:
 
 - the first unbounded full run exposed two deterministic integration defects (legacy restore identity and stale generated bundle) plus one 120-second solver timeout;
 - after those deterministic repairs, a four-worker run passed `8,943` tests but one unrelated Horchata case exceeded its 5-second budget; the exact case passed alone in `4.15 s`;
 - the unchanged full suite passed with one worker, and was repeated after concurrent staging integration; the exact final head passed with the counts above;
+- the last concurrent Product Recognition integration initially produced `1` lint error; the syntax-only correction is covered by `35/35` focused recognition tests and the exact final full suite;
 - `Error: failed to load ./ita.special-words` is output from an exercised error-path test; the runner continued and exited `0`;
 - lint: `0` errors and `4` pre-existing Fast Refresh warnings;
 - build: passed (`1,273` modules transformed) with the existing chunk-size advisory;
@@ -339,12 +353,12 @@ The Vercel deployment uses its separate `pinguino-staging` project. Vercel label
 3. **Files changed:** Production row/table/cockpit/session/hook/store/contracts and tests; trusted Rescue bundle metadata; two staging SQL migrations; this report and six evidence screenshots. Concurrent staging work in `ProRecalcPanel`, recipe restore, Product Recognition, and monitor/topping UI was integrated and gated but is separately authored.
 4. **Tests added or changed:** Production session, Rescue, workspace UI/runtime, decision migration, Base-scope migration, session-store, ingredient-table and final-workbench design coverage; existing recipe-save and bundle contracts caught the late integration regressions.
 5. **Exact test commands:** listed in **Automated tests**.
-6. **Test results:** all focused suites green; exact integrated head `730` files and `8,977` tests passed, `1` file and `100` tests skipped, zero failures; typecheck/build/bundle/audits passed; lint `0` errors and `4` existing warnings.
+6. **Test results:** all focused suites green; exact integrated head `730` files and `8,983` tests passed, `2` files and `101` tests skipped, zero failures; typecheck/build/bundle/audits passed; lint `0` errors and `4` existing warnings.
 7. **Previously accepted flows retested:** exact Production, topping stage, atomic completion, heat information, degassing event vocabulary, recipe-version recovery, six canonical serving/machine choices, Demo gram hiding/Home+Pro exact grams through the full repository suite.
 8. **Deployment environment verified:** Vercel `pinguino-staging`, Supabase `tunabqqrwabacxjcxxkz`, alias `staging.pinguinoai.com`; production project/ref untouched.
 9. **Remaining incomplete items:** none in requested Production scope. ECO may honestly have no feasible preserve/enlarge candidate for a given physical state; the UI now reports that constraint instead of inventing a plan. The four lint warnings and build chunk advisory are pre-existing, non-blocking maintenance items.
 10. **Blockers/external actions:** none. No production deployment was requested or performed.
-11. **Git diff and commit status:** served Production repair is committed through `368fc3e`; final integrated/gated staging runtime is `e8142e3`; report/screenshots are prepared as an evidence-only follow-up commit. The four dry-run JSON files written by the full suite were deliberately discarded as unrelated test side effects. `node_modules` is an untracked worktree symlink and will not be committed.
+11. **Git diff and commit status:** served Production repair is committed through `368fc3e`; final integrated/gated staging runtime is canonical `d913b7f` (runtime-tree equivalent to tested `d3e07b2`); report/screenshots are committed, with this final identity/count update prepared as a documentation follow-up. The four dry-run JSON files written by the full suite were later accepted by the canonical recognition baseline commit `7c48b32`. `node_modules` is an untracked worktree symlink and will not be committed.
 
 **STAGING DEPLOYED AND TESTED.**
 
