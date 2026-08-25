@@ -112,11 +112,19 @@ describe('owner-supplied official evidence is consumed first', () => {
 
   it('does NOT invent an official domain from the company name alone', () => {
     // No URL in the row — nothing establishes an official domain.
-    expect(officialDomainFor({
-      brand: 'Comprital', manufacturer: 'Comprital S.p.A.', name: 'X', variant: null,
-      barcode: null, netQuantity: null, knownSourceUrl: null, technicalPdfUrl: null,
-      missingFields: [],
-    })).toBeNull();
+    expect(
+      officialDomainFor({
+        brand: 'Comprital',
+        manufacturer: 'Comprital S.p.A.',
+        name: 'X',
+        variant: null,
+        barcode: null,
+        netQuantity: null,
+        knownSourceUrl: null,
+        technicalPdfUrl: null,
+        missingFields: [],
+      }),
+    ).toBeNull();
     const plan = planFor({});
     expect(plansOfficialFirst(plan)).toBe(false);
   });
@@ -152,9 +160,9 @@ describe('the Comprital regression', () => {
     expect(intelligence.researchIdentity.technicalPdfUrl).toBe('https://comprital.pl/k.pdf');
   });
 
-  it('treats a technical product as importable on its identity alone', () => {
+  it('does not turn professional market context into a technical product', () => {
     const intelligence = intel(row({ 'Primary Source URL': 'https://comprital.pl/x' }));
-    expect(intelligence.kind).toBe('technical');
+    expect(intelligence.kind).toBe('normal_food');
     // No dosage authority is demanded before this product may exist.
     expect(intelligence.assessment.missingCritical).not.toContain('dosage');
   });
@@ -164,9 +172,10 @@ describe('the Comprital regression', () => {
 
 describe('cache identity is the product, not the import run', () => {
   it('excludes importId from the key', () => {
+    const keyStart = edgeSource.lastIndexOf('const idempotencyKey');
     const keyBlock = edgeSource.slice(
-      edgeSource.indexOf('const idempotencyKey'),
-      edgeSource.indexOf('const { data: cached }'),
+      keyStart,
+      edgeSource.indexOf('const { data: cached }', keyStart),
     );
     expect(keyBlock).toContain('stableJson({ identity, fields:');
     expect(keyBlock).not.toMatch(/importId/);
@@ -176,8 +185,7 @@ describe('cache identity is the product, not the import run', () => {
     // Exercise the REAL derivation the server uses, not a hand-written mirror:
     // the same `stableJson` over the same shape the Edge function hashes.
     const identity = { brand: 'Comprital', name: 'AMARETTO GIUBILEO', barcode: null };
-    const derive = (fields: string[]) =>
-      stableJson({ identity, fields: [...fields].sort() });
+    const derive = (fields: string[]) => stableJson({ identity, fields: [...fields].sort() });
     // Field order must not matter …
     expect(derive(['ingredients', 'barcode'])).toBe(derive(['barcode', 'ingredients']));
     // … and nothing run-scoped may appear in the hashed shape at all.
@@ -190,7 +198,7 @@ describe('cache identity is the product, not the import run', () => {
 
   it('looks the cache up without filtering by import', () => {
     const lookup = edgeSource.slice(
-      edgeSource.indexOf("const { data: cached }"),
+      edgeSource.indexOf('const { data: cached }'),
       edgeSource.indexOf('const askedFor'),
     );
     expect(lookup).toContain(".eq('idempotency_key', idempotencyKey)");
@@ -203,9 +211,7 @@ describe('cache identity is the product, not the import run', () => {
 describe('call caps count real searches and stop before exceeding', () => {
   it('reserves the worst case before admitting a call', () => {
     expect(edgeSource).toContain('const WORST_CASE_SEARCHES_PER_CALL = 3;');
-    expect(edgeSource).toContain(
-      'if (usedSoFar + WORST_CASE_SEARCHES_PER_CALL > maxPerImport)',
-    );
+    expect(edgeSource).toContain('if (usedSoFar + WORST_CASE_SEARCHES_PER_CALL > maxPerImport)');
     // The old "stop only once already over" form must be gone.
     expect(edgeSource).not.toMatch(/if \(usedSoFar >= maxPerImport\)/);
   });

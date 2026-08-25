@@ -17,19 +17,18 @@ import { buildMapperKnowledge, profileDonor } from '../mapperValueInference';
 import { loadMapperKnowledgeRows, MAPPER_FILE } from './mapperFixture';
 
 const POLAND_FILE = join(homedir(), 'Desktop', 'PL_Poland.csv');
-const ACCEPTED_OWNER_AUDIT = process.env.PRODUCT_RECOGNITION_V2_BASELINE ?? join(
-  homedir(),
-  '.codex',
-  'outputs',
-  'poland_820_preimport_owner_audit_20260825',
-  'POLAND_820_PREIMPORT_OWNER_AUDIT.csv',
-);
-const OUTPUT_DIR = process.env.PRODUCT_RECOGNITION_V2_OUTPUT_DIR ?? join(
-  homedir(),
-  '.codex',
-  'outputs',
-  'product_recognition_v2_20260825',
-);
+const ACCEPTED_OWNER_AUDIT =
+  process.env.PRODUCT_RECOGNITION_V2_BASELINE ??
+  join(
+    homedir(),
+    '.codex',
+    'outputs',
+    'poland_820_preimport_owner_audit_20260825',
+    'POLAND_820_PREIMPORT_OWNER_AUDIT.csv',
+  );
+const OUTPUT_DIR =
+  process.env.PRODUCT_RECOGNITION_V2_OUTPUT_DIR ??
+  join(homedir(), '.codex', 'outputs', 'product_recognition_v2_20260825');
 
 type CsvRecord = Record<string, string>;
 type Readiness = 'ENGINE_READY' | 'REVIEW' | 'BLOCKED' | 'IDENTITY_CONFLICT';
@@ -75,11 +74,12 @@ const csvRecords = (path: string): CsvRecord[] => {
 };
 
 const csvCell = (value: unknown): string => {
-  const text = value === null || value === undefined
-    ? ''
-    : typeof value === 'string'
-      ? value
-      : JSON.stringify(value);
+  const text =
+    value === null || value === undefined
+      ? ''
+      : typeof value === 'string'
+        ? value
+        : JSON.stringify(value);
   return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 };
 
@@ -95,30 +95,31 @@ const writeCsv = (name: string, rows: readonly Record<string, unknown>[]): strin
 };
 
 const countBy = <T extends string>(values: readonly T[]): Record<T, number> =>
-  values.reduce((counts, value) => {
-    counts[value] = (counts[value] ?? 0) + 1;
-    return counts;
-  }, {} as Record<T, number>);
+  values.reduce(
+    (counts, value) => {
+      counts[value] = (counts[value] ?? 0) + 1;
+      return counts;
+    },
+    {} as Record<T, number>,
+  );
 
 const finalStatus = (row: IntimportProductIntelligence): Readiness =>
   row.recognitionTrace.finalStatus;
 
-const sourceEvidence = (row: IntimportProductIntelligence): string => [
-  row.recognition.manufacturerCategory,
-  row.recognition.manufacturerSubcategory,
-  row.recognitionEvidence.description,
-  row.recognitionEvidence.dosage,
-].filter(Boolean).join(' | ');
+const sourceEvidence = (row: IntimportProductIntelligence): string =>
+  [
+    row.recognition.manufacturerCategory,
+    row.recognition.manufacturerSubcategory,
+    row.recognitionEvidence.description,
+    row.recognitionEvidence.dosage,
+  ]
+    .filter(Boolean)
+    .join(' | ');
 
-const mapperRole = (
-  role: ProductIntendedUsageRole,
-  modelRequired: boolean,
-): MapperAuditRole => role === 'NEITHER_REVIEW' || modelRequired ? 'REVIEW' : role;
+const mapperRole = (role: ProductIntendedUsageRole, modelRequired: boolean): MapperAuditRole =>
+  role === 'NEITHER_REVIEW' || modelRequired ? 'REVIEW' : role;
 
-const reviewTransition = (
-  row: IntimportProductIntelligence,
-  baseline: CsvRecord,
-): string => {
+const reviewTransition = (row: IntimportProductIntelligence, baseline: CsvRecord): string => {
   if (finalStatus(row) === 'ENGINE_READY') return 'AUTOMATICALLY_RESOLVED';
   const oldReasons = `${baseline.review_reason_codes} ${baseline.review_explanation}`.toLowerCase();
   if (
@@ -131,11 +132,13 @@ const reviewTransition = (
   if (
     row.workingValues?.engineReady !== true &&
     (baseline.missing_critical_physics !== 'UNKNOWN' || oldReasons.includes('physics'))
-  ) return 'STILL_PHYSICS_UNRESOLVED';
+  )
+    return 'STILL_PHYSICS_UNRESOLVED';
   if (
     row.researchPlan.steps.length > 0 &&
     (row.researchIdentity.knownSourceUrl || row.researchIdentity.technicalPdfUrl)
-  ) return 'STILL_WEB_RESOLVABLE';
+  )
+    return 'STILL_WEB_RESOLVABLE';
   return 'STILL_LABEL_OR_USER_DATA_REQUIRED';
 };
 
@@ -146,10 +149,8 @@ const blockedTransition = (row: IntimportProductIntelligence): string => {
   }
   if (row.recognition.intendedUsageRole === 'TOPPING_ONLY') return 'TOPPING_ONLY';
   if (row.recognition.intendedUsageRole === 'BASE_AND_TOPPING') return 'BASE_AND_TOPPING';
-  if (
-    row.recognition.intendedUsageRole === 'BASE_ONLY' &&
-    finalStatus(row) === 'ENGINE_READY'
-  ) return 'NORMAL_BASE';
+  if (row.recognition.intendedUsageRole === 'BASE_ONLY' && finalStatus(row) === 'ENGINE_READY')
+    return 'NORMAL_BASE';
   return 'REVIEW';
 };
 
@@ -161,9 +162,7 @@ describe.runIf(existsSync(POLAND_FILE) && existsSync(ACCEPTED_OWNER_AUDIT))(
       const mapperBefore = createHash('sha256').update(readFileSync(MAPPER_FILE)).digest('hex');
       const parsed = parseINTIMPORT(readFileSync(POLAND_FILE, 'utf8'));
       const baselineRows = csvRecords(ACCEPTED_OWNER_AUDIT);
-      const baselineByProduct = new Map(
-        baselineRows.map((row) => [row.source_product_id, row]),
-      );
+      const baselineByProduct = new Map(baselineRows.map((row) => [row.source_product_id, row]));
       const { rows: mapperRows, fingerprint } = loadMapperKnowledgeRows();
       const mapper = buildMapperKnowledge(mapperRows, fingerprint);
       const { rows } = runIntimportLocalIntelligence(parsed.candidates, {}, mapper);
@@ -238,7 +237,9 @@ describe.runIf(existsSync(POLAND_FILE) && existsSync(ACCEPTED_OWNER_AUDIT))(
       const newCounts = countBy(rows.map(finalStatus));
       const roleCounts = countBy(rows.map((row) => row.recognition.intendedUsageRole));
       const previousBlocked = rows
-        .filter((row) => baselineByProduct.get(row.sourceProductId ?? '')?.final_status === 'BLOCKED')
+        .filter(
+          (row) => baselineByProduct.get(row.sourceProductId ?? '')?.final_status === 'BLOCKED',
+        )
         .map((row) => ({
           source_product_id: row.sourceProductId,
           product_name: row.displayName,
@@ -255,7 +256,9 @@ describe.runIf(existsSync(POLAND_FILE) && existsSync(ACCEPTED_OWNER_AUDIT))(
           reason_codes: row.recognitionTrace.finalReasonCodes,
         }));
       const previousReview = rows
-        .filter((row) => baselineByProduct.get(row.sourceProductId ?? '')?.final_status === 'REVIEW')
+        .filter(
+          (row) => baselineByProduct.get(row.sourceProductId ?? '')?.final_status === 'REVIEW',
+        )
         .map((row) => {
           const baseline = baselineByProduct.get(row.sourceProductId ?? '')!;
           return {
@@ -300,19 +303,24 @@ describe.runIf(existsSync(POLAND_FILE) && existsSync(ACCEPTED_OWNER_AUDIT))(
           subcategory: row.ingredient_subcategory ?? null,
           current_approved_for_base: row.approved_for_base === true,
           proposed_role: mapperRole(recognition.intendedUsageRole, recognition.modelRequired),
-          proposed_usable_in_base: ['BASE_ONLY', 'BASE_AND_TOPPING'].includes(
-            recognition.intendedUsageRole,
-          ) && !recognition.modelRequired,
-          proposed_usable_as_topping: ['TOPPING_ONLY', 'BASE_AND_TOPPING'].includes(
-            recognition.intendedUsageRole,
-          ) && !recognition.modelRequired,
+          proposed_usable_in_base:
+            ['BASE_ONLY', 'BASE_AND_TOPPING'].includes(recognition.intendedUsageRole) &&
+            !recognition.modelRequired,
+          proposed_usable_as_topping:
+            ['TOPPING_ONLY', 'BASE_AND_TOPPING'].includes(recognition.intendedUsageRole) &&
+            !recognition.modelRequired,
           archetype: recognition.productArchetype,
           family: recognition.ingredientFamily,
           form: recognition.physicalForm,
           confidence: recognition.confidence,
           classification_source: recognition.classificationSource,
-          evidence: [row.ingredient_name_internal, row.ingredient_category, row.ingredient_subcategory]
-            .filter(Boolean).join(' | '),
+          evidence: [
+            row.ingredient_name_internal,
+            row.ingredient_category,
+            row.ingredient_subcategory,
+          ]
+            .filter(Boolean)
+            .join(' | '),
           reason: recognition.reasonCodes,
         };
       });
@@ -322,11 +330,11 @@ describe.runIf(existsSync(POLAND_FILE) && existsSync(ACCEPTED_OWNER_AUDIT))(
         gPerLParsed: rows.filter((row) => row.recognition.dosage.unit === 'G_PER_L').length,
         asDesired: rows.filter((row) => row.recognition.dosage.unit === 'AS_DESIRED').length,
         densityResolved: rows.filter((row) => row.recognition.dosage.densityResolved).length,
-        basisUnknownOrReview: rows.filter((row) =>
-          row.recognition.dosage.semantics === 'UNKNOWN' || (
-            row.recognition.dosage.semantics === 'FIXED' &&
-            row.recognition.dosage.basis === 'UNKNOWN'
-          ),
+        basisUnknownOrReview: rows.filter(
+          (row) =>
+            row.recognition.dosage.semantics === 'UNKNOWN' ||
+            (row.recognition.dosage.semantics === 'FIXED' &&
+              row.recognition.dosage.basis === 'UNKNOWN'),
         ).length,
       };
       const carbonation = countBy(rows.map((row) => row.carbonation.status));
@@ -382,7 +390,10 @@ describe.runIf(existsSync(POLAND_FILE) && existsSync(ACCEPTED_OWNER_AUDIT))(
         ),
         artifacts,
       };
-      writeFileSync(join(OUTPUT_DIR, 'PRODUCT_RECOGNITION_V2_SUMMARY.json'), `${JSON.stringify(summary, null, 2)}\n`);
+      writeFileSync(
+        join(OUTPUT_DIR, 'PRODUCT_RECOGNITION_V2_SUMMARY.json'),
+        `${JSON.stringify(summary, null, 2)}\n`,
+      );
       writeFileSync(
         join(OUTPUT_DIR, 'PRODUCT_RECOGNITION_V2_SUMMARY.md'),
         [
@@ -411,8 +422,12 @@ describe.runIf(existsSync(POLAND_FILE) && existsSync(ACCEPTED_OWNER_AUDIT))(
       expect(Object.values(reviewCounts).reduce((sum, value) => sum + value, 0)).toBe(373);
       expect(Object.values(mapperRoleCounts).reduce((sum, value) => sum + value, 0)).toBe(2088);
       expect(suspiciousReady).toHaveLength(0);
-      expect(createHash('sha256').update(readFileSync(POLAND_FILE)).digest('hex')).toBe(polandBefore);
-      expect(createHash('sha256').update(readFileSync(MAPPER_FILE)).digest('hex')).toBe(mapperBefore);
+      expect(createHash('sha256').update(readFileSync(POLAND_FILE)).digest('hex')).toBe(
+        polandBefore,
+      );
+      expect(createHash('sha256').update(readFileSync(MAPPER_FILE)).digest('hex')).toBe(
+        mapperBefore,
+      );
 
       console.log(`PRODUCT_RECOGNITION_V2_AUDIT ${JSON.stringify(summary, null, 2)}`);
     }, 20_000);

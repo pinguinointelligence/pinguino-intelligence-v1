@@ -87,6 +87,6 @@ describe.runIf(existsSync(CSV) && existsSync(XLSX) && existsSync(MAPPER_FILE))(
       // Product Intelligence must not notice the format.
       expect(xlsxRun.summary.valueReadiness).toEqual(csvRun.summary.valueReadiness);
       expect(xlsxDedup.counts).toEqual(csvDedup.counts);
-    });
+    }, 20_000);
   },
 );

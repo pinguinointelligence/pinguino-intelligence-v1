@@ -10,11 +10,7 @@
  * valid result. The same classification is then used to narrow every Mapper
  * candidate universe before numeric similarity is considered.
  */
-import {
-  foldLatin,
-  inferMapperFamily,
-  type ProductFamilyId,
-} from './mapperFamilyInference.ts';
+import { foldLatin, inferMapperFamily, type ProductFamilyId } from './mapperFamilyInference.ts';
 
 export const PRODUCT_RECOGNITION_VERSION = 'PRODUCT_RECOGNITION_V2' as const;
 
@@ -50,21 +46,10 @@ export type ProductSemanticFamily =
   | 'unknown';
 
 export type ProductPhysicalForm =
-  | 'SOLID'
-  | 'DRY'
-  | 'POWDER'
-  | 'PASTE'
-  | 'PUREE'
-  | 'LIQUID'
-  | 'SAUCE'
-  | 'COATING'
-  | 'UNKNOWN';
+  'SOLID' | 'DRY' | 'POWDER' | 'PASTE' | 'PUREE' | 'LIQUID' | 'SAUCE' | 'COATING' | 'UNKNOWN';
 
 export type ProductIntendedUsageRole =
-  | 'BASE_ONLY'
-  | 'TOPPING_ONLY'
-  | 'BASE_AND_TOPPING'
-  | 'NEITHER_REVIEW';
+  'BASE_ONLY' | 'TOPPING_ONLY' | 'BASE_AND_TOPPING' | 'NEITHER_REVIEW';
 
 export type ProductFlavorDomain =
   | 'CHOCOLATE_WHITE'
@@ -81,19 +66,9 @@ export type ProductFlavorDomain =
   | 'UNKNOWN';
 
 export type ProductDosageBasis =
-  | 'WATER'
-  | 'MILK'
-  | 'LIQUID_MIX'
-  | 'FINISHED_MIX'
-  | 'PRODUCT'
-  | 'UNKNOWN';
+  'WATER' | 'MILK' | 'LIQUID_MIX' | 'FINISHED_MIX' | 'PRODUCT' | 'UNKNOWN';
 
-export type ProductDosageUnit =
-  | 'G_PER_L'
-  | 'G_PER_KG'
-  | 'PERCENT'
-  | 'AS_DESIRED'
-  | 'UNKNOWN';
+export type ProductDosageUnit = 'G_PER_L' | 'G_PER_KG' | 'PERCENT' | 'AS_DESIRED' | 'UNKNOWN';
 
 export interface ProductDosageInterpretation {
   semantics: 'FIXED' | 'AS_DESIRED' | 'NONE' | 'UNKNOWN';
@@ -125,10 +100,7 @@ export interface ProductSemanticEvidence {
   sourceUrls: readonly string[];
 }
 
-const semanticText = (
-  value: string | null | undefined,
-  limit: number,
-): string | null => {
+const semanticText = (value: string | null | undefined, limit: number): string | null => {
   const trimmed = value?.trim() ?? '';
   return trimmed === '' ? null : trimmed.slice(0, limit);
 };
@@ -225,37 +197,106 @@ export interface ProductSemanticModelOutput {
 }
 
 const PRODUCT_ARCHETYPES: readonly ProductArchetype[] = [
-  'NORMAL_INGREDIENT', 'NUT_PASTE', 'FRUIT_PRODUCT', 'CHOCOLATE', 'TEA',
-  'CONFECTIONERY', 'FLAVOR_PASTE', 'FLAVOR_CONCENTRATE', 'VARIEGATO', 'TOPPING',
-  'INCLUSION', 'COATING', 'BASE_MIX', 'STABILIZER', 'EMULSIFIER', 'INTEGRATOR',
-  'TECHNICAL_ADDITIVE', 'UNKNOWN',
+  'NORMAL_INGREDIENT',
+  'NUT_PASTE',
+  'FRUIT_PRODUCT',
+  'CHOCOLATE',
+  'TEA',
+  'CONFECTIONERY',
+  'FLAVOR_PASTE',
+  'FLAVOR_CONCENTRATE',
+  'VARIEGATO',
+  'TOPPING',
+  'INCLUSION',
+  'COATING',
+  'BASE_MIX',
+  'STABILIZER',
+  'EMULSIFIER',
+  'INTEGRATOR',
+  'TECHNICAL_ADDITIVE',
+  'UNKNOWN',
 ];
 const SEMANTIC_FAMILIES: readonly ProductSemanticFamily[] = [
-  'plant_protein_isolate', 'dairy_protein', 'coconut_fat', 'cocoa_butter',
-  'liquid_vegetable_oil', 'nut_paste', 'sugar_sucrose', 'glucose_dextrose',
-  'other_sugar', 'stabilizer_hydrocolloid', 'emulsifier', 'fibre_inulin', 'starch',
-  'plant_beverage', 'dairy_liquid', 'fruit', 'chocolate', 'flavor_paste', 'base_mix',
-  'alcohol', 'tea', 'confectionery', 'variegato', 'topping', 'inclusion', 'coating',
-  'technical_additive', 'unknown',
+  'plant_protein_isolate',
+  'dairy_protein',
+  'coconut_fat',
+  'cocoa_butter',
+  'liquid_vegetable_oil',
+  'nut_paste',
+  'sugar_sucrose',
+  'glucose_dextrose',
+  'other_sugar',
+  'stabilizer_hydrocolloid',
+  'emulsifier',
+  'fibre_inulin',
+  'starch',
+  'plant_beverage',
+  'dairy_liquid',
+  'fruit',
+  'chocolate',
+  'flavor_paste',
+  'base_mix',
+  'alcohol',
+  'tea',
+  'confectionery',
+  'variegato',
+  'topping',
+  'inclusion',
+  'coating',
+  'technical_additive',
+  'unknown',
 ];
 const PHYSICAL_FORMS: readonly ProductPhysicalForm[] = [
-  'SOLID', 'DRY', 'POWDER', 'PASTE', 'PUREE', 'LIQUID', 'SAUCE', 'COATING', 'UNKNOWN',
+  'SOLID',
+  'DRY',
+  'POWDER',
+  'PASTE',
+  'PUREE',
+  'LIQUID',
+  'SAUCE',
+  'COATING',
+  'UNKNOWN',
 ];
 const USAGE_ROLES: readonly ProductIntendedUsageRole[] = [
-  'BASE_ONLY', 'TOPPING_ONLY', 'BASE_AND_TOPPING', 'NEITHER_REVIEW',
+  'BASE_ONLY',
+  'TOPPING_ONLY',
+  'BASE_AND_TOPPING',
+  'NEITHER_REVIEW',
 ];
 const FLAVOR_DOMAINS: readonly ProductFlavorDomain[] = [
-  'CHOCOLATE_WHITE', 'CHOCOLATE_DARK', 'CHOCOLATE_GENERAL', 'MILK_CREAM', 'ALCOHOL',
-  'PISTACHIO', 'HAZELNUT', 'COCONUT', 'TEA', 'FRUIT', 'NEUTRAL', 'UNKNOWN',
+  'CHOCOLATE_WHITE',
+  'CHOCOLATE_DARK',
+  'CHOCOLATE_GENERAL',
+  'MILK_CREAM',
+  'ALCOHOL',
+  'PISTACHIO',
+  'HAZELNUT',
+  'COCONUT',
+  'TEA',
+  'FRUIT',
+  'NEUTRAL',
+  'UNKNOWN',
 ];
 const DOSAGE_SEMANTICS: readonly ProductDosageInterpretation['semantics'][] = [
-  'FIXED', 'AS_DESIRED', 'NONE', 'UNKNOWN',
+  'FIXED',
+  'AS_DESIRED',
+  'NONE',
+  'UNKNOWN',
 ];
 const DOSAGE_UNITS: readonly ProductDosageUnit[] = [
-  'G_PER_L', 'G_PER_KG', 'PERCENT', 'AS_DESIRED', 'UNKNOWN',
+  'G_PER_L',
+  'G_PER_KG',
+  'PERCENT',
+  'AS_DESIRED',
+  'UNKNOWN',
 ];
 const DOSAGE_BASES: readonly ProductDosageBasis[] = [
-  'WATER', 'MILK', 'LIQUID_MIX', 'FINISHED_MIX', 'PRODUCT', 'UNKNOWN',
+  'WATER',
+  'MILK',
+  'LIQUID_MIX',
+  'FINISHED_MIX',
+  'PRODUCT',
+  'UNKNOWN',
 ];
 
 /** Strict schema passed unchanged to the existing server Responses wrapper. */
@@ -263,10 +304,20 @@ export const PRODUCT_RECOGNITION_MODEL_SCHEMA = {
   type: 'object',
   additionalProperties: false,
   required: [
-    'productArchetype', 'ingredientFamily', 'physicalForm', 'intendedUsageRole',
-    'flavorDomain', 'professional', 'technical', 'dosageDependent', 'dosage',
-    'compatibleMapperCategories', 'forbiddenMapperCategories', 'confidence',
-    'reasonCodes', 'evidenceRefs',
+    'productArchetype',
+    'ingredientFamily',
+    'physicalForm',
+    'intendedUsageRole',
+    'flavorDomain',
+    'professional',
+    'technical',
+    'dosageDependent',
+    'dosage',
+    'compatibleMapperCategories',
+    'forbiddenMapperCategories',
+    'confidence',
+    'reasonCodes',
+    'evidenceRefs',
   ],
   properties: {
     productArchetype: { type: 'string', enum: PRODUCT_ARCHETYPES },
@@ -278,7 +329,8 @@ export const PRODUCT_RECOGNITION_MODEL_SCHEMA = {
     technical: { type: 'boolean' },
     dosageDependent: { type: 'boolean' },
     dosage: {
-      type: 'object', additionalProperties: false,
+      type: 'object',
+      additionalProperties: false,
       required: ['semantics', 'value', 'unit', 'basis'],
       properties: {
         semantics: { type: 'string', enum: DOSAGE_SEMANTICS },
@@ -296,7 +348,10 @@ export const PRODUCT_RECOGNITION_MODEL_SCHEMA = {
 } as const;
 
 const normalized = (value: string | null | undefined): string =>
-  foldLatin(value).replace(/[^a-z0-9%/.]+/g, ' ').replace(/\s+/g, ' ').trim();
+  foldLatin(value)
+    .replace(/[^a-z0-9%/.]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 const meaningful = (value: string | null | undefined): string | null => {
   const trimmed = value?.trim() ?? '';
@@ -310,7 +365,10 @@ const stableJson = (value: unknown): string => {
   if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
   if (value && typeof value === 'object') {
     const record = value as Record<string, unknown>;
-    return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${stableJson(record[key])}`).join(',')}}`;
+    return `{${Object.keys(record)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${stableJson(record[key])}`)
+      .join(',')}}`;
   }
   return JSON.stringify(value) ?? 'null';
 };
@@ -341,16 +399,26 @@ export function parseProductDosage(value: string | null | undefined): ProductDos
   const raw = meaningful(value);
   if (!raw) {
     return {
-      semantics: 'NONE', value: null, unit: 'UNKNOWN', basis: 'UNKNOWN',
-      normalizedMassPercent: null, densityResolved: false, evidence: null,
+      semantics: 'NONE',
+      value: null,
+      unit: 'UNKNOWN',
+      basis: 'UNKNOWN',
+      normalizedMassPercent: null,
+      densityResolved: false,
+      evidence: null,
       reasonCodes: ['DOSAGE_NOT_STATED'],
     };
   }
   const text = normalized(raw);
   if (/\b(q\s*\.?\s*b\s*\.?|quanto basta|as desired|to taste|wedlug uznania)\b/.test(text)) {
     return {
-      semantics: 'AS_DESIRED', value: null, unit: 'AS_DESIRED', basis: 'UNKNOWN',
-      normalizedMassPercent: null, densityResolved: false, evidence: raw,
+      semantics: 'AS_DESIRED',
+      value: null,
+      unit: 'AS_DESIRED',
+      basis: 'UNKNOWN',
+      normalizedMassPercent: null,
+      densityResolved: false,
+      evidence: raw,
       reasonCodes: ['DOSAGE_AS_DESIRED'],
     };
   }
@@ -359,28 +427,41 @@ export function parseProductDosage(value: string | null | undefined): ProductDos
     const parsed = Number(fixed[1]!.replace(',', '.'));
     const unit: ProductDosageUnit = fixed[2] === 'l' ? 'G_PER_L' : 'G_PER_KG';
     return {
-      semantics: 'FIXED', value: Number.isFinite(parsed) ? parsed : null, unit,
+      semantics: 'FIXED',
+      value: Number.isFinite(parsed) ? parsed : null,
+      unit,
       basis: dosageBasis(text),
       // Even g/kg is kept literal here: its denominator may be a component,
       // liquid mix or finished product and the basis belongs in a separate field.
       normalizedMassPercent: null,
       densityResolved: false,
       evidence: raw,
-      reasonCodes: unit === 'G_PER_L' ? ['DOSAGE_G_PER_L_PRESERVED'] : ['DOSAGE_G_PER_KG_PRESERVED'],
+      reasonCodes:
+        unit === 'G_PER_L' ? ['DOSAGE_G_PER_L_PRESERVED'] : ['DOSAGE_G_PER_KG_PRESERVED'],
     };
   }
   const percent = text.match(/(\d+(?:[.,]\d+)?)\s*%/);
   if (percent) {
     const parsed = Number(percent[1]!.replace(',', '.'));
     return {
-      semantics: 'FIXED', value: Number.isFinite(parsed) ? parsed : null,
-      unit: 'PERCENT', basis: dosageBasis(text), normalizedMassPercent: parsed,
-      densityResolved: false, evidence: raw, reasonCodes: ['DOSAGE_PERCENT_EXACT'],
+      semantics: 'FIXED',
+      value: Number.isFinite(parsed) ? parsed : null,
+      unit: 'PERCENT',
+      basis: dosageBasis(text),
+      normalizedMassPercent: parsed,
+      densityResolved: false,
+      evidence: raw,
+      reasonCodes: ['DOSAGE_PERCENT_EXACT'],
     };
   }
   return {
-    semantics: 'UNKNOWN', value: null, unit: 'UNKNOWN', basis: 'UNKNOWN',
-    normalizedMassPercent: null, densityResolved: false, evidence: raw,
+    semantics: 'UNKNOWN',
+    value: null,
+    unit: 'UNKNOWN',
+    basis: 'UNKNOWN',
+    normalizedMassPercent: null,
+    densityResolved: false,
+    evidence: raw,
     reasonCodes: ['DOSAGE_SEMANTICS_UNRESOLVED'],
   };
 }
@@ -399,8 +480,12 @@ const archetypeOf = (
   if (/\b(variegat|rippl|layering|przeklad|marmoriz)\w*/.test(all)) return 'VARIEGATO';
   if (/\b(topping|polew[a-z]* do dekor|sos do dekor)\b/.test(all)) return 'TOPPING';
   if (/\b(coating|shell|copertura|stracciatell|polewa|otulina)\b/.test(all)) return 'COATING';
-  if (/\b(inclusion|inclusioni|wkladk|croccante|crunch|crisp inclusion)\b/.test(all)) return 'INCLUSION';
-  if (/\b(stabiliz|stabilizz|neutro|hydrocolloid)\w*/.test(all) || inferredFamily === 'stabilizer_hydrocolloid') {
+  if (/\b(inclusion|inclusioni|wkladk|croccante|crunch|crisp inclusion)\b/.test(all))
+    return 'INCLUSION';
+  if (
+    /\b(stabiliz|stabilizz|neutro|hydrocolloid)\w*/.test(all) ||
+    inferredFamily === 'stabilizer_hydrocolloid'
+  ) {
     return 'STABILIZER';
   }
   if (/\b(emulsif|emulgator|emulsionante)\w*/.test(all) || inferredFamily === 'emulsifier') {
@@ -410,22 +495,38 @@ const archetypeOf = (
   if (/\b(technical additive|dodatek techniczny|special process mix)\b/.test(all)) {
     return 'TECHNICAL_ADDITIVE';
   }
-  if (/\b(base mix|ice cream base|gelato base|baza |bazy |baz[ay] specjal|dozowanie|speedy|semifreddo|granita system)\b/.test(all) || inferredFamily === 'base_mix') {
+  if (
+    /\b(base mix|ice cream base|gelato base|baza |bazy |baz[ay] specjal|dozowanie|speedy|semifreddo|granita system)\b/.test(
+      all,
+    ) ||
+    inferredFamily === 'base_mix'
+  ) {
     return 'BASE_MIX';
   }
   if (/\b(tea|herbat|te verde|te nero|matcha)\w*/.test(all)) return 'TEA';
-  if (/\b(bakery|sweets|slodycz|baton|wafer|wafel|cookie|biscuit|herbatnik|ciastk|praline bar)\b/.test(all)) {
+  if (
+    /\b(bakery|sweets|slodycz|baton|wafer|wafel|cookie|biscuit|herbatnik|ciastk|praline bar)\b/.test(
+      all,
+    )
+  ) {
     return 'CONFECTIONERY';
   }
   if (/\b(flavo(u)?r concentrate|koncentrat smak|aroma concentrat)\b/.test(all)) {
     return 'FLAVOR_CONCENTRATE';
   }
-  if (/\b(flavo(u)?r paste|pasta smak|gelato paste|paste do lod)\b/.test(all) || inferredFamily === 'flavor_paste') {
+  if (
+    /\b(flavo(u)?r paste|pasta smak|gelato paste|paste do lod)\b/.test(all) ||
+    inferredFamily === 'flavor_paste'
+  ) {
     return 'FLAVOR_PASTE';
   }
   if (inferredFamily === 'nut_paste') return 'NUT_PASTE';
   if (inferredFamily === 'fruit') return 'FRUIT_PRODUCT';
-  if (inferredFamily === 'chocolate' || inferredFamily === 'cocoa_butter' || /\b(choco|czekolad|cocoa|kakao)\w*/.test(all)) {
+  if (
+    inferredFamily === 'chocolate' ||
+    inferredFamily === 'cocoa_butter' ||
+    /\b(choco|czekolad|cocoa|kakao)\w*/.test(all)
+  ) {
     return 'CHOCOLATE';
   }
   if (inferredFamily) return 'NORMAL_INGREDIENT';
@@ -454,14 +555,24 @@ const formOf = (
   archetype: ProductArchetype,
 ): ProductPhysicalForm => {
   const all = `${identity} ${category} ${subcategory} ${description}`;
-  if (/\b(rippling sauce|sauce|sos|variegat)\w*/.test(all) || archetype === 'VARIEGATO' || archetype === 'TOPPING') return 'SAUCE';
+  if (
+    /\b(rippling sauce|sauce|sos|variegat)\w*/.test(all) ||
+    archetype === 'VARIEGATO' ||
+    archetype === 'TOPPING'
+  )
+    return 'SAUCE';
   if (/\b(puree|puree|pulp|przecier)\w*/.test(all)) return 'PUREE';
   if (/\b(paste|pasta|krem)\w*/.test(all)) return 'PASTE';
   if (/\b(liquid|plyn|syrup|syrop)\w*/.test(all)) return 'LIQUID';
   if (/\b(coating|shell|copertura|polewa|otulina)\w*/.test(all)) return 'COATING';
   if (/\b(powder|proszek|polvere|liofiliz)\w*/.test(all)) return 'POWDER';
-  if (/\b(dry tea|dried leaves|suszon[a-z]* lisc|herbata sucha|lisciasta)\b/.test(all)) return 'DRY';
-  if (/\b(baton|bar|wafer|wafel|cookie|biscuit|ciastk|chocolate tablet|tabliczk)\w*/.test(all) || archetype === 'CONFECTIONERY') return 'SOLID';
+  if (/\b(dry tea|dried leaves|suszon[a-z]* lisc|herbata sucha|lisciasta)\b/.test(all))
+    return 'DRY';
+  if (
+    /\b(baton|bar|wafer|wafel|cookie|biscuit|ciastk|chocolate tablet|tabliczk)\w*/.test(all) ||
+    archetype === 'CONFECTIONERY'
+  )
+    return 'SOLID';
   if (archetype === 'STABILIZER' || archetype === 'EMULSIFIER' || archetype === 'BASE_MIX') {
     return /\b(liquid|plyn)\b/.test(all) ? 'LIQUID' : 'POWDER';
   }
@@ -470,8 +581,10 @@ const formOf = (
 };
 
 const flavorDomainOf = (text: string): ProductFlavorDomain => {
-  if (/\b(white chocolate|bial[a-z]* czekolad|cioccolato bianco)\b/.test(text)) return 'CHOCOLATE_WHITE';
-  if (/\b(dark chocolate|gorzka czekolad|czekolad[a-z]* ciemn|fondente)\b/.test(text)) return 'CHOCOLATE_DARK';
+  if (/\b(white chocolate|bial[a-z]* czekolad|cioccolato bianco)\b/.test(text))
+    return 'CHOCOLATE_WHITE';
+  if (/\b(dark chocolate|gorzka czekolad|czekolad[a-z]* ciemn|fondente)\b/.test(text))
+    return 'CHOCOLATE_DARK';
   if (/\b(alcohol|alcol|liqueur|likier|rum|whisky|vodka|wodka)\w*/.test(text)) return 'ALCOHOL';
   if (/\b(milk cream|milk creamy|mleczn|smietank|panna|latte)\w*/.test(text)) return 'MILK_CREAM';
   if (/\b(pistach|pistacj)\w*/.test(text)) return 'PISTACHIO';
@@ -484,25 +597,27 @@ const flavorDomainOf = (text: string): ProductFlavorDomain => {
   return 'UNKNOWN';
 };
 
-const roleOf = (
-  archetype: ProductArchetype,
-  all: string,
-): ProductIntendedUsageRole => {
+const roleOf = (archetype: ProductArchetype, all: string): ProductIntendedUsageRole => {
   if (['VARIEGATO', 'TOPPING', 'INCLUSION', 'COATING', 'CONFECTIONERY'].includes(archetype)) {
     if (/\b(also in base|rowniez do bazy|base and topping)\b/.test(all)) return 'BASE_AND_TOPPING';
     return 'TOPPING_ONLY';
   }
-  if (/\b(base and topping|do bazy i dekor|base oraz topping)\b/.test(all)) return 'BASE_AND_TOPPING';
+  if (/\b(base and topping|do bazy i dekor|base oraz topping)\b/.test(all))
+    return 'BASE_AND_TOPPING';
   // q.b. is a dosage semantic, not a role. Without separate taxonomy or use
   // evidence an unknown product remains review, regardless of dosage wording.
   if (archetype === 'UNKNOWN') return 'NEITHER_REVIEW';
   return 'BASE_ONLY';
 };
 
-const mapperCategoriesFor = (family: ProductSemanticFamily, archetype: ProductArchetype): string[] => {
+const mapperCategoriesFor = (
+  family: ProductSemanticFamily,
+  archetype: ProductArchetype,
+): string[] => {
   if (archetype === 'VARIEGATO') return ['variegato', 'flavor_paste'];
   if (archetype === 'TOPPING') return ['topping', 'flavor_syrup', 'flavor_paste'];
-  if (archetype === 'INCLUSION' || archetype === 'CONFECTIONERY') return ['inclusion', 'bakery_inclusion', 'confectionery_inclusion'];
+  if (archetype === 'INCLUSION' || archetype === 'CONFECTIONERY')
+    return ['inclusion', 'bakery_inclusion', 'confectionery_inclusion'];
   if (archetype === 'COATING') return ['coating', 'chocolate'];
   const map: Partial<Record<ProductSemanticFamily, string[]>> = {
     tea: ['tea'],
@@ -538,20 +653,34 @@ export function classifyProductSemantics(
     sourceSubcategory: meaningful(input.subcategory),
   });
   const inferredFamily = familyMatch?.family ?? null;
-  const productArchetype = archetypeOf(identity, category, subcategory, description, inferredFamily);
+  const productArchetype = archetypeOf(
+    identity,
+    category,
+    subcategory,
+    description,
+    inferredFamily,
+  );
   const ingredientFamily = semanticFamilyOf(productArchetype, inferredFamily);
   const physicalForm = formOf(identity, category, subcategory, description, productArchetype);
   const dosage = parseProductDosage(input.dosage);
   const intendedUsageRole = roleOf(productArchetype, all);
   const flavorDomain = flavorDomainOf(all);
   const productType = normalized(input.productType);
-  const isProfessionalProduct = /\b(professional|technical)\b/.test(productType) || /\bprofessional gelato products\b/.test(category);
-  const technicalArchetype = ['STABILIZER', 'EMULSIFIER', 'INTEGRATOR', 'TECHNICAL_ADDITIVE'].includes(productArchetype);
+  const isProfessionalProduct =
+    /\b(professional|technical)\b/.test(productType) ||
+    /\bprofessional gelato products\b/.test(category);
+  const technicalArchetype = [
+    'STABILIZER',
+    'EMULSIFIER',
+    'INTEGRATOR',
+    'TECHNICAL_ADDITIVE',
+  ].includes(productArchetype);
   const dosageCriticalBase = productArchetype === 'BASE_MIX' && dosage.semantics === 'FIXED';
   const isTechnicalProduct = technicalArchetype || dosageCriticalBase;
-  const isDosageDependent = technicalArchetype || dosageCriticalBase || (
-    productArchetype === 'FLAVOR_CONCENTRATE' && dosage.semantics === 'FIXED'
-  );
+  const isDosageDependent =
+    technicalArchetype ||
+    dosageCriticalBase ||
+    (productArchetype === 'FLAVOR_CONCENTRATE' && dosage.semantics === 'FIXED');
 
   const modelReasonCodes: string[] = [];
   if (productArchetype === 'UNKNOWN') modelReasonCodes.push('ARCHETYPE_UNKNOWN');
@@ -580,10 +709,15 @@ export function classifyProductSemantics(
     meaningful(input.ingredients) ? 'ingredients' : null,
   ].filter((entry): entry is string => entry !== null);
   const resolvedDimensions = [
-    productArchetype !== 'UNKNOWN', ingredientFamily !== 'unknown',
-    physicalForm !== 'UNKNOWN', intendedUsageRole !== 'NEITHER_REVIEW',
+    productArchetype !== 'UNKNOWN',
+    ingredientFamily !== 'unknown',
+    physicalForm !== 'UNKNOWN',
+    intendedUsageRole !== 'NEITHER_REVIEW',
   ].filter(Boolean).length;
-  const confidence = Math.round((0.5 + resolvedDimensions * 0.1 + (category ? 0.05 : 0) + (subcategory ? 0.05 : 0)) * 100) / 100;
+  const confidence =
+    Math.round(
+      (0.5 + resolvedDimensions * 0.1 + (category ? 0.05 : 0) + (subcategory ? 0.05 : 0)) * 100,
+    ) / 100;
   const compatibleMapperCategories = mapperCategoriesFor(ingredientFamily, productArchetype);
 
   return {
@@ -613,12 +747,15 @@ export function classifyProductSemantics(
 
 const objectValue = (value: unknown): Record<string, unknown> =>
   value && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, unknown>
+    ? (value as Record<string, unknown>)
     : {};
 const enumValue = <T extends string>(value: unknown, allowed: readonly T[]): T | null =>
-  typeof value === 'string' && allowed.includes(value as T) ? value as T : null;
+  typeof value === 'string' && allowed.includes(value as T) ? (value as T) : null;
 const stringArray = (value: unknown, pattern: RegExp): string[] | null => {
-  if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string' || !pattern.test(entry))) {
+  if (
+    !Array.isArray(value) ||
+    value.some((entry) => typeof entry !== 'string' || !pattern.test(entry))
+  ) {
     return null;
   }
   return [...new Set(value as string[])];
@@ -650,28 +787,56 @@ export function validateProductSemanticModelOutput(
   const dosageValue = dosageRaw.value;
   const reasonCodes = stringArray(raw.reasonCodes, /^[A-Z0-9_:-]{1,80}$/);
   const allowedEvidenceRefs = new Set([
-    'name', 'brand', 'manufacturer', 'manufacturerCode', 'gtin', 'productType', 'category',
-    'subcategory', 'variant', 'ingredients', 'nutrition', 'description', 'dosage',
-    'technicalParameters', 'sourceUrls',
+    'name',
+    'brand',
+    'manufacturer',
+    'manufacturerCode',
+    'gtin',
+    'productType',
+    'category',
+    'subcategory',
+    'variant',
+    'ingredients',
+    'nutrition',
+    'description',
+    'dosage',
+    'technicalParameters',
+    'sourceUrls',
   ]);
   const evidenceRefs = stringArray(raw.evidenceRefs, /^[A-Za-z][A-Za-z0-9]*$/);
   const mapperCategoryPattern = /^[a-z0-9_ -]{1,80}$/i;
   const compatible = stringArray(raw.compatibleMapperCategories, mapperCategoryPattern);
   const forbidden = stringArray(raw.forbiddenMapperCategories, mapperCategoryPattern);
   if (
-    !productArchetype || !ingredientFamily || !physicalForm || !intendedUsageRole ||
-    !flavorDomain || !dosageSemantics || !dosageUnit || !dosageBasisValue ||
-    typeof raw.professional !== 'boolean' || typeof raw.technical !== 'boolean' ||
-    typeof raw.dosageDependent !== 'boolean' || typeof raw.confidence !== 'number' ||
-    !Number.isFinite(raw.confidence) || raw.confidence < 0 || raw.confidence > 1 ||
-    !reasonCodes || !evidenceRefs || evidenceRefs.some((ref) => {
+    !productArchetype ||
+    !ingredientFamily ||
+    !physicalForm ||
+    !intendedUsageRole ||
+    !flavorDomain ||
+    !dosageSemantics ||
+    !dosageUnit ||
+    !dosageBasisValue ||
+    typeof raw.professional !== 'boolean' ||
+    typeof raw.technical !== 'boolean' ||
+    typeof raw.dosageDependent !== 'boolean' ||
+    typeof raw.confidence !== 'number' ||
+    !Number.isFinite(raw.confidence) ||
+    raw.confidence < 0 ||
+    raw.confidence > 1 ||
+    !reasonCodes ||
+    !evidenceRefs ||
+    evidenceRefs.some((ref) => {
       if (!allowedEvidenceRefs.has(ref)) return true;
       if (ref === 'sourceUrls') return evidence.sourceUrls.length === 0;
-      return meaningful(evidence[ref as keyof Omit<ProductSemanticEvidence, 'sourceUrls'>]) === null;
+      return (
+        meaningful(evidence[ref as keyof Omit<ProductSemanticEvidence, 'sourceUrls'>]) === null
+      );
     }) ||
-    !compatible || !forbidden ||
+    !compatible ||
+    !forbidden ||
     !(dosageValue === null || (typeof dosageValue === 'number' && Number.isFinite(dosageValue)))
-  ) return null;
+  )
+    return null;
 
   // A numeric dosage must already exist in the exact parser and be byte-value
   // equivalent. The classifier interprets a basis; it never creates a dose.
@@ -680,28 +845,33 @@ export function validateProductSemanticModelOutput(
   if (base.dosage.unit !== 'UNKNOWN' && dosageUnit !== base.dosage.unit) return null;
   if (base.dosage.semantics !== 'UNKNOWN' && dosageSemantics !== base.dosage.semantics) return null;
 
-  const finalArchetype = base.productArchetype === 'UNKNOWN' ? productArchetype : base.productArchetype;
-  const finalFamily = base.ingredientFamily === 'unknown' ? ingredientFamily : base.ingredientFamily;
+  const finalArchetype =
+    base.productArchetype === 'UNKNOWN' ? productArchetype : base.productArchetype;
+  const finalFamily =
+    base.ingredientFamily === 'unknown' ? ingredientFamily : base.ingredientFamily;
   const finalForm = base.physicalForm === 'UNKNOWN' ? physicalForm : base.physicalForm;
-  const finalRole = base.intendedUsageRole === 'NEITHER_REVIEW'
-    ? intendedUsageRole
-    : base.intendedUsageRole;
+  const finalRole =
+    base.intendedUsageRole === 'NEITHER_REVIEW' ? intendedUsageRole : base.intendedUsageRole;
   const finalFlavor = base.flavorDomain === 'UNKNOWN' ? flavorDomain : base.flavorDomain;
   const technicalArchetype = [
-    'STABILIZER', 'EMULSIFIER', 'INTEGRATOR', 'TECHNICAL_ADDITIVE',
+    'STABILIZER',
+    'EMULSIFIER',
+    'INTEGRATOR',
+    'TECHNICAL_ADDITIVE',
   ].includes(finalArchetype);
   const exactTechnicalEvidence = evidenceRefs.some((ref) =>
     ['category', 'subcategory', 'description', 'technicalParameters', 'dosage'].includes(ref),
   );
-  const modelTechnical = raw.technical === true && exactTechnicalEvidence && (
-    technicalArchetype ||
-    (finalArchetype === 'BASE_MIX' && base.dosage.semantics === 'FIXED') ||
-    (finalArchetype === 'FLAVOR_CONCENTRATE' && base.dosage.semantics === 'FIXED')
-  );
+  const modelTechnical =
+    raw.technical === true &&
+    exactTechnicalEvidence &&
+    (technicalArchetype ||
+      (finalArchetype === 'BASE_MIX' && base.dosage.semantics === 'FIXED') ||
+      (finalArchetype === 'FLAVOR_CONCENTRATE' && base.dosage.semantics === 'FIXED'));
   const isTechnicalProduct = base.isTechnicalProduct || modelTechnical;
-  const isDosageDependent = base.isDosageDependent || (
-    raw.dosageDependent === true && exactTechnicalEvidence && base.dosage.semantics === 'FIXED'
-  );
+  const isDosageDependent =
+    base.isDosageDependent ||
+    (raw.dosageDependent === true && exactTechnicalEvidence && base.dosage.semantics === 'FIXED');
   const dosage: ProductDosageInterpretation = {
     ...base.dosage,
     basis: base.dosage.basis === 'UNKNOWN' ? dosageBasisValue : base.dosage.basis,
@@ -740,9 +910,9 @@ export function validateProductSemanticModelOutput(
 const wetForms = new Set<ProductPhysicalForm>(['PASTE', 'PUREE', 'LIQUID', 'SAUCE', 'COATING']);
 const dryForms = new Set<ProductPhysicalForm>(['DRY', 'POWDER', 'SOLID']);
 const formContradiction = (a: ProductPhysicalForm, b: ProductPhysicalForm): boolean =>
-  a !== 'UNKNOWN' && b !== 'UNKNOWN' && (
-    (wetForms.has(a) && dryForms.has(b)) || (dryForms.has(a) && wetForms.has(b))
-  );
+  a !== 'UNKNOWN' &&
+  b !== 'UNKNOWN' &&
+  ((wetForms.has(a) && dryForms.has(b)) || (dryForms.has(a) && wetForms.has(b)));
 
 const compatibleFamilyGroups: readonly (readonly ProductSemanticFamily[])[] = [
   ['dairy_liquid', 'dairy_protein'],
@@ -752,7 +922,9 @@ const compatibleFamilyGroups: readonly (readonly ProductSemanticFamily[])[] = [
   ['chocolate', 'cocoa_butter'],
 ];
 const familyCompatible = (a: ProductSemanticFamily, b: ProductSemanticFamily): boolean =>
-  a === 'unknown' || b === 'unknown' || a === b ||
+  a === 'unknown' ||
+  b === 'unknown' ||
+  a === b ||
   compatibleFamilyGroups.some((group) => group.includes(a) && group.includes(b));
 
 const flavorContradiction = (a: ProductFlavorDomain, b: ProductFlavorDomain): boolean => {
@@ -767,12 +939,8 @@ const flavorContradiction = (a: ProductFlavorDomain, b: ProductFlavorDomain): bo
   return hardGroups.some((group) => group.includes(a) && group.includes(b));
 };
 
-const roleContradiction = (
-  a: ProductIntendedUsageRole,
-  b: ProductIntendedUsageRole,
-): boolean =>
-  (a === 'BASE_ONLY' && b === 'TOPPING_ONLY') ||
-  (a === 'TOPPING_ONLY' && b === 'BASE_ONLY');
+const roleContradiction = (a: ProductIntendedUsageRole, b: ProductIntendedUsageRole): boolean =>
+  (a === 'BASE_ONLY' && b === 'TOPPING_ONLY') || (a === 'TOPPING_ONLY' && b === 'BASE_ONLY');
 
 /** Generic semantic gate used by all Mapper tiers. No product-ID exceptions exist. */
 export function evaluateMapperSemanticCompatibility(
@@ -811,13 +979,17 @@ export function evaluateMapperSemanticCompatibility(
   }
   const category = normalized(candidate.category).replace(/\s+/g, '_');
   if (
-    product.compatibleMapperCategories.length > 0 && category &&
-    !product.compatibleMapperCategories.some((allowed) => category === allowed || category.startsWith(`${allowed}_`))
+    product.compatibleMapperCategories.length > 0 &&
+    category &&
+    !product.compatibleMapperCategories.some(
+      (allowed) => category === allowed || category.startsWith(`${allowed}_`),
+    )
   ) {
     reasonCodes.push('SEMANTIC_CATEGORY_CONTRADICTION');
   }
   if (
-    category && product.forbiddenMapperCategories.some(
+    category &&
+    product.forbiddenMapperCategories.some(
       (forbidden) => category === forbidden || category.startsWith(`${forbidden}_`),
     )
   ) {

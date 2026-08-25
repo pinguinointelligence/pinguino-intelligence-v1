@@ -48,7 +48,7 @@ describe('Product Recognition V2 server boundary', () => {
     );
     expect(catalogSubmit).toContain('recognitionEvidence: trustedEvidence.recognitionEvidence');
     expect(catalogSubmit).toContain('mergeRecognitionFact(field, fact.value, factSourceUrl)');
-    expect(catalogSubmit).toContain('origin: \'PM\'');
+    expect(catalogSubmit).toContain("origin: 'PM'");
     expect(catalogSubmit).toContain('recognitionEvidence: proposal.recognitionEvidence');
   });
 
@@ -61,6 +61,8 @@ describe('Product Recognition V2 server boundary', () => {
   });
 
   it('does not mutate Mapper data', () => {
-    expect(migration).not.toMatch(/(?:insert|update|delete)\s+(?:into\s+|from\s+)?public\.mapper_basement/i);
+    expect(migration).not.toMatch(
+      /(?:insert|update|delete)\s+(?:into\s+|from\s+)?public\.mapper_basement/i,
+    );
   });
 });

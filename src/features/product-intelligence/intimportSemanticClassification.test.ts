@@ -5,7 +5,9 @@ import { runIntimportSemanticClassification } from './intimportSemanticClassific
 
 const quote = (value: string) => `"${value.replace(/"/g, '""')}"`;
 const candidate = (name: string) => {
-  const row = Object.fromEntries(INTIMPORT_COLUMNS.map((column) => [column, 'not_found'])) as Record<IntimportColumn, string>;
+  const row = Object.fromEntries(
+    INTIMPORT_COLUMNS.map((column) => [column, 'not_found']),
+  ) as Record<IntimportColumn, string>;
   Object.assign(row, {
     'Product ID': `PL-${name}`,
     'Country Code': 'PL',
@@ -14,7 +16,10 @@ const candidate = (name: string) => {
     'Net Quantity Value': '1',
     'Net Quantity Unit': 'kg',
   });
-  const csv = [INTIMPORT_COLUMNS.map(quote).join(','), INTIMPORT_COLUMNS.map((column) => quote(row[column])).join(',')].join('\n');
+  const csv = [
+    INTIMPORT_COLUMNS.map(quote).join(','),
+    INTIMPORT_COLUMNS.map((column) => quote(row[column])).join(','),
+  ].join('\n');
   return parseINTIMPORT(csv).candidates[0]!;
 };
 

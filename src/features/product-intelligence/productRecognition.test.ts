@@ -13,9 +13,7 @@ import {
   type MapperKnowledgeRow,
 } from './mapperValueInference';
 
-const evidence = (
-  overrides: Partial<ProductSemanticEvidence> = {},
-): ProductSemanticEvidence => ({
+const evidence = (overrides: Partial<ProductSemanticEvidence> = {}): ProductSemanticEvidence => ({
   name: 'Produkt testowy',
   brand: 'Marka',
   manufacturer: 'Producent',
@@ -157,14 +155,24 @@ describe('Product Recognition V2 — deterministic semantic authority', () => {
 
   it('rejects a model result that invents a dosage value', () => {
     const exact = evidence({ name: 'Niejasny produkt', dosage: null });
-    expect(validateProductSemanticModelOutput(exact, {
-      productArchetype: 'BASE_MIX', ingredientFamily: 'base_mix', physicalForm: 'POWDER',
-      intendedUsageRole: 'BASE_ONLY', flavorDomain: 'NEUTRAL', professional: true,
-      technical: true, dosageDependent: true,
-      dosage: { semantics: 'FIXED', value: 50, unit: 'G_PER_L', basis: 'MILK' },
-      compatibleMapperCategories: ['base_mix'], forbiddenMapperCategories: ['alcohol'],
-      confidence: 0.9, reasonCodes: ['BASE_EVIDENCE'], evidenceRefs: ['name'],
-    })).toBeNull();
+    expect(
+      validateProductSemanticModelOutput(exact, {
+        productArchetype: 'BASE_MIX',
+        ingredientFamily: 'base_mix',
+        physicalForm: 'POWDER',
+        intendedUsageRole: 'BASE_ONLY',
+        flavorDomain: 'NEUTRAL',
+        professional: true,
+        technical: true,
+        dosageDependent: true,
+        dosage: { semantics: 'FIXED', value: 50, unit: 'G_PER_L', basis: 'MILK' },
+        compatibleMapperCategories: ['base_mix'],
+        forbiddenMapperCategories: ['alcohol'],
+        confidence: 0.9,
+        reasonCodes: ['BASE_EVIDENCE'],
+        evidenceRefs: ['name'],
+      }),
+    ).toBeNull();
   });
 
   it('fingerprints the same bounded exact evidence at browser and server boundaries', () => {
@@ -178,14 +186,24 @@ describe('Product Recognition V2 — deterministic semantic authority', () => {
 
   it('rejects a model evidence reference when that exact field is absent', () => {
     const exact = evidence({ name: 'Niejasny produkt' });
-    expect(validateProductSemanticModelOutput(exact, {
-      productArchetype: 'UNKNOWN', ingredientFamily: 'unknown', physicalForm: 'UNKNOWN',
-      intendedUsageRole: 'NEITHER_REVIEW', flavorDomain: 'UNKNOWN', professional: false,
-      technical: false, dosageDependent: false,
-      dosage: { semantics: 'NONE', value: null, unit: 'UNKNOWN', basis: 'UNKNOWN' },
-      compatibleMapperCategories: [], forbiddenMapperCategories: [], confidence: 0.2,
-      reasonCodes: ['INSUFFICIENT_EVIDENCE'], evidenceRefs: ['dosage'],
-    })).toBeNull();
+    expect(
+      validateProductSemanticModelOutput(exact, {
+        productArchetype: 'UNKNOWN',
+        ingredientFamily: 'unknown',
+        physicalForm: 'UNKNOWN',
+        intendedUsageRole: 'NEITHER_REVIEW',
+        flavorDomain: 'UNKNOWN',
+        professional: false,
+        technical: false,
+        dosageDependent: false,
+        dosage: { semantics: 'NONE', value: null, unit: 'UNKNOWN', basis: 'UNKNOWN' },
+        compatibleMapperCategories: [],
+        forbiddenMapperCategories: [],
+        confidence: 0.2,
+        reasonCodes: ['INSUFFICIENT_EVIDENCE'],
+        evidenceRefs: ['dosage'],
+      }),
+    ).toBeNull();
   });
 });
 
@@ -265,12 +283,18 @@ describe('Product Recognition V2 — Mapper semantic hard contradictions', () =>
     );
     for (const candidate of [
       {
-        ingredientId: 'paste', name: 'Earl Grey flavour paste',
-        category: 'flavor_paste', subcategory: 'flavored_ice_cream_paste', brand: 'X',
+        ingredientId: 'paste',
+        name: 'Earl Grey flavour paste',
+        category: 'flavor_paste',
+        subcategory: 'flavored_ice_cream_paste',
+        brand: 'X',
       },
       {
-        ingredientId: 'liquid', name: 'Earl Grey liquid concentrate',
-        category: 'flavor_concentrate', subcategory: 'liquid', brand: 'X',
+        ingredientId: 'liquid',
+        name: 'Earl Grey liquid concentrate',
+        category: 'flavor_concentrate',
+        subcategory: 'liquid',
+        brand: 'X',
       },
     ]) {
       const decision = evaluateMapperSemanticCompatibility(product, candidate);
@@ -313,39 +337,61 @@ describe('Product Recognition V2 — Mapper semantic hard contradictions', () =>
       'alcoholic_base_mix',
     );
     const knowledge = buildMapperKnowledge([badBaitz, badBase50], 'recognition-test');
-    const baitzSemantic = classifyProductSemantics(evidence({
-      name: 'Baitz Baton choco cocos',
-      brand: 'Baitz',
-      category: 'Bakery & sweets',
-      subcategory: 'Słodycze',
-    }));
-    const baitz = findProfileMatch({
-      name: 'Baitz Baton choco cocos', brand: 'Baitz', category: 'Bakery & sweets',
-      subcategory: 'Słodycze', knownMacros: { fat_percent: 33, total_sugars_percent: 41 },
-      semantic: baitzSemantic,
-    }, knowledge);
+    const baitzSemantic = classifyProductSemantics(
+      evidence({
+        name: 'Baitz Baton choco cocos',
+        brand: 'Baitz',
+        category: 'Bakery & sweets',
+        subcategory: 'Słodycze',
+      }),
+    );
+    const baitz = findProfileMatch(
+      {
+        name: 'Baitz Baton choco cocos',
+        brand: 'Baitz',
+        category: 'Bakery & sweets',
+        subcategory: 'Słodycze',
+        knownMacros: { fat_percent: 33, total_sugars_percent: 41 },
+        semantic: baitzSemantic,
+      },
+      knowledge,
+    );
     expect(baitz.confidence).toBeLessThan(0.85);
     expect(baitz.candidatesAfterFilter).not.toContain('PI-ING-000091');
-    expect(baitz.rejectedCandidates).toEqual(expect.arrayContaining([
-      expect.objectContaining({ ingredientId: 'PI-ING-000091' }),
-    ]));
+    expect(baitz.rejectedCandidates).toEqual(
+      expect.arrayContaining([expect.objectContaining({ ingredientId: 'PI-ING-000091' })]),
+    );
 
-    const base50Semantic = classifyProductSemantics(evidence({
-      productType: 'professional', name: 'BASE 50', variant: 'Mleczno śmietankowy',
-      category: 'Professional gelato products', subcategory: 'Niskie dozowanie',
-      dosage: '50 g/L', description: 'Baza mleczno śmietankowa.',
-    }));
-    const base50 = findProfileMatch({
-      name: 'BASE 50', variant: 'Mleczno śmietankowy', category: 'Professional gelato products',
-      subcategory: 'Niskie dozowanie', knownMacros: { fat_percent: 33, total_sugars_percent: 41 },
-      semantic: base50Semantic,
-    }, knowledge);
-    expect(base50.candidatesAfterFilter).not.toContain('PI-ING-000048');
-    expect(base50.rejectedCandidates).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        ingredientId: 'PI-ING-000048',
-        reasonCodes: expect.arrayContaining(['SEMANTIC_FLAVOR_DOMAIN_CONTRADICTION']),
+    const base50Semantic = classifyProductSemantics(
+      evidence({
+        productType: 'professional',
+        name: 'BASE 50',
+        variant: 'Mleczno śmietankowy',
+        category: 'Professional gelato products',
+        subcategory: 'Niskie dozowanie',
+        dosage: '50 g/L',
+        description: 'Baza mleczno śmietankowa.',
       }),
-    ]));
+    );
+    const base50 = findProfileMatch(
+      {
+        name: 'BASE 50',
+        variant: 'Mleczno śmietankowy',
+        category: 'Professional gelato products',
+        subcategory: 'Niskie dozowanie',
+        knownMacros: { fat_percent: 33, total_sugars_percent: 41 },
+        semantic: base50Semantic,
+      },
+      knowledge,
+    );
+    expect(base50.candidatesAfterFilter).not.toContain('PI-ING-000048');
+    expect(base50.rejectedCandidates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          ingredientId: 'PI-ING-000048',
+          reasonCodes: expect.arrayContaining(['SEMANTIC_FLAVOR_DOMAIN_CONTRADICTION']),
+        }),
+      ]),
+    );
   });
 });

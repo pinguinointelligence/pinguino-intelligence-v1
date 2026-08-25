@@ -1,9 +1,6 @@
 /** Bounded semantic-classifier orchestration for the explicit owner enrichment action. */
 import type { IntimportProductIntelligence } from './intimportIntelligence';
-import type {
-  ProductSemanticClassification,
-  ProductSemanticEvidence,
-} from './productRecognition';
+import type { ProductSemanticClassification, ProductSemanticEvidence } from './productRecognition';
 
 export interface SemanticClassificationRequest {
   rowIndex: number;
@@ -65,10 +62,12 @@ export async function runIntimportSemanticClassification(
       modelAttempted += 1;
       const key = row.recognition.evidenceFingerprint;
       const cached = cache.get(key);
-      const request = cached ?? provider({
-        rowIndex: row.rowIndex,
-        evidence: row.recognitionEvidence,
-      });
+      const request =
+        cached ??
+        provider({
+          rowIndex: row.rowIndex,
+          evidence: row.recognitionEvidence,
+        });
       if (!cached) cache.set(key, request);
       const response = await request;
       if (response.capReached) {
@@ -81,16 +80,18 @@ export async function runIntimportSemanticClassification(
       const classification = response.classification;
       // The server result must be pinned to the exact evidence sent. Anything
       // else degrades to the deterministic REVIEW result.
-      const accepted = classification.authority === 'PRODUCT_RECOGNITION_V2' &&
+      const accepted =
+        classification.authority === 'PRODUCT_RECOGNITION_V2' &&
         classification.evidenceFingerprint === key
-        ? classification
-        : row.recognition;
+          ? classification
+          : row.recognition;
       decisions.set(row.rowIndex, accepted);
       if (
         response.evidenceReceipt &&
         accepted.classificationSource === 'SERVER_MODEL' &&
         accepted.evidenceFingerprint === key
-      ) receipts.set(row.rowIndex, response.evidenceReceipt);
+      )
+        receipts.set(row.rowIndex, response.evidenceReceipt);
     }
   });
   await Promise.all(workers);
