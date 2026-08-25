@@ -170,6 +170,28 @@ describe('WorkbenchSettingsLine deferred batch editing', () => {
     );
   });
 
+  it('changes dairy Protein to Gelato in place under the shared dairy-family authority', async () => {
+    await act(async () => useRecipeStore.getState().startNewRecipe('protein'));
+    await act(async () =>
+      root.render(
+        <WorkbenchSettingsLine
+          actualBatchG={useRecipeStore.getState().target_batch_grams}
+          compact
+        />,
+      ),
+    );
+    const before = materialVector();
+
+    await selectValue('workbench-product-type', 'gelato');
+
+    const after = useRecipeStore.getState();
+    expect(after.visibleProductType).toBe('gelato');
+    expect(after.category).toBe('milk_gelato');
+    expect(materialVector()).toEqual(before);
+    expect(after.newRecipeStarterTemplateId).toBeNull();
+    expect(host.querySelector('[role="dialog"]')).toBeNull();
+  });
+
   it('routes Gelato to a native Sorbet draft only after explicit structural confirmation', async () => {
     const source = buildRecipeInput(useRecipeStore.getState());
     useRecipeStore.getState().loadRecipeInput(source, {
@@ -200,8 +222,92 @@ describe('WorkbenchSettingsLine deferred batch editing', () => {
     expect(fresh.category).toBe('sorbet');
     expect(fresh.formulation_strategy).toBe('optimal');
     expect(fresh.savedRecipeId).toBeNull();
+    expect(fresh.newRecipeStarterTemplateId).toBe('S02');
+    expect(
+      fresh.items.map((item) => [
+        item.ingredient.canonical_ingredient_id,
+        item.planned_grams,
+      ]),
+    ).toEqual([
+      ['PI-ING-001409', 161],
+      ['PI-ING-000514', 90],
+      ['PI-ING-000494', 90],
+      ['PI-ING-000456', 55],
+      ['PI-ING-000492', 4],
+    ]);
+    expect(fresh.items.some((item) => item.ingredient.flags?.is_dairy === true)).toBe(false);
+    expect(source.category).toBe('milk_gelato');
+    expect(source.items.some((item) => /milk|cream/i.test(item.ingredient.name))).toBe(true);
+  });
+
+  it('offers an explicit native-base replacement for an edited unsaved Gelato draft', async () => {
+    const source = structuredClone(useRecipeStore.getState().items);
+    const firstLine = source[0]!;
+    useRecipeStore.getState().setPlannedGrams(firstLine.id, firstLine.planned_grams + 17);
+    await act(async () =>
+      root.render(
+        <WorkbenchSettingsLine
+          actualBatchG={useRecipeStore.getState().target_batch_grams}
+          compact
+        />,
+      ),
+    );
+
+    await selectValue('workbench-product-type', 'vegan');
+
+    expect(useRecipeStore.getState().visibleProductType).toBe('gelato');
+    expect(host.querySelector('[role="dialog"]')).not.toBeNull();
+    expect(host.textContent).toContain('Niezapisane');
+
+    await act(async () =>
+      (host.querySelector('[data-testid="confirm-new-recipe"]') as HTMLButtonElement).click(),
+    );
+
+    const fresh = useRecipeStore.getState();
+    expect(fresh.visibleProductType).toBe('vegan');
+    expect(fresh.category).toBe('vegan_gelato');
+    expect(fresh.newRecipeStarterTemplateId).toBe('vegan_neutral_minus12_final');
+    expect(fresh.formulation_strategy).toBe('optimal');
+    expect(fresh.items).not.toEqual(source);
     expect(fresh.items.some((item) => item.ingredient.flags?.is_dairy === true)).toBe(false);
   });
+
+  it.each([
+    ['gelato', 'vegan', 'vegan_gelato', 'vegan_neutral_minus12_final'],
+    ['sorbet', 'gelato', 'milk_gelato', 'milk_base_g17_minus12_v1'],
+    ['vegan', 'gelato', 'milk_gelato', 'milk_base_g17_minus12_v1'],
+  ] as const)(
+    'routes %s → %s to the destination-native base after confirmation',
+    async (sourceProfile, targetProfile, targetCategory, targetTemplate) => {
+      await act(async () => useRecipeStore.getState().startNewRecipe(sourceProfile));
+      await act(async () =>
+        root.render(
+          <WorkbenchSettingsLine
+            actualBatchG={useRecipeStore.getState().target_batch_grams}
+            compact
+          />,
+        ),
+      );
+      const sourceItems = structuredClone(useRecipeStore.getState().items);
+
+      await selectValue('workbench-product-type', targetProfile);
+
+      expect(useRecipeStore.getState().visibleProductType).toBe(sourceProfile);
+      expect(useRecipeStore.getState().items).toEqual(sourceItems);
+      expect(host.querySelector('[role="dialog"]')).not.toBeNull();
+
+      await act(async () =>
+        (host.querySelector('[data-testid="confirm-new-recipe"]') as HTMLButtonElement).click(),
+      );
+
+      const target = useRecipeStore.getState();
+      expect(target.visibleProductType).toBe(targetProfile);
+      expect(target.category).toBe(targetCategory);
+      expect(target.newRecipeStarterTemplateId).toBe(targetTemplate);
+      expect(target.formulation_strategy).toBe('optimal');
+      expect(target.items).not.toEqual(sourceItems);
+    },
+  );
 
   it('keeps engineering readiness and the large Protein result out of normal Settings', async () => {
     await act(async () => useRecipeStore.getState().startNewRecipe('vegan'));

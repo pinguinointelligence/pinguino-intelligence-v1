@@ -25,8 +25,8 @@ const STRAWBERRIES: EngineIngredient = {
 const resetStore = (visible: 'gelato' | 'sorbet') => {
   useRecipeStore.setState({
     mode: 'classic',
-    category: 'milk_gelato',
-    visibleProductType: 'gelato',
+    category: visible === 'sorbet' ? 'sorbet' : 'milk_gelato',
+    visibleProductType: visible,
     target_temperature_c: -11,
     target_batch_grams: 1000,
     machine_capacity_grams: null,
@@ -36,7 +36,6 @@ const resetStore = (visible: 'gelato' | 'sorbet') => {
     excludedIngredientIds: [],
   });
   useConstraintStudioStore.getState().resetForTests();
-  useRecipeStore.getState().setVisibleProductType(visible);
 };
 
 beforeEach(() => resetStore('gelato'));
@@ -139,35 +138,27 @@ describe('owner case B — Sorbet + Strawberry, no grams (Phase 6)', () => {
     expect(straw.planned_grams).toBeGreaterThan(300);
   });
 
-  // OWNER FINAL INTEGRATION ADDENDUM item 1 (2026-07-25) — SUPERSEDES the
-  // `fruit_gelato` / `fruit_gelato_ref_v1` expectations. The owner rule: a
-  // WATER-BASED NON-DAIRY fruit recipe is a SORBET even when it was entered
-  // under visible Gelato (there is no dairy anywhere in this draft — the dairy
-  // test reads real composition, not names). The guarantee this test protects —
-  // switching the visible type re-routes the template INSTANTLY from the
-  // current draft, with no save — is re-pinned below, plus the new rule.
-  it('switching Sorbet → Gelato keeps a non-dairy fruit draft on the SORBET science (test 4)', () => {
+  // Owner profile/base routing P0 (2026-08-25): a cross-family switch may not
+  // mutate only the profile enum/category over the old vector. The workbench
+  // confirmation route that creates the Gelato-native draft is pinned in
+  // WorkbenchSettingsLine.runtime.test.tsx.
+  it('refuses a bare Sorbet → Gelato relabel and keeps the source on Sorbet science', () => {
     resetStore('sorbet');
     useRecipeStore.getState().addIngredient(STRAWBERRIES, 0);
     useRecipeStore.getState().setVisibleProductType('gelato');
-    // no dairy anywhere ⇒ canonical family is sorbet, whatever the selector said
+    expect(useRecipeStore.getState().visibleProductType).toBe('sorbet');
     expect(useRecipeStore.getState().category).toBe('sorbet');
     useConstraintStudioStore.getState().createOptimizePreview();
     expect(useConstraintStudioStore.getState().preview?.formulation?.templateId).toBe('S01');
   });
 
-  it('adding real dairy re-routes the SAME draft to the milk family instantly (test 4b)', () => {
+  it('does not let a rejected Sorbet → Gelato switch become active after a later line edit', () => {
     resetStore('sorbet');
     useRecipeStore.getState().addIngredient(STRAWBERRIES, 350);
     useRecipeStore.getState().setVisibleProductType('gelato');
-    expect(useRecipeStore.getState().category).toBe('sorbet'); // still no dairy
     useRecipeStore.getState().addIngredient(findDemoIngredient('milk_3_5')!, 0);
-    // dairy now present ⇒ instant re-route, no save needed
-    expect(useRecipeStore.getState().category).toBe('milk_gelato');
-    useConstraintStudioStore.getState().createOptimizePreview();
-    expect(useConstraintStudioStore.getState().preview?.formulation?.templateId).toBe(
-      'milk_base_v1',
-    );
+    expect(useRecipeStore.getState().visibleProductType).toBe('sorbet');
+    expect(useRecipeStore.getState().category).toBe('sorbet');
   });
 });
 

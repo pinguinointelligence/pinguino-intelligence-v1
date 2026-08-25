@@ -33,10 +33,7 @@ import {
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { classifyProfileTransition, PRO_VISIBLE_PRODUCT_TYPES } from './profileCompatibility';
 import { NewRecipeConfirmationDialog } from '@/features/recipes/NewRecipeConfirmationDialog';
-import {
-  isUntouchedNewRecipeStarter,
-  startNewProRecipe,
-} from '@/pages/destinations/startNewProRecipe';
+import { startNewProRecipe } from '@/pages/destinations/startNewProRecipe';
 
 const g = copy.studio.goal;
 const servingCopy = copy.proMachine.serving;
@@ -207,15 +204,6 @@ export function WorkbenchSettingsLine({
       return;
     }
     if (decision.kind === 'new_base_required') {
-      const replaceableStarter =
-        store.newRecipeStarterKey !== null && isUntouchedNewRecipeStarter();
-      const savedSourceSafe = store.savedRecipeId !== null && !store.dirty;
-      if (!replaceableStarter && !savedSourceSafe) {
-        setProfileNotice(
-          'Ta zmiana wymaga innej bazy. Najpierw zapisz bieżącą recepturę, a następnie utwórz nową wersję w wybranym profilu.',
-        );
-        return;
-      }
       setProfileNotice(null);
       setPendingBaseProfile(next);
       return;
@@ -478,7 +466,9 @@ export function WorkbenchSettingsLine({
         description={
           pendingBaseProfile === null
             ? null
-            : `${g.productTypes[pendingBaseProfile]} korzysta z innej bazy. Bieżąca zapisana receptura pozostanie bez zmian.`
+            : store.savedRecipeId !== null
+              ? `${g.productTypes[pendingBaseProfile]} korzysta z innej bazy. Bieżąca zapisana receptura pozostanie bez zmian.${store.dirty ? ' Niezapisane zmiany bieżącej wersji nie zostaną przeniesione.' : ''}`
+              : `${g.productTypes[pendingBaseProfile]} korzysta z innej bazy. Niezapisane składniki bieżącego draftu zostaną zastąpione natywną bazą po potwierdzeniu.`
         }
         confirmLabel={
           pendingBaseProfile === null

@@ -7,7 +7,7 @@ import { act } from 'react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { calculateRecipe, proposeCorrections, type RecipeInput } from '@/engine';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
-import { recipeContext } from '@/features/studio/buildRecipeInput';
+import { buildRecipeInput, recipeContext } from '@/features/studio/buildRecipeInput';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
 import type { CatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
 import { calculateFinalProduct } from '@/features/recipe-composition/finalProduct';
@@ -351,6 +351,38 @@ describe('preflight and recipe-specific persistence', () => {
       directionIntents: { ...DEFAULT_DIRECTION_TARGETS, sweetness: -2, softness: 2 },
       ingredientUxByLineId: { [input.items[0]!.id]: { role: 'addition', required: true } },
     });
+  });
+
+  it('does not let mismatched saved profile metadata relabel a Gelato ingredient base', () => {
+    const gelato = starterMilkBase();
+    const mismatched = attachRecipeProfileMetadata(gelato, {
+      ...settings(),
+      visibleProductType: 'sorbet',
+    });
+
+    useRecipeStore.getState().loadRecipeInput(mismatched, {
+      savedId: 'legacy-mismatched-profile',
+      savedName: 'Legacy Gelato',
+      versionNumber: 2,
+    });
+
+    const opened = useRecipeStore.getState();
+    expect(opened.visibleProductType).toBe('gelato');
+    expect(opened.category).toBe('milk_gelato');
+    expect(opened.items).toEqual(gelato.items);
+  });
+
+  it('does not let a legacy Gelato account default relabel an unsaved Sorbet input', () => {
+    useRecipeStore.getState().startNewRecipe('sorbet');
+    const sorbet = buildRecipeInput(useRecipeStore.getState());
+    useRecipeProfileStore.getState().saveDefaults('local-device', settings());
+
+    useRecipeStore.getState().loadRecipeInput(sorbet);
+
+    const opened = useRecipeStore.getState();
+    expect(opened.visibleProductType).toBe('sorbet');
+    expect(opened.category).toBe('sorbet');
+    expect(opened.items).toEqual(sorbet.items);
   });
 
   it('preserves legacy five-detent intent when old metadata stored ±2 in directionTargets', () => {

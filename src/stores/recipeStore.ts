@@ -12,6 +12,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { DEFAULT_PRESET, type DemoPreset, type PresetId } from '@/data/demoPresets';
 import {
+  canonicalInternalCategory,
   gelatoInternalCategory,
   internalCategoryFor,
   visibleTypeOf,
@@ -87,6 +88,7 @@ import {
   evaluateRecipeConstraintAuthority,
 } from '@/features/recipe-constraints';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
+import { classifyProfileTransition } from '@/features/pro-workbench/profileCompatibility';
 
 type FlavorIntensity = NonNullable<RecipeGoals['flavor_intensity']>;
 
@@ -692,6 +694,55 @@ export function recipePersistPartialize(state: RecipeState) {
   };
 }
 
+const persistedStarterProfile = (value: unknown): VisibleProductType | null => {
+  if (!value || typeof value !== 'object') return null;
+  const visible = (value as Partial<NewRecipeStarterKey>).visibleProductType;
+  return visible === 'gelato' ||
+    visible === 'sorbet' ||
+    visible === 'vegan' ||
+    visible === 'protein'
+    ? visible
+    : null;
+};
+
+/**
+ * Rehydration guard for drafts written by older profile-only routing.
+ *
+ * An explicit starter key is stronger base provenance than a later bare
+ * profile enum. If an old build persisted “Sorbet” over an untouched/edited
+ * Gelato starter without replacing its ingredients, restore the starter's
+ * actual family. For non-starter recipes, the persisted Engine category is the
+ * source of truth and the visible projection may not contradict it.
+ */
+export function mergePersistedRecipeState(
+  persistedState: unknown,
+  currentState: RecipeState,
+): RecipeState {
+  const persisted =
+    persistedState && typeof persistedState === 'object'
+      ? (persistedState as Partial<RecipeState>)
+      : {};
+  const merged = { ...currentState, ...persisted };
+  const starterProfile =
+    typeof merged.newRecipeStarterTemplateId === 'string'
+      ? persistedStarterProfile(merged.newRecipeStarterKey)
+      : null;
+  if (starterProfile !== null) {
+    return {
+      ...merged,
+      visibleProductType: starterProfile,
+      category: internalCategoryFor(starterProfile, merged.items, merged.category),
+    };
+  }
+  const categoryProfile = visibleTypeOf(merged.category);
+  const visibleDerivesPersistedCategory =
+    internalCategoryFor(merged.visibleProductType, merged.items, merged.category) ===
+    merged.category;
+  return visibleDerivesPersistedCategory
+    ? merged
+    : { ...merged, visibleProductType: categoryProfile };
+}
+
 export const useRecipeStore = create<RecipeState>()(
   persist(
     (set, get) => ({
@@ -736,17 +787,33 @@ export const useRecipeStore = create<RecipeState>()(
           draftRevision: state.draftRevision + 1,
         })),
       setVisibleProductType: (visible) =>
-        set((state) => ({
-          visibleProductType: visible,
-          // The internal Engine policy DERIVES from the visible type + real ingredients;
-          // Every visible Pro family resolves through its native runtime policy.
-          category: internalCategoryFor(visible, state.items, state.category),
-          productBehaviorSnapshots: requireProductBehaviorRevalidation(
-            state.productBehaviorSnapshots,
-          ),
-          dirty: true,
-          draftRevision: state.draftRevision + 1,
-        })),
+        set((state) => {
+          if (visible === state.visibleProductType) return {};
+          const decision = classifyProfileTransition(
+            buildRecipeInput(state),
+            visible,
+            state.visibleProductType,
+          );
+          // A bare enum/category write has no authority to replace a formulation
+          // family. Cross-family changes must go through the confirmed native
+          // starter route.
+          if (!decision.supported || decision.kind === 'new_base_required') return {};
+          return {
+            visibleProductType: visible,
+            category: decision.nextCategory,
+            productBehaviorSnapshots: requireProductBehaviorRevalidation(
+              state.productBehaviorSnapshots,
+            ),
+            // The vector is intentionally preserved for a proved same-family
+            // transition, but it is no longer the untouched canonical starter
+            // named by the previous profile's template.
+            newRecipeStarterTemplateId: null,
+            newRecipeStarterKey: null,
+            newRecipeStarterMaterialFingerprint: null,
+            dirty: true,
+            draftRevision: state.draftRevision + 1,
+          };
+        }),
       setServingMode: (servingModeId, temperatureC) =>
         set((state) => ({
           servingModeId,
@@ -1700,7 +1767,20 @@ export const useRecipeStore = create<RecipeState>()(
           ? null
           : (useRecipeProfileStore.getState().defaultsFor(productDefaultsKey(visibleForDefaults)) ??
             useRecipeProfileStore.getState().defaultsFor(profileOwnerKey()));
-        const profile = metadata ?? defaults;
+        // Saved Engine category + ingredients are the formulation source of
+        // truth. Legacy UI metadata may carry a profile enum written by an old
+        // profile-only switch; never let it relabel that vector on reopen.
+        const runtimeInputCategory = canonicalInternalCategory(input.category, input.items);
+        const matchesInputBase = (candidate: ProfileSettingsSnapshot | null): boolean =>
+          candidate !== null &&
+          internalCategoryFor(
+            candidate.visibleProductType,
+            input.items,
+            runtimeInputCategory,
+          ) === runtimeInputCategory;
+        const compatibleMetadata = matchesInputBase(metadata) ? metadata : null;
+        const compatibleDefaults = matchesInputBase(defaults) ? defaults : null;
+        const profile = compatibleMetadata ?? compatibleDefaults;
         const healedItems = input.items.map((item) => {
           const normalized = normalizeRecipeItemIdentity({ ...item });
           return normalized.lock_type === 'grams' && normalized.planned_grams === 0
@@ -2087,6 +2167,10 @@ export const useRecipeStore = create<RecipeState>()(
           );
       },
     }),
-    { name: 'pinguino-recipe', partialize: recipePersistPartialize },
+    {
+      name: 'pinguino-recipe',
+      partialize: recipePersistPartialize,
+      merge: mergePersistedRecipeState,
+    },
   ),
 );

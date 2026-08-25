@@ -70,13 +70,13 @@ describe('visible + Nowa receptura action', () => {
   });
 
   it.each([
-    ['gelato', 'milk_gelato', 1_000],
-    ['sorbet', 'sorbet', 400],
-    ['vegan', 'vegan_gelato', 1_000],
-    ['protein', 'protein_gelato', 1_000],
+    ['gelato', 'milk_gelato', 'milk_base_g17_minus12_v1', 1_000],
+    ['sorbet', 'sorbet', 'S02', 400],
+    ['vegan', 'vegan_gelato', 'vegan_neutral_minus12_final', 1_000],
+    ['protein', 'protein_gelato', 'protein_dairy_neutral_minus12_v1', 1_000],
   ] as const)(
     'loads the canonical neutral %s starter without inventing a flavour',
-    (visibleProductType, category, expectedMass) => {
+    (visibleProductType, category, templateId, expectedMass) => {
       useRecipeStore.setState({ visibleProductType, category });
 
       startNewProRecipe(visibleProductType);
@@ -84,7 +84,10 @@ describe('visible + Nowa receptura action', () => {
       const fresh = useRecipeStore.getState();
       expect(fresh.visibleProductType).toBe(visibleProductType);
       expect(fresh.category).toBe(category);
+      expect(fresh.newRecipeStarterTemplateId).toBe(templateId);
+      expect(fresh.newRecipeStarterKey?.visibleProductType).toBe(visibleProductType);
       expect(fresh.target_temperature_c).toBe(-12);
+      expect(fresh.formulation_strategy).toBe('optimal');
       expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(false);
       expect(fresh.items.some((item) => item.lock_type === 'main')).toBe(false);
       expect(fresh.items.reduce((sum, item) => sum + item.planned_grams, 0)).toBeCloseTo(
@@ -501,7 +504,7 @@ describe('visible + Nowa receptura action', () => {
     expect(useRecipeStore.getState().visibleProductType).toBe('vegan');
   });
 
-  it('never injects a starter into an opened saved recipe during a profile switch', () => {
+  it('never relabels an opened saved recipe when its target profile needs another base', () => {
     const before = structuredClone(useRecipeStore.getState().items);
     useRecipeStore.getState().loadRecipeInput(
       {
@@ -515,8 +518,10 @@ describe('visible + Nowa receptura action', () => {
       { savedId: 'saved-existing', savedName: 'Existing', versionNumber: 2 },
     );
 
-    expect(requestNewRecipeProductTypeChange('sorbet')).toBe('recipe_profile_changed');
+    expect(requestNewRecipeProductTypeChange('sorbet')).toBe('confirmation_required');
     expect(useRecipeStore.getState().newRecipeStarterTemplateId).toBeNull();
     expect(useRecipeStore.getState().items).toEqual(before);
+    expect(useRecipeStore.getState().visibleProductType).toBe('gelato');
+    expect(useRecipeStore.getState().category).toBe('milk_gelato');
   });
 });

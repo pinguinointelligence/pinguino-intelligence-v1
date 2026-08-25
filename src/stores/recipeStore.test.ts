@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { recipePersistPartialize, useRecipeStore, type RecipeState } from './recipeStore';
+import {
+  mergePersistedRecipeState,
+  recipePersistPartialize,
+  useRecipeStore,
+  type RecipeState,
+} from './recipeStore';
 import { findDemoIngredient } from '@/data/demoIngredients';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import {
@@ -81,6 +86,52 @@ describe('recipePersistPartialize', () => {
     expect('productionThermalMode' in recipePersistPartialize(useRecipeStore.getState())).toBe(
       false,
     );
+  });
+});
+
+describe('profile/base routing authority', () => {
+  it('heals an old persisted enum-only switch from the starter base authority', () => {
+    useRecipeStore.getState().startNewRecipe('gelato');
+    const current = useRecipeStore.getState();
+    const gelatoItems = structuredClone(current.items);
+    const persisted = {
+      ...recipePersistPartialize(current),
+      visibleProductType: 'sorbet' as const,
+      category: 'sorbet' as const,
+    };
+
+    const rehydrated = mergePersistedRecipeState(persisted, current);
+
+    expect(rehydrated.visibleProductType).toBe('gelato');
+    expect(rehydrated.category).toBe('milk_gelato');
+    expect(rehydrated.items).toEqual(gelatoItems);
+  });
+
+  it('refuses a direct cross-family enum write and preserves the exact Gelato vector', () => {
+    useRecipeStore.getState().startNewRecipe('gelato');
+    const before = structuredClone(useRecipeStore.getState().items);
+
+    useRecipeStore.getState().setVisibleProductType('sorbet');
+
+    const after = useRecipeStore.getState();
+    expect(after.visibleProductType).toBe('gelato');
+    expect(after.category).toBe('milk_gelato');
+    expect(after.items).toEqual(before);
+  });
+
+  it('permits the proved dairy Gelato → Protein route without stale starter identity', () => {
+    useRecipeStore.getState().startNewRecipe('gelato');
+    const before = structuredClone(useRecipeStore.getState().items);
+
+    useRecipeStore.getState().setVisibleProductType('protein');
+
+    const after = useRecipeStore.getState();
+    expect(after.visibleProductType).toBe('protein');
+    expect(after.category).toBe('protein_gelato');
+    expect(after.items).toEqual(before);
+    expect(after.newRecipeStarterTemplateId).toBeNull();
+    expect(after.newRecipeStarterKey).toBeNull();
+    expect(after.newRecipeStarterMaterialFingerprint).toBeNull();
   });
 });
 

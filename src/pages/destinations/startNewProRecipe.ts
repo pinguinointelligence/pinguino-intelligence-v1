@@ -5,6 +5,8 @@ import { useIngredientTableUxStore } from '@/features/ingredient-builder/ingredi
 import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
 import type { VisibleProductType } from '@/features/studio/productType';
 import type { FormulationStrategy } from '@/features/formulation-strategy/strategy';
+import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
+import { classifyProfileTransition } from '@/features/pro-workbench/profileCompatibility';
 import {
   isNewRecipeServingModeId,
   newRecipeStarterMaterialFingerprint,
@@ -177,14 +179,23 @@ export type NewRecipeProductTypeChangeResult =
 
 /**
  * Product switches may replace only an explicit new-draft scaffold. Opened
- * saved/history/library recipes keep their exact lines and use the existing
- * profile-only transition.
+ * saved/history/library recipes keep their exact lines; an in-place transition
+ * is allowed only when the shared profile router proves the same formulation
+ * family. Every cross-family request remains unchanged pending confirmation.
  */
 export function requestNewRecipeProductTypeChange(
   next: VisibleProductType,
 ): NewRecipeProductTypeChangeResult {
   const recipe = useRecipeStore.getState();
   if (recipe.newRecipeStarterKey === null) {
+    const decision = classifyProfileTransition(
+      buildRecipeInput(recipe),
+      next,
+      recipe.visibleProductType,
+    );
+    if (!decision.supported || decision.kind === 'new_base_required') {
+      return 'confirmation_required';
+    }
     recipe.setVisibleProductType(next);
     return 'recipe_profile_changed';
   }
