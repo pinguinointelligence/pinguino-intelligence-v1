@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { buttonClasses } from '@/components/ui/buttonStyles';
+import { DialogShell } from '@/components/ui/DialogShell';
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import { communityCopy } from '@/copy/community';
 import { slugifyTitle } from '@/features/community/domain/creatorHandle';
 import { publicationPath } from '@/features/community/domain/shareUrls';
 import { publishRecipe } from '@/services/community';
+import { CreatorProfileForm } from './CreatorProfileForm';
 
 /**
  * „Opublikuj w Community" (§7).
@@ -23,6 +25,7 @@ export function PublishToCommunityDialog({
   versionNumber,
   defaultTitle,
   hasCreatorProfile,
+  completionContext = false,
   onPublished,
   onClose,
 }: {
@@ -30,6 +33,7 @@ export function PublishToCommunityDialog({
   versionNumber: number;
   defaultTitle: string;
   hasCreatorProfile: boolean;
+  completionContext?: boolean;
   onPublished?: (result: { publication_id: string; handle: string; slug: string }) => void;
   onClose: () => void;
 }) {
@@ -39,16 +43,8 @@ export function PublishToCommunityDialog({
   const [category, setCategory] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  const closeRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => closeRef.current?.focus(), []);
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  const [creatorReady, setCreatorReady] = useState(hasCreatorProfile);
+  const [creatorStep, setCreatorStep] = useState<'invite' | 'form'>('invite');
 
   const slug = useMemo(() => slugifyTitle(title), [title]);
 
@@ -77,41 +73,65 @@ export function PublishToCommunityDialog({
     }
   };
 
+  const dialogTitle = creatorReady
+    ? completionContext
+      ? copy.publish.completionTitle
+      : copy.publish.dialogTitle
+    : copy.publish.creatorInviteTitle;
+
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="publish-dialog-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
+    <DialogShell
+      label={dialogTitle}
+      testId="publish-community-dialog"
+      placement="responsive"
+      panelClassName="p-0 sm:p-0"
+      onClose={onClose}
     >
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-md border border-ink/10 bg-paper p-8">
+      <div className="p-5 sm:p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <SectionLabel>{copy.nav.community}</SectionLabel>
-            <h2 id="publish-dialog-title" className="mt-2 text-xl font-medium text-ink">
-              {copy.publish.dialogTitle}
+            <h2 className="mt-2 text-xl font-semibold tracking-[-0.02em] text-ink">
+              {dialogTitle}
             </h2>
           </div>
           <button
-            ref={closeRef}
             type="button"
             onClick={onClose}
             aria-label="Zamknij"
-            className="rounded-sm px-2 py-1 text-stone-400 hover:text-ink"
+            className="pro-focus-ring grid size-10 shrink-0 place-items-center rounded-full text-xl text-stone-500 hover:bg-stone-100 hover:text-ink"
           >
             ×
           </button>
         </div>
 
-        <p className="mt-4 text-sm leading-relaxed text-stone-500">{copy.publish.dialogBody}</p>
-        <p className="mt-2 text-sm text-stone-500">{copy.share.versionNote(versionNumber)}</p>
-
-        {!hasCreatorProfile ? (
-          <p role="alert" className="mt-4 text-sm text-ink">
-            {copy.publish.needsCreatorProfile}
-          </p>
+        {!creatorReady && creatorStep === 'invite' ? (
+          <div className="mt-5">
+            <p className="text-sm leading-relaxed text-stone-600">
+              {copy.publish.creatorInviteBody}
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <button
+                type="button"
+                className={buttonClasses('primary')}
+                onClick={() => setCreatorStep('form')}
+              >
+                {copy.publish.createCreatorProfile}
+              </button>
+              <button type="button" className={buttonClasses('ghost')} onClick={onClose}>
+                Nie teraz
+              </button>
+            </div>
+          </div>
+        ) : !creatorReady ? (
+          <div className="mt-5" data-testid="community-creator-continuation">
+            <CreatorProfileForm onSaved={() => setCreatorReady(true)} />
+          </div>
         ) : (
-          <div className="mt-6 flex flex-col gap-4">
+          <div className="mt-5 flex flex-col gap-4">
+            <p className="text-sm leading-relaxed text-stone-600">
+              {completionContext ? copy.publish.completionBody : copy.publish.dialogBody}
+            </p>
             <Field label={copy.publish.titleLabel}>
               <input
                 value={title}
@@ -140,13 +160,17 @@ export function PublishToCommunityDialog({
               </p>
             </Field>
 
+            <p className="text-xs leading-relaxed text-stone-500">
+              {copy.publish.privacyNote} {copy.share.versionNote(versionNumber)}
+            </p>
+
             {error ? (
               <p role="alert" className="text-sm text-ink">
                 {error}
               </p>
             ) : null}
 
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3 pt-1">
               <button
                 type="button"
                 className={buttonClasses('primary')}
@@ -162,7 +186,7 @@ export function PublishToCommunityDialog({
           </div>
         )}
       </div>
-    </div>
+    </DialogShell>
   );
 }
 

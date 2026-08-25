@@ -256,7 +256,7 @@ describe('Production trusted Rescue runtime races', () => {
     mocks.validateRecipeBehaviorOnServer.mockReset();
   });
 
-  it('automatically evaluates all standard choices and recommends them in product order', async () => {
+  it('automatically evaluates all standard choices and recommends safe unchanged first', async () => {
     const keep = deferred<ProductionRescueAuthorization>();
     const local = useProductionSessionStore.getState().session!;
     const authorizeRescue = vi.fn(
@@ -285,12 +285,13 @@ describe('Production trusted Rescue runtime races', () => {
 
     await act(async () => root.render(<EnabledHarness />));
     await act(async () => {
-      await vi.waitFor(() => expect(authorizeRescue).toHaveBeenCalledTimes(3));
+      await vi.waitFor(() => expect(authorizeRescue).toHaveBeenCalledTimes(4));
     });
 
     expect(authorizeRescue.mock.calls.map(([input]) => input.stableOptionId)).toEqual([
       'keep_original_batch',
       'enlarge_batch',
+      'restore_original_recipe',
       'leave_as_is',
     ]);
     expect(
@@ -316,8 +317,8 @@ describe('Production trusted Rescue runtime races', () => {
     });
     expect(view?.rescueOptionStates.keep_original_batch?.status).toBe('available');
     expect(view?.rescueOptionsCalculating).toBe(false);
-    expect(view?.recommendedRescueOptionId).toBe('keep_original_batch');
-    expect(view?.selectedRescueOptionId).toBe('keep_original_batch');
+    expect(view?.recommendedRescueOptionId).toBe('leave_as_is');
+    expect(view?.selectedRescueOptionId).toBe('leave_as_is');
   });
 
   it('blocks operator edits while authorizing and ignores a late response after invalidation', async () => {
@@ -817,17 +818,14 @@ describe('Production trusted Rescue runtime races', () => {
       },
     } as ProductionSession;
     useProductionSessionStore.setState({ session: completed, archivedSessions: [] });
-    useRecipeStore.getState().loadRecipeInput(
-      attached.plannedInput,
-      {
-        savedId: attached.source.recipeId,
-        savedName: attached.source.recipeName,
-        versionNumber: 2,
-        versionId: 'version-after-completed-run',
-        versionDate: '2026-08-25T11:05:00.000Z',
-        composition: attached.plannedComposition,
-      },
-    );
+    useRecipeStore.getState().loadRecipeInput(attached.plannedInput, {
+      savedId: attached.source.recipeId,
+      savedName: attached.source.recipeName,
+      versionNumber: 2,
+      versionId: 'version-after-completed-run',
+      versionDate: '2026-08-25T11:05:00.000Z',
+      composition: attached.plannedComposition,
+    });
     const transition = vi.fn();
     const completedRemote = {
       ...durableRescuedRun(attached),

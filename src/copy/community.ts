@@ -82,6 +82,12 @@ export interface CommunityCopy {
   readonly publish: {
     readonly dialogTitle: string;
     readonly dialogBody: string;
+    readonly completionTitle: string;
+    readonly completionBody: string;
+    readonly privacyNote: string;
+    readonly creatorInviteTitle: string;
+    readonly creatorInviteBody: string;
+    readonly createCreatorProfile: string;
     readonly titleLabel: string;
     readonly descriptionLabel: string;
     readonly categoryLabel: string;
@@ -187,9 +193,9 @@ export const communityCopyPl: CommunityCopy = {
   },
   share: {
     dialogTitle: 'Udostępnij recepturę',
-    dialogBody:
-      'Tworzymy bezpieczny link. Receptura NIE trafia do Community ani do wyszukiwarek.',
-    versionNote: (versionNumber) => `Link wskazuje wersję ${versionNumber} i zawsze będzie ją pokazywał.`,
+    dialogBody: 'Tworzymy bezpieczny link. Receptura NIE trafia do Community ani do wyszukiwarek.',
+    versionNote: (versionNumber) =>
+      `Link wskazuje wersję ${versionNumber} i zawsze będzie ją pokazywał.`,
     unlistedNote: 'Link niepubliczny — dostępny tylko dla osób, którym go wyślesz.',
     partnerNote:
       'Ten link jest powiązany z Twoim aktywnym statusem Gellatti Partner. Prowizja przysługuje wyłącznie za subskrypcje pozyskane w czasie aktywnego statusu.',
@@ -202,6 +208,13 @@ export const communityCopyPl: CommunityCopy = {
     dialogTitle: 'Opublikuj w Community',
     dialogBody:
       'Twoja receptura stanie się publiczna. Dokładne gramatury pozostają chronione — widzą je tylko osoby z aktywnym planem.',
+    completionTitle: 'Pokaż swój wynik w Community',
+    completionBody: 'Świetna partia? Udostępnij recepturę i pokaż ją innym.',
+    privacyNote: 'Dokładne gramatury pozostają chronione zgodnie z Twoim planem.',
+    creatorInviteTitle: 'Chcesz publikować w Community?',
+    creatorInviteBody:
+      'Utworzenie profilu Twórcy zajmie chwilę. Potem wrócisz tutaj i dokończysz publikację.',
+    createCreatorProfile: 'Utwórz profil',
     titleLabel: 'Tytuł',
     descriptionLabel: 'Opis',
     categoryLabel: 'Kategoria',
@@ -244,7 +257,8 @@ export const communityCopyPl: CommunityCopy = {
     received: 'Nikt jeszcze nie udostępnił Ci receptury.',
     sent: 'Nie udostępniłeś(-aś) jeszcze żadnej receptury.',
     creatorRecipes: 'Ten twórca nie ma jeszcze publicznych receptur.',
-    firstCreator: 'Opublikuj swoją pierwszą recepturę i zostań jednym z pierwszych Twórców Gellatti.',
+    firstCreator:
+      'Opublikuj swoją pierwszą recepturę i zostań jednym z pierwszych Twórców Gellatti.',
   },
 };
 
@@ -323,6 +337,13 @@ export const communityCopyEn: CommunityCopy = {
     dialogTitle: 'Publish to Community',
     dialogBody:
       'Your recipe becomes public. Exact grams stay protected — only people with an active plan see them.',
+    completionTitle: 'Show your result in Community',
+    completionBody: 'A great batch? Share the recipe and show it to others.',
+    privacyNote: 'Exact grams remain protected according to your plan.',
+    creatorInviteTitle: 'Want to publish in Community?',
+    creatorInviteBody:
+      'Creating a Creator profile takes a moment. Then you will return here to finish publishing.',
+    createCreatorProfile: 'Create profile',
     titleLabel: 'Title',
     descriptionLabel: 'Description',
     categoryLabel: 'Category',

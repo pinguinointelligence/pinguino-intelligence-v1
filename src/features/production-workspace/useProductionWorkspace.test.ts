@@ -235,7 +235,12 @@ describe('trusted Production Rescue authorization basis', () => {
     expect(browserProductionRescueDecision(started).state).toBe('not_needed');
     expect(browserProductionRescueDecision(deviated)).toMatchObject({
       state: 'options',
-      options: [{ id: 'keep_original_batch' }, { id: 'enlarge_batch' }, { id: 'leave_as_is' }],
+      options: [
+        { id: 'keep_original_batch' },
+        { id: 'enlarge_batch' },
+        { id: 'restore_original_recipe' },
+        { id: 'leave_as_is' },
+      ],
     });
     const hookSource = readFileSync(
       new URL('./useProductionWorkspace.ts', import.meta.url),

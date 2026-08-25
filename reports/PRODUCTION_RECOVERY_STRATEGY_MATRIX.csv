@@ -1,0 +1,11 @@
+fixture,strategy,entry_mass_g,final_mass_g,topups,score,status,proof
+owner_exact_2_5g,leave_as_is,1002.5,1002.5,none,1/10,UNAVAILABLE_HARD_UNSAFE,productionRescue.test.ts
+owner_exact_2_5g,minimum_safe,1002.5,1007.0,"Sucrose +4.5g (59.0→63.5)",10/10,AVAILABLE_RECOMMENDED,productionRescue.test.ts
+owner_exact_2_5g,restore_original_profile,1002.5,1045.0,"Milk +26.0g; Cream +4.0g; Skimmed milk powder +0.5g",10/10,AVAILABLE,productionRescue.test.ts
+owner_exact_2_5g,keep_original_batch,1002.5,1002.5,none,1/10,UNAVAILABLE_PHYSICAL_TARGET_EXCEEDED,productionRescue.test.ts
+owner_exact_1g,minimum_safe,1001.0,1001.1,engine_authorized_add-only,NOT_EXPOSED,TRACE_FEASIBLE_UI_UNCHANGED_SAFE,productionRescue.test.ts
+owner_exact_2_5g_neighbourhood,minimum_safe,1002.5,1007.0,engine_authorized_add-only,10/10,AVAILABLE,productionRescue.test.ts
+owner_exact_5g_neighbourhood,minimum_safe,1005.0,1054.8,engine_authorized_add-only,10/10,AVAILABLE,productionRescue.test.ts
+owner_exact_10g_neighbourhood,minimum_safe,1010.0,1140.2,engine_authorized_add-only,10/10,AVAILABLE,productionRescue.test.ts
+working_dextrose_control,leave_as_is,existing_fixture,unchanged,none,8/10,AVAILABLE_RECOMMENDED_UNCHANGED,productionRescue.test.ts
+perfect_safe_eco_cream_overage,leave_as_is,existing_fixture,unchanged,none,10/10,ONLY_VISIBLE_UI_OPTION,productionRescue.test.ts

@@ -188,10 +188,14 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(editor?.textContent).toContain('Wymagane pola profilu UE są zawsze aktywne');
     expect(editor?.querySelector('[data-testid="optional-label-fields"] input')).not.toBeNull();
 
-    const us = [...editor!.querySelectorAll('button')].find(
-      (button) => button.textContent === 'USA',
+    const us = [...editor!.querySelectorAll('button')].find((button) =>
+      button.textContent?.startsWith('USA'),
     );
-    await act(async () => us!.click());
+    expect(us?.disabled).toBe(true);
+    const uk = [...editor!.querySelectorAll('button')].find(
+      (button) => button.textContent === 'UK',
+    );
+    await act(async () => uk!.click());
     const apply = [...editor!.querySelectorAll('button')].find(
       (button) => button.textContent === 'Zastosuj',
     );
@@ -202,14 +206,14 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(host.querySelector('[data-active-label-view="label"]')).not.toBeNull();
     expect(
       host.querySelector('[data-testid="label-consumer-preview"]')?.getAttribute('data-market'),
-    ).toBe('US');
+    ).toBe('UK');
     expect(
       host
         .querySelector('[data-testid="label-consumer-preview"]')
         ?.getAttribute('data-label-layout'),
-    ).toBe('market_review');
+    ).toBe('uk_declaration');
     expect(host.querySelector('[data-testid="label-market-indicator"]')?.textContent).toContain(
-      '🇺🇸',
+      '🇬🇧',
     );
   });
 
@@ -264,7 +268,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
       settings.querySelector('[data-testid="label-settings-missing-count"]')?.textContent ?? '';
     const missingFields = () => settings.querySelectorAll('[data-missing-required="true"]');
 
-    expect(missingCount()).toContain('Brakuje 5 wymaganych informacji');
+    expect(missingCount()).toContain('Brakuje 7 wymaganych informacji');
     expect(missingFields()).toHaveLength(5);
     expect(
       [...missingFields()].map((field) => field.getAttribute('data-label-field')).sort(),
@@ -280,7 +284,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
     };
 
     await fill('legal_product_name', ['Ice cream']);
-    expect(missingCount()).toContain('Brakuje 4 wymaganych informacji');
+    expect(missingCount()).toContain('Brakuje 6 wymaganych informacji');
     await act(async () =>
       settings.querySelector<HTMLInputElement>('[data-label-field="allergens"] input')!.click(),
     );
@@ -288,7 +292,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
     await fill('storage', ['Keep frozen']);
     await fill('date_mark', ['2026-09-24']);
 
-    expect(missingCount()).toContain('Wszystkie wymagane informacje są uzupełnione');
+    expect(missingCount()).toContain('Brakuje 2 wymaganych informacji');
     expect(missingFields()).toHaveLength(0);
   });
 
@@ -302,10 +306,10 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(settingsDot.getAttribute('aria-current')).toBe('step');
 
     const settings = host.querySelector('[data-testid="label-settings-view"]')!;
-    const us = [...settings.querySelectorAll('button')].find(
-      (candidate) => candidate.textContent === 'USA',
+    const uk = [...settings.querySelectorAll('button')].find(
+      (candidate) => candidate.textContent === 'UK',
     )!;
-    await act(async () => us.click());
+    await act(async () => uk.click());
     await act(async () => button('Anuluj')!.click());
 
     expect(host.querySelector('[data-active-label-view="label"]')).not.toBeNull();

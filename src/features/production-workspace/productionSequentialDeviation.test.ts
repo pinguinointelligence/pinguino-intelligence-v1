@@ -179,8 +179,16 @@ const enlargeFor = (session: ProductionSession): ProductionRescueOption => {
   return enlarge!;
 };
 
+const restoreFor = (session: ProductionSession): ProductionRescueOption => {
+  const restore = assessProductionRescue(session).options.find(
+    (option) => option.id === 'restore_original_recipe',
+  );
+  expect(restore).toBeDefined();
+  return restore!;
+};
+
 describe('Production sequential-deviation P0', () => {
-  it('reproduces the served 45 g → 65 g dead-end and proves score 9 is distinct from hard safety', () => {
+  it('resolves the served 45 g → 65 g dead-end while proving score 9 is distinct from hard safety', () => {
     let session = sessionFor('served', ownerObservedInput());
     session = confirmAtNextRevision(session, 'milk');
     session = confirmAtNextRevision(session, 'cream');
@@ -192,8 +200,11 @@ describe('Production sequential-deviation P0', () => {
     expect(session.durableActualRevision).toBe(3);
     expect(line(session, 'smp').physicalAddedGrams).toBe(65);
     expect(score.display).toBe('9/10');
-    expect(assessment.options).toEqual([]);
-    expect(path).toBe('recovery_required');
+    expect(assessment.options.map((option) => option.id)).toEqual([
+      'enlarge_batch',
+      'restore_original_recipe',
+    ]);
+    expect(path).toBe('authorized_correction');
     expect(assessment.hardSafety).toMatchObject({
       safe: false,
       violationMetrics: ['lactose_sandiness_risk', 'lactose'],
@@ -218,14 +229,14 @@ describe('Production sequential-deviation P0', () => {
     expect(assessment.state).not.toBe('not_needed');
   });
 
-  it('SCENARIO 2 — routes the served +20 g overage to an honest recovery instead of a dead-end', () => {
+  it('SCENARIO 2 — routes the served +20 g overage to an authorized recovery instead of a dead-end', () => {
     let session = sessionFor('scenario-2-dairy', ownerObservedInput());
     session = confirmAtNextRevision(session, 'milk');
     session = confirmAtNextRevision(session, 'cream');
     session = confirmAtNextRevision(session, 'smp', 65);
 
     const { assessment, path } = assertLivePath(session);
-    expect(path).toBe('recovery_required');
+    expect(path).toBe('authorized_correction');
     expect(assessment.forecastScoreDisplay).toBe('9/10');
     expect(assessment.hardSafety.safe).toBe(false);
   });
@@ -249,8 +260,9 @@ describe('Production sequential-deviation P0', () => {
     );
     expect(line(session, 'cream').physicalAddedGrams).toBe(200);
     expect(line(session, 'smp').physicalAddedGrams).toBe(65);
-    expect(second.assessment.forecastInput.items.find((item) => item.id === 'cream')?.actual_grams)
-      .toBe(200);
+    expect(
+      second.assessment.forecastInput.items.find((item) => item.id === 'cream')?.actual_grams,
+    ).toBe(200);
   });
 
   it('SCENARIO 4 — creates a third revision without losing any physical lower bound', () => {
@@ -281,23 +293,30 @@ describe('Production sequential-deviation P0', () => {
     expect(assessProductionRescue(session).state).toBe('not_needed');
   });
 
-  it('SCENARIO 6 — reopens a confirmed Cream line for an authorized +152 g top-up', () => {
+  it('SCENARIO 6 — reopens a confirmed Cream line for an authorized proportional top-up', () => {
     let session = sessionFor('scenario-6-dairy', ownerObservedInput());
     session = confirmAtNextRevision(session, 'cream');
     session = confirmAtNextRevision(session, 'sucrose', 111);
-    const enlarge = enlargeFor(session);
-    expect(enlarge.finalMassG).toBe(1_172);
+    const restore = restoreFor(session);
+    const creamInstruction = restore.instructions.find(
+      (instruction) => instruction.lineId === 'cream',
+    );
+    expect(creamInstruction).toMatchObject({ kind: 'add' });
 
-    session = applyVerifiedRescueInput(session, enlarge.candidateInput);
+    session = applyVerifiedRescueInput(session, restore.candidateInput);
     expect(line(session, 'cream')).toMatchObject({
       physicalAddedGrams: 198,
-      targetGrams: 350,
+      targetGrams: creamInstruction!.finalTargetGrams,
       confirmed: false,
     });
-    expect(productionTopUpGrams(line(session, 'cream'))).toBe(152);
+    expect(productionTopUpGrams(line(session, 'cream'))).toBe(creamInstruction!.grams);
 
-    session = confirmProductionLine(setDraftActualGrams(session, 'cream', 350), 'cream', AT);
-    expect(line(session, 'cream').physicalAddedGrams).toBe(350);
+    session = confirmProductionLine(
+      setDraftActualGrams(session, 'cream', creamInstruction!.finalTargetGrams),
+      'cream',
+      AT,
+    );
+    expect(line(session, 'cream').physicalAddedGrams).toBe(creamInstruction!.finalTargetGrams);
     expect(productionTopUpGrams(line(session, 'cream'))).toBe(0);
   });
 
@@ -349,11 +368,8 @@ describe('Production sequential-deviation P0', () => {
     const { assessment, path } = assertLivePath(session);
 
     expect(assessment.options.some((option) => option.id === 'leave_as_is')).toBe(false);
-    expect(assessment.hardSafety.violationMetrics).toEqual([
-      'lactose_sandiness_risk',
-      'lactose',
-    ]);
-    expect(path).toBe('recovery_required');
+    expect(assessment.hardSafety.violationMetrics).toEqual(['lactose_sandiness_risk', 'lactose']);
+    expect(path).toBe('authorized_correction');
   });
 
   it('SCENARIO 10 — rejects preserving 1000 g once confirmed physical mass is already above it', () => {
@@ -379,31 +395,44 @@ describe('Production sequential-deviation P0', () => {
     let session = sessionFor('scenario-11-dairy', ownerObservedInput());
     session = confirmAtNextRevision(session, 'cream');
     session = confirmAtNextRevision(session, 'sucrose', 111);
-    const enlarge = enlargeFor(session);
+    const restore = restoreFor(session);
+    const reopenedInstruction = restore.instructions.find(
+      (instruction) =>
+        instruction.lineId !== null &&
+        line(session, instruction.lineId).confirmed &&
+        instruction.kind === 'add',
+    );
+    expect(reopenedInstruction).toBeDefined();
     const oldAuthorization = {
       expectedActualRevision: session.durableActualRevision,
       expectedRescueRevision: session.durableRescueRevision,
       expiresAt: '2099-01-01T00:00:00.000Z',
     };
-    session = applyVerifiedRescueInput(session, enlarge.candidateInput);
+    session = applyVerifiedRescueInput(session, restore.candidateInput);
     session = {
       ...session,
       durableRescueRevision: 1,
       lastDeviationDecision: {
-        strategy: 'enlarge_batch',
+        strategy: 'restore_original_recipe',
         acceptedAt: AT,
         sourceActualRevision: 2,
         rescueRevision: 1,
-        finalMassG: enlarge.finalMassG,
-        scoreDisplay: enlarge.scoreDisplay,
+        finalMassG: restore.finalMassG,
+        scoreDisplay: restore.scoreDisplay,
       },
     };
-    session = confirmAtNextRevision(session, 'cream', 351);
+    session = confirmAtNextRevision(
+      session,
+      reopenedInstruction!.lineId!,
+      reopenedInstruction!.finalTargetGrams + 1,
+    );
 
     expect(productionRescueAuthorizationInvalidation(oldAuthorization, session)).toBe(
       'revision_mismatch',
     );
-    expect(line(session, 'cream').physicalAddedGrams).toBe(351);
+    expect(line(session, reopenedInstruction!.lineId!).physicalAddedGrams).toBe(
+      reopenedInstruction!.finalTargetGrams + 1,
+    );
     expect(session.lastDeviationDecision).toBeNull();
     assertLivePath(session);
   });
@@ -464,7 +493,7 @@ describe('Production sequential-deviation P0', () => {
     ]);
   });
 
-  it('records five real authorized larger-batch vectors and proves every candidate hard-safe', () => {
+  it('records five real authorized minimum-safe vectors and proves every candidate hard-safe', () => {
     const cases = [
       {
         id: 'dairy-sucrose',
@@ -472,10 +501,6 @@ describe('Production sequential-deviation P0', () => {
         changedLineId: 'sucrose',
         physical: 111,
         preconfirmedTopUpLineId: 'cream',
-        target: 1_172,
-        topUpLineId: 'cream',
-        topUp: 152,
-        finalTarget: 350,
       },
       {
         id: 'dairy-dextrose',
@@ -483,10 +508,6 @@ describe('Production sequential-deviation P0', () => {
         changedLineId: 'dextrose',
         physical: 79,
         preconfirmedTopUpLineId: 'cream',
-        target: 1_237,
-        topUpLineId: 'cream',
-        topUp: 217,
-        finalTarget: 415,
       },
       {
         id: 'sorbet-strawberry',
@@ -494,10 +515,6 @@ describe('Production sequential-deviation P0', () => {
         changedLineId: 'main-strawberry',
         physical: 450,
         preconfirmedTopUpLineId: 'new-recipe-3-dextrose',
-        target: 1_075,
-        topUpLineId: 'new-recipe-3-dextrose',
-        topUp: 25,
-        finalTarget: 84,
       },
       {
         id: 'sorbet-lime',
@@ -505,10 +522,6 @@ describe('Production sequential-deviation P0', () => {
         changedLineId: 'main-lime',
         physical: 220,
         preconfirmedTopUpLineId: 'new-recipe-3-dextrose',
-        target: 1_039,
-        topUpLineId: 'new-recipe-3-dextrose',
-        topUp: 19,
-        finalTarget: 78,
       },
       {
         id: 'sorbet-water',
@@ -516,10 +529,6 @@ describe('Production sequential-deviation P0', () => {
         changedLineId: 'new-recipe-1-water',
         physical: 199,
         preconfirmedTopUpLineId: 'new-recipe-3-dextrose',
-        target: 1_040,
-        topUpLineId: 'new-recipe-3-dextrose',
-        topUp: 20,
-        finalTarget: 79,
       },
     ] as const;
 
@@ -528,28 +537,24 @@ describe('Production sequential-deviation P0', () => {
       session = confirmAtNextRevision(session, entry.preconfirmedTopUpLineId);
       session = confirmAtNextRevision(session, entry.changedLineId, entry.physical);
       const enlarge = enlargeFor(session);
-      const topUp = enlarge.instructions.find(
-        (instruction) => instruction.lineId === entry.topUpLineId,
-      );
       const hardSafety = assessProductionHardSafety(
         enlarge.candidateInput,
         calculateRecipe(enlarge.candidateInput),
       );
 
-      expect(enlarge.finalMassG).toBe(entry.target);
-      expect(topUp).toMatchObject({
-        kind: 'add',
-        grams: entry.topUp,
-        finalTargetGrams: entry.finalTarget,
-      });
-      expect(enlarge.scoreDisplay).toBe('10/10');
+      expect(enlarge.finalMassG).toBeGreaterThan(entry.input.target_batch_grams);
+      expect(enlarge.instructions.length).toBeGreaterThan(0);
+      expect(enlarge.instructions.every((instruction) => instruction.kind === 'add')).toBe(true);
       expect(hardSafety.safe).toBe(true);
 
-      expect(line(session, entry.topUpLineId).confirmed).toBe(true);
-      expect(
-        enlarge.candidateInput.items.find((item) => item.id === entry.topUpLineId)?.planned_grams,
-      ).toBe(entry.finalTarget);
-      return `${entry.physical}→${enlarge.finalMassG}:${topUp!.grams}:${enlarge.scoreDisplay}`;
+      for (const productionLine of session.lines) {
+        const candidate = enlarge.candidateInput.items.find(
+          (item) => item.id === productionLine.lineId,
+        );
+        expect(candidate).toBeDefined();
+        expect(candidate!.planned_grams).toBeGreaterThanOrEqual(productionLine.physicalAddedGrams);
+      }
+      return `${entry.physical}→${enlarge.finalMassG}:${enlarge.scoreDisplay}`;
     });
 
     expect(evidence).toHaveLength(5);

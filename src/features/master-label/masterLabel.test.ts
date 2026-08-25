@@ -279,6 +279,9 @@ const build = (delta = 0) => {
 function printable(data: MasterLabelData): MasterLabelData {
   return {
     ...data,
+    nutritionSource: data.nutritionSource
+      ? { ...data.nutritionSource, saturated_fat_g: 0, sugars_g: 0 }
+      : data.nutritionSource,
     legalProductName: { es: 'Helado de leche', en: 'Milk gelato' },
     allergens: { ...data.allergens, reviewedByUser: true },
     netQuantityG: 500,
@@ -292,6 +295,12 @@ function printable(data: MasterLabelData): MasterLabelData {
     storageInstructions: { es: 'Conservar congelado.', en: 'Keep frozen.' },
     lotCode: 'LOT-20260809-01',
     copies: 3,
+    printer: { ...data.printer, copies: 3 },
+    regulatoryReview: {
+      translations: true,
+      ingredientOrderAndQuid: true,
+      marketSpecific: true,
+    },
     preflightAcknowledged: true,
   };
 }
@@ -502,10 +511,13 @@ describe('Master Label — one actual-batch source model', () => {
       marketProfileVersion: marketProfile('US').version,
     };
     expect(us.nutritionSource).toEqual(data.nutritionSource);
-    expect(marketProfile('US').status).toBe('PARTIAL');
+    expect(marketProfile('US').status).toBe('RESEARCH_REQUIRED');
+    expect(marketProfile('US').selectable).toBe(false);
+    expect(marketProfile('CA').status).toBe('RESEARCH_REQUIRED');
+    expect(marketProfile('CA').selectable).toBe(false);
     expect(marketProfile('CUSTOM').status).toBe('RESEARCH_REQUIRED');
     expect(marketProfile('EU').consumerLayout).toBe('eu_declaration');
-    expect(marketProfile('US').consumerLayout).toBe('market_review');
+    expect(marketProfile('US').consumerLayout).toBe('us_nutrition_facts');
     expect(marketProfile('US').flag).toBe('🇺🇸');
     expect(marketProfile('UK')).toMatchObject({
       code: 'UK',
@@ -521,39 +533,38 @@ describe('Master Label — one actual-batch source model', () => {
     expect(JSON.stringify(data)).not.toContain('Never print me.');
   });
 
-  it('blocks system print while the selected regulatory market profile is only PARTIAL', () => {
-    const data = printable(build());
+  it('blocks system print for a research/unavailable market before final output', () => {
+    const base = printable(build());
+    const data: MasterLabelData = {
+      ...base,
+      market: 'CA',
+      marketProfileVersion: marketProfile('CA').version,
+      labelLanguages: ['en', 'fr'],
+    };
     const preflight = buildLabelPreflight(data);
     expect(preflight.readyForSystemPrint).toBe(false);
     expect(preflight.regulatoryProfileVerified).toBe(false);
     expect(() => buildMasterLabelPrintHtml(data)).toThrow('Master Label preflight is incomplete.');
   });
 
-  it('prints N safe copies only after the market profile itself is VERIFIED', () => {
-    const profile = MARKET_PROFILES.EU as { status: 'VERIFIED' | 'PARTIAL' | 'RESEARCH_REQUIRED' };
-    const previousStatus = profile.status;
-    profile.status = 'VERIFIED';
-    try {
-      const data = printable(build());
-      const preflight = buildLabelPreflight(data);
-      expect(preflight.readyForSystemPrint).toBe(true);
-      expect(preflight.regulatoryProfileVerified).toBe(true);
-      const branded = {
-        ...data,
-        businessName: 'Gellatti Lab',
-        logoPath: 'owner/logo.png',
-        enabledOptionalFields: [...data.enabledOptionalFields, 'logo' as const],
-      };
-      const html = buildMasterLabelPrintHtml(branded, 'https://example.test/private-logo.png');
-      expect(html.match(/<article class="label">/g)).toHaveLength(3);
-      expect(html).toContain('Gellatti Lab');
-      expect(html).toContain('https://example.test/private-logo.png');
-      expect(html).not.toContain('Koszt');
-      expect(html).not.toContain('Never print me.');
-      expect(html).not.toContain('Cała partia');
-      expect(html).not.toContain('Baza techniczna');
-    } finally {
-      profile.status = previousStatus;
-    }
+  it('prints N safe copies only when the verified market preflight is complete', () => {
+    const data = printable(build());
+    const preflight = buildLabelPreflight(data);
+    expect(preflight.readyForSystemPrint).toBe(true);
+    expect(preflight.regulatoryProfileVerified).toBe(true);
+    const branded = {
+      ...data,
+      businessName: 'Gellatti Lab',
+      logoPath: 'owner/logo.png',
+      enabledOptionalFields: [...data.enabledOptionalFields, 'logo' as const],
+    };
+    const html = buildMasterLabelPrintHtml(branded, 'https://example.test/private-logo.png');
+    expect(html.match(/<article class="label"/g)).toHaveLength(3);
+    expect(html).toContain('Gellatti Lab');
+    expect(html).toContain('https://example.test/private-logo.png');
+    expect(html).not.toContain('Koszt');
+    expect(html).not.toContain('Never print me.');
+    expect(html).not.toContain('Cała partia');
+    expect(html).not.toContain('Baza techniczna');
   });
 });

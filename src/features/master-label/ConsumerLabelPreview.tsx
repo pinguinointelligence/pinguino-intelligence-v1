@@ -34,11 +34,19 @@ export function ConsumerLabelPreview({
 
   return (
     <article
-      className="mx-auto w-full max-w-[680px] border-2 border-ink bg-[#fffdf8] p-4 text-ink shadow-[0_18px_60px_rgba(36,33,28,0.10)] sm:p-6"
+      className="mx-auto shrink-0 overflow-hidden border-2 border-ink bg-[#fffdf8] p-4 text-ink shadow-[0_18px_60px_rgba(36,33,28,0.10)] sm:p-6"
+      style={{
+        width: `${label.size.widthMm}mm`,
+        height: `${label.size.heightMm}mm`,
+      }}
       aria-label="Podgląd etykiety konsumenckiej"
       data-testid="label-consumer-preview"
       data-market={label.market}
       data-label-layout={profile.consumerLayout}
+      data-physical-width-mm={label.size.widthMm}
+      data-physical-height-mm={label.size.heightMm}
+      data-printer-profile={label.printer.profileId}
+      data-printer-dpi={label.printer.dpi}
     >
       <div className="mb-4 flex items-center justify-between gap-3 border-b border-ink/20 pb-3 text-[11px] font-semibold uppercase tracking-[0.16em]">
         <span data-testid="label-market-indicator">
@@ -69,9 +77,15 @@ export function ConsumerLabelPreview({
       {label.nutritionDeclaration ? (
         <table className="mt-5 w-full border-t-2 border-ink text-sm">
           <caption className="py-2 text-left font-semibold">
-            {profile.consumerLayout === 'market_review'
-              ? `Dane żywieniowe · ${profile.label} · podgląd roboczy`
-              : 'Wartość odżywcza w 100 g'}
+            {profile.consumerLayout === 'us_nutrition_facts'
+              ? 'Nutrition Facts · market-specific data required'
+              : profile.consumerLayout === 'ca_bilingual_nft'
+                ? 'Nutrition Facts / Valeur nutritive'
+                : profile.consumerLayout === 'au_nz_nip'
+                  ? 'NUTRITION INFORMATION'
+                  : profile.consumerLayout === 'uk_declaration'
+                    ? 'Typical values per 100 g'
+                    : 'Wartość odżywcza w 100 g'}
           </caption>
           <tbody>
             {label.nutritionDeclaration.rows.map((row) => (

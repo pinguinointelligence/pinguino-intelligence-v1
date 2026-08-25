@@ -1,0 +1,18 @@
+case,market,purpose,packaging,market_selectable,renderer,preflight_expectation,output_qa,status,blocker_or_note,test
+EU dairy gelato,EU,retail_consumer,prepacked,YES,EU per-100g,READY,HTML/system-print structure,SOFTWARE_PASS,"actual ingredients; milk bold; immutable run",masterLabelMarketGolden.test.ts
+EU nut gelato,EU,retail_consumer,prepacked,YES,EU per-100g,READY,NOT_RUN,INCOMPLETE,"dedicated nut golden fixture not yet added",
+UK PPDS,UK,retail_consumer,ppds,YES,UK per-100g,READY,HTML/system-print structure,SOFTWARE_PASS,"context persisted/printed; required fields conservative",masterLabelMarketGolden.test.ts
+US dairy,US,retail_consumer,prepacked,NO,US Nutrition Facts,BLOCKED,DRAFT_QA_ONLY,FAIL_CLOSED,"FDA rounding/format-family selection incomplete",masterLabelMarketGolden.test.ts
+Canada bilingual dairy,CA,retail_consumer,prepacked,NO,Canadian bilingual NFT,BLOCKED,DRAFT_QA_ONLY,FAIL_CLOSED,"approved FOP EPS package unavailable",masterLabelMarketGolden.test.ts
+Canada FOP-triggering,CA,retail_consumer,prepacked,NO,"Canadian NFT + 10/15/30 FOP",BLOCKED,DRAFT_QA_WITH_ASSET_ID_ONLY,FAIL_CLOSED,"no approved Health Canada artwork bundled",masterLabelMarketGolden.test.ts
+Canada non-FOP,CA,retail_consumer,prepacked,NO,Canadian bilingual NFT,BLOCKED,NOT_RUN,INCOMPLETE,"market remains unavailable until complete prescribed format/assets are release-cleared",
+Australia/New Zealand,AU_NZ,retail_consumer,prepacked,YES,FSANZ NIP,READY,HTML/system-print structure,SOFTWARE_PASS,"per serving + per 100g",masterLabelMarketGolden.test.ts
+vegan allergen scenario,US,retail_consumer,prepacked,NO,US Nutrition Facts,BLOCKED,NOT_RUN,INCOMPLETE,"dedicated soy/sesame golden not yet added",
+alcoholic recipe,EU,retail_consumer,prepacked,YES,EU per-100g,REVIEW,NOT_RUN,INCOMPLETE,"product-specific alcohol/ABV rule fixture not added",
+tiny EU label,EU,retail_consumer,prepacked,YES,EU per-100g,BLOCKED,dimension preflight,SOFTWARE_PASS,"below profile minimum",masterLabel.test.ts
+large EU label,EU,retail_consumer,prepacked,YES,EU per-100g,READY,HTML/system-print structure,SOFTWARE_PASS,"104x152 fixture",masterLabelMarketGolden.test.ts
+actual Production deviation,EU,retail_consumer,prepacked,YES,EU per-100g,READY,data-authority unit proof,SOFTWARE_PASS,"final ACTUAL grams and nutrition differ from plan",masterLabel.test.ts
+toppings actual,EU,retail_consumer,prepacked,YES,EU per-100g,READY,data-authority unit proof,SOFTWARE_PASS,"actual topping grams included and canonical lines aggregate",masterLabel.test.ts
+absent nutrition authority,EU,retail_consumer,prepacked,YES,none,BLOCKED,preflight,SOFTWARE_PASS,"never fabricates zeros",masterLabel.test.ts
+draft incomplete label,any,retail_consumer,any,n/a,market renderer,DRAFT_ONLY,watermarked HTML/system print,SOFTWARE_PASS,"DRAFT / NIE DO SPRZEDAŻY and missing-data panel",masterLabelMarketGolden.test.ts
+calibration label,any,internal_production,any,n/a,calibration,ALWAYS,HTML/system print,SOFTWARE_PASS,"dimensions/alignment/printer; no recipe/business data",masterLabelMarketGolden.test.ts

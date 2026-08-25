@@ -1,8 +1,8 @@
 /**
  * Single source of truth for the engine export allowlist, shared by every
  * scope-guard test. The engine must export exactly these functions and nothing
- * else — in particular nothing scoring/correction shaped until those stages
- * land (spec §18 build order). Future steps extend this ONE list.
+ * else. Future Engine/Rescue stages extend this ONE list so every scope guard
+ * observes the same intentional public surface.
  */
 export const ALLOWED_ENGINE_FUNCTIONS: readonly string[] = [
   // composition (4C)
@@ -73,4 +73,7 @@ export const ALLOWED_ENGINE_FUNCTIONS: readonly string[] = [
   // Auto Fix apply/idempotence core (Slice 1A) — pure wrappers, no new math
   'proposeAutoFix',
   'applyAutoFix',
+  // Production recovery authority — pure completed-batch candidate evaluation.
+  'evaluateAdditiveRecoveryNeighborhood',
+  'proposeBatchRecovery',
 ];

@@ -407,10 +407,10 @@ describe('warnings', () => {
   });
 });
 
-/* ── scope guard (Step 4H: no scoring/corrections yet) ───────────────────── */
+/* ── scope guard (intentional Engine public surface only) ────────────────── */
 
 describe('scope guard', () => {
-  it('the engine exports exactly the allowed functions — no scoring/correction functions', () => {
+  it('the engine exports exactly the allowed functions', () => {
     const functionNames = Object.entries(engine)
       .filter(([, value]) => typeof value === 'function')
       .map(([name]) => name);

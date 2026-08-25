@@ -1,0 +1,16 @@
+profile_id,manufacturer,model,technology,dpi,connections,width_range_mm,presets,output_path,direct_protocol,physical_hardware_tested,status,official_source
+system_a4_letter,System,A4 / Letter / PDF,system,"300|600",system,20-216,"70x50|80x50|100x50|100x70|102x152",native print dialog / Save as PDF,NO,NO,SOFTWARE_VERIFIED,
+aimo_243bt,AIMO,243BT,direct_thermal,203,"bluetooth|usb|app_handoff|system",25.4-110,"70x50|80x50|100x50|100x70|102x152",system/app handoff,NO,NO,GEOMETRY_VERIFIED,https://www.aimotech.com/product/am-243bt-shipping-label-printer/
+brother_ql_820nwbc,Brother,QL-820NWBc,direct_thermal,300,"usb|network|bluetooth|system",12-62,"50x30|62-continuous",system print,NO,NO,GEOMETRY_VERIFIED,https://www.brother-usa.com/products/ql820nwbc
+brother_ql_1110nwbc,Brother,QL-1110NWBc,direct_thermal,300,"usb|network|bluetooth|system",12-103.6,"100x50|100x70|102x152",system print,NO,NO,GEOMETRY_VERIFIED,https://www.brother-usa.com/products/ql1110nwbc
+brother_td_4550dnwb,Brother,TD-4550DNWB,direct_thermal,300,"usb|network|bluetooth|system",19-118,"100x50|100x70|102x152",system print,NO,NO,GEOMETRY_VERIFIED,https://www.brother-usa.com/products/td4550dnwb
+zebra_zd421_203,Zebra,ZD421 203 dpi,thermal_transfer,203,"usb|network|bluetooth|system",15-108,"100x50|100x70|102x152",system print,NO,NO,GEOMETRY_VERIFIED,https://www.zebra.com/us/en/products/spec-sheets/printers/desktop/zd421-zd621.html
+zebra_zd421_300,Zebra,ZD421 300 dpi,thermal_transfer,300,"usb|network|bluetooth|system",15-108,"100x50|100x70|102x152",system print,NO,NO,GEOMETRY_VERIFIED,https://www.zebra.com/us/en/products/spec-sheets/printers/desktop/zd421-zd621.html
+dymo_labelwriter_550,DYMO,LabelWriter 550,direct_thermal,300,"usb|system",19-62,"50x30|62-continuous",system print,NO,NO,GEOMETRY_VERIFIED,https://www.dymo.com/label-makers-printers/labelwriter-label-printers/
+dymo_labelwriter_5xl,DYMO,LabelWriter 5XL,direct_thermal,300,"usb|system",19-104,"100x50|100x70|102x152",system print,NO,NO,GEOMETRY_VERIFIED,https://www.dymo.com/label-makers-printers/labelwriter-label-printers/
+epson_colorworks_c4000,Epson,ColorWorks C4000,inkjet_label,"600|1200","usb|network|system",25.4-108,"100x50|100x70|102x152",system print,NO,NO,GEOMETRY_VERIFIED,https://epson.com/colorworks-c4000-color-label-printer
+epson_colorworks_c6000,Epson,ColorWorks C6000,inkjet_label,"600|1200","usb|network|system",25.4-108,"100x50|100x70|102x152",system print,NO,NO,GEOMETRY_VERIFIED,https://epson.com/colorworks-c6000-color-label-printer
+generic_thermal_58,Generic,Thermal 58 mm,direct_thermal,203,system,20-58,58-continuous,system print,NO,NO,GEOMETRY_VERIFIED,
+generic_thermal_80,Generic,Thermal 80 mm,direct_thermal,203,system,20-80,"70x50|80x50",system print,NO,NO,GEOMETRY_VERIFIED,
+generic_thermal_104,Generic,Thermal 104 mm / 4 in,direct_thermal,"203|300",system,20-104,"100x50|100x70|102x152",system print,NO,NO,GEOMETRY_VERIFIED,
+custom,Custom,Custom printer / size,system,"203|300|600",system,20-216,"50x30|62-continuous|70x50|80x50|100x50|100x70|102x152",system print,NO,NO,SOFTWARE_VERIFIED,

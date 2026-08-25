@@ -12,6 +12,18 @@ import {
   recipeBehaviorModuleGate,
 } from '@/features/product-intelligence';
 import { marketProfile, type MarketProfileCode, type MasterLabelFieldId } from './marketProfiles';
+import {
+  assessCanadaFop,
+  defaultRegulatoryNutrition,
+  regulatoryNutritionReadiness,
+  type RegulatoryNutritionInputs,
+} from './regulatoryNutrition';
+import {
+  DEFAULT_PRINTER_SETTINGS,
+  normalizePrinterSettings,
+  printerGeometryIssues,
+  type LabelPrinterSettings,
+} from './printerProfiles';
 
 export type LabelLanguageTag = string;
 
@@ -53,6 +65,8 @@ export interface MasterLabelData {
   masterLabelId: string;
   sourceCompletionSessionId: string;
   sourceCompletedAt: string;
+  purpose: 'retail_consumer' | 'internal_production' | 'display_gelateria';
+  packagingContext: 'prepacked' | 'ppds' | 'loose_non_prepacked';
   market: MarketProfileCode;
   marketProfileVersion: string;
   uiLanguage: string;
@@ -72,6 +86,7 @@ export interface MasterLabelData {
   };
   nutritionSource: LabelNutritionPer100g | null;
   nutritionDeclaration: NutritionDeclaration | null;
+  regulatoryNutrition: RegulatoryNutritionInputs;
   netQuantityG: number | null;
   servingQuantityG: number | null;
   productionDate: string;
@@ -93,6 +108,12 @@ export interface MasterLabelData {
   size: { widthMm: number; heightMm: number };
   copies: number;
   systemPrinter: 'system';
+  printer: LabelPrinterSettings;
+  regulatoryReview: {
+    translations: boolean;
+    ingredientOrderAndQuid: boolean;
+    marketSpecific: boolean;
+  };
   preflightAcknowledged: boolean;
 }
 
@@ -107,6 +128,7 @@ export interface BuildMasterLabelInput {
   logoPath?: string | null;
   enabledOptionalFields?: MasterLabelFieldId[];
   presentation?: Partial<Pick<MasterLabelData, 'format' | 'size' | 'copies'>>;
+  printer?: Partial<LabelPrinterSettings>;
 }
 
 export function normalizeEnabledOptionalFields(
@@ -243,6 +265,8 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
     masterLabelId: input.masterLabelId,
     sourceCompletionSessionId: snapshot.sessionId,
     sourceCompletedAt: snapshot.productionCompletedAt,
+    purpose: 'retail_consumer',
+    packagingContext: 'prepacked',
     market: input.market,
     marketProfileVersion: profile.version,
     uiLanguage: input.uiLanguage,
@@ -263,6 +287,10 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
       snapshot.finalProduct.labelNutritionPer100g ?? snapshot.finalProduct.nutritionPer100g,
     nutritionDeclaration: buildNutritionDeclaration(
       snapshot.finalProduct.labelNutritionPer100g ?? snapshot.finalProduct.nutritionPer100g,
+    ),
+    regulatoryNutrition: defaultRegulatoryNutrition(
+      snapshot.finalProduct.labelNutritionPer100g ?? snapshot.finalProduct.nutritionPer100g,
+      languages,
     ),
     // Owner closeout: a run label starts from the ACTUAL completed product,
     // including toppings and any Rescue scale-up. The operator can still edit
@@ -293,12 +321,33 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
     size: input.presentation?.size ?? { widthMm: 90, heightMm: 60 },
     copies: input.presentation?.copies ?? 1,
     systemPrinter: 'system',
+    printer: normalizePrinterSettings({
+      ...DEFAULT_PRINTER_SETTINGS,
+      ...input.printer,
+      widthMm: input.presentation?.size?.widthMm ?? 90,
+      heightMm: input.presentation?.size?.heightMm ?? 60,
+      copies: input.presentation?.copies ?? 1,
+    }),
+    regulatoryReview: {
+      translations: false,
+      ingredientOrderAndQuid: false,
+      marketSpecific: false,
+    },
     preflightAcknowledged: false,
   };
 }
 
 export interface LabelPreflightItem {
-  field: MasterLabelFieldId | 'profile' | 'acknowledgement';
+  field:
+    | MasterLabelFieldId
+    | 'profile'
+    | 'languages'
+    | 'market_nutrition'
+    | 'canada_fop'
+    | 'geometry'
+    | 'printer'
+    | 'regulatory_review'
+    | 'acknowledgement';
   status: 'ready' | 'missing' | 'review' | 'research';
   label: string;
   message: string;
@@ -393,25 +442,108 @@ function fieldReadiness(data: MasterLabelData, field: MasterLabelFieldId): Label
 
 export function buildLabelPreflight(data: MasterLabelData): LabelPreflight {
   const profile = marketProfile(data.market);
-  const required = profile.requiredFields.map((field) => fieldReadiness(data, field));
+  const requiredFields =
+    data.purpose === 'retail_consumer'
+      ? profile.requiredFields
+      : data.purpose === 'internal_production'
+        ? (['product_name', 'ingredients', 'allergens', 'lot', 'storage'] as const)
+        : (['product_name', 'allergens', 'operator'] as const);
+  const required = requiredFields.map((field) => fieldReadiness(data, field));
+  const requiredLanguages =
+    profile.requiredLanguages.length > 0 ? profile.requiredLanguages : data.labelLanguages;
+  const languagesReady =
+    requiredLanguages.length > 0 &&
+    requiredLanguages.every((language) => data.labelLanguages.includes(language));
+  const nutritionReadiness = regulatoryNutritionReadiness(
+    data.market,
+    data.nutritionSource,
+    data.regulatoryNutrition,
+    requiredLanguages,
+  );
+  const canadaFop = assessCanadaFop(data.nutritionSource, data.regulatoryNutrition);
+  const printerIssues = printerGeometryIssues(data.printer);
+  const minimum = profile.minimumLabel;
+  const geometryReady =
+    data.size.widthMm >= minimum.widthMm && data.size.heightMm >= minimum.heightMm;
+  const retail = data.purpose === 'retail_consumer';
   const items: LabelPreflightItem[] = [
     {
       field: 'profile',
-      status:
-        profile.status === 'VERIFIED'
-          ? 'ready'
-          : profile.status === 'RESEARCH_REQUIRED'
-            ? 'research'
-            : 'review',
+      status: profile.status === 'VERIFIED' && profile.selectable ? 'ready' : 'research',
       label: `Profil ${profile.label}`,
       message:
         profile.status === 'VERIFIED'
           ? 'Profil regulacyjny zweryfikowany.'
-          : profile.status === 'RESEARCH_REQUIRED'
-            ? 'Profil wymaga weryfikacji.'
-            : profile.rendererLimitation,
+          : 'Profil jest badawczy i niedostępny do wydruku.',
+    },
+    {
+      field: 'languages',
+      status:
+        !retail || (languagesReady && data.regulatoryReview.translations) ? 'ready' : 'missing',
+      label: 'Języki etykiety',
+      message:
+        !retail || (languagesReady && data.regulatoryReview.translations)
+          ? 'Wymagane języki i tłumaczenia potwierdzone.'
+          : `Wymagane języki: ${requiredLanguages.join(', ')}; potwierdź tłumaczenia.`,
     },
     ...required,
+    {
+      field: 'market_nutrition',
+      status: !retail || nutritionReadiness.ready ? 'ready' : 'missing',
+      label: `Nutrition · ${profile.nutritionFormat}`,
+      message:
+        !retail || nutritionReadiness.ready
+          ? 'Kompletny zestaw danych dla układu rynku.'
+          : nutritionReadiness.missing.join(' '),
+    },
+    ...(data.market === 'CA' && retail
+      ? [
+          {
+            field: 'canada_fop' as const,
+            status:
+              canadaFop.state === 'unresolved' ||
+              (canadaFop.state === 'required' && !data.regulatoryNutrition.canadaFopAssetId)
+                ? ('missing' as const)
+                : ('ready' as const),
+            label: 'Canada FOP',
+            message:
+              canadaFop.state === 'required' && !data.regulatoryNutrition.canadaFopAssetId
+                ? `Symbol wymagany (${canadaFop.highIn.join(', ')}), ale brak zatwierdzonego pliku graficznego Health Canada.`
+                : canadaFop.state === 'required'
+                  ? `Symbol wymagany: ${canadaFop.highIn.join(', ')}.`
+                  : canadaFop.reason,
+          },
+        ]
+      : []),
+    {
+      field: 'geometry',
+      status: !retail || geometryReady ? 'ready' : 'missing',
+      label: 'Rozmiar i minimalna czytelność',
+      message:
+        !retail || geometryReady
+          ? `Format ${data.size.widthMm} × ${data.size.heightMm} mm; minimum x-height ${minimum.xHeightMm} mm.`
+          : `Ta etykieta jest za mała dla wybranego rynku. Minimum profilu: ${minimum.widthMm} × ${minimum.heightMm} mm.`,
+    },
+    {
+      field: 'printer',
+      status: printerIssues.length === 0 ? 'ready' : 'missing',
+      label: 'Profil drukarki',
+      message: printerIssues.length === 0 ? 'Geometria drukarki zgodna.' : printerIssues.join(' '),
+    },
+    {
+      field: 'regulatory_review',
+      status:
+        !retail ||
+        (data.regulatoryReview.ingredientOrderAndQuid && data.regulatoryReview.marketSpecific)
+          ? 'ready'
+          : 'review',
+      label: 'Kontrola rynku',
+      message:
+        !retail ||
+        (data.regulatoryReview.ingredientOrderAndQuid && data.regulatoryReview.marketSpecific)
+          ? 'Kolejność/QUID i wymagania rynku potwierdzone.'
+          : 'Potwierdź kolejność składników/QUID oraz wymagania właściwe dla rynku.',
+    },
     {
       field: 'acknowledgement',
       status: data.preflightAcknowledged ? 'ready' : 'review',
@@ -421,17 +553,20 @@ export function buildLabelPreflight(data: MasterLabelData): LabelPreflight {
         : 'Zaznacz: Sprawdziłem dane etykiety przed wydrukiem.',
     },
   ];
-  const missingCount = required.filter((item) => item.status === 'missing').length;
+  const missingCount = items.filter((item) => item.status === 'missing').length;
   const reviewCount = items.filter(
     (item) => item.status === 'review' || item.status === 'research',
   ).length;
-  const regulatoryProfileVerified = profile.status === 'VERIFIED';
+  const regulatoryProfileVerified = profile.status === 'VERIFIED' && profile.selectable;
   return {
     items,
     missingCount,
     reviewCount,
     readyForSystemPrint:
-      missingCount === 0 && data.preflightAcknowledged && regulatoryProfileVerified,
+      missingCount === 0 &&
+      reviewCount === 0 &&
+      data.preflightAcknowledged &&
+      regulatoryProfileVerified,
     regulatoryProfileVerified,
   };
 }

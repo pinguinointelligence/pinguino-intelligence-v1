@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/services/auth';
 import type { FacilityDefaults, MasterLabelData } from '@/features/master-label/masterLabel';
 import type { MarketProfileCode, MasterLabelFieldId } from '@/features/master-label/marketProfiles';
 import type { ProductionCompletionSnapshot } from '@/features/production-workspace/productionSession';
+import type { LabelPrinterSettings } from '@/features/master-label/printerProfiles';
 
 const PROFILE_TABLE = 'account_label_profiles';
 const RUN_LABEL_TABLE = 'production_run_label_snapshots';
@@ -27,6 +28,7 @@ export interface AccountLabelProfile {
     widthMm: number;
     heightMm: number;
     copies: number;
+    printer: LabelPrinterSettings;
   };
   updatedAt: string;
 }
@@ -74,7 +76,22 @@ export function defaultAccountLabelProfile(
     logoPath: null,
     enabledOptionalFields: ['logo', 'origin', 'customer_note'],
     facilityDefaults: emptyFacility(),
-    presentation: { format: 'rectangle', widthMm: 90, heightMm: 60, copies: 1 },
+    presentation: {
+      format: 'rectangle',
+      widthMm: 90,
+      heightMm: 60,
+      copies: 1,
+      printer: {
+        profileId: 'system_a4_letter',
+        connection: 'system',
+        dpi: 300,
+        orientation: 'portrait',
+        marginMm: 2,
+        widthMm: 90,
+        heightMm: 60,
+        copies: 1,
+      },
+    },
     updatedAt: now,
   };
 }

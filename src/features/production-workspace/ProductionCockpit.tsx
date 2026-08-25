@@ -450,6 +450,7 @@ export function ProductionCockpit({
             versionNumber={publishableVersion}
             defaultTitle={session.source.recipeName}
             hasCreatorProfile={hasCreatorProfile}
+            completionContext
             onPublished={dismissCommunityCard}
             onClose={() => setCommunityDialogKey(null)}
           />
@@ -674,7 +675,7 @@ export function ProductionCockpit({
                             ? `Minimalna bezpieczna korekta · ${formatPhysicalMassG(preview.finalMassG)} g`
                             : preview && option.id === 'restore_original_recipe'
                               ? `Przywróć oryginalną recepturę · ${formatPhysicalMassG(preview.finalMassG)} g`
-                            : option.title}
+                              : option.title}
                         </strong>
                         {recommended ? (
                           <span className="rounded-md border border-[#d9c49a] bg-[#efe8dc] px-1.5 py-0.5 text-[9px] font-semibold tracking-[0.04em] text-[#765224] uppercase">
@@ -804,7 +805,7 @@ export function ProductionCockpit({
                   ? 'Zastosuj nową partię'
                   : production.selectedRescueOptionId === 'restore_original_recipe'
                     ? 'Przywróć proporcje'
-                  : 'Zastosuj korektę'}
+                    : 'Zastosuj korektę'}
           </button>
         </section>
       ) : session.lastDeviationDecision ? (

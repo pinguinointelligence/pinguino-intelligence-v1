@@ -36,6 +36,13 @@ import {
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/cn';
 import { WorkflowNotice } from '@/components/shared/WorkflowNotice';
+import {
+  PRINTER_PROFILES,
+  normalizePrinterSettings,
+  type LabelPrinterSettings,
+  type PrinterProfileId,
+} from './printerProfiles';
+import { assessCanadaFop } from './regulatoryNutrition';
 
 const MARKET_CODES: readonly MarketProfileCode[] = ['EU', 'US', 'CA', 'UK', 'AU_NZ', 'CUSTOM'];
 export type LabelWorkspaceView = 'label' | 'settings';
@@ -61,6 +68,7 @@ function profileFromLabel(
       widthMm: label.size.widthMm,
       heightMm: label.size.heightMm,
       copies: label.copies,
+      printer: label.printer,
     },
   };
 }
@@ -87,6 +95,7 @@ function labelFromProfile(
       },
       copies: profile.presentation.copies,
     },
+    printer: profile.presentation.printer,
   });
 }
 
@@ -332,8 +341,8 @@ export function LabelWorkspace({
   const productName = primaryText(label.productName, label.labelLanguages);
   const costs = snapshot.finalProduct.costs;
   const activeMarket = marketProfile(label.market);
-  const missing = preflight?.items.filter((item) => item.status === 'missing') ?? [];
-  const printBlockedReason = missing[0]?.message ?? activeMarket.rendererLimitation;
+  const unresolved = preflight?.items.filter((item) => item.status !== 'ready') ?? [];
+  const printBlockedReason = unresolved[0]?.message ?? activeMarket.rendererLimitation;
   const percentages = snapshot.finalResult.percentages;
 
   return (
@@ -383,11 +392,25 @@ export function LabelWorkspace({
                     {saved ? 'Snapshot zapisany' : 'Ustawienia'}
                   </Button>
                   <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => printMasterLabel(label, logoUrl, { draft: true })}
+                  >
+                    Drukuj podgląd roboczy
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => printMasterLabel(label, null, { calibration: true })}
+                  >
+                    Druk testowy
+                  </Button>
+                  <Button
                     size="sm"
                     disabled={!preflight?.readyForSystemPrint}
                     onClick={() => printMasterLabel(label, logoUrl)}
                   >
-                    Drukuj
+                    PDF / druk systemowy
                   </Button>
                 </div>
               </header>
@@ -399,8 +422,8 @@ export function LabelWorkspace({
                     }
                   >
                     {preflight?.readyForSystemPrint
-                      ? 'Gotowa do wydruku'
-                      : `Wydruk zablokowany · ${missing.length > 0 ? `${missing.length} wymaganych pól` : `profil ${activeMarket.label} wymaga weryfikacji`}`}
+                      ? '✓ Gotowa do druku'
+                      : `Wydruk zablokowany · ${unresolved.length} pozycji do rozwiązania`}
                   </span>
                   {!preflight?.readyForSystemPrint ? (
                     <button
@@ -414,7 +437,25 @@ export function LabelWorkspace({
                   ) : null}
                 </div>
               </div>
-              <div className="p-4 sm:p-6" data-testid="consumer-print-boundary">
+              <div className="border-b border-ink/10 bg-white px-4 py-3 text-[11px] text-stone-600">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                  <strong className="text-ink">
+                    {label.size.widthMm} × {label.size.heightMm} mm
+                  </strong>
+                  <span>
+                    {PRINTER_PROFILES[label.printer.profileId].manufacturer}{' '}
+                    {PRINTER_PROFILES[label.printer.profileId].model}
+                  </span>
+                  <span>{label.printer.dpi} dpi</span>
+                  <span>{label.printer.copies} kopii</span>
+                  <span>x-height profilu ≥ {activeMarket.minimumLabel.xHeightMm} mm</span>
+                </div>
+                <p className="mt-1 text-stone-500">
+                  Podgląd używa wybranych jednostek mm; PDF/system print korzysta z tej samej
+                  geometrii. Zapis do PDF jest dostępny w natywnym oknie drukowania.
+                </p>
+              </div>
+              <div className="overflow-x-auto p-4 sm:p-6" data-testid="consumer-print-boundary">
                 <ConsumerLabelPreview label={label} logoUrl={logoUrl} />
               </div>
             </Card>
@@ -452,7 +493,7 @@ export function LabelWorkspace({
                 <Button
                   size="sm"
                   onClick={() => void saveRunSnapshot()}
-                  disabled={busy || missing.length > 0}
+                  disabled={busy || !preflight?.readyForSystemPrint}
                 >
                   {busy ? 'Zapisywanie…' : 'Zapisz finalną etykietę'}
                 </Button>
@@ -623,7 +664,35 @@ function ProfileEditor({
         widthMm={draft.presentation.widthMm}
         heightMm={draft.presentation.heightMm}
         copies={draft.presentation.copies}
-        onChange={(presentation) => setDraft({ ...draft, presentation })}
+        onChange={(presentation) =>
+          setDraft({
+            ...draft,
+            presentation: {
+              ...presentation,
+              printer: normalizePrinterSettings({
+                ...draft.presentation.printer,
+                widthMm: presentation.widthMm,
+                heightMm: presentation.heightMm,
+                copies: presentation.copies,
+              }),
+            },
+          })
+        }
+      />
+      <PrinterSettingsFields
+        value={draft.presentation.printer}
+        onChange={(printer) =>
+          setDraft({
+            ...draft,
+            presentation: {
+              ...draft.presentation,
+              widthMm: printer.widthMm,
+              heightMm: printer.heightMm,
+              copies: printer.copies,
+              printer,
+            },
+          })
+        }
       />
       <div className="mt-5 grid grid-cols-2 gap-2">
         <Button variant="ghost" onClick={onClose}>
@@ -745,6 +814,43 @@ function RunLabelEditor({
 
       <div className="px-4 sm:px-5">
         <SettingsSection title="Rynek i język">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="text-xs font-medium text-stone-600">
+              Cel etykiety
+              <select
+                value={draft.purpose}
+                onChange={(event) =>
+                  setDraft({
+                    ...draft,
+                    purpose: event.currentTarget.value as MasterLabelData['purpose'],
+                  })
+                }
+                className={SETTINGS_INPUT_CLASS}
+              >
+                <option value="retail_consumer">Retail / konsumencka</option>
+                <option value="internal_production">Wewnętrzna produkcyjna</option>
+                <option value="display_gelateria">Ekspozycja / gelateria</option>
+              </select>
+            </label>
+            <label className="text-xs font-medium text-stone-600">
+              Sposób sprzedaży
+              <select
+                value={draft.packagingContext}
+                onChange={(event) =>
+                  setDraft({
+                    ...draft,
+                    packagingContext: event.currentTarget
+                      .value as MasterLabelData['packagingContext'],
+                  })
+                }
+                className={SETTINGS_INPUT_CLASS}
+              >
+                <option value="prepacked">Prepacked</option>
+                <option value="ppds">PPDS / pakowane w miejscu sprzedaży</option>
+                <option value="loose_non_prepacked">Loose / nieopakowane</option>
+              </select>
+            </label>
+          </div>
           <div>
             <span className="text-xs font-medium text-stone-600">Jurysdykcja / profil</span>
             <div className="mt-2 grid grid-cols-2 gap-1.5 min-[480px]:grid-cols-3">
@@ -759,19 +865,47 @@ function RunLabelEditor({
                       : 'border-ink/12 bg-white text-ink hover:bg-stone-50',
                   )}
                   data-market-active={draft.market === code ? 'true' : undefined}
-                  onClick={() =>
+                  disabled={!MARKET_PROFILES[code].selectable}
+                  title={
+                    MARKET_PROFILES[code].selectable
+                      ? MARKET_PROFILES[code].jurisdiction
+                      : 'RESEARCH / NOT AVAILABLE'
+                  }
+                  onClick={() => {
+                    const nextProfile = MARKET_PROFILES[code];
+                    const labelLanguages = [
+                      ...new Set([...nextProfile.requiredLanguages, ...draft.labelLanguages]),
+                    ];
+                    const widthMm = Math.max(draft.size.widthMm, nextProfile.minimumLabel.widthMm);
+                    const heightMm = Math.max(
+                      draft.size.heightMm,
+                      nextProfile.minimumLabel.heightMm,
+                    );
                     setDraft({
                       ...draft,
                       market: code,
-                      marketProfileVersion: MARKET_PROFILES[code].version,
+                      marketProfileVersion: nextProfile.version,
+                      labelLanguages,
+                      size: { widthMm, heightMm },
+                      printer: normalizePrinterSettings({
+                        ...draft.printer,
+                        widthMm,
+                        heightMm,
+                      }),
                       enabledOptionalFields: normalizeEnabledOptionalFields(
                         code,
                         draft.enabledOptionalFields,
                       ),
-                    })
-                  }
+                      regulatoryReview: {
+                        translations: false,
+                        ingredientOrderAndQuid: false,
+                        marketSpecific: false,
+                      },
+                    });
+                  }}
                 >
                   {MARKET_PROFILES[code].label}
+                  {!MARKET_PROFILES[code].selectable ? ' · research' : ''}
                 </button>
               ))}
             </div>
@@ -928,6 +1062,16 @@ function RunLabelEditor({
           </div>
         </SettingsSection>
 
+        {draft.purpose === 'retail_consumer' && ['US', 'CA', 'AU_NZ'].includes(draft.market) ? (
+          <RegulatoryNutritionFields
+            value={draft}
+            missing={draftPreflight.items.some(
+              (item) => item.field === 'market_nutrition' && item.status !== 'ready',
+            )}
+            onChange={setDraft}
+          />
+        ) : null}
+
         <SettingsSection title="Daty i identyfikacja">
           <div className="grid gap-3 sm:grid-cols-2">
             <RequiredSettingsField field="lot" missing={missing('lot')}>
@@ -1049,6 +1193,23 @@ function RunLabelEditor({
                 format: presentation.format,
                 size: { widthMm: presentation.widthMm, heightMm: presentation.heightMm },
                 copies: presentation.copies,
+                printer: normalizePrinterSettings({
+                  ...draft.printer,
+                  widthMm: presentation.widthMm,
+                  heightMm: presentation.heightMm,
+                  copies: presentation.copies,
+                }),
+              })
+            }
+          />
+          <PrinterSettingsFields
+            value={draft.printer}
+            onChange={(printer) =>
+              setDraft({
+                ...draft,
+                printer,
+                size: { widthMm: printer.widthMm, heightMm: printer.heightMm },
+                copies: printer.copies,
               })
             }
           />
@@ -1056,6 +1217,57 @@ function RunLabelEditor({
 
         <SettingsSection title="Weryfikacja">
           <div className="grid gap-2">
+            <label className="flex min-h-12 items-center gap-3 rounded-[12px] border border-ink/10 bg-white px-3 text-xs text-ink">
+              <input
+                type="checkbox"
+                className="size-5 accent-ink"
+                checked={draft.regulatoryReview.translations}
+                onChange={(event) =>
+                  setDraft({
+                    ...draft,
+                    regulatoryReview: {
+                      ...draft.regulatoryReview,
+                      translations: event.currentTarget.checked,
+                    },
+                  })
+                }
+              />
+              Potwierdzam kompletność tłumaczeń w wymaganych językach.
+            </label>
+            <label className="flex min-h-12 items-center gap-3 rounded-[12px] border border-ink/10 bg-white px-3 text-xs text-ink">
+              <input
+                type="checkbox"
+                className="size-5 accent-ink"
+                checked={draft.regulatoryReview.ingredientOrderAndQuid}
+                onChange={(event) =>
+                  setDraft({
+                    ...draft,
+                    regulatoryReview: {
+                      ...draft.regulatoryReview,
+                      ingredientOrderAndQuid: event.currentTarget.checked,
+                    },
+                  })
+                }
+              />
+              Potwierdzam kolejność składników i przegląd QUID.
+            </label>
+            <label className="flex min-h-12 items-center gap-3 rounded-[12px] border border-ink/10 bg-white px-3 text-xs text-ink">
+              <input
+                type="checkbox"
+                className="size-5 accent-ink"
+                checked={draft.regulatoryReview.marketSpecific}
+                onChange={(event) =>
+                  setDraft({
+                    ...draft,
+                    regulatoryReview: {
+                      ...draft.regulatoryReview,
+                      marketSpecific: event.currentTarget.checked,
+                    },
+                  })
+                }
+              />
+              Potwierdzam kontekst sprzedaży i wymagania szczególne rynku.
+            </label>
             <RequiredSettingsField field="ingredients" missing={missing('ingredients')}>
               <ReviewLine
                 label="Składniki"
@@ -1273,6 +1485,178 @@ function OptionalFieldSettings({
   );
 }
 
+function RegulatoryNutritionFields({
+  value,
+  missing,
+  onChange,
+}: {
+  value: MasterLabelData;
+  missing: boolean;
+  onChange: (value: MasterLabelData) => void;
+}) {
+  const facts = value.regulatoryNutrition;
+  const canadaFop = assessCanadaFop(value.nutritionSource, facts);
+  const numberOrNull = (raw: string): number | null =>
+    raw.trim() === '' ? null : Number.isFinite(Number(raw)) ? Number(raw) : null;
+  const updateFacts = (next: Partial<MasterLabelData['regulatoryNutrition']>) =>
+    onChange({ ...value, regulatoryNutrition: { ...facts, ...next } });
+  const numberField = (
+    key: keyof MasterLabelData['regulatoryNutrition'],
+    label: string,
+    unit: string,
+  ) => (
+    <label key={key} className="text-xs font-medium text-stone-600">
+      {label} · {unit}
+      <input
+        type="number"
+        min={0}
+        step="any"
+        value={(facts[key] as number | null) ?? ''}
+        onChange={(event) => updateFacts({ [key]: numberOrNull(event.currentTarget.value) })}
+        className={cn(SETTINGS_INPUT_CLASS, 'font-mono tabular-nums')}
+      />
+    </label>
+  );
+  const nutrients: Array<readonly [keyof MasterLabelData['regulatoryNutrition'], string, string]> =
+    [
+      ['sodiumMgPer100g', 'Sód', 'mg / 100 g'],
+      ...(value.market === 'AU_NZ'
+        ? []
+        : ([
+            ['transFatGPer100g', 'Tłuszcze trans', 'g / 100 g'],
+            ['cholesterolMgPer100g', 'Cholesterol', 'mg / 100 g'],
+            ['calciumMgPer100g', 'Wapń', 'mg / 100 g'],
+            ['ironMgPer100g', 'Żelazo', 'mg / 100 g'],
+            ['potassiumMgPer100g', 'Potas', 'mg / 100 g'],
+          ] as const)),
+      ...(value.market === 'US'
+        ? ([
+            ['addedSugarsGPer100g', 'Cukry dodane', 'g / 100 g'],
+            ['vitaminDMcgPer100g', 'Witamina D', 'mcg / 100 g'],
+          ] as const)
+        : []),
+    ];
+
+  return (
+    <SettingsSection title={`Nutrition · ${marketProfile(value.market).nutritionFormat}`}>
+      <div
+        className={cn(
+          'rounded-[14px] border p-3',
+          missing ? 'border-[#a96832] bg-[#fffaf4]' : 'border-ink/10 bg-[#fffdf8]',
+        )}
+        data-label-field="market_nutrition"
+        data-missing-required={missing ? 'true' : undefined}
+      >
+        <p className="text-xs leading-relaxed text-stone-600">
+          Wartości dodatkowe muszą pochodzić z udokumentowanej authority produktu. Brak danych
+          blokuje retail print; system nie zgaduje wartości.
+        </p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {value.labelLanguages.map((language) => (
+            <label key={`serving:${language}`} className="text-xs font-medium text-stone-600">
+              Opis porcji · {language.toUpperCase()}
+              <input
+                value={facts.servingDescription[language] ?? ''}
+                onChange={(event) =>
+                  updateFacts({
+                    servingDescription: {
+                      ...facts.servingDescription,
+                      [language]: event.currentTarget.value,
+                    },
+                  })
+                }
+                className={SETTINGS_INPUT_CLASS}
+              />
+            </label>
+          ))}
+          <label className="text-xs font-medium text-stone-600">
+            Wielkość porcji · g
+            <input
+              type="number"
+              min={0.1}
+              step="any"
+              value={facts.servingQuantityG ?? ''}
+              onChange={(event) => {
+                const servingQuantityG = numberOrNull(event.currentTarget.value);
+                onChange({
+                  ...value,
+                  servingQuantityG,
+                  regulatoryNutrition: { ...facts, servingQuantityG },
+                });
+              }}
+              className={cn(SETTINGS_INPUT_CLASS, 'font-mono tabular-nums')}
+            />
+          </label>
+          {numberField('servingsPerContainer', 'Porcje w opakowaniu', 'liczba')}
+          {nutrients.map(([key, label, unit]) => numberField(key, label, unit))}
+          {value.market === 'CA' ? (
+            <>
+              {numberField('canadaReferenceAmountG', 'Reference amount', 'g')}
+              <label className="text-xs font-medium text-stone-600">
+                Klasa produktu FOP
+                <select
+                  value={facts.canadaFopProductClass}
+                  onChange={(event) =>
+                    updateFacts({
+                      canadaFopProductClass: event.currentTarget
+                        .value as MasterLabelData['regulatoryNutrition']['canadaFopProductClass'],
+                    })
+                  }
+                  className={SETTINGS_INPUT_CLASS}
+                >
+                  <option value="general_food">Żywność ogólna / gelato</option>
+                  <option value="main_dish">Danie główne ≥ 200 g</option>
+                </select>
+              </label>
+              <label className="text-xs font-medium text-stone-600">
+                FOP / exemption
+                <select
+                  value={facts.canadaFopExemption}
+                  onChange={(event) =>
+                    updateFacts({
+                      canadaFopExemption: event.currentTarget
+                        .value as MasterLabelData['regulatoryNutrition']['canadaFopExemption'],
+                    })
+                  }
+                  className={SETTINGS_INPUT_CLASS}
+                >
+                  <option value="unresolved">Nierozstrzygnięte</option>
+                  <option value="none">Brak wyjątku</option>
+                  <option value="exempt">Udokumentowany wyjątek</option>
+                  <option value="prohibited">Symbol zabroniony dla kategorii</option>
+                </select>
+              </label>
+              {facts.canadaFopExemption !== 'none' && facts.canadaFopExemption !== 'unresolved' ? (
+                <label className="text-xs font-medium text-stone-600 lg:col-span-2">
+                  Podstawa wyjątku
+                  <input
+                    value={facts.canadaFopExemptionReason}
+                    onChange={(event) =>
+                      updateFacts({ canadaFopExemptionReason: event.currentTarget.value })
+                    }
+                    className={SETTINGS_INPUT_CLASS}
+                  />
+                </label>
+              ) : null}
+            </>
+          ) : null}
+        </div>
+        {value.market === 'CA' ? (
+          <div className="mt-3 rounded-[10px] border border-ink/10 bg-white p-3 text-xs text-stone-600">
+            <strong className="block text-ink">Canada FOP: {canadaFop.state}</strong>
+            <span className="mt-1 block">{canadaFop.reason}</span>
+            {canadaFop.state === 'required' && !facts.canadaFopAssetId ? (
+              <span className="mt-1 block font-semibold text-[#8a5b23]">
+                Wydruk zablokowany: wymagany jest zatwierdzony, oficjalny asset Health Canada.
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </SettingsSection>
+  );
+}
+
 function PresentationFields({
   format,
   widthMm,
@@ -1347,6 +1731,139 @@ function PresentationFields({
           className={cn(SETTINGS_INPUT_CLASS, 'font-mono tabular-nums')}
         />
       </label>
+    </fieldset>
+  );
+}
+
+function PrinterSettingsFields({
+  value,
+  onChange,
+}: {
+  value: LabelPrinterSettings;
+  onChange: (value: LabelPrinterSettings) => void;
+}) {
+  const profile = PRINTER_PROFILES[value.profileId];
+  const update = (next: Partial<LabelPrinterSettings>) =>
+    onChange(normalizePrinterSettings({ ...value, ...next }));
+
+  return (
+    <fieldset className="mt-5 rounded-[14px] border border-ink/10 bg-[#fffdf8] p-3">
+      <legend className="px-1 text-sm font-semibold text-ink">Ustawienia drukarki</legend>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <label className="text-xs text-stone-600 sm:col-span-2">
+          Drukarka
+          <select
+            value={value.profileId}
+            onChange={(event) => {
+              const profileId = event.currentTarget.value as PrinterProfileId;
+              const nextProfile = PRINTER_PROFILES[profileId];
+              onChange(
+                normalizePrinterSettings({
+                  ...value,
+                  profileId,
+                  connection: nextProfile.supportedConnections.includes(value.connection)
+                    ? value.connection
+                    : nextProfile.supportedConnections[0],
+                  dpi: nextProfile.dpiOptions.includes(value.dpi)
+                    ? value.dpi
+                    : nextProfile.dpiOptions[0],
+                }),
+              );
+            }}
+            className={SETTINGS_INPUT_CLASS}
+          >
+            {Object.values(PRINTER_PROFILES).map((candidate) => (
+              <option key={candidate.id} value={candidate.id}>
+                {candidate.manufacturer} {candidate.model}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs text-stone-600">
+          Połączenie
+          <select
+            value={value.connection}
+            onChange={(event) =>
+              update({
+                connection: event.currentTarget.value as LabelPrinterSettings['connection'],
+              })
+            }
+            className={SETTINGS_INPUT_CLASS}
+          >
+            {profile.supportedConnections.map((connection) => (
+              <option key={connection} value={connection}>
+                {connection === 'system' ? 'Drukarka systemowa' : connection}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs text-stone-600">
+          Rozdzielczość
+          <select
+            value={value.dpi}
+            onChange={(event) => update({ dpi: Number(event.currentTarget.value) })}
+            className={SETTINGS_INPUT_CLASS}
+          >
+            {profile.dpiOptions.map((dpi) => (
+              <option key={dpi} value={dpi}>
+                {dpi} dpi
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs text-stone-600 sm:col-span-2">
+          Rozmiar etykiety
+          <select
+            value="custom"
+            onChange={(event) => {
+              const preset = profile.sizePresets.find(
+                (candidate) => candidate.id === event.currentTarget.value,
+              );
+              if (preset) update({ widthMm: preset.widthMm, heightMm: preset.heightMm });
+            }}
+            className={SETTINGS_INPUT_CLASS}
+          >
+            <option value="custom">
+              Własny · {value.widthMm} × {value.heightMm} mm
+            </option>
+            {profile.sizePresets.map((preset) => (
+              <option key={preset.id} value={preset.id}>
+                {preset.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs text-stone-600">
+          Orientacja
+          <select
+            value={value.orientation}
+            onChange={(event) =>
+              update({
+                orientation: event.currentTarget.value as LabelPrinterSettings['orientation'],
+              })
+            }
+            className={SETTINGS_INPUT_CLASS}
+          >
+            <option value="portrait">Pion</option>
+            <option value="landscape">Poziom</option>
+          </select>
+        </label>
+        <label className="text-xs text-stone-600">
+          Margines · mm
+          <input
+            type="number"
+            min={0}
+            max={10}
+            step={0.5}
+            value={value.marginMm}
+            onChange={(event) => update({ marginMm: Number(event.currentTarget.value) || 0 })}
+            className={cn(SETTINGS_INPUT_CLASS, 'font-mono tabular-nums')}
+          />
+        </label>
+      </div>
+      <p className="mt-3 text-[11px] leading-relaxed text-stone-500">
+        {profile.workflowNote} Bez wykrywania urządzeń i bez deklaracji bezpośredniego Bluetooth.
+      </p>
     </fieldset>
   );
 }
