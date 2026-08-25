@@ -447,7 +447,7 @@ export function parseProductDosage(value: string | null | undefined): ProductDos
   const dosageSyntax = foldLatin(raw)
     .toLowerCase()
     .replace(/[–—]/g, '-')
-    .replace(/[^a-z0-9%/.,\-]+/g, ' ')
+    .replace(/[^a-z0-9%/.,-]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
   if (/\b(q\s*\.?\s*b\s*\.?|quanto basta|as desired|to taste|wedlug uznania)\b/.test(text)) {
