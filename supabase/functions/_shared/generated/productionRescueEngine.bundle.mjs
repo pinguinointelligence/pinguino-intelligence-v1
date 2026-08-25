@@ -7600,6 +7600,7 @@ function createProductionSession(input) {
 		durableActualRevision: 0,
 		lastDeviationDecision: null,
 		rescueAddedItems: [],
+		topUpTasks: [],
 		lines: orderedBaseItems.map((item) => ({
 			lineId: item.id,
 			canonicalIngredientId: item.ingredient.canonical_ingredient_id ?? item.ingredient.id ?? null,
@@ -7638,17 +7639,22 @@ function createProductionSession(input) {
 function requireActive(session) {
 	if (session.status !== "in_progress") throw new Error("Completed production is immutable.");
 }
+function pendingProductionTopUpTasks(session) {
+	return session.topUpTasks.filter((task) => task.status === "pending");
+}
 /** Confirmed actuals + pending target grams: the predicted finished batch. */
 function buildProductionForecastInput(session) {
 	const byId = new Map(session.lines.map((line) => [line.lineId, line]));
+	const pendingTopUpLineIds = new Set(pendingProductionTopUpTasks(session).map((task) => task.sourceRecipeLineId));
 	const items = [...session.plannedInput.items, ...session.rescueAddedItems].map((item) => {
 		const line = byId.get(item.id);
 		if (!line) throw new Error(`Production line missing for ${item.id}.`);
+		const hasPendingTopUp = pendingTopUpLineIds.has(line.lineId);
 		return {
 			...item,
 			planned_grams: line.targetGrams,
-			actual_grams: line.confirmed ? line.physicalAddedGrams : null,
-			lock_type: line.confirmed ? "already_added" : item.lock_type
+			actual_grams: line.confirmed && !hasPendingTopUp ? line.physicalAddedGrams : null,
+			lock_type: line.confirmed && !hasPendingTopUp ? "already_added" : item.lock_type
 		};
 	});
 	return {
@@ -7658,6 +7664,7 @@ function buildProductionForecastInput(session) {
 }
 /** Every line uses its actual confirmed mass; intended only at completion. */
 function buildFinalActualInput(session) {
+	if (pendingProductionTopUpTasks(session).length > 0) throw new Error("Every authorized Production top-up task must be confirmed before completion.");
 	if (session.lines.some((line) => !line.confirmed)) throw new Error("Every ingredient must be confirmed before production completion.");
 	const byId = new Map(session.lines.map((line) => [line.lineId, line]));
 	const items = [...session.plannedInput.items, ...session.rescueAddedItems].map((item) => {
@@ -7676,7 +7683,60 @@ function buildFinalActualInput(session) {
 		items
 	};
 }
-function applyVerifiedRescueInput(session, candidate) {
+const productionTopUpTaskId = (revisionId, lineId) => `production-top-up:${revisionId}:${encodeURIComponent(lineId)}`;
+function materializeAuthorizedProductionTopUps(session, rescueRevision, sourceActualRevision, authorizedAt) {
+	const authorizedAtMs = authorizedAt === void 0 ? NaN : Date.parse(authorizedAt);
+	if (Number.isFinite(authorizedAtMs) && session.lines.some((line) => {
+		if (line.confirmedAt === null || Math.abs(line.physicalAddedGrams - line.targetGrams) <= 1e-6) return false;
+		return line.physicalAddedGrams > line.targetGrams + 1e-6 || Date.parse(line.confirmedAt) > authorizedAtMs;
+	})) return {
+		...session,
+		topUpTasks: session.topUpTasks.map((task) => task.status === "pending" ? {
+			...task,
+			status: "invalidated"
+		} : task)
+	};
+	const existingByKey = new Map(session.topUpTasks.map((task) => [`${task.revisionId}:${task.sourceRecipeLineId}`, task]));
+	const materialized = [];
+	const lines = session.lines.map((line) => {
+		const confirmedBeforeAuthorization = line.confirmedAt !== null && (authorizedAt === void 0 || Date.parse(line.confirmedAt) <= Date.parse(authorizedAt));
+		const authorizedDeltaG = line.targetGrams - line.physicalAddedGrams;
+		if (!confirmedBeforeAuthorization || authorizedDeltaG <= 1e-6) return line;
+		const existing = existingByKey.get(`${rescueRevision}:${line.lineId}`);
+		materialized.push(existing?.status === "pending" && Math.abs(existing.physicalBaselineG - line.physicalAddedGrams) <= 1e-6 && Math.abs(existing.cumulativeTargetG - line.targetGrams) <= 1e-6 ? existing : {
+			taskId: productionTopUpTaskId(rescueRevision, line.lineId),
+			sourceIngredientId: line.canonicalIngredientId,
+			sourceRecipeLineId: line.lineId,
+			ingredientName: line.name,
+			physicalBaselineG: line.physicalAddedGrams,
+			authorizedDeltaG,
+			draftDeltaG: authorizedDeltaG,
+			cumulativeTargetG: line.targetGrams,
+			revisionId: rescueRevision,
+			sourceActualRevision,
+			status: "pending",
+			completedAt: null
+		});
+		return {
+			...line,
+			confirmed: true,
+			draftActualGrams: line.physicalAddedGrams,
+			draftActualEdited: false
+		};
+	});
+	const materializedIds = new Set(materialized.map((task) => task.taskId));
+	const history = session.topUpTasks.map((task) => task.status === "pending" && !materializedIds.has(task.taskId) ? {
+		...task,
+		status: "invalidated"
+	} : task);
+	const historyIds = new Set(history.map((task) => task.taskId));
+	return {
+		...session,
+		lines,
+		topUpTasks: [...history, ...materialized.filter((task) => !historyIds.has(task.taskId))]
+	};
+}
+function applyVerifiedRescueInput(session, candidate, rescueRevision = session.durableRescueRevision + 1) {
 	requireActive(session);
 	const candidateBatchGrams = candidate.items.reduce((sum, item) => sum + item.planned_grams, 0);
 	const authority = evaluateRecipeConstraintAuthority({
@@ -7695,15 +7755,15 @@ function applyVerifiedRescueInput(session, candidate) {
 		if (!item) throw new Error(`Verified rescue removed production line ${line.lineId}.`);
 		const candidateFinalGrams = item.actual_grams ?? item.planned_grams;
 		if (candidateFinalGrams + 1e-6 < line.physicalAddedGrams) throw new Error(`Verified rescue attempted to reduce physically added ${line.name}.`);
-		const needsTopUp = candidateFinalGrams > line.physicalAddedGrams + PRODUCTION_GRAMS_EPSILON;
+		const hasConfirmedPhysicalFact = line.confirmed || line.confirmedAt !== null && line.physicalAddedGrams > 1e-6;
 		return {
 			...line,
 			targetGrams: candidateFinalGrams,
-			draftActualGrams: line.confirmed && !needsTopUp ? line.physicalAddedGrams : candidateFinalGrams,
+			draftActualGrams: hasConfirmedPhysicalFact ? line.physicalAddedGrams : candidateFinalGrams,
 			draftActualEdited: false,
-			confirmed: line.confirmed && !needsTopUp,
-			confirmedAt: line.confirmed ? line.confirmedAt : null,
-			confirmationOrder: line.confirmed ? line.confirmationOrder : null
+			confirmed: hasConfirmedPhysicalFact,
+			confirmedAt: hasConfirmedPhysicalFact ? line.confirmedAt : null,
+			confirmationOrder: hasConfirmedPhysicalFact ? line.confirmationOrder : null
 		};
 	});
 	const originalIds = new Set(session.plannedInput.items.map((item) => item.id));
@@ -7729,11 +7789,12 @@ function applyVerifiedRescueInput(session, candidate) {
 		confirmationOrder: null,
 		recordCorrectionCount: 0
 	}));
-	return {
+	return materializeAuthorizedProductionTopUps({
 		...session,
+		durableRescueRevision: rescueRevision,
 		rescueAddedItems,
 		lines: [...lines, ...addedLines]
-	};
+	}, rescueRevision, session.durableActualRevision);
 }
 function completeProductionSession(session, _finalResult, completedAt, operatorUserId) {
 	requireActive(session);
@@ -7845,7 +7906,7 @@ function hydrateProductionSessionFromRun(run, source, plannedInput, plannedCompo
 				}
 			}
 		};
-		session = applyVerifiedRescueInput(session, run.rescue.recipeInput);
+		session = applyVerifiedRescueInput(session, run.rescue.recipeInput, run.rescue.revision);
 		session = {
 			...session,
 			durableRescueAcceptedAt: run.rescue.acceptedAt,
@@ -7875,13 +7936,12 @@ function hydrateProductionSessionFromRun(run, source, plannedInput, plannedCompo
 			const recorded = actualById.get(line.lineId);
 			const grams = recorded?.item.actualGrams;
 			if (!recorded || grams === null || grams === void 0) return line;
-			const needsAuthorizedTopUp = line.targetGrams > grams + PRODUCTION_GRAMS_EPSILON;
 			return {
 				...line,
-				draftActualGrams: needsAuthorizedTopUp ? line.targetGrams : grams,
+				draftActualGrams: grams,
 				draftActualEdited: false,
 				physicalAddedGrams: grams,
-				confirmed: !needsAuthorizedTopUp,
+				confirmed: true,
 				confirmedAt: recorded.item.confirmedAt ?? run.actual.recordedAt,
 				confirmationOrder: recorded.item.confirmationOrder ?? recorded.index + 1
 			};
@@ -7903,6 +7963,7 @@ function hydrateProductionSessionFromRun(run, source, plannedInput, plannedCompo
 			internalProductionNote: run.actual.operatorNotes ?? ""
 		};
 	}
+	if (run.rescue && run.actual) session = materializeAuthorizedProductionTopUps(session, run.rescue.revision, session.lastDeviationDecision?.sourceActualRevision ?? run.actual.revision, run.rescue.acceptedAt);
 	return run.status === "completed" ? completeProductionSession(session, calculateRecipe(buildFinalActualInput(session)), run.completedAt ?? run.updatedAt, run.actual?.recordedBy ?? run.ownerUserId) : session;
 }
 

@@ -59,12 +59,36 @@ export interface ProductionLineState {
   recordCorrectionCount: number;
 }
 
+export type ProductionTopUpTaskStatus = 'pending' | 'completed' | 'invalidated';
+
+/**
+ * A revision-bound physical execution task created by an accepted Production
+ * Rescue. It deliberately references the canonical recipe line instead of
+ * becoming another RecipeItem/ProductionLineState for the same PI-ING.
+ */
+export interface ProductionTopUpTask {
+  taskId: string;
+  sourceIngredientId: string | null;
+  sourceRecipeLineId: string;
+  ingredientName: string;
+  /** Physical fact at authorization time. Never edited by the delta control. */
+  physicalBaselineG: number;
+  /** Exact positive amount authorized by the accepted correction. */
+  authorizedDeltaG: number;
+  /** Operator-facing amount to weigh now. */
+  draftDeltaG: number;
+  /** Secondary information: baseline + authorized delta. */
+  cumulativeTargetG: number;
+  /** Monotonic durable Rescue revision that owns this task. */
+  revisionId: number;
+  /** Durable actual revision on which the accepted correction was based. */
+  sourceActualRevision: number;
+  status: ProductionTopUpTaskStatus;
+  completedAt: string | null;
+}
+
 export interface ProductionDeviationDecision {
-  strategy:
-    | 'keep_original_batch'
-    | 'enlarge_batch'
-    | 'restore_original_recipe'
-    | 'leave_as_is';
+  strategy: 'keep_original_batch' | 'enlarge_batch' | 'restore_original_recipe' | 'leave_as_is';
   acceptedAt: string;
   sourceActualRevision: number;
   rescueRevision: number;
@@ -161,6 +185,8 @@ export interface ProductionSession {
   lastDeviationDecision: ProductionDeviationDecision | null;
   /** Solver-verified additions required after production starts. The frozen plan remains untouched. */
   rescueAddedItems: RecipeItem[];
+  /** Authorized additions for already-confirmed lines; never recipe ingredients. */
+  topUpTasks: ProductionTopUpTask[];
   lines: ProductionLineState[];
   addonLines: ProductionLineState[];
   stage: 'base' | 'addons';
@@ -288,6 +314,7 @@ export function createProductionSession(input: CreateProductionSessionInput): Pr
     durableActualRevision: 0,
     lastDeviationDecision: null,
     rescueAddedItems: [],
+    topUpTasks: [],
     lines: orderedBaseItems.map((item) => ({
       lineId: item.id,
       canonicalIngredientId: item.ingredient.canonical_ingredient_id ?? item.ingredient.id ?? null,
@@ -392,16 +419,34 @@ export function confirmProductionLine(
       (max, line) => Math.max(max, line.confirmationOrder ?? 0),
       0,
     ) + 1;
-  const updated = updateLine(session, lineId, (line) => ({
-    ...line,
-    physicalAddedGrams: line.draftActualGrams,
-    draftActualEdited: false,
-    confirmed: true,
-    confirmedAt: at,
-    confirmationOrder: nextOrder,
-  }));
-  const baseDone = updated.lines.length > 0 && updated.lines.every((line) => line.confirmed);
-  return baseDone && updated.addonLines.length > 0 ? { ...updated, stage: 'addons' } : updated;
+  let confirmedTargetGrams = 0;
+  let confirmedActualGrams = 0;
+  const updated = updateLine(session, lineId, (line) => {
+    confirmedTargetGrams = line.targetGrams;
+    confirmedActualGrams = line.draftActualGrams;
+    return {
+      ...line,
+      physicalAddedGrams: line.draftActualGrams,
+      draftActualEdited: false,
+      confirmed: true,
+      confirmedAt: at,
+      confirmationOrder: nextOrder,
+    };
+  });
+  const revisionSafe =
+    Math.abs(confirmedActualGrams - confirmedTargetGrams) <= PRODUCTION_GRAMS_EPSILON
+      ? updated
+      : {
+          ...updated,
+          topUpTasks: updated.topUpTasks.map((task) =>
+            task.status === 'pending' ? { ...task, status: 'invalidated' as const } : task,
+          ),
+        };
+  const baseDone =
+    revisionSafe.lines.length > 0 && revisionSafe.lines.every((line) => line.confirmed);
+  return baseDone && revisionSafe.addonLines.length > 0
+    ? { ...revisionSafe, stage: 'addons' }
+    : revisionSafe;
 }
 
 /**
@@ -437,6 +482,74 @@ export function reopenProductionRecord(
 export function productionTopUpGrams(line: ProductionLineState): number {
   if (line.physicalAddedGrams <= PRODUCTION_GRAMS_EPSILON) return 0;
   return Math.max(0, line.targetGrams - line.physicalAddedGrams);
+}
+
+export function pendingProductionTopUpTasks(
+  session: Pick<ProductionSession, 'topUpTasks'>,
+): ProductionTopUpTask[] {
+  return session.topUpTasks.filter((task) => task.status === 'pending');
+}
+
+export function setProductionTopUpDraftGrams(
+  session: ProductionSession,
+  taskId: string,
+  deltaGrams: number,
+): ProductionSession {
+  requireActive(session);
+  if (!Number.isFinite(deltaGrams) || deltaGrams < 0) {
+    throw new Error('Top-up grams must be finite and non-negative.');
+  }
+  let found = false;
+  const topUpTasks = session.topUpTasks.map((task) => {
+    if (task.taskId !== taskId) return task;
+    found = true;
+    if (task.status !== 'pending') throw new Error('Only a pending top-up task can be edited.');
+    return { ...task, draftDeltaG: deltaGrams };
+  });
+  if (!found) throw new Error(`Unknown Production top-up task: ${taskId}.`);
+  return { ...session, topUpTasks };
+}
+
+export function confirmProductionTopUpTask(
+  session: ProductionSession,
+  taskId: string,
+  at: string,
+): ProductionSession {
+  requireActive(session);
+  const task = session.topUpTasks.find((candidate) => candidate.taskId === taskId);
+  if (!task) throw new Error(`Unknown Production top-up task: ${taskId}.`);
+  if (task.status !== 'pending') throw new Error('Only a pending top-up task can be confirmed.');
+  const line = session.lines.find((candidate) => candidate.lineId === task.sourceRecipeLineId);
+  if (!line) throw new Error(`Top-up source line is missing: ${task.sourceRecipeLineId}.`);
+  if (Math.abs(line.physicalAddedGrams - task.physicalBaselineG) > PRODUCTION_GRAMS_EPSILON) {
+    throw new Error('Production top-up task is stale for the current vessel state.');
+  }
+  const physicalAddedGrams = task.physicalBaselineG + task.draftDeltaG;
+  const matchesAuthorizedTarget =
+    Math.abs(physicalAddedGrams - task.cumulativeTargetG) <= PRODUCTION_GRAMS_EPSILON;
+  return {
+    ...session,
+    lines: session.lines.map((candidate) =>
+      candidate.lineId === task.sourceRecipeLineId
+        ? {
+            ...candidate,
+            physicalAddedGrams,
+            draftActualGrams: physicalAddedGrams,
+            draftActualEdited: false,
+            confirmed: true,
+            confirmedAt: at,
+          }
+        : candidate,
+    ),
+    topUpTasks: session.topUpTasks.map((candidate) => {
+      if (candidate.taskId === taskId) {
+        return { ...candidate, status: 'completed' as const, completedAt: at };
+      }
+      return !matchesAuthorizedTarget && candidate.status === 'pending'
+        ? { ...candidate, status: 'invalidated' as const }
+        : candidate;
+    }),
+  };
 }
 
 /**
@@ -496,14 +609,21 @@ export function correctRecordedPhysicalGrams(
 /** Confirmed actuals + pending target grams: the predicted finished batch. */
 export function buildProductionForecastInput(session: ProductionSession): RecipeInput {
   const byId = new Map(session.lines.map((line) => [line.lineId, line]));
+  const pendingTopUpLineIds = new Set(
+    pendingProductionTopUpTasks(session).map((task) => task.sourceRecipeLineId),
+  );
   const items = [...session.plannedInput.items, ...session.rescueAddedItems].map((item) => {
     const line = byId.get(item.id);
     if (!line) throw new Error(`Production line missing for ${item.id}.`);
+    const hasPendingTopUp = pendingTopUpLineIds.has(line.lineId);
     return {
       ...item,
       planned_grams: line.targetGrams,
-      actual_grams: line.confirmed ? line.physicalAddedGrams : null,
-      lock_type: line.confirmed ? ('already_added' as const) : item.lock_type,
+      // A pending top-up is forecast at its authorized cumulative target. The
+      // physical floor remains in Production state and in durable actuals; it
+      // must not collapse the forecast back to the already-in-vessel amount.
+      actual_grams: line.confirmed && !hasPendingTopUp ? line.physicalAddedGrams : null,
+      lock_type: line.confirmed && !hasPendingTopUp ? ('already_added' as const) : item.lock_type,
     };
   });
   return { ...session.plannedInput, items };
@@ -511,6 +631,9 @@ export function buildProductionForecastInput(session: ProductionSession): Recipe
 
 /** Every line uses its actual confirmed mass; intended only at completion. */
 export function buildFinalActualInput(session: ProductionSession): RecipeInput {
+  if (pendingProductionTopUpTasks(session).length > 0) {
+    throw new Error('Every authorized Production top-up task must be confirmed before completion.');
+  }
   if (session.lines.some((line) => !line.confirmed)) {
     throw new Error('Every ingredient must be confirmed before production completion.');
   }
@@ -553,6 +676,7 @@ export interface ProductionProgress {
 
 export function productionProgress(session: ProductionSession): ProductionProgress {
   const confirmed = session.lines.filter((line) => line.confirmed);
+  const pendingTopUps = pendingProductionTopUpTasks(session);
   const forecast = buildProductionForecastInput(session);
   const confirmedMassG = session.lines.reduce((sum, line) => sum + line.physicalAddedGrams, 0);
   const forecastFinalMassG = forecast.items.reduce(
@@ -578,7 +702,10 @@ export function productionProgress(session: ProductionSession): ProductionProgre
     massBalanceState:
       Math.abs(balanceDeltaG) <= 0.05 ? 'exact' : balanceDeltaG > 0 ? 'above' : 'below',
     targetChanged: Math.abs(currentPlanMassG - originalTargetMassG) > 0.05,
-    coherent: session.lines.length > 0 && confirmed.length === session.lines.length,
+    coherent:
+      session.lines.length > 0 &&
+      confirmed.length === session.lines.length &&
+      pendingTopUps.length === 0,
   };
 }
 
@@ -604,9 +731,99 @@ export function toppingProductionProgress(session: ProductionSession): ToppingPr
   };
 }
 
+const productionTopUpTaskId = (revisionId: number, lineId: string): string =>
+  `production-top-up:${revisionId}:${encodeURIComponent(lineId)}`;
+
+function materializeAuthorizedProductionTopUps(
+  session: ProductionSession,
+  rescueRevision: number,
+  sourceActualRevision: number,
+  authorizedAt?: string,
+): ProductionSession {
+  const authorizedAtMs = authorizedAt === undefined ? Number.NaN : Date.parse(authorizedAt);
+  const correctionBecameStale =
+    Number.isFinite(authorizedAtMs) &&
+    session.lines.some((line) => {
+      if (
+        line.confirmedAt === null ||
+        Math.abs(line.physicalAddedGrams - line.targetGrams) <= PRODUCTION_GRAMS_EPSILON
+      ) {
+        return false;
+      }
+      return (
+        line.physicalAddedGrams > line.targetGrams + PRODUCTION_GRAMS_EPSILON ||
+        Date.parse(line.confirmedAt) > authorizedAtMs
+      );
+    });
+  if (correctionBecameStale) {
+    return {
+      ...session,
+      topUpTasks: session.topUpTasks.map((task) =>
+        task.status === 'pending' ? { ...task, status: 'invalidated' as const } : task,
+      ),
+    };
+  }
+  const existingByKey = new Map(
+    session.topUpTasks.map((task) => [`${task.revisionId}:${task.sourceRecipeLineId}`, task]),
+  );
+  const materialized: ProductionTopUpTask[] = [];
+  const lines = session.lines.map((line) => {
+    const confirmedBeforeAuthorization =
+      line.confirmedAt !== null &&
+      (authorizedAt === undefined || Date.parse(line.confirmedAt) <= Date.parse(authorizedAt));
+    const authorizedDeltaG = line.targetGrams - line.physicalAddedGrams;
+    if (!confirmedBeforeAuthorization || authorizedDeltaG <= PRODUCTION_GRAMS_EPSILON) {
+      return line;
+    }
+    const existing = existingByKey.get(`${rescueRevision}:${line.lineId}`);
+    materialized.push(
+      existing?.status === 'pending' &&
+        Math.abs(existing.physicalBaselineG - line.physicalAddedGrams) <=
+          PRODUCTION_GRAMS_EPSILON &&
+        Math.abs(existing.cumulativeTargetG - line.targetGrams) <= PRODUCTION_GRAMS_EPSILON
+        ? existing
+        : {
+            taskId: productionTopUpTaskId(rescueRevision, line.lineId),
+            sourceIngredientId: line.canonicalIngredientId,
+            sourceRecipeLineId: line.lineId,
+            ingredientName: line.name,
+            physicalBaselineG: line.physicalAddedGrams,
+            authorizedDeltaG,
+            draftDeltaG: authorizedDeltaG,
+            cumulativeTargetG: line.targetGrams,
+            revisionId: rescueRevision,
+            sourceActualRevision,
+            status: 'pending',
+            completedAt: null,
+          },
+    );
+    // The canonical Production line remains the already-executed fact. The
+    // authorized delta lives exclusively in topUpTasks.
+    return {
+      ...line,
+      confirmed: true,
+      draftActualGrams: line.physicalAddedGrams,
+      draftActualEdited: false,
+    };
+  });
+  const materializedIds = new Set(materialized.map((task) => task.taskId));
+  const history = session.topUpTasks.map((task) =>
+    task.status === 'pending' && !materializedIds.has(task.taskId)
+      ? { ...task, status: 'invalidated' as const }
+      : task,
+  );
+  const historyIds = new Set(history.map((task) => task.taskId));
+  return {
+    ...session,
+    lines,
+    topUpTasks: [...history, ...materialized.filter((task) => !historyIds.has(task.taskId))],
+  };
+}
+
 export function applyVerifiedRescueInput(
   session: ProductionSession,
   candidate: RecipeInput,
+  rescueRevision = session.durableRescueRevision + 1,
 ): ProductionSession {
   requireActive(session);
   const candidateBatchGrams = candidate.items.reduce((sum, item) => sum + item.planned_grams, 0);
@@ -633,20 +850,19 @@ export function applyVerifiedRescueInput(
     if (candidateFinalGrams + PRODUCTION_GRAMS_EPSILON < line.physicalAddedGrams) {
       throw new Error(`Verified rescue attempted to reduce physically added ${line.name}.`);
     }
-    const needsTopUp = candidateFinalGrams > line.physicalAddedGrams + PRODUCTION_GRAMS_EPSILON;
+    const hasConfirmedPhysicalFact =
+      line.confirmed ||
+      (line.confirmedAt !== null && line.physicalAddedGrams > PRODUCTION_GRAMS_EPSILON);
     return {
       ...line,
       targetGrams: candidateFinalGrams,
-      draftActualGrams:
-        line.confirmed && !needsTopUp ? line.physicalAddedGrams : candidateFinalGrams,
+      draftActualGrams: hasConfirmedPhysicalFact ? line.physicalAddedGrams : candidateFinalGrams,
       draftActualEdited: false,
-      confirmed: line.confirmed && !needsTopUp,
-      // A rescue top-up reopens the operator control, not the durable physical
-      // fact. Keep the original chronology so subsequent writes can preserve
-      // every already-in-vessel amount while another reopened line is topped
-      // up. Record corrections still clear chronology in reopenProductionRecord.
-      confirmedAt: line.confirmed ? line.confirmedAt : null,
-      confirmationOrder: line.confirmed ? line.confirmationOrder : null,
+      confirmed: hasConfirmedPhysicalFact,
+      // The accepted target may create a separate top-up task, but it never
+      // rewrites the original line chronology.
+      confirmedAt: hasConfirmedPhysicalFact ? line.confirmedAt : null,
+      confirmationOrder: hasConfirmedPhysicalFact ? line.confirmationOrder : null,
     };
   });
   // Rescue is cumulative. Compare with the immutable source plan, not the
@@ -682,7 +898,16 @@ export function applyVerifiedRescueInput(
       confirmationOrder: null,
       recordCorrectionCount: 0,
     }));
-  return { ...session, rescueAddedItems, lines: [...lines, ...addedLines] };
+  return materializeAuthorizedProductionTopUps(
+    {
+      ...session,
+      durableRescueRevision: rescueRevision,
+      rescueAddedItems,
+      lines: [...lines, ...addedLines],
+    },
+    rescueRevision,
+    session.durableActualRevision,
+  );
 }
 
 export function completeProductionSession(
@@ -867,7 +1092,7 @@ export function hydrateProductionSessionFromRun(
         },
       },
     };
-    session = applyVerifiedRescueInput(session, run.rescue.recipeInput);
+    session = applyVerifiedRescueInput(session, run.rescue.recipeInput, run.rescue.revision);
     session = {
       ...session,
       durableRescueAcceptedAt: run.rescue.acceptedAt,
@@ -910,22 +1135,14 @@ export function hydrateProductionSessionFromRun(
       const recorded = actualById.get(line.lineId);
       const grams = recorded?.item.actualGrams;
       if (!recorded || grams === null || grams === undefined) return line;
-      const needsAuthorizedTopUp =
-        line.targetGrams > grams + PRODUCTION_GRAMS_EPSILON;
       return {
         ...line,
-        // Rescue is applied before durable actuals are restored. When its
-        // current target is above the last physical fact, that fact remains an
-        // immutable floor but the line must stay open for the authorized
-        // positive top-up. Marking it confirmed here used to turn the pending
-        // top-up into a false second deviation in the browser.
-        draftActualGrams: needsAuthorizedTopUp ? line.targetGrams : grams,
+        // Durable actuals are already-executed physical facts. An accepted
+        // positive delta is materialized below as a separate top-up task.
+        draftActualGrams: grams,
         draftActualEdited: false,
         physicalAddedGrams: grams,
-        confirmed: !needsAuthorizedTopUp,
-        // Pending top-up is a UI-open state. The persisted amount, timestamp,
-        // and order remain immutable physical truth until the extra grams are
-        // explicitly confirmed.
+        confirmed: true,
         confirmedAt: recorded.item.confirmedAt ?? run.actual!.recordedAt,
         confirmationOrder: recorded.item.confirmationOrder ?? recorded.index + 1,
       };
@@ -950,6 +1167,15 @@ export function hydrateProductionSessionFromRun(
       })),
       internalProductionNote: run.actual.operatorNotes ?? '',
     };
+  }
+
+  if (run.rescue && run.actual) {
+    session = materializeAuthorizedProductionTopUps(
+      session,
+      run.rescue.revision,
+      session.lastDeviationDecision?.sourceActualRevision ?? run.actual.revision,
+      run.rescue.acceptedAt,
+    );
   }
 
   return run.status === 'completed'
@@ -1008,10 +1234,24 @@ export function mergePendingProductionDrafts(
       recordCorrectionCount: Math.max(line.recordCorrectionCount, draft.recordCorrectionCount),
     };
   };
+  const localTaskById = new Map(local.topUpTasks.map((task) => [task.taskId, task] as const));
+  const durableTaskIds = new Set(durable.topUpTasks.map((task) => task.taskId));
+  const topUpTasks = [
+    ...local.topUpTasks.filter(
+      (task) => task.status !== 'pending' && !durableTaskIds.has(task.taskId),
+    ),
+    ...durable.topUpTasks.map((task) => {
+      const draft = localTaskById.get(task.taskId);
+      return task.status === 'pending' && draft?.status === 'pending'
+        ? { ...task, draftDeltaG: draft.draftDeltaG }
+        : task;
+    }),
+  ];
   return {
     ...durable,
     lines: durable.lines.map(merge),
     addonLines: durable.addonLines.map(merge),
+    topUpTasks,
   };
 }
 

@@ -53,6 +53,8 @@ import { useChangedIngredientLines } from './ingredientChangeStore';
 import { useCustomerPriceDirtyStore } from './customerPriceDirtyStore';
 import type { IngredientPriceView } from './IngredientPriceControl';
 import type { ProductionWorkspaceView } from '@/features/production-workspace/useProductionWorkspace';
+import { ProductionTopUpSection } from '@/features/production-workspace/ProductionTopUpSection';
+import { pendingProductionTopUpTasks } from '@/features/production-workspace/productionSession';
 import { repairableCanonicalDuplicateCount } from './ingredientDuplicateRepair';
 import { listEngineApprovedIngredients } from '@/services/ingredients';
 import { verifiedRecipeSubstituteCandidates } from './recipeSubstitution';
@@ -621,6 +623,18 @@ export function IngredientBuilder({
       />
     );
   });
+  const productionTopUpSection =
+    mode === 'production' && production?.session ? (
+      <ProductionTopUpSection
+        tasks={pendingProductionTopUpTasks(production.session)}
+        disabled={production.persistenceBusy}
+        ingredientCategoryByLineId={Object.fromEntries(
+          items.map((item) => [item.id, item.ingredient.category] as const),
+        )}
+        onChange={production.setTopUpDraft}
+        onConfirm={production.confirmTopUpTask}
+      />
+    ) : null;
 
   const unresolved = unresolvedRequiredIngredients({
     unresolvedRequiredByLineId: unresolvedByLineId,
@@ -941,6 +955,7 @@ export function IngredientBuilder({
                 ) : (
                   <p className="px-4 py-5 text-sm leading-relaxed text-stone-600">{b.empty}</p>
                 )}
+                {productionTopUpSection}
                 {mode === 'recipe' ? (
                   <>
                     <div
@@ -1035,6 +1050,7 @@ export function IngredientBuilder({
             {header}
             {infeasibleNotice}
             {rows}
+            {productionTopUpSection}
           </div>
           {totalLine}
         </>

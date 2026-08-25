@@ -68,7 +68,7 @@ export function migrateProductionSessionStore(
   persisted: unknown,
   version: number,
 ): ProductionSessionStoreState {
-  if (version >= 7) return persisted as ProductionSessionStoreState;
+  if (version >= 8) return persisted as ProductionSessionStoreState;
   const state = persisted as {
     session?: ProductionSession | null;
     archivedSessions?: ProductionSession[];
@@ -86,6 +86,7 @@ export function migrateProductionSessionStore(
       degassingAcknowledgedAt?: string | null;
       carbonatedProductIds?: string[];
       lastDeviationDecision?: ProductionSession['lastDeviationDecision'];
+      topUpTasks?: ProductionSession['topUpTasks'];
     };
     const plannedComposition =
       legacy.plannedComposition ??
@@ -93,6 +94,13 @@ export function migrateProductionSessionStore(
         items: legacy.plannedInput.items,
         baseOrder: legacy.plannedInput.items.map((item) => item.id),
       });
+    const legacyTopUpLines = legacy.lines.filter(
+      (line) =>
+        !line.confirmed &&
+        line.confirmedAt !== null &&
+        line.physicalAddedGrams > 0.000_001 &&
+        line.targetGrams > line.physicalAddedGrams + 0.000_001,
+    );
     return {
       ...legacy,
       schemaVersion: 2,
@@ -106,9 +114,31 @@ export function migrateProductionSessionStore(
       degassingAcknowledgedAt: legacy.degassingAcknowledgedAt ?? null,
       carbonatedProductIds: legacy.carbonatedProductIds ?? [],
       lastDeviationDecision: legacy.lastDeviationDecision ?? null,
+      topUpTasks:
+        legacy.topUpTasks ??
+        legacyTopUpLines.map((line) => ({
+          taskId: `production-top-up:${legacy.durableRescueRevision ?? 0}:${encodeURIComponent(line.lineId)}`,
+          sourceIngredientId: line.canonicalIngredientId,
+          sourceRecipeLineId: line.lineId,
+          ingredientName: line.name,
+          physicalBaselineG: line.physicalAddedGrams,
+          authorizedDeltaG: line.targetGrams - line.physicalAddedGrams,
+          draftDeltaG: Math.max(0, line.draftActualGrams - line.physicalAddedGrams),
+          cumulativeTargetG: line.targetGrams,
+          revisionId: legacy.durableRescueRevision ?? 0,
+          sourceActualRevision: legacy.lastDeviationDecision?.sourceActualRevision ?? 0,
+          status: 'pending' as const,
+          completedAt: null,
+        })),
       lines: legacy.lines.map((line) => ({
         ...line,
         draftActualEdited: line.draftActualEdited ?? false,
+        confirmed: legacyTopUpLines.some((candidate) => candidate.lineId === line.lineId)
+          ? true
+          : line.confirmed,
+        draftActualGrams: legacyTopUpLines.some((candidate) => candidate.lineId === line.lineId)
+          ? line.physicalAddedGrams
+          : line.draftActualGrams,
       })),
       addonLines: (legacy.addonLines ?? []).map((line) => ({
         ...line,
@@ -217,7 +247,7 @@ export const useProductionSessionStore = create<ProductionSessionStoreState>()(
     }),
     {
       name: 'pinguino-production-session',
-      version: 7,
+      version: 8,
       migrate: migrateProductionSessionStore,
       partialize: (state) => ({
         session: state.session,
