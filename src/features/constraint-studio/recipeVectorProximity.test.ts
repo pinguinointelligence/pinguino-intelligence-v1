@@ -622,6 +622,7 @@ describe('isolated multi-candidate neighborhood experiment — null hypothesis',
   it.each([
     [-11, -2, -2],
     [-12, -2, -1],
+    [-13, -2, -1],
     [-13, -2, 1],
   ] as const)(
     'keeps Cinnamon near 2 g or proves the exact Horchata target needs movement (%d °C, sweetness %d, hardness %d)',

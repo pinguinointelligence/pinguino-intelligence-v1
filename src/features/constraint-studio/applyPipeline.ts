@@ -2665,7 +2665,6 @@ const polishDirectionVector = (
     !hasActiveExactDirectionObjective(input) ||
     captureMainIngredientIntent(input).length > 0 ||
     input.goals?.formulation_strategy === undefined ||
-    options.directionNearestPass === true ||
     (options.rescueSimulationLineIds?.length ?? 0) > 0 ||
     input.items.some(
       (item) =>
@@ -2737,6 +2736,12 @@ const polishDirectionVector = (
   const practicalByLineId = new Map(
     practicalSeed.items.map((item) => [item.id, item.planned_grams] as const),
   );
+  const practicalSeedMeasure = evaluateExperimentalCandidate(
+    input,
+    practicalSeed,
+    polishSet,
+    searchOptions,
+  );
   const softAnchorCandidates: RecipeInput[] = [];
   if (options.softAnchorPass !== true) {
     for (const item of input.items) {
@@ -2765,18 +2770,37 @@ const polishDirectionVector = (
         softAnchorPass: true,
       });
       if (!probe.ok || probe.preview.diagnosticOnly === true) continue;
-      softAnchorCandidates.push({ ...input, items: probe.preview.proposedInput.items });
+      const candidate = { ...input, items: probe.preview.proposedInput.items };
+      const measure = evaluateExperimentalCandidate(input, candidate, polishSet, searchOptions);
+      // A soft-anchor probe exists solely to recover formulation proximity. A
+      // probe that makes the COMPLETE x_user vector farther away is not
+      // evidence for this mechanism, even if it happens to improve Direction.
+      if (
+        measure.normalizedDistanceFromUser <
+        practicalSeedMeasure.normalizedDistanceFromUser - SEVERITY_EPS
+      ) {
+        softAnchorCandidates.push(candidate);
+      }
     }
   }
-  const polished = experimentalNeighborhoodSearch(input, polishSet, {
-    ...searchOptions,
-    ...(seedReached ? { seedInputs: [practicalSeed] } : {}),
-  });
+  // Sibling Direction probes already form the outer bounded neighborhood.
+  // They still need the soft-anchor alternative to be comparable with a
+  // normal top-level solve, but recursively running another 100k-candidate
+  // neighborhood inside every one of up to 15 probes would multiply the same
+  // search without adding a new generator class.
+  const polished =
+    options.directionNearestPass === true
+      ? null
+      : experimentalNeighborhoodSearch(input, polishSet, {
+          ...searchOptions,
+          ...(seedReached ? { seedInputs: [practicalSeed] } : {}),
+        });
   let best = {
     input: practicalSeed,
-    measure: evaluateExperimentalCandidate(input, practicalSeed, polishSet, searchOptions),
+    measure: practicalSeedMeasure,
   };
   if (
+    polished !== null &&
     (polished.status === 'candidate' || polished.status === 'nearest') &&
     compareExperimentalCandidateMeasures(polished.measure, best.measure, strategy) < 0
   ) {
