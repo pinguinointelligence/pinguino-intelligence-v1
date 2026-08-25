@@ -144,6 +144,8 @@ describe('Production / Label closeout migration', () => {
     expect(FINAL_LABEL_SQL).toContain("'sha256'");
     expect(FINAL_LABEL_SQL).toContain('unique (run_id, snapshot_version)');
     expect(FINAL_LABEL_SQL).toContain('unique (run_id, content_hash)');
+    expect(FINAL_LABEL_SQL).toContain('"profileVersion":"legacy-unconfigured"');
+    expect(FINAL_LABEL_SQL).toContain('"verificationStatus":"UNVERIFIED"');
     expect(FINAL_LABEL_SQL).toContain('production_save_label_snapshot_v2');
     expect(FINAL_LABEL_SQL).toContain('Run Label Snapshot history is immutable');
     expect(FINAL_LABEL_SQL).toContain('PRINT_READY_UNIVERSAL');

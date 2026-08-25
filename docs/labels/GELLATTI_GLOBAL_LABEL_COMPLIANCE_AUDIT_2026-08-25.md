@@ -1,7 +1,7 @@
 # Gellatti — global label compliance audit
 
-Stan źródeł i implementacji: **25 sierpnia 2026 r.**  
-Zakres produktu: gelato, lody, sorbet i podobne mrożone desery; przede wszystkim opakowania konsumenckie.  
+Stan źródeł i implementacji: **25 sierpnia 2026 r.**
+Zakres produktu: gelato, lody, sorbet i podobne mrożone desery; przede wszystkim opakowania konsumenckie.
 Profile produktu: wyłącznie **EU, UK, USA, Canada, Australia / New Zealand, World / Universal**.
 
 Dokument jest specyfikacją produktu opartą na źródłach urzędowych. Nie jest poradą prawną, certyfikatem regulatora ani deklaracją zgodności dowolnej receptury. Preflight dotyczy konkretnego snapshotu: produktu, batcha, opakowania, języka, rynku, renderera i wersji prawa.

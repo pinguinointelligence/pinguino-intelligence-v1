@@ -9,5 +9,5 @@ Release archive SHA-256:
 
 `0c34df072a3fa7efbb7cbf34950e1f971a4447cffe365d3a359e2d4089b958f5`
 
-The fonts are distributed under the SIL Open Font License 1.1. The unmodified license text is in
+The fonts are distributed under the SIL Open Font License 1.1. The license text is in
 `NotoSans-OFL.txt`.

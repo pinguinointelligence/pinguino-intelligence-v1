@@ -1,6 +1,8 @@
 -- Gellatti final Label system: exact six profile catalogue and versioned,
 -- immutable print-ready evidence. Additive to Production; no Mapper/Engine data.
 
+begin;
+
 -- ---------------------------------------------------------------------------
 -- 1. Exact customer-facing market catalogue and reusable account authority.
 -- ---------------------------------------------------------------------------
@@ -94,7 +96,11 @@ set snapshot_id = coalesce(snapshot_id, gen_random_uuid()),
         'layoutMode', coalesce(master_label->'layoutMode', '"manual"'::jsonb)
       )
     ),
-    printer_snapshot = coalesce(printer_snapshot, master_label->'printer');
+    printer_snapshot = coalesce(
+      printer_snapshot,
+      nullif(master_label->'printer', 'null'::jsonb),
+      '{"profileId":null,"profileVersion":"legacy-unconfigured","verificationStatus":"UNVERIFIED"}'::jsonb
+    );
 
 alter table public.production_run_label_snapshots
   alter column snapshot_id set not null,
@@ -368,3 +374,5 @@ comment on column public.production_run_label_snapshots.content_hash is
   'SHA-256 over canonical jsonb text of the exact immutable Master Label payload.';
 comment on column public.account_label_profiles.shelf_life_authority is
   'Reusable business shelf-life policy/authority. No expiry is invented by the application.';
+
+commit;
