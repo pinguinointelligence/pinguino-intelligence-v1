@@ -235,6 +235,25 @@ const withUserHeldMainHold = (
   return changed ? { ...set, byLineId } : set;
 };
 
+const positiveStandardPresencePreserved = (before: RecipeInput, after: RecipeInput): boolean => {
+  const afterByLineId = new Map(after.items.map((item) => [item.id, item] as const));
+  return before.items
+    .filter(
+      (item) =>
+        item.lock_type === 'unlocked' &&
+        item.planned_grams > 0 &&
+        (item.user_intent_anchor_grams ?? 0) > 0,
+    )
+    .every((item) => {
+      const proposed = afterByLineId.get(item.id);
+      return (
+        proposed !== undefined &&
+        canonicalIngredientId(proposed.ingredient) === canonicalIngredientId(item.ingredient) &&
+        proposed.planned_grams >= 1
+      );
+    });
+};
+
 const solverHolds = (
   input: RecipeInput,
   set: ConstraintSet,
@@ -1492,6 +1511,13 @@ function mainSafePreview(
   preview: ConstraintPreview,
   productBehaviorSnapshots?: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>,
 ): BuildPreviewResult {
+  if (!positiveStandardPresencePreserved(input, preview.proposedInput)) {
+    return {
+      ok: false,
+      code: 'unsafe_proposal',
+      violatedMetrics: ['standard_presence_removal_not_allowed'],
+    };
+  }
   if (preview.proposedInput.category === 'vegan_gelato') {
     const issues = veganRecipeEligibilityIssues(preview.proposedInput.items);
     if (issues.length > 0) {
@@ -5603,6 +5629,7 @@ function improveDirectionNearestVector(
     // included: a candidate this search accepts must be one Apply accepts.
     verifyMainIngredientIdentity(input, candidate, set.byLineId).ok &&
     verifyConstraintsPreserved(set, candidate).ok &&
+    positiveStandardPresencePreserved(input, candidate) &&
     Math.abs(mainGroupTotal(input, candidate) - mainAnchorGrams) <= MAIN_OBJECTIVE_EPSILON_G &&
     Math.abs(plannedSum(candidate) - input.target_batch_grams) <= BATCH_SUM_TOLERANCE_G &&
     !candidate.items.some((item) => item.planned_grams <= 0);
@@ -5612,7 +5639,8 @@ function improveDirectionNearestVector(
   // post-practicalization contract applied to the probes: `beatsBaseline` is
   // what refuses a natively unsafe proposal and turns the preview into
   // `no_proposal`, leaving the user on the unchanged draft.
-  const incumbentSurvives = beatsBaseline(input, working);
+  const incumbentSurvives =
+    beatsBaseline(input, working) && positiveStandardPresencePreserved(input, working);
   const draftIsLegal = detectViolations(calculateRecipe(input)).length === 0;
   const targetMainGrams = incumbentSurvives
     ? mainGroupTotal(input, working)
@@ -5650,7 +5678,7 @@ function improveDirectionNearestVector(
     })),
   };
   let best = {
-    input: working,
+    input: incumbentSurvives ? working : input,
     measure: incumbentSurvives
       ? directionDistance(working, requested)
       : draftIsLegal
@@ -5937,9 +5965,7 @@ function buildOptimizePreviewWithDirection(
     !hasPendingManualTarget &&
     !hasPresentExcludedIngredient &&
     !input.items.some((item) => item.actual_grams !== null) &&
-    input.items.every(
-      (item) => Number.isInteger(item.planned_grams) && item.planned_grams > 0,
-    ) &&
+    input.items.every((item) => Number.isInteger(item.planned_grams) && item.planned_grams > 0) &&
     Math.abs(plannedSum(input) - input.target_batch_grams) <= BATCH_SUM_TOLERANCE_G &&
     verifyConstraintsPreserved(set, input).ok &&
     detectViolations(currentResult).length === 0 &&
@@ -6062,18 +6088,22 @@ function buildOptimizePreviewWithDirection(
     (options.rescueSimulationLineIds?.length ?? 0) === 0 &&
     !hasActiveExactDirectionObjective(input) &&
     !input.items.some((item) => item.actual_grams !== null) &&
-    input.items.every(
-      (item) => Number.isInteger(item.planned_grams) && item.planned_grams > 0,
-    ) &&
+    input.items.every((item) => Number.isInteger(item.planned_grams) && item.planned_grams > 0) &&
     Math.abs(plannedSum(input) - input.target_batch_grams) <= BATCH_SUM_TOLERANCE_G;
   if (neighborhoodEligible) {
-    const neighborhood = experimentalNeighborhoodSearch(input, set, {
+    // The promoted search is an alternative candidate generator, not an
+    // authority bypass. It must see the same internal Tara/Inulin/user-Main
+    // holds as the established solver; otherwise it can stage a Preview the
+    // trustless Apply door must reject (served Sorbet regression: Tara 1→2).
+    const neighborhoodSolverSet = solverHolds(input, set, options);
+    const neighborhood = experimentalNeighborhoodSearch(input, neighborhoodSolverSet, {
       beamWidth: 3,
       evaluationBudget: 2_500,
       excludedIngredientIds: options.excludedIngredientIds,
       effectivePriceOverrides: options.effectivePriceOverrides,
       externalHardGate: (candidate) =>
-        verifyConstraintsPreserved(set, candidate).ok &&
+        verifyConstraintsPreserved(neighborhoodSolverSet, candidate).ok &&
+        positiveStandardPresencePreserved(input, candidate) &&
         requiredLineContractViolations(input, candidate).length === 0 &&
         (preRouteStrategy !== 'eco' ||
           verifyEcoFlavourProtection(input, candidate, {

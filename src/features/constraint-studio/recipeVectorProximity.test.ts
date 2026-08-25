@@ -9,7 +9,12 @@ import { attachRecipeProfileMetadata } from '@/features/pro-workbench/recipeProf
 import { parseCsv } from '@/lib/csv';
 import { recipeTechnicalFit } from '@/features/recipe-score';
 import { normalizedLineDrift } from '@/features/formulation/userLineIntent';
-import { buildOptimizePreview, commitPreview } from './applyPipeline';
+import {
+  buildOptimizePreview,
+  commitPreview,
+  directionTargetFingerprint,
+  workingStateFingerprint,
+} from './applyPipeline';
 import {
   compareExperimentalCandidateMeasures,
   evaluateExperimentalCandidate,
@@ -127,11 +132,7 @@ const vectorDistance = (baseline: RecipeInput, proposed: RecipeInput): number =>
   return baseline.items.reduce(
     (total, item) =>
       total +
-      normalizedLineDrift(
-        item.planned_grams,
-        byId.get(item.id) ?? 0,
-        baseline.target_batch_grams,
-      ),
+      normalizedLineDrift(item.planned_grams, byId.get(item.id) ?? 0, baseline.target_batch_grams),
     0,
   );
 };
@@ -235,10 +236,16 @@ const proteinMatchaEco = (): RecipeInput => ({
 });
 
 const MATCHA_PRICES = Object.fromEntries(
-  ['PI-ING-000236', 'PI-ING-000180', 'PI-ING-000270', 'PI-ING-000514',
-    'PI-ING-000494', 'PI-ING-000456', 'PI-ING-000169', 'PI-ING-000492'].map(
-    (canonicalId) => [canonicalId, price(canonicalId, 1)],
-  ),
+  [
+    'PI-ING-000236',
+    'PI-ING-000180',
+    'PI-ING-000270',
+    'PI-ING-000514',
+    'PI-ING-000494',
+    'PI-ING-000456',
+    'PI-ING-000169',
+    'PI-ING-000492',
+  ].map((canonicalId) => [canonicalId, price(canonicalId, 1)]),
 );
 
 describe('whole-recipe user-gram proximity — Horchata historical reproducer', () => {
@@ -365,15 +372,66 @@ describe('whole-recipe user-gram proximity — Horchata historical reproducer', 
       vectorDistance(input, historicalOptimal(input)),
     );
   });
+
+  it('keeps the −13 °C soft extreme Horchata Preview applicable without removing a positive Standard', () => {
+    const source = horchata('optimal');
+    const input: RecipeInput = {
+      ...source,
+      target_temperature_c: -13,
+      goals: {
+        ...source.goals,
+        direction_targets_active: true,
+        direction_targets: { sweetness: 0, softness: -2, creaminess: 0, flavor: 0 },
+      },
+    };
+    const built = buildOptimizePreview(input, { byLineId: {} }, '2026-08-25T00:00:00.000Z', {
+      requirePracticalPreview: true,
+    });
+    expect(built.ok, built.ok ? '' : built.code).toBe(true);
+    if (!built.ok) return;
+    expect(
+      built.preview.proposedInput.items.find((item) => item.id === 'cinnamon')?.planned_grams,
+    ).toBeGreaterThanOrEqual(1);
+    const committed = commitPreview(
+      input,
+      { byLineId: {} },
+      built.preview,
+      '2026-08-25T00:00:01.000Z',
+      'horchata-minus13-soft',
+      [],
+      undefined,
+      null,
+      null,
+      {
+        baseFingerprint: built.preview.baseFingerprint,
+        targetFingerprint: directionTargetFingerprint(input),
+        candidateFingerprint: workingStateFingerprint(
+          built.preview.proposedInput,
+          built.preview.nextConstraints,
+        ),
+      },
+      null,
+      {},
+      [],
+      null,
+      null,
+      { requirePracticalPreview: true },
+    );
+    expect(committed, JSON.stringify(committed)).toMatchObject({ ok: true });
+  });
 });
 
 describe('isolated multi-candidate neighborhood experiment — null hypothesis', () => {
   it('short-circuits at the original valid no-Crown vector without evaluating mutations', () => {
     const input = horchata('optimal');
-    const result = experimentalNeighborhoodSearch(input, { byLineId: {} }, {
-      beamWidth: 5,
-      evaluationBudget: 2_000,
-    });
+    const result = experimentalNeighborhoodSearch(
+      input,
+      { byLineId: {} },
+      {
+        beamWidth: 5,
+        evaluationBudget: 2_000,
+      },
+    );
 
     expect(result.status).toBe('no_change');
     expect(result.input.items.map((item) => item.planned_grams)).toEqual(
@@ -397,10 +455,14 @@ describe('isolated multi-candidate neighborhood experiment — null hypothesis',
   it('proves the current Hazelnut path is avoidably farther than a hard-safe nearby candidate', () => {
     const input = hazelnut();
     const current = buildOptimizePreview(input, { byLineId: {} }, '2026-08-25T00:00:00.000Z');
-    const experimental = experimentalNeighborhoodSearch(input, { byLineId: {} }, {
-      beamWidth: 3,
-      evaluationBudget: 2_500,
-    });
+    const experimental = experimentalNeighborhoodSearch(
+      input,
+      { byLineId: {} },
+      {
+        beamWidth: 3,
+        evaluationBudget: 2_500,
+      },
+    );
 
     expect(current.ok).toBe(true);
     expect(experimental.status).toBe('candidate');
@@ -414,10 +476,14 @@ describe('isolated multi-candidate neighborhood experiment — null hypothesis',
   it('does not keep climbing the Protein frontier after the requested qualification is reached', () => {
     const input = proteinMinus11();
     const current = buildOptimizePreview(input, { byLineId: {} }, '2026-08-25T00:00:00.000Z');
-    const experimental = experimentalNeighborhoodSearch(input, { byLineId: {} }, {
-      beamWidth: 3,
-      evaluationBudget: 2_500,
-    });
+    const experimental = experimentalNeighborhoodSearch(
+      input,
+      { byLineId: {} },
+      {
+        beamWidth: 3,
+        evaluationBudget: 2_500,
+      },
+    );
 
     expect(current.ok).toBe(true);
     expect(experimental.status).toBe('candidate');

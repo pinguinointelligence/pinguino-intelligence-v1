@@ -18,6 +18,11 @@ import {
   workingStateFingerprint,
 } from './applyPipeline';
 import { buildDraftCandidateVector } from './draftCandidateVector';
+import {
+  SORBET_MAIN_IDS,
+  neutralSorbetStarter,
+  sorbetMapperIngredient,
+} from '@/features/recipe-constraints/__fixtures__/sorbetAuthorityFixture';
 
 const NO_CONSTRAINTS: ConstraintSet = { byLineId: {} };
 const AT = '2026-08-10T20:00:00.000Z';
@@ -103,6 +108,60 @@ const expectExecutableStabilizerSystem = (input: RecipeInput, label: string) => 
 };
 
 describe('owner-approved Gelato aggregate stabilizer contract', () => {
+  it('keeps the established Sorbet Tara dose out of the promoted no-Main neighborhood search', () => {
+    const starter = neutralSorbetStarter(-11);
+    const starterTara = starter.items.find((item) => item.id.endsWith('tara_gum'))!;
+    const starterWater = starter.items.find((item) => item.id.endsWith('water'))!;
+    const input: RecipeInput = {
+      ...starter,
+      items: [
+        ...starter.items.map((item) =>
+          item.id === starterTara.id
+            ? { ...item, planned_grams: 1, user_intent_anchor_grams: 1 }
+            : item.id === starterWater.id
+              ? { ...item, planned_grams: item.planned_grams + 3 }
+              : item,
+        ),
+        {
+          id: 'mango-main-without-crown',
+          ingredient: sorbetMapperIngredient(SORBET_MAIN_IDS.mango),
+          planned_grams: 600,
+          actual_grams: null,
+          lock_type: 'unlocked',
+          user_intent_anchor_grams: 600,
+        },
+      ],
+      goals: {
+        formulation_strategy: 'optimal',
+        direction_targets_active: false,
+        direction_targets: { sweetness: 0, softness: 0, creaminess: 0, flavor: 0 },
+      },
+    };
+    expect(input.items.reduce((sum, item) => sum + item.planned_grams, 0)).toBe(1_000);
+    const tara = input.items.find((item) => item.id.endsWith('tara_gum'))!;
+    expect(tara.planned_grams).toBe(1);
+
+    const built = buildOptimizePreview(input, NO_CONSTRAINTS, AT, {
+      requirePracticalPreview: true,
+    });
+    expect(built.ok, built.ok ? '' : built.code).toBe(true);
+    if (!built.ok) return;
+    const exactTara = exactCandidateOf(built.preview).items.find(
+      (item) => item.id === tara.id,
+    )?.planned_grams;
+    // If the established route needs a different dose, only an approved
+    // formulation seed may authorize it. The promoted neighborhood itself
+    // may never mutate Tara behind that authority.
+    if (exactTara !== 1) {
+      expect(built.preview.formulation).toMatchObject({ templateStatus: 'approved' });
+    }
+    expect(commitPreview(input, NO_CONSTRAINTS, built.preview, AT, 'sorbet-no-main')).toMatchObject(
+      {
+        ok: true,
+      },
+    );
+  });
+
   it('creates an executable Preview for an Engine-clean but fractional G17 draft', () => {
     const directionSeed = buildOptimizePreview(ownerDirectionFixture(-1), NO_CONSTRAINTS, AT);
     expect(directionSeed.ok).toBe(true);
