@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
+import { ProductionRescueOptionUnavailableError } from '@/services/proCore/supabaseProduction';
 import {
   confirmProductionLine,
   createProductionSession,
@@ -13,6 +14,7 @@ import {
   shouldHydrateDurableProductionRecovery,
   durableRescueRequiresReconciliation,
   productionRescueAuthorizationInvalidation,
+  rescueOptionUnavailableMessage,
   productionSourceForRecipe,
   reusableRescueAuthorizeKey,
 } from './useProductionWorkspace';
@@ -189,6 +191,20 @@ describe('trusted Production Rescue authorization basis', () => {
     ).toBe('revision_mismatch');
     expect(productionRescueAuthorizationInvalidation(authorization, null)).toBe(
       'revision_mismatch',
+    );
+  });
+
+  it('explains unavailable choices with the exact original target and hard metrics', () => {
+    const hardSafetyError = new ProductionRescueOptionUnavailableError(
+      'stable_rescue_option_stale',
+      'hard_safety_violations',
+      ['lactose_sandiness_risk', 'lactose'],
+    );
+    expect(rescueOptionUnavailableMessage('keep_original_batch', 1_000, hardSafetyError)).toBe(
+      'Niedostępne — potwierdzonych ilości nie można już dopasować do partii 1000 g.',
+    );
+    expect(rescueOptionUnavailableMessage('leave_as_is', 1_000, hardSafetyError)).toBe(
+      'Niedostępne — przekroczone twarde zakresy: Sandiness risk, Lactose.',
     );
   });
 

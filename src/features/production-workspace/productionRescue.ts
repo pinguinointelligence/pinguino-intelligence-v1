@@ -7,6 +7,7 @@ import {
   type CorrectionProposal,
   type RecipeInput,
   type RecipeResult,
+  type TargetMetric,
 } from '@/engine';
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
 import {
@@ -60,9 +61,45 @@ export interface ProductionRescueAssessment {
   forecastInput: RecipeInput;
   forecastResult: RecipeResult;
   forecastScoreDisplay: string;
+  hardSafety: ProductionHardSafetyAssessment;
   hasConfirmedDeviation: boolean;
   options: ProductionRescueOption[];
   reason: string | null;
+}
+
+export interface ProductionHardSafetyAssessment {
+  safe: boolean;
+  violationMetrics: TargetMetric[];
+  provisional: boolean;
+  capacityExceeded: boolean;
+  nativeProfileValidated: boolean;
+}
+
+export type ProductionContinuationPath =
+  | 'no_correction_required'
+  | 'authorized_correction'
+  | 'safe_unchanged_acceptance'
+  | 'recovery_required';
+
+/**
+ * P0 liveness invariant for every evaluated revision. The browser may continue
+ * only through one of these four explicit domain paths; an empty option list
+ * is a recovery state, never a disabled decision panel with no next action.
+ */
+export function productionContinuationPath(
+  assessment: ProductionRescueAssessment,
+): ProductionContinuationPath {
+  if (assessment.state === 'not_needed') return 'no_correction_required';
+  if (assessment.options.some((option) => option.id !== 'leave_as_is')) {
+    return 'authorized_correction';
+  }
+  if (
+    assessment.hardSafety.safe &&
+    assessment.options.some((option) => option.id === 'leave_as_is')
+  ) {
+    return 'safe_unchanged_acceptance';
+  }
+  return 'recovery_required';
 }
 
 /**
@@ -127,26 +164,36 @@ function foldCanonicalTopUps(base: RecipeInput, proposed: RecipeInput): RecipeIn
   return { ...proposed, items: folded.filter((item) => !removeIds.has(item.id)) };
 }
 
-function nativeSafe(input: RecipeInput, result: RecipeResult): boolean {
-  if (detectViolations(result).length > 0) return false;
-  if (
-    result.indicators.some(
-      (indicator) =>
-        indicator.category_fallback ||
-        indicator.temperature_fallback ||
-        indicator.band_status === 'estimated',
-    )
-  ) {
-    return false;
-  }
-  if (
+export function assessProductionHardSafety(
+  input: RecipeInput,
+  result: RecipeResult,
+): ProductionHardSafetyAssessment {
+  const violationMetrics = detectViolations(result).map((violation) => violation.metric);
+  const provisional = result.indicators.some(
+    (indicator) =>
+      indicator.category_fallback ||
+      indicator.temperature_fallback ||
+      indicator.band_status === 'estimated',
+  );
+  const capacityExceeded =
     input.machine_capacity_grams !== null &&
-    result.total_batch_g > input.machine_capacity_grams + PRODUCTION_GRAMS_EPSILON
-  ) {
-    return false;
-  }
-  return recipeFitForInput(input, result).validatedNative;
+    result.total_batch_g > input.machine_capacity_grams + PRODUCTION_GRAMS_EPSILON;
+  const nativeProfileValidated = recipeFitForInput(input, result).validatedNative;
+  return {
+    safe:
+      violationMetrics.length === 0 &&
+      !provisional &&
+      !capacityExceeded &&
+      nativeProfileValidated,
+    violationMetrics,
+    provisional,
+    capacityExceeded,
+    nativeProfileValidated,
+  };
 }
+
+const nativeSafe = (input: RecipeInput, result: RecipeResult): boolean =>
+  assessProductionHardSafety(input, result).safe;
 
 function preservesPhysicalReality(session: ProductionSession, candidate: RecipeInput): boolean {
   const candidateById = new Map(candidate.items.map((item) => [item.id, item]));
@@ -381,6 +428,7 @@ export function assessProductionRescue(session: ProductionSession): ProductionRe
   const forecastInput = buildProductionForecastInput(session);
   const forecastResult = calculateRecipe(forecastInput);
   const forecastScore = recipeFitForInput(forecastInput, forecastResult);
+  const hardSafety = assessProductionHardSafety(forecastInput, forecastResult);
   const hasConfirmedDeviation = session.lines.some(
     (line) =>
       line.confirmed &&
@@ -392,6 +440,7 @@ export function assessProductionRescue(session: ProductionSession): ProductionRe
       forecastInput,
       forecastResult,
       forecastScoreDisplay: forecastScore.display,
+      hardSafety,
       hasConfirmedDeviation,
       options: [],
       reason: null,
@@ -456,6 +505,7 @@ export function assessProductionRescue(session: ProductionSession): ProductionRe
     forecastInput,
     forecastResult,
     forecastScoreDisplay: forecastScore.display,
+    hardSafety,
     hasConfirmedDeviation,
     options,
     reason:

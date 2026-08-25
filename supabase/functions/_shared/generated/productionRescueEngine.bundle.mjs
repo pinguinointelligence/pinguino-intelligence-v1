@@ -7656,14 +7656,15 @@ function hydrateProductionSessionFromRun(run, source, plannedInput, plannedCompo
 			const recorded = actualById.get(line.lineId);
 			const grams = recorded?.item.actualGrams;
 			if (!recorded || grams === null || grams === void 0) return line;
+			const needsAuthorizedTopUp = line.targetGrams > grams + PRODUCTION_GRAMS_EPSILON;
 			return {
 				...line,
-				draftActualGrams: grams,
+				draftActualGrams: needsAuthorizedTopUp ? line.targetGrams : grams,
 				draftActualEdited: false,
 				physicalAddedGrams: grams,
-				confirmed: true,
-				confirmedAt: recorded.item.confirmedAt ?? run.actual.recordedAt,
-				confirmationOrder: recorded.item.confirmationOrder ?? recorded.index + 1
+				confirmed: !needsAuthorizedTopUp,
+				confirmedAt: needsAuthorizedTopUp ? null : recorded.item.confirmedAt ?? run.actual.recordedAt,
+				confirmationOrder: needsAuthorizedTopUp ? null : recorded.item.confirmationOrder ?? recorded.index + 1
 			};
 		};
 		session = {
@@ -7745,12 +7746,20 @@ function foldCanonicalTopUps(base, proposed) {
 		items: folded.filter((item) => !removeIds.has(item.id))
 	};
 }
-function nativeSafe(input, result) {
-	if (detectViolations(result).length > 0) return false;
-	if (result.indicators.some((indicator) => indicator.category_fallback || indicator.temperature_fallback || indicator.band_status === "estimated")) return false;
-	if (input.machine_capacity_grams !== null && result.total_batch_g > input.machine_capacity_grams + 1e-6) return false;
-	return recipeFitForInput(input, result).validatedNative;
+function assessProductionHardSafety(input, result) {
+	const violationMetrics = detectViolations(result).map((violation) => violation.metric);
+	const provisional = result.indicators.some((indicator) => indicator.category_fallback || indicator.temperature_fallback || indicator.band_status === "estimated");
+	const capacityExceeded = input.machine_capacity_grams !== null && result.total_batch_g > input.machine_capacity_grams + 1e-6;
+	const nativeProfileValidated = recipeFitForInput(input, result).validatedNative;
+	return {
+		safe: violationMetrics.length === 0 && !provisional && !capacityExceeded && nativeProfileValidated,
+		violationMetrics,
+		provisional,
+		capacityExceeded,
+		nativeProfileValidated
+	};
 }
+const nativeSafe = (input, result) => assessProductionHardSafety(input, result).safe;
 function preservesPhysicalReality(session, candidate) {
 	const candidateById = new Map(candidate.items.map((item) => [item.id, item]));
 	return session.lines.every((line) => {
@@ -7910,12 +7919,14 @@ function assessProductionRescue(session) {
 	const forecastInput = buildProductionForecastInput(session);
 	const forecastResult = calculateRecipe(forecastInput);
 	const forecastScore = recipeFitForInput(forecastInput, forecastResult);
+	const hardSafety = assessProductionHardSafety(forecastInput, forecastResult);
 	const hasConfirmedDeviation = session.lines.some((line) => line.confirmed && Math.abs(line.physicalAddedGrams - line.plannedGrams) > 1e-6);
 	if (!hasConfirmedDeviation) return {
 		state: "not_needed",
 		forecastInput,
 		forecastResult,
 		forecastScoreDisplay: forecastScore.display,
+		hardSafety,
 		hasConfirmedDeviation,
 		options: [],
 		reason: null
@@ -7949,6 +7960,7 @@ function assessProductionRescue(session) {
 		forecastInput,
 		forecastResult,
 		forecastScoreDisplay: forecastScore.display,
+		hardSafety,
 		hasConfirmedDeviation,
 		options,
 		reason: options.length > 0 ? null : "Brak bezpiecznej korekty, która zachowuje fizycznie dodane składniki i zatwierdzone zakresy receptury."

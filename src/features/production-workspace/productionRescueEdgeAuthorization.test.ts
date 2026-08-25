@@ -242,7 +242,14 @@ describe('trusted Production Rescue authorization', () => {
     const deps = dependencies();
     await expect(
       authorizeTrustedProductionRescue(OWNER, request({ stableOptionId: 'leave_as_is' }), deps),
-    ).rejects.toMatchObject({ code: 'stable_rescue_option_stale' });
+    ).rejects.toMatchObject({
+      code: 'stable_rescue_option_stale',
+      details: {
+        stableOptionId: 'leave_as_is',
+        reason: 'hard_safety_violations',
+        violationMetrics: expect.arrayContaining([expect.any(String)]),
+      },
+    });
     expect(deps.persistAuthorization).not.toHaveBeenCalled();
   });
 

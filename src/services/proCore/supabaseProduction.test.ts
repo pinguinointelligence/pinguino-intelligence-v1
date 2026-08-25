@@ -15,6 +15,8 @@ import type { RecipeCompositionMetadata } from '@/features/recipe-composition/re
 import { productionCapabilitiesFor } from '@/features/pro-core/proCoreCapabilities';
 import {
   isProductionRescueAuthorizationRefreshError,
+  isProductionRescueOptionUnavailableError,
+  productionRescueOptionUnavailableDetails,
   supabaseProductionRepository,
 } from './supabaseProduction';
 
@@ -43,6 +45,7 @@ class FakeStore {
   rpcCalls: Array<{ name: string; args: Row }> = [];
   rescueAuthorizations: Record<string, Row> = {};
   rescueAuthorizationResponsePatch: Row = {};
+  functionErrorPayloads: Record<string, Row> = {};
   rpcErrorMessages: Record<string, string> = {};
   hangingRpcNames = new Set<string>();
 }
@@ -176,6 +179,18 @@ function fakeClient(store: FakeStore, userId: string | null) {
         store.functionCalls.push({ name, body: clone(options.body) });
         if (store.fail.has(`function:${name}`)) {
           return { data: null, error: { message: `boom ${name}` } };
+        }
+        const functionErrorPayload = store.functionErrorPayloads[name];
+        if (functionErrorPayload) {
+          return {
+            data: null,
+            error: {
+              message: String(functionErrorPayload.error ?? `boom ${name}`),
+              context: {
+                clone: () => ({ json: async () => clone(functionErrorPayload) }),
+              },
+            },
+          };
         }
         const authorizationId = `authorization-${store.functionCalls.length}`;
         store.rescueAuthorizations[authorizationId] = clone(options.body);
@@ -1183,6 +1198,41 @@ describe('supabaseProduction — atomic served start, Rescue, and completion', (
       }),
     ).rejects.toThrow(/does not match the requested run revision/);
     expect((await repo.getRun(run.runId, U1))?.rescue).toBeNull();
+  });
+
+  it('preserves the served hard-safety reason when a stable option is unavailable', async () => {
+    const repo = repoFor(store);
+    const run = await repo.startRun({
+      ownerUserId: U1,
+      version: makeVersion('ver-1'),
+      target: { kind: 'weight_g', grams: 1000 },
+      capabilities: PRO,
+      by: U1,
+      meta: { thermalMode: 'HEAT_CAPABLE' },
+    });
+    store.functionErrorPayloads['production-rescue-authorize'] = {
+      error: 'stable_rescue_option_stale',
+      stableOptionId: 'leave_as_is',
+      reason: 'hard_safety_violations',
+      violationMetrics: ['lactose_sandiness_risk', 'lactose'],
+    };
+
+    try {
+      await repo.authorizeRescue({
+        runId: run.runId,
+        stableOptionId: 'leave_as_is',
+        expectedActualRevision: 0,
+        expectedRescueRevision: 0,
+        idempotencyKey: 'unavailable-reason',
+      });
+      throw new Error('expected unavailable Production Rescue option');
+    } catch (error) {
+      expect(isProductionRescueOptionUnavailableError(error)).toBe(true);
+      expect(productionRescueOptionUnavailableDetails(error)).toEqual({
+        reasonCode: 'hard_safety_violations',
+        violationMetrics: ['lactose_sandiness_risk', 'lactose'],
+      });
+    }
   });
 
   it('classifies served expiry as requiring a fresh Rescue Preview', async () => {

@@ -25,6 +25,8 @@ import type { CatalogLabelToppingIngredient } from '@/features/recipe-compositio
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
 import type { ProductionRun } from '@/features/pro-core/productionContracts';
+import { assessProductionRescue } from './productionRescue';
+import { browserProductionRescueDecision } from './useProductionWorkspace';
 
 function recipe(): RecipeInput {
   const items = DEFAULT_PRESET.items.map((item, index) => ({
@@ -146,6 +148,95 @@ describe('topping up a line the operator under-added (§12/§19/§20)', () => {
 });
 
 describe('production session physical-reality contract', () => {
+  it('rehydrates an authorized positive top-up as pending instead of opening an impossible second decision', () => {
+    const local = session();
+    const first = local.lines[0]!;
+    const rescueInput = buildProductionForecastInput(local);
+    rescueInput.items[0] = {
+      ...rescueInput.items[0]!,
+      planned_grams: first.plannedGrams + 3,
+      actual_grams: null,
+    };
+    rescueInput.target_batch_grams += 3;
+    const durable: ProductionRun = {
+      runId: local.sessionId,
+      ownerUserId: local.ownerUserId!,
+      recipeId: local.source.recipeId!,
+      recipeVersionId: local.source.recipeVersionId!,
+      recipeVersionNumber: local.source.recipeVersionNumber!,
+      status: 'in_progress',
+      plannedBatchG: local.plannedInput.target_batch_grams,
+      plannedItems: local.lines.map((line, index) => ({
+        id: line.lineId,
+        name: line.name,
+        canonicalIngredientId: line.canonicalIngredientId,
+        processScope: 'BASE_FORMULATION',
+        scopePosition: index,
+        plannedGrams: line.plannedGrams,
+        displayGrams: line.plannedGrams,
+      })),
+      productProfile: local.plannedInput.category,
+      temperatureC: local.plannedInput.target_temperature_c,
+      engineVersion: 'test',
+      configVersion: 'test',
+      mapperDatasetVersion: null,
+      plannedDate: null,
+      machine: null,
+      location: null,
+      batchReference: null,
+      notes: null,
+      createdBy: local.ownerUserId!,
+      createdAt: '2026-08-25T10:00:00.000Z',
+      updatedAt: '2026-08-25T10:02:00.000Z',
+      actual: {
+        items: local.lines.map((line) => ({
+          id: line.lineId,
+          name: line.name,
+          actualGrams: line.lineId === first.lineId ? first.plannedGrams : null,
+          confirmedAt:
+            line.lineId === first.lineId ? '2026-08-25T10:01:00.000Z' : null,
+          confirmationOrder: line.lineId === first.lineId ? 1 : null,
+        })),
+        actualTotalMixG: first.plannedGrams,
+        actualYieldG: null,
+        wasteG: null,
+        substitutions: [],
+        operatorNotes: null,
+        deviationReason: null,
+        recordedBy: local.ownerUserId!,
+        recordedAt: '2026-08-25T10:01:00.000Z',
+        revision: 1,
+      },
+      rescue: {
+        recipeInput: rescueInput,
+        productComposition: local.plannedComposition,
+        acceptedBy: local.ownerUserId!,
+        acceptedAt: '2026-08-25T10:02:00.000Z',
+        revision: 1,
+      },
+      completedAt: null,
+      cancelledAt: null,
+      events: [],
+    };
+
+    const recovered = hydrateProductionSessionFromRun(
+      durable,
+      local.source,
+      local.plannedInput,
+      local.plannedComposition,
+    );
+    const recoveredFirst = recovered.lines[0]!;
+
+    expect(recoveredFirst).toMatchObject({
+      physicalAddedGrams: first.plannedGrams,
+      targetGrams: first.plannedGrams + 3,
+      confirmed: false,
+    });
+    expect(productionTopUpGrams(recoveredFirst)).toBe(3);
+    expect(browserProductionRescueDecision(recovered).state).toBe('not_needed');
+    expect(assessProductionRescue(recovered).state).toBe('not_needed');
+  });
+
   it('rehydrates confirmed actuals from the exact durable run without inventing pending grams', () => {
     const local = session();
     const first = local.lines[0]!;

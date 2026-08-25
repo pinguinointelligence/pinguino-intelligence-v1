@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { CONFIG_VERSION, ENGINE_VERSION, calculateRecipe, proposeCorrections } from '@/engine';
+import {
+  CONFIG_VERSION,
+  ENGINE_VERSION,
+  calculateRecipe,
+  proposeCorrections,
+  type TargetMetric,
+} from '@/engine';
 import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore, type RecipeState } from '@/stores/recipeStore';
 import { buildRecipeInput, recipeContext } from '@/features/studio/buildRecipeInput';
@@ -16,6 +22,7 @@ import {
   reopenProductionRecord,
   toppingProductionProgress,
   topUpProductionLine,
+  PRODUCTION_GRAMS_EPSILON,
   type ProductionSession,
 } from './productionSession';
 import { useProductionSessionStore } from './productionSessionStore';
@@ -45,7 +52,9 @@ import type {
 import {
   isProductionRescueAuthorizationRefreshError,
   isProductionRescueOptionUnavailableError,
+  productionRescueOptionUnavailableDetails,
 } from '@/services/proCore/supabaseProduction';
+import { metricLabel } from '@/features/pi-panel/indicatorView';
 import type {
   ProductionRescueStableOptionId,
   ProductionRun,
@@ -139,12 +148,36 @@ export const rescueOptionUnavailableMessage = (
     ? originalTargetG.toFixed(0)
     : originalTargetG.toFixed(1);
   if (stableOptionId === 'keep_original_batch') {
-    return `Niedostępne — pozostałych ilości nie można bezpiecznie dostosować do ${target} g.`;
+    return `Niedostępne — potwierdzonych ilości nie można już dopasować do partii ${target} g.`;
   }
   if (stableOptionId === 'enlarge_batch') {
-    return 'Niedostępne — nie znaleziono bezpiecznej większej partii dla obecnych ilości.';
+    return 'Niedostępne — istniejący Engine nie znalazł bezpiecznej większej partii dla obecnych ilości.';
   }
-  return 'Niedostępne — obecna partia nie mieści się w bezpiecznym zakresie.';
+  const details = productionRescueOptionUnavailableDetails(error);
+  if (details?.reasonCode === 'machine_capacity_exceeded') {
+    return 'Niedostępne — obecna masa przekracza pojemność ustawionej maszyny.';
+  }
+  const knownMetrics = new Set<TargetMetric>([
+    'pod',
+    'npac',
+    'ice_fraction',
+    'total_solids',
+    'water',
+    'fat',
+    'aerating_protein',
+    'protein_in_solids',
+    'lactose',
+    'lactose_sandiness_risk',
+    'alcohol',
+  ]);
+  const hardMetrics =
+    details?.violationMetrics.filter((metric): metric is TargetMetric =>
+      knownMetrics.has(metric as TargetMetric),
+    ) ?? [];
+  if (hardMetrics.length > 0) {
+    return `Niedostępne — przekroczone twarde zakresy: ${hardMetrics.map(metricLabel).join(', ')}.`;
+  }
+  return 'Niedostępne — obecny wynik nie ma pełnej natywnej walidacji bezpieczeństwa.';
 };
 
 const productionRescueIdempotencyKey = (): string =>
@@ -1369,13 +1402,30 @@ export function useProductionWorkspace(enabled: boolean) {
       const candidate = confirmProductionLine(session, lineId, new Date().toISOString());
       setPersistence({ busy: true, error: null });
       try {
+        const isPositiveTopUp =
+          previous.recordCorrectionCount < 1 &&
+          previous.physicalAddedGrams > PRODUCTION_GRAMS_EPSILON &&
+          candidate.lines
+            .concat(candidate.addonLines)
+            .some(
+              (line) =>
+                line.lineId === lineId &&
+                line.physicalAddedGrams >
+                  previous.physicalAddedGrams + PRODUCTION_GRAMS_EPSILON,
+            );
+        const actualAction =
+          previous.recordCorrectionCount > 0
+            ? 'record_correction'
+            : isPositiveTopUp
+              ? 'top_up'
+              : 'confirm';
         const durableRun = await repositoryState.repository.recordActual(session.sessionId, {
           ...durableActual(candidate, ownerUserId ?? ''),
           eventContext: {
-            action: previous.recordCorrectionCount > 0 ? 'record_correction' : 'confirm',
+            action: actualAction,
             lineId,
             previousActualG:
-              previous.recordCorrectionCount > 0 ? previous.physicalAddedGrams : null,
+              actualAction === 'confirm' ? null : previous.physicalAddedGrams,
           },
         });
         replaceSession(
@@ -1426,6 +1476,28 @@ export function useProductionWorkspace(enabled: boolean) {
         setPersistence({
           busy: false,
           error: 'Nie zapisano dodanej ilości. Wartość w naczyniu pozostaje bez zmian.',
+        });
+        setReconcileRevision((current) => current + 1);
+      } finally {
+        setPersistence((current) => ({ ...current, busy: false }));
+      }
+    },
+    cancelCurrentSession: async () => {
+      if (!session || !repositoryState.repository || persistence.busy) return;
+      if (session.status !== 'in_progress') return;
+      setPersistence({ busy: true, error: null });
+      try {
+        await repositoryState.repository.transition(
+          session.sessionId,
+          'cancelled',
+          ownerUserId ?? '',
+        );
+        updateRescueAuthorization({ status: 'idle' });
+        archiveCurrentSession();
+      } catch {
+        setPersistence({
+          busy: false,
+          error: 'Nie udało się bezpiecznie przerwać partii. Zapis pozostaje aktywny.',
         });
         setReconcileRevision((current) => current + 1);
       } finally {

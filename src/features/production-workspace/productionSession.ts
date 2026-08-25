@@ -901,14 +901,25 @@ export function hydrateProductionSessionFromRun(
       const recorded = actualById.get(line.lineId);
       const grams = recorded?.item.actualGrams;
       if (!recorded || grams === null || grams === undefined) return line;
+      const needsAuthorizedTopUp =
+        line.targetGrams > grams + PRODUCTION_GRAMS_EPSILON;
       return {
         ...line,
-        draftActualGrams: grams,
+        // Rescue is applied before durable actuals are restored. When its
+        // current target is above the last physical fact, that fact remains an
+        // immutable floor but the line must stay open for the authorized
+        // positive top-up. Marking it confirmed here used to turn the pending
+        // top-up into a false second deviation in the browser.
+        draftActualGrams: needsAuthorizedTopUp ? line.targetGrams : grams,
         draftActualEdited: false,
         physicalAddedGrams: grams,
-        confirmed: true,
-        confirmedAt: recorded.item.confirmedAt ?? run.actual!.recordedAt,
-        confirmationOrder: recorded.item.confirmationOrder ?? recorded.index + 1,
+        confirmed: !needsAuthorizedTopUp,
+        confirmedAt: needsAuthorizedTopUp
+          ? null
+          : (recorded.item.confirmedAt ?? run.actual!.recordedAt),
+        confirmationOrder: needsAuthorizedTopUp
+          ? null
+          : (recorded.item.confirmationOrder ?? recorded.index + 1),
       };
     };
     session = {

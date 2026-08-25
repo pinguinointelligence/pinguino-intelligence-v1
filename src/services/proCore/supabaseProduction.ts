@@ -313,6 +313,17 @@ export class ProductionRescueAuthorizationError extends ProductionPersistenceErr
   }
 }
 
+export class ProductionRescueOptionUnavailableError extends ProductionPersistenceError {
+  constructor(
+    message: string,
+    public readonly reasonCode: string | null,
+    public readonly violationMetrics: string[],
+  ) {
+    super(message);
+    this.name = 'ProductionRescueOptionUnavailableError';
+  }
+}
+
 export const isProductionRescueAuthorizationRefreshError = (
   error: unknown,
 ): error is ProductionRescueAuthorizationError =>
@@ -365,6 +376,17 @@ const edgeFunctionError = async (error: unknown): Promise<ProductionPersistenceE
   const message = [record?.error, record?.code, record?.message, candidate.message]
     .filter((value): value is string => typeof value === 'string')
     .join(': ');
+  if (record?.error === 'stable_rescue_option_stale') {
+    return new ProductionRescueOptionUnavailableError(
+      message || 'Production Rescue option is unavailable.',
+      typeof record.reason === 'string' ? record.reason : null,
+      Array.isArray(record.violationMetrics)
+        ? record.violationMetrics.filter(
+            (metric): metric is string => typeof metric === 'string',
+          )
+        : [],
+    );
+  }
   return persistenceError(message || 'Production Rescue authorization failed.');
 };
 
@@ -374,11 +396,19 @@ const edgeFunctionError = async (error: unknown): Promise<ProductionPersistenceE
  * generic failure, so the code is recovered from the Edge payload.
  */
 export const isProductionRescueOptionUnavailableError = (error: unknown): boolean =>
-  error instanceof Error &&
-  error.message
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .includes('stable_rescue_option_stale');
+  error instanceof ProductionRescueOptionUnavailableError ||
+  (error instanceof Error &&
+    error.message
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .includes('stable_rescue_option_stale'));
+
+export const productionRescueOptionUnavailableDetails = (
+  error: unknown,
+): { reasonCode: string | null; violationMetrics: string[] } | null =>
+  error instanceof ProductionRescueOptionUnavailableError
+    ? { reasonCode: error.reasonCode, violationMetrics: error.violationMetrics }
+    : null;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);

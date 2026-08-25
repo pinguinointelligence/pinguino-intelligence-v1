@@ -62,6 +62,7 @@ export class RescueAuthorizationError extends Error {
   constructor(
     readonly code: string,
     readonly status: number,
+    readonly details: Record<string, unknown> = {},
   ) {
     super(code);
     this.name = 'RescueAuthorizationError';
@@ -485,7 +486,29 @@ export async function authorizeTrustedProductionRescue(
   const assessment = assessProductionRescue(session);
   const option = assessment.options.find((candidate) => candidate.id === request.stableOptionId);
   if (!option || option.verifiedByEngine !== true) {
-    throw new RescueAuthorizationError('stable_rescue_option_stale', 409);
+    const physicalConfirmedG = session.lines.reduce(
+      (sum: number, line: { physicalAddedGrams: number }) => sum + line.physicalAddedGrams,
+      0,
+    );
+    const reason =
+      request.stableOptionId === 'keep_original_batch'
+        ? physicalConfirmedG > session.plannedInput.target_batch_grams + 0.000001
+          ? 'physical_mass_above_original_target'
+          : 'no_safe_original_target_candidate'
+        : request.stableOptionId === 'enlarge_batch'
+          ? 'no_safe_larger_candidate'
+          : assessment.hardSafety.capacityExceeded
+            ? 'machine_capacity_exceeded'
+            : assessment.hardSafety.provisional
+              ? 'provisional_profile_not_hard_safe'
+              : assessment.hardSafety.violationMetrics.length > 0
+                ? 'hard_safety_violations'
+                : 'native_profile_not_hard_safe';
+    throw new RescueAuthorizationError('stable_rescue_option_stale', 409, {
+      stableOptionId: request.stableOptionId,
+      reason,
+      violationMetrics: assessment.hardSafety.violationMetrics,
+    });
   }
   const candidate = option.candidateInput as unknown as Record<string, unknown> & {
     items: Array<Record<string, unknown>>;

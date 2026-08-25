@@ -113,6 +113,86 @@ describe('Production correction decision accessibility', () => {
     expect(document.activeElement).toBe(decisionPanel);
   });
 
+  it('offers an explicit safe recovery when every trusted decision is unavailable', async () => {
+    const plannedInput = {
+      ...DEFAULT_PRESET,
+      items: DEFAULT_PRESET.items.map((item) => ({ ...item, actual_grams: null })),
+      machine_capacity_grams: null,
+    };
+    const session = createProductionSession({
+      sessionId: 'run-no-dead-end-1',
+      ownerUserId: 'owner-focus',
+      source: {
+        recipeId: 'recipe-focus',
+        recipeVersionId: 'version-focus',
+        recipeVersionNumber: 1,
+        recipeName: 'No dead-end QA',
+      },
+      plannedInput,
+      startedAt: '2026-08-25T10:00:00.000Z',
+    });
+    const cancelCurrentSession = vi.fn();
+    const production = {
+      session,
+      progress: productionProgress(session),
+      toppingProgress: null,
+      rescue: { state: 'options', options: [] },
+      score: { score: 9, label: 'Świetnie dopasowana' },
+      plannedScore: { score: 10, label: 'Wyjątkowo dobrze dopasowana' },
+      prerequisite: null,
+      persistenceBusy: false,
+      persistenceError: null,
+      rescueOptionsCalculating: false,
+      selectedRescueOptionId: null,
+      rescueOptionStates: {
+        keep_original_batch: {
+          status: 'unavailable',
+          reason: 'Niedostępne — potwierdzonych ilości nie można dopasować do 1000 g.',
+        },
+        enlarge_batch: {
+          status: 'unavailable',
+          reason: 'Niedostępne — Engine nie znalazł bezpiecznej większej partii.',
+        },
+        leave_as_is: {
+          status: 'unavailable',
+          reason: 'Niedostępne — przekroczono twardy zakres laktozy.',
+        },
+      },
+      cancelCurrentSession,
+    } as unknown as ProductionWorkspaceView;
+
+    await act(async () =>
+      root.render(
+        <ProductionCockpit
+          production={production}
+          onOpenPreview={vi.fn()}
+          onRecalculate={vi.fn()}
+          onReturnToRecipe={vi.fn()}
+        />,
+      ),
+    );
+
+    const recovery = host.querySelector<HTMLElement>(
+      '[data-testid="production-decision-recovery"]',
+    );
+    expect(recovery?.textContent).toContain('Żadna bezpieczna korekta nie jest dostępna');
+    const abort = recovery?.querySelector<HTMLButtonElement>(
+      '[data-testid="production-abort-recovery"]',
+    );
+    expect(abort?.disabled).toBe(false);
+
+    await act(async () => abort?.click());
+    const dialog = document.querySelector<HTMLElement>(
+      '[data-testid="production-cancel-session-dialog"]',
+    );
+    expect(dialog?.textContent).toContain('Przerwać tę partię?');
+    const confirm = [...(dialog?.querySelectorAll('button') ?? [])].find((button) =>
+      button.textContent?.includes('Przerwij partię'),
+    );
+    await act(async () => (confirm as HTMLButtonElement | undefined)?.click());
+    expect(cancelCurrentSession).toHaveBeenCalledTimes(1);
+  });
+
   it('requires one explicit in-app confirmation before completing an accepted lower score', async () => {
     const plannedInput = {
       ...DEFAULT_PRESET,

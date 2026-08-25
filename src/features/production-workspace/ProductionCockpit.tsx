@@ -140,6 +140,7 @@ export function ProductionCockpit({
   const { session, progress, rescue, score } = production;
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [finishDialogOpen, setFinishDialogOpen] = useState(false);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const toppingProgress = production.toppingProgress;
   const rescuePreviewRef = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -368,6 +369,11 @@ export function ProductionCockpit({
     production.plannedScore?.score != null &&
     score.score != null &&
     score.score < production.plannedScore.score;
+  const everyDecisionUnavailable =
+    rescue?.state === 'options' &&
+    (['keep_original_batch', 'enlarge_batch', 'leave_as_is'] as const).every(
+      (optionId) => production.rescueOptionStates?.[optionId]?.status === 'unavailable',
+    );
   const completionLabel = production.persistenceBusy
     ? 'Zapisywanie partii…'
     : correctionCalculating
@@ -665,6 +671,31 @@ export function ProductionCockpit({
               Spróbuj ponownie
             </button>
           ) : null}
+          {everyDecisionUnavailable ? (
+            <div
+              className="mt-3 rounded-[12px] border border-attention/30 bg-white px-3 py-3"
+              role="alert"
+              data-testid="production-decision-recovery"
+            >
+              <p className="text-xs font-semibold text-ink">
+                Żadna bezpieczna korekta nie jest dostępna
+              </p>
+              <p className="mt-1 text-[11px] leading-relaxed text-stone-600">
+                Jeśli któraś liczba została wpisana błędnie, użyj „popraw zapis” w jej wierszu.
+                Jeśli ilości w naczyniu są prawidłowe, przerwij tę partię i rozpocznij nową — nie
+                dodawaj materiału bez autoryzowanego planu.
+              </p>
+              <button
+                type="button"
+                onClick={() => setCancelDialogOpen(true)}
+                disabled={production.persistenceBusy}
+                className="pro-focus-ring mt-3 min-h-10 rounded-[10px] border border-status-error/30 bg-white px-3 text-xs font-semibold text-status-error disabled:cursor-wait disabled:opacity-60"
+                data-testid="production-abort-recovery"
+              >
+                Przerwij tę partię
+              </button>
+            </div>
+          ) : null}
           <button
             type="button"
             onClick={() => void production.applySelectedRescueOption?.()}
@@ -706,6 +737,43 @@ export function ProductionCockpit({
             </span>
           </div>
         </section>
+      ) : null}
+
+      {cancelDialogOpen ? (
+        <DialogShell
+          label="Przerwać tę partię?"
+          testId="production-cancel-session-dialog"
+          placement="responsive"
+          onClose={() => setCancelDialogOpen(false)}
+        >
+          <div className="p-5 sm:p-0">
+            <h2 className="text-lg font-semibold text-ink">Przerwać tę partię?</h2>
+            <p className="mt-2 text-xs leading-relaxed text-stone-600">
+              Aktywny run zostanie oznaczony jako przerwany. Zapis pozostanie w historii, a
+              potwierdzone ilości nie zostaną przepisane ani usunięte.
+            </p>
+            <div className="mt-5 grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setCancelDialogOpen(false)}
+                className="pro-focus-ring min-h-11 rounded-[10px] border border-ink/15 bg-white px-4 text-xs font-semibold text-ink"
+              >
+                Wróć do partii
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCancelDialogOpen(false);
+                  void production.cancelCurrentSession();
+                }}
+                disabled={production.persistenceBusy}
+                className="pro-focus-ring min-h-11 rounded-[10px] bg-status-error px-4 text-xs font-semibold text-white disabled:cursor-wait disabled:opacity-60"
+              >
+                Przerwij partię
+              </button>
+            </div>
+          </div>
+        </DialogShell>
       ) : null}
 
       <HeatInformationCard production={production} />

@@ -1031,8 +1031,18 @@ function ProductionRow({
             <CarbonationBubbles status={item.ingredient.carbonation_status} />
           </span>
           {line.physicalAddedGrams > 0 && (!line.confirmed || owesTopUp) ? (
-            <span className="mt-0.5 block text-xs text-stone-600">
-              W naczyniu: {formatProductionMassG(line.physicalAddedGrams)} g
+            <span className="mt-0.5 block text-xs leading-snug text-stone-600">
+              <span className="block">
+                W naczyniu: {formatProductionMassG(line.physicalAddedGrams)} g
+              </span>
+              {owesTopUp ? (
+                <strong
+                  className="block font-mono font-semibold tabular-nums text-attention"
+                  data-testid={`production-required-top-up-${line.lineId}`}
+                >
+                  Dodaj jeszcze +{formatProductionMassG(topUpGrams)} g
+                </strong>
+              ) : null}
             </span>
           ) : null}
         </div>

@@ -246,7 +246,7 @@ Deno.serve(async (request) => {
     return json(request, 200, response as unknown as Record<string, unknown>);
   } catch (error) {
     if (error instanceof RescueAuthorizationError) {
-      return json(request, error.status, { error: error.code });
+      return json(request, error.status, { error: error.code, ...error.details });
     }
     return json(request, 500, { error: 'rescue_authorization_failed' });
   }
