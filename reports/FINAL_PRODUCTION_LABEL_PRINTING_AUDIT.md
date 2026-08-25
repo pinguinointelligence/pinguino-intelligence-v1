@@ -2,14 +2,15 @@
 
 Audit date: 2026-08-25  
 Integration branch: `codex/v16-final-staging`  
-Base: `origin/staging` (`b6afd97`)  
-Release status at report creation: **PARTIAL / FAIL-CLOSED — not accepted as complete**
+Base: `origin/staging` before integration (`53daf81`)<br>
+Served source commit: `5394bf8`<br>
+Release status: **PARTIAL / FAIL-CLOSED — staging deployed, final acceptance not complete**
 
 ## Executive decision
 
 Production recovery, top-up semantics, Monitor PAC truth and the Community completion continuation are implemented and covered by focused tests. EU, UK and Australia/New Zealand label profiles are selectable; USA, Canada and Custom are unavailable before the user begins because their retail output cannot yet meet the requested release standard. Canada additionally needs the official Health Canada ready-to-use FOP asset package. The project does not synthesize an imitation.
 
-This report deliberately does not claim that every requested market is print-ready, that direct PDF download exists, that hardware printing was verified, or that served-staging QA is complete until those facts are proven.
+This report deliberately does not claim that every requested market is print-ready, that direct PDF download exists, that hardware printing was verified, or that served-staging QA is fully green. Authenticated browser checks completed for the highest-risk repaired paths, but the requested cross-device, cross-market print matrix remains incomplete.
 
 ## Monitor
 
@@ -144,11 +145,18 @@ npx vitest run src/engine src/features/production-workspace/productionSequential
 26 files, 438 tests passed
 ```
 
-Full repository suite:
+Full repository suite after the legacy-label hotfix and final staging rebase:
 
 ```text
-npm test -- --reporter=json --outputFile=/tmp/pinguino-v16-full-tests-final.json
-2,763 suites reported; 9,066 passed, 101 skipped, 0 failed (9,167 total)
+npm test -- --reporter=json --outputFile=/tmp/pinguino-v16-full-tests-label-hotfix.json
+2,759 suites reported; 9,059 passed, 101 skipped, 0 failed (9,160 total)
+```
+
+Final focused label regression after the served-browser crash repair:
+
+```text
+npx vitest run src/features/master-label src/services/labels --reporter=dot
+7 files, 47 tests passed
 ```
 
 Static and production gates:
@@ -170,7 +178,32 @@ git diff --check
 PASS
 ```
 
-Served-staging results remain pending until the exact tested commit is integrated and deployed; this report does not predeclare them.
+## Staging deployment and served-browser verification
+
+Frontend source commit `5394bf8` is deployed in Vercel deployment `dpl_AC9caGG3CuD1jq7FLptbZcJs44Mw` and served at `https://staging.pinguinoai.com`. The staging alias returned:
+
+```text
+assets/index-D6AbPglZ.js
+assets/index-CSdEhKF-.css
+JavaScript SHA-256 f10a0eb73683fd71f9336840b91a0a75b81b195499bb7aea0510598397e1bb37
+```
+
+Staging Supabase project `tunabqqrwabacxjcxxkz` has migration `20260825153000_production_restore_original_recipe` recorded and the four-strategy constraint/RPC behavior verified. Edge function `production-rescue-authorize` is `ACTIVE`, version 17. The repository's unrelated remote/local migration-history divergence made `supabase db push --dry-run --linked` fail safely; the exact migration file was therefore applied to staging only and only its version was repaired as applied. No unrelated migration history was rewritten.
+
+Authenticated served-browser results on the hotfix deployment:
+
+| Flow | Result | Evidence |
+| --- | --- | --- |
+| Monitor | PASS | PAC is immediately visible (`PAC 28.23` in the served owner recipe) and `Frakcja lodu 46.14%` remains separate. |
+| Community completion | PASS | Warm `Pokaż swój wynik w Community` invitation is optional; missing Creator opens inline creation and preserves the continuation. No publication was submitted. |
+| Production completed state | PASS | The actual completed run renders once, with 10/10, LOT, cost and label/community actions; no duplicated progress block. |
+| Owner planned recipe | PASS | The served recipe contains the exact 584/98/56/59/64/3/5/131 g planned fixture. |
+| Exact +2.5 g recovery mutation | NOT RE-RUN IN BROWSER | The available owner run was already immutable/completed. Exact +2.5 g, neighbourhood, minimum-safe 1007 g and restore-profile 1045 g paths are proven by Engine/Production/Edge tests, but not re-created as a new served run in this QA pass. |
+| Legacy Label snapshot | PASS, FAIL-CLOSED | The first staging deployment exposed a `servingQuantityG` crash on an old snapshot. `normalizeMasterLabelData` now forward-hydrates it at the read boundary without rewriting saved data. The hotfix renders the actual 1288 g run, and its historical Canada profile is visibly research-only with retail output disabled. |
+| Print controls | PARTIAL | Draft and calibration/test controls render; research Canada blocks retail system print. Native print dialogs were not invoked automatically. |
+| Cross-market/device matrix | NOT COMPLETE | EU/UK/AU-NZ, US/Canada gates, desktop/tablet/mobile, native PDF/system dialogs and physical thermal output were not all executed in the served browser. |
+
+The staging verification therefore proves the repaired high-risk paths and the legacy-snapshot hotfix, but does not satisfy the request's blanket `served staging browser QA green` acceptance line.
 
 ## Required external actions and incomplete acceptance items
 
@@ -179,11 +212,12 @@ Served-staging results remain pending until the exact tested commit is integrate
 3. Add direct downloadable PDF generation if “Download PDF” must mean a one-click file rather than the native `Save as PDF` path.
 4. Add the remaining requested regulatory golden/data cases: EU nut, Canada non-FOP release output, vegan soy/sesame, alcoholic product, long compound ingredient/bilingual/address overflow.
 5. Run physical printer tests if hardware-level claims are desired. Current evidence is geometry/software only.
-6. Deploy only to staging and complete authenticated served-browser QA across desktop/tablet/mobile. Public production must remain untouched.
+6. Complete authenticated served-browser QA across desktop/tablet/mobile for every market/print path, including a fresh +2.5 g recovery run and the unchanged 8/10 control. Public production must remain untouched.
 
 ## Deployment safety
 
 - Public production deployment: **NOT AUTHORIZED / NOT PERFORMED**.
-- Staging deployment: **PENDING at report creation**.
+- Staging frontend deployment: **READY** at `https://staging.pinguinoai.com`, source commit `5394bf8`, deployment `dpl_AC9caGG3CuD1jq7FLptbZcJs44Mw`.
+- Staging backend deployment: migration applied to `tunabqqrwabacxjcxxkz`; `production-rescue-authorize` active at version 17.
 - Secrets, billing configuration, production credentials and environment files: not modified.
 - `mapper_basement`: not modified.
