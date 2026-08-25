@@ -8,7 +8,10 @@ import {
   createProductionSession,
   type ProductionCompletionSnapshot,
 } from '@/features/production-workspace/productionSession';
-import { buildMasterLabelData } from '@/features/master-label/masterLabel';
+import { buildMasterLabelData, type MasterLabelData } from '@/features/master-label/masterLabel';
+import { completeRegulatoryFacts } from '@/features/master-label/masterLabelTestFixture';
+import { marketProfile, type MarketProfileCode } from '@/features/master-label/marketProfiles';
+import { buildNutritionDeclaration } from '@/data/label/nutritionLabel';
 import {
   defaultAccountLabelProfile,
   inMemoryLabelRepository,
@@ -58,6 +61,81 @@ function completedSnapshot(ownerUserId: string, sessionId: string): ProductionCo
     '2026-08-24T11:00:00.000Z',
     ownerUserId,
   ).completionSnapshot!;
+}
+
+function printReadyActualLabel(
+  snapshot: ProductionCompletionSnapshot,
+  profile: AccountLabelProfile,
+  market: MarketProfileCode,
+  masterLabelId: string,
+): MasterLabelData {
+  const languages = marketProfile(market).requiredLanguages.length
+    ? [...marketProfile(market).requiredLanguages]
+    : profile.labelLanguages;
+  const raw = buildMasterLabelData({
+    masterLabelId,
+    snapshot,
+    market,
+    uiLanguage: profile.uiLanguage,
+    labelLanguages: languages,
+    facilityDefaults: profile.facilityDefaults,
+    businessName: profile.businessName,
+    logoPath: profile.logoPath,
+    enabledOptionalFields: profile.enabledOptionalFields,
+  });
+  const text = (value: string) =>
+    Object.fromEntries(languages.map((language) => [language, value]));
+  const size = { widthMm: 104, heightMm: market === 'US' ? 180 : 152 };
+  const nutritionSource = raw.nutritionSource
+    ? {
+        ...raw.nutritionSource,
+        saturated_fat_g: raw.nutritionSource.saturated_fat_g ?? 0,
+        sugars_g: raw.nutritionSource.sugars_g ?? 0,
+        fiber_g: raw.nutritionSource.fiber_g ?? 0,
+      }
+    : null;
+  return {
+    ...raw,
+    legalProductName: text('Frozen dairy dessert'),
+    allergens: { ...raw.allergens, reviewedByUser: true },
+    nutritionSource,
+    nutritionDeclaration: buildNutritionDeclaration(nutritionSource),
+    packageQuantity: {
+      value: 500,
+      unit: 'g',
+      netWeightG: 500,
+      netVolumeMl: null,
+      source: 'selected_fill',
+      confirmedAt: '2026-08-24T11:05:00.000Z',
+    },
+    netQuantityG: 500,
+    dateMark: {
+      kind: 'best_before',
+      date: '2027-02-24',
+      basis: 'manual',
+      reviewedByUser: true,
+    },
+    storageInstructions: text('Keep frozen at -18°C or below.'),
+    origin: text('Made in Spain.'),
+    regulatoryNutrition: {
+      ...completeRegulatoryFacts(languages),
+      sodiumMgPer100g: raw.regulatoryNutrition.sodiumMgPer100g,
+    },
+    size,
+    printer: { ...raw.printer, widthMm: size.widthMm, heightMm: size.heightMm },
+    jurisdictionContext: {
+      euDestinationCountryCode: 'ES',
+      ukRegion: 'GB',
+      auNzCountry: 'NZ',
+      usSaleContext: 'interstate_retail',
+    },
+    regulatoryReview: {
+      translations: true,
+      ingredientOrderAndQuid: true,
+      marketSpecific: true,
+    },
+    preflightAcknowledged: true,
+  };
 }
 
 describe('LabelRepository account and immutable history authority', () => {
@@ -111,42 +189,30 @@ describe('LabelRepository account and immutable history authority', () => {
       businessName: 'Business A',
       logoPath: 'owner-a/logo-a.png',
       enabledOptionalFields: ['logo', 'origin'],
+      facilityDefaults: {
+        ...defaultAccountLabelProfile('owner-a').facilityDefaults,
+        operatorName: 'Business A',
+        address: '1 Test Street, Madrid',
+        countryCode: 'ES',
+      },
     };
     await repository.saveAccountProfile(profileA);
     const snapshotA = completedSnapshot('owner-a', 'run-a');
     await repository.freezeCompletedSnapshot(snapshotA);
-    const labelA = buildMasterLabelData({
-      masterLabelId: 'label-a',
-      snapshot: snapshotA,
-      market: profileA.market,
-      uiLanguage: profileA.uiLanguage,
-      labelLanguages: profileA.labelLanguages,
-      facilityDefaults: profileA.facilityDefaults,
-      businessName: profileA.businessName,
-      logoPath: profileA.logoPath,
-      enabledOptionalFields: profileA.enabledOptionalFields,
-    });
-    await repository.saveRunLabelSnapshot(labelA);
+    const labelA = printReadyActualLabel(snapshotA, profileA, profileA.market, 'label-a');
+    const savedA = await repository.saveRunLabelSnapshot(labelA);
 
     const profileB: AccountLabelProfile = {
       ...profileA,
       market: 'US' as const,
       businessName: 'Business B',
       logoPath: 'owner-a/logo-b.png',
+      labelLanguages: ['en'],
     };
     await repository.saveAccountProfile(profileB);
     const snapshotB = completedSnapshot('owner-a', 'run-b');
     await repository.freezeCompletedSnapshot(snapshotB);
-    const labelB = buildMasterLabelData({
-      masterLabelId: 'label-b',
-      snapshot: snapshotB,
-      market: profileB.market,
-      uiLanguage: profileB.uiLanguage,
-      labelLanguages: profileB.labelLanguages,
-      facilityDefaults: profileB.facilityDefaults,
-      businessName: profileB.businessName,
-      logoPath: profileB.logoPath,
-    });
+    const labelB = printReadyActualLabel(snapshotB, profileB, profileB.market, 'label-b');
     await repository.saveRunLabelSnapshot(labelB);
 
     expect(await repository.getRunLabelSnapshot('run-a')).toMatchObject({
@@ -163,9 +229,16 @@ describe('LabelRepository account and immutable history authority', () => {
       logoPath: 'owner-a/logo-b.png',
       label: { market: 'US', businessName: 'Business B', logoPath: 'owner-a/logo-b.png' },
     });
-    await expect(
-      repository.saveRunLabelSnapshot({ ...labelA, businessName: 'Rewrite old label' }),
-    ).rejects.toThrow(/immutable/);
+    const versionTwo = await repository.saveRunLabelSnapshot({
+      ...labelA,
+      businessName: 'Business A · regulatory revision',
+    });
+    expect(versionTwo).toMatchObject({ runId: 'run-a', version: 2 });
+    expect(versionTwo.snapshotId).not.toBe(savedA.snapshotId);
+    expect((await repository.getRunLabelSnapshotById(savedA.snapshotId))?.label.businessName).toBe(
+      'Business A',
+    );
+    expect((await repository.getRunLabelSnapshot('run-a'))?.version).toBe(2);
     expect(await inMemoryLabelRepository('owner-b').listRunLabelSnapshots()).toEqual([]);
   });
 });

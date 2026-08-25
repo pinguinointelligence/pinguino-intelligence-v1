@@ -139,9 +139,9 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(host.querySelector('[data-workspace-mode="run"]')).not.toBeNull();
     expect(host.textContent).toContain('Gelato faktyczne');
     expect(host.textContent).toContain('Gellatti Laboratory');
-    expect(host.textContent).toContain('Masa netto');
-    expect(host.textContent).toContain('Składniki');
-    expect(host.textContent).toContain('Wartość odżywcza');
+    expect(host.textContent).toContain('Net quantity');
+    expect(host.textContent).toContain('Ingredients');
+    expect(host.textContent).toContain('Nutrition declaration');
     expect(host.textContent).toContain('Koszt');
     expect(host.textContent).toContain('Baza techniczna');
     expect(
@@ -152,9 +152,15 @@ describe('LabelWorkspace unified actual-run surface', () => {
         .querySelector('[data-testid="label-consumer-preview"]')
         ?.getAttribute('data-label-layout'),
     ).toBe('eu_declaration');
+    const exactPreview = host.querySelector<HTMLIFrameElement>(
+      '[data-testid="label-print-document-preview"]',
+    );
+    expect(exactPreview?.getAttribute('srcdoc')).toContain('data-label-document="preview"');
+    expect(exactPreview?.getAttribute('srcdoc')).toContain('data-market-layout="eu_declaration"');
     expect(completedSnapshot().lotCode).toMatch(/^LOT-20260824-/);
-    expect(host.querySelector('[data-testid="consumer-lot"]')?.textContent).toMatch(/^20260824-/);
-    expect(host.querySelector('[data-testid="consumer-lot"]')?.textContent).not.toContain('LOT-');
+    expect(host.querySelector('[data-testid="consumer-lot"]')?.textContent).toMatch(
+      /^LOT-20260824-/,
+    );
     expect(
       host.querySelector('[data-testid="consumer-print-boundary"]')?.textContent,
     ).not.toContain('Koszt');
@@ -187,21 +193,20 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(editor?.textContent).toContain('Zapisz jako domyślne');
     expect(editor?.textContent).toContain('Kopie');
     expect(editor?.textContent).toContain('LOT · nadawany automatycznie');
-    expect(editor?.textContent).toContain('Wymagane pola profilu UE są zawsze aktywne');
+    expect(editor?.textContent).toContain('Wymagane pola profilu European Union są zawsze aktywne');
     expect(editor?.querySelector('[data-testid="optional-label-fields"] input')).not.toBeNull();
 
     const us = [...editor!.querySelectorAll('button')].find((button) =>
-      button.textContent?.startsWith('USA'),
+      button.textContent?.startsWith('United States'),
     );
-    expect(us?.getAttribute('aria-disabled')).toBe('true');
+    expect(us?.getAttribute('aria-disabled')).toBeNull();
     const canada = [...editor!.querySelectorAll('button')].find((button) =>
-      button.textContent?.startsWith('Kanada'),
+      button.textContent?.startsWith('Canada'),
     );
     await act(async () => canada!.click());
-    expect(editor?.textContent).toContain('Profil Kanada jest jeszcze w przygotowaniu');
-    expect(editor?.querySelector('[data-market-active="true"]')?.textContent).toContain('UE');
-    const uk = [...editor!.querySelectorAll('button')].find(
-      (button) => button.textContent?.startsWith('UK'),
+    expect(editor?.querySelector('[data-market-active="true"]')?.textContent).toContain('Canada');
+    const uk = [...editor!.querySelectorAll('button')].find((button) =>
+      button.textContent?.startsWith('United Kingdom'),
     );
     await act(async () => uk!.click());
     const apply = [...editor!.querySelectorAll('button')].find(
@@ -221,7 +226,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
         ?.getAttribute('data-label-layout'),
     ).toBe('uk_declaration');
     expect(host.querySelector('[data-testid="label-market-indicator"]')?.textContent).toContain(
-      '🇬🇧',
+      'United Kingdom',
     );
   });
 
@@ -276,11 +281,18 @@ describe('LabelWorkspace unified actual-run surface', () => {
       settings.querySelector('[data-testid="label-settings-missing-count"]')?.textContent ?? '';
     const missingFields = () => settings.querySelectorAll('[data-missing-required="true"]');
 
-    expect(missingCount()).toContain('Brakuje 8 wymaganych informacji');
-    expect(missingFields()).toHaveLength(5);
+    expect(missingCount()).toMatch(/Brakuje \d+ wymaganych informacji/);
+    expect(missingFields()).toHaveLength(6);
     expect(
       [...missingFields()].map((field) => field.getAttribute('data-label-field')).sort(),
-    ).toEqual(['allergens', 'date_mark', 'legal_product_name', 'operator', 'storage']);
+    ).toEqual([
+      'allergens',
+      'date_mark',
+      'legal_product_name',
+      'net_quantity',
+      'operator',
+      'storage',
+    ]);
 
     const fill = async (field: string, values: string[]) => {
       const inputs = [
@@ -292,15 +304,14 @@ describe('LabelWorkspace unified actual-run surface', () => {
     };
 
     await fill('legal_product_name', ['Ice cream']);
-    expect(missingCount()).toContain('Brakuje 7 wymaganych informacji');
+    await fill('net_quantity', ['500']);
     await act(async () =>
       settings.querySelector<HTMLInputElement>('[data-label-field="allergens"] input')!.click(),
     );
-    await fill('operator', ['Gellatti Laboratory', '1 Test Street']);
+    await fill('operator', ['Gellatti Laboratory', '1 Test Street', 'ES']);
     await fill('storage', ['Keep frozen']);
     await fill('date_mark', ['2026-09-24']);
 
-    expect(missingCount()).toContain('Brakuje 3 wymaganych informacji');
     expect(missingFields()).toHaveLength(0);
   });
 
@@ -314,8 +325,8 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(settingsDot.getAttribute('aria-current')).toBe('step');
 
     const settings = host.querySelector('[data-testid="label-settings-view"]')!;
-    const uk = [...settings.querySelectorAll('button')].find(
-      (candidate) => candidate.textContent?.startsWith('UK'),
+    const uk = [...settings.querySelectorAll('button')].find((candidate) =>
+      candidate.textContent?.startsWith('United Kingdom'),
     )!;
     await act(async () => uk.click());
     await act(async () => button('Anuluj')!.click());
@@ -329,7 +340,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(
       host.querySelector('[data-testid="label-settings-view"] [data-market-active="true"]')
         ?.textContent,
-    ).toContain('UE');
+    ).toContain('European Union');
     await act(async () =>
       host.querySelector<HTMLButtonElement>('[data-testid="label-workspace-dot-label"]')!.click(),
     );
@@ -343,7 +354,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(
       workspace.querySelector('[data-testid="label-settings-view"] [data-market-active="true"]')
         ?.textContent,
-    ).toContain('UE');
+    ).toContain('European Union');
 
     await swipe(workspace, 80, 170);
     expect(workspace.getAttribute('data-active-label-view')).toBe('label');

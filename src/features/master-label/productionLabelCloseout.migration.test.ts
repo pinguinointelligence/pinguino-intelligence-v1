@@ -30,6 +30,13 @@ const LABEL_UNIFICATION_SQL = readFileSync(
   ),
   'utf8',
 );
+const FINAL_LABEL_SQL = readFileSync(
+  resolve(
+    import.meta.dirname,
+    '../../../supabase/migrations/20260825180000_final_six_label_profiles_and_versioned_snapshots.sql',
+  ),
+  'utf8',
+);
 
 describe('Production / Label closeout migration', () => {
   it('extends the one append-only Production history with every required event', () => {
@@ -115,14 +122,42 @@ describe('Production / Label closeout migration', () => {
     expect(RESCUE_FINGERPRINT_GUARD_SQL).toContain("'rescueRevision', run.rescue_revision");
   });
 
-  it('persists only supported optional fields and freezes their selection with the label', () => {
+  it('persists the established optional fields and freezes their selection with the label', () => {
     expect(LABEL_UNIFICATION_SQL).toContain('enabled_optional_fields jsonb not null');
-    expect(LABEL_UNIFICATION_SQL).toContain(
-      `enabled_optional_fields <@ '["logo","origin","customer_note"]'::jsonb`,
-    );
+    expect(FINAL_LABEL_SQL).toContain('"qr_code","lot_barcode","gtin","website"');
     expect(LABEL_UNIFICATION_SQL).toContain(
       `'enabledOptionalFields', p_master_label->'enabledOptionalFields'`,
     );
     expect(LABEL_UNIFICATION_SQL).not.toContain('localStorage');
+  });
+
+  it('constrains the final selector to six profiles and removes the legacy custom profile', () => {
+    expect(FINAL_LABEL_SQL).toContain("market in ('EU','UK','US','CA','AU_NZ','WORLD')");
+    expect(FINAL_LABEL_SQL).toContain("where market = 'CUSTOM'");
+    expect(FINAL_LABEL_SQL).not.toContain("'JP'");
+    expect(FINAL_LABEL_SQL).not.toContain("'BR'");
+  });
+
+  it('creates append-only versioned snapshots with SHA-256 and exact print evidence', () => {
+    expect(FINAL_LABEL_SQL).toContain('snapshot_id uuid');
+    expect(FINAL_LABEL_SQL).toContain('snapshot_version integer');
+    expect(FINAL_LABEL_SQL).toContain("'sha256'");
+    expect(FINAL_LABEL_SQL).toContain('unique (run_id, snapshot_version)');
+    expect(FINAL_LABEL_SQL).toContain('unique (run_id, content_hash)');
+    expect(FINAL_LABEL_SQL).toContain('production_save_label_snapshot_v2');
+    expect(FINAL_LABEL_SQL).toContain('Run Label Snapshot history is immutable');
+    expect(FINAL_LABEL_SQL).toContain('PRINT_READY_UNIVERSAL');
+    expect(FINAL_LABEL_SQL).toContain('PRINT_READY_REGULATORY');
+    expect(FINAL_LABEL_SQL).toContain('batch mass is not package fill');
+    expect(FINAL_LABEL_SQL).toContain(
+      'Canadian ice cream/frozen dessert package quantity must be confirmed by volume',
+    );
+    expect(FINAL_LABEL_SQL).toContain('Complete Canadian FOP assessment data is required');
+    expect(FINAL_LABEL_SQL).toContain('v_fop_required and (');
+    expect(FINAL_LABEL_SQL).toContain("v_fop_exemption not in ('exempt','prohibited')");
+    expect(FINAL_LABEL_SQL).toContain(
+      'Label ingredients must come from the completed ACTUAL batch',
+    );
+    expect(FINAL_LABEL_SQL).not.toContain('mapper_basement');
   });
 });

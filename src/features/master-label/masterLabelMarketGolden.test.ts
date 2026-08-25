@@ -22,6 +22,8 @@ const regulatoryFacts = (
   languages: readonly string[],
   overrides: Partial<RegulatoryNutritionInputs> = {},
 ): RegulatoryNutritionInputs => ({
+  energyKjPer100g: 920,
+  energyAuthority: 'market_factors',
   servingDescription: Object.fromEntries(
     languages.map((language) => [language, language === 'fr' ? '1 tasse' : '1 cup']),
   ),
@@ -35,7 +37,14 @@ const regulatoryFacts = (
   calciumMgPer100g: 100,
   ironMgPer100g: 1,
   potassiumMgPer100g: 200,
+  productDensityGPerMl: 0.6,
+  servingVolumeMl: 166.7,
+  usRaccVolumeMl: 160,
+  usFormatFamily: 'standard',
+  canadaProductForm: 'tub',
+  canadaReferenceAmountMl: 188,
   canadaReferenceAmountG: 100,
+  canadaFormatFamily: 'bilingual_standard',
   canadaFopProductClass: 'general_food',
   canadaFopExemption: 'none',
   canadaFopExemptionReason: '',
@@ -49,12 +58,22 @@ function label(
 ): MasterLabelData {
   const profile = marketProfile(market);
   const languages = profile.requiredLanguages.length > 0 ? [...profile.requiredLanguages] : ['en'];
-  const size = {
-    widthMm: Math.max(104, profile.minimumLabel.widthMm),
-    heightMm: Math.max(152, profile.minimumLabel.heightMm),
-  };
+  const size = { widthMm: 104, heightMm: market === 'CA' ? 200 : 152 };
   const text = (en: string, fr = en) =>
     Object.fromEntries(languages.map((language) => [language, language === 'fr' ? fr : en]));
+  const usServing =
+    market === 'US'
+      ? { servingQuantityG: 96, servingsPerContainer: 500 / 96, servingVolumeMl: 160 }
+      : market === 'CA'
+        ? {
+            servingDescription: { en: '3/4 cup', fr: '3/4 tasse' },
+            servingQuantityG: 112.8,
+            servingsPerContainer: 500 / 188,
+            servingVolumeMl: 188,
+            canadaReferenceAmountMl: 188,
+            canadaReferenceAmountG: null,
+          }
+        : {};
   return {
     schemaVersion: 1,
     masterLabelId: `label:${market}`,
@@ -103,9 +122,17 @@ function label(
     },
     nutritionSource: nutrition,
     nutritionDeclaration: buildNutritionDeclaration(nutrition),
-    regulatoryNutrition: regulatoryFacts(languages),
-    netQuantityG: 500,
-    servingQuantityG: 100,
+    regulatoryNutrition: regulatoryFacts(languages, usServing),
+    netQuantityG: market === 'CA' ? 300 : 500,
+    packageQuantity: {
+      value: 500,
+      unit: market === 'CA' ? 'ml' : 'g',
+      netWeightG: market === 'CA' ? 300 : 500,
+      netVolumeMl: market === 'CA' ? 500 : null,
+      source: 'selected_fill',
+      confirmedAt: '2026-08-25T10:05:00.000Z',
+    },
+    servingQuantityG: market === 'US' ? 96 : market === 'CA' ? 112.8 : 100,
     productionDate: '2026-08-25',
     productionDateReviewed: true,
     dateMark: {
@@ -123,9 +150,15 @@ function label(
       countryCode: 'ES',
       contact: '',
       registrationIds: [],
+      importerName: market === 'UK' ? 'Gellatti UK Import Ltd' : '',
+      importerAddress: market === 'UK' ? '1 Test Street, London, UK' : '',
+      importerCountryCode: market === 'UK' ? 'GB' : '',
+      distributorName: market === 'AU_NZ' ? 'Gellatti AU Distribution Pty Ltd' : '',
+      distributorAddress: market === 'AU_NZ' ? '1 Test Street, Sydney, Australia' : '',
+      distributorCountryCode: market === 'AU_NZ' ? 'AU' : '',
     },
     lotCode: 'LOT-20260825-001',
-    origin: text('', ''),
+    origin: text('Made in Spain', 'Fabriqué en Espagne'),
     customerNote: text('', ''),
     enabledOptionalFields: [],
     format: 'rectangle',
@@ -138,6 +171,14 @@ function label(
       heightMm: size.heightMm,
       copies: 1,
     }),
+    layoutMode: 'auto',
+    availableDisplaySurfaceCm2: 200,
+    jurisdictionContext: {
+      euDestinationCountryCode: 'ES',
+      ukRegion: 'GB',
+      auNzCountry: 'AU',
+      usSaleContext: 'interstate_retail',
+    },
     regulatoryReview: {
       translations: true,
       ingredientOrderAndQuid: true,
@@ -149,8 +190,8 @@ function label(
 }
 
 describe('market-specific golden label structures', () => {
-  it.each(['EU', 'UK', 'AU_NZ'] as const)(
-    '%s fails closed before retail print at the clipped 100 × 70 mm geometry',
+  it.each(['EU', 'UK', 'US', 'AU_NZ', 'WORLD'] as const)(
+    '%s fails closed before retail print at a clipped geometry',
     (market) => {
       const data = label(market);
       const clipped = {
@@ -169,9 +210,11 @@ describe('market-specific golden label structures', () => {
   );
 
   it.each([
-    ['EU', 'eu_declaration', 'nutrition eu'],
-    ['UK', 'uk_declaration', 'nutrition eu'],
-    ['AU_NZ', 'au_nz_nip', 'nutrition au'],
+    ['EU', 'eu_declaration', 'eu-nutrition'],
+    ['UK', 'uk_declaration', 'uk-renderer'],
+    ['US', 'us_nutrition_facts', 'nutrition-facts us'],
+    ['AU_NZ', 'au_nz_nip', 'fsanz-nip'],
+    ['WORLD', 'world_neutral', 'world-nutrition'],
   ] as const)(
     'prints the verified %s structure instead of relabelling the EU table',
     (market, layout, marker) => {
@@ -180,22 +223,76 @@ describe('market-specific golden label structures', () => {
       const html = buildMasterLabelPrintHtml(data);
       expect(html).toContain(`data-market-layout="${layout}"`);
       expect(html).toContain(marker);
-      expect(html).toContain('<strong>Milk</strong> (60%)');
+      expect(html).toContain('<strong class="allergen-term">Milk</strong>');
+      expect(html).not.toContain('(60%)');
       if (market === 'UK') expect(html).toContain('data-packaging-context="ppds"');
     },
   );
 
-  it('keeps USA unavailable up front while preserving its distinct Nutrition Facts QA renderer', () => {
+  it('prints a genuine FDA structure with added sugars and its own preflight', () => {
     const data = label('US');
-    expect(buildLabelPreflight(data).regulatoryProfileVerified).toBe(false);
-    expect(() => buildMasterLabelPrintHtml(data)).toThrow('Master Label preflight is incomplete.');
-    const html = buildMasterLabelPrintHtml(data, null, { draft: true });
+    expect(buildLabelPreflight(data).regulatoryProfileVerified).toBe(true);
+    expect(buildLabelPreflight(data).readyForSystemPrint).toBe(true);
+    const html = buildMasterLabelPrintHtml(data);
     expect(html).toContain('data-market-layout="us_nutrition_facts"');
     expect(html).toContain('nutrition-facts us');
-    expect(html).toContain('Includes Added Sugars');
+    expect(html).toContain('Added Sugars');
   });
 
-  it('keeps Canada unavailable up front while preserving the bilingual NFT/FOP QA renderer', () => {
+  it.each([
+    ['tabular', 200, 'tabular-columns'],
+    ['linear', 70, 'linear-facts'],
+  ] as const)('renders the qualifying FDA %s small-package family', (format, ads, marker) => {
+    const data = label('US', {
+      availableDisplaySurfaceCm2: ads,
+      regulatoryNutrition: regulatoryFacts(['en'], {
+        servingQuantityG: 96,
+        servingVolumeMl: 160,
+        servingsPerContainer: 500 / 96,
+        usFormatFamily: format,
+      }),
+    });
+    expect(buildLabelPreflight(data).readyForSystemPrint).toBe(true);
+    const html = buildMasterLabelPrintHtml(data);
+    expect(html).toContain(`data-format-family="${format}"`);
+    expect(html).toContain(marker);
+    expect(html).toContain('Added Sugars');
+  });
+
+  it('renders distinct FDA per-serving and per-container columns at 250% RACC', () => {
+    const data = label('US', {
+      packageQuantity: {
+        value: 240,
+        unit: 'g',
+        netWeightG: 240,
+        netVolumeMl: null,
+        source: 'selected_fill',
+        confirmedAt: '2026-08-25T10:05:00.000Z',
+      },
+      netQuantityG: 240,
+      servingQuantityG: 96,
+      size: { widthMm: 104, heightMm: 220 },
+      printer: normalizePrinterSettings({
+        profileId: 'system_a4_letter',
+        widthMm: 104,
+        heightMm: 220,
+        copies: 1,
+      }),
+      regulatoryNutrition: regulatoryFacts(['en'], {
+        servingQuantityG: 96,
+        servingVolumeMl: 160,
+        servingsPerContainer: 2.5,
+        usFormatFamily: 'auto',
+      }),
+    });
+    expect(buildLabelPreflight(data).readyForSystemPrint).toBe(true);
+    const html = buildMasterLabelPrintHtml(data);
+    expect(html).toContain('data-format-family="dual_column"');
+    expect(html).toContain('<strong>Per serving</strong><strong>Per container</strong>');
+    expect(html).toMatch(/<td>[^<]+<\/td><td>[^<]+<\/td>/);
+  });
+
+  it('keeps Canada externally blocked while preserving the bilingual NFT/FOP renderer', () => {
     const withOfficialAsset = label('CA', {
       regulatoryNutrition: regulatoryFacts(['en', 'fr'], {
         canadaFopAssetId: 'approved-health-canada-high-sat-sugar',
@@ -210,7 +307,7 @@ describe('market-specific golden label structures', () => {
     expect(html).toContain('Nutrition Facts<br><span>Valeur nutritive</span>');
     expect(html).toContain('Ingredients:');
     expect(html).toContain('Ingrédients:');
-    expect(html).toContain('/labels/canada-fop/approved-health-canada-high-sat-sugar.svg');
+    expect(html).not.toContain('class="canada-fop');
   });
 
   it('never draws a Canadian look-alike when the approved artwork asset is absent', () => {

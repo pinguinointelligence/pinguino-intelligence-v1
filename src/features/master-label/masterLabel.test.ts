@@ -286,6 +286,14 @@ function printable(data: MasterLabelData): MasterLabelData {
     legalProductName: { es: 'Helado de leche', en: 'Milk gelato' },
     allergens: { ...data.allergens, reviewedByUser: true },
     netQuantityG: 500,
+    packageQuantity: {
+      value: 500,
+      unit: 'g',
+      netWeightG: 500,
+      netVolumeMl: null,
+      source: 'selected_fill',
+      confirmedAt: '2026-08-09T11:05:00.000Z',
+    },
     productionDateReviewed: true,
     dateMark: {
       kind: 'best_before',
@@ -298,6 +306,14 @@ function printable(data: MasterLabelData): MasterLabelData {
     copies: 3,
     size: { widthMm: 102, heightMm: 152 },
     printer: { ...data.printer, widthMm: 102, heightMm: 152, copies: 3 },
+    jurisdictionContext: {
+      ...(data.jurisdictionContext ?? {
+        ukRegion: 'unresolved',
+        auNzCountry: 'unresolved',
+        usSaleContext: 'unresolved',
+      }),
+      euDestinationCountryCode: 'ES',
+    },
     regulatoryReview: {
       translations: true,
       ingredientOrderAndQuid: true,
@@ -315,8 +331,10 @@ describe('Master Label — one actual-batch source model', () => {
     expect(actual.ingredients[0]!.percent).not.toBe(planned.ingredients[0]!.percent);
     expect(actual.nutritionSource).not.toEqual(planned.nutritionSource);
     expect(actual.sourceCompletionSessionId).toBe('run-label');
-    expect(planned.netQuantityG).toBe(1000);
-    expect(actual.netQuantityG).toBe(1020);
+    expect(planned.netQuantityG).toBeNull();
+    expect(actual.netQuantityG).toBeNull();
+    expect(planned.actualBatchQuantityG).toBe(1000);
+    expect(actual.actualBatchQuantityG).toBe(1020);
   });
 
   it('uses actual toppings and legal mass order independently from manual UI order', () => {
@@ -437,10 +455,24 @@ describe('Master Label — one actual-batch source model', () => {
     expect(Object.keys(data.productName)).toEqual(['es', 'en']);
   });
 
+  it('rejects a non-Member-State two-letter EU destination code', () => {
+    const baseline = printable(build());
+    const data: MasterLabelData = {
+      ...baseline,
+      jurisdictionContext: {
+        ...baseline.jurisdictionContext!,
+        euDestinationCountryCode: 'US',
+      },
+    };
+    expect(buildLabelPreflight(data).items).toContainEqual(
+      expect.objectContaining({ field: 'jurisdiction_context', status: 'missing' }),
+    );
+  });
+
   it('prefills production date but never fabricates best-before/use-by', () => {
     const data = build();
     expect(data.productionDate).toBe('2026-08-09');
-    expect(data.productionDateReviewed).toBe(false);
+    expect(data.productionDateReviewed).toBe(true);
     expect(data.dateMark).toEqual({
       kind: 'unresolved',
       date: null,
@@ -450,6 +482,62 @@ describe('Master Label — one actual-batch source model', () => {
     expect(buildLabelPreflight(data).items.find((item) => item.field === 'date_mark')?.status).toBe(
       'missing',
     );
+  });
+
+  it('fails closed on incomplete compound declarations and QUID, then prints reviewed actual percentages', () => {
+    const baseline = printable(build());
+    const first = baseline.ingredients[0]!;
+    const incomplete: MasterLabelData = {
+      ...baseline,
+      ingredients: [
+        {
+          ...first,
+          compound: {
+            displayName: { es: 'Preparado de leche', en: 'Milk preparation' },
+            components: [],
+            componentsDeclared: true,
+          },
+          quid: {
+            required: true,
+            percentage: first.percent,
+            reason: 'Named ingredient highlighted in the product name.',
+            reviewedByUser: false,
+          },
+        },
+        ...baseline.ingredients.slice(1),
+      ],
+    };
+    expect(
+      buildLabelPreflight(incomplete).items.find((item) => item.field === 'ingredients'),
+    ).toMatchObject({ status: 'missing' });
+
+    const complete: MasterLabelData = {
+      ...incomplete,
+      ingredients: [
+        {
+          ...incomplete.ingredients[0]!,
+          compound: {
+            ...incomplete.ingredients[0]!.compound!,
+            components: [
+              {
+                names: { es: 'leche', en: 'milk' },
+                actualGrams: null,
+              },
+              {
+                names: { es: 'nata', en: 'cream' },
+                actualGrams: null,
+              },
+            ],
+          },
+          quid: { ...incomplete.ingredients[0]!.quid!, reviewedByUser: true },
+        },
+        ...incomplete.ingredients.slice(1),
+      ],
+    };
+    expect(buildLabelPreflight(complete).readyForSystemPrint).toBe(true);
+    const html = buildMasterLabelPrintHtml(complete);
+    expect(html.replace(/<[^>]+>/g, '')).toContain('Milk preparation (milk, cream)');
+    expect(html).toContain(`(${first.percent.toFixed(1).replace(/\.0$/, '')}%)`);
   });
 
   it('keeps one automatic LOT stable for the completed run and legacy reloads', () => {
@@ -513,20 +601,20 @@ describe('Master Label — one actual-batch source model', () => {
       marketProfileVersion: marketProfile('US').version,
     };
     expect(us.nutritionSource).toEqual(data.nutritionSource);
-    expect(marketProfile('US').status).toBe('RESEARCH_REQUIRED');
-    expect(marketProfile('US').selectable).toBe(false);
-    expect(marketProfile('CA').status).toBe('RESEARCH_REQUIRED');
-    expect(marketProfile('CA').selectable).toBe(false);
-    expect(marketProfile('CUSTOM').status).toBe('RESEARCH_REQUIRED');
+    expect(marketProfile('US').status).toBe('REGULATORY_VERIFIED');
+    expect(marketProfile('US').selectable).toBe(true);
+    expect(marketProfile('CA').status).toBe('EXTERNAL_ASSET_BLOCKED');
+    expect(marketProfile('CA').selectable).toBe(true);
+    expect(marketProfile('WORLD').status).toBe('INFORMATIONAL');
     expect(marketProfile('EU').consumerLayout).toBe('eu_declaration');
     expect(marketProfile('US').consumerLayout).toBe('us_nutrition_facts');
-    expect(marketProfile('US').flag).toBe('🇺🇸');
+    expect(marketProfile('US').label).toBe('United States');
     expect(marketProfile('UK')).toMatchObject({
       code: 'UK',
-      flag: '🇬🇧',
+      label: 'United Kingdom',
       consumerLayout: 'uk_declaration',
     });
-    expect(Object.keys(MARKET_PROFILES)).toEqual(['EU', 'US', 'CA', 'UK', 'AU_NZ', 'CUSTOM']);
+    expect(Object.keys(MARKET_PROFILES)).toEqual(['EU', 'UK', 'US', 'CA', 'AU_NZ', 'WORLD']);
   });
 
   it('separates customer label note from the internal production note', () => {

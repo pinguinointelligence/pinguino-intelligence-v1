@@ -1,0 +1,15 @@
+profile_id,printer,dpi_options,max_width_mm,media_presets,software_geometry,hardware_verified,print_path
+system_a4_letter,System A4 / Letter / PDF,"300|600",216,"70x50|80x50|100x50|100x70|102x152",PASS,NO,System dialog/direct PDF
+aimo_243bt,AIMO 243BT,203,110,"70x50|80x50|100x50|100x70|102x152",PASS,NO,System/app handoff
+brother_ql_820nwbc,Brother QL-820NWBc,300,62,"50x30|62-continuous",PASS,NO,System dialog
+brother_ql_1110nwbc,Brother QL-1110NWBc,300,103.6,"100x50|100x70|102x152",PASS,NO,System dialog
+brother_td_4550dnwb,Brother TD-4550DNWB,300,118,"100x50|100x70|102x152",PASS,NO,System dialog
+zebra_zd421_203,Zebra ZD421 203 dpi,203,108,"100x50|100x70|102x152",PASS,NO,System dialog
+zebra_zd421_300,Zebra ZD421 300 dpi,300,108,"100x50|100x70|102x152",PASS,NO,System dialog
+dymo_labelwriter_5xl,DYMO LabelWriter 5XL,300,104,"100x50|100x70|102x152",PASS,NO,System dialog
+epson_colorworks_c4000,Epson ColorWorks C4000,"600|1200",108,"100x50|100x70|102x152",PASS,NO,System dialog
+epson_colorworks_c6000,Epson ColorWorks C6000,"600|1200",108,"100x50|100x70|102x152",PASS,NO,System dialog
+generic_thermal_58,Generic Thermal 58 mm,203,58,58-continuous,PASS,NO,System dialog
+generic_thermal_80,Generic Thermal 80 mm,203,80,"70x50|80x50",PASS,NO,System dialog
+generic_thermal_104,Generic Thermal 104 mm / 4 inch,"203|300",104,"100x50|100x70|102x152",PASS,NO,System dialog
+custom,Custom printer,"203|300|600",216,"50x30|62-continuous|70x50|80x50|100x50|100x70|102x152",PASS,NO,System dialog

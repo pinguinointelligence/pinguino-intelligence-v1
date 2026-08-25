@@ -1,4 +1,6 @@
-# Label responsibility model
+# Label responsibility model — historical copy baseline
+
+Current readiness and authority are documented in [FINAL_LABEL_SYSTEM_ACCEPTANCE.md](./FINAL_LABEL_SYSTEM_ACCEPTANCE.md) and [LABEL_MARKET_AUTHORITY_MATRIX.md](./LABEL_MARKET_AUTHORITY_MATRIX.md). The prohibited-claims and division-of-responsibility principles below remain valid; the old `PARTIAL` publication-state paragraph is superseded.
 
 Checked: 2026-08-09
 

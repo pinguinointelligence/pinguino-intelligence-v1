@@ -14,12 +14,14 @@ import type { ProductionCompletionSnapshot } from '@/features/production-workspa
 import {
   buildLabelPreflight,
   buildMasterLabelData,
+  applyAutoLabelLayout,
   normalizeEnabledOptionalFields,
   type MasterLabelData,
 } from './masterLabel';
 import { printMasterLabel } from './masterLabelPrint';
 import {
   MARKET_PROFILES,
+  MARKET_PROFILE_ORDER,
   marketAvailabilityLabel,
   marketProfile,
   type MarketProfileCode,
@@ -46,7 +48,7 @@ import {
 import { assessCanadaFop } from './regulatoryNutrition';
 import { downloadMasterLabelPdf } from './masterLabelPdf';
 
-const MARKET_CODES: readonly MarketProfileCode[] = ['EU', 'US', 'CA', 'UK', 'AU_NZ', 'CUSTOM'];
+const MARKET_CODES: readonly MarketProfileCode[] = MARKET_PROFILE_ORDER;
 export type LabelWorkspaceView = 'label' | 'settings';
 
 const primaryText = (value: Record<string, string>, languages: readonly string[]): string =>
@@ -65,6 +67,13 @@ function profileFromLabel(
     logoPath: label.logoPath,
     enabledOptionalFields: label.enabledOptionalFields,
     facilityDefaults: label.operator,
+    shelfLifeAuthority: label.shelfLifeAuthority ?? {
+      policyId: null,
+      authority: '',
+      method: 'none',
+      shelfLifeDays: null,
+      reviewedByUser: false,
+    },
     presentation: {
       format: label.format,
       widthMm: label.size.widthMm,
@@ -86,6 +95,7 @@ function labelFromProfile(
     uiLanguage: profile.uiLanguage,
     labelLanguages: profile.labelLanguages,
     facilityDefaults: profile.facilityDefaults,
+    shelfLifeAuthority: profile.shelfLifeAuthority,
     businessName: profile.businessName,
     logoPath: profile.logoPath,
     enabledOptionalFields: profile.enabledOptionalFields,
@@ -358,7 +368,8 @@ export function LabelWorkspace({
   const costs = snapshot.finalProduct.costs;
   const activeMarket = marketProfile(label.market);
   const unresolved = preflight?.items.filter((item) => item.status !== 'ready') ?? [];
-  const printBlockedReason = unresolved[0]?.message ?? activeMarket.rendererLimitation;
+  const printBlockedReason =
+    unresolved[0]?.message ?? activeMarket.externalAssetRequirement ?? 'Uzupełnij preflight.';
   const percentages = snapshot.finalResult.percentages;
 
   return (
@@ -450,7 +461,9 @@ export function LabelWorkspace({
                     }
                   >
                     {preflight?.readyForSystemPrint
-                      ? '✓ Gotowa do druku'
+                      ? preflight.printReadiness === 'PRINT_READY_UNIVERSAL'
+                        ? '✓ Gotowa do druku · Universal'
+                        : '✓ Gotowa do druku · Regulatory'
                       : `Wydruk zablokowany · ${unresolved.length} pozycji do rozwiązania`}
                   </span>
                   {!preflight?.readyForSystemPrint ? (
@@ -476,7 +489,10 @@ export function LabelWorkspace({
                   </span>
                   <span>{label.printer.dpi} dpi</span>
                   <span>{label.printer.copies} kopii</span>
-                  <span>x-height profilu ≥ {activeMarket.minimumLabel.xHeightMm} mm</span>
+                  <span>
+                    Tekst bazowy {preflight?.geometry.baseFontPt.toFixed(2)} pt · x-height{' '}
+                    {preflight?.geometry.xHeightMm.toFixed(2)} mm
+                  </span>
                 </div>
                 <p className="mt-1 text-stone-500">
                   Podgląd, pobrany PDF i wydruk systemowy korzystają z tej samej fizycznej
@@ -658,6 +674,15 @@ function ProfileEditor({
           setDraft({
             ...draft,
             market,
+            labelLanguages:
+              market === 'WORLD'
+                ? ['en']
+                : [
+                    ...new Set([
+                      ...marketProfile(market).requiredLanguages,
+                      ...draft.labelLanguages,
+                    ]),
+                  ],
             enabledOptionalFields: normalizeEnabledOptionalFields(
               market,
               draft.enabledOptionalFields,
@@ -682,6 +707,200 @@ function ProfileEditor({
           }
         }}
       />
+      <details className="mt-4 rounded-[12px] border border-ink/10 bg-[#fffdf8] p-3" open>
+        <summary className="cursor-pointer text-sm font-semibold text-ink">
+          Dane firmy i trwałość · używane ponownie
+        </summary>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <label className="text-xs text-stone-600">
+            Kraj / kod kraju
+            <input
+              value={draft.facilityDefaults.countryCode}
+              onChange={(event) =>
+                setDraft({
+                  ...draft,
+                  facilityDefaults: {
+                    ...draft.facilityDefaults,
+                    countryCode: event.currentTarget.value,
+                  },
+                })
+              }
+              className={SETTINGS_INPUT_CLASS}
+            />
+          </label>
+          <label className="text-xs text-stone-600">
+            Website
+            <input
+              value={draft.facilityDefaults.website ?? ''}
+              onChange={(event) =>
+                setDraft({
+                  ...draft,
+                  facilityDefaults: {
+                    ...draft.facilityDefaults,
+                    website: event.currentTarget.value,
+                  },
+                })
+              }
+              className={SETTINGS_INPUT_CLASS}
+            />
+          </label>
+          <label className="text-xs text-stone-600">
+            Kontakt
+            <input
+              value={draft.facilityDefaults.contact}
+              onChange={(event) =>
+                setDraft({
+                  ...draft,
+                  facilityDefaults: {
+                    ...draft.facilityDefaults,
+                    contact: event.currentTarget.value,
+                  },
+                })
+              }
+              className={SETTINGS_INPUT_CLASS}
+            />
+          </label>
+          <label className="text-xs text-stone-600">
+            Importer · nazwa
+            <input
+              value={draft.facilityDefaults.importerName ?? ''}
+              onChange={(event) =>
+                setDraft({
+                  ...draft,
+                  facilityDefaults: {
+                    ...draft.facilityDefaults,
+                    importerName: event.currentTarget.value,
+                  },
+                })
+              }
+              className={SETTINGS_INPUT_CLASS}
+            />
+          </label>
+          <label className="text-xs text-stone-600">
+            Importer · kod kraju
+            <input
+              value={draft.facilityDefaults.importerCountryCode ?? ''}
+              onChange={(event) =>
+                setDraft({
+                  ...draft,
+                  facilityDefaults: {
+                    ...draft.facilityDefaults,
+                    importerCountryCode: event.currentTarget.value,
+                  },
+                })
+              }
+              className={SETTINGS_INPUT_CLASS}
+            />
+          </label>
+          <label className="text-xs text-stone-600 sm:col-span-2">
+            Importer · adres fizyczny
+            <input
+              value={draft.facilityDefaults.importerAddress ?? ''}
+              onChange={(event) =>
+                setDraft({
+                  ...draft,
+                  facilityDefaults: {
+                    ...draft.facilityDefaults,
+                    importerAddress: event.currentTarget.value,
+                  },
+                })
+              }
+              className={SETTINGS_INPUT_CLASS}
+            />
+          </label>
+          <label className="text-xs text-stone-600">
+            Supplier / distributor · nazwa
+            <input
+              value={draft.facilityDefaults.distributorName ?? ''}
+              onChange={(event) =>
+                setDraft({
+                  ...draft,
+                  facilityDefaults: {
+                    ...draft.facilityDefaults,
+                    distributorName: event.currentTarget.value,
+                  },
+                })
+              }
+              className={SETTINGS_INPUT_CLASS}
+            />
+          </label>
+          <label className="text-xs text-stone-600">
+            Supplier / distributor · kod kraju
+            <input
+              value={draft.facilityDefaults.distributorCountryCode ?? ''}
+              onChange={(event) =>
+                setDraft({
+                  ...draft,
+                  facilityDefaults: {
+                    ...draft.facilityDefaults,
+                    distributorCountryCode: event.currentTarget.value,
+                  },
+                })
+              }
+              className={SETTINGS_INPUT_CLASS}
+            />
+          </label>
+          <label className="text-xs text-stone-600 sm:col-span-2">
+            Supplier / distributor · adres fizyczny
+            <input
+              value={draft.facilityDefaults.distributorAddress ?? ''}
+              onChange={(event) =>
+                setDraft({
+                  ...draft,
+                  facilityDefaults: {
+                    ...draft.facilityDefaults,
+                    distributorAddress: event.currentTarget.value,
+                  },
+                })
+              }
+              className={SETTINGS_INPUT_CLASS}
+            />
+          </label>
+          <label className="text-xs text-stone-600">
+            Rola firmy
+            <select
+              value={draft.facilityDefaults.operatorRole ?? 'producer'}
+              onChange={(event) =>
+                setDraft({
+                  ...draft,
+                  facilityDefaults: {
+                    ...draft.facilityDefaults,
+                    operatorRole: event.currentTarget.value as NonNullable<
+                      typeof draft.facilityDefaults.operatorRole
+                    >,
+                  },
+                })
+              }
+              className={SETTINGS_INPUT_CLASS}
+            >
+              <option value="producer">Producer</option>
+              <option value="manufacturer">Manufacturer</option>
+              <option value="packer">Packer</option>
+              <option value="distributor">Distributor</option>
+              <option value="importer">Importer</option>
+              <option value="dealer">Dealer</option>
+              <option value="supplier">Supplier</option>
+            </select>
+          </label>
+          <label className="text-xs text-stone-600 sm:col-span-2">
+            Źródło / authority shelf-life
+            <input
+              value={draft.shelfLifeAuthority.authority}
+              onChange={(event) =>
+                setDraft({
+                  ...draft,
+                  shelfLifeAuthority: {
+                    ...draft.shelfLifeAuthority,
+                    authority: event.currentTarget.value,
+                  },
+                })
+              }
+              placeholder="Nie ustawiaj, jeśli nie ma zatwierdzonej polityki"
+              className={SETTINGS_INPUT_CLASS}
+            />
+          </label>
+        </div>
+      </details>
       <OptionalFieldSettings
         market={draft.market}
         enabled={draft.enabledOptionalFields}
@@ -751,7 +970,6 @@ function RunLabelEditor({
 }) {
   const [draft, setDraft] = useState(label);
   const [uploading, setUploading] = useState(false);
-  const [marketNotice, setMarketNotice] = useState<MarketProfileCode | null>(null);
   const primaryLanguage = draft.labelLanguages[0] ?? 'pl';
   const draftPreflight = useMemo(() => buildLabelPreflight(draft), [draft]);
   const missingFields = useMemo(
@@ -770,7 +988,13 @@ function RunLabelEditor({
         'border-[#a96832] bg-[#fffaf4] ring-1 ring-[#a96832]/15 focus:border-[#8a5b23]',
     );
   const updateText = (
-    field: 'productName' | 'legalProductName' | 'storageInstructions' | 'origin' | 'customerNote',
+    field:
+      | 'productName'
+      | 'legalProductName'
+      | 'storageInstructions'
+      | 'origin'
+      | 'customerNote'
+      | 'shortDescription',
     language: string,
     value: string,
   ) => setDraft({ ...draft, [field]: { ...draft[field], [language]: value } });
@@ -880,6 +1104,106 @@ function RunLabelEditor({
               </select>
             </label>
           </div>
+          {draft.market === 'EU' ? (
+            <label className="mt-3 block text-xs font-medium text-stone-600">
+              Docelowe państwo członkowskie · kod ISO
+              <input
+                maxLength={2}
+                value={draft.jurisdictionContext?.euDestinationCountryCode ?? ''}
+                onChange={(event) =>
+                  setDraft({
+                    ...draft,
+                    jurisdictionContext: {
+                      euDestinationCountryCode: event.currentTarget.value.toUpperCase(),
+                      ukRegion: draft.jurisdictionContext?.ukRegion ?? 'unresolved',
+                      auNzCountry: draft.jurisdictionContext?.auNzCountry ?? 'unresolved',
+                      usSaleContext: draft.jurisdictionContext?.usSaleContext ?? 'unresolved',
+                    },
+                  })
+                }
+                placeholder="np. ES, PL, DE"
+                className={SETTINGS_INPUT_CLASS}
+              />
+            </label>
+          ) : null}
+          {draft.market === 'UK' ? (
+            <label className="mt-3 block text-xs font-medium text-stone-600">
+              UK sub-context
+              <select
+                value={draft.jurisdictionContext?.ukRegion ?? 'unresolved'}
+                onChange={(event) =>
+                  setDraft({
+                    ...draft,
+                    jurisdictionContext: {
+                      euDestinationCountryCode:
+                        draft.jurisdictionContext?.euDestinationCountryCode ?? '',
+                      ukRegion: event.currentTarget.value as 'GB' | 'NI' | 'unresolved',
+                      auNzCountry: draft.jurisdictionContext?.auNzCountry ?? 'unresolved',
+                      usSaleContext: draft.jurisdictionContext?.usSaleContext ?? 'unresolved',
+                    },
+                  })
+                }
+                className={SETTINGS_INPUT_CLASS}
+              >
+                <option value="unresolved">Wybierz GB albo Northern Ireland</option>
+                <option value="GB">Great Britain</option>
+                <option value="NI">Northern Ireland</option>
+              </select>
+            </label>
+          ) : null}
+          {draft.market === 'AU_NZ' ? (
+            <label className="mt-3 block text-xs font-medium text-stone-600">
+              AU/NZ sub-context
+              <select
+                value={draft.jurisdictionContext?.auNzCountry ?? 'unresolved'}
+                onChange={(event) =>
+                  setDraft({
+                    ...draft,
+                    jurisdictionContext: {
+                      euDestinationCountryCode:
+                        draft.jurisdictionContext?.euDestinationCountryCode ?? '',
+                      ukRegion: draft.jurisdictionContext?.ukRegion ?? 'unresolved',
+                      auNzCountry: event.currentTarget.value as 'AU' | 'NZ' | 'unresolved',
+                      usSaleContext: draft.jurisdictionContext?.usSaleContext ?? 'unresolved',
+                    },
+                  })
+                }
+                className={SETTINGS_INPUT_CLASS}
+              >
+                <option value="unresolved">Wybierz kraj</option>
+                <option value="AU">Australia</option>
+                <option value="NZ">New Zealand</option>
+              </select>
+            </label>
+          ) : null}
+          {draft.market === 'US' ? (
+            <label className="mt-3 block text-xs font-medium text-stone-600">
+              FDA sale context
+              <select
+                value={draft.jurisdictionContext?.usSaleContext ?? 'unresolved'}
+                onChange={(event) =>
+                  setDraft({
+                    ...draft,
+                    jurisdictionContext: {
+                      euDestinationCountryCode:
+                        draft.jurisdictionContext?.euDestinationCountryCode ?? '',
+                      ukRegion: draft.jurisdictionContext?.ukRegion ?? 'unresolved',
+                      auNzCountry: draft.jurisdictionContext?.auNzCountry ?? 'unresolved',
+                      usSaleContext: event.currentTarget.value as
+                        | 'interstate_retail'
+                        | 'food_service'
+                        | 'unresolved',
+                    },
+                  })
+                }
+                className={SETTINGS_INPUT_CLASS}
+              >
+                <option value="unresolved">Wybierz kontekst</option>
+                <option value="interstate_retail">Packaged retail / interstate commerce</option>
+                <option value="food_service">Food service</option>
+              </select>
+            </label>
+          ) : null}
           <div>
             <span className="text-xs font-medium text-stone-600">Jurysdykcja / profil</span>
             <div className="mt-2 grid grid-cols-2 gap-1.5 min-[480px]:grid-cols-3">
@@ -894,38 +1218,18 @@ function RunLabelEditor({
                       : 'border-ink/12 bg-white text-ink hover:bg-stone-50',
                   )}
                   data-market-active={draft.market === code ? 'true' : undefined}
-                  aria-disabled={!MARKET_PROFILES[code].selectable}
-                  title={
-                    MARKET_PROFILES[code].selectable
-                      ? MARKET_PROFILES[code].jurisdiction
-                      : MARKET_PROFILES[code].rendererLimitation
-                  }
+                  title={MARKET_PROFILES[code].jurisdiction}
                   onClick={() => {
                     const nextProfile = MARKET_PROFILES[code];
-                    if (!nextProfile.selectable) {
-                      setMarketNotice(code);
-                      return;
-                    }
-                    setMarketNotice(null);
-                    const labelLanguages = [
-                      ...new Set([...nextProfile.requiredLanguages, ...draft.labelLanguages]),
-                    ];
-                    const widthMm = Math.max(draft.size.widthMm, nextProfile.minimumLabel.widthMm);
-                    const heightMm = Math.max(
-                      draft.size.heightMm,
-                      nextProfile.minimumLabel.heightMm,
-                    );
-                    setDraft({
+                    const labelLanguages =
+                      code === 'WORLD'
+                        ? ['en']
+                        : [...new Set([...nextProfile.requiredLanguages, ...draft.labelLanguages])];
+                    const next = {
                       ...draft,
                       market: code,
                       marketProfileVersion: nextProfile.version,
                       labelLanguages,
-                      size: { widthMm, heightMm },
-                      printer: normalizePrinterSettings({
-                        ...draft.printer,
-                        widthMm,
-                        heightMm,
-                      }),
                       enabledOptionalFields: normalizeEnabledOptionalFields(
                         code,
                         draft.enabledOptionalFields,
@@ -935,7 +1239,8 @@ function RunLabelEditor({
                         ingredientOrderAndQuid: false,
                         marketSpecific: false,
                       },
-                    });
+                    };
+                    setDraft(applyAutoLabelLayout(next));
                   }}
                 >
                   <span>{MARKET_PROFILES[code].label}</span>
@@ -945,22 +1250,10 @@ function RunLabelEditor({
                 </button>
               ))}
             </div>
-            {marketNotice ? (
-              <div
-                className="mt-3 rounded-[10px] border border-[#d8bb8d] bg-[#fbf8f1] px-3 py-2 text-xs text-stone-700"
-                role="status"
-                data-testid="market-availability-notice"
-              >
-                <strong className="block text-ink">
-                  {marketNotice === 'CA'
-                    ? 'Profil Kanada jest jeszcze w przygotowaniu'
-                    : `Profil ${MARKET_PROFILES[marketNotice].label} jest jeszcze w przygotowaniu`}
-                </strong>
-                <span className="mt-1 block">
-                  {MARKET_PROFILES[marketNotice].rendererLimitation} Dostępny jest wyłącznie
-                  podgląd roboczy z oznaczeniem DRAFT / NIE DO SPRZEDAŻY.
-                </span>
-              </div>
+            {draft.market === 'WORLD' ? (
+              <p className="mt-3 text-xs text-stone-500">
+                Uniwersalna etykieta informacyjna — bez profilu prawnego konkretnego kraju.
+              </p>
             ) : null}
           </div>
           <label className="mt-3 block text-xs font-medium text-stone-600">
@@ -972,7 +1265,11 @@ function RunLabelEditor({
                   .split(',')
                   .map((value) => value.trim())
                   .filter(Boolean);
-                setDraft({ ...draft, labelLanguages: parsed.length > 0 ? parsed : ['pl'] });
+                setDraft({
+                  ...draft,
+                  labelLanguages:
+                    parsed.length > 0 ? parsed : [draft.market === 'WORLD' ? 'en' : 'pl'],
+                });
               }}
               className={SETTINGS_INPUT_CLASS}
             />
@@ -1017,6 +1314,107 @@ function RunLabelEditor({
                       })
                     }
                     className={fieldClass('operator', !draft.operator.address.trim())}
+                  />
+                </label>
+                <label className="text-xs font-medium text-stone-600">
+                  Kod kraju operatora
+                  <input
+                    value={draft.operator.countryCode}
+                    onChange={(event) =>
+                      setDraft({
+                        ...draft,
+                        operator: { ...draft.operator, countryCode: event.currentTarget.value },
+                      })
+                    }
+                    className={fieldClass('operator', !draft.operator.countryCode.trim())}
+                  />
+                </label>
+                <label className="text-xs font-medium text-stone-600">
+                  Importer · nazwa / kod kraju
+                  <div className="grid grid-cols-[1fr_5rem] gap-2">
+                    <input
+                      value={draft.operator.importerName ?? ''}
+                      onChange={(event) =>
+                        setDraft({
+                          ...draft,
+                          operator: { ...draft.operator, importerName: event.currentTarget.value },
+                        })
+                      }
+                      className={SETTINGS_INPUT_CLASS}
+                    />
+                    <input
+                      value={draft.operator.importerCountryCode ?? ''}
+                      onChange={(event) =>
+                        setDraft({
+                          ...draft,
+                          operator: {
+                            ...draft.operator,
+                            importerCountryCode: event.currentTarget.value,
+                          },
+                        })
+                      }
+                      className={SETTINGS_INPUT_CLASS}
+                    />
+                  </div>
+                </label>
+                <label className="text-xs font-medium text-stone-600">
+                  Adres importera
+                  <input
+                    value={draft.operator.importerAddress ?? ''}
+                    onChange={(event) =>
+                      setDraft({
+                        ...draft,
+                        operator: { ...draft.operator, importerAddress: event.currentTarget.value },
+                      })
+                    }
+                    className={SETTINGS_INPUT_CLASS}
+                  />
+                </label>
+                <label className="text-xs font-medium text-stone-600">
+                  Supplier / distributor · nazwa / kod kraju
+                  <div className="grid grid-cols-[1fr_5rem] gap-2">
+                    <input
+                      value={draft.operator.distributorName ?? ''}
+                      onChange={(event) =>
+                        setDraft({
+                          ...draft,
+                          operator: {
+                            ...draft.operator,
+                            distributorName: event.currentTarget.value,
+                          },
+                        })
+                      }
+                      className={SETTINGS_INPUT_CLASS}
+                    />
+                    <input
+                      value={draft.operator.distributorCountryCode ?? ''}
+                      onChange={(event) =>
+                        setDraft({
+                          ...draft,
+                          operator: {
+                            ...draft.operator,
+                            distributorCountryCode: event.currentTarget.value,
+                          },
+                        })
+                      }
+                      className={SETTINGS_INPUT_CLASS}
+                    />
+                  </div>
+                </label>
+                <label className="text-xs font-medium text-stone-600">
+                  Adres supplier / distributor
+                  <input
+                    value={draft.operator.distributorAddress ?? ''}
+                    onChange={(event) =>
+                      setDraft({
+                        ...draft,
+                        operator: {
+                          ...draft.operator,
+                          distributorAddress: event.currentTarget.value,
+                        },
+                      })
+                    }
+                    className={SETTINGS_INPUT_CLASS}
                   />
                 </label>
               </div>
@@ -1096,21 +1494,120 @@ function RunLabelEditor({
               </div>
             </RequiredSettingsField>
             <RequiredSettingsField field="net_quantity" missing={missing('net_quantity')}>
-              <label className="text-xs font-medium text-stone-600">
-                Masa netto · g
-                <input
-                  type="number"
-                  min={0}
-                  value={draft.netQuantityG ?? ''}
-                  onChange={(event) =>
-                    setDraft({ ...draft, netQuantityG: Number(event.currentTarget.value) || null })
-                  }
-                  className={cn(
-                    fieldClass('net_quantity', !draft.netQuantityG),
-                    'font-mono tabular-nums',
-                  )}
-                />
-              </label>
+              <div className="grid gap-2">
+                <label className="text-xs font-medium text-stone-600">
+                  Napełnienie opakowania
+                  <select
+                    value={
+                      [75, 100, 125, 250, 500, 1000].includes(
+                        draft.market === 'CA'
+                          ? (draft.packageQuantity?.netVolumeMl ?? -1)
+                          : (draft.packageQuantity?.netWeightG ?? -1),
+                      )
+                        ? String(
+                            draft.market === 'CA'
+                              ? draft.packageQuantity?.netVolumeMl
+                              : draft.packageQuantity?.netWeightG,
+                          )
+                        : 'custom'
+                    }
+                    onChange={(event) => {
+                      if (event.currentTarget.value === 'custom') return;
+                      const amount = Number(event.currentTarget.value);
+                      const canada = draft.market === 'CA';
+                      const grams = canada
+                        ? draft.regulatoryNutrition.productDensityGPerMl
+                          ? amount * draft.regulatoryNutrition.productDensityGPerMl
+                          : null
+                        : amount;
+                      setDraft({
+                        ...draft,
+                        netQuantityG: grams,
+                        packageQuantity: {
+                          value: amount === 1000 ? 1 : amount,
+                          unit: canada
+                            ? amount === 1000
+                              ? 'l'
+                              : 'ml'
+                            : amount === 1000
+                              ? 'kg'
+                              : 'g',
+                          netWeightG: grams,
+                          netVolumeMl: canada ? amount : null,
+                          source: 'selected_fill',
+                          confirmedAt: new Date().toISOString(),
+                        },
+                      });
+                    }}
+                    className={fieldClass('net_quantity', !draft.packageQuantity)}
+                  >
+                    <option value="custom">Własna ilość</option>
+                    {draft.market === 'CA' ? (
+                      <>
+                        <option value="75">75 mL</option>
+                        <option value="125">125 mL</option>
+                        <option value="250">250 mL</option>
+                        <option value="500">500 mL</option>
+                        <option value="1000">1 L</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="100">100 g</option>
+                        <option value="125">125 g</option>
+                        <option value="250">250 g</option>
+                        <option value="500">500 g</option>
+                        <option value="1000">1 kg</option>
+                      </>
+                    )}
+                  </select>
+                </label>
+                <label className="text-xs font-medium text-stone-600">
+                  {draft.market === 'CA' ? 'Własna objętość netto · mL' : 'Własna masa netto · g'}
+                  <input
+                    type="number"
+                    min={0.1}
+                    step="any"
+                    value={
+                      draft.market === 'CA'
+                        ? (draft.packageQuantity?.netVolumeMl ?? '')
+                        : (draft.packageQuantity?.netWeightG ?? '')
+                    }
+                    onChange={(event) => {
+                      const amount = Number(event.currentTarget.value) || null;
+                      const canada = draft.market === 'CA';
+                      const grams = amount
+                        ? canada
+                          ? draft.regulatoryNutrition.productDensityGPerMl
+                            ? amount * draft.regulatoryNutrition.productDensityGPerMl
+                            : null
+                          : amount
+                        : null;
+                      setDraft({
+                        ...draft,
+                        netQuantityG: grams,
+                        packageQuantity: amount
+                          ? {
+                              value: amount,
+                              unit: canada ? 'ml' : 'g',
+                              netWeightG: grams,
+                              netVolumeMl: canada ? amount : null,
+                              source: 'selected_fill',
+                              confirmedAt: new Date().toISOString(),
+                            }
+                          : null,
+                      });
+                    }}
+                    className={cn(
+                      fieldClass('net_quantity', !draft.packageQuantity),
+                      'font-mono tabular-nums',
+                    )}
+                  />
+                </label>
+                <p className="text-[11px] text-stone-500">
+                  Partia Production: {draft.actualBatchQuantityG ?? '—'} g. Etykieta używa wyłącznie
+                  wybranego fillu opakowania.
+                </p>
+              </div>
             </RequiredSettingsField>
           </div>
         </SettingsSection>
@@ -1173,6 +1670,13 @@ function RunLabelEditor({
                         basis: 'manual',
                         reviewedByUser: Boolean(event.currentTarget.value),
                       },
+                      shelfLifeAuthority: {
+                        policyId: null,
+                        authority: 'Business-confirmed manual date',
+                        method: 'manual_date',
+                        shelfLifeDays: null,
+                        reviewedByUser: Boolean(event.currentTarget.value),
+                      },
                     })
                   }
                   className={fieldClass('date_mark', !draft.dateMark.date)}
@@ -1231,30 +1735,84 @@ function RunLabelEditor({
                 />
               </label>
             ) : null}
+            {draft.enabledOptionalFields.includes('short_description') ? (
+              <label className="text-xs font-medium text-stone-600">
+                Krótki opis
+                <input
+                  value={draft.shortDescription?.[primaryLanguage] ?? ''}
+                  onChange={(event) =>
+                    updateText('shortDescription', primaryLanguage, event.currentTarget.value)
+                  }
+                  className={SETTINGS_INPUT_CLASS}
+                />
+              </label>
+            ) : null}
+            {draft.enabledOptionalFields.includes('qr_code') ? (
+              <label className="text-xs font-medium text-stone-600">
+                Wartość QR
+                <input
+                  value={draft.qrCodeValue ?? ''}
+                  onChange={(event) =>
+                    setDraft({ ...draft, qrCodeValue: event.currentTarget.value })
+                  }
+                  className={SETTINGS_INPUT_CLASS}
+                />
+              </label>
+            ) : null}
+            {draft.enabledOptionalFields.includes('gtin') ? (
+              <label className="text-xs font-medium text-stone-600">
+                Potwierdzony GTIN / EAN
+                <input
+                  inputMode="numeric"
+                  value={draft.gtin ?? ''}
+                  onChange={(event) => setDraft({ ...draft, gtin: event.currentTarget.value })}
+                  className={SETTINGS_INPUT_CLASS}
+                />
+              </label>
+            ) : null}
+            {draft.enabledOptionalFields.includes('internal_article_id') ? (
+              <label className="text-xs font-medium text-stone-600">
+                APP / article ID
+                <input
+                  value={draft.internalArticleId ?? ''}
+                  onChange={(event) =>
+                    setDraft({ ...draft, internalArticleId: event.currentTarget.value })
+                  }
+                  className={SETTINGS_INPUT_CLASS}
+                />
+              </label>
+            ) : null}
+            {draft.enabledOptionalFields.includes('website') ? (
+              <label className="text-xs font-medium text-stone-600">
+                Website
+                <input
+                  value={draft.operator.website ?? ''}
+                  onChange={(event) =>
+                    setDraft({
+                      ...draft,
+                      operator: { ...draft.operator, website: event.currentTarget.value },
+                    })
+                  }
+                  className={SETTINGS_INPUT_CLASS}
+                />
+              </label>
+            ) : null}
           </div>
         </SettingsSection>
 
         <SettingsSection title="Format">
-          <PresentationFields
-            format={draft.format}
-            widthMm={draft.size.widthMm}
-            heightMm={draft.size.heightMm}
-            copies={draft.copies}
-            onChange={(presentation) =>
-              setDraft({
-                ...draft,
-                format: presentation.format,
-                size: { widthMm: presentation.widthMm, heightMm: presentation.heightMm },
-                copies: presentation.copies,
-                printer: normalizePrinterSettings({
-                  ...draft.printer,
-                  widthMm: presentation.widthMm,
-                  heightMm: presentation.heightMm,
-                  copies: presentation.copies,
-                }),
-              })
-            }
-          />
+          <button
+            type="button"
+            className={cn(
+              'pro-focus-ring min-h-11 rounded-[10px] border px-3 text-xs font-semibold',
+              draft.layoutMode === 'auto'
+                ? 'border-ink bg-ink text-white'
+                : 'border-ink/15 bg-white text-ink',
+            )}
+            onClick={() => setDraft(applyAutoLabelLayout(draft))}
+          >
+            Auto · wybierz najmniejszy format, który przechodzi preflight
+          </button>
           <PrinterSettingsFields
             value={draft.printer}
             onChange={(printer) =>
@@ -1266,6 +1824,33 @@ function RunLabelEditor({
               })
             }
           />
+          <details className="mt-3 rounded-[12px] border border-ink/10 bg-white p-3">
+            <summary className="cursor-pointer text-xs font-semibold text-ink">
+              Zaawansowane · własne wymiary i kształt
+            </summary>
+            <PresentationFields
+              format={draft.format}
+              widthMm={draft.size.widthMm}
+              heightMm={draft.size.heightMm}
+              copies={draft.copies}
+              onChange={(presentation) =>
+                setDraft({
+                  ...draft,
+                  layoutMode: 'manual',
+                  format: presentation.format,
+                  size: { widthMm: presentation.widthMm, heightMm: presentation.heightMm },
+                  copies: presentation.copies,
+                  printer: normalizePrinterSettings({
+                    ...draft.printer,
+                    formatMode: 'custom',
+                    widthMm: presentation.widthMm,
+                    heightMm: presentation.heightMm,
+                    copies: presentation.copies,
+                  }),
+                })
+              }
+            />
+          </details>
         </SettingsSection>
 
         <SettingsSection title="Weryfikacja">
@@ -1322,6 +1907,7 @@ function RunLabelEditor({
               Potwierdzam kontekst sprzedaży i wymagania szczególne rynku.
             </label>
             <RequiredSettingsField field="ingredients" missing={missing('ingredients')}>
+              <IngredientAuthorityFields value={draft} onChange={setDraft} />
               <ReviewLine
                 label="Składniki"
                 ready={!missing('ingredients')}
@@ -1470,6 +2056,225 @@ function ReviewLine({ label, ready, message }: { label: string; ready: boolean; 
   );
 }
 
+function IngredientAuthorityFields({
+  value,
+  onChange,
+}: {
+  value: MasterLabelData;
+  onChange: (value: MasterLabelData) => void;
+}) {
+  const updateIngredient = (
+    index: number,
+    update: (
+      ingredient: MasterLabelData['ingredients'][number],
+    ) => MasterLabelData['ingredients'][number],
+  ) =>
+    onChange({
+      ...value,
+      ingredients: value.ingredients.map((ingredient, candidate) =>
+        candidate === index ? update(ingredient) : ingredient,
+      ),
+    });
+  const emptyNames = () =>
+    Object.fromEntries(value.labelLanguages.map((language) => [language, ''])) as Record<
+      string,
+      string
+    >;
+  const updateCompoundComponents = (index: number, language: string, raw: string) => {
+    const names = raw
+      .split(',')
+      .map((name) => name.trim())
+      .filter(Boolean);
+    updateIngredient(index, (ingredient) => {
+      if (!ingredient.compound) return ingredient;
+      const count = Math.max(names.length, ingredient.compound.components.length);
+      const components = Array.from({ length: count }, (_, componentIndex) => ({
+        names: {
+          ...(ingredient.compound?.components[componentIndex]?.names ?? emptyNames()),
+          [language]: names[componentIndex] ?? '',
+        },
+        actualGrams: ingredient.compound?.components[componentIndex]?.actualGrams ?? null,
+      })).filter((component) =>
+        value.labelLanguages.some((tag) => Boolean(component.names[tag]?.trim())),
+      );
+      return {
+        ...ingredient,
+        compound: { ...ingredient.compound, components },
+      };
+    });
+  };
+  const quidMarket = value.market === 'EU' || value.market === 'UK' || value.market === 'AU_NZ';
+
+  return (
+    <div className="mb-2 space-y-2" data-testid="label-ingredient-authority-fields">
+      {value.ingredients.map((ingredient, index) => (
+        <details
+          key={ingredient.lineId}
+          className="rounded-[12px] border border-ink/10 bg-white p-3"
+        >
+          <summary className="cursor-pointer text-xs font-semibold text-ink">
+            {primaryText(ingredient.names, value.labelLanguages) || 'Składnik'} ·{' '}
+            {ingredient.actualGrams.toFixed(1)} g · {ingredient.percent.toFixed(1)}%
+          </summary>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {value.labelLanguages.map((language) => (
+              <label key={language} className="text-xs text-stone-600">
+                Deklaracja składnika · {language}
+                <input
+                  value={ingredient.names[language] ?? ''}
+                  onChange={(event) =>
+                    updateIngredient(index, (current) => ({
+                      ...current,
+                      names: { ...current.names, [language]: event.currentTarget.value },
+                    }))
+                  }
+                  className={SETTINGS_INPUT_CLASS}
+                />
+              </label>
+            ))}
+          </div>
+          <p className="mt-2 text-[11px] leading-relaxed text-stone-500">
+            Rzeczywista masa i pozycja pochodzą z finalnego ACTUAL Production Run i nie są tutaj
+            edytowalne.
+          </p>
+          <label className="mt-3 flex min-h-11 items-center gap-2 rounded-[10px] border border-ink/10 px-3 text-xs text-ink">
+            <input
+              type="checkbox"
+              className="size-5"
+              checked={Boolean(ingredient.compound)}
+              onChange={(event) =>
+                updateIngredient(index, (current) => ({
+                  ...current,
+                  compound: event.currentTarget.checked
+                    ? {
+                        displayName: { ...current.names },
+                        components: [],
+                        componentsDeclared: true,
+                      }
+                    : null,
+                }))
+              }
+            />
+            To składnik złożony — deklaruj zatwierdzone komponenty
+          </label>
+          {ingredient.compound ? (
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              {value.labelLanguages.map((language) => (
+                <div key={language} className="space-y-3">
+                  <label className="block text-xs text-stone-600">
+                    Nazwa składnika złożonego · {language}
+                    <input
+                      value={ingredient.compound?.displayName[language] ?? ''}
+                      onChange={(event) =>
+                        updateIngredient(index, (current) =>
+                          current.compound
+                            ? {
+                                ...current,
+                                compound: {
+                                  ...current.compound,
+                                  displayName: {
+                                    ...current.compound.displayName,
+                                    [language]: event.currentTarget.value,
+                                  },
+                                },
+                              }
+                            : current,
+                        )
+                      }
+                      className={SETTINGS_INPUT_CLASS}
+                    />
+                  </label>
+                  <label className="block text-xs text-stone-600">
+                    Komponenty w zatwierdzonej kolejności · {language} · po przecinku
+                    <textarea
+                      value={(ingredient.compound?.components ?? [])
+                        .map((component) => component.names[language] ?? '')
+                        .join(', ')}
+                      onChange={(event) =>
+                        updateCompoundComponents(index, language, event.currentTarget.value)
+                      }
+                      className="mt-1 min-h-20 w-full resize-y rounded-[10px] border border-ink/15 bg-white px-3 py-2 text-sm text-ink outline-none focus:border-ink/35 focus:ring-2 focus:ring-ink/5"
+                    />
+                  </label>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {quidMarket ? (
+            <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_140px_1fr] sm:items-end">
+              <label className="flex min-h-11 items-center gap-2 rounded-[10px] border border-ink/10 px-3 text-xs text-ink">
+                <input
+                  type="checkbox"
+                  className="size-5"
+                  checked={Boolean(ingredient.quid?.required)}
+                  onChange={(event) =>
+                    updateIngredient(index, (current) => ({
+                      ...current,
+                      quid: {
+                        required: event.currentTarget.checked,
+                        percentage: event.currentTarget.checked ? current.percent : null,
+                        reason: current.quid?.reason ?? '',
+                        reviewedByUser: false,
+                      },
+                    }))
+                  }
+                />
+                QUID wymagany
+              </label>
+              <label className="text-xs text-stone-600">
+                Procent
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  disabled={!ingredient.quid?.required}
+                  value={ingredient.quid?.percentage ?? ''}
+                  onChange={(event) =>
+                    updateIngredient(index, (current) => ({
+                      ...current,
+                      quid: {
+                        required: true,
+                        percentage:
+                          event.currentTarget.value === ''
+                            ? null
+                            : Number(event.currentTarget.value),
+                        reason: current.quid?.reason ?? '',
+                        reviewedByUser: current.quid?.reviewedByUser ?? false,
+                      },
+                    }))
+                  }
+                  className={SETTINGS_INPUT_CLASS}
+                />
+              </label>
+              <label className="flex min-h-11 items-center gap-2 rounded-[10px] border border-ink/10 px-3 text-xs text-ink">
+                <input
+                  type="checkbox"
+                  className="size-5"
+                  disabled={!ingredient.quid?.required}
+                  checked={Boolean(ingredient.quid?.reviewedByUser)}
+                  onChange={(event) =>
+                    updateIngredient(index, (current) => ({
+                      ...current,
+                      quid: {
+                        required: true,
+                        percentage: current.quid?.percentage ?? current.percent,
+                        reason: current.quid?.reason ?? '',
+                        reviewedByUser: event.currentTarget.checked,
+                      },
+                    }))
+                  }
+                />
+                Procent potwierdzony
+              </label>
+            </div>
+          ) : null}
+        </details>
+      ))}
+    </div>
+  );
+}
+
 const LABEL_FIELD_NAMES: Readonly<Record<MasterLabelFieldId, string>> = {
   product_name: 'Nazwa produktu',
   legal_product_name: 'Nazwa prawna',
@@ -1479,11 +2284,19 @@ const LABEL_FIELD_NAMES: Readonly<Record<MasterLabelFieldId, string>> = {
   net_quantity: 'Masa netto',
   operator: 'Operator',
   storage: 'Przechowywanie',
+  production_date: 'Data produkcji',
   date_mark: 'Data trwałości',
   lot: 'LOT',
   logo: 'Logo',
   origin: 'Pochodzenie',
   customer_note: 'Nota dla klienta',
+  short_description: 'Krótki opis',
+  qr_code: 'QR',
+  lot_barcode: 'Kod kreskowy LOT',
+  gtin: 'GTIN / EAN',
+  website: 'Website',
+  internal_article_id: 'APP / article ID',
+  batch_id: 'Batch ID',
 };
 
 function OptionalFieldSettings({
@@ -1604,6 +2417,110 @@ function RegulatoryNutritionFields({
           Wartości dodatkowe muszą pochodzić z udokumentowanej authority produktu. Brak danych
           blokuje retail print; system nie zgaduje wartości.
         </p>
+        {(value.market === 'EU' || value.market === 'UK') &&
+        (value.nutritionSource?.alcohol_g ?? 0) > 0 ? (
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <label className="text-xs font-medium text-stone-600">
+              Zastosowanie deklaracji alkoholu
+              <select
+                value={value.alcoholDeclarationApplicability ?? 'unresolved'}
+                onChange={(event) =>
+                  onChange({
+                    ...value,
+                    alcoholDeclarationApplicability: event.currentTarget.value as NonNullable<
+                      MasterLabelData['alcoholDeclarationApplicability']
+                    >,
+                    alcoholDeclarationReviewed: false,
+                  })
+                }
+                className={SETTINGS_INPUT_CLASS}
+              >
+                <option value="unresolved">Wymaga rozstrzygnięcia</option>
+                <option value="not_applicable_non_beverage">
+                  Non-beverage · % vol nie dotyczy
+                </option>
+                <option value="required_beverage_over_1_2">
+                  Beverage &gt;1,2% · % vol wymagane
+                </option>
+              </select>
+            </label>
+            {value.alcoholDeclarationApplicability === 'required_beverage_over_1_2' ? (
+              <>
+                <label className="text-xs font-medium text-stone-600">
+                  Rzeczywista zawartość alkoholu · % vol
+                  <input
+                    type="number"
+                    min={1.21}
+                    step="0.1"
+                    value={value.alcoholByVolumePercent ?? ''}
+                    onChange={(event) =>
+                      onChange({
+                        ...value,
+                        alcoholByVolumePercent: numberOrNull(event.currentTarget.value),
+                        alcoholDeclarationReviewed: false,
+                      })
+                    }
+                    className={SETTINGS_INPUT_CLASS}
+                  />
+                </label>
+                <label className="flex min-h-11 items-center gap-2 text-xs text-stone-600 sm:col-span-2">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(value.alcoholDeclarationReviewed)}
+                    onChange={(event) =>
+                      onChange({
+                        ...value,
+                        alcoholDeclarationReviewed: event.currentTarget.checked,
+                      })
+                    }
+                  />
+                  Potwierdzam authority dla % vol
+                </label>
+              </>
+            ) : null}
+          </div>
+        ) : null}
+        {value.market === 'US' || value.market === 'CA' ? (
+          <label className="mt-3 block max-w-xs text-xs font-medium text-stone-600">
+            Potwierdzona available display surface · cm²
+            <input
+              type="number"
+              min={0.1}
+              step="0.1"
+              value={value.availableDisplaySurfaceCm2 ?? ''}
+              onChange={(event) =>
+                onChange({
+                  ...value,
+                  availableDisplaySurfaceCm2: numberOrNull(event.currentTarget.value),
+                })
+              }
+              className={cn(SETTINGS_INPUT_CLASS, 'font-mono tabular-nums')}
+            />
+          </label>
+        ) : null}
+        {value.market === 'EU' || value.market === 'UK' || value.market === 'AU_NZ' ? (
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {numberField('energyKjPer100g', 'Energia z authority rynku', 'kJ / 100 g')}
+            <label className="text-xs font-medium text-stone-600">
+              Authority energii
+              <select
+                value={facts.energyAuthority ?? 'unresolved'}
+                onChange={(event) =>
+                  updateFacts({
+                    energyAuthority: event.currentTarget.value as NonNullable<
+                      typeof facts.energyAuthority
+                    >,
+                  })
+                }
+                className={SETTINGS_INPUT_CLASS}
+              >
+                <option value="unresolved">Wymaga potwierdzenia</option>
+                <option value="market_factors">Współczynniki rynku</option>
+                <option value="laboratory">Laboratorium / authority produktu</option>
+              </select>
+            </label>
+          </div>
+        ) : null}
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {value.labelLanguages.map((language) => (
             <label key={`serving:${language}`} className="text-xs font-medium text-stone-600">
@@ -1641,10 +2558,73 @@ function RegulatoryNutritionFields({
             />
           </label>
           {numberField('servingsPerContainer', 'Porcje w opakowaniu', 'liczba')}
+          {numberField('servingVolumeMl', 'Objętość porcji', 'mL')}
+          {value.market === 'US' || value.market === 'CA'
+            ? numberField('productDensityGPerMl', 'Potwierdzona gęstość produktu', 'g / mL')
+            : null}
           {nutrients.map(([key, label, unit]) => numberField(key, label, unit))}
+          {value.market === 'US' ? (
+            <label className="text-xs font-medium text-stone-600">
+              FDA Nutrition Facts format
+              <select
+                value={facts.usFormatFamily ?? 'auto'}
+                onChange={(event) =>
+                  updateFacts({
+                    usFormatFamily: event.currentTarget.value as NonNullable<
+                      typeof facts.usFormatFamily
+                    >,
+                  })
+                }
+                className={SETTINGS_INPUT_CLASS}
+              >
+                <option value="auto">Auto · RACC/package logic</option>
+                <option value="standard">Standard vertical</option>
+                <option value="tabular">Tabular · qualifying small surface only</option>
+                <option value="linear">Linear · qualifying small surface only</option>
+                <option value="dual_column">Dual column</option>
+              </select>
+            </label>
+          ) : null}
           {value.market === 'CA' ? (
             <>
-              {numberField('canadaReferenceAmountG', 'Reference amount', 'g')}
+              <label className="text-xs font-medium text-stone-600">
+                Canadian reference-amount category
+                <select
+                  value={facts.canadaProductForm ?? 'unresolved'}
+                  onChange={(event) =>
+                    updateFacts({
+                      canadaProductForm: event.currentTarget.value as NonNullable<
+                        typeof facts.canadaProductForm
+                      >,
+                      canadaReferenceAmountG: null,
+                      canadaReferenceAmountMl: null,
+                    })
+                  }
+                  className={SETTINGS_INPUT_CLASS}
+                >
+                  <option value="unresolved">Wybierz formę produktu</option>
+                  <option value="tub">Tub / gelato / sorbet · 188 mL</option>
+                  <option value="cake_sandwich_cone">Cake / sandwich / cone · 125 mL</option>
+                  <option value="single_portion">Pop / bar / cup · 75 mL</option>
+                </select>
+              </label>
+              <label className="text-xs font-medium text-stone-600">
+                Canadian NFT format
+                <select
+                  value={facts.canadaFormatFamily ?? 'auto'}
+                  onChange={(event) =>
+                    updateFacts({
+                      canadaFormatFamily: event.currentTarget.value as NonNullable<
+                        typeof facts.canadaFormatFamily
+                      >,
+                    })
+                  }
+                  className={SETTINGS_INPUT_CLASS}
+                >
+                  <option value="auto">Auto · bilingual Figure 3.4(B) / 15% ADS</option>
+                  <option value="bilingual_standard">Bilingual standard · Figure 3.4(B)</option>
+                </select>
+              </label>
               <label className="text-xs font-medium text-stone-600">
                 Klasa produktu FOP
                 <select
@@ -1803,7 +2783,7 @@ function PrinterSettingsFields({
     <fieldset className="mt-5 rounded-[14px] border border-ink/10 bg-[#fffdf8] p-3">
       <legend className="px-1 text-sm font-semibold text-ink">Ustawienia drukarki</legend>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="text-xs text-stone-600 sm:col-span-2">
+        <label className="text-xs text-stone-600">
           Drukarka
           <select
             value={value.profileId}
@@ -1833,51 +2813,27 @@ function PrinterSettingsFields({
           </select>
         </label>
         <label className="text-xs text-stone-600">
-          Połączenie
+          Format
           <select
-            value={value.connection}
-            onChange={(event) =>
-              update({
-                connection: event.currentTarget.value as LabelPrinterSettings['connection'],
-              })
-            }
-            className={SETTINGS_INPUT_CLASS}
-          >
-            {profile.supportedConnections.map((connection) => (
-              <option key={connection} value={connection}>
-                {connection === 'system' ? 'Drukarka systemowa' : connection}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-xs text-stone-600">
-          Rozdzielczość
-          <select
-            value={value.dpi}
-            onChange={(event) => update({ dpi: Number(event.currentTarget.value) })}
-            className={SETTINGS_INPUT_CLASS}
-          >
-            {profile.dpiOptions.map((dpi) => (
-              <option key={dpi} value={dpi}>
-                {dpi} dpi
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-xs text-stone-600 sm:col-span-2">
-          Rozmiar etykiety
-          <select
-            value="custom"
+            value={value.presetId ?? 'custom'}
             onChange={(event) => {
               const preset = profile.sizePresets.find(
                 (candidate) => candidate.id === event.currentTarget.value,
               );
-              if (preset) update({ widthMm: preset.widthMm, heightMm: preset.heightMm });
+              if (preset) {
+                update({
+                  widthMm: preset.widthMm,
+                  heightMm: preset.heightMm,
+                  formatMode: 'preset',
+                  presetId: preset.id,
+                });
+              }
             }}
             className={SETTINGS_INPUT_CLASS}
           >
             <option value="custom">
-              Własny · {value.widthMm} × {value.heightMm} mm
+              {value.formatMode === 'auto' ? 'Auto' : 'Własny'} · {value.widthMm} × {value.heightMm}{' '}
+              mm
             </option>
             {profile.sizePresets.map((preset) => (
               <option key={preset.id} value={preset.id}>
@@ -1902,20 +2858,70 @@ function PrinterSettingsFields({
           </select>
         </label>
         <label className="text-xs text-stone-600">
-          Margines · mm
+          Kopie
           <input
             type="number"
-            min={0}
-            max={10}
-            step={0.5}
-            value={value.marginMm}
-            onChange={(event) => update({ marginMm: Number(event.currentTarget.value) || 0 })}
+            min={1}
+            value={value.copies}
+            onChange={(event) => update({ copies: Math.max(1, Number(event.currentTarget.value)) })}
             className={cn(SETTINGS_INPUT_CLASS, 'font-mono tabular-nums')}
           />
         </label>
       </div>
+      <details className="mt-3 border-t border-ink/10 pt-3">
+        <summary className="cursor-pointer text-xs font-semibold text-ink">
+          Zaawansowane ustawienia drukarki
+        </summary>
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <label className="text-xs text-stone-600">
+            Połączenie
+            <select
+              value={value.connection}
+              onChange={(event) =>
+                update({
+                  connection: event.currentTarget.value as LabelPrinterSettings['connection'],
+                })
+              }
+              className={SETTINGS_INPUT_CLASS}
+            >
+              {profile.supportedConnections.map((connection) => (
+                <option key={connection} value={connection}>
+                  {connection === 'system' ? 'Drukarka systemowa' : connection}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-xs text-stone-600">
+            Rozdzielczość
+            <select
+              value={value.dpi}
+              onChange={(event) => update({ dpi: Number(event.currentTarget.value) })}
+              className={SETTINGS_INPUT_CLASS}
+            >
+              {profile.dpiOptions.map((dpi) => (
+                <option key={dpi} value={dpi}>
+                  {dpi} dpi
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-xs text-stone-600">
+            Margines · mm
+            <input
+              type="number"
+              min={0}
+              max={10}
+              step={0.5}
+              value={value.marginMm}
+              onChange={(event) => update({ marginMm: Number(event.currentTarget.value) || 0 })}
+              className={cn(SETTINGS_INPUT_CLASS, 'font-mono tabular-nums')}
+            />
+          </label>
+        </div>
+      </details>
       <p className="mt-3 text-[11px] leading-relaxed text-stone-500">
-        {profile.workflowNote} Bez wykrywania urządzeń i bez deklaracji bezpośredniego Bluetooth.
+        {profile.workflowNote} Software: {profile.softwareVerification}. Hardware:{' '}
+        {profile.hardwareVerification}.
       </p>
     </fieldset>
   );
@@ -1969,7 +2975,6 @@ function MarketAndIdentityFields({
   onAddress: (value: string) => void;
   onLogo: (file: File) => Promise<void>;
 }) {
-  const [marketNotice, setMarketNotice] = useState<MarketProfileCode | null>(null);
   return (
     <div className="mt-4 space-y-4">
       <div>
@@ -1980,15 +2985,7 @@ function MarketAndIdentityFields({
               key={code}
               type="button"
               className={`grid min-h-12 content-center rounded-[10px] border px-2 py-1 text-xs ${market === code ? 'border-ink bg-ink text-white' : 'border-ink/15 bg-white'}`}
-              aria-disabled={!MARKET_PROFILES[code].selectable}
-              onClick={() => {
-                if (!MARKET_PROFILES[code].selectable) {
-                  setMarketNotice(code);
-                  return;
-                }
-                setMarketNotice(null);
-                onMarket(code);
-              }}
+              onClick={() => onMarket(code)}
             >
               <span>{MARKET_PROFILES[code].label}</span>
               <span className="text-[9px] opacity-70">
@@ -1997,14 +2994,9 @@ function MarketAndIdentityFields({
             </button>
           ))}
         </div>
-        {marketNotice ? (
-          <p className="mt-2 text-xs leading-relaxed text-stone-600" role="status">
-            <strong className="text-ink">
-              {marketNotice === 'CA'
-                ? 'Profil Kanada jest jeszcze w przygotowaniu. '
-                : `Profil ${MARKET_PROFILES[marketNotice].label} jest jeszcze w przygotowaniu. `}
-            </strong>
-            {MARKET_PROFILES[marketNotice].rendererLimitation}
+        {market === 'WORLD' ? (
+          <p className="mt-2 text-xs leading-relaxed text-stone-500">
+            Uniwersalna etykieta informacyjna — bez profilu prawnego konkretnego kraju.
           </p>
         ) : null}
       </div>
@@ -2018,7 +3010,7 @@ function MarketAndIdentityFields({
                 .split(',')
                 .map((value) => value.trim())
                 .filter(Boolean);
-              onLanguages(parsed.length > 0 ? parsed : ['pl']);
+              onLanguages(parsed.length > 0 ? parsed : [market === 'WORLD' ? 'en' : 'pl']);
             }}
             className={SETTINGS_INPUT_CLASS}
           />

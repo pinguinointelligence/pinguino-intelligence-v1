@@ -9,7 +9,6 @@ export type PrinterProfileId =
   | 'brother_td_4550dnwb'
   | 'zebra_zd421_203'
   | 'zebra_zd421_300'
-  | 'dymo_labelwriter_550'
   | 'dymo_labelwriter_5xl'
   | 'epson_colorworks_c4000'
   | 'epson_colorworks_c6000'
@@ -39,6 +38,8 @@ export interface PrinterProfile {
   directPrintImplemented: false;
   workflowNote: string;
   sourceUrl: string | null;
+  softwareVerification: 'AUTOMATED_GEOMETRY_PDF';
+  hardwareVerification: 'NOT_VERIFIED';
 }
 
 export interface LabelPrinterSettings {
@@ -50,12 +51,16 @@ export interface LabelPrinterSettings {
   widthMm: number;
   heightMm: number;
   copies: number;
+  formatMode?: 'auto' | 'preset' | 'custom';
+  presetId?: string | null;
 }
 
 const COMMON = {
   directPrintImplemented: false as const,
   workflowNote:
     'Gellatti generuje wydruk o prawidłowej geometrii i przekazuje go do systemowego okna drukowania. Bezpośredni protokół urządzenia nie jest deklarowany.',
+  softwareVerification: 'AUTOMATED_GEOMETRY_PDF' as const,
+  hardwareVerification: 'NOT_VERIFIED' as const,
 };
 
 const sizes = {
@@ -175,19 +180,6 @@ export const PRINTER_PROFILES: Readonly<Record<PrinterProfileId, PrinterProfile>
     ...COMMON,
     sourceUrl: 'https://www.zebra.com/us/en/products/spec-sheets/printers/desktop/zd421-zd621.html',
   },
-  dymo_labelwriter_550: {
-    id: 'dymo_labelwriter_550',
-    manufacturer: 'DYMO',
-    model: 'LabelWriter 550',
-    technology: 'direct_thermal',
-    supportedConnections: ['usb', 'system'],
-    dpiOptions: [300],
-    minWidthMm: 19,
-    maxWidthMm: 62,
-    sizePresets: sizes.narrow,
-    ...COMMON,
-    sourceUrl: 'https://www.dymo.com/label-makers-printers/labelwriter-label-printers/',
-  },
   dymo_labelwriter_5xl: {
     id: 'dymo_labelwriter_5xl',
     manufacturer: 'DYMO',
@@ -298,6 +290,8 @@ export const DEFAULT_PRINTER_SETTINGS: LabelPrinterSettings = Object.freeze({
   widthMm: 90,
   heightMm: 60,
   copies: 1,
+  formatMode: 'auto',
+  presetId: null,
 });
 
 export function normalizePrinterSettings(
@@ -319,6 +313,9 @@ export function normalizePrinterSettings(
     widthMm: Math.max(profile.minWidthMm, Math.min(profile.maxWidthMm, input?.widthMm ?? 90)),
     heightMm: Math.max(20, Math.min(400, input?.heightMm ?? 60)),
     copies: Math.max(1, Math.min(999, Math.floor(input?.copies ?? 1))),
+    formatMode:
+      input?.formatMode === 'preset' || input?.formatMode === 'custom' ? input.formatMode : 'auto',
+    presetId: input?.presetId ?? null,
   };
 }
 

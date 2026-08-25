@@ -1,5 +1,11 @@
-export type MarketProfileCode = 'EU' | 'US' | 'CA' | 'UK' | 'AU_NZ' | 'CUSTOM';
-export type MarketProfileStatus = 'VERIFIED' | 'RESEARCH_REQUIRED';
+export type MarketProfileCode = 'EU' | 'UK' | 'US' | 'CA' | 'AU_NZ' | 'WORLD';
+
+export type MarketProfileStatus =
+  | 'REGULATORY_VERIFIED'
+  | 'EXTERNAL_ASSET_BLOCKED'
+  | 'INFORMATIONAL';
+
+export type PrintReadiness = 'NOT_READY' | 'PRINT_READY_UNIVERSAL' | 'PRINT_READY_REGULATORY';
 
 export type MasterLabelFieldId =
   | 'product_name'
@@ -10,25 +16,42 @@ export type MasterLabelFieldId =
   | 'net_quantity'
   | 'operator'
   | 'storage'
+  | 'production_date'
   | 'date_mark'
   | 'lot'
   | 'logo'
   | 'origin'
-  | 'customer_note';
+  | 'customer_note'
+  | 'short_description'
+  | 'qr_code'
+  | 'lot_barcode'
+  | 'gtin'
+  | 'website'
+  | 'internal_article_id'
+  | 'batch_id';
+
+export type ConsumerLayout =
+  | 'eu_declaration'
+  | 'uk_declaration'
+  | 'us_nutrition_facts'
+  | 'ca_bilingual_nft'
+  | 'au_nz_nip'
+  | 'world_neutral';
+
+export type NutritionFormat =
+  | 'EU_100G'
+  | 'UK_100G'
+  | 'US_NF'
+  | 'CA_NFT'
+  | 'AU_NZ_NIP'
+  | 'WORLD_100G';
 
 export interface MarketProfile {
   code: MarketProfileCode;
   label: string;
   jurisdiction: string;
   flag: string;
-  /** Presentation identity only; legal requirements remain in requiredFields. */
-  consumerLayout:
-    | 'eu_declaration'
-    | 'uk_declaration'
-    | 'us_nutrition_facts'
-    | 'ca_bilingual_nft'
-    | 'au_nz_nip'
-    | 'research_unavailable';
+  consumerLayout: ConsumerLayout;
   status: MarketProfileStatus;
   version: string;
   checkedAt: string;
@@ -36,17 +59,30 @@ export interface MarketProfile {
   optionalFields: readonly MasterLabelFieldId[];
   sourceUrls: readonly string[];
   requiredLanguages: readonly string[];
-  minimumLabel: { widthMm: number; heightMm: number; xHeightMm: number };
-  nutritionFormat: 'EU_100G' | 'UK_100G' | 'US_NF' | 'CA_NFT' | 'AU_NZ_NIP' | 'NONE';
-  selectable: boolean;
-  /** Honest implementation limitation, separate from legal research status. */
-  rendererLimitation: string;
+  minimumTypography: {
+    xHeightMm: number;
+    smallPackageXHeightMm?: number;
+    minimumPointSize?: number;
+  };
+  nutritionFormat: NutritionFormat;
+  selectable: true;
+  rendererVersion: string;
+  externalAssetRequirement?: string;
 }
 
-export const marketAvailabilityLabel = (profile: MarketProfile): string =>
-  profile.selectable ? 'Gotowe do druku' : 'W przygotowaniu';
+export const MARKET_PROFILE_ORDER: readonly MarketProfileCode[] = [
+  'EU',
+  'UK',
+  'US',
+  'CA',
+  'AU_NZ',
+  'WORLD',
+];
 
-const COMMON_REQUIRED: readonly MasterLabelFieldId[] = [
+export const marketAvailabilityLabel = (profile: MarketProfile): string =>
+  profile.code === 'WORLD' ? 'Gotowa do druku · informacyjna' : 'Profil regulacyjny';
+
+const REGULATORY_REQUIRED: readonly MasterLabelFieldId[] = [
   'product_name',
   'legal_product_name',
   'ingredients',
@@ -55,146 +91,185 @@ const COMMON_REQUIRED: readonly MasterLabelFieldId[] = [
   'net_quantity',
   'operator',
   'storage',
+  'production_date',
   'date_mark',
   'lot',
 ];
 
-const OPTIONAL: readonly MasterLabelFieldId[] = ['logo', 'origin', 'customer_note'];
+const REGULATORY_OPTIONAL: readonly MasterLabelFieldId[] = [
+  'logo',
+  'origin',
+  'customer_note',
+  'qr_code',
+  'lot_barcode',
+  'gtin',
+  'website',
+  'internal_article_id',
+  'batch_id',
+];
+
+const WORLD_REQUIRED: readonly MasterLabelFieldId[] = [
+  'product_name',
+  'ingredients',
+  'allergens',
+  'nutrition',
+  'net_quantity',
+  'storage',
+  'production_date',
+  'lot',
+];
+
+const WORLD_OPTIONAL: readonly MasterLabelFieldId[] = [
+  'legal_product_name',
+  'operator',
+  'date_mark',
+  'logo',
+  'origin',
+  'customer_note',
+  'short_description',
+  'qr_code',
+  'lot_barcode',
+  'gtin',
+  'website',
+  'internal_article_id',
+  'batch_id',
+];
 
 export const MARKET_PROFILES: Readonly<Record<MarketProfileCode, MarketProfile>> = Object.freeze({
   EU: {
     code: 'EU',
-    label: 'UE',
+    label: 'European Union',
     jurisdiction: 'European Union',
-    flag: '🇪🇺',
+    flag: 'EU',
     consumerLayout: 'eu_declaration',
-    status: 'VERIFIED',
-    version: 'EU-FIC-1169-2021-v2026-08-25',
+    status: 'REGULATORY_VERIFIED',
+    version: 'EU-FIC-1169-2011-consolidated-2025-04-01',
     checkedAt: '2026-08-25',
-    requiredFields: COMMON_REQUIRED,
-    optionalFields: OPTIONAL,
+    requiredFields: REGULATORY_REQUIRED,
+    optionalFields: REGULATORY_OPTIONAL,
     sourceUrls: [
       'https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02011R1169-20250401',
-      'https://food.ec.europa.eu/food-safety/labelling-and-nutrition/food-information-consumers-legislation/mandatory-food-information_en',
+      'https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32011L0091',
+      'https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32018R0775',
     ],
     requiredLanguages: [],
-    // Complete retail declarations clipped at the former 90 × 60 / 100 × 70
-    // software minima. Keep mandatory typography and fail closed onto the
-    // first verified full-content geometry instead of shrinking to fit.
-    minimumLabel: { widthMm: 102, heightMm: 152, xHeightMm: 1.2 },
+    minimumTypography: { xHeightMm: 1.2, smallPackageXHeightMm: 0.9 },
     nutritionFormat: 'EU_100G',
     selectable: true,
-    rendererLimitation: '',
+    rendererVersion: 'eu-label-v2',
+  },
+  UK: {
+    code: 'UK',
+    label: 'United Kingdom',
+    jurisdiction: 'United Kingdom (GB or Northern Ireland context required)',
+    flag: 'UK',
+    consumerLayout: 'uk_declaration',
+    status: 'REGULATORY_VERIFIED',
+    version: 'UK-FIC-PPDS-current-2026-08-25',
+    checkedAt: '2026-08-25',
+    requiredFields: REGULATORY_REQUIRED,
+    optionalFields: REGULATORY_OPTIONAL,
+    sourceUrls: [
+      'https://www.gov.uk/guidance/food-labelling-giving-food-information-to-consumers',
+      'https://www.food.gov.uk/allergen-labelling-changes-for-prepacked-for-direct-sale-ppds-food',
+      'https://www.gov.uk/government/publications/packaging-and-labelling/packaging-and-labelling',
+    ],
+    requiredLanguages: ['en'],
+    minimumTypography: { xHeightMm: 1.2, smallPackageXHeightMm: 0.9 },
+    nutritionFormat: 'UK_100G',
+    selectable: true,
+    rendererVersion: 'uk-label-v2',
   },
   US: {
     code: 'US',
-    label: 'USA',
+    label: 'United States',
     jurisdiction: 'United States',
-    flag: '🇺🇸',
+    flag: 'US',
     consumerLayout: 'us_nutrition_facts',
-    status: 'RESEARCH_REQUIRED',
-    version: 'US-21CFR101-NF-2026-08-25',
+    status: 'REGULATORY_VERIFIED',
+    version: 'US-21CFR101-current-2026-08-21',
     checkedAt: '2026-08-25',
-    requiredFields: COMMON_REQUIRED,
-    optionalFields: OPTIONAL,
+    requiredFields: REGULATORY_REQUIRED,
+    optionalFields: REGULATORY_OPTIONAL,
     sourceUrls: [
       'https://www.ecfr.gov/current/title-21/chapter-I/subchapter-B/part-101/subpart-A/section-101.3',
       'https://www.ecfr.gov/current/title-21/chapter-I/subchapter-B/part-101/subpart-A/section-101.4',
       'https://www.ecfr.gov/current/title-21/chapter-I/subchapter-B/part-101/subpart-A/section-101.5',
       'https://www.ecfr.gov/current/title-21/chapter-I/subchapter-B/part-101/subpart-A/section-101.9',
-      'https://www.fda.gov/food/nutrition-food-labeling-and-critical-foods/food-allergies',
+      'https://www.ecfr.gov/current/title-21/chapter-I/subchapter-B/part-101/subpart-A/section-101.12',
     ],
     requiredLanguages: ['en'],
-    minimumLabel: { widthMm: 102, heightMm: 152, xHeightMm: 1.2 },
+    minimumTypography: { xHeightMm: 0, minimumPointSize: 6 },
     nutritionFormat: 'US_NF',
-    selectable: false,
-    rendererLimitation:
-      'Nutrition Facts QA renderer exists, but FDA rounding and prescribed format-family selection are not yet complete enough for retail print.',
+    selectable: true,
+    rendererVersion: 'fda-nutrition-facts-v2',
   },
   CA: {
     code: 'CA',
-    label: 'Kanada',
+    label: 'Canada',
     jurisdiction: 'Canada',
-    flag: '🇨🇦',
+    flag: 'CA',
     consumerLayout: 'ca_bilingual_nft',
-    status: 'RESEARCH_REQUIRED',
-    version: 'CA-FDR-NFT-FOP-2026-08-25',
+    status: 'EXTERNAL_ASSET_BLOCKED',
+    version: 'CA-FDR-NFT-FOP-current-2026-08-25',
     checkedAt: '2026-08-25',
-    requiredFields: COMMON_REQUIRED,
-    optionalFields: OPTIONAL,
+    requiredFields: REGULATORY_REQUIRED,
+    optionalFields: REGULATORY_OPTIONAL,
     sourceUrls: [
       'https://inspection.canada.ca/en/food-labels/labelling/industry/bilingual-food-labelling',
       'https://inspection.canada.ca/en/food-labels/labelling/industry/list-ingredients-and-allergens',
-      'https://inspection.canada.ca/en/food-labels/labelling/industry/nutrition-labelling',
+      'https://inspection.canada.ca/en/food-labels/labelling/industry/nutrition-labelling/nutrition-facts-table-formats',
+      'https://www.canada.ca/en/health-canada/services/technical-documents-labelling-requirements/nutrition-symbol-specifications/nutrition-labelling.html',
       'https://www.canada.ca/en/health-canada/services/food-nutrition/legislation-guidelines/guidance-documents/front-package-nutrition-symbol-labelling-industry.html',
     ],
     requiredLanguages: ['en', 'fr'],
-    minimumLabel: { widthMm: 104, heightMm: 152, xHeightMm: 1.6 },
+    minimumTypography: { xHeightMm: 0, minimumPointSize: 6 },
     nutritionFormat: 'CA_NFT',
-    selectable: false,
-    rendererLimitation:
-      'Implementacja reguł i układu jest gotowa do QA, ale retail print pozostaje niedostępny do czasu dostarczenia zatwierdzonego oficjalnego assetu FOP Health Canada.',
-  },
-  UK: {
-    code: 'UK',
-    label: 'UK',
-    jurisdiction: 'United Kingdom',
-    flag: '🇬🇧',
-    consumerLayout: 'uk_declaration',
-    status: 'VERIFIED',
-    version: 'UK-FIC-PPDS-2026-08-25',
-    checkedAt: '2026-08-25',
-    requiredFields: COMMON_REQUIRED,
-    optionalFields: OPTIONAL,
-    sourceUrls: [
-      'https://www.gov.uk/guidance/food-labelling-giving-food-information-to-consumers',
-      'https://www.gov.uk/government/publications/packaging-and-labelling/packaging-and-labelling',
-    ],
-    requiredLanguages: ['en'],
-    minimumLabel: { widthMm: 102, heightMm: 152, xHeightMm: 1.2 },
-    nutritionFormat: 'UK_100G',
     selectable: true,
-    rendererLimitation: '',
+    rendererVersion: 'canada-nft-v2',
+    externalAssetRequirement:
+      'Official Health Canada high-resolution FOP .EPS package must be requested from smiu-ugdi@hc-sc.gc.ca with subject "HPFB BNS Compendium of Nutrition Symbol Formats" and installed in src/assets/regulatory/canada-fop/.',
   },
   AU_NZ: {
     code: 'AU_NZ',
-    label: 'Australia/NZ',
-    jurisdiction: 'Australia and New Zealand',
-    flag: '🇦🇺 🇳🇿',
+    label: 'Australia / New Zealand',
+    jurisdiction: 'Australia or New Zealand context required',
+    flag: 'AU/NZ',
     consumerLayout: 'au_nz_nip',
-    status: 'VERIFIED',
-    version: 'FSANZ-1.2.8-2024-10-29-v2026-08-25',
+    status: 'REGULATORY_VERIFIED',
+    version: 'FSANZ-Code-current-2026-08-25',
     checkedAt: '2026-08-25',
-    requiredFields: COMMON_REQUIRED,
-    optionalFields: OPTIONAL,
+    requiredFields: REGULATORY_REQUIRED,
+    optionalFields: REGULATORY_OPTIONAL,
     sourceUrls: [
-      'https://www.foodstandards.gov.au/food-standards-code/legislation',
-      'https://www.foodstandards.gov.au/business/labelling/allergen-labelling',
       'https://www.foodstandards.gov.au/consumer/labelling/panels',
+      'https://www.foodstandards.gov.au/business/labelling/allergen-labelling',
+      'https://www.foodstandards.gov.au/consumer/labelling/ingredients',
+      'https://www.foodstandards.gov.au/consumer/labelling/dates',
     ],
     requiredLanguages: ['en'],
-    minimumLabel: { widthMm: 102, heightMm: 152, xHeightMm: 1.2 },
+    minimumTypography: { xHeightMm: 0, minimumPointSize: 6 },
     nutritionFormat: 'AU_NZ_NIP',
     selectable: true,
-    rendererLimitation: '',
+    rendererVersion: 'fsanz-nip-v2',
   },
-  CUSTOM: {
-    code: 'CUSTOM',
-    label: 'Inny rynek',
-    jurisdiction: 'Custom / not yet researched',
-    flag: '🌐',
-    consumerLayout: 'research_unavailable',
-    status: 'RESEARCH_REQUIRED',
-    version: 'custom-2026-08-09',
-    checkedAt: '2026-08-09',
-    requiredFields: COMMON_REQUIRED,
-    optionalFields: OPTIONAL,
+  WORLD: {
+    code: 'WORLD',
+    label: 'World / Universal',
+    jurisdiction: 'Universal informational output — no country legal profile',
+    flag: 'WORLD',
+    consumerLayout: 'world_neutral',
+    status: 'INFORMATIONAL',
+    version: 'WORLD-information-v1-2026-08-25',
+    checkedAt: '2026-08-25',
+    requiredFields: WORLD_REQUIRED,
+    optionalFields: WORLD_OPTIONAL,
     sourceUrls: [],
-    requiredLanguages: [],
-    minimumLabel: { widthMm: 0, heightMm: 0, xHeightMm: 0 },
-    nutritionFormat: 'NONE',
-    selectable: false,
-    rendererLimitation: 'Profil wymaga weryfikacji. PINGÜINO nie zgaduje wymagań prawnych.',
+    requiredLanguages: ['en'],
+    minimumTypography: { xHeightMm: 0, minimumPointSize: 6 },
+    nutritionFormat: 'WORLD_100G',
+    selectable: true,
+    rendererVersion: 'world-neutral-v1',
   },
 });
 

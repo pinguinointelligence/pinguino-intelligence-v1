@@ -2,11 +2,17 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/client';
 import { getCurrentUser } from '@/services/auth';
 import {
+  buildLabelPreflight,
   normalizeMasterLabelData,
   type FacilityDefaults,
   type MasterLabelData,
+  type ShelfLifeAuthority,
 } from '@/features/master-label/masterLabel';
-import type { MarketProfileCode, MasterLabelFieldId } from '@/features/master-label/marketProfiles';
+import {
+  marketProfile,
+  type MarketProfileCode,
+  type MasterLabelFieldId,
+} from '@/features/master-label/marketProfiles';
 import type { ProductionCompletionSnapshot } from '@/features/production-workspace/productionSession';
 import {
   normalizePrinterSettings,
@@ -16,7 +22,7 @@ import {
 const PROFILE_TABLE = 'account_label_profiles';
 const RUN_LABEL_TABLE = 'production_run_label_snapshots';
 const COMPLETED_TABLE = 'production_completed_snapshots';
-const SAVE_RUN_LABEL_RPC = 'production_save_label_snapshot_v1';
+const SAVE_RUN_LABEL_RPC = 'production_save_label_snapshot_v2';
 const FREEZE_COMPLETED_RPC = 'production_freeze_completed_snapshot_v1';
 export const LABEL_ASSETS_BUCKET = 'label-profile-assets';
 export const MAX_LABEL_LOGO_BYTES = 5 * 1024 * 1024;
@@ -30,6 +36,7 @@ export interface AccountLabelProfile {
   logoPath: string | null;
   enabledOptionalFields: MasterLabelFieldId[];
   facilityDefaults: FacilityDefaults;
+  shelfLifeAuthority: ShelfLifeAuthority;
   presentation: {
     format: 'rectangle' | 'round';
     widthMm: number;
@@ -41,6 +48,9 @@ export interface AccountLabelProfile {
 }
 
 export interface RunLabelSnapshot {
+  snapshotId: string;
+  version: number;
+  contentHash: string;
   runId: string;
   ownerUserId: string;
   label: MasterLabelData;
@@ -55,6 +65,7 @@ export interface LabelRepository {
   getCompletedSnapshot(runId: string): Promise<ProductionCompletionSnapshot | null>;
   freezeCompletedSnapshot(snapshot: ProductionCompletionSnapshot): Promise<void>;
   getRunLabelSnapshot(runId: string): Promise<RunLabelSnapshot | null>;
+  getRunLabelSnapshotById(snapshotId: string): Promise<RunLabelSnapshot | null>;
   listRunLabelSnapshots(): Promise<RunLabelSnapshot[]>;
   saveRunLabelSnapshot(label: MasterLabelData): Promise<RunLabelSnapshot>;
   uploadLogo(file: File): Promise<string>;
@@ -68,6 +79,14 @@ const emptyFacility = (): FacilityDefaults => ({
   countryCode: '',
   contact: '',
   registrationIds: [],
+  website: '',
+  operatorRole: 'producer',
+  importerName: '',
+  importerAddress: '',
+  importerCountryCode: '',
+  distributorName: '',
+  distributorAddress: '',
+  distributorCountryCode: '',
 });
 
 export function defaultAccountLabelProfile(
@@ -83,6 +102,13 @@ export function defaultAccountLabelProfile(
     logoPath: null,
     enabledOptionalFields: ['logo', 'origin', 'customer_note'],
     facilityDefaults: emptyFacility(),
+    shelfLifeAuthority: {
+      policyId: null,
+      authority: '',
+      method: 'none',
+      shelfLifeDays: null,
+      reviewedByUser: false,
+    },
     presentation: {
       format: 'rectangle',
       widthMm: 90,
@@ -112,11 +138,15 @@ type ProfileRow = {
   logo_path: string | null;
   enabled_optional_fields?: MasterLabelFieldId[] | null;
   facility_defaults: Partial<FacilityDefaults> | null;
+  shelf_life_authority?: Partial<ShelfLifeAuthority> | null;
   presentation: Partial<AccountLabelProfile['presentation']> | null;
   updated_at: string;
 };
 
 type RunLabelRow = {
+  snapshot_id: string;
+  snapshot_version: number;
+  content_hash: string;
   run_id: string;
   owner_user_id: string;
   master_label: MasterLabelData;
@@ -137,6 +167,10 @@ const mapProfile = (row: ProfileRow): AccountLabelProfile => {
     logoPath: row.logo_path,
     enabledOptionalFields: row.enabled_optional_fields ?? fallback.enabledOptionalFields,
     facilityDefaults: { ...fallback.facilityDefaults, ...(row.facility_defaults ?? {}) },
+    shelfLifeAuthority: {
+      ...fallback.shelfLifeAuthority,
+      ...(row.shelf_life_authority ?? {}),
+    },
     presentation: {
       ...presentation,
       printer: normalizePrinterSettings({
@@ -151,6 +185,9 @@ const mapProfile = (row: ProfileRow): AccountLabelProfile => {
 };
 
 const mapRunLabel = (row: RunLabelRow): RunLabelSnapshot => ({
+  snapshotId: row.snapshot_id,
+  version: row.snapshot_version,
+  contentHash: row.content_hash,
   runId: row.run_id,
   ownerUserId: row.owner_user_id,
   label: normalizeMasterLabelData(row.master_label),
@@ -209,6 +246,7 @@ export function supabaseLabelRepository(client: SupabaseClient): LabelRepository
             logo_path: profile.logoPath,
             enabled_optional_fields: profile.enabledOptionalFields,
             facility_defaults: profile.facilityDefaults,
+            shelf_life_authority: profile.shelfLifeAuthority,
             presentation: profile.presentation,
             updated_at: new Date().toISOString(),
           },
@@ -248,6 +286,20 @@ export function supabaseLabelRepository(client: SupabaseClient): LabelRepository
         .select('*')
         .eq('run_id', runId)
         .eq('owner_user_id', owner)
+        .order('snapshot_version', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return data ? mapRunLabel(data as RunLabelRow) : null;
+    },
+
+    async getRunLabelSnapshotById(snapshotId) {
+      const owner = await requireUserId();
+      const { data, error } = await client
+        .from(RUN_LABEL_TABLE)
+        .select('*')
+        .eq('snapshot_id', snapshotId)
+        .eq('owner_user_id', owner)
         .maybeSingle();
       if (error) throw new Error(error.message);
       return data ? mapRunLabel(data as RunLabelRow) : null;
@@ -266,12 +318,39 @@ export function supabaseLabelRepository(client: SupabaseClient): LabelRepository
 
     async saveRunLabelSnapshot(label) {
       const owner = await requireUserId();
-      const { error } = await client.rpc(SAVE_RUN_LABEL_RPC, {
+      const preflight = buildLabelPreflight(label);
+      if (!preflight.readyForSystemPrint || preflight.printReadiness === 'NOT_READY') {
+        throw new Error('Print-ready Label preflight required before immutable snapshot save.');
+      }
+      if (!label.packageQuantity) {
+        throw new Error('Confirmed package quantity required before immutable snapshot save.');
+      }
+      const profile = marketProfile(label.market);
+      const frozenLabel: MasterLabelData = {
+        ...label,
+        snapshotEvidence: {
+          printReadiness: preflight.printReadiness,
+          rendererVersion: profile.rendererVersion,
+          regulatoryProfileVersion: label.marketProfileVersion,
+          geometry: {
+            widthMm: label.size.widthMm,
+            heightMm: label.size.heightMm,
+            baseFontPt: preflight.geometry.baseFontPt,
+            xHeightMm: preflight.geometry.xHeightMm,
+          },
+          printer: structuredClone(label.printer),
+          packageQuantity: structuredClone(label.packageQuantity),
+        },
+      };
+      const { data: snapshotId, error } = await client.rpc(SAVE_RUN_LABEL_RPC, {
         p_run_id: label.sourceCompletionSessionId,
-        p_master_label: label,
+        p_master_label: frozenLabel,
       });
       if (error) throw new Error(error.message);
-      const saved = await repository.getRunLabelSnapshot(label.sourceCompletionSessionId);
+      if (typeof snapshotId !== 'string') {
+        throw new Error('Nie otrzymano identyfikatora snapshotu etykiety.');
+      }
+      const saved = await repository.getRunLabelSnapshotById(snapshotId);
       if (!saved || saved.ownerUserId !== owner) {
         throw new Error('Nie odczytano zapisanego snapshotu etykiety.');
       }
@@ -306,6 +385,7 @@ export function supabaseLabelRepository(client: SupabaseClient): LabelRepository
 const memoryProfiles = new Map<string, AccountLabelProfile>();
 const memoryCompleted = new Map<string, ProductionCompletionSnapshot>();
 const memoryLabels = new Map<string, RunLabelSnapshot>();
+const memoryRunSnapshots = new Map<string, string[]>();
 
 const memoryRunKey = (ownerUserId: string, runId: string): string => `${ownerUserId}:${runId}`;
 const cloneValue = <T>(value: T): T => structuredClone(value);
@@ -314,6 +394,13 @@ export function resetInMemoryLabelRepositoryForTests(): void {
   memoryProfiles.clear();
   memoryCompleted.clear();
   memoryLabels.clear();
+  memoryRunSnapshots.clear();
+}
+
+async function sha256Hex(value: unknown): Promise<string> {
+  const bytes = new TextEncoder().encode(JSON.stringify(value));
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
 export function inMemoryLabelRepository(ownerUserId = 'owner-review-local'): LabelRepository {
@@ -346,8 +433,13 @@ export function inMemoryLabelRepository(ownerUserId = 'owner-review-local'): Lab
       memoryCompleted.set(key, cloneValue(snapshot));
     },
     getRunLabelSnapshot: async (runId) => {
-      const label = memoryLabels.get(memoryRunKey(ownerUserId, runId));
+      const ids = memoryRunSnapshots.get(memoryRunKey(ownerUserId, runId)) ?? [];
+      const label = ids.length > 0 ? memoryLabels.get(ids[ids.length - 1]!) : null;
       return label ? cloneValue(label) : null;
+    },
+    getRunLabelSnapshotById: async (snapshotId) => {
+      const label = memoryLabels.get(snapshotId);
+      return label?.ownerUserId === ownerUserId ? cloneValue(label) : null;
     },
     listRunLabelSnapshots: async () =>
       [...memoryLabels.values()]
@@ -356,18 +448,55 @@ export function inMemoryLabelRepository(ownerUserId = 'owner-review-local'): Lab
         .map(cloneValue),
     saveRunLabelSnapshot: async (label) => {
       const key = memoryRunKey(ownerUserId, label.sourceCompletionSessionId);
-      if (!memoryCompleted.has(key)) {
+      const completed = memoryCompleted.get(key);
+      if (!completed) {
         throw new Error('Owned completed Production snapshot required.');
       }
-      const existing = memoryLabels.get(key);
-      if (existing && JSON.stringify(existing.label) !== JSON.stringify(label)) {
-        throw new Error('Run Label Snapshot is immutable.');
+      const ingredientMass = label.ingredients.reduce(
+        (total, ingredient) => total + ingredient.actualGrams,
+        0,
+      );
+      if (Math.abs(ingredientMass - completed.actualFinalMassG) > 0.000_001) {
+        throw new Error('Label ingredients must come from the completed ACTUAL batch.');
+      }
+      const preflight = buildLabelPreflight(label);
+      if (!preflight.readyForSystemPrint || preflight.printReadiness === 'NOT_READY') {
+        throw new Error('Print-ready Label preflight required before immutable snapshot save.');
+      }
+      if (!label.packageQuantity) {
+        throw new Error('Confirmed package quantity required before immutable snapshot save.');
       }
       const profile = memoryProfiles.get(ownerUserId) ?? defaultAccountLabelProfile(ownerUserId);
-      const saved: RunLabelSnapshot = existing ?? {
+      const frozenLabel: MasterLabelData = {
+        ...cloneValue(label),
+        snapshotEvidence: {
+          printReadiness: preflight.printReadiness,
+          rendererVersion: marketProfile(label.market).rendererVersion,
+          regulatoryProfileVersion: label.marketProfileVersion,
+          geometry: {
+            widthMm: label.size.widthMm,
+            heightMm: label.size.heightMm,
+            baseFontPt: preflight.geometry.baseFontPt,
+            xHeightMm: preflight.geometry.xHeightMm,
+          },
+          printer: cloneValue(label.printer),
+          packageQuantity: cloneValue(label.packageQuantity),
+        },
+      };
+      const contentHash = await sha256Hex(frozenLabel);
+      const ids = memoryRunSnapshots.get(key) ?? [];
+      const duplicate = ids
+        .map((snapshotId) => memoryLabels.get(snapshotId))
+        .find((candidate) => candidate?.contentHash === contentHash);
+      if (duplicate) return cloneValue(duplicate);
+      const snapshotId = globalThis.crypto.randomUUID();
+      const saved: RunLabelSnapshot = {
+        snapshotId,
+        version: ids.length + 1,
+        contentHash,
         runId: label.sourceCompletionSessionId,
         ownerUserId,
-        label: cloneValue(label),
+        label: frozenLabel,
         accountProfileSnapshot: {
           market: label.market,
           uiLanguage: label.uiLanguage,
@@ -386,7 +515,8 @@ export function inMemoryLabelRepository(ownerUserId = 'owner-review-local'): Lab
         logoPath: label.logoPath,
         createdAt: new Date().toISOString(),
       };
-      memoryLabels.set(key, saved);
+      memoryLabels.set(snapshotId, saved);
+      memoryRunSnapshots.set(key, [...ids, snapshotId]);
       return cloneValue(saved);
     },
     uploadLogo: async () => `${ownerUserId}/local-logo.png`,

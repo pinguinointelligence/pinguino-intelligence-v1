@@ -1,4 +1,6 @@
-# Master Label — canonical data and print architecture
+# Master Label — superseded architecture snapshot
+
+This 2026-08-09 snapshot is retained for history. Current canonical requirements are in [GELLATTI_GLOBAL_LABEL_COMPLIANCE_AUDIT_2026-08-25.md](./GELLATTI_GLOBAL_LABEL_COMPLIANCE_AUDIT_2026-08-25.md) and [FINAL_LABEL_SYSTEM_ACCEPTANCE.md](./FINAL_LABEL_SYSTEM_ACCEPTANCE.md). Statements below about `PARTIAL`, missing PDF, and one generic renderer are no longer current.
 
 Checked: 2026-08-09
 

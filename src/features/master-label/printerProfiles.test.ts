@@ -14,7 +14,6 @@ const required: PrinterProfileId[] = [
   'brother_td_4550dnwb',
   'zebra_zd421_203',
   'zebra_zd421_300',
-  'dymo_labelwriter_550',
   'dymo_labelwriter_5xl',
   'epson_colorworks_c4000',
   'epson_colorworks_c6000',
@@ -33,6 +32,8 @@ describe('printer profiles', () => {
     expect(PRINTER_PROFILES.aimo_243bt).toMatchObject({
       dpiOptions: [203],
       supportedConnections: ['bluetooth', 'usb', 'app_handoff', 'system'],
+      softwareVerification: 'AUTOMATED_GEOMETRY_PDF',
+      hardwareVerification: 'NOT_VERIFIED',
     });
   });
 
