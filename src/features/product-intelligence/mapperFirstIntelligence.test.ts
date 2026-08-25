@@ -631,6 +631,28 @@ describe('INTIMPORT wiring', () => {
 
   const knowledge = buildMapperKnowledge(COCOA_BUTTER, FINGERPRINT);
 
+  const sourcedRow = (sourceUrl: string) => {
+    const values: Record<string, string> = {
+      'Product ID': 'PL-RETAILER-PROVENANCE-1',
+      'Country Code': 'PL',
+      Category: 'Chocolate & cocoa',
+      Subcategory: 'cocoa butter',
+      'Product Type': 'retail',
+      Brand: 'TestBrand',
+      'Product Name Original': 'Maslo kakaowe retailer proof',
+      Manufacturer: 'TestCo',
+      'Net Quantity Value': '1',
+      'Net Quantity Unit': 'kg',
+      'Package Count': '1',
+      'Ingredients Original': 'maslo kakaowe',
+      'Country of Origin': 'Poland',
+      'Primary Source URL': sourceUrl,
+      'Product Status': 'complete',
+      'Checked At': '2026-08-25',
+    };
+    return CSV_HEADER.split(',').map((header) => values[header] ?? '').join(',');
+  };
+
   it('attaches real working values to each product when a Mapper is supplied', () => {
     const parsed = parseINTIMPORT(`${CSV_HEADER}\n${row('Maslo kakaowe', 'Chocolate & cocoa')}`);
     const { rows, summary } = runIntimportLocalIntelligence(parsed.candidates, {}, knowledge);
@@ -652,6 +674,45 @@ describe('INTIMPORT wiring', () => {
     // Absent counts, not zeroed counts: "we did not look" is not "nothing found".
     expect(summary.valueReadiness).toBeNull();
     expect(first?.route).toBeTruthy();
+  });
+
+  it('credits existing authoritative-retailer provenance in Product Accuracy', () => {
+    const parsed = parseINTIMPORT(
+      `${CSV_HEADER}\n${sourcedRow('https://zakupy.biedronka.pl/pl-PL/product-id')}`,
+    );
+    const { rows } = runIntimportLocalIntelligence(parsed.candidates, {}, knowledge);
+    const first = rows[0];
+
+    expect(first?.sourceAuthority.authority).toBe('AUTHORITATIVE_RETAILER');
+    expect(first?.productionAccuracy.fields.identity).toMatchObject({
+      earnedPoints: 1,
+      basis: 'retailer',
+    });
+    expect(first?.productionAccuracy.fields.ingredients).toMatchObject({
+      earnedPoints: 6,
+      basis: 'retailer',
+    });
+    expect(first?.productionAccuracy.fields.manufacturer?.earnedPoints).toBe(1);
+    expect(first?.productionAccuracy.fields.countryOfOrigin?.earnedPoints).toBe(1);
+    expect(first?.productionAccuracy.fields.netQuantity?.earnedPoints).toBe(1);
+  });
+
+  it('does not promote an unclassified owner URL to authoritative retailer evidence', () => {
+    const parsed = parseINTIMPORT(
+      `${CSV_HEADER}\n${sourcedRow('https://example.invalid/product-id')}`,
+    );
+    const { rows } = runIntimportLocalIntelligence(parsed.candidates, {}, knowledge);
+    const first = rows[0];
+
+    expect(first?.sourceAuthority.authority).toBe('OWNER_PROVIDED_SOURCE');
+    expect(first?.productionAccuracy.fields.identity).toMatchObject({
+      earnedPoints: 0,
+      basis: 'retailer',
+    });
+    expect(first?.productionAccuracy.fields.ingredients).toMatchObject({
+      earnedPoints: 0,
+      basis: 'retailer',
+    });
   });
 });
 

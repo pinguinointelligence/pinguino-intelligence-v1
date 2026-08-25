@@ -288,6 +288,57 @@ describe('INTIMPORT trusted product-owned profile', () => {
     expect(pr?.productAccuracyAssessment.criticalCapApplied).toBe(false);
   });
 
+  it('gives PR and PM identical Product Accuracy credit for authoritative retailer evidence', () => {
+    const retailerEvidence = {
+      ...completeEvidence,
+      fields: {
+        ...completeEvidence.fields,
+        identity: 'retailer' as const,
+        manufacturer: 'retailer' as const,
+        netQuantity: 'retailer' as const,
+        ingredients: 'retailer' as const,
+        countryOfOrigin: 'retailer' as const,
+      },
+    };
+    const retailerFact = () => ({
+      source: 'retailer' as const,
+      sourceUrl: 'https://zakupy.biedronka.pl/pl-PL/product-id',
+      sourceDomain: 'zakupy.biedronka.pl',
+      sourceTitle: 'Exact retailer product',
+      sourceAuthorityClass: 'AUTHORITATIVE_RETAILER',
+      retrievedAt: '2026-08-25',
+      evidenceReceipt: null,
+    });
+    const evidenceProvenance = {
+      identity: retailerFact(),
+      manufacturer: retailerFact(),
+      netQuantity: retailerFact(),
+      ingredients: retailerFact(),
+      countryOfOrigin: retailerFact(),
+    };
+    const profile = (origin: 'PR' | 'PM') => validateIntimportProductProfileProposal({
+      origin,
+      proposedMapperIngredientId: null,
+      matchInput: input(),
+      declared: {},
+      evidence: retailerEvidence,
+      evidenceProvenance,
+      recognitionEvidence: inulinRecognitionEvidence,
+      rows: [baseRow()],
+    });
+
+    const pr = profile('PR');
+    const pm = profile('PM');
+
+    expect(pr?.productAccuracyAssessment).toEqual(pm?.productAccuracyAssessment);
+    expect(pr?.productAccuracy).toBe(pm?.productAccuracy);
+    expect(pr?.productAccuracyAssessment.fields.identity?.earnedPoints).toBe(1);
+    expect(pr?.productAccuracyAssessment.fields.ingredients?.earnedPoints).toBe(6);
+    expect(pr?.productAccuracyAssessment.fields.manufacturer?.earnedPoints).toBe(1);
+    expect(pr?.productAccuracyAssessment.fields.countryOfOrigin?.earnedPoints).toBe(1);
+    expect(pr?.productAccuracyAssessment.fields.netQuantity?.earnedPoints).toBe(1);
+  });
+
   it('ignores a forged browser final composition and publishes only the recomputed profile', () => {
     const authority = validateIntimportProductProfileProposal({
       proposedMapperIngredientId: 'PI-ING-TEST-001',

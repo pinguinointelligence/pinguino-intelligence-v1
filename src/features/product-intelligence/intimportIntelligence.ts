@@ -60,6 +60,7 @@ import {
 import {
   assessProductProductionAccuracy,
   productionAccuracyTruthFromWorkingFields,
+  type ProductionAccuracyEvidenceProvenance,
   type ProductProductionAccuracyAssessment,
 } from './productProductionAccuracy';
 
@@ -373,6 +374,43 @@ function intimportCarbonationEvidence(
   return evidence;
 }
 
+/**
+ * Preserve the source authority INTIMPORT already established when the same
+ * evidence is handed to the shared PR/PM Product Accuracy scorer. Evidence and
+ * authority remain independent: a retailer field is credited only when its
+ * actual URL was classified as a trusted retailer, while owner-provided or
+ * unknown retailer URLs continue to fail closed.
+ */
+function intimportProductionAccuracyProvenance(
+  evidence: ProductEvidenceInput,
+  sourceAuthority: SourceAuthorityAssessment,
+  sourceUrl: string | null,
+): Partial<Record<ProductEvidenceField, ProductionAccuracyEvidenceProvenance>> {
+  return Object.fromEntries(
+    Object.entries(evidence.fields).map(([field, source]) => {
+      const localSource = source as EvidenceSource;
+      const sourceAuthorityClass =
+        localSource === 'barcode_registry'
+          ? 'CHECKSUM_VALIDATED_GTIN'
+          : localSource === 'mapper_family'
+            ? 'MAPPER_FAMILY_INFERENCE'
+            : localSource === 'mapper_exact'
+              ? 'EXACT_CANONICAL_MATCH'
+              : localSource === sourceAuthority.evidenceSource
+                ? sourceAuthority.authority
+                : null;
+      return [
+        field,
+        {
+          source: localSource,
+          sourceUrl: localSource === sourceAuthority.evidenceSource ? sourceUrl : null,
+          sourceAuthorityClass,
+        },
+      ];
+    }),
+  );
+}
+
 export function assessIntimportProduct(
   candidate: IntimportCandidate,
   index: IntimportCanonicalIndex = {},
@@ -509,6 +547,11 @@ export function assessIntimportProduct(
   });
   const productionAccuracy = assessProductProductionAccuracy({
     evidence,
+    evidenceProvenance: intimportProductionAccuracyProvenance(
+      evidence,
+      sourceAuthority,
+      candidate.source['Primary Source URL'] ?? candidate.source['Technical PDF URL'],
+    ),
     fieldTruth: workingValues ? productionAccuracyTruthFromWorkingFields(workingValues.fields) : {},
     mapperWholeProfileSimilarity: workingValues?.profileMatch?.confidence ?? null,
     recognition,
