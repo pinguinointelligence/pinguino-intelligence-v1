@@ -11,6 +11,10 @@ const articleCodeSearchMigration = readFileSync(
   resolve(root, 'supabase/migrations/20260825213000_product_article_code_search.sql'),
   'utf8',
 );
+const articleCodeExactMatchMigration = readFileSync(
+  resolve(root, 'supabase/migrations/20260825214500_product_article_code_exact_match.sql'),
+  'utf8',
+);
 const catalogSubmit = readFileSync(
   resolve(root, 'supabase/functions/catalog-submit/index.ts'),
   'utf8',
@@ -58,7 +62,14 @@ describe('PR/PM ProductBehavior authority restore', () => {
   it('keeps the product-owned PR/PM article code searchable in the normal picker', () => {
     expect(articleCodeSearchMigration).toContain('public.search_products_v1');
     expect(articleCodeSearchMigration).toContain('p.product_name_internal,p.product_code,p.brand');
+    expect(articleCodeExactMatchMigration).toContain(
+      "(' '||c.search_text||' ') like '% '||e.q||' %'",
+    );
+    expect(articleCodeExactMatchMigration).not.toContain('extensions.similarity(c.search_text,e.q)');
     expect(articleCodeSearchMigration).not.toContain('mapper_ingredient_id:=p.product_code');
     expect(articleCodeSearchMigration).not.toMatch(/(insert\s+into|update)\s+public\.mapper_basement/i);
+    expect(articleCodeExactMatchMigration).not.toMatch(
+      /(insert\s+into|update)\s+public\.mapper_basement/i,
+    );
   });
 });
