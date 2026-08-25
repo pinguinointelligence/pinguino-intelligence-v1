@@ -159,6 +159,40 @@ export function ProductionCockpit({
     session?.status === 'completed' &&
     session.completionSnapshot !== null &&
     prerequisite?.code !== 'owner_mismatch';
+  const archiveSessionDialog = archiveDialogOpen ? (
+    <DialogShell
+      label="Zarchiwizować nieaktualną sesję?"
+      testId="production-archive-session-dialog"
+      placement="responsive"
+      onClose={() => setArchiveDialogOpen(false)}
+    >
+      <div className="p-5 sm:p-0">
+        <h2 className="text-lg font-semibold text-ink">Zarchiwizować nieaktualną sesję?</h2>
+        <p className="mt-2 text-xs leading-relaxed text-stone-600">
+          Zapis partii pozostanie w historii. Bieżąca receptura nie zostanie zmieniona.
+        </p>
+        <div className="mt-5 grid gap-2 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => setArchiveDialogOpen(false)}
+            className="pro-focus-ring min-h-11 rounded-[10px] border border-ink/15 bg-white px-4 text-xs font-semibold text-ink"
+          >
+            Anuluj
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setArchiveDialogOpen(false);
+              void production.archiveStaleSession();
+            }}
+            className="pro-focus-ring min-h-11 rounded-[10px] bg-ink px-4 text-xs font-semibold text-white"
+          >
+            Zarchiwizuj sesję
+          </button>
+        </div>
+      </div>
+    </DialogShell>
+  ) : null;
   if (prerequisite && !completedRecordVisible) {
     return (
       <>
@@ -187,40 +221,7 @@ export function ProductionCockpit({
             </p>
           ) : null}
         </section>
-        {archiveDialogOpen ? (
-          <DialogShell
-            label="Zarchiwizować nieaktualną sesję?"
-            testId="production-archive-session-dialog"
-            placement="responsive"
-            onClose={() => setArchiveDialogOpen(false)}
-          >
-            <div className="p-5 sm:p-0">
-              <h2 className="text-lg font-semibold text-ink">Zarchiwizować nieaktualną sesję?</h2>
-              <p className="mt-2 text-xs leading-relaxed text-stone-600">
-                Zapis partii pozostanie w historii. Bieżąca receptura nie zostanie zmieniona.
-              </p>
-              <div className="mt-5 grid gap-2 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() => setArchiveDialogOpen(false)}
-                  className="pro-focus-ring min-h-11 rounded-[10px] border border-ink/15 bg-white px-4 text-xs font-semibold text-ink"
-                >
-                  Anuluj
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setArchiveDialogOpen(false);
-                    void production.archiveStaleSession();
-                  }}
-                  className="pro-focus-ring min-h-11 rounded-[10px] bg-ink px-4 text-xs font-semibold text-white"
-                >
-                  Zarchiwizuj sesję
-                </button>
-              </div>
-            </div>
-          </DialogShell>
-        ) : null}
+        {archiveSessionDialog}
       </>
     );
   }
@@ -347,6 +348,7 @@ export function ProductionCockpit({
             </p>
           ) : null}
         </section>
+        {archiveSessionDialog}
       </div>
     );
   }

@@ -190,4 +190,79 @@ describe('Production correction decision accessibility', () => {
     await act(async () => (confirm as HTMLButtonElement | undefined)?.click());
     expect(complete).toHaveBeenCalledTimes(1);
   });
+
+  it('keeps the custom archive confirmation available on a stale completed session', async () => {
+    const plannedInput = {
+      ...DEFAULT_PRESET,
+      items: DEFAULT_PRESET.items.map((item) => ({ ...item, actual_grams: null })),
+      machine_capacity_grams: null,
+    };
+    let session = createProductionSession({
+      sessionId: 'run-completed-stale-1',
+      ownerUserId: 'owner-focus',
+      source: {
+        recipeId: 'recipe-focus',
+        recipeVersionId: 'version-focus',
+        recipeVersionNumber: 1,
+        recipeName: 'Stale completed QA',
+      },
+      plannedInput,
+      startedAt: '2026-08-25T10:00:00.000Z',
+    });
+    for (const [index, line] of session.lines.entries()) {
+      session = confirmProductionLine(
+        session,
+        line.lineId,
+        `2026-08-25T10:${String(index + 1).padStart(2, '0')}:00.000Z`,
+      );
+    }
+    session = {
+      ...session,
+      status: 'completed',
+      completedAt: '2026-08-25T11:00:00.000Z',
+      completionSnapshot: {
+        actualFinalMassG: plannedInput.target_batch_grams,
+        productComposition: { toppings: [] },
+      },
+    } as unknown as typeof session;
+    const archiveStaleSession = vi.fn();
+    const production = {
+      session,
+      progress: productionProgress(session),
+      prerequisite: {
+        code: 'stale_source',
+        eyebrow: 'Źródło nieaktualne',
+        title: 'Źródło Produkcji jest nieaktualne',
+        message: 'Zachowaj zakończony zapis i przygotuj nowe źródło.',
+        action: 'archive_stale_session',
+        actionLabel: 'Zarchiwizuj starą sesję',
+      },
+      archiveStaleSession,
+    } as unknown as ProductionWorkspaceView;
+
+    await act(async () =>
+      root.render(
+        <ProductionCockpit
+          production={production}
+          onOpenPreview={vi.fn()}
+          onRecalculate={vi.fn()}
+          onReturnToRecipe={vi.fn()}
+        />,
+      ),
+    );
+    const archive = [...host.querySelectorAll('button')].find((button) =>
+      button.textContent?.includes('Zarchiwizuj starą sesję'),
+    );
+    await act(async () => (archive as HTMLButtonElement | undefined)?.click());
+    expect(archiveStaleSession).not.toHaveBeenCalled();
+    const dialog = document.querySelector<HTMLElement>(
+      '[data-testid="production-archive-session-dialog"]',
+    );
+    expect(dialog?.textContent).toContain('Bieżąca receptura nie zostanie zmieniona');
+    const confirm = [...(dialog?.querySelectorAll('button') ?? [])].find((button) =>
+      button.textContent?.includes('Zarchiwizuj sesję'),
+    );
+    await act(async () => (confirm as HTMLButtonElement | undefined)?.click());
+    expect(archiveStaleSession).toHaveBeenCalledTimes(1);
+  });
 });
