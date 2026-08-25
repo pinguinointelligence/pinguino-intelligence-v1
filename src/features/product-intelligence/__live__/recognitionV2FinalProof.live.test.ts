@@ -604,6 +604,28 @@ describe.runIf(LIVE)('Recognition V2 final real staging proof', () => {
     expect(metrics.realOpenAiModelCalls).toBeGreaterThan(0);
     expect(metrics.repeatedEvidenceCacheHits).toBe(3);
 
+    // Read the user's own RLS-visible ledger before the temporary proof user is
+    // removed. This proves persistence, not only a successful HTTP response.
+    const ledgerUrl = new URL('/rest/v1/intimport_semantic_classification_usage', EDGE_URL);
+    ledgerUrl.searchParams.set('import_id', `eq.${IMPORT_ID}`);
+    ledgerUrl.searchParams.set(
+      'select',
+      'id,import_id,idempotency_key,classifier_version,model,evidence_fingerprint,input_tokens,output_tokens,latency_ms,result_json,created_at',
+    );
+    const ledgerResponse = await fetch(ledgerUrl, {
+      headers: { Authorization: `Bearer ${ACCESS_TOKEN}`, apikey: ANON_KEY },
+    });
+    expect(ledgerResponse.ok).toBe(true);
+    const ledgerRows = (await ledgerResponse.json()) as Array<{
+      result_json?: { status?: string };
+    }>;
+    expect(ledgerRows).toHaveLength(initialTelemetry.length);
+    const ledgerMetrics = {
+      persistedRows: ledgerRows.length,
+      classifiedRows: ledgerRows.filter((row) => row.result_json?.status === 'CLASSIFIED').length,
+      errorRows: ledgerRows.filter((row) => row.result_json?.status === 'ERROR').length,
+    };
+
     mkdirSync(OUTPUT_DIR, { recursive: true });
     const artifacts = {
       proof: writeCsv('OPENAI_SEMANTIC_CLASSIFIER_PROOF.csv', proofRows),
@@ -611,7 +633,9 @@ describe.runIf(LIVE)('Recognition V2 final real staging proof', () => {
       final820: writeCsv('POLAND_820_RECOGNITION_V2_FINAL_TRACE.csv', finalTraceRows),
       previous612: writeCsv('POLAND_612_REVIEW_TRANSITIONS.csv', transitionRows),
       categoryFirst: writeCsv('OPENAI_CATEGORY_FIRST_MAPPER_PROOF.csv', categoryFirstProof),
+      semanticLedger: join(OUTPUT_DIR, 'OPENAI_SEMANTIC_LEDGER_PROOF.json'),
     };
+    writeFileSync(artifacts.semanticLedger, `${JSON.stringify(ledgerRows, null, 2)}\n`);
     const summary = {
       generatedAt: new Date().toISOString(),
       execution: {
@@ -628,6 +652,7 @@ describe.runIf(LIVE)('Recognition V2 final real staging proof', () => {
         mapperKnowledgeFingerprint: fingerprint,
       },
       metrics,
+      ledger: ledgerMetrics,
       before: { ENGINE_READY: 140, REVIEW: 612, BLOCKED: 65, IDENTITY_CONFLICT: 3 },
       after: finalCounts,
       toppingOnly: recalculated.rows.filter(
