@@ -182,8 +182,8 @@ const firstUnresolved = (
       step: 8,
       reason:
         semanticAttempt?.error ??
-        final.recognition.modelReasonCodes.join(' | ') ??
-        'product semantics unresolved',
+        (final.recognition.modelReasonCodes.join(' | ') ||
+          'product semantics unresolved'),
     };
   }
   if (final.productBehaviorAuthority.classificationOutcome !== 'classified') {

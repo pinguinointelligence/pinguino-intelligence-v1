@@ -93,6 +93,7 @@ export const WORKING_NUMERIC_FIELDS = [
   'water_percent',
   'total_solids_percent',
   'fat_percent',
+  'saturated_fat_percent',
   'protein_percent',
   'carbohydrate_percent',
   'total_sugars_percent',

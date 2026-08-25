@@ -336,14 +336,18 @@ describe('final INTIMPORT closeout — package normalization and per-product res
       'Package Count': 'not_found',
     })])).candidates[0]!;
     const intelligence = assessIntimportProduct(candidate);
-    const provider = vi.fn(async () => ({ facts: [], calls: 1, researchOutcome: 'SEARCH_EXHAUSTED' as const }));
+    const requests: Array<{ fields: readonly string[] }> = [];
+    const provider = vi.fn(async (request: { fields: readonly string[] }) => {
+      requests.push(request);
+      return { facts: [], calls: 1, researchOutcome: 'SEARCH_EXHAUSTED' as const };
+    });
     await runIntimportEnrichment([{ intelligence, barcode: null }], provider, {
       maxCallsPerImport: 100,
       maxSpendUsd: 10,
       concurrency: 1,
     });
     expect(provider).toHaveBeenCalled();
-    const requested = provider.mock.calls[0]![0].fields;
+    const requested = requests[0]!.fields;
     expect(requested).toEqual(expect.arrayContaining([
       'brand', 'variant', 'description', 'claims', 'ingredients', 'nutritionBasis', 'energyKcal',
       'fat', 'saturatedFat', 'carbohydrate', 'sugars', 'protein', 'salt', 'packageCount',

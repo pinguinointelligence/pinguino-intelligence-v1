@@ -63,6 +63,7 @@ export interface MapperKnowledgeRow {
   water_percent: number | null;
   total_solids_percent: number | null;
   fat_percent: number | null;
+  saturated_fat_percent?: number | null;
   protein_percent: number | null;
   carbohydrate_percent: number | null;
   total_sugars_percent: number | null;
@@ -94,6 +95,7 @@ export const CONSENSUS_BANDS: Readonly<Record<WorkingNumericField, number>> = Ob
   water_percent: 6,
   total_solids_percent: 6,
   fat_percent: 4,
+  saturated_fat_percent: 4,
   protein_percent: 2.5,
   carbohydrate_percent: 6,
   total_sugars_percent: 6,

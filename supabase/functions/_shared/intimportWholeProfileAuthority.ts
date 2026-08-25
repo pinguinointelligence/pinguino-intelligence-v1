@@ -164,6 +164,7 @@ const TECHNICAL_KEYS: Readonly<Record<WorkingNumericField, string>> = Object.fre
   water_percent: 'water',
   total_solids_percent: 'totalSolids',
   fat_percent: 'fat',
+  saturated_fat_percent: 'saturatedFat',
   protein_percent: 'protein',
   carbohydrate_percent: 'carbohydrate',
   total_sugars_percent: 'sugars',
