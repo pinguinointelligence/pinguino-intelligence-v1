@@ -7,7 +7,7 @@
  * spec §16–§17). Documented upgrade path: more per-category rows and/or a
  * freezing-curve model replace the internals later without an API change.
  */
-import { isSorbetFreezingTemperatureSupported } from '../sorbetFreezingPhysics';
+import { isSorbetFreezingTemperatureSupported } from '../sorbetFreezingPhysics.ts';
 import type { ProductCategory } from '../types';
 
 export interface IceAnchorRow {

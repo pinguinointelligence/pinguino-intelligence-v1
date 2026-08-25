@@ -53,7 +53,7 @@
     },
     {
       "path": "src/engine/config/iceAnchors.ts",
-      "sha256": "7a0df274c56d90c221ecd472caeec1653e0c0cc524ba5c1fde9cb650d8966825"
+      "sha256": "3b718b24d377e2e7bbd08ba9bbf8a7e15fb9a1d6813354c49799ec7cedb92464"
     },
     {
       "path": "src/engine/config/modes.ts",
@@ -268,5 +268,5 @@
       "sha256": "5523e8a79f059b81594793260535fc3b4a85185fe9f5020de87c2c7782a44fdb"
     }
   ],
-  "sourceClosureSha256": "0d148aa109a239358f903fc3c4dc262760246c0b882f402a569c797cb7355743"
+  "sourceClosureSha256": "cdefb481a2d5c17e6146619d6978c9409bf12af148d6feca2f2737e292009efb"
 }
