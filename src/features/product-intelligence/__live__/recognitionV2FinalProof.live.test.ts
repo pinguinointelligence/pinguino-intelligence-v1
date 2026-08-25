@@ -619,7 +619,10 @@ describe.runIf(LIVE)('Recognition V2 final real staging proof', () => {
     const ledgerRows = (await ledgerResponse.json()) as Array<{
       result_json?: { status?: string };
     }>;
-    expect(ledgerRows).toHaveLength(initialTelemetry.length);
+    const expectedPersistedAttempts = initialTelemetry.filter(
+      (entry) => entry.calls > 0 || entry.evidenceReceipt !== null,
+    ).length;
+    expect(ledgerRows).toHaveLength(expectedPersistedAttempts);
     const ledgerMetrics = {
       persistedRows: ledgerRows.length,
       classifiedRows: ledgerRows.filter((row) => row.result_json?.status === 'CLASSIFIED').length,
