@@ -361,9 +361,9 @@ describe('production session physical-reality contract', () => {
     const durable: ProductionRun = {
       runId: local.sessionId,
       ownerUserId: local.ownerUserId!,
-      recipeId: local.source.recipeId,
-      recipeVersionId: local.source.recipeVersionId,
-      recipeVersionNumber: local.source.recipeVersionNumber,
+      recipeId: local.source.recipeId!,
+      recipeVersionId: local.source.recipeVersionId!,
+      recipeVersionNumber: local.source.recipeVersionNumber!,
       status: 'in_progress',
       plannedBatchG: local.plannedInput.target_batch_grams,
       plannedItems: [

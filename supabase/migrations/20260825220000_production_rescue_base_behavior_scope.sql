@@ -56,4 +56,3 @@ begin
   end loop;
 end;
 $patch_production_rescue_behavior_scope$;
-
