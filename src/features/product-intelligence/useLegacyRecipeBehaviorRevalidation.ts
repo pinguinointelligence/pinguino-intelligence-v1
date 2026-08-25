@@ -4,6 +4,7 @@ import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMa
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore } from '@/stores/recipeStore';
+import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
 import {
   getEngineApprovedIngredientById,
 } from '@/services/ingredients';
@@ -198,6 +199,7 @@ export function useLegacyRecipeBehaviorRevalidation(enabled = true): void {
       // server-owned enrichment as a user edit. Normal saved/existing recipes
       // continue through the strict full-batch write door below.
       if (typeof latest.newRecipeStarterTemplateId === 'string') {
+        let starterWasUntouched = false;
         useRecipeStore.setState((current) => {
           if (
             current.draftContextSeq !== draftContextSeq ||
@@ -215,6 +217,7 @@ export function useLegacyRecipeBehaviorRevalidation(enabled = true): void {
           const wasUntouched =
             current.newRecipeStarterMaterialFingerprint !== null &&
             materialBeforeHydration === current.newRecipeStarterMaterialFingerprint;
+          starterWasUntouched = wasUntouched;
           const hydratedItems = upgraded.items.map((item) => ({
             ...item,
             ingredient: structuredClone(item.ingredient),
@@ -245,7 +248,15 @@ export function useLegacyRecipeBehaviorRevalidation(enabled = true): void {
         });
         // Hydration is automatic authority enrichment, not a user recipe
         // change. The live Engine already evaluates the hydrated starter; do
-        // not falsely require a PI click to initialize it.
+        // not falsely require a PI click to initialize it. The full Pro page
+        // installs the constraint-store recipe subscription, which correctly
+        // observes the authority fingerprint change above as a technical
+        // revision. Clear that subscriber signal only for this explicit fresh
+        // starter branch; saved/existing recipe hydration remains stale until
+        // the normal customer recalculation flow completes.
+        if (starterWasUntouched) {
+          useRecipeProfileStore.getState().acknowledgeRecalculation();
+        }
         return;
       }
       const committed = useRecipeStore.getState().applyVerifiedRecipeInput(

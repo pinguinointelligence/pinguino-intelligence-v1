@@ -10,6 +10,8 @@ import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
+import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
+import { WorkbenchSettingsLine } from '@/features/pro-workbench/WorkbenchSettingsLine';
 import { productBehaviorTestSnapshots } from './productBehaviorTestFixture';
 
 const mocks = vi.hoisted(() => ({
@@ -70,6 +72,12 @@ const rowFromEngine = (ingredient: EngineIngredient): IngredientRow => ({
 function Harness() {
   useLegacyRecipeBehaviorRevalidation();
   return null;
+}
+
+function FullRecipeHarness() {
+  useLegacyRecipeBehaviorRevalidation();
+  const actualBatchG = useRecipeStore((state) => state.target_batch_grams);
+  return <WorkbenchSettingsLine actualBatchG={actualBatchG} compact />;
 }
 
 const mockResolvedBehaviorFor = (recipe: RecipeInput): void => {
@@ -137,6 +145,7 @@ describe('legacy recipe runtime resolution', () => {
     });
     mocks.resolve.mockReset();
     mocks.getRow.mockReset();
+    useConstraintStudioStore.getState().resetForTests();
     useRecipeProfileStore.setState({ awaitingRecalculation: false });
   });
 
@@ -307,6 +316,53 @@ describe('legacy recipe runtime resolution', () => {
     expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(false);
   });
 
+  it('keeps the full served-page Gelato starter replaceable by native Protein P12 after authority hydration', async () => {
+    useRecipeStore.getState().startNewRecipe('gelato');
+    const gelato = buildRecipeInput(useRecipeStore.getState());
+    mockResolvedBehaviorFor(gelato);
+
+    await act(async () => root.render(<FullRecipeHarness />));
+    await vi.waitFor(() => {
+      expect(Object.keys(useRecipeStore.getState().productBehaviorSnapshots)).toHaveLength(
+        gelato.items.length,
+      );
+    });
+
+    expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(false);
+    const select = host.querySelector(
+      '[data-testid="workbench-product-type"]',
+    ) as HTMLSelectElement;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set?.call(
+        select,
+        'protein',
+      );
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    const protein = useRecipeStore.getState();
+    expect(protein.visibleProductType).toBe('protein');
+    expect(protein.category).toBe('protein_gelato');
+    expect(protein.newRecipeStarterTemplateId).toBe('protein_dairy_neutral_minus12_v1');
+    expect(protein.formulation_strategy).toBe('optimal');
+    expect(
+      Object.fromEntries(
+        protein.items.map((item) => [
+          item.ingredient.canonical_ingredient_id ?? item.ingredient.id,
+          item.planned_grams,
+        ]),
+      ),
+    ).toEqual({
+      'PI-ING-000236': 522,
+      'PI-ING-000180': 114,
+      'PI-ING-000264': 81,
+      'PI-ING-001409': 104,
+      'PI-ING-000514': 71,
+      'PI-ING-000494': 106,
+      'PI-ING-000492': 2,
+    });
+  });
+
   it('preserves an edited starter and its dirty/material state across asynchronous hydration', async () => {
     useRecipeStore.getState().startNewRecipe('gelato');
     const first = useRecipeStore.getState().items[0]!;
@@ -333,5 +389,6 @@ describe('legacy recipe runtime resolution', () => {
         unavailableMainIngredientIds: hydrated.unavailableMainIngredientIds,
       }),
     ).not.toBe(hydrated.newRecipeStarterMaterialFingerprint);
+    expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(true);
   });
 });
