@@ -948,7 +948,15 @@ export function isBatchReconciliation(current: RecipeInput, proposed: RecipeInpu
   if (!(target > 0)) return false;
   if (current.items.some((item) => item.actual_grams !== null)) return false;
   if (Math.abs(plannedSum(current) - target) <= BATCH_SUM_TOLERANCE_G) return false; // (1)
-  if (!isNearTargetBatch(current)) return false; // (2)
+  // An explicit Multi-Main set is itself a substantive, non-uniform contract:
+  // the user selected several positive identities and their coupled ratio.
+  // The historical ±25% proximity guard exists to reject hollow proportional
+  // projections (the 8 × 125 g class), not to discard a verified 1300→1000
+  // correction that preserves that Crown group. Ordinary/single-Main drafts
+  // remain subject to the frozen proximity rule.
+  const hasExplicitMultiMain =
+    current.items.filter((item) => item.lock_type === 'main' && item.planned_grams > 0).length > 1;
+  if (!isNearTargetBatch(current) && !hasExplicitMultiMain) return false; // (2)
   if (!isDifferentiatedComposition(current)) return false; // (3)
   if (Math.abs(plannedSum(proposed) - target) > BATCH_SUM_TOLERANCE_G) return false; // (4)
   const before = detectViolations(calculateRecipe(current)).length;
@@ -6396,9 +6404,7 @@ function buildOptimizePreviewWithDirection(
     if (neighborhood.status === 'candidate') {
       const lockedNames = lockedIngredientNames(input, set);
       const explanation: ConstraintExplanationEntry[] =
-        lockedNames.length > 0
-          ? [{ kind: 'locked_unchanged', ingredientNames: lockedNames }]
-          : [];
+        lockedNames.length > 0 ? [{ kind: 'locked_unchanged', ingredientNames: lockedNames }] : [];
       let preview = finishPreview(
         'optimize',
         copy.preview.kindLabels.optimize,

@@ -17,14 +17,20 @@ import {
   commitPreview,
   directionTargetFingerprint,
   findCanonicalDuplicateIngredients,
+  isBatchReconciliation,
   plannedSum,
   workingStateFingerprint,
   type ConstraintPreview,
 } from '@/features/constraint-studio/applyPipeline';
-import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
+import {
+  uncorrectableMultiMainAuthorityViolation,
+  useConstraintStudioStore,
+} from '@/features/constraint-studio/constraintStudioStore';
 import { ConstraintPreviewCard } from '@/features/constraint-studio/ui/ConstraintPreviewCard';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/contracts';
+import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
+import { verifyMainEnvelope } from '@/features/product-intelligence/mainEnvelope';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { verifyMainIngredientIdentity } from './mainIngredientContract';
 
@@ -37,11 +43,74 @@ const STRAWBERRIES: EngineIngredient = {
 };
 
 const BANANA: EngineIngredient = {
-  ...findDemoIngredient('banana')!,
   id: 'PI-ING-000345',
   canonical_ingredient_id: 'PI-ING-000345',
   name: 'BANANA · Fresh Fruit',
   category: 'fruit',
+  source_subcategory: 'fresh_fruit_profile',
+  composition: {
+    water_percent: 74.4,
+    solids_percent: 25.6,
+    fat_percent: 0.3,
+    protein_percent: 0.1,
+    carbohydrate_percent: 23.5,
+    sugar_percent: 19.3,
+    sucrose_percent: 11.1,
+    glucose_percent: 4.49,
+    dextrose_percent: 0,
+    fructose_percent: 3.8,
+    lactose_percent: 0,
+    polyol_percent: 0,
+    fiber_percent: 1.7,
+    salt_percent: 0,
+    alcohol_percent: 0,
+    kcal_per_100g: 97,
+  },
+  pod_value: 20.948,
+  pac_value: 26.68,
+  de_value: null,
+  cost_per_kg: 3.5,
+  cost_currency: 'EUR',
+  confidence_score: 92,
+  source_type: 'manual',
+  is_verified: false,
+};
+
+/** Exact verified Mapper row used by the served owner recipe. This must not be
+ * replaced with a renamed berry fixture: Cranberry's 0.029 PAC is materially
+ * different from Strawberry/Raspberry and is part of the regression. */
+const CRANBERRY: EngineIngredient = {
+  id: 'PI-ING-001556',
+  canonical_ingredient_id: 'PI-ING-001556',
+  name: 'CRANBERRY · Fresh Fruit',
+  category: 'fruit',
+  source_subcategory: 'fresh_fruit_profile',
+  composition: {
+    water_percent: 87.295,
+    solids_percent: 12.705,
+    fat_percent: 0.1,
+    protein_percent: 0.4,
+    carbohydrate_percent: 7.6,
+    sugar_percent: 0,
+    sucrose_percent: 0,
+    glucose_percent: 0,
+    dextrose_percent: 0,
+    fructose_percent: 0,
+    lactose_percent: 0,
+    polyol_percent: 0,
+    fiber_percent: 4.6,
+    salt_percent: 0.005,
+    alcohol_percent: 0,
+    kcal_per_100g: 42,
+  },
+  pod_value: 0,
+  pac_value: 0.029,
+  de_value: null,
+  cost_per_kg: null,
+  cost_currency: 'EUR',
+  confidence_score: 95,
+  source_type: 'manual',
+  is_verified: true,
 };
 
 const PISTACHIO: EngineIngredient = {
@@ -321,11 +390,7 @@ describe('owner runtime fixtures — identity and ratio are hard formulation int
       goals: { formulation_strategy: 'optimal' },
       items: [
         line('line-banana', BANANA, 150),
-        line(
-          'line-strawberry',
-          { ...STRAWBERRIES, name: 'CRANBERRY · Fresh Fruit' },
-          150,
-        ),
+        line('line-cranberry', CRANBERRY, 150),
         line('line-milk', findDemoIngredient('milk_3_5')!, 672, 'unlocked'),
         line('line-cream', findDemoIngredient('cream_30')!, 130, 'unlocked'),
         line('line-smp', findDemoIngredient('smp')!, 35, 'unlocked'),
@@ -335,14 +400,24 @@ describe('owner runtime fixtures — identity and ratio are hard formulation int
       ],
     };
     expect(plannedSum(input)).toBe(1_300);
+    const proportionalCandidate: RecipeInput = {
+      ...input,
+      items: input.items.map((item) => ({
+        ...item,
+        planned_grams: (item.planned_grams * input.target_batch_grams) / plannedSum(input),
+      })),
+    };
+    expect(isBatchReconciliation(input, proportionalCandidate)).toBe(true);
 
+    // Engine-only formulation proof. ProductBehavior is asserted separately
+    // below so this never disguises Cranberry as a different berry policy.
     const result = buildOptimizePreview(input, NO, '2026-08-25T00:00:00.000Z');
 
     expect(result.ok, JSON.stringify(result)).toBe(true);
     if (!result.ok) return;
     const banana = result.preview.proposedInput.items.find((item) => item.id === 'line-banana')!;
     const cranberry = result.preview.proposedInput.items.find(
-      (item) => item.id === 'line-strawberry',
+      (item) => item.id === 'line-cranberry',
     )!;
     expect(plannedSum(result.preview.proposedInput)).toBe(1_000);
     expect(banana.planned_grams).toBeGreaterThan(0);
@@ -359,6 +434,76 @@ describe('owner runtime fixtures — identity and ratio are hard formulation int
       />,
     );
     expect(previewHtml).toContain('Multi-Main: BANANA : CRANBERRY = 1 : 1 — zachowane');
+  });
+
+  it('fails closed on the exact served Banana/Cranberry pair until a shared Multi-Main policy is published', () => {
+    const input: RecipeInput = {
+      mode: 'classic',
+      category: 'milk_gelato',
+      target_temperature_c: -12,
+      target_batch_grams: 1_000,
+      machine_capacity_grams: null,
+      goals: { formulation_strategy: 'optimal' },
+      items: [
+        line('line-banana', BANANA, 150),
+        line('line-cranberry', CRANBERRY, 150),
+        line('line-milk', findDemoIngredient('milk_3_5')!, 672, 'unlocked'),
+        line('line-cream', findDemoIngredient('cream_30')!, 130, 'unlocked'),
+        line('line-smp', findDemoIngredient('smp')!, 35, 'unlocked'),
+        line('line-sucrose', findDemoIngredient('sucrose')!, 130, 'unlocked'),
+        line('line-dextrose', findDemoIngredient('dextrose')!, 30, 'unlocked'),
+        line('line-tara', findDemoIngredient('tara_gum')!, 3, 'unlocked'),
+      ],
+    };
+    const snapshots = productBehaviorTestSnapshots(input);
+    snapshots['line-banana'] = {
+      ...snapshots['line-banana']!,
+      familyId: 'fruit',
+      subfamilyId: 'banana',
+      formId: 'fresh',
+      mainClassification: 'MAIN_PROFILE_SPECIFIC',
+      mainPolicyId: 'main-banana-fresh-dairy',
+      mainPolicyVersion: '2',
+      ecoFloorPercent: 10,
+      optimalCeilingPercent: 20,
+      hardLimitPercent: 30,
+      mainEquivalentFactor: 1,
+      mainBasis: 'FRUIT_EQUIVALENT',
+      requiresLiquidDairyCarrier: true,
+      liquidDairyCarrierFloorPercent: 30,
+      multiMainHardLimitPercent: null,
+    };
+    snapshots['line-cranberry'] = {
+      ...snapshots['line-cranberry']!,
+      familyId: 'fruit',
+      subfamilyId: 'berry',
+      formId: 'fresh',
+      mainClassification: 'MAIN_PROFILE_SPECIFIC',
+      mainPolicyId: 'main-berry-fresh-dairy',
+      mainPolicyVersion: '2',
+      ecoFloorPercent: 25,
+      optimalCeilingPercent: 35,
+      hardLimitPercent: 45,
+      mainEquivalentFactor: 1,
+      mainBasis: 'FRUIT_EQUIVALENT',
+      requiresLiquidDairyCarrier: true,
+      liquidDairyCarrierFloorPercent: 30,
+      multiMainHardLimitPercent: null,
+    };
+
+    expect(verifyMainEnvelope({ recipe: input, snapshots, mode: 'optimal' })).toMatchObject({
+      ok: false,
+      violations: [
+        expect.objectContaining({
+          code: 'multi_main_policy_unknown',
+          lineIds: ['line-banana', 'line-cranberry'],
+        }),
+      ],
+    });
+    expect(uncorrectableMultiMainAuthorityViolation(input, snapshots)).toMatchObject({
+      code: 'multi_main_policy_unknown',
+      lineIds: ['line-banana', 'line-cranberry'],
+    });
   });
 
   it.each([

@@ -51,6 +51,8 @@ import { missingProductDoseMessage } from '@/features/ingredient-builder/product
 import {
   productBehaviorSnapshotFingerprint,
   productBehaviorRequiredLineIds,
+  verifyMainEnvelope,
+  type MainEnvelopeViolation,
   type ProductBehaviorSnapshot,
 } from '@/features/product-intelligence';
 import { normalizeFormulationStrategy } from '@/features/formulation-strategy/strategy';
@@ -115,8 +117,14 @@ import {
   assessRescueIngredientAdvice,
   type RescueIngredientAdvice,
 } from './rescueIngredientAdvisor';
+import { runOptimizePreviewOffMainThread } from './optimizePreviewRuntime';
+import type { OptimizePreviewComputation } from './optimizePreviewComputation';
 
 export type RecalculationTerminalState = PipelineRecalculationTerminalState;
+
+interface PrebuiltOptimizePreview extends OptimizePreviewComputation {
+  createdAt: string;
+}
 
 /* ── helpers ─────────────────────────────────────────────────────────────── */
 
@@ -519,6 +527,7 @@ export interface ConstraintStudioState {
 
   createOptimizePreview: (
     proposalSnapshots?: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>,
+    prebuilt?: PrebuiltOptimizePreview,
   ) => void;
   acceptBestDirectionCandidate: () => void;
   createExplicitStandardRemovalPreview: (
@@ -662,15 +671,62 @@ function stageLockedConstraintFixPreview(args: LockedConstraintFixStageArgs): bo
 }
 
 let activePiRunGeneration = 0;
+let activePiAbortController: AbortController | null = null;
+let activePiAbortGeneration = 0;
 export const PI_RECALCULATION_DEADLINE_MS = 15_000;
 
 const isCurrentPiRun = (generation: number): boolean => generation === activePiRunGeneration;
+
+const abortActivePiWorker = (): void => {
+  activePiAbortController?.abort();
+  activePiAbortController = null;
+  activePiAbortGeneration = 0;
+};
+
+const activePiSignal = (generation: number): AbortSignal | undefined =>
+  activePiAbortGeneration === generation ? activePiAbortController?.signal : undefined;
+
+/**
+ * A mixed calibrated Multi-Main set cannot become authorized by changing
+ * grams: its policy IDs and combined limit are immutable server facts. Detect
+ * that one uncorrectable authority state before invoking the solver. All
+ * amount-dependent Main verdicts still flow through the normal optimizer.
+ */
+export function uncorrectableMultiMainAuthorityViolation(
+  recipe: RecipeInput,
+  snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>,
+  technicalOnlyMainLineIds: readonly string[] = [],
+): MainEnvelopeViolation | null {
+  const technicalOnly = new Set(technicalOnlyMainLineIds);
+  if (
+    recipe.items.filter(
+      (item) => item.lock_type === 'main' && item.planned_grams > 0 && !technicalOnly.has(item.id),
+    ).length < 2
+  ) {
+    return null;
+  }
+  const verification = verifyMainEnvelope({
+    recipe,
+    snapshots,
+    mode: normalizeFormulationStrategy(recipe.goals?.formulation_strategy ?? recipe.mode),
+    enforceFloor: false,
+    technicalOnlyMainLineIds,
+  });
+  return verification.ok
+    ? null
+    : (verification.violations.find(
+        (violation) => violation.code === 'multi_main_policy_unknown',
+      ) ?? null);
+}
 
 /** One click starts one visible run and invalidates every artefact owned by the
  * previous run. Kept outside React so every PI entry point has the same
  * immediate WORKING semantics. */
 export function beginPiRecalculation(): number {
+  abortActivePiWorker();
   activePiRunGeneration += 1;
+  activePiAbortController = new AbortController();
+  activePiAbortGeneration = activePiRunGeneration;
   useRecipeProfileStore.getState().markRecalculationRequired();
   useConstraintStudioStore.setState({
     history: [],
@@ -687,6 +743,7 @@ export function beginPiRecalculation(): number {
  */
 export function cancelPiRecalculation(): void {
   if (useConstraintStudioStore.getState().recalculationTerminal?.state !== 'WORKING') return;
+  abortActivePiWorker();
   activePiRunGeneration += 1;
   useConstraintStudioStore.setState({
     ...CLEAR_STAGED,
@@ -872,7 +929,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           ...CLEAR_STAGED,
         }),
 
-      createOptimizePreview: (proposalSnapshots) => {
+      createOptimizePreview: (proposalSnapshots, prebuilt) => {
         get().reconcile();
         // A new run owns one terminal result. Old Preview/issue/Undo evidence
         // cannot coexist with it or be mistaken for this run's outcome.
@@ -1012,9 +1069,15 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           productBehaviorSnapshots: snapshots,
           technicalOnlyMainLineIds,
         };
-        const optimizeCreatedAt = nowIso();
+        const optimizeCreatedAt = prebuilt?.createdAt ?? nowIso();
         const result = bindProductBehaviorToPreview(
-          buildOptimizePreview(draft.input, draft.constraints, optimizeCreatedAt, optimizeOptions),
+          prebuilt?.result ??
+            buildOptimizePreview(
+              draft.input,
+              draft.constraints,
+              optimizeCreatedAt,
+              optimizeOptions,
+            ),
           proposedAuthority,
           snapshots,
           technicalOnlyMainLineIds,
@@ -1025,13 +1088,15 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         // only approved absent ingredients and returns null without material
         // evidence. Pure simulation; it never adds a line to the draft.
         const rescueAdviceFor = (bestCurrent: ConstraintPreview | null) =>
-          assessRescueIngredientAdvice({
-            input: draft.input,
-            set: draft.constraints,
-            createdAt: optimizeCreatedAt,
-            options: optimizeOptions,
-            bestCurrent,
-          });
+          prebuilt
+            ? prebuilt.rescueAdvice
+            : assessRescueIngredientAdvice({
+                input: draft.input,
+                set: draft.constraints,
+                createdAt: optimizeCreatedAt,
+                options: optimizeOptions,
+                bestCurrent,
+              });
         const proposalProductBehaviorAuthorization =
           proposalSnapshots && result.ok
             ? {
@@ -1110,9 +1175,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
                   preview: result.preview,
                   directionBestCandidate: null,
                   rescueAdvice:
-                    result.preview.diagnosticOnly === true
-                      ? rescueAdviceFor(result.preview)
-                      : null,
+                    result.preview.diagnosticOnly === true ? rescueAdviceFor(result.preview) : null,
                   directionConsent: null,
                   substitutionConsent: null,
                   substitutionAuthorization: null,
@@ -1633,6 +1696,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           // Phase 3: the undo restore is itself a material edit (monotonic).
           draftRevision: state.draftRevision + 1,
         }));
+        abortActivePiWorker();
         const generation = (activePiRunGeneration += 1);
         set({
           constraints: last.before.constraints,
@@ -2199,7 +2263,10 @@ async function restoreScorePresentationAfterUndo(
 
 /** Runtime wrapper: every customer-visible Preview rechecks current server
  * authority while pure store actions remain deterministic domain seams. */
-export async function createOptimizePreviewWithServerAuthority(generation?: number): Promise<void> {
+export async function createOptimizePreviewWithServerAuthority(
+  generation?: number,
+  signal?: AbortSignal,
+): Promise<void> {
   // The server check is part of the same recalculation run. Clear every prior
   // terminal artefact before waiting so stale Preview/Undo can never coexist
   // with a new result.
@@ -2260,14 +2327,50 @@ export async function createOptimizePreviewWithServerAuthority(generation?: numb
     return;
   }
   const technicalOnlyMainLineIds = recipeState.ownerReviewGate?.technicalOnlyMainLineIds ?? [];
-  const rawProposal = buildOptimizePreview(draft.input, draft.constraints, nowIso(), {
+  const uncorrectableMain = uncorrectableMultiMainAuthorityViolation(
+    draft.input,
+    validation.snapshots,
+    technicalOnlyMainLineIds,
+  );
+  if (uncorrectableMain) {
+    const issue: BuildPreviewResult = {
+      ok: false,
+      code: 'product_behavior_invalid',
+      violations: [uncorrectableMain],
+      messagePl: uncorrectableMain.messagePl,
+    };
+    useConstraintStudioStore.setState({
+      history: [],
+      ...CLEAR_STAGED,
+      previewIssue: issue,
+      recalculationTerminal: {
+        state: 'BLOCKED_WITH_EXACT_ACTION',
+        code: 'product_behavior_invalid',
+        messagePl: uncorrectableMain.messagePl,
+        action: 'return_to_recipe',
+      },
+    });
+    return;
+  }
+  const optimizeCreatedAt = nowIso();
+  const optimizeOptions = {
     excludedIngredientIds: draft.excludedIngredientIds,
     unavailableMainIngredientIds: draft.unavailableMainIngredientIds,
     effectivePriceOverrides: useCustomerPriceStore.getState().overridesByCanonicalId,
     requirePracticalPreview: true,
     productBehaviorSnapshots: validation.snapshots,
     technicalOnlyMainLineIds,
-  });
+  };
+  const computation = await runOptimizePreviewOffMainThread(
+    {
+      input: draft.input,
+      constraints: draft.constraints,
+      createdAt: optimizeCreatedAt,
+      options: optimizeOptions,
+    },
+    signal,
+  );
+  const rawProposal = computation.result;
   let proposedSnapshots: Record<string, ProductBehaviorSnapshot> | undefined;
   if (rawProposal.ok) {
     const proposedAuthority = await currentRecipeAuthorityReady({
@@ -2343,7 +2446,10 @@ export async function createOptimizePreviewWithServerAuthority(generation?: numb
   }
   useRecipeStore.getState().syncProductBehaviorSnapshots(validation.snapshots);
   if (!isCurrentPiRun(ownedGeneration)) return;
-  useConstraintStudioStore.getState().createOptimizePreview(proposedSnapshots);
+  useConstraintStudioStore.getState().createOptimizePreview(proposedSnapshots, {
+    ...computation,
+    createdAt: optimizeCreatedAt,
+  });
   if (useConstraintStudioStore.getState().recalculationTerminal?.state !== 'NO_CHANGE_NEEDED') {
     return;
   }
@@ -2358,7 +2464,11 @@ export async function createOptimizePreviewWithServerAuthority(generation?: numb
   // Apply pipeline's practical-recipe audit. Recreate that authority only at
   // this server-validated seam and only when the physical whole-gram transform
   // proves that it would leave the current recipe byte-for-byte equivalent.
-  const practical = practicalizeRecipeCandidate(draft.input, draft.constraints, flavourHeldLineIds(draft.input));
+  const practical = practicalizeRecipeCandidate(
+    draft.input,
+    draft.constraints,
+    flavourHeldLineIds(draft.input),
+  );
   if (
     !practical.ok ||
     practicalRecipeInputFingerprint(practical.audit.executableInput) !==
@@ -2457,13 +2567,21 @@ export async function runPiRecalculationWithTerminal(
   deadlineMs = PI_RECALCULATION_DEADLINE_MS,
 ): Promise<void> {
   const ownedGeneration = generation ?? beginPiRecalculation();
-  const execute = run ?? (() => createOptimizePreviewWithServerAuthority(ownedGeneration));
+  const execute =
+    run ??
+    (() =>
+      createOptimizePreviewWithServerAuthority(ownedGeneration, activePiSignal(ownedGeneration)));
   let deadline: ReturnType<typeof setTimeout> | undefined;
+  let deadlineTriggered = false;
   try {
     await Promise.race([
       execute(),
       new Promise<never>((_, reject) => {
-        deadline = setTimeout(() => reject(new PiRecalculationDeadlineError()), deadlineMs);
+        deadline = setTimeout(() => {
+          deadlineTriggered = true;
+          reject(new PiRecalculationDeadlineError());
+          if (isCurrentPiRun(ownedGeneration)) abortActivePiWorker();
+        }, deadlineMs);
       }),
     ]);
     if (!isCurrentPiRun(ownedGeneration)) return;
@@ -2477,9 +2595,10 @@ export async function runPiRecalculationWithTerminal(
     }
   } catch (error) {
     if (!isCurrentPiRun(ownedGeneration)) return;
-    if (error instanceof PiRecalculationDeadlineError) {
+    if (error instanceof PiRecalculationDeadlineError || deadlineTriggered) {
       // Invalidate this generation without starting another visible run. A late
       // ProductBehavior response can no longer publish into the timed-out UI.
+      abortActivePiWorker();
       activePiRunGeneration += 1;
       useConstraintStudioStore.setState({
         preview: null,
