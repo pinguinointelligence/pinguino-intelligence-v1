@@ -7,6 +7,10 @@ const migration = readFileSync(
   resolve(root, 'supabase/migrations/20260825210000_product_behavior_authority_restore.sql'),
   'utf8',
 );
+const articleCodeSearchMigration = readFileSync(
+  resolve(root, 'supabase/migrations/20260825213000_product_article_code_search.sql'),
+  'utf8',
+);
 const catalogSubmit = readFileSync(
   resolve(root, 'supabase/functions/catalog-submit/index.ts'),
   'utf8',
@@ -49,5 +53,12 @@ describe('PR/PM ProductBehavior authority restore', () => {
     expect(scannerFinalize).toContain('validateProductBehaviorAuthority');
     expect(catalogSubmit).toContain('.range(offset, offset + 999)');
     expect(scannerFinalize).toContain('.range(offset, offset + 999)');
+  });
+
+  it('keeps the product-owned PR/PM article code searchable in the normal picker', () => {
+    expect(articleCodeSearchMigration).toContain('public.search_products_v1');
+    expect(articleCodeSearchMigration).toContain('p.product_name_internal,p.product_code,p.brand');
+    expect(articleCodeSearchMigration).not.toContain('mapper_ingredient_id:=p.product_code');
+    expect(articleCodeSearchMigration).not.toMatch(/(insert\s+into|update)\s+public\.mapper_basement/i);
   });
 });
