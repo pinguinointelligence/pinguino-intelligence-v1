@@ -9,10 +9,7 @@
  * measured against the original user vector.
  */
 import { calculateRecipe, detectViolations, type RecipeInput } from '@/engine';
-import {
-  BATCH_SUM_TOLERANCE_G,
-  type ConstraintSet,
-} from '@/features/recipe-constraints';
+import { BATCH_SUM_TOLERANCE_G, type ConstraintSet } from '@/features/recipe-constraints';
 import { recipeDirectionViolations } from '@/features/recipe-direction/recipeDirectionTargets';
 import {
   captureMainIngredientIntent,
@@ -46,6 +43,11 @@ export interface ExperimentalSearchOptions {
   evaluationBudget: number;
   /** Composing expansions at one precision before refining the step. */
   iterationsPerStep?: number;
+  /** Optional already-verified vectors to polish against the original x_user.
+   * Seeds never replace the baseline authority: every one is re-evaluated by
+   * the same hard gates and target/proximity comparator before entering the
+   * beam. */
+  seedInputs?: readonly RecipeInput[];
   excludedIngredientIds?: readonly string[];
   effectivePriceOverrides?: CustomerPriceIndex;
   /** Optional read-only ProductBehavior/stage authority supplied by a harness. */
@@ -156,10 +158,7 @@ export function evaluateExperimentalCandidate(
   baseline: RecipeInput,
   candidate: RecipeInput,
   set: ConstraintSet,
-  options: Pick<
-    ExperimentalSearchOptions,
-    'externalHardGate' | 'effectivePriceOverrides'
-  > = {},
+  options: Pick<ExperimentalSearchOptions, 'externalHardGate' | 'effectivePriceOverrides'> = {},
 ): ExperimentalCandidateMeasure {
   const pricedCandidate = applyEffectiveCustomerPrices(
     candidate,
@@ -186,16 +185,14 @@ export function evaluateExperimentalCandidate(
     result.warnings.filter((warning) => warning.severity === 'critical').length;
   const structurallyAdmissible =
     new Set(candidate.items.map((item) => item.id)).size === candidate.items.length &&
-    !candidate.items.some(
-      (item) => {
-        const base = baseline.items.find((entry) => entry.id === item.id);
-        return (
-          !Number.isInteger(item.planned_grams) ||
-          item.planned_grams <= 0 ||
-          (base ? item.actual_grams !== base.actual_grams : item.actual_grams !== null)
-        );
-      },
-    ) &&
+    !candidate.items.some((item) => {
+      const base = baseline.items.find((entry) => entry.id === item.id);
+      return (
+        !Number.isInteger(item.planned_grams) ||
+        item.planned_grams <= 0 ||
+        (base ? item.actual_grams !== base.actual_grams : item.actual_grams !== null)
+      );
+    }) &&
     Math.abs(plannedSum(candidate) - baseline.target_batch_grams) <= BATCH_SUM_TOLERANCE_G &&
     verifyMainIngredientIdentity(baseline, candidate, set.byLineId).ok &&
     hardRolePresencePreserved(baseline, candidate) &&
@@ -235,15 +232,9 @@ export function compareExperimentalCandidateMeasures(
   if (compared !== 0) return compared;
   compared = compareNumber(left.hardSeverityPoints, right.hardSeverityPoints);
   if (compared !== 0) return compared;
-  compared = compareNumber(
-    left.explicitTargetViolationCount,
-    right.explicitTargetViolationCount,
-  );
+  compared = compareNumber(left.explicitTargetViolationCount, right.explicitTargetViolationCount);
   if (compared !== 0) return compared;
-  compared = compareNumber(
-    left.explicitTargetSeverityPoints,
-    right.explicitTargetSeverityPoints,
-  );
+  compared = compareNumber(left.explicitTargetSeverityPoints, right.explicitTargetSeverityPoints);
   if (compared !== 0) return compared;
   // Crown is an explicit user request and therefore precedes proximity.
   compared = compareNumber(right.crownGrams, left.crownGrams);
@@ -268,9 +259,13 @@ export function compareExperimentalCandidateMeasures(
 
 /** Existing batch-relative ladder, refined to executable whole-gram precision. */
 export function deriveExperimentalStepSchedule(targetBatchGrams: number): number[] {
-  return [...new Set([0.05, 0.02, 0.01, 0.005, 0.002, 0.001].map((fraction) =>
-    Math.max(1, Math.round(targetBatchGrams * fraction)),
-  ))].sort((left, right) => right - left);
+  return [
+    ...new Set(
+      [0.05, 0.02, 0.01, 0.005, 0.002, 0.001].map((fraction) =>
+        Math.max(1, Math.round(targetBatchGrams * fraction)),
+      ),
+    ),
+  ].sort((left, right) => right - left);
 }
 
 const candidateKey = (input: RecipeInput): string =>
@@ -385,11 +380,27 @@ export function experimentalNeighborhoodSearch(
   );
   const mainLineIds = mainIntent.map((main) => main.lineId);
   const seen = new Set<string>([candidateKey(baseline)]);
-  let beam: SearchState[] = [{ input: baseline, measure: initial }];
-  let best = beam[0]!;
   let candidateEvaluations = 0;
   let iterations = 0;
   let budgetExhausted = false;
+  const seeded: SearchState[] = [{ input: baseline, measure: initial }];
+  for (const seed of options.seedInputs ?? []) {
+    if (candidateEvaluations >= evaluationBudget) {
+      budgetExhausted = true;
+      break;
+    }
+    const key = candidateKey(seed);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    candidateEvaluations += 1;
+    const measure = evaluateExperimentalCandidate(baseline, seed, set, options);
+    if (measure.structurallyAdmissible) seeded.push({ input: seed, measure });
+  }
+  seeded.sort((left, right) =>
+    compareExperimentalCandidateMeasures(left.measure, right.measure, strategy),
+  );
+  let beam = seeded.slice(0, beamWidth);
+  let best = beam[0]!;
 
   const consider = (candidate: RecipeInput, pool: SearchState[]) => {
     if (candidateEvaluations >= evaluationBudget) {
@@ -422,8 +433,7 @@ export function experimentalNeighborhoodSearch(
         );
         const receivers = adjustable.filter(
           (item) =>
-            item.lock_type === 'unlocked' &&
-            !excluded.has(canonicalIngredientId(item.ingredient)),
+            item.lock_type === 'unlocked' && !excluded.has(canonicalIngredientId(item.ingredient)),
         );
         for (const donor of donors) {
           const relativeStep = Math.max(1, Math.round(donor.planned_grams * 0.1));
@@ -437,10 +447,7 @@ export function experimentalNeighborhoodSearch(
               if (budgetExhausted) break;
             }
             if (mainLineIds.length > 0 && !mainLineIds.includes(donor.id)) {
-              consider(
-                withMainGroupIncrease(state.input, mainLineIds, donor.id, delta),
-                pool,
-              );
+              consider(withMainGroupIncrease(state.input, mainLineIds, donor.id, delta), pool);
             }
             if (budgetExhausted) break;
           }
@@ -453,14 +460,14 @@ export function experimentalNeighborhoodSearch(
       );
       const nextBeam = pool.slice(0, beamWidth);
       const nextBest = nextBeam[0] ?? best;
-      if (
-        compareExperimentalCandidateMeasures(nextBest.measure, best.measure, strategy) < 0
-      ) {
+      if (compareExperimentalCandidateMeasures(nextBest.measure, best.measure, strategy) < 0) {
         best = nextBest;
       }
       const unchanged =
         nextBeam.length === beam.length &&
-        nextBeam.every((state, index) => candidateKey(state.input) === candidateKey(beam[index]!.input));
+        nextBeam.every(
+          (state, index) => candidateKey(state.input) === candidateKey(beam[index]!.input),
+        );
       beam = nextBeam;
       if (unchanged) break;
     }
@@ -491,16 +498,25 @@ export function experimentalNeighborhoodSearch(
     return { status: 'refused', input: baseline, measure: initial, diagnostics: finalDiagnostics };
   }
   if (!mainImproved && mainIntent.length > 0) {
-    return { status: 'no_change', input: baseline, measure: initial, diagnostics: finalDiagnostics };
+    return {
+      status: 'no_change',
+      input: baseline,
+      measure: initial,
+      diagnostics: finalDiagnostics,
+    };
   }
   if (targetReached) {
-    return { status: 'candidate', input: best.input, measure: best.measure, diagnostics: finalDiagnostics };
+    return {
+      status: 'candidate',
+      input: best.input,
+      measure: best.measure,
+      diagnostics: finalDiagnostics,
+    };
   }
   const directionImproved =
     best.measure.explicitTargetViolationCount < initial.explicitTargetViolationCount ||
     (best.measure.explicitTargetViolationCount === initial.explicitTargetViolationCount &&
-      best.measure.explicitTargetSeverityPoints <
-        initial.explicitTargetSeverityPoints - EPSILON);
+      best.measure.explicitTargetSeverityPoints < initial.explicitTargetSeverityPoints - EPSILON);
   return directionImproved
     ? { status: 'nearest', input: best.input, measure: best.measure, diagnostics: finalDiagnostics }
     : { status: 'refused', input: baseline, measure: initial, diagnostics: finalDiagnostics };

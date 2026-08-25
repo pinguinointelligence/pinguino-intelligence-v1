@@ -2623,6 +2623,91 @@ const requiredLineContractViolations = (before: RecipeInput, after: RecipeInput)
     .map((item) => item.id);
 };
 
+/**
+ * Post-solve proximity polish for a no-Main recipe that ALREADY reaches every
+ * exact Direction target. The reached candidate is a seed, not authority: it
+ * is re-evaluated alongside x_user by the same hard/target/proximity hierarchy,
+ * and every explored vector passes the normal constraint, required-line,
+ * ProductBehavior and ECO-flavour gates. The search can therefore only keep or
+ * improve a reached recipe; it cannot trade away the target to buy proximity.
+ */
+const polishReachedDirectionVector = (
+  input: RecipeInput,
+  set: ConstraintSet,
+  reached: RecipeInput,
+  options: OptimizePreviewOptions,
+): RecipeInput => {
+  if (
+    !hasActiveExactDirectionObjective(input) ||
+    captureMainIngredientIntent(input).length > 0 ||
+    input.goals?.formulation_strategy === undefined ||
+    options.directionNearestPass === true ||
+    (options.rescueSimulationLineIds?.length ?? 0) > 0 ||
+    input.items.some(
+      (item) =>
+        item.actual_grams !== null ||
+        !Number.isInteger(item.planned_grams) ||
+        item.planned_grams <= 0 ||
+        (item.user_target_grams !== undefined &&
+          Number.isFinite(item.user_target_grams) &&
+          Math.abs(item.user_target_grams - item.planned_grams) > BATCH_SUM_TOLERANCE_G),
+    ) ||
+    Math.abs(plannedSum(input) - input.target_batch_grams) > BATCH_SUM_TOLERANCE_G
+  ) {
+    return reached;
+  }
+  const excluded = new Set(
+    (options.excludedIngredientIds ?? []).map(canonicalIngredientIdFromSourceId),
+  );
+  if (
+    input.items.some(
+      (item) => item.planned_grams > 0 && excluded.has(canonicalIngredientId(item.ingredient)),
+    )
+  ) {
+    return reached;
+  }
+  const module =
+    normalizeFormulationStrategy(input.goals.formulation_strategy ?? input.mode) === 'eco'
+      ? 'ECO'
+      : 'OPTIMAL';
+  const requiredBehaviorLineIds = productBehaviorRequiredLineIds({ items: input.items });
+  if (
+    Object.keys(options.productBehaviorSnapshots ?? {}).length > 0 &&
+    !productBehaviorModuleGate(
+      options.productBehaviorSnapshots ?? {},
+      module,
+      requiredBehaviorLineIds,
+    ).ready
+  ) {
+    return reached;
+  }
+  const polishSet = solverHolds(input, set, options);
+  const practicalSeedResult = practicalizeRecipeCandidate(
+    reached,
+    polishSet,
+    flavourHeldLineIds(reached),
+  );
+  if (!practicalSeedResult.ok) return reached;
+  const practicalSeed = practicalSeedResult.audit.executableInput;
+  if (recipeDirectionViolations(practicalSeed).length > 0) return reached;
+  const polished = experimentalNeighborhoodSearch(input, polishSet, {
+    beamWidth: 20,
+    evaluationBudget: 100_000,
+    seedInputs: [practicalSeed],
+    excludedIngredientIds: options.excludedIngredientIds,
+    effectivePriceOverrides: options.effectivePriceOverrides,
+    externalHardGate: (candidate) =>
+      verifyConstraintsPreserved(polishSet, candidate).ok &&
+      positiveStandardPresencePreserved(input, candidate) &&
+      requiredLineContractViolations(input, candidate).length === 0 &&
+      (module !== 'ECO' ||
+        verifyEcoFlavourProtection(input, candidate, {
+          productBehaviorSnapshots: options.productBehaviorSnapshots,
+        }).ok),
+  });
+  return polished.status === 'candidate' ? polished.input : reached;
+};
+
 export interface ManualIngredientTargetProof {
   lineId: string;
   requestedGrams: number;
@@ -5073,7 +5158,12 @@ function buildFormulationPreviewInternal(
   // (distance 1.3677 from [14,15]) while a legal 15.1365 candidate — distance
   // 0.1365 — was reachable from the same draft. Conceding while something
   // strictly nearer exists is precisely the non-nearest NEAREST this fixes.
-  const directionRanked = improveDirectionNearestVector(input, set, working, createdAt, options);
+  const directionRanked = polishReachedDirectionVector(
+    input,
+    set,
+    improveDirectionNearestVector(input, set, working, createdAt, options),
+    options,
+  );
   // §13 — NEVER carry a stale Main proof. The Main frontier ran against the
   // pre-ranking candidate and the Apply door re-derives `exactAcceptedMainGrams`
   // and `technicalScore` from whatever the Preview actually carries, so the
@@ -6782,7 +6872,12 @@ function buildOptimizePreviewWithDirection(
 
   // SHARED DIRECTION NEAREST: rank the final candidate by its distance to the
   // band the user actually requested before it is practicalized into a Preview.
-  working = improveDirectionNearestVector(input, set, working, createdAt, options);
+  working = polishReachedDirectionVector(
+    input,
+    set,
+    improveDirectionNearestVector(input, set, working, createdAt, options),
+    options,
+  );
 
   const preview = finishPreview(
     'optimize',

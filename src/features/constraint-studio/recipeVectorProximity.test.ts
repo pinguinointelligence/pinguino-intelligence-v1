@@ -465,6 +465,56 @@ describe('isolated multi-candidate neighborhood experiment — null hypothesis',
     ).toMatchObject({ ok: true });
   });
 
+  it.each(['optimal', 'eco'] as const)(
+    'polishes the combined Horchata Direction corner back toward x_user (%s)',
+    (strategy) => {
+      const source = horchata(strategy);
+      const input: RecipeInput = {
+        ...source,
+        target_temperature_c: -13,
+        goals: {
+          ...source.goals,
+          direction_targets_active: true,
+          direction_targets: { sweetness: -1, softness: 1, creaminess: 0, flavor: 0 },
+        },
+      };
+      const built = buildOptimizePreview(input, { byLineId: {} }, '2026-08-25T00:00:00.000Z', {
+        requirePracticalPreview: true,
+        ...(strategy === 'eco' ? { effectivePriceOverrides: HORCHATA_PRICES } : {}),
+      });
+      expect(built.ok, built.ok ? '' : built.code).toBe(true);
+      if (!built.ok) return;
+      expect(recipeDirectionViolations(built.preview.proposedInput)).toEqual([]);
+      expect(
+        built.preview.proposedInput.items.find((item) => item.id === 'cinnamon')?.planned_grams,
+      ).toBe(2);
+      expect(vectorDistance(input, built.preview.proposedInput)).toBeLessThan(8);
+      expect(
+        commitPreview(
+          input,
+          { byLineId: {} },
+          built.preview,
+          '2026-08-25T00:00:01.000Z',
+          `horchata-combined-corner-${strategy}`,
+          [],
+          undefined,
+          null,
+          null,
+          null,
+          null,
+          {},
+          [],
+          null,
+          null,
+          {
+            requirePracticalPreview: true,
+            ...(strategy === 'eco' ? { effectivePriceOverrides: HORCHATA_PRICES } : {}),
+          },
+        ),
+      ).toMatchObject({ ok: true });
+    },
+  );
+
   it('short-circuits at the original valid no-Crown vector without evaluating mutations', () => {
     const input = horchata('optimal');
     const result = experimentalNeighborhoodSearch(
