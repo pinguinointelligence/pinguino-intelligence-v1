@@ -9,13 +9,16 @@
  * intact; owner isolation on reads; and that any Supabase error surfaces as a thrown error
  * (never a false "saved").
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { EngineIngredient, RecipeInput } from '@/engine';
 import type { RecipeCapabilities } from '@/features/pro-core/recipeContracts';
 import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
 import type { CatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
-import { supabaseRecipesRepository } from './supabaseRecipes';
+import {
+  supabaseRecipesRepository,
+  type SupabaseRecipesDependencies,
+} from './supabaseRecipes';
 import { FakeDB, makeClient, type Result } from './supabaseRecipesFake';
 
 const TRACE = { engineVersion: 'e1', configVersion: 'c1' };
@@ -300,6 +303,80 @@ describe('supabase RecipesRepository adapter (fake client)', () => {
     expect(db.recipe_versions).toHaveLength(3);
     expect(JSON.stringify(db.recipe_versions.slice(0, 2))).toBe(historyBefore);
     expect(db.saved_recipe_meta[0]!.latest_version_number).toBe(3);
+  });
+
+  it('restore refreshes a stale historical ProductBehavior snapshot into a NEW version without rewriting history', async () => {
+    const db = new FakeDB();
+    type RefreshWorkingCopy = NonNullable<SupabaseRecipesDependencies['refreshWorkingCopy']>;
+    const refreshWorkingCopy: RefreshWorkingCopy = vi.fn(
+      async (args: Parameters<RefreshWorkingCopy>[0]) => ({
+        ok: true as const,
+        recipe: structuredClone(args.recipe),
+        snapshots: { a: baseBehaviorSnapshot('current') },
+        previousSnapshots: structuredClone(args.snapshots) as Record<string, ProductBehaviorSnapshot>,
+        requiredLineIds: ['a'],
+      }),
+    );
+    const dependencies: SupabaseRecipesDependencies = {
+      refreshWorkingCopy,
+      validateBehavior: async (args) => {
+        const staleLineIds = Object.entries(args.snapshots)
+          .filter(([, snapshot]) => snapshot?.resolutionState !== 'RESOLVED')
+          .map(([lineId]) => lineId);
+        return {
+          schemaVersion: 1,
+          ready: staleLineIds.length === 0,
+          module: args.module,
+          lines: args.recipe.items.map((line) => ({
+            lineId: line.id,
+            state: staleLineIds.includes(line.id) ? 'stale' : 'ready',
+            reasons: staleLineIds.includes(line.id) ? ['facts_fingerprint_stale'] : [],
+          })),
+          staleLineIds,
+        };
+      },
+    };
+    const repo = supabaseRecipesRepository(makeClient(db, 'user-1'), dependencies);
+    const sourceInput = input(1000, [item('a', 'PI-ING-001409', 1000)]);
+    const { recipe } = await repo.createRecipe({
+      ownerUserId: 'user-1',
+      title: 'Historical water',
+      recipeInput: sourceInput,
+      productComposition: baseComposition('current'),
+      trace: TRACE,
+      by: 'user-1',
+      capabilities: PRO,
+    });
+    await repo.saveNewVersion(
+      recipe.recipeId,
+      input(1000, [item('a', 'PI-ING-001409', 1000)]),
+      TRACE,
+      'user-1',
+      undefined,
+      baseComposition('current'),
+    );
+
+    const historicalComposition = structuredClone(
+      db.recipe_versions[0]!.product_composition,
+    ) as RecipeCompositionMetadata;
+    historicalComposition.behaviorSnapshots!.a = {
+      ...baseBehaviorSnapshot('historical'),
+      resolutionState: 'REVALIDATION_REQUIRED',
+    };
+    db.recipe_versions[0]!.product_composition = historicalComposition;
+    const immutableHistoricalRow = JSON.stringify(db.recipe_versions[0]);
+
+    const restored = await repo.restore(recipe.recipeId, 1, 'user-1', PRO);
+
+    expect(refreshWorkingCopy).toHaveBeenCalledTimes(1);
+    expect(restored.versionNumber).toBe(3);
+    expect(restored.source).toBe('restored');
+    expect(restored.restoredFromVersion).toBe(1);
+    expect(restored.note).toMatch(/^PB_SNAPSHOT_REFRESH_RESTORE:/);
+    expect(restored.productComposition?.behaviorSnapshots?.a?.factsFingerprint).toBe(
+      'current-facts-pi-water',
+    );
+    expect(JSON.stringify(db.recipe_versions[0])).toBe(immutableHistoricalRow);
   });
 
   it('round-trips and restores the immutable Base/Topping composition sidecar', async () => {

@@ -29,6 +29,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/client';
 import type { RecipeInput } from '@/engine';
 import {
+  buildRefreshedRecipeBehaviorWorkingCopy,
+  productBehaviorSnapshotFingerprint,
+} from '@/features/product-intelligence';
+import {
   readRecipeCompositionMetadata,
   type RecipeCompositionMetadata,
 } from '@/features/recipe-composition/recipeCompositionPersistence';
@@ -36,7 +40,6 @@ import {
   buildRecipeVersion,
   canCreateNewRecipe,
   compareVersions,
-  restoreVersion,
 } from '@/features/pro-core/recipeVersioning';
 import type {
   RecipeVersion,
@@ -59,6 +62,14 @@ import type {
 const SAVED_RECIPES = 'saved_recipes';
 const SAVED_RECIPE_META = 'saved_recipe_meta';
 const RECIPE_VERSIONS = 'recipe_versions';
+
+type RefreshWorkingCopy = typeof buildRefreshedRecipeBehaviorWorkingCopy;
+type ValidateBehavior = typeof validateRecipeBehaviorOnServer;
+
+export interface SupabaseRecipesDependencies {
+  refreshWorkingCopy?: RefreshWorkingCopy;
+  validateBehavior?: ValidateBehavior;
+}
 
 /* ── row shapes (map 1:1 to the migration-0027 columns; invent no columns) ── */
 
@@ -268,7 +279,10 @@ export class SupabaseRecipes {
   /** Same memoization for the migration-20260823 atomic append RPC (see `tryAppendVersionRpc`). */
   private rpcAppendVersionUnavailable = false;
 
-  constructor(private readonly client: SupabaseClient) {}
+  constructor(
+    private readonly client: SupabaseClient,
+    private readonly dependencies: SupabaseRecipesDependencies = {},
+  ) {}
 
   /**
    * TRANSACTIONAL version append via public.append_recipe_version_v1 (migration 20260823103000).
@@ -696,38 +710,125 @@ export class SupabaseRecipes {
     // Restore = a NEW version derived from the target snapshot. History is read, never rewritten.
     // The gates below run against the TARGET snapshot and are independent of the new version's
     // number, so they are proven once, before the append.
-    const guardRestoredTarget = async (): Promise<RecipeVersion> => {
+    const guardRestoredTarget = async (): Promise<{
+      source: RecipeVersion;
+      recipeInput: RecipeInput;
+      productComposition: RecipeCompositionMetadata;
+      note: string | null;
+    }> => {
       const history = await this.getVersions(recipeId);
       const target = history.find((candidate) => candidate.versionNumber === targetVersionNumber);
       if (!target) throw new Error(`version ${targetVersionNumber} does not exist`);
+      const toppings = target.productComposition?.toppings ?? [];
+      const snapshots = target.productComposition?.behaviorSnapshots ?? {};
       const behaviorGate = recipeVersionBehaviorGate(
         target.recipeInput,
         target.productComposition,
         'RESTORE',
       );
-      if (!behaviorGate.ready) {
+      const validateBehavior = this.dependencies.validateBehavior ?? validateRecipeBehaviorOnServer;
+      const serverGate = behaviorGate.ready
+        ? await validateBehavior({
+            recipe: target.recipeInput,
+            toppings,
+            snapshots,
+            module: 'RESTORE',
+            accountId,
+            technicalOnlyMainLineIds:
+              target.productComposition?.ownerReviewGate?.technicalOnlyMainLineIds,
+            client: this.client,
+          })
+        : null;
+      if (behaviorGate.ready && serverGate?.ready) {
+        return {
+          source: target,
+          recipeInput: target.recipeInput,
+          productComposition:
+            target.productComposition ?? {
+              schemaVersion: 1,
+              baseScope: 'BASE_FORMULATION',
+              baseOrder: target.recipeInput.items.map((item) => item.id),
+              toppings: [],
+              behaviorSnapshots: {},
+              migrationAmbiguities: [],
+            },
+          note: null,
+        };
+      }
+
+      // A stale historical snapshot is never promoted as current. Build a
+      // current-authority copy and append that copy as a NEW restored version;
+      // the selected historical row remains byte-for-byte immutable.
+      const refreshWorkingCopy =
+        this.dependencies.refreshWorkingCopy ?? buildRefreshedRecipeBehaviorWorkingCopy;
+      const refreshed = await refreshWorkingCopy({
+        recipe: target.recipeInput,
+        toppings,
+        snapshots,
+        accountId,
+        technicalOnlyMainLineIds:
+          target.productComposition?.ownerReviewGate?.technicalOnlyMainLineIds,
+      });
+      if (!refreshed.ok) {
+        const names = [...new Set(refreshed.issues.map((issue) => issue.lineName))].join(', ');
         throw new Error(
-          behaviorGate.reason ?? 'Recipe version requires product behavior revalidation before restore.',
+          names
+            ? `Nie można odświeżyć danych produktów: ${names}.`
+            : 'Nie można odświeżyć danych produktów dla tej wersji receptury.',
         );
       }
-      const serverGate = await validateRecipeBehaviorOnServer({
-        recipe: target.recipeInput,
-        toppings: target.productComposition?.toppings,
-        snapshots: target.productComposition?.behaviorSnapshots ?? {},
+      const productComposition: RecipeCompositionMetadata = {
+        schemaVersion: 1,
+        baseScope: target.productComposition?.baseScope ?? 'BASE_FORMULATION',
+        baseOrder:
+          target.productComposition?.baseOrder ?? target.recipeInput.items.map((item) => item.id),
+        toppings: structuredClone(toppings),
+        behaviorSnapshots: structuredClone(refreshed.snapshots),
+        ...(target.productComposition?.ownerReviewGate
+          ? { ownerReviewGate: structuredClone(target.productComposition.ownerReviewGate) }
+          : {}),
+        migrationAmbiguities: structuredClone(
+          target.productComposition?.migrationAmbiguities ?? [],
+        ),
+      };
+      const refreshedLocalGate = recipeVersionBehaviorGate(
+        refreshed.recipe,
+        productComposition,
+        'RESTORE',
+      );
+      if (!refreshedLocalGate.ready) {
+        throw new Error('Odświeżona wersja nie przeszła lokalnej walidacji danych produktów.');
+      }
+      const refreshedServerGate = await validateBehavior({
+        recipe: refreshed.recipe,
+        toppings,
+        snapshots: refreshed.snapshots,
         module: 'RESTORE',
         accountId,
         technicalOnlyMainLineIds:
           target.productComposition?.ownerReviewGate?.technicalOnlyMainLineIds,
         client: this.client,
       });
-      if (!serverGate.ready) {
+      if (!refreshedServerGate.ready) {
+        const names = [...new Set(refreshedServerGate.staleLineIds.map((lineId) =>
+          refreshed.recipe.items.find((item) => item.id === lineId)?.ingredient.name ??
+          toppings.find((item) => item.id === lineId)?.ingredient.name ??
+          'produkt',
+        ))].join(', ');
         throw new Error(
-          `Recipe version requires current product behavior revalidation before restore: ${
-            serverGate.staleLineIds.join(', ') || 'unknown product line'
-          }`,
+          names
+            ? `Odświeżone dane produktów nadal wymagają uwagi: ${names}.`
+            : 'Odświeżone dane produktów nadal wymagają uwagi.',
         );
       }
-      return target;
+      return {
+        source: target,
+        recipeInput: refreshed.recipe,
+        productComposition,
+        note: `PB_SNAPSHOT_REFRESH_RESTORE:${target.versionId}:${productBehaviorSnapshotFingerprint(
+          refreshed.snapshots,
+        )}`,
+      };
     };
 
     const target = await guardRestoredTarget();
@@ -739,26 +840,42 @@ export class SupabaseRecipes {
       recipeInput: target.recipeInput,
       productComposition: target.productComposition,
       trace: {
-        engineVersion: target.engineVersion,
-        configVersion: target.configVersion,
-        mapperDatasetVersion: target.mapperDatasetVersion,
+        engineVersion: target.source.engineVersion,
+        configVersion: target.source.configVersion,
+        mapperDatasetVersion: target.source.mapperDatasetVersion,
       },
       source: 'restored',
-      note: null,
+      note: target.note,
       restoredFromVersion: targetVersionNumber,
     });
     if (atomic) return atomic;
 
     const version = await this.appendVersionWithRetry(recipeId, async () => {
       const history = await this.getVersions(recipeId);
-      const restored = restoreVersion(history, targetVersionNumber, by, new Date().toISOString(), '');
-      // A pre-v1.4 target snapshot carries NULL identity; the restored version must not inherit it.
-      const identity = versionIdentityFromInput(restored.recipeInput);
-      return {
-        ...restored,
-        productProfile: restored.productProfile ?? identity.productProfile,
-        temperatureC: restored.temperatureC ?? identity.temperatureC,
-      };
+      const versionNumber = history.reduce(
+        (max, candidate) => Math.max(max, candidate.versionNumber),
+        0,
+      ) + 1;
+      return buildRecipeVersion(
+        {
+          recipeId,
+          ownerUserId: target.source.ownerUserId,
+          versionNumber,
+          recipeInput: target.recipeInput,
+          productComposition: target.productComposition,
+          trace: {
+            engineVersion: target.source.engineVersion,
+            configVersion: target.source.configVersion,
+            mapperDatasetVersion: target.source.mapperDatasetVersion,
+          },
+          source: 'restored',
+          createdBy: by,
+          createdAt: new Date().toISOString(),
+          restoredFromVersion: targetVersionNumber,
+          note: target.note,
+        },
+        '',
+      );
     });
     await this.advanceAggregate(recipeId, version);
     return version;
@@ -850,8 +967,11 @@ export function supabaseRecipesBackendFactory(): (() => RecipesRepository) | und
   return () => supabaseRecipesRepository(client);
 }
 
-export function supabaseRecipesRepository(client: SupabaseClient): RecipesRepository {
-  const svc = new SupabaseRecipes(client);
+export function supabaseRecipesRepository(
+  client: SupabaseClient,
+  dependencies: SupabaseRecipesDependencies = {},
+): RecipesRepository {
+  const svc = new SupabaseRecipes(client, dependencies);
   return {
     createRecipe: (args) => svc.createRecipe(args),
     saveNewVersion: (recipeId, recipeInput, trace, by, opts, productComposition) =>
