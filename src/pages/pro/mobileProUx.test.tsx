@@ -229,8 +229,11 @@ describe('mobile preview navigation', () => {
     expect(tabs).toContain('if (bottom && expanded && tab === activeTab)');
     expect(tabs).toContain('onCollapse?.()');
     expect(surface).toContain('onCollapse={collapseMobileCockpit}');
-    // Collapsing is a ROUTE change, so „what is open" stays visible and shareable.
-    expect(surface).toContain("if (activeTab !== 'profile') onTabChange('profile')");
+    // Read-only modules still collapse to Recipe. An in-progress Production
+    // route stays mounted so its execution rows remain reachable underneath.
+    expect(surface).toContain('collapsedMobileCockpitRoute(');
+    expect(surface).toContain("activeTab === 'production' && production.session?.status === 'in_progress'");
+    expect(surface).toContain('if (routeAfterCollapse !== activeTab) onTabChange(routeAfterCollapse)');
   });
 
   it('a BLOCKING dialog outranks the bottom stack it blocks', () => {

@@ -10,7 +10,7 @@
  * of the four modules.
  */
 import { describe, expect, it } from 'vitest';
-import { nextMobileCockpitState } from './mobileCockpitModal';
+import { collapsedMobileCockpitRoute, nextMobileCockpitState } from './mobileCockpitModal';
 
 type Tab = 'profile' | 'monitor' | 'production' | 'summary';
 const MODULES: readonly Tab[] = ['profile', 'monitor', 'production', 'summary'];
@@ -56,5 +56,11 @@ describe('mobile module selection', () => {
     expect(state.open).toBe(false);
     state = nextMobileCockpitState<Tab>(state, 'profile');
     expect(state.open).toBe(true);
+  });
+
+  it('keeps an in-progress Production route when its cockpit is collapsed', () => {
+    expect(collapsedMobileCockpitRoute<Tab>('production', 'profile', true)).toBe('production');
+    expect(collapsedMobileCockpitRoute<Tab>('production', 'profile', false)).toBe('profile');
+    expect(collapsedMobileCockpitRoute<Tab>('monitor', 'profile', false)).toBe('profile');
   });
 });

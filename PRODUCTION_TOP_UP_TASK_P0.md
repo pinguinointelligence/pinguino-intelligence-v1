@@ -56,6 +56,10 @@ in the separate compact `KOREKTA — DODAJ JESZCZE` section. Its active number i
 (initialized from `authorizedDeltaG`); `physicalBaselineG` and `cumulativeTargetG` are secondary
 read-only context. The section is not mounted when no pending task exists.
 
+On narrow viewports the Production cockpit is a summary sheet. Collapsing that sheet during an
+in-progress run preserves the Production route, exposing the same execution rows and top-up section
+underneath; other cockpit modules retain their established collapse-to-Recipe behavior.
+
 ## Safety boundary
 
 No Engine, solver, `x_user`, Crown, Multi-Main, Mapper, profile-science, `minimum_safe`, or

@@ -31,3 +31,17 @@ export function nextMobileCockpitState<Tab extends string>(
   if (current.open && tapped === current.activeTab) return { activeTab: tapped, open: false };
   return { activeTab: tapped, open: true };
 }
+
+/**
+ * Collapsing a read-only cockpit normally returns to the recipe route. During
+ * an in-progress Production run, however, the ingredient workspace itself is
+ * the active route and must stay mounted so a narrow operator can weigh and
+ * confirm rows after closing the summary sheet.
+ */
+export function collapsedMobileCockpitRoute<Tab extends string>(
+  activeTab: Tab,
+  defaultTab: Tab,
+  keepActiveModule: boolean,
+): Tab {
+  return keepActiveModule ? activeTab : defaultTab;
+}
