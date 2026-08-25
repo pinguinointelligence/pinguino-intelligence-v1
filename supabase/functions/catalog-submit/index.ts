@@ -12,9 +12,11 @@ import {
 } from '../_shared/intimportWholeProfileAuthority.ts';
 import type { ProfileMatchInput } from '../../../src/features/product-intelligence/mapperValueInference.ts';
 import {
+  knownField,
   WORKING_NUMERIC_FIELDS,
   type WorkingNumericField,
 } from '../../../src/features/product-intelligence/productFieldTruth.ts';
+import type { CardContribution } from '../../../src/features/product-intelligence/productSourceCard.ts';
 import type {
   EvidenceSource,
   ProductEvidenceField,
@@ -152,7 +154,8 @@ const EVIDENCE_SOURCES = new Set<EvidenceSource>([
 
 const EVIDENCE_FIELDS = new Set<ProductEvidenceField>([
   'identity', 'brand', 'manufacturer', 'variant', 'netQuantity', 'ingredients', 'allergens',
-  'energyKcal', 'fat', 'carbohydrate', 'protein', 'salt', 'barcode', 'countryOfOrigin',
+  'nutritionBasis', 'energyKcal', 'fat', 'carbohydrate', 'sugars', 'fiber', 'protein', 'salt',
+  'barcode', 'countryOfOrigin',
   'dosage', 'technicalParameters', 'technicalSource',
 ]);
 
@@ -316,6 +319,8 @@ function serverProductProfileProposal(
       ['kcal', sourceEvidence.energyKcal],
       ['fat_g', sourceEvidence.fat],
       ['carbohydrate_g', sourceEvidence.carbohydrate],
+      ['sugars_g', sourceEvidence.sugars],
+      ['fiber_g', sourceEvidence.fibre],
       ['protein_g', sourceEvidence.protein],
       ['salt_g', sourceEvidence.salt],
     ].flatMap(([label, value]) => evidenceValuePresent(value) ? [`${label}:${String(value)}`] : [])
@@ -464,6 +469,7 @@ type TrustedIntimportEvidence = {
   provenance: Partial<Record<ProductEvidenceField, IntimportTrustedEvidenceProvenance>>;
   carbonationEvidence: CarbonationEvidence[];
   recognitionEvidence: ProductSemanticEvidence;
+  sourceCard: CardContribution | null;
 };
 
 const evidenceValuePresent = (value: unknown): boolean =>
@@ -504,6 +510,12 @@ async function trustedIntimportEvidence(input: {
   const fields: Partial<Record<ProductEvidenceField, EvidenceSource>> = {};
   const provenance: Partial<Record<ProductEvidenceField, IntimportTrustedEvidenceProvenance>> = {};
   const carbonationEvidence: CarbonationEvidence[] = [];
+  const acceptedWebNutritionFacts: {
+    field: ProductEvidenceField;
+    value: unknown;
+    sourceUrl: string;
+    authority: string;
+  }[] = [];
   let recognitionEvidence = canonicalizeProductSemanticEvidence(
     input.proposal.recognitionEvidence,
   );
@@ -517,6 +529,8 @@ async function trustedIntimportEvidence(input: {
     energyKcal: 'kcal',
     fat: 'fat_g',
     carbohydrate: 'carbohydrate_g',
+    sugars: 'sugars_g',
+    fiber: 'fiber_g',
     protein: 'protein_g',
     salt: 'salt_g',
   };
@@ -598,10 +612,13 @@ async function trustedIntimportEvidence(input: {
 
   const nutritionBasis = String(source.nutritionBasis ?? '').toLowerCase().replace(/\s+/g, '');
   const per100g = nutritionBasis === '100g' || nutritionBasis === 'per100g';
+  direct('nutritionBasis', source.nutritionBasis);
   if (per100g) {
     direct('energyKcal', source.energyKcal);
     direct('fat', source.fat);
     direct('carbohydrate', source.carbohydrate);
+    direct('sugars', source.sugars);
+    direct('fiber', source.fibre);
     direct('protein', source.protein);
     direct('salt', source.salt);
   }
@@ -710,6 +727,25 @@ async function trustedIntimportEvidence(input: {
           evidenceReceipt: receipt,
         };
         mergeRecognitionFact(field, fact.value, factSourceUrl);
+        if (
+          [
+            'nutritionBasis',
+            'energyKcal',
+            'fat',
+            'carbohydrate',
+            'sugars',
+            'fiber',
+            'protein',
+            'salt',
+          ].includes(field)
+        ) {
+          acceptedWebNutritionFacts.push({
+            field,
+            value: fact.value,
+            sourceUrl: factSourceUrl,
+            authority: authority.authority,
+          });
+        }
         if (field === 'ingredients') {
           const exactSource =
             authority.authority === 'AUTHORITATIVE_RETAILER'
@@ -736,6 +772,64 @@ async function trustedIntimportEvidence(input: {
     }
   }
 
+  // Web nutrition becomes product-owned VERIFIED composition only when the
+  // same server-validated receipt establishes a per-100 g basis. The browser
+  // never supplies this source card; it is rebuilt from the service ledger.
+  const webBasisFact = acceptedWebNutritionFacts.find(
+    (fact) => fact.field === 'nutritionBasis',
+  );
+  const webBasis = String(webBasisFact?.value ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const webPer100g =
+    per100g || (webBasis.includes('100g') && !webBasis.includes('100ml'));
+  const sourceCardFields: CardContribution['fields'] = {};
+  const workingFieldByFact: Readonly<Partial<Record<ProductEvidenceField, WorkingNumericField>>> = {
+    energyKcal: 'kcal_per_100g',
+    fat: 'fat_percent',
+    carbohydrate: 'carbohydrate_percent',
+    sugars: 'total_sugars_percent',
+    fiber: 'fiber_percent',
+    protein: 'protein_percent',
+    salt: 'salt_percent',
+  };
+  if (webPer100g) {
+    for (const fact of acceptedWebNutritionFacts) {
+      const field = workingFieldByFact[fact.field];
+      if (!field) continue;
+      const normalized = String(fact.value).trim().replace(',', '.');
+      if (!/^[+-]?\d+(?:\.\d+)?$/.test(normalized)) continue;
+      const value = Number(normalized);
+      if (!Number.isFinite(value) || value < 0 || (field !== 'kcal_per_100g' && value > 100)) {
+        continue;
+      }
+      const authority = fact.authority;
+      const basis =
+        authority === 'OFFICIAL_PRIVATE_LABEL'
+          ? 'private_label_card'
+          : authority === 'AUTHORITATIVE_RETAILER' || authority === 'STRUCTURED_PRODUCT_DATABASE'
+            ? 'retailer_card'
+            : authority.startsWith('OFFICIAL_')
+              ? 'official_manufacturer'
+              : null;
+      if (!basis) continue;
+      const confidence =
+        basis === 'official_manufacturer' ? 0.98 : basis === 'private_label_card' ? 0.95 : 0.92;
+      sourceCardFields[field] = knownField({
+        value,
+        state: 'VERIFIED',
+        confidence,
+        basis,
+        note: `server-validated enrichment: ${fact.sourceUrl}`,
+      });
+    }
+  }
+  const sourceCard: CardContribution | null = Object.keys(sourceCardFields).length > 0
+    ? {
+        fields: sourceCardFields,
+        per100ml: null,
+        reasons: [`server enrichment per 100 g: ${Object.keys(sourceCardFields).length} fields`],
+      }
+    : null;
+
   const evidence: ProductEvidenceInput = {
     kind: input.proposal.evidence.kind,
     fields,
@@ -757,7 +851,7 @@ async function trustedIntimportEvidence(input: {
     : null;
   recognitionEvidence.sourceUrls = [...new Set(recognitionEvidence.sourceUrls)];
   recognitionEvidence = canonicalizeProductSemanticEvidence(recognitionEvidence);
-  return { evidence, provenance, carbonationEvidence, recognitionEvidence };
+  return { evidence, provenance, carbonationEvidence, recognitionEvidence, sourceCard };
 }
 
 function serverManualProductProfileProposal(
@@ -1524,6 +1618,7 @@ Deno.serve(async (request) => {
         proposedMapperIngredientId: proposal.proposedMapperIngredientId,
         matchInput: proposal.matchInput,
         declared: proposal.declared,
+        sourceCard: trustedEvidence.sourceCard,
         evidence: trustedEvidence.evidence,
         recognitionEvidence: trustedEvidence.recognitionEvidence,
         trustedRecognition,

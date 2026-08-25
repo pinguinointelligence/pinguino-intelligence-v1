@@ -68,9 +68,14 @@ export type ProductEvidenceField =
   | 'netQuantity'
   | 'ingredients'
   | 'allergens'
+  /** Measurement basis is unweighted, but must be researched before nutrition
+   * numbers can become verified per-100 g working values. */
+  | 'nutritionBasis'
   | 'energyKcal'
   | 'fat'
   | 'carbohydrate'
+  | 'sugars'
+  | 'fiber'
   | 'protein'
   | 'salt'
   | 'barcode'

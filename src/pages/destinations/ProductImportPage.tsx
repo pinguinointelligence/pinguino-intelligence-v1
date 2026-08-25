@@ -27,6 +27,7 @@ import {
   type IntimportProductIntelligence,
 } from '@/features/product-intelligence/intimportIntelligence';
 import {
+  reassessIntimportAfterEnrichment,
   runIntimportEnrichment,
   type EnrichmentProgress,
   type EnrichmentRunSummary,
@@ -278,7 +279,8 @@ export function ProductImportPage() {
           // Strongest available source first — never a general search when the
           // owner already supplied official evidence.
           stepFor: (request) => {
-            const step = planByRow.get(request.rowIndex)?.steps[0];
+            const steps = planByRow.get(request.rowIndex)?.steps ?? [];
+            const step = steps[request.researchStepIndex] ?? steps.at(-1);
             return step
               ? { kind: step.kind, url: step.url, allowedDomains: step.allowedDomains }
               : null;
@@ -302,28 +304,15 @@ export function ProductImportPage() {
           'Mapper niedostępny po klasyfikacji — zachowano bezpieczny wynik sprzed ponownego dopasowania.',
         );
       }
-      const reanalysed = intimport && mapper
-        ? runIntimportLocalIntelligence(
-            intimport.candidates,
-            {},
+      const finalRows = intimport
+        ? reassessIntimportAfterEnrichment({
+            candidates: intimport.candidates,
+            enrichedProducts: outcome.products,
             mapper,
-            semantic.classifications,
-            new Map(outcome.products.map((row) => [row.rowIndex, row.recognitionEvidence])),
-          ).rows
+            semanticClassifications: semantic.classifications,
+            semanticEvidenceReceipts: semantic.evidenceReceipts,
+          }).rows
         : outcome.products;
-      const enrichedByRow = new Map(outcome.products.map((row) => [row.rowIndex, row] as const));
-      const finalRows = reanalysed.map((row) => {
-        const enriched = enrichedByRow.get(row.rowIndex);
-        return enriched
-          ? {
-              ...row,
-              evidence: enriched.evidence,
-              assessment: enriched.assessment,
-              enrichmentEvidenceReceipts: enriched.enrichmentEvidenceReceipts,
-              semanticEvidenceReceipt: semantic.evidenceReceipts.get(row.rowIndex) ?? null,
-            }
-          : row;
-      });
       // Import must consume the enriched assessments/evidence returned by the
       // explicit research pass. Keeping the pre-web rows here silently threw
       // away the new Product Accuracy and could admit/refuse on stale evidence.

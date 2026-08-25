@@ -11,7 +11,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { resolveSaveTarget } from './useCanonicalRecipeSave';
+import { productBehaviorSaveGateMessage, resolveSaveTarget } from './useCanonicalRecipeSave';
 
 const LINKED = { savedRecipeId: 'rc-1', savedRecipeName: 'Gelato waniliowe' };
 const UNLINKED = { savedRecipeId: null, savedRecipeName: null };
@@ -92,5 +92,16 @@ describe('handler invariants', () => {
     expect(SRC).toContain('practicalRecipeAuditMatchesInput(');
     expect(SRC).not.toContain('JSON.stringify(last.after.input)');
     expect(SRC).toContain('productionVersionFingerprint(recipeInput, productComposition)');
+  });
+});
+
+describe('fresh-native ProductBehavior Save copy', () => {
+  it('keeps Save blocked without presenting a native starter as a historical product', () => {
+    const fresh = productBehaviorSaveGateMessage(true);
+    const existing = productBehaviorSaveGateMessage(false);
+
+    expect(fresh).toMatch(/pierwszego przeliczenia/i);
+    expect(fresh).not.toMatch(/ponownej walidacji|historycz/i);
+    expect(existing).toMatch(/ponownej walidacji/i);
   });
 });

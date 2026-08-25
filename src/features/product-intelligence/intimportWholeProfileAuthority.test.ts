@@ -5,6 +5,7 @@ import {
   validateIntimportWholeProfileProposal,
   type IntimportMapperAuthorityRow,
 } from '../../../supabase/functions/_shared/intimportWholeProfileAuthority';
+import { knownField } from './productFieldTruth';
 
 const baseRow = (
   overrides: Partial<IntimportMapperAuthorityRow> = {},
@@ -214,6 +215,49 @@ describe('INTIMPORT trusted product-owned profile', () => {
       basis: 'product_declared',
     });
     expect(authority?.articleIdentity).toBe('PRODUCT_OWNED');
+  });
+
+  it('uses server-rebuilt enrichment source-card values as VERIFIED product-owned facts', () => {
+    const sourceField = (value: number) =>
+      knownField({
+        value,
+        state: 'VERIFIED',
+        confidence: 0.98,
+        basis: 'official_manufacturer',
+        note: 'validated enrichment receipt',
+      });
+    const authority = validateIntimportProductProfileProposal({
+      proposedMapperIngredientId: null,
+      matchInput: input({ name: 'Exact researched product', category: null, subcategory: null }),
+      declared: {},
+      sourceCard: {
+        fields: {
+          kcal_per_100g: sourceField(480),
+          fat_percent: sourceField(25),
+          carbohydrate_percent: sourceField(58),
+          total_sugars_percent: sourceField(52),
+          fiber_percent: sourceField(2),
+          protein_percent: sourceField(6),
+          salt_percent: sourceField(0.2),
+        },
+        per100ml: null,
+        reasons: ['server enrichment per 100 g'],
+      },
+      evidence: completeEvidence,
+      rows: [],
+    });
+
+    expect(authority?.fieldTruth.fat_percent).toMatchObject({
+      value: 25,
+      state: 'VERIFIED',
+      basis: 'official_manufacturer',
+    });
+    expect(authority?.fieldTruth.total_sugars_percent).toMatchObject({
+      value: 52,
+      state: 'VERIFIED',
+      basis: 'official_manufacturer',
+    });
+    expect(authority?.productAccuracyAssessment.components.nutrition.earnedPoints).toBeGreaterThan(0);
   });
 
   it('derives Product Accuracy but admits Engine profiles on critical physics', () => {

@@ -23,6 +23,15 @@ const candidate = (name: string) => {
   return parseINTIMPORT(csv).candidates[0]!;
 };
 
+const candidateWith = (name: string, category: string, subcategory: string) => {
+  const value = candidate(name);
+  value.source.Category = category;
+  value.source.Subcategory = subcategory;
+  value.sourceCategory = category;
+  value.sourceSubcategory = subcategory;
+  return value;
+};
+
 describe('bounded semantic-classifier orchestration', () => {
   it('never calls the model for deterministic products', async () => {
     const row = assessIntimportProduct(candidate('White chocolate bar'));
@@ -48,5 +57,33 @@ describe('bounded semantic-classifier orchestration', () => {
     expect(result.summary.cacheHits).toBe(1);
     expect(result.summary.unresolved).toBe(2);
     expect(result.evidenceReceipts.size).toBe(0);
+  });
+
+  it('calls the existing semantic provider when a broad source category conflicts with identity', async () => {
+    const source = assessIntimportProduct(
+      candidateWith(
+        'Airwaves Cool Cassis bezcukrowa guma do żucia',
+        'Bakery & sweets',
+        'Słodycze — bieżący katalog online',
+      ),
+    );
+    expect(source.recognition.modelRequired).toBe(true);
+    expect(source.recognition.productArchetype).toBe('UNKNOWN');
+    const provider = vi.fn(async () => ({
+      classification: {
+        ...source.recognition,
+        classificationSource: 'SERVER_MODEL' as const,
+      },
+      calls: 1,
+      cacheHit: false,
+      evidenceReceipt: 'semantic-receipt',
+      model: 'test',
+    }));
+
+    const result = await runIntimportSemanticClassification([source], provider);
+
+    expect(provider).toHaveBeenCalledTimes(1);
+    expect(result.summary.modelAttempted).toBe(1);
+    expect(result.classifications.get(source.rowIndex)?.classificationSource).toBe('SERVER_MODEL');
   });
 });

@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseINTIMPORT } from '@/data/products/intimport';
 import {
+  classifyIntimportFinalResult,
   runIntimportLocalIntelligence,
   type IntimportProductIntelligence,
 } from '../intimportIntelligence';
@@ -147,7 +148,7 @@ const blockedTransition = (row: IntimportProductIntelligence): string => {
   if (row.recognition.isTechnicalProduct && finalStatus(row) === 'BLOCKED') {
     return 'TRUE_TECHNICAL_BLOCKED';
   }
-  if (row.recognition.intendedUsageRole === 'TOPPING_ONLY') return 'TOPPING_ONLY';
+  if (classifyIntimportFinalResult(row) === 'TOPPING_ONLY') return 'TOPPING_ONLY';
   if (row.recognition.intendedUsageRole === 'BASE_AND_TOPPING') return 'BASE_AND_TOPPING';
   if (row.recognition.intendedUsageRole === 'BASE_ONLY' && finalStatus(row) === 'ENGINE_READY')
     return 'NORMAL_BASE';

@@ -30,6 +30,7 @@ import { WorkbenchModuleTabs } from '@/features/pro-workbench/WorkbenchModuleTab
 import { useProductionWorkspace } from '@/features/production-workspace/useProductionWorkspace';
 import { ProductionWorkspaceHeader } from '@/features/production-workspace/ProductionWorkspaceHeader';
 import {
+  collapsedMobileCockpitRoute,
   MOBILE_COCKPIT_QUERY,
   nextMobileCockpitState,
   shouldActivateMobileCockpitModal,
@@ -194,7 +195,12 @@ export function StudioEngineSurface({
   // open" stays visible in the address bar and survives refresh/back.
   const collapseMobileCockpit = () => {
     setMobileCockpitState({ activeTab, open: false });
-    if (activeTab !== 'profile') onTabChange('profile');
+    const routeAfterCollapse = collapsedMobileCockpitRoute(
+      activeTab,
+      'profile',
+      activeTab === 'production' && production.session?.status === 'in_progress',
+    );
+    if (routeAfterCollapse !== activeTab) onTabChange(routeAfterCollapse);
   };
   // The Escape handler is installed once per open sheet; reading the collapse
   // through a ref keeps that effect's dependencies stable.

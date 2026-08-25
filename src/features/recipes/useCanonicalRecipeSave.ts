@@ -115,6 +115,15 @@ export interface CanonicalRecipeSaveOptions {
   linkStoreDraft?: boolean;
 }
 
+/** Missing authority is still a hard Save block, but a native starter has no
+ * historical product to "revalidate". Keep the action truthful so a hard reset
+ * cannot visually resurrect the notice that belonged to the prior recipe. */
+export function productBehaviorSaveGateMessage(isFreshNativeStarter: boolean): string {
+  return isFreshNativeStarter
+    ? 'Nowa receptura wymaga pierwszego przeliczenia produktów przed zapisem. Kliknij PI.'
+    : 'Receptura zawiera produkt wymagający ponownej walidacji przed zapisem. Przelicz recepturę.';
+}
+
 /**
  * Pure target resolution — pinned by tests so the `/pro` default (the store's linked aggregate)
  * can never silently change when another surface passes its own target.
@@ -201,8 +210,7 @@ export function useCanonicalRecipeSave(
     if (!behaviorGate.ready) {
       return {
         blocked: true,
-        message:
-          'Receptura zawiera produkt wymagający ponownej walidacji przed zapisem. Przelicz recepturę.',
+        message: productBehaviorSaveGateMessage(state.newRecipeStarterKey !== null),
       };
     }
     const restoredVerified = practicalRecipeAuditMatchesInput(

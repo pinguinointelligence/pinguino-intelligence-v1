@@ -65,6 +65,7 @@ import { productionVersionFingerprint } from '@/features/production-workspace/pr
 import {
   buildCanonicalNewRecipeStarter,
   DEFAULT_NEW_RECIPE_PROFILE,
+  DEFAULT_NEW_RECIPE_STRATEGY,
   isNewRecipeServingModeId,
   newRecipeStarterMaterialFingerprint,
   starterServingModeForTemperature,
@@ -1939,12 +1940,12 @@ export const useRecipeStore = create<RecipeState>()(
         set({ practicalRecipeAudit: structuredClone(practicalRecipeAudit) }),
       startNewRecipe: (requestedVisible) => {
         useIngredientTableUxStore.getState().reset();
-        // The legacy owner-level snapshot is the only current account-default
-        // source that can designate a preferred product profile. Never infer
-        // that profile from whichever unrelated recipe happens to be open.
+        // An explicit New Recipe stays in the product family the customer is
+        // currently working in. Account defaults may configure that family's
+        // machine/serving/batch preferences, but they must never redirect the
+        // action to another family or restore a previous recipe's strategy.
         const legacyDefaults = useRecipeProfileStore.getState().defaultsFor(profileOwnerKey());
-        const visible =
-          requestedVisible ?? legacyDefaults?.visibleProductType ?? DEFAULT_NEW_RECIPE_PROFILE;
+        const visible = requestedVisible ?? get().visibleProductType ?? DEFAULT_NEW_RECIPE_PROFILE;
         const specificDefaults = useRecipeProfileStore
           .getState()
           .defaultsFor(productDefaultsKey(visible));
@@ -1955,7 +1956,7 @@ export const useRecipeStore = create<RecipeState>()(
         // to an existing saved recipe and is restored by `loadRecipeInput`; it
         // is never a default for a fresh identity, even when older account
         // preferences still contain `formulationStrategy: eco`.
-        const formulationStrategy: FormulationStrategy = 'optimal';
+        const formulationStrategy: FormulationStrategy = DEFAULT_NEW_RECIPE_STRATEGY;
         const starterServingMode = isNewRecipeServingModeId(defaults?.servingModeId)
           ? defaults.servingModeId
           : starterServingModeForTemperature(defaults?.targetTemperatureC);
@@ -2048,9 +2049,17 @@ export const useRecipeStore = create<RecipeState>()(
         });
         set((state) => {
           const preserveHomeMachine =
+            state.visibleProductType === starter.visibleProductType &&
             state.machineKind === 'home' &&
             state.target_temperature_c === starter.targetTemperatureC;
+          // A starter rebuild is a complete working-recipe replacement. Begin
+          // from the same blank aggregate used by New Recipe so no saved
+          // identity, historical warning, behavior snapshot, Topping, lock,
+          // Apply/Production provenance or old profile metadata can survive a
+          // product-family or native-starter transition.
+          const base = fromPreset(DEFAULT_PRESET);
           return {
+            ...base,
             mode: 'classic',
             formulation_strategy: starter.formulationStrategy,
             category: starter.category,
@@ -2080,7 +2089,14 @@ export const useRecipeStore = create<RecipeState>()(
             // Neutral is an intent, not its absence (P1-A).
             direction_targets_active: true,
             ...(preserveHomeMachine
-              ? {}
+              ? {
+                  machineKind: state.machineKind,
+                  servingModeId: state.servingModeId,
+                  machineId: state.machineId,
+                  machineLabel: state.machineLabel,
+                  machine_capacity_grams: state.machine_capacity_grams,
+                  machine_capacity_source: state.machine_capacity_source,
+                }
               : {
                   machineKind: 'professional' as const,
                   servingModeId: starter.servingModeId,

@@ -349,6 +349,8 @@ export function canonicalIngestFromLegacyProduct(
                 fat: intimportFields['Fat g'] ?? input.fat_percent ?? null,
                 carbohydrate:
                   intimportFields['Carbohydrates g'] ?? input.carbohydrate_percent ?? null,
+                sugars: intimportFields['Sugars g'] ?? null,
+                fibre: intimportFields['Fibre g'] ?? null,
                 protein: intimportFields['Protein g'] ?? input.protein_percent ?? null,
                 salt: intimportFields['Salt g'] ?? input.salt_percent ?? null,
               },

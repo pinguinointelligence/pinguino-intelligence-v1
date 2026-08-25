@@ -357,7 +357,7 @@ describe('visible + Nowa receptura action', () => {
     expect(useRecipeStore.getState().formulation_strategy).toBe('optimal');
   });
 
-  it('uses an explicit account-level product-profile default without inheriting its ECO mode', () => {
+  it('does not let an account-level default redirect New Recipe away from the current family', () => {
     useRecipeProfileStore.getState().saveDefaults('local-device', {
       visibleProductType: 'vegan',
       mode: 'classic',
@@ -375,10 +375,10 @@ describe('visible + Nowa receptura action', () => {
     startNewProRecipe();
 
     const fresh = useRecipeStore.getState();
-    expect(fresh.visibleProductType).toBe('vegan');
+    expect(fresh.visibleProductType).toBe('gelato');
     expect(fresh.formulation_strategy).toBe('optimal');
-    expect(fresh.target_temperature_c).toBe(-13);
-    expect(fresh.target_batch_grams).toBe(1_275);
+    expect(fresh.target_temperature_c).toBe(-12);
+    expect(fresh.target_batch_grams).toBe(1_000);
   });
 
   it('rebuilds an untouched starter immediately for serving, strategy and mass changes', () => {

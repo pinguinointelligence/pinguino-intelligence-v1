@@ -19,6 +19,7 @@ import {
   type ProductReadiness,
   type SweetnessPath,
 } from '../../../src/features/product-intelligence/productWorkingValues.ts';
+import type { CardContribution } from '../../../src/features/product-intelligence/productSourceCard.ts';
 import {
   WORKING_NUMERIC_FIELDS,
   type FieldBasis,
@@ -140,6 +141,9 @@ export interface IntimportProductProfileProposalInput {
   matchInput: ProfileMatchInput;
   declared: Partial<Record<WorkingNumericField, number | null>>;
   declaredBasis?: Partial<Record<WorkingNumericField, 'product_declared' | 'user_confirmed'>>;
+  /** Exact source-card facts rebuilt by the server from validated enrichment
+   * ledger receipts. Never accepted directly from a browser proposal. */
+  sourceCard?: CardContribution | null;
   evidence: ProductEvidenceInput;
   /** Exact public evidence. When present the server recomputes Recognition V2;
    * no submitted semantic verdict is trusted. */
@@ -269,6 +273,7 @@ export function validateIntimportProductProfileProposal(
       declared: input.declared,
       declaredBasis: input.declaredBasis,
       declaredConfidence: evidenceAssessment.confidence / 100,
+      sourceCard: input.sourceCard ?? null,
       identity: {
         name: input.matchInput.name,
         variant: input.matchInput.variant,

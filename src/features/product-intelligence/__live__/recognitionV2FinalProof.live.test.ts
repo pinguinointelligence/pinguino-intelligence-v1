@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseINTIMPORT } from '@/data/products/intimport';
 import {
+  classifyIntimportFinalResult,
   runIntimportLocalIntelligence,
   type IntimportProductIntelligence,
 } from '../intimportIntelligence';
@@ -206,7 +207,7 @@ const finalStatus = (row: IntimportProductIntelligence): string => row.recogniti
 
 const transitionFor = (row: IntimportProductIntelligence): string => {
   if (finalStatus(row) === 'ENGINE_READY') return 'BECAME_READY';
-  if (row.recognition.intendedUsageRole === 'TOPPING_ONLY') return 'BECAME_TOPPING_ONLY';
+  if (classifyIntimportFinalResult(row) === 'TOPPING_ONLY') return 'BECAME_TOPPING_ONLY';
   if (finalStatus(row) === 'BLOCKED' && row.recognition.isTechnicalProduct) {
     return 'REMAINS_TECHNICAL_BLOCKED';
   }

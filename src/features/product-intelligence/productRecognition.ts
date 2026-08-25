@@ -624,9 +624,23 @@ const archetypeOf = (
   ) {
     return 'BASE_MIX';
   }
+  // "Bakery & sweets" / "Słodycze" are retailer containers, not product
+  // identities. They may narrow a search, but cannot turn chewing gum, salt or
+  // any other unrelated article into a confectionery inclusion. Require a real
+  // product-class signal from the identity/description, or a specific (not
+  // catch-all) subcategory. An unsupported/ambiguous identity then remains
+  // REVIEW_REQUIRED and is routed to the existing semantic classifier.
+  const confectioneryIdentity = `${identity} ${description}`;
+  const specificConfectionerySubcategory = subcategory.replace(
+    /\b(?:bakery|sweets|slodycz\w*|biezac\w*|katalog\w*|online)\b/g,
+    ' ',
+  );
   if (
-    /\b(bakery|sweets|slodycz\w*|baton\w*|wafer\w*|wafel\w*|cookie\w*|biscuit\w*|herbatnik\w*|ciastk\w*|praline bar)\b/.test(
-      all,
+    /\b(baton\w*|wafer\w*|wafel\w*|cookie\w*|biscuit\w*|herbatnik\w*|ciastk\w*|praline bar)\b/.test(
+      confectioneryIdentity,
+    ) ||
+    /\b(baton\w*|wafer\w*|wafel\w*|cookie\w*|biscuit\w*|herbatnik\w*|ciastk\w*|praline)\b/.test(
+      specificConfectionerySubcategory,
     )
   ) {
     return 'CONFECTIONERY';

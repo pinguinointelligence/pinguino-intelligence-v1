@@ -24,12 +24,26 @@ import {
 } from './productEvidenceConfidence';
 import {
   MAX_CALLS_PER_PRODUCT,
+  runIntimportLocalIntelligence,
+  type IntimportReassessmentOverride,
   type IntimportProductIntelligence,
 } from './intimportIntelligence';
+import {
+  intimportNumber,
+  normalizeNutritionBasis,
+  type IntimportCandidate,
+} from '@/data/products/intimport';
 import type { SourceAuthorityClass } from './sourceAuthority';
+import type { MapperKnowledge } from './mapperValueInference';
+import { knownField, type FieldBasis, type WorkingNumericField } from './productFieldTruth';
+import type { CardContribution } from './productSourceCard';
+import type {
+  ProductionAccuracyEvidenceProvenance,
+} from './productProductionAccuracy';
 import {
   canonicalizeProductSemanticEvidence,
   classifyProductSemantics,
+  type ProductSemanticClassification,
   type ProductSemanticEvidence,
 } from './productRecognition';
 
@@ -56,6 +70,8 @@ export interface EnrichmentRequest {
   barcode: string | null;
   /** ONLY these fields may be researched. */
   fields: readonly ProductEvidenceField[];
+  /** Zero-based position in the deterministic strongest-first research plan. */
+  researchStepIndex: number;
 }
 
 export interface EnrichmentResponse {
@@ -152,6 +168,8 @@ const NUTRITION_SEMANTIC_LABELS: Readonly<Record<string, string>> = {
   energyKcal: 'kcal',
   fat: 'fat_g',
   carbohydrate: 'carbohydrate_g',
+  sugars: 'sugars_g',
+  fiber: 'fiber_g',
   protein: 'protein_g',
   salt: 'salt_g',
 };
@@ -216,6 +234,146 @@ export interface EnrichmentInputRow {
   /** Defaults to the evidence the local stage already computed. */
   evidence?: ProductEvidenceInput;
   barcode: string | null;
+}
+
+const WORKING_FIELD_BY_FACT: Readonly<Partial<Record<ProductEvidenceField, WorkingNumericField>>> =
+  Object.freeze({
+    energyKcal: 'kcal_per_100g',
+    fat: 'fat_percent',
+    carbohydrate: 'carbohydrate_percent',
+    sugars: 'total_sugars_percent',
+    fiber: 'fiber_percent',
+    protein: 'protein_percent',
+    salt: 'salt_percent',
+  });
+
+function verifiedFactBasis(fact: EnrichmentFact): {
+  basis: FieldBasis;
+  confidence: number;
+} | null {
+  switch (fact.sourceAuthorityClass) {
+    case 'OFFICIAL_MANUFACTURER':
+    case 'OFFICIAL_BRAND':
+    case 'OFFICIAL_TECHNICAL_PDF':
+      return { basis: 'official_manufacturer', confidence: 0.98 };
+    case 'OFFICIAL_PRIVATE_LABEL':
+      return { basis: 'private_label_card', confidence: 0.95 };
+    case 'AUTHORITATIVE_RETAILER':
+      return { basis: 'retailer_card', confidence: 0.92 };
+    case 'STRUCTURED_PRODUCT_DATABASE':
+      return { basis: 'retailer_card', confidence: 0.9 };
+    default:
+      // Local/test providers predate server authority metadata. Their explicit
+      // source type remains usable in the pure layer; production providers
+      // always send sourceAuthorityClass and the server independently verifies it.
+      if (fact.source === 'manufacturer') {
+        return { basis: 'official_manufacturer', confidence: 0.95 };
+      }
+      if (fact.source === 'retailer') return { basis: 'retailer_card', confidence: 0.85 };
+      return null;
+  }
+}
+
+function sourceCardFromEnrichment(
+  candidate: IntimportCandidate,
+  product: EnrichedProduct,
+): CardContribution | null {
+  const researchedBasis = product.appliedFacts.find((fact) => fact.field === 'nutritionBasis');
+  const basis = normalizeNutritionBasis(
+    researchedBasis?.value === null || researchedBasis?.value === undefined
+      ? candidate.source['Nutrition Basis']
+      : String(researchedBasis.value),
+  );
+  if (basis !== 'per_100g') return null;
+
+  const fields: CardContribution['fields'] = {};
+  for (const fact of product.appliedFacts) {
+    const field = WORKING_FIELD_BY_FACT[fact.field];
+    if (!field || fact.value === null) continue;
+    const parsed = intimportNumber(String(fact.value)).value;
+    const authority = verifiedFactBasis(fact);
+    if (parsed === null || parsed < 0 || (field !== 'kcal_per_100g' && parsed > 100) || !authority) {
+      continue;
+    }
+    fields[field] = knownField({
+      value: parsed,
+      state: 'VERIFIED',
+      confidence: authority.confidence,
+      basis: authority.basis,
+      note: `zweryfikowany research: ${fact.sourceUrl ?? fact.source}`,
+    });
+  }
+  return Object.keys(fields).length > 0
+    ? {
+        fields,
+        per100ml: null,
+        reasons: [`enrichment per 100 g: ${Object.keys(fields).length} zweryfikowanych pól`],
+      }
+    : null;
+}
+
+function reassessmentOverride(
+  candidate: IntimportCandidate,
+  product: EnrichedProduct,
+  semanticEvidenceReceipt: string | null,
+): IntimportReassessmentOverride {
+  const evidenceProvenance: Partial<
+    Record<ProductEvidenceField, ProductionAccuracyEvidenceProvenance>
+  > = Object.fromEntries(
+    product.appliedFacts.map((fact) => [
+      fact.field,
+      {
+        source: fact.source,
+        sourceUrl: fact.sourceUrl ?? null,
+        sourceAuthorityClass: fact.sourceAuthorityClass ?? null,
+      },
+    ]),
+  );
+  return {
+    evidence: product.evidence,
+    sourceCard: sourceCardFromEnrichment(candidate, product),
+    evidenceProvenance,
+    enrichmentEvidenceReceipts: product.enrichmentEvidenceReceipts,
+    semanticEvidenceReceipt,
+  };
+}
+
+/** Rerun the same local completion/scoring authority after web + semantic
+ * enrichment. This is the single seam the import UI and read-only proofs use;
+ * no enriched fact is overlaid onto an otherwise stale pre-web score. */
+export function reassessIntimportAfterEnrichment(input: {
+  candidates: readonly IntimportCandidate[];
+  enrichedProducts: readonly EnrichedProduct[];
+  mapper: MapperKnowledge | null;
+  semanticClassifications?: ReadonlyMap<number, ProductSemanticClassification>;
+  semanticEvidenceReceipts?: ReadonlyMap<number, string>;
+}) {
+  const enrichedByRow = new Map(input.enrichedProducts.map((row) => [row.rowIndex, row] as const));
+  const candidatesByRow = new Map(input.candidates.map((row) => [row.rowIndex, row] as const));
+  const recognitionEvidence = new Map(
+    input.enrichedProducts.map((row) => [row.rowIndex, row.recognitionEvidence] as const),
+  );
+  const overrides = new Map<number, IntimportReassessmentOverride>();
+  for (const [rowIndex, product] of enrichedByRow) {
+    const candidate = candidatesByRow.get(rowIndex);
+    if (!candidate) continue;
+    overrides.set(
+      rowIndex,
+      reassessmentOverride(
+        candidate,
+        product,
+        input.semanticEvidenceReceipts?.get(rowIndex) ?? null,
+      ),
+    );
+  }
+  return runIntimportLocalIntelligence(
+    input.candidates,
+    {},
+    input.mapper,
+    input.semanticClassifications ?? new Map(),
+    recognitionEvidence,
+    overrides,
+  );
 }
 
 /**
@@ -318,6 +476,7 @@ export async function runIntimportEnrichment(
             brand: intelligence.researchIdentity.brand,
             barcode: row.barcode,
             fields: intelligence.enrichmentTargets.slice(0, MAX_CALLS_PER_PRODUCT),
+            researchStepIndex: 0,
           }));
         if (response.capReached) {
           // A server-side spend refusal is a truthful terminal state, not an
@@ -348,9 +507,6 @@ export async function runIntimportEnrichment(
           );
           results.push(
             settle(row, assessment.confidence, {
-              // This is the seam that used to drop the enriched evidence: the
-              // assessment was replaced, but `row.intelligence.evidence` survived
-              // unchanged and was later handed to the canonical ingest planner.
               evidence,
               assessment,
               webAttempted: true,

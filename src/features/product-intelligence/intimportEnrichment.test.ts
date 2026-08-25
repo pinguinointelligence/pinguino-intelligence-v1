@@ -11,16 +11,20 @@ import {
 } from './productEvidenceConfidence';
 import { familySupportsInference, inferMapperFamily } from './mapperFamilyInference';
 import {
+  classifyIntimportFinalResult,
   assessIntimportProduct,
   planIntimportImport,
   runIntimportLocalIntelligence,
+  type IntimportProductIntelligence,
 } from './intimportIntelligence';
 import { validateIntimportProductProfileProposal } from '../../../supabase/functions/_shared/intimportWholeProfileAuthority';
 import {
   DEFAULT_ENRICHMENT_CAPS,
+  reassessIntimportAfterEnrichment,
   runIntimportEnrichment,
   type EnrichmentInputRow,
 } from './intimportEnrichment';
+import { buildMapperKnowledge } from './mapperValueInference';
 
 /* ── fixtures ─────────────────────────────────────────────────────────────── */
 
@@ -412,6 +416,49 @@ describe('targeted enrichment pipeline', () => {
     expect(products[0]!.recognition.evidenceFingerprint).not.toBe(before);
   });
 
+  it('recalculates completion and Product Accuracy from the accepted web evidence', async () => {
+    const call = vi.fn(async () => ({
+      facts: [
+        { field: 'nutritionBasis' as const, value: '100 g', source: 'manufacturer' as const },
+        { field: 'ingredients' as const, value: 'Cukier, kakao.', source: 'manufacturer' as const },
+        { field: 'energyKcal' as const, value: 480, source: 'manufacturer' as const },
+        { field: 'fat' as const, value: 25, source: 'manufacturer' as const },
+        { field: 'carbohydrate' as const, value: 58, source: 'manufacturer' as const },
+        { field: 'protein' as const, value: 6, source: 'manufacturer' as const },
+        { field: 'salt' as const, value: 0.2, source: 'manufacturer' as const },
+      ],
+      calls: 1,
+      evidenceReceipt: 'c'.repeat(64),
+    }));
+    const parsed = parseINTIMPORT(csv([row({ 'Product Name Original': 'Produkt X' })]));
+    const initial = runIntimportLocalIntelligence(parsed.candidates).rows[0]!;
+    const outcome = await runIntimportEnrichment(
+      [{ intelligence: initial, barcode: null }],
+      call,
+    );
+    const mapper = buildMapperKnowledge([], 'empty-mapper');
+
+    const recalculated = reassessIntimportAfterEnrichment({
+      candidates: parsed.candidates,
+      enrichedProducts: outcome.products,
+      mapper,
+    }).rows[0]!;
+
+    expect(recalculated.evidence.fields.ingredients).toBe('manufacturer');
+    expect(recalculated.recognitionEvidence.ingredients).toBe('Cukier, kakao.');
+    expect(recalculated.workingValues?.fields.fat_percent).toMatchObject({
+      value: 25,
+      provenance: { state: 'VERIFIED', basis: 'official_manufacturer' },
+    });
+    expect(recalculated.productionAccuracy.components.nutrition.earnedPoints).toBeGreaterThan(
+      initial.productionAccuracy.components.nutrition.earnedPoints,
+    );
+    expect(recalculated.productionAccuracy.components.ingredientsEvidence.earnedPoints).toBeGreaterThan(
+      initial.productionAccuracy.components.ingredientsEvidence.earnedPoints,
+    );
+    expect(recalculated.enrichmentEvidenceReceipts).toEqual(['c'.repeat(64)]);
+  });
+
   it('lifts a properly sourced product over the import floor', async () => {
     const call = provider();
     // Same missing data, but the row cites its manufacturer's own domain.
@@ -595,6 +642,30 @@ describe('targeted enrichment pipeline', () => {
     );
     await runIntimportEnrichment(rows, call, { maxCallsPerImport: 100, maxSpendUsd: 5, concurrency: 4 });
     expect(peak).toBeLessThanOrEqual(4);
+  });
+});
+
+describe('final INTIMPORT status', () => {
+  it('does not publish TOPPING_ONLY when ProductBehavior did not approve topping use', () => {
+    const row = {
+      recognitionTrace: { finalStatus: 'REVIEW' },
+      recognition: { intendedUsageRole: 'TOPPING_ONLY' },
+      productionAccuracy: { roleReadiness: 'REVIEW', productAccuracy: 91 },
+      productBehaviorAuthority: { toppingEligible: false },
+    } as unknown as IntimportProductIntelligence;
+
+    expect(classifyIntimportFinalResult(row)).toBe('REVIEW');
+  });
+
+  it('publishes TOPPING_ONLY only for an explicitly topping-ready product', () => {
+    const row = {
+      recognitionTrace: { finalStatus: 'ENGINE_READY' },
+      recognition: { intendedUsageRole: 'TOPPING_ONLY' },
+      productionAccuracy: { roleReadiness: 'TOPPING_READY', productAccuracy: 91 },
+      productBehaviorAuthority: { toppingEligible: true },
+    } as unknown as IntimportProductIntelligence;
+
+    expect(classifyIntimportFinalResult(row)).toBe('TOPPING_ONLY');
   });
 });
 
