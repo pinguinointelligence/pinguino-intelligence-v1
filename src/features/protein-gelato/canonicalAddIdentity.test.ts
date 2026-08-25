@@ -93,8 +93,16 @@ describe('§7 — the approved toolbox payload list ends with the canonical Mapp
 
 describe('§11 — a solver-ADDED line is identical to the same product already PRESENT', () => {
   it('Milk 3.5 % converges on both paths', () => {
-    // PATH B: milk absent, the solver adds it (Protein −11 at Sweetness +2).
-    const pathB = buildOptimizePreview(proteinDraft(2, -11), NONE, AT, {});
+    // PATH B: milk absent, the established correction route adds it (Protein
+    // −11 at Sweetness +2). The default exact-Direction route now correctly
+    // prefers the bounded neighborhood when it can adjust existing lines, so
+    // exercise the retained Rescue correction path explicitly with a real
+    // existing line ID. This keeps the identity contract independent from
+    // which accepted optimizer route wins a particular formulation cell.
+    const pathBInput = proteinDraft(2, -11);
+    const pathB = buildOptimizePreview(pathBInput, NONE, AT, {
+      rescueSimulationLineIds: [pathBInput.items[0]!.id],
+    });
     expect(pathB.ok).toBe(true);
     if (!pathB.ok) return;
     const added = pathB.preview.proposedInput.items.find((item) =>
