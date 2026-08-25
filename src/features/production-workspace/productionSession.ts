@@ -837,11 +837,26 @@ export function hydrateProductionSessionFromRun(
     startedAt: run.events.find((event) => event.type === 'started')?.at ?? run.createdAt,
   });
   if (run.rescue) {
+    const rescueBaseSnapshots = Object.fromEntries(
+      run.rescue.recipeInput.items.flatMap((item) => {
+        const snapshot = run.rescue?.productComposition.behaviorSnapshots?.[item.id];
+        return snapshot ? [[item.id, snapshot] as const] : [];
+      }),
+    );
     session = {
       ...session,
       plannedComposition: {
         ...session.plannedComposition,
-        behaviorSnapshots: run.rescue.productComposition.behaviorSnapshots,
+        // Rescue is a Base-formulation operation. Its server-frozen authority
+        // replaces Base (including Rescue-added lines), while POST_PROCESS_ADDON
+        // authority continues to come from the exact recipe composition supplied
+        // by the caller. Copying the whole Rescue map here used to resurrect an
+        // old Topping snapshot and could make a fully weighed batch impossible to
+        // complete after a legitimate Base-only decision.
+        behaviorSnapshots: {
+          ...(session.plannedComposition.behaviorSnapshots ?? {}),
+          ...rescueBaseSnapshots,
+        },
       },
     };
     session = applyVerifiedRescueInput(session, run.rescue.recipeInput);

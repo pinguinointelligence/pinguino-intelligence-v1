@@ -33,11 +33,11 @@ const make = () =>
     startedAt: '2026-08-09T10:00:00.000Z',
   });
 
-const ownerScenario = (): RecipeInput => {
+const ownerScenario = (formulationStrategy: 'optimal' | 'eco' = 'optimal'): RecipeInput => {
   const starter = buildCanonicalNewRecipeStarter({
     visibleProductType: 'gelato',
     servingModeId: 'temp_minus_11',
-    formulationStrategy: 'optimal',
+    formulationStrategy,
     targetBatchGrams: 1_000,
   });
   const grams = [480, 318, 48, 105, 46, 3] as const;
@@ -57,7 +57,7 @@ const ownerScenario = (): RecipeInput => {
   };
 };
 
-const makeOwnerScenario = () =>
+const makeOwnerScenario = (formulationStrategy: 'optimal' | 'eco' = 'optimal') =>
   createProductionSession({
     sessionId: 'run-owner-scenario',
     ownerUserId: 'owner',
@@ -67,7 +67,7 @@ const makeOwnerScenario = () =>
       recipeVersionNumber: 1,
       recipeName: 'Owner milk base',
     },
-    plannedInput: ownerScenario(),
+    plannedInput: ownerScenario(formulationStrategy),
     startedAt: '2026-08-25T10:00:00.000Z',
   });
 
@@ -225,6 +225,21 @@ describe('production rescue orchestration', () => {
     expect(enlarge!.instructions).toEqual(
       expect.arrayContaining([expect.objectContaining({ lineId: 'dextrose', kind: 'add' })]),
     );
+  });
+
+  it('keeps the served ECO owner recipe hard-safe after a 2 g Cream overage', () => {
+    let run = makeOwnerScenario('eco');
+    run = confirmProductionLine(run, 'milk', '2026-08-25T10:01:00.000Z');
+    run = confirmProductionLine(
+      setDraftActualGrams(run, 'cream', 320),
+      'cream',
+      '2026-08-25T10:02:00.000Z',
+    );
+
+    const assessment = assessProductionRescue(run);
+    expect(assessment.options.map((option) => option.id)).toEqual(['leave_as_is']);
+    expect(assessment.options[0]?.verifiedByEngine).toBe(true);
+    expect(assessment.options[0]?.scoreDisplay).toBe('10/10');
   });
 
   it('can add more to an already-confirmed ingredient without subtracting its physical amount', () => {

@@ -331,6 +331,102 @@ describe('production session physical-reality contract', () => {
     expect(recovered.processAdvisories).toEqual(durable.processAdvisories);
   });
 
+  it('does not resurrect a stale Topping snapshot when hydrating a Base-only Rescue', () => {
+    const local = session();
+    const topping = {
+      id: 'topping-hazelnut',
+      ingredient: {
+        ...local.plannedInput.items[0]!.ingredient,
+        id: 'PI-ING-TOPPING-HAZELNUT',
+        canonical_ingredient_id: 'PI-ING-TOPPING-HAZELNUT',
+      },
+      planned_grams: 27,
+      actual_grams: null,
+      process_scope: 'POST_PROCESS_ADDON' as const,
+      addon_sort_order: 0,
+    };
+    const currentComposition: RecipeCompositionMetadata = {
+      ...local.plannedComposition,
+      toppings: [topping],
+      behaviorSnapshots: productBehaviorTestSnapshots(local.plannedInput, [topping]),
+    };
+    const toppingSnapshot = currentComposition.behaviorSnapshots![topping.id]!;
+    const rescueComposition: RecipeCompositionMetadata = {
+      ...currentComposition,
+      behaviorSnapshots: {
+        ...currentComposition.behaviorSnapshots,
+        [topping.id]: { ...toppingSnapshot, factsFingerprint: 'stale-topping-fingerprint' },
+      },
+    };
+    const durable: ProductionRun = {
+      runId: local.sessionId,
+      ownerUserId: local.ownerUserId!,
+      recipeId: local.source.recipeId,
+      recipeVersionId: local.source.recipeVersionId,
+      recipeVersionNumber: local.source.recipeVersionNumber,
+      status: 'in_progress',
+      plannedBatchG: local.plannedInput.target_batch_grams,
+      plannedItems: [
+        ...local.lines.map((line, index) => ({
+          id: line.lineId,
+          name: line.name,
+          canonicalIngredientId: line.canonicalIngredientId,
+          processScope: 'BASE_FORMULATION' as const,
+          scopePosition: index,
+          plannedGrams: line.plannedGrams,
+          displayGrams: line.plannedGrams,
+        })),
+        {
+          id: topping.id,
+          name: topping.ingredient.name,
+          canonicalIngredientId: topping.ingredient.canonical_ingredient_id,
+          processScope: 'POST_PROCESS_ADDON',
+          scopePosition: 0,
+          plannedGrams: topping.planned_grams,
+          displayGrams: topping.planned_grams,
+        },
+      ],
+      productProfile: local.plannedInput.category,
+      temperatureC: local.plannedInput.target_temperature_c,
+      engineVersion: 'test',
+      configVersion: 'test',
+      mapperDatasetVersion: null,
+      plannedDate: null,
+      machine: null,
+      location: null,
+      batchReference: null,
+      notes: null,
+      createdBy: 'owner-1',
+      createdAt: '2026-08-25T00:00:00.000Z',
+      updatedAt: '2026-08-25T00:05:00.000Z',
+      actual: null,
+      rescue: {
+        recipeInput: local.plannedInput,
+        productComposition: rescueComposition,
+        acceptedBy: 'owner-1',
+        acceptedAt: '2026-08-25T00:04:00.000Z',
+        revision: 1,
+      },
+      completedAt: null,
+      cancelledAt: null,
+      events: [],
+    };
+
+    const recovered = hydrateProductionSessionFromRun(
+      durable,
+      local.source,
+      local.plannedInput,
+      currentComposition,
+    );
+
+    expect(recovered.plannedComposition.behaviorSnapshots?.[topping.id]).toEqual(
+      toppingSnapshot,
+    );
+    expect(
+      recovered.plannedComposition.behaviorSnapshots?.[local.lines[0]!.lineId],
+    ).toEqual(rescueComposition.behaviorSnapshots?.[local.lines[0]!.lineId]);
+  });
+
   it('keeps server physical authority while preserving only compatible pending drafts', () => {
     const local = session();
     const [first, second] = local.lines;
