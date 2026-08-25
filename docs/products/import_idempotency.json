@@ -3,8 +3,8 @@
   "subsetSize": 10,
   "states": {
     "READY_VERIFIED": 0,
-    "READY_ESTIMATED": 2,
-    "REVIEW": 8
+    "READY_ESTIMATED": 0,
+    "REVIEW": 10
   },
   "forceDistinctRows": 1,
   "firstRun": {

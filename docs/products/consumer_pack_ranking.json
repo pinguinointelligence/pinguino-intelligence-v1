@@ -34,6 +34,22 @@
       "expectedImprovedPerCall": 13
     },
     {
+      "pack": "Lipton",
+      "products": 15,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 15,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 15,
+      "domains": {
+        "zakupy.biedronka.pl": 15
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 7.5
+    },
+    {
       "pack": "Fruvita",
       "products": 24,
       "ready": 0,
@@ -48,6 +64,23 @@
       },
       "expectedDiscoveryCalls": 2,
       "expectedImprovedPerCall": 7
+    },
+    {
+      "pack": "Baitz",
+      "products": 10,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 10,
+      "withDeclaredNutrition": 9,
+      "withGtin": 1,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 10,
+      "domains": {
+        "zakupy.biedronka.pl": 1,
+        "biedronka.pl": 9
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 5
     },
     {
       "pack": "Jeronimo Martins Polska S.A. – Kostrzyn",
@@ -65,23 +98,6 @@
       },
       "expectedDiscoveryCalls": 1,
       "expectedImprovedPerCall": 5
-    },
-    {
-      "pack": "Baitz",
-      "products": 10,
-      "ready": 0,
-      "estimatedReady": 1,
-      "unresolved": 9,
-      "withDeclaredNutrition": 9,
-      "withGtin": 1,
-      "officialSourceRows": 0,
-      "retailerSourceRows": 10,
-      "domains": {
-        "zakupy.biedronka.pl": 1,
-        "biedronka.pl": 9
-      },
-      "expectedDiscoveryCalls": 2,
-      "expectedImprovedPerCall": 4.5
     },
     {
       "pack": "BakaD'Or",
@@ -117,6 +133,38 @@
       "expectedImprovedPerCall": 4.5
     },
     {
+      "pack": "Kinder",
+      "products": 8,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 8,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 8,
+      "domains": {
+        "zakupy.biedronka.pl": 8
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 4
+    },
+    {
+      "pack": "Lindt",
+      "products": 8,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 8,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 8,
+      "domains": {
+        "zakupy.biedronka.pl": 8
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 4
+    },
+    {
       "pack": "Winiary",
       "products": 8,
       "ready": 0,
@@ -131,6 +179,22 @@
       },
       "expectedDiscoveryCalls": 2,
       "expectedImprovedPerCall": 4
+    },
+    {
+      "pack": "Bonitki",
+      "products": 7,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 7,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 7,
+      "domains": {
+        "zakupy.biedronka.pl": 7
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 3.5
     },
     {
       "pack": "Culineo",
@@ -149,33 +213,49 @@
       "expectedImprovedPerCall": 3.5
     },
     {
-      "pack": "Bonitki",
-      "products": 7,
+      "pack": "Bakello",
+      "products": 6,
       "ready": 0,
-      "estimatedReady": 1,
+      "estimatedReady": 0,
       "unresolved": 6,
       "withDeclaredNutrition": 0,
       "withGtin": 0,
       "officialSourceRows": 0,
-      "retailerSourceRows": 7,
+      "retailerSourceRows": 6,
       "domains": {
-        "zakupy.biedronka.pl": 7
+        "zakupy.biedronka.pl": 6
       },
       "expectedDiscoveryCalls": 2,
       "expectedImprovedPerCall": 3
     },
     {
-      "pack": "Lindt",
-      "products": 8,
+      "pack": "E. Wedel",
+      "products": 6,
       "ready": 0,
-      "estimatedReady": 2,
+      "estimatedReady": 0,
       "unresolved": 6,
       "withDeclaredNutrition": 0,
       "withGtin": 0,
       "officialSourceRows": 0,
-      "retailerSourceRows": 8,
+      "retailerSourceRows": 6,
       "domains": {
-        "zakupy.biedronka.pl": 8
+        "zakupy.biedronka.pl": 6
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 3
+    },
+    {
+      "pack": "Tic Tac",
+      "products": 6,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 6,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 6,
+      "domains": {
+        "zakupy.biedronka.pl": 6
       },
       "expectedDiscoveryCalls": 2,
       "expectedImprovedPerCall": 3
@@ -198,17 +278,49 @@
       "expectedImprovedPerCall": 3
     },
     {
-      "pack": "Bakello",
-      "products": 6,
+      "pack": "Milka",
+      "products": 5,
       "ready": 0,
-      "estimatedReady": 1,
+      "estimatedReady": 0,
       "unresolved": 5,
       "withDeclaredNutrition": 0,
       "withGtin": 0,
       "officialSourceRows": 0,
-      "retailerSourceRows": 6,
+      "retailerSourceRows": 5,
       "domains": {
-        "zakupy.biedronka.pl": 6
+        "zakupy.biedronka.pl": 5
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 2.5
+    },
+    {
+      "pack": "Mondelez Polska S.A. ul. Domaniewska 49, 02-672 Warszawa",
+      "products": 5,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 5,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 5,
+      "domains": {
+        "zakupy.biedronka.pl": 5
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 2.5
+    },
+    {
+      "pack": "Nescafé",
+      "products": 5,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 5,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 5,
+      "domains": {
+        "zakupy.biedronka.pl": 5
       },
       "expectedDiscoveryCalls": 2,
       "expectedImprovedPerCall": 2.5
@@ -246,7 +358,7 @@
       "expectedImprovedPerCall": 2
     },
     {
-      "pack": "Słodka Kraina",
+      "pack": "Orbit",
       "products": 4,
       "ready": 0,
       "estimatedReady": 0,
@@ -262,17 +374,17 @@
       "expectedImprovedPerCall": 2
     },
     {
-      "pack": "Tic Tac",
-      "products": 6,
+      "pack": "Słodka Kraina",
+      "products": 4,
       "ready": 0,
-      "estimatedReady": 2,
+      "estimatedReady": 0,
       "unresolved": 4,
       "withDeclaredNutrition": 0,
       "withGtin": 0,
       "officialSourceRows": 0,
-      "retailerSourceRows": 6,
+      "retailerSourceRows": 4,
       "domains": {
-        "zakupy.biedronka.pl": 6
+        "zakupy.biedronka.pl": 4
       },
       "expectedDiscoveryCalls": 2,
       "expectedImprovedPerCall": 2
@@ -310,17 +422,17 @@
       "expectedImprovedPerCall": 2
     },
     {
-      "pack": "Lipton",
-      "products": 15,
+      "pack": "MK Café",
+      "products": 4,
       "ready": 0,
-      "estimatedReady": 11,
+      "estimatedReady": 0,
       "unresolved": 4,
       "withDeclaredNutrition": 0,
       "withGtin": 0,
       "officialSourceRows": 0,
-      "retailerSourceRows": 15,
+      "retailerSourceRows": 4,
       "domains": {
-        "zakupy.biedronka.pl": 15
+        "zakupy.biedronka.pl": 4
       },
       "expectedDiscoveryCalls": 2,
       "expectedImprovedPerCall": 2
@@ -342,7 +454,7 @@
       "expectedImprovedPerCall": 2
     },
     {
-      "pack": "Go Vege",
+      "pack": "Vitanella",
       "products": 4,
       "ready": 0,
       "estimatedReady": 1,
@@ -358,43 +470,11 @@
       "expectedImprovedPerCall": 1.5
     },
     {
-      "pack": "E. Wedel",
-      "products": 6,
-      "ready": 0,
-      "estimatedReady": 4,
-      "unresolved": 2,
-      "withDeclaredNutrition": 0,
-      "withGtin": 0,
-      "officialSourceRows": 0,
-      "retailerSourceRows": 6,
-      "domains": {
-        "zakupy.biedronka.pl": 6
-      },
-      "expectedDiscoveryCalls": 2,
-      "expectedImprovedPerCall": 1
-    },
-    {
-      "pack": "Kinder",
-      "products": 8,
-      "ready": 0,
-      "estimatedReady": 6,
-      "unresolved": 2,
-      "withDeclaredNutrition": 0,
-      "withGtin": 0,
-      "officialSourceRows": 0,
-      "retailerSourceRows": 8,
-      "domains": {
-        "zakupy.biedronka.pl": 8
-      },
-      "expectedDiscoveryCalls": 2,
-      "expectedImprovedPerCall": 1
-    },
-    {
-      "pack": "Vitanella",
+      "pack": "Go Vege",
       "products": 4,
       "ready": 0,
-      "estimatedReady": 2,
-      "unresolved": 2,
+      "estimatedReady": 1,
+      "unresolved": 3,
       "withDeclaredNutrition": 0,
       "withGtin": 0,
       "officialSourceRows": 0,
@@ -403,23 +483,7 @@
         "zakupy.biedronka.pl": 4
       },
       "expectedDiscoveryCalls": 2,
-      "expectedImprovedPerCall": 1
-    },
-    {
-      "pack": "Nescafé",
-      "products": 5,
-      "ready": 0,
-      "estimatedReady": 3,
-      "unresolved": 2,
-      "withDeclaredNutrition": 0,
-      "withGtin": 0,
-      "officialSourceRows": 0,
-      "retailerSourceRows": 5,
-      "domains": {
-        "zakupy.biedronka.pl": 5
-      },
-      "expectedDiscoveryCalls": 2,
-      "expectedImprovedPerCall": 1
+      "expectedImprovedPerCall": 1.5
     },
     {
       "pack": "Delikate",
@@ -454,38 +518,6 @@
       "expectedImprovedPerCall": 1
     },
     {
-      "pack": "Milka",
-      "products": 5,
-      "ready": 0,
-      "estimatedReady": 4,
-      "unresolved": 1,
-      "withDeclaredNutrition": 0,
-      "withGtin": 0,
-      "officialSourceRows": 0,
-      "retailerSourceRows": 5,
-      "domains": {
-        "zakupy.biedronka.pl": 5
-      },
-      "expectedDiscoveryCalls": 2,
-      "expectedImprovedPerCall": 0.5
-    },
-    {
-      "pack": "MK Café",
-      "products": 4,
-      "ready": 0,
-      "estimatedReady": 3,
-      "unresolved": 1,
-      "withDeclaredNutrition": 0,
-      "withGtin": 0,
-      "officialSourceRows": 0,
-      "retailerSourceRows": 4,
-      "domains": {
-        "zakupy.biedronka.pl": 4
-      },
-      "expectedDiscoveryCalls": 2,
-      "expectedImprovedPerCall": 0.5
-    },
-    {
       "pack": "Spółdzielnia Mleczarska Mlekovita",
       "products": 4,
       "ready": 0,
@@ -516,38 +548,6 @@
       },
       "expectedDiscoveryCalls": 2,
       "expectedImprovedPerCall": 0.5
-    },
-    {
-      "pack": "Orbit",
-      "products": 4,
-      "ready": 0,
-      "estimatedReady": 4,
-      "unresolved": 0,
-      "withDeclaredNutrition": 0,
-      "withGtin": 0,
-      "officialSourceRows": 0,
-      "retailerSourceRows": 4,
-      "domains": {
-        "zakupy.biedronka.pl": 4
-      },
-      "expectedDiscoveryCalls": 2,
-      "expectedImprovedPerCall": 0
-    },
-    {
-      "pack": "Mondelez Polska S.A. ul. Domaniewska 49, 02-672 Warszawa",
-      "products": 5,
-      "ready": 0,
-      "estimatedReady": 5,
-      "unresolved": 0,
-      "withDeclaredNutrition": 0,
-      "withGtin": 0,
-      "officialSourceRows": 0,
-      "retailerSourceRows": 5,
-      "domains": {
-        "zakupy.biedronka.pl": 5
-      },
-      "expectedDiscoveryCalls": 2,
-      "expectedImprovedPerCall": 0
     },
     {
       "pack": "Mleczna Dolina",
