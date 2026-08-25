@@ -58,7 +58,11 @@ import {
   type DraftStateMeasure,
   type DraftSweepResult,
 } from './draftCandidateVector';
-import { experimentalNeighborhoodSearch } from './experimentalNeighborhoodSearch';
+import {
+  compareExperimentalCandidateMeasures,
+  evaluateExperimentalCandidate,
+  experimentalNeighborhoodSearch,
+} from './experimentalNeighborhoodSearch';
 import { effectiveInputCostPerKg, sweepEcoDraftCost } from './ecoDraftCostSweep';
 import {
   applyEffectiveCustomerPrices,
@@ -2679,10 +2683,8 @@ const polishDirectionVector = (
   ) {
     return reached;
   }
-  const module =
-    normalizeFormulationStrategy(input.goals.formulation_strategy ?? input.mode) === 'eco'
-      ? 'ECO'
-      : 'OPTIMAL';
+  const strategy = normalizeFormulationStrategy(input.goals.formulation_strategy ?? input.mode);
+  const module = strategy === 'eco' ? 'ECO' : 'OPTIMAL';
   const requiredBehaviorLineIds = productBehaviorRequiredLineIds({ items: input.items });
   if (
     Object.keys(options.productBehaviorSnapshots ?? {}).length > 0 &&
@@ -2702,13 +2704,12 @@ const polishDirectionVector = (
   );
   if (!practicalSeedResult.ok) return reached;
   const practicalSeed = practicalSeedResult.audit.executableInput;
-  const polished = experimentalNeighborhoodSearch(input, polishSet, {
+  const searchOptions = {
     beamWidth: 20,
     evaluationBudget: 100_000,
-    seedInputs: [practicalSeed],
     excludedIngredientIds: options.excludedIngredientIds,
     effectivePriceOverrides: options.effectivePriceOverrides,
-    externalHardGate: (candidate) =>
+    externalHardGate: (candidate: RecipeInput) =>
       verifyConstraintsPreserved(polishSet, candidate).ok &&
       positiveStandardPresencePreserved(input, candidate) &&
       requiredLineContractViolations(input, candidate).length === 0 &&
@@ -2716,10 +2717,18 @@ const polishDirectionVector = (
         verifyEcoFlavourProtection(input, candidate, {
           productBehaviorSnapshots: options.productBehaviorSnapshots,
         }).ok),
+  } as const;
+  const seedReached = recipeDirectionViolations(practicalSeed).length === 0;
+  const polished = experimentalNeighborhoodSearch(input, polishSet, {
+    ...searchOptions,
+    ...(seedReached ? { seedInputs: [practicalSeed] } : {}),
   });
-  return polished.status === 'candidate' || polished.status === 'nearest'
+  if (seedReached) return polished.status === 'candidate' ? polished.input : reached;
+  if (polished.status !== 'nearest') return reached;
+  const seedMeasure = evaluateExperimentalCandidate(input, practicalSeed, polishSet, searchOptions);
+  return compareExperimentalCandidateMeasures(polished.measure, seedMeasure, strategy) < 0
     ? polished.input
-    : reached;
+    : practicalSeed;
 };
 
 export interface ManualIngredientTargetProof {
