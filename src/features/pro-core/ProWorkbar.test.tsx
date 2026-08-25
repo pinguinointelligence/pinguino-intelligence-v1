@@ -102,12 +102,13 @@ describe('ProWorkbar (sticky top workbar)', () => {
     expect(html).not.toContain('data-workbar-status-placement="inline-after-menu" class="ml-auto');
   });
 
-  it('NEW recipe: inline name field + „Zapisz recepturę" beside it + „nowa, niezapisana" status', () => {
+  it('NEW recipe: inline name field + „Zapisz recepturę" beside it + exact unsaved status', () => {
     const html = render({ savedRecipeId: null, savedRecipeName: null, currentVersionNumber: null });
     expect(html).toContain('data-testid="pro-workbar-name"');
     expect(html).toContain('data-testid="pro-workbar-save"');
     expect(html).toContain(w.saveNew); // Zapisz recepturę
-    expect(html).toContain(w.status.newUnsaved);
+    expect(w.status.newUnsaved).toBe('Niezapisane');
+    expect(html).toContain('Niezapisane');
   });
 
   it('SAVED recipe: keeps the name editable and exposes the existing version save action', () => {
@@ -121,7 +122,8 @@ describe('ProWorkbar (sticky top workbar)', () => {
     expect(html).toContain('Pistacja Premium');
     expect(html).toContain('data-testid="pro-workbar-name"');
     expect(html).toContain('Zapisz nową wersję');
-    expect(html).toContain(w.status.clean); // Wszystkie zmiany zapisane
+    expect(w.status.clean).toBe('Zapisane');
+    expect(html).toContain('Zapisane');
     expect(html).toContain('v3');
     expect(html).toContain('>Wersje</a>');
     expect(html).not.toContain('DO PRZEGLĄDU');
@@ -146,13 +148,44 @@ describe('ProWorkbar (sticky top workbar)', () => {
   it('shows the applied-unsaved warning beside Save and clears it after save', () => {
     mockHistoryLength = 1;
     const dirty = render({ savedRecipeId: 'r1', savedRecipeName: 'X', dirty: true });
+    expect(w.status.dirty).toBe('Niezapisane');
+    expect(dirty).toContain('Niezapisane');
+    expect(dirty).toContain('text-status-risky');
     expect(dirty).toContain('data-testid="pro-workbar-applied-unsaved"');
     expect(dirty).toContain(copy.proWorkbar.recalcPanel.applied);
     expect(dirty).toContain('bg-pro-amber');
 
     const saved = render({ savedRecipeId: 'r1', savedRecipeName: 'X', dirty: false });
+    expect(saved).toContain('Zapisane');
+    expect(saved).toContain('text-stone-500');
     expect(saved).not.toContain('data-testid="pro-workbar-applied-unsaved"');
     mockHistoryLength = 0;
+  });
+
+  it('returns to Niezapisane after another edit and reuses the ingredient warning-dot token', () => {
+    const saved = render({ savedRecipeId: 'r1', savedRecipeName: 'X', dirty: false });
+    expect(saved.match(/Zapisane/g)?.length).toBeGreaterThan(0);
+    expect(saved).not.toContain('Niezapisane');
+
+    const edited = render({ savedRecipeId: 'r1', savedRecipeName: 'X', dirty: true });
+    expect(edited.match(/Niezapisane/g)?.length).toBeGreaterThan(0);
+    expect(edited).not.toContain('Wszystkie zmiany zapisane');
+    expect(edited).not.toContain('Niezapisane zmiany');
+
+    const source = readFileSync(resolve(import.meta.dirname, 'ProWorkbar.tsx'), 'utf8');
+    const ingredientRow = readFileSync(
+      resolve(import.meta.dirname, '..', 'ingredient-builder', 'IngredientRow.tsx'),
+      'utf8',
+    );
+    const tokens = readFileSync(
+      resolve(import.meta.dirname, '..', '..', 'styles', 'tokens.css'),
+      'utf8',
+    );
+    expect(source).toContain('w.status[statusKey]');
+    expect(source.match(/data-testid="pro-workbar-status"/g)).toHaveLength(1);
+    expect(source).toContain("? 'text-status-risky'");
+    expect(ingredientRow).toContain('rounded-full bg-status-risky');
+    expect(tokens).toContain('--color-status-risky: #9c8a55;');
   });
 });
 

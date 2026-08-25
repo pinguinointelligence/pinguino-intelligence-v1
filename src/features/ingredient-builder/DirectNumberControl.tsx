@@ -19,6 +19,8 @@ interface DirectNumberControlProps {
   testId: string;
   ariaDescribedBy?: string;
   preservePrecision?: boolean;
+  /** Publish valid typed drafts while focused; toppings use this to keep sibling views live. */
+  publishValidDraft?: boolean;
   /** Fixed recipe-table capacity. `percent` fits 100.0%; `grams` fits 10000 g. */
   widthPreset?: 'fluid' | 'percent' | 'grams';
   /**
@@ -76,6 +78,7 @@ export function DirectNumberControl({
   testId,
   ariaDescribedBy,
   preservePrecision = false,
+  publishValidDraft = false,
   widthPreset = 'fluid',
   density = 'comfortable',
   lockSegment,
@@ -186,9 +189,9 @@ export function DirectNumberControl({
               ? lockSegment
                 ? 'w-[204px] grid-cols-[44px_72px_44px_44px] lg:w-[142px] lg:grid-cols-[28px_58px_28px_28px]'
                 : 'w-[160px] grid-cols-[44px_72px_44px] lg:w-[114px] lg:grid-cols-[28px_58px_28px]'
-            : lockSegment
-              ? 'w-[204px] grid-cols-[44px_72px_44px_44px]'
-              : 'w-[160px] grid-cols-[44px_72px_44px]'),
+              : lockSegment
+                ? 'w-[204px] grid-cols-[44px_72px_44px_44px]'
+                : 'w-[160px] grid-cols-[44px_72px_44px]'),
         widthPreset === 'grams' &&
           (compact
             ? lockSegment
@@ -198,9 +201,9 @@ export function DirectNumberControl({
               ? lockSegment
                 ? 'w-[220px] grid-cols-[44px_88px_44px_44px] lg:w-[150px] lg:grid-cols-[28px_66px_28px_28px]'
                 : 'w-[176px] grid-cols-[44px_88px_44px] lg:w-[122px] lg:grid-cols-[28px_66px_28px]'
-            : lockSegment
-              ? 'w-[220px] grid-cols-[44px_88px_44px_44px]'
-              : 'w-[176px] grid-cols-[44px_88px_44px]'),
+              : lockSegment
+                ? 'w-[220px] grid-cols-[44px_88px_44px_44px]'
+                : 'w-[176px] grid-cols-[44px_88px_44px]'),
         widthPreset === 'fluid' &&
           (compact
             ? lockSegment
@@ -221,6 +224,7 @@ export function DirectNumberControl({
       data-testid={testId}
       data-control-density={density}
       data-preserve-precision={preservePrecision ? 'true' : undefined}
+      data-publish-valid-draft={publishValidDraft ? 'true' : undefined}
       data-control-capacity={
         widthPreset === 'percent' ? '100.0%' : widthPreset === 'grams' ? '10000g' : 'fluid'
       }
@@ -281,9 +285,24 @@ export function DirectNumberControl({
             setEditing(true);
           }}
           onChange={(event) => {
+            const nextDraft = event.currentTarget.value.replace(',', '.');
             draftDirty.current = true;
             setEditing(true);
-            setDraft(event.currentTarget.value.replace(',', '.'));
+            setDraft(nextDraft);
+            const parsed = Number(nextDraft);
+            if (publishValidDraft && nextDraft.trim() !== '' && Number.isFinite(parsed)) {
+              const published = committedNumberValue({
+                value: parsed,
+                min,
+                max,
+                decimals,
+                preservePrecision,
+              });
+              if (published !== valueRef.current) {
+                valueRef.current = published;
+                onChange(published);
+              }
+            }
           }}
           onBlur={() => {
             if (!draftDirty.current) {
@@ -292,8 +311,20 @@ export function DirectNumberControl({
               return;
             }
             const parsed = Number(draft);
-            if (Number.isFinite(parsed)) commit(parsed);
-            else {
+            if (Number.isFinite(parsed)) {
+              const committed = committedNumberValue({
+                value: parsed,
+                min,
+                max,
+                decimals,
+                preservePrecision,
+              });
+              if (publishValidDraft && committed === valueRef.current) {
+                setDraft(committed.toFixed(decimals));
+                draftDirty.current = false;
+                setEditing(false);
+              } else commit(parsed);
+            } else {
               setDraft(valueRef.current.toFixed(decimals));
               setEditing(false);
             }

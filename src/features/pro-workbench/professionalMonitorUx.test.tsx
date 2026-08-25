@@ -177,6 +177,76 @@ describe('professional Monitor — final owner-approved information architecture
     expect(text).not.toContain('Przypnij');
   });
 
+  it('labels the freezing headline as ice fraction with percent, never as PAC', () => {
+    const input = starterMilkBase();
+    const result = calculateRecipe(input);
+    const freezing = buildProfessionalMonitorModules(
+      result,
+      input.target_temperature_c,
+      input,
+    ).find((module) => module.id === 'freezing');
+    const headline = freezing?.primary.find((metric) => metric.id === 'ice_fraction');
+    const pac = freezing?.primary.find((metric) => metric.id === 'pac');
+
+    expect(headline).toMatchObject({
+      id: 'ice_fraction',
+      rawMetric: 'ice_fraction',
+      label: 'Frakcja lodu',
+      value: result.ice_fraction_percent,
+      unit: '%',
+    });
+    expect(pac).toMatchObject({ id: 'pac', value: result.pac_points, unit: '' });
+
+    const html = renderToStaticMarkup(
+      <ProfessionalMonitorModules
+        modules={buildProfessionalMonitorModules(result, input.target_temperature_c, input)}
+      />,
+    );
+    expect(html).toContain('data-headline-metric="ice_fraction"');
+    expect(html).toContain('data-headline-unit="%"');
+    expect(html).toContain('data-headline-label="Frakcja lodu"');
+    expect(textOf(html)).toContain('Frakcja lodu');
+  });
+
+  it('uses one non-wrapping right value column for summary and expanded detail rows', () => {
+    const input = starterMilkBase();
+    vi.stubGlobal('window', {
+      location: { hostname: 'localhost' },
+      localStorage: {
+        getItem: () => JSON.stringify(['freezing', 'water-solids', 'fat', 'protein', 'stability']),
+        setItem: () => undefined,
+      },
+    });
+    try {
+      const html = renderToStaticMarkup(
+        <ProfessionalMonitorModules
+          modules={buildProfessionalMonitorModules(
+            calculateRecipe(input),
+            input.target_temperature_c,
+            input,
+            'GOOD',
+          )}
+        />,
+      );
+      expect(html.match(/class="[^"]*monitor-value-column[^"]*"/g)?.length).toBeGreaterThan(10);
+      expect(html).toContain('data-expanded="true"');
+      expect(html).toContain('bg-pro-warm/70');
+      expect(html).toContain('data-testid="monitor-module-details-freezing"');
+      expect(html).toContain('data-testid="monitor-metric-serving-temperature"');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+
+    const css = read('styles', 'theme-pro-light.css');
+    expect(css).toContain('.monitor-value-column');
+    expect(css).toContain('white-space: nowrap');
+    expect(css).toContain('font-variant-numeric: tabular-nums');
+    expect(css).toContain('.monitor-detail-grid');
+    expect(css).not.toMatch(
+      /@container right-pane \(max-width: 540px\)[\s\S]*?\.monitor-detail-row\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\)/,
+    );
+  });
+
   it('renders all seven rows inside one continuous Monitor block', () => {
     const html = renderMonitor();
     expect(html.match(/data-testid="monitor-unified-block"/g)).toHaveLength(1);

@@ -558,10 +558,10 @@ export const copy = {
     restoredFrom: (v: number) => `przywrócono z v${v}`,
     pendingRecalc: 'Zmiany oczekują na przeliczenie',
     status: {
-      newUnsaved: 'Nowa, niezapisana receptura',
+      newUnsaved: 'Niezapisane',
       saving: 'Zapisywanie…',
-      clean: 'Wszystkie zmiany zapisane',
-      dirty: 'Niezapisane zmiany',
+      clean: 'Zapisane',
+      dirty: 'Niezapisane',
       error: 'Błąd zapisu — spróbuj ponownie',
     },
     blocked: {

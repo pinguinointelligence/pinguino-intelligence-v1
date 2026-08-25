@@ -65,4 +65,42 @@ describe('DirectNumberControl integrated lock runtime', () => {
     expect(onToggle).toHaveBeenCalledTimes(1);
     expect(onChange).not.toHaveBeenCalled();
   });
+
+  it('publishes each valid topping draft before blur so sibling views cannot stay stale', async () => {
+    const onChange = vi.fn();
+    await act(async () => {
+      root.render(
+        <DirectNumberControl
+          value={27}
+          step={1}
+          decimals={0}
+          suffix="g"
+          ariaLabel="Gramatura toppingu"
+          onChange={onChange}
+          testId="live-topping-grams"
+          widthPreset="grams"
+          publishValidDraft
+        />,
+      );
+    });
+
+    const input = host.querySelector<HTMLInputElement>('[role="spinbutton"]')!;
+    const enter = async (value: string) => {
+      await act(async () => {
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+        setter?.call(input, value);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+    };
+
+    await act(async () => input.focus());
+    await enter('18');
+    expect(input.value).toBe('18');
+    expect(onChange).toHaveBeenLastCalledWith(18);
+    expect(host.innerHTML).toContain('data-publish-valid-draft="true"');
+
+    const callsBeforeBlur = onChange.mock.calls.length;
+    await act(async () => input.blur());
+    expect(onChange).toHaveBeenCalledTimes(callsBeforeBlur);
+  });
 });

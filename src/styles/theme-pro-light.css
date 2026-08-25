@@ -63,6 +63,17 @@
     1.25rem;
 }
 
+/* Summary and expanded details share one physical, non-wrapping numeric axis. */
+.monitor-value-column {
+  min-width: 6.75rem;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.monitor-detail-grid {
+  grid-template-columns: minmax(0, 1fr) 6.75rem 1.25rem;
+}
+
 .monitor-module-row {
   min-height: 4rem;
 }
@@ -176,13 +187,12 @@ body:has(details[open] [data-testid^='row-menu-']) [data-testid='design-review-o
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .profile-nutrition-details,
-  .monitor-detail-row {
+  .profile-nutrition-details {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .monitor-summary-grid {
-    grid-template-columns: 2rem minmax(0, 1fr) auto 1.25rem;
+    grid-template-columns: 2rem minmax(0, 1fr) 6.75rem 1.25rem;
     row-gap: 0.25rem;
   }
 

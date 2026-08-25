@@ -12,9 +12,15 @@ import {
   IngredientBuilder,
 } from '@/features/ingredient-builder/IngredientBuilder';
 import { ProductPickerPopover } from '@/features/ingredient-builder/ProductPickerPopover';
+import { ToppingRow } from '@/features/ingredient-builder/ToppingRow';
 import { productPickerUnavailableReason } from '@/features/ingredient-builder/productPickerModel';
 import type { IngredientLibrary } from '@/features/ingredient-builder/ingredientLibrary';
+import type { IngredientPriceView } from '@/features/ingredient-builder/IngredientPriceControl';
 import type { CatalogProductSearchHit } from '@/features/global-catalog/contracts';
+import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
+import { MonitorToppingSummary } from '@/features/pro-workbench/MonitorPanelContent';
+import { calculateFinalProduct } from './finalProduct';
+import { recipeCompositionFromState } from './recipeCompositionPersistence';
 
 const SRC = resolve(import.meta.dirname, '..', '..');
 const read = (...parts: string[]) => readFileSync(join(SRC, ...parts), 'utf8');
@@ -29,6 +35,20 @@ const library: IngredientLibrary = {
   serverSearch: false,
   products: [],
   productProvenance: new Map(),
+};
+
+const toppingPriceView: IngredientPriceView = {
+  cost: {
+    canonicalIngredientId: 'topping-test',
+    pricePerKg: null,
+    currency: 'EUR',
+    source: 'missing',
+    mapperPricePerKg: null,
+    customerOverridePerKg: null,
+    overrideId: null,
+  },
+  lineCost: null,
+  canEdit: false,
 };
 
 describe('Base/Topping owner entry points', () => {
@@ -101,6 +121,89 @@ describe('Base/Topping owner entry points', () => {
     expect(totals).not.toContain('Toppingi');
     expect(totals).toContain('Produkt finalny');
     expect(totals).toContain('1130');
+  });
+
+  it('keeps an edited topping at 18 g in Recipe, Monitor, final weight, and save/reopen', () => {
+    const input = starterMilkBase();
+    useRecipeStore.getState().loadRecipeInput(input);
+    useRecipeStore.getState().addTopping(input.items[0]!.ingredient, 27);
+    const toppingId = useRecipeStore.getState().toppings[0]!.id;
+    useRecipeStore.getState().setToppingGrams(toppingId, 18);
+
+    const renderCurrentViews = () => {
+      const state = useRecipeStore.getState();
+      const currentInput = buildRecipeInput(state);
+      const topping = state.toppings[0]!;
+      const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      const recipe = renderToStaticMarkup(
+        <QueryClientProvider client={client}>
+          <ToppingRow
+            item={topping}
+            priceView={toppingPriceView}
+            canMoveUp={false}
+            canMoveDown={false}
+            onChange={() => undefined}
+            onRemove={() => undefined}
+            onReplace={() => undefined}
+            library={library}
+            onMove={() => undefined}
+            onDragStart={() => undefined}
+            onDrop={() => undefined}
+            behaviorContext={{
+              accountId: 'owner',
+              productProfile: currentInput.category,
+              temperatureC: currentInput.target_temperature_c,
+              mode: 'optimal',
+            }}
+            compact
+          />
+        </QueryClientProvider>,
+      );
+      const monitor = renderToStaticMarkup(<MonitorToppingSummary toppings={state.toppings} />);
+      return { state, currentInput, recipe, monitor };
+    };
+
+    const edited = renderCurrentViews();
+    expect(edited.state.dirty).toBe(true);
+    expect(edited.recipe).toContain(`data-testid="topping-grams-${toppingId}"`);
+    expect(edited.recipe).toContain('value="18"');
+    expect(edited.monitor.replace(/<[^>]*>/g, ' ')).toContain('1 pozycja · 18 g');
+    expect(calculateFinalProduct(edited.currentInput, edited.state.toppings)).toMatchObject({
+      baseMassG: 1000,
+      toppingMassG: 18,
+      finalMassG: 1018,
+    });
+
+    const savedComposition = recipeCompositionFromState(edited.state);
+    useRecipeStore.getState().markSaved('recipe-18', 'Topping 18', 1);
+    expect(useRecipeStore.getState().dirty).toBe(false);
+    useRecipeStore.getState().loadRecipeInput(edited.currentInput, {
+      savedId: 'recipe-18',
+      savedName: 'Topping 18',
+      versionNumber: 1,
+      composition: savedComposition,
+    });
+
+    const reopened = renderCurrentViews();
+    expect(reopened.state.dirty).toBe(false);
+    expect(reopened.state.toppings[0]?.planned_grams).toBe(18);
+    expect(reopened.recipe).toContain('value="18"');
+    expect(reopened.monitor.replace(/<[^>]*>/g, ' ')).toContain('1 pozycja · 18 g');
+  });
+
+  it('uses the same compact row grid/control family for topping and base rows at desktop and mobile', () => {
+    const topping = read('features', 'ingredient-builder', 'ToppingRow.tsx');
+    expect(topping).toContain('COMPACT_ROW_GRID');
+    expect(topping).toContain("density={compact ? 'compact' : 'comfortable'}");
+    expect(topping).toContain("compact ? 'w-[150px]' : 'w-[220px]'");
+    expect(topping).toContain("compact ? 'w-7 shrink-0' : 'w-11 shrink-0'");
+    expect(topping).toContain('lg:hidden');
+    expect(topping).toContain('hidden lg:block');
+    expect(topping).toContain('placement="bottom"');
+    expect(topping).toContain('data-testid={`topping-mobile-line-${item.id}`}');
+    expect(topping).toContain('testId={`topping-mobile-sheet-${item.id}`}');
+    expect(topping).toContain('grid size-7 place-items-center rounded-full');
+    expect(topping).not.toContain('bg-pro-sage/20 px-3 py-3');
   });
 
   it('keeps Base roles limited to Main/Standard and isolates topping actions', () => {

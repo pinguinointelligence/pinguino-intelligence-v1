@@ -10,9 +10,10 @@ import {
   type PinguinoIconProps,
 } from '@/components/icons/PinguinoIcons';
 import { PINGUINO_ICON_CIRCLE } from '@/components/icons/pinguinoIconTokens';
-import type {
-  ProfessionalMonitorMetric,
-  ProfessionalMonitorModule,
+import {
+  formatMonitorValue,
+  type ProfessionalMonitorMetric,
+  type ProfessionalMonitorModule,
 } from './professionalMonitorModel';
 import {
   monitorScaleGeometry,
@@ -22,8 +23,11 @@ import {
 
 const STORAGE_KEY = 'pinguino:pro-monitor-expanded:v1';
 
-const formatValue = (value: number) =>
-  value.toLocaleString('pl-PL', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const metricValueText = (metric: ProfessionalMonitorMetric): string => {
+  if (metric.displayText !== undefined) return metric.displayText;
+  if (metric.value === null) return '—';
+  return `${formatMonitorValue(metric.value)}${metric.unit ? ` ${metric.unit}` : ''}`;
+};
 
 /**
  * The approved PINGÜINO Monitor marks (owner reference sheet, 2026-08-24).
@@ -150,7 +154,7 @@ export function MonitorRangeScale({
 function MetricDetail({ metric }: { metric: ProfessionalMonitorMetric }) {
   return (
     <div
-      className="monitor-detail-row grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-t border-ink/7 py-2 first:border-0"
+      className="monitor-detail-row monitor-detail-grid grid gap-3 border-t border-ink/7 py-2 first:border-0"
       data-testid={`monitor-metric-${metric.id}`}
       data-raw-metric={metric.rawMetric}
       data-evaluation={metric.reading?.state ?? 'none'}
@@ -160,15 +164,13 @@ function MetricDetail({ metric }: { metric: ProfessionalMonitorMetric }) {
       <span className="min-w-0 text-xs text-stone-600">{metric.label}</span>
       <span
         className={cn(
-          'max-w-[14rem] text-right text-xs font-semibold leading-tight text-ink',
+          'monitor-value-column text-right text-xs font-semibold leading-tight text-ink',
           metric.displayText === undefined && 'font-mono tabular-nums',
         )}
       >
-        {metric.displayText ?? (metric.value === null ? '—' : formatValue(metric.value))}
-        {metric.displayText === undefined && metric.value !== null && metric.unit
-          ? ` ${metric.unit}`
-          : ''}
+        {metricValueText(metric)}
       </span>
+      <span aria-hidden />
     </div>
   );
 }
@@ -176,7 +178,6 @@ function MetricDetail({ metric }: { metric: ProfessionalMonitorMetric }) {
 function summaryFor(module: ProfessionalMonitorModule): {
   metric: ProfessionalMonitorMetric;
   scaleMetric: ProfessionalMonitorMetric;
-  abbreviation: string | null;
 } {
   const headlineId =
     module.id === 'freezing'
@@ -195,7 +196,6 @@ function summaryFor(module: ProfessionalMonitorModule): {
   return {
     metric,
     scaleMetric: metric,
-    abbreviation: module.id === 'freezing' ? 'PAC' : null,
   };
 }
 
@@ -240,10 +240,13 @@ export function ProfessionalMonitorModules({
         return (
           <section
             key={module.id}
-            className="overflow-hidden bg-white"
+            className={cn('overflow-hidden', open ? 'bg-pro-warm/70' : 'bg-white')}
             data-testid={`monitor-module-${module.id}`}
             data-problem={module.problem ? 'true' : 'false'}
             data-headline-metric={summary.metric.id}
+            data-headline-label={summary.metric.label}
+            data-headline-unit={summary.metric.unit || undefined}
+            data-expanded={open ? 'true' : 'false'}
           >
             <button
               type="button"
@@ -271,6 +274,9 @@ export function ProfessionalMonitorModules({
                 <strong className="block truncate text-sm font-semibold text-ink">
                   {module.title}
                 </strong>
+                <span className="mt-0.5 block truncate text-[10px] text-stone-600">
+                  {summary.metric.label}
+                </span>
               </span>
               <MonitorRangeScale
                 model={summary.scaleMetric.scaleModel}
@@ -278,15 +284,13 @@ export function ProfessionalMonitorModules({
                 testId={`monitor-scale-${module.id}`}
                 label={module.title}
               />
-              <span className="flex min-w-0 items-center justify-end gap-2 text-right">
-                {summary.abbreviation ? (
-                  <span className="rounded-[8px] border border-ink/8 bg-stone-50 px-2 py-1 text-[10px] font-semibold text-ink">
-                    {summary.abbreviation}
-                  </span>
-                ) : null}
-                <span className="font-mono text-sm font-semibold tabular-nums text-ink">
-                  {summary.metric.value === null ? '—' : formatValue(summary.metric.value)}
-                </span>
+              <span
+                className={cn(
+                  'monitor-value-column text-right text-sm font-semibold text-ink',
+                  summary.metric.displayText === undefined && 'font-mono tabular-nums',
+                )}
+              >
+                {metricValueText(summary.metric)}
               </span>
               {hasDetails ? (
                 <span
@@ -305,7 +309,7 @@ export function ProfessionalMonitorModules({
             {open && hasDetails ? (
               <div
                 id={`monitor-details-${module.id}`}
-                className="border-t border-ink/8 bg-stone-50/55 px-4 py-1"
+                className="border-t border-ink/8 bg-transparent px-3 py-1"
                 data-testid={`monitor-module-details-${module.id}`}
               >
                 {detailRows.map((metric) => (

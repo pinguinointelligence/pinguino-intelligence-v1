@@ -10,7 +10,7 @@ import {
   IngredientPriceCell,
   type IngredientPriceView,
 } from './IngredientPriceControl';
-import { DialogShell, ROW_GRID } from './IngredientRow';
+import { COMPACT_ROW_GRID, DialogShell, ROW_GRID } from './IngredientRow';
 import { ProductPickerPopover } from './ProductPickerPopover';
 import type { IngredientLibrary } from './ingredientLibrary';
 import {
@@ -35,6 +35,7 @@ export function ToppingRow({
   onDragStart,
   onDrop,
   behaviorContext,
+  compact = false,
 }: {
   item: RecipeToppingItem;
   priceView: IngredientPriceView;
@@ -48,12 +49,14 @@ export function ToppingRow({
   onMove: (direction: -1 | 1) => void;
   onDragStart: () => void;
   onDrop: () => void;
+  compact?: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   const catalogLabel = isCatalogLabelToppingIngredient(item.ingredient) ? item.ingredient : null;
   return (
     <div
-      className="border-b border-status-ideal/15 bg-pro-sage/20 px-3 py-3 hover:bg-pro-sage/34"
+      className="border-b border-ink/[0.075] px-[var(--pro-mobile-gutter)] py-1 transition-colors hover:bg-stone-50 lg:px-3 lg:py-1.5"
       onDragOver={(event) => event.preventDefault()}
       onDrop={(event) => {
         event.preventDefault();
@@ -64,21 +67,18 @@ export function ToppingRow({
       data-testid={`topping-row-${item.id}`}
       tabIndex={-1}
     >
-      <div className={ROW_GRID}>
-        <div className="min-w-0">
-          <span className="flex min-w-0 items-center gap-1.5 2xl:gap-1">
+      <div className="lg:hidden">
+        <button
+          type="button"
+          onClick={() => setMobileSheetOpen(true)}
+          data-testid={`topping-mobile-line-${item.id}`}
+          aria-label={`${item.ingredient.name} — otwórz edycję toppingu`}
+          className="pro-focus-ring grid min-h-14 w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 text-left transition-colors active:bg-stone-50"
+        >
+          <span className="flex min-w-0 items-center gap-2">
             <span
               aria-hidden
-              draggable
-              onDragStart={onDragStart}
-              className="inline-grid size-11 shrink-0 cursor-grab select-none place-items-center text-base leading-none text-stone-400 active:cursor-grabbing md:size-6 2xl:size-5"
-              title="Przeciągnij, aby zmienić kolejność"
-            >
-              ⠿
-            </span>
-            <span
-              aria-hidden
-              className="grid size-7 shrink-0 place-items-center rounded-full bg-white text-stone-600 md:size-6"
+              className="grid size-7 shrink-0 place-items-center rounded-full bg-stone-100 text-stone-600"
             >
               <IngredientCategoryIcon
                 symbol={ingredientCategorySymbolFor({
@@ -88,60 +88,97 @@ export function ToppingRow({
                 })}
               />
             </span>
-            <strong
-              className="truncate text-[13px] font-semibold text-ink"
-              title={item.ingredient.name}
-            >
+            <span className="truncate text-[13px] font-semibold text-ink">
               {item.ingredient.name}
-            </strong>
+            </span>
             <CarbonationBubbles status={item.ingredient.carbonation_status} />
           </span>
-          {catalogLabel ? (
-            <span
-              className={cn(
-                'mt-1 inline-flex rounded-md px-2 py-1 text-xs font-semibold',
-                catalogLabel.verification_status === 'verified'
-                  ? 'bg-status-ideal/12 text-status-ideal'
-                  : 'bg-sky-100 text-sky-800',
-              )}
-              data-testid="catalog-topping-verification"
-            >
-              {catalogLabel.verification_status === 'verified'
-                ? 'Zweryfikowany produkt katalogowy'
-                : 'Dodany manualnie · niezweryfikowany'}
-            </span>
-          ) : null}
-        </div>
-
-        <div aria-hidden className="hidden md:block" />
-
-        <div className="justify-self-end">
-          <DirectNumberControl
-            value={item.planned_grams}
-            min={0}
-            step={1}
-            decimals={Number.isInteger(item.planned_grams) ? 0 : 1}
-            suffix="g"
-            ariaLabel={`${item.ingredient.name} — ilość toppingu`}
-            onChange={(value) => onChange(Math.max(0, value))}
-            testId={`topping-grams-${item.id}`}
-            widthPreset="grams"
-          />
-        </div>
-
-        <IngredientPriceCell view={priceView} />
-
-        <div className="relative justify-self-end">
-          <button
-            type="button"
-            className="pro-focus-ring grid size-11 place-items-center rounded-full border border-ink/10 text-sm text-stone-500 hover:border-ink/35 hover:text-ink"
-            aria-label={`Opcje toppingu ${item.ingredient.name}`}
-            aria-haspopup="dialog"
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen(true)}
+          <span
+            className="w-[64px] shrink-0 text-right font-mono text-[13px] font-semibold whitespace-nowrap tabular-nums text-ink"
+            data-testid={`topping-mobile-grams-${item.id}`}
           >
-            •••
-          </button>
+            {item.planned_grams.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} g
+          </span>
+        </button>
+      </div>
+
+      <div className="hidden lg:block">
+        <div className={compact ? COMPACT_ROW_GRID : ROW_GRID}>
+          <div className="min-w-0">
+            <span className="flex min-w-0 items-center gap-1.5 2xl:gap-1">
+              <span
+                aria-hidden
+                draggable
+                onDragStart={onDragStart}
+                className="inline-grid size-11 shrink-0 cursor-grab select-none place-items-center text-base leading-none text-stone-400 active:cursor-grabbing md:size-5 2xl:order-1 2xl:size-4"
+                title="Przeciągnij, aby zmienić kolejność"
+              >
+                ⠿
+              </span>
+              <span aria-hidden className="size-8 shrink-0 2xl:order-10 2xl:size-6" />
+              <span
+                aria-hidden
+                className="grid size-7 shrink-0 place-items-center rounded-full bg-stone-100 text-stone-600 md:size-6 2xl:order-2 2xl:size-6"
+              >
+                <IngredientCategoryIcon
+                  symbol={ingredientCategorySymbolFor({
+                    category: isCatalogLabelToppingIngredient(item.ingredient)
+                      ? null
+                      : item.ingredient.category,
+                  })}
+                />
+              </span>
+              <strong
+                className="truncate text-[13px] font-semibold text-ink 2xl:order-3"
+                title={item.ingredient.name}
+              >
+                {item.ingredient.name}
+              </strong>
+              <CarbonationBubbles
+                status={item.ingredient.carbonation_status}
+                className="2xl:order-4"
+              />
+            </span>
+          </div>
+
+          <div aria-hidden />
+
+          <div
+            className={cn(
+              'flex items-center justify-self-end',
+              compact ? 'w-[150px]' : 'w-[220px]',
+            )}
+          >
+            <DirectNumberControl
+              value={item.planned_grams}
+              min={0}
+              step={1}
+              decimals={Number.isInteger(item.planned_grams) ? 0 : 1}
+              suffix="g"
+              ariaLabel={`${item.ingredient.name} — ilość toppingu`}
+              onChange={(value) => onChange(Math.max(0, value))}
+              testId={`topping-grams-${item.id}`}
+              widthPreset="grams"
+              density={compact ? 'compact' : 'comfortable'}
+              publishValidDraft
+            />
+            <span aria-hidden className={compact ? 'w-7 shrink-0' : 'w-11 shrink-0'} />
+          </div>
+
+          <IngredientPriceCell view={priceView} />
+
+          <div className="relative justify-self-end">
+            <button
+              type="button"
+              className="pro-focus-ring grid size-7 place-items-center rounded-full border border-ink/10 text-[11px] text-stone-500 hover:border-ink/35 hover:text-ink"
+              aria-label={`Opcje toppingu ${item.ingredient.name}`}
+              aria-haspopup="dialog"
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen(true)}
+            >
+              •••
+            </button>
+          </div>
         </div>
       </div>
 
@@ -257,6 +294,82 @@ export function ToppingRow({
           >
             Usuń topping
           </button>
+        </DialogShell>
+      ) : null}
+
+      {mobileSheetOpen ? (
+        <DialogShell
+          label={`${item.ingredient.name} — edycja toppingu`}
+          testId={`topping-mobile-sheet-${item.id}`}
+          placement="bottom"
+          onClose={() => setMobileSheetOpen(false)}
+        >
+          <div className="flex flex-col">
+            <div className="sticky top-0 z-10 border-b border-ink/10 bg-white px-4 py-3">
+              <div className="flex min-w-0 items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold tracking-[0.05em] text-stone-600 uppercase">
+                    Topping po produkcji
+                  </p>
+                  <h2 className="mt-1 text-base font-semibold break-words text-ink">
+                    {item.ingredient.name}
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMobileSheetOpen(false)}
+                  aria-label="Zamknij edycję toppingu"
+                  className="pro-focus-ring grid size-11 shrink-0 place-items-center rounded-full border border-ink/12 text-lg text-ink"
+                >
+                  ×
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-stone-600">
+                Nie zmienia bilansu ani wyniku technicznego bazy.
+              </p>
+            </div>
+
+            <div className="px-4 py-3">
+              <IngredientPriceCell view={priceView} />
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileSheetOpen(false);
+                  setMenuOpen(true);
+                }}
+                className="pro-focus-ring mt-3 min-h-11 w-full rounded-xl border border-ink/12 bg-white px-3 text-left text-xs font-semibold text-ink"
+              >
+                Więcej opcji toppingu
+              </button>
+            </div>
+
+            <div className="sticky bottom-0 border-t border-ink/10 bg-white px-4 pt-3 pb-4">
+              <label className="grid gap-1.5">
+                <span className="block text-xs font-semibold tracking-[0.05em] text-stone-600 uppercase">
+                  Ilość
+                </span>
+                <DirectNumberControl
+                  value={item.planned_grams}
+                  min={0}
+                  step={1}
+                  decimals={Number.isInteger(item.planned_grams) ? 0 : 1}
+                  suffix="g"
+                  ariaLabel={`${item.ingredient.name} — ilość toppingu`}
+                  onChange={(value) => onChange(Math.max(0, value))}
+                  testId={`topping-mobile-grams-control-${item.id}`}
+                  widthPreset="fluid"
+                  publishValidDraft
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => setMobileSheetOpen(false)}
+                className="pro-focus-ring mt-3 min-h-12 w-full rounded-xl bg-ink px-4 text-sm font-semibold text-white"
+              >
+                Gotowe
+              </button>
+            </div>
+          </div>
         </DialogShell>
       ) : null}
     </div>

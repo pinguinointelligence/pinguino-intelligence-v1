@@ -9,12 +9,7 @@ import type { FreezingStabilityStatus } from '@/features/recipe-constraints';
 import { buildMonitorScaleModel, type MonitorScaleModel } from './monitorScaleModel';
 
 export type ProfessionalMonitorModuleId =
-  | 'freezing'
-  | 'sugars'
-  | 'water-solids'
-  | 'fat'
-  | 'protein'
-  | 'stability';
+  'freezing' | 'sugars' | 'water-solids' | 'fat' | 'protein' | 'stability';
 
 export type ProfessionalRawMetricKey =
   | 'pod'
@@ -49,6 +44,9 @@ export interface ProfessionalMonitorModule {
   secondary: ProfessionalMonitorMetric[];
   problem: boolean;
 }
+
+export const formatMonitorValue = (value: number) =>
+  value.toLocaleString('pl-PL', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
 const TOOLTIP = {
   ice: 'Udział zamrożonej wody. Wpływa na twardość i odczucie lodu w temperaturze serwowania.',
@@ -140,7 +138,8 @@ const classified = (
       target === 'fat' ||
       target === 'aerating_protein' ||
       target === 'protein_in_solids' ||
-      target === 'lactose'
+      target === 'lactose' ||
+      target === 'lactose_sandiness_risk'
       ? '%'
       : '',
     tooltip,

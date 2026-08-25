@@ -155,19 +155,17 @@ describe('real Pro Monitor route', () => {
 
   it('shows one authoritative Engine value per headline and keeps ice/water canonical', () => {
     const pod = RESULT.indicators.find((indicator) => indicator.key === 'pod')?.value ?? null;
-    expect(TEXT).toContain(pod?.toFixed(2) ?? '—');
-    expect(TEXT).toContain(RESULT.npac_points?.toFixed(2) ?? '—');
+    expect(TEXT).toContain(format(pod));
+    expect(TEXT).toContain(format(RESULT.npac_points));
     const freezing = PANEL.slice(
       PANEL.indexOf('data-testid="monitor-module-freezing"'),
       PANEL.indexOf('data-testid="monitor-module-water-solids"'),
     );
-    const ice = RESULT.indicators.find((indicator) => indicator.key === 'ice_fraction')?.value ?? null;
+    const ice =
+      RESULT.indicators.find((indicator) => indicator.key === 'ice_fraction')?.value ?? null;
     expect(visibleText(freezing)).toContain(format(ice));
     expect(visibleText(freezing)).not.toContain(format(RESULT.pac_points));
-    const model = readFileSync(
-      new URL('./professionalMonitorModel.ts', import.meta.url),
-      'utf8',
-    );
+    const model = readFileSync(new URL('./professionalMonitorModel.ts', import.meta.url), 'utf8');
     expect(model).toContain("classified(result, 'ice_fraction'");
     expect(model).toContain("classified(result, 'water'");
   });

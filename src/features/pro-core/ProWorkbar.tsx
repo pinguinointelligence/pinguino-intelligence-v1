@@ -198,7 +198,7 @@ export function ProWorkbar({ variant = 'bar' }: { variant?: 'bar' | 'panel' }) {
               statusKey === 'error'
                 ? 'text-status-error'
                 : statusKey === 'dirty' || statusKey === 'newUnsaved'
-                  ? 'text-attention'
+                  ? 'text-status-risky'
                   : 'text-stone-500',
             )}
             data-testid="pro-workbar-status"

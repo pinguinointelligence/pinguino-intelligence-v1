@@ -788,6 +788,7 @@ export function IngredientBuilder({
         }}
         canMoveUp={index > 0}
         canMoveDown={index < toppings.length - 1}
+        compact={layout === 'workbench'}
         onChange={(grams) => setToppingGrams(item.id, grams)}
         onRemove={() => removeTopping(item.id)}
         onReplace={(ingredient, behavior) => {

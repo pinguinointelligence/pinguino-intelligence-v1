@@ -11,6 +11,7 @@ import { cn } from '@/lib/cn';
 import { HardnessIcon, SweetnessIcon } from '@/components/icons/PinguinoIcons';
 import { PINGUINO_ICON_CIRCLE } from '@/components/icons/pinguinoIconTokens';
 import { MonitorRangeScale } from './ProfessionalMonitorModules';
+import { formatMonitorValue } from './professionalMonitorModel';
 import { buildMonitorScaleModel } from './monitorScaleModel';
 import { MonitorScoreHeader } from './MonitorScoreHeader';
 import { monitorScoreComparison } from './monitorLiveScore';
@@ -122,12 +123,12 @@ export function MonitorLiveSummary({
                   testId={`monitor-scale-${key}`}
                   label={label}
                 />
-                <span className="flex items-center justify-end gap-2 text-right">
+                <span className="monitor-value-column flex items-center justify-end gap-2 text-right">
                   <span className="rounded-[8px] border border-ink/8 bg-stone-50 px-2 py-1 text-[10px] font-semibold text-ink">
                     {key.toUpperCase()}
                   </span>
                   <span className="font-mono text-sm font-semibold tabular-nums text-ink">
-                    {before?.value == null ? '—' : before.value.toFixed(2)}
+                    {before?.value == null ? '—' : formatMonitorValue(before.value)}
                   </span>
                 </span>
                 <span aria-hidden />
