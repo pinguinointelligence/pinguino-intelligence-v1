@@ -415,7 +415,7 @@ export function assessProductionRescue(session: ProductionSession): ProductionRe
     'enlarge_batch',
     (mass) => `Powiększ do ${formatBatchMassG(mass)} g`,
     (mass) =>
-      `Najmniejsza partia powyżej ${formatBatchMassG(originalTarget)} g, którą Engine potwierdził ` +
+      `Najmniejsza bezpieczna partia powyżej ${formatBatchMassG(originalTarget)} g ` +
       `dla tego, co jest już w naczyniu: ${formatBatchMassG(mass)} g.`,
     session,
     forecastInput,
@@ -461,6 +461,6 @@ export function assessProductionRescue(session: ProductionSession): ProductionRe
     reason:
       options.length > 0
         ? null
-        : 'Brak zweryfikowanej korekty, która zachowuje fizycznie dodane składniki i natywne zakresy Engine.',
+        : 'Brak bezpiecznej korekty, która zachowuje fizycznie dodane składniki i zatwierdzone zakresy receptury.',
   };
 }

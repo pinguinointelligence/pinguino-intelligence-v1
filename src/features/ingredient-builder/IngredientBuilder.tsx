@@ -397,11 +397,11 @@ export function IngredientBuilder({
         data-testid="production-table-header"
         data-table-family="recipe"
       >
-        {['Składnik', 'Planowane', 'Faktycznie · Status / potwierdź', 'Różnica'].map(
+        {['Składnik', 'Plan', 'Faktycznie', 'Status / potwierdzenie', 'Odchylenie'].map(
           (label, index) => (
             <span
               key={label}
-              className={`${headCell} ${index === 1 || index === 3 ? 'text-right' : ''}`}
+              className={`${headCell} ${index === 1 || index === 4 ? 'text-right' : ''}`}
             >
               {label}
             </span>
@@ -523,6 +523,7 @@ export function IngredientBuilder({
             plannedGrams: item.planned_grams,
             targetGrams: item.planned_grams,
             draftActualGrams: item.actual_grams ?? item.planned_grams,
+            draftActualEdited: false,
             physicalAddedGrams: item.actual_grams ?? 0,
             confirmed: item.actual_grams !== null,
             confirmedAt: null,
@@ -844,15 +845,31 @@ export function IngredientBuilder({
             ) : null}
           </div>
           {mode === 'production' ? (
-            <div className="mt-2 flex items-center justify-between gap-3 border border-ink/10 bg-stone-50 px-3 py-2">
-              <p className="text-xs text-stone-600">
-                Odważ · skoryguj −/+ · potwierdź ✓. Potwierdzonego materiału PI nigdy nie odejmuje.
+            <div className="mt-2 border border-ink/10 bg-stone-50 px-3 py-2">
+              <div className="flex items-start justify-between gap-3">
+                <ol
+                  className="flex min-w-0 flex-wrap gap-x-4 gap-y-1 text-xs text-stone-700"
+                  aria-label="Kolejność ważenia składnika"
+                >
+                  <li>
+                    <strong className="font-mono text-ink">1.</strong> Odważ składnik
+                  </li>
+                  <li>
+                    <strong className="font-mono text-ink">2.</strong> Wpisz faktyczną ilość
+                  </li>
+                  <li>
+                    <strong className="font-mono text-ink">3.</strong> Potwierdź dodanie
+                  </li>
+                </ol>
+                <span className="shrink-0 font-mono text-xs tabular-nums text-ink">
+                  {production?.progress
+                    ? `${production.progress.confirmedCount}/${production.progress.totalCount}`
+                    : '0/0'}
+                </span>
+              </div>
+              <p className="mt-1 text-[11px] leading-relaxed text-stone-500">
+                Potwierdzonej ilości nie można odjąć od naczynia.
               </p>
-              <span className="shrink-0 font-mono text-xs tabular-nums text-ink">
-                {production?.progress
-                  ? `${production.progress.confirmedCount}/${production.progress.totalCount}`
-                  : '0/0'}
-              </span>
               {!production ? (
                 <span className="sr-only" data-readiness="W PRZYGOTOWANIU">
                   W PRZYGOTOWANIU

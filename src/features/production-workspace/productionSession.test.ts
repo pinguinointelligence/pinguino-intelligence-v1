@@ -221,6 +221,20 @@ describe('production session physical-reality contract', () => {
           detail: null,
           amendment: null,
         },
+        {
+          eventId: 'decision-1',
+          type: 'deviation_decision_accepted',
+          at: '2026-08-19T00:02:00.000Z',
+          by: 'owner-1',
+          detail: 'Operator accepted the current safe result',
+          amendment: {
+            stableOptionId: 'leave_as_is',
+            sourceActualRevision: 1,
+            rescueRevision: 1,
+            finalMassG: 1002,
+            scoreDisplay: '8/10',
+          },
+        },
       ],
     };
     const recovered = hydrateProductionSessionFromRun(
@@ -240,6 +254,14 @@ describe('production session physical-reality contract', () => {
       thermalMode: 'HEAT_CAPABLE',
       processReadiness: 'READY_WITH_INFO',
       processAdvisories: [{ code: 'PROCESS_DATA_INSUFFICIENT' }],
+      lastDeviationDecision: {
+        strategy: 'leave_as_is',
+        acceptedAt: '2026-08-19T00:02:00.000Z',
+        sourceActualRevision: 1,
+        rescueRevision: 1,
+        finalMassG: 1002,
+        scoreDisplay: '8/10',
+      },
     });
   });
 
@@ -522,6 +544,43 @@ describe('production session physical-reality contract', () => {
     expect(forecast.items[0]!.actual_grams).toBe(line.plannedGrams + 2);
     expect(forecast.items[1]!.actual_grams).toBeNull();
     expect(calculateRecipe(forecast).total_batch_g).toBeCloseTo(1002, 8);
+  });
+
+  it('separates an edited unconfirmed amount from a physical confirmation', () => {
+    const run = session();
+    const line = run.lines[0]!;
+
+    expect(line.draftActualEdited).toBe(false);
+    const edited = setDraftActualGrams(run, line.lineId, line.plannedGrams + 2);
+    expect(edited.lines[0]).toMatchObject({
+      draftActualEdited: true,
+      physicalAddedGrams: 0,
+      confirmed: false,
+    });
+    const confirmed = confirmProductionLine(edited, line.lineId, '2026-08-25T10:01:00.000Z');
+    expect(confirmed.lines[0]).toMatchObject({
+      draftActualEdited: false,
+      physicalAddedGrams: line.plannedGrams + 2,
+      confirmed: true,
+    });
+  });
+
+  it('reports excess mass explicitly instead of collapsing it into zero remaining', () => {
+    let run = session();
+    for (const line of run.lines) {
+      run = setDraftActualGrams(
+        run,
+        line.lineId,
+        line.lineId === run.lines[0]!.lineId ? line.targetGrams + 12.5 : line.targetGrams,
+      );
+      run = confirmProductionLine(run, line.lineId, '2026-08-25T10:01:00.000Z');
+    }
+
+    expect(productionProgress(run)).toMatchObject({
+      remainingMassG: 0,
+      excessMassG: 12.5,
+      massBalanceState: 'above',
+    });
   });
 
   it('keeps the planned recipe immutable while exact, +2 g and -2 g actuals are recorded', () => {

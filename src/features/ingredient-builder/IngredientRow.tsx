@@ -57,7 +57,7 @@ export const ROW_GRID =
 export const COMPACT_ROW_GRID =
   'grid grid-cols-1 items-center gap-x-2 gap-y-3 md:grid-cols-[minmax(300px,1fr)_142px_150px_96px_28px]';
 export const PRODUCTION_ROW_GRID =
-  'grid grid-cols-1 items-center gap-x-2 gap-y-2 md:grid-cols-[minmax(140px,1fr)_76px_226px_80px] lg:grid-cols-[minmax(200px,1fr)_88px_154px_88px]';
+  'grid grid-cols-1 items-center gap-x-2 gap-y-2 md:grid-cols-[minmax(140px,1.1fr)_76px_minmax(190px,1fr)_116px_104px] xl:grid-cols-[minmax(190px,1.2fr)_88px_minmax(220px,1fr)_128px_112px]';
 
 export interface IngredientRowActions {
   setPlannedGrams: (lineId: string, grams: number) => void;
@@ -711,10 +711,6 @@ function RecipeRow({
               >
                 {item.ingredient.name}
               </HoverPreview>
-              <CarbonationBubbles
-                status={item.ingredient.carbonation_status}
-                className="2xl:order-4"
-              />
               {estimated ? (
                 <span
                   aria-label={t.data.estimatedHint}
@@ -985,6 +981,9 @@ function ProductionRow({
   line: ProductionLineState;
   actions: ProductionRowActions;
 }) {
+  const [recordCorrectionDialogOpen, setRecordCorrectionDialogOpen] = useState(false);
+  const [additionalAmountDialogOpen, setAdditionalAmountDialogOpen] = useState(false);
+  const [additionalGrams, setAdditionalGrams] = useState(0);
   const value = line.confirmed ? line.physicalAddedGrams : line.draftActualGrams;
   const difference = value - line.targetGrams;
   const exact = Math.abs(difference) <= 0.05;
@@ -998,35 +997,97 @@ function ProductionRow({
   const topUpGrams = productionTopUpGrams(line);
   const owesTopUp = topUpGrams > 0.05;
 
+  const physicalStatus = correctionMode
+    ? 'DO POTWIERDZENIA'
+    : line.confirmed || line.physicalAddedGrams > 0
+      ? 'DODANO'
+      : line.draftActualEdited
+        ? 'DO POTWIERDZENIA'
+        : 'DO DODANIA';
+
   return (
-    <div
-      className={PRODUCTION_ROW_GRID}
-      data-production-confirmed={line.confirmed ? 'true' : 'false'}
-      data-production-mode={correctionMode ? 'correction' : 'addition'}
-    >
-      <div className="min-w-0">
-        <span className="flex min-w-0 flex-wrap items-center gap-x-1.5">
-          <span
-            aria-hidden
-            className="grid size-6 shrink-0 place-items-center rounded-full bg-stone-100 text-stone-600"
-          >
-            <IngredientCategoryIcon
-              symbol={ingredientCategorySymbolFor({ category: item.ingredient.category })}
-            />
+    <>
+      <div
+        className={PRODUCTION_ROW_GRID}
+        data-production-confirmed={line.confirmed ? 'true' : 'false'}
+        data-production-mode={correctionMode ? 'correction' : 'addition'}
+      >
+        <div className="min-w-0">
+          <span className="flex min-w-0 flex-wrap items-center gap-x-1.5">
+            <span
+              aria-hidden
+              className="grid size-6 shrink-0 place-items-center rounded-full bg-stone-100 text-stone-600"
+            >
+              <IngredientCategoryIcon
+                symbol={ingredientCategorySymbolFor({ category: item.ingredient.category })}
+              />
+            </span>
+            <HoverPreview
+              text={item.ingredient.name}
+              className="min-w-0 flex-1 truncate text-[13px] font-semibold text-ink"
+            >
+              {item.ingredient.name}
+            </HoverPreview>
+            <CarbonationBubbles status={item.ingredient.carbonation_status} />
           </span>
-          <HoverPreview
-            text={item.ingredient.name}
-            className="min-w-0 flex-1 truncate text-[13px] font-semibold text-ink"
-          >
-            {item.ingredient.name}
-          </HoverPreview>
-          <CarbonationBubbles status={item.ingredient.carbonation_status} />
+          {line.physicalAddedGrams > 0 && (!line.confirmed || owesTopUp) ? (
+            <span className="mt-0.5 block text-xs text-stone-600">
+              W naczyniu: {formatProductionMassG(line.physicalAddedGrams)} g
+            </span>
+          ) : null}
+        </div>
+        <div className="min-w-0 px-1 text-left md:text-right" data-production-cell="planned">
+          <span className="block text-[10px] font-semibold text-stone-600 md:block">Plan</span>
+          <strong className="block font-mono text-sm font-semibold tabular-nums text-ink">
+            {formatProductionMassG(line.targetGrams)} g
+          </strong>
+        </div>
+        <div>
+          <FieldLabel>Faktycznie</FieldLabel>
+          <ProductionActualControl
+            lineId={line.lineId}
+            ingredientName={item.ingredient.name}
+            value={value}
+            minimum={minimum}
+            step={step}
+            confirmed={line.confirmed}
+            correctionMode={correctionMode}
+            disabled={actions.disabled}
+            onChange={setValue}
+            onConfirm={() => {
+              if (line.confirmed) {
+                actions.reopenRecord(line.lineId);
+                return;
+              }
+              if (correctionMode && value !== line.physicalAddedGrams) {
+                setRecordCorrectionDialogOpen(true);
+                return;
+              }
+              actions.confirmLine(line.lineId);
+            }}
+            describedBy={correctionMode ? `production-correction-${line.lineId}` : undefined}
+          />
+          {correctionMode ? (
+            <p
+              className="mt-1 text-xs leading-snug text-attention"
+              data-testid={`production-record-correction-${line.lineId}`}
+              id={`production-correction-${line.lineId}`}
+              role="status"
+              aria-live="polite"
+            >
+              Poprawiasz zapis faktycznej ilości — tylko jeśli poprzednia wartość była wpisana
+              błędnie.
+            </p>
+          ) : null}
+        </div>
+        <div className="min-w-0" data-production-cell="physical-status">
+          <FieldLabel>Status / potwierdzenie</FieldLabel>
           <span
             className={cn(
-              'mt-1 ml-7 inline-flex basis-full lg:mt-0 lg:ml-auto lg:basis-auto items-center rounded-md border px-1.5 py-0.5 text-[10px] leading-tight font-semibold tracking-[0.03em]',
+              'inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] leading-tight font-semibold tracking-[0.03em]',
               correctionMode
                 ? 'border-attention/30 bg-pro-amber text-attention'
-                : line.confirmed
+                : physicalStatus === 'DODANO'
                   ? 'border-status-ideal/25 bg-pro-sage text-status-ideal'
                   : 'border-ink/10 bg-stone-50 text-stone-600',
             )}
@@ -1034,108 +1095,170 @@ function ProductionRow({
             role="status"
             aria-live="polite"
           >
-            {correctionMode
-              ? 'POPRAW WPIS'
-              : owesTopUp
-                ? `DODAJ JESZCZE ${formatProductionMassG(topUpGrams)} g`
-                : line.confirmed
-                  ? line.recordCorrectionCount > 0
-                    ? 'SKORYGOWANO'
-                    : exact
-                      ? 'DODANO'
-                      : 'RÓŻNICA'
-                  : 'DO DODANIA'}
+            {physicalStatus}
           </span>
-        </span>
-        {line.physicalAddedGrams > 0 && (!line.confirmed || owesTopUp) ? (
-          <span className="mt-0.5 block text-xs text-stone-600">
-            W naczyniu: {formatProductionMassG(line.physicalAddedGrams)} g
-          </span>
-        ) : null}
-        {/* §20 — the most direct correction is offered first: put the missing
-            grams in and the line is simply back on plan. */}
-        {owesTopUp && line.confirmed && actions.topUpLine ? (
-          <button
-            type="button"
-            disabled={actions.disabled}
-            onClick={() => actions.topUpLine!(line.lineId, line.targetGrams)}
-            className="pro-focus-ring mt-1.5 min-h-11 rounded-[12px] border border-ink/15 bg-white px-3 py-2 text-xs font-semibold text-ink shadow-pro-sm disabled:cursor-wait disabled:opacity-60"
-            data-testid={`production-top-up-${line.lineId}`}
-          >
-            Dodaj brakujące {formatProductionMassG(topUpGrams)} g
-          </button>
-        ) : null}
+          {owesTopUp && line.confirmed && actions.topUpLine ? (
+            <button
+              type="button"
+              disabled={actions.disabled}
+              onClick={() => actions.topUpLine!(line.lineId, line.targetGrams)}
+              className="pro-focus-ring mt-1 block min-h-9 rounded-lg border border-ink/15 bg-white px-2 py-1 text-[10px] font-semibold text-ink disabled:cursor-wait disabled:opacity-60"
+              data-testid={`production-top-up-${line.lineId}`}
+            >
+              Dodaj brakujące {formatProductionMassG(topUpGrams)} g
+            </button>
+          ) : line.confirmed && actions.topUpLine ? (
+            <button
+              type="button"
+              disabled={actions.disabled}
+              onClick={() => {
+                setAdditionalGrams(step);
+                setAdditionalAmountDialogOpen(true);
+              }}
+              className="pro-focus-ring mt-1 block min-h-9 text-left text-[10px] font-semibold text-stone-600 underline decoration-ink/20 underline-offset-2 disabled:opacity-50"
+              data-testid={`production-add-more-${line.lineId}`}
+            >
+              Dodaj kolejną ilość
+            </button>
+          ) : null}
+        </div>
+        <div
+          className={cn('min-w-0 px-1 md:text-right', exact ? 'text-stone-600' : 'text-attention')}
+          data-testid={`production-difference-${line.lineId}`}
+          data-production-cell="deviation"
+          data-production-difference={exact ? 'exact' : difference > 0 ? 'over' : 'under'}
+          role="status"
+          aria-live="polite"
+          aria-label={`Różnica względem planu: ${difference > 0 ? 'plus ' : difference < 0 ? 'minus ' : ''}${formatProductionMassG(Math.abs(difference))} gramów${exact ? ', zgodnie z planem' : difference > 0 ? ', powyżej planu' : ', poniżej planu'}`}
+        >
+          <FieldLabel>Odchylenie</FieldLabel>
+          <strong className="block font-mono text-sm tabular-nums">
+            {difference > 0 ? '+' : ''}
+            {formatProductionMassG(difference)} g
+            {!exact ? ` ${difference > 0 ? 'ponad plan' : 'poniżej planu'}` : ''}
+          </strong>
+        </div>
       </div>
-      <div className="min-w-0 px-1 text-left md:text-right" data-production-cell="planned">
-        <span className="block text-[10px] font-semibold text-stone-600 md:block">Plan</span>
-        <strong className="block font-mono text-sm font-semibold tabular-nums text-ink">
-          {formatProductionMassG(line.targetGrams)} g
-        </strong>
-      </div>
-      <div>
-        <FieldLabel>Faktycznie · potwierdź</FieldLabel>
-        <ProductionActualControl
-          lineId={line.lineId}
-          ingredientName={item.ingredient.name}
-          value={value}
-          minimum={minimum}
-          step={step}
-          confirmed={line.confirmed}
-          correctionMode={correctionMode}
-          disabled={actions.disabled}
-          onChange={setValue}
-          onConfirm={() => {
-            if (line.confirmed) {
-              actions.reopenRecord(line.lineId);
-              return;
-            }
-            if (
-              correctionMode &&
-              value < line.physicalAddedGrams - 0.000001 &&
-              typeof window !== 'undefined' &&
-              !window.confirm('Czy poprzednia wartość była błędnym wpisem?')
-            ) {
-              return;
-            }
-            actions.confirmLine(line.lineId);
-          }}
-          describedBy={correctionMode ? `production-correction-${line.lineId}` : undefined}
-        />
-        {correctionMode ? (
-          <p
-            className="mt-1 text-xs leading-snug text-attention"
-            data-testid={`production-record-correction-${line.lineId}`}
-            id={`production-correction-${line.lineId}`}
-            role="status"
-            aria-live="polite"
-          >
-            Poprawiasz zapis faktycznej ilości — tylko jeśli poprzednia wartość była wpisana
-            błędnie.
-          </p>
-        ) : null}
-      </div>
-      <div
-        className={cn('min-w-0 px-1 md:text-right', exact ? 'text-stone-600' : 'text-attention')}
-        data-testid={`production-difference-${line.lineId}`}
-        data-production-cell="deviation"
-        data-production-difference={exact ? 'exact' : difference > 0 ? 'over' : 'under'}
-        role="status"
-        aria-live="polite"
-        aria-label={`Różnica względem planu: ${difference > 0 ? 'plus ' : difference < 0 ? 'minus ' : ''}${formatProductionMassG(Math.abs(difference))} gramów${exact ? ', zgodnie z planem' : difference > 0 ? ', powyżej planu' : ', poniżej planu'}`}
-      >
-        <FieldLabel>Różnica</FieldLabel>
-        <span className="block text-[10px] font-semibold">Odchylenie</span>
-        <strong className="block font-mono text-sm tabular-nums">
-          {difference > 0 ? '+' : ''}
-          {formatProductionMassG(difference)} g
-        </strong>
-        {!exact ? (
-          <span className="mt-0.5 block text-[10px] font-medium">
-            {difference > 0 ? 'powyżej planu' : 'poniżej planu'}
-          </span>
-        ) : null}
-      </div>
-    </div>
+
+      {recordCorrectionDialogOpen ? (
+        <DialogShell
+          label="Poprawiasz wcześniejszy wpis"
+          testId="production-record-correction-dialog"
+          placement="responsive"
+          onClose={() => setRecordCorrectionDialogOpen(false)}
+        >
+          <div className="p-5 sm:p-0">
+            <p className="text-[10px] font-semibold tracking-[0.08em] text-attention uppercase">
+              Korekta zapisu
+            </p>
+            <h2 className="mt-2 text-lg font-semibold text-ink">Poprawiasz wcześniejszy wpis</h2>
+            <dl className="mt-4 grid gap-3 border-y border-ink/10 py-4 text-sm">
+              <div>
+                <dt className="text-xs text-stone-500">Wcześniej potwierdzono</dt>
+                <dd className="mt-1 font-semibold text-ink">
+                  {item.ingredient.name} —{' '}
+                  <span className="font-mono tabular-nums">
+                    {formatProductionMassG(line.physicalAddedGrams)} g
+                  </span>
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-stone-500">Nowa wartość</dt>
+                <dd className="mt-1 font-mono font-semibold tabular-nums text-ink">
+                  {formatProductionMassG(value)} g
+                </dd>
+              </div>
+            </dl>
+            <p className="mt-4 text-xs leading-relaxed text-stone-700">
+              Zmień wartość tylko wtedy, gdy poprzedni wpis był błędny. Fizycznie dodanego składnika
+              nie można usunąć z naczynia.
+            </p>
+            <div className="mt-5 grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setRecordCorrectionDialogOpen(false)}
+                className="pro-focus-ring min-h-11 rounded-[10px] border border-ink/15 bg-white px-4 text-xs font-semibold text-ink"
+              >
+                Anuluj
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setRecordCorrectionDialogOpen(false);
+                  actions.confirmLine(line.lineId);
+                }}
+                className="pro-focus-ring min-h-11 rounded-[10px] bg-ink px-4 text-xs font-semibold text-white"
+              >
+                Popraw błędny wpis
+              </button>
+            </div>
+          </div>
+        </DialogShell>
+      ) : null}
+
+      {additionalAmountDialogOpen && actions.topUpLine ? (
+        <DialogShell
+          label={`Dodaj kolejną ilość — ${item.ingredient.name}`}
+          testId="production-additional-amount-dialog"
+          placement="responsive"
+          onClose={() => setAdditionalAmountDialogOpen(false)}
+        >
+          <div className="p-5 sm:p-0">
+            <p className="text-[10px] font-semibold tracking-[0.08em] text-[#8a5b23] uppercase">
+              Dodatkowe ważenie
+            </p>
+            <h2 className="mt-2 text-lg font-semibold text-ink">Dodaj kolejną ilość</h2>
+            <p className="mt-2 text-xs leading-relaxed text-stone-600">
+              W naczyniu pozostaje {formatProductionMassG(line.physicalAddedGrams)} g. Podaj tylko
+              ilość, którą teraz fizycznie dodajesz.
+            </p>
+            <label className="mt-4 block text-xs font-semibold text-stone-700">
+              Dodatkowa ilość
+              <span className="mt-1 flex items-center rounded-[10px] border border-ink/15 bg-white px-3">
+                <input
+                  type="number"
+                  min={step}
+                  step={step}
+                  value={additionalGrams}
+                  onChange={(event) =>
+                    setAdditionalGrams(Math.max(0, Number(event.currentTarget.value)))
+                  }
+                  className="h-11 min-w-0 flex-1 bg-transparent text-right font-mono text-sm tabular-nums outline-none"
+                />
+                <span className="ml-1 text-xs text-stone-500">g</span>
+              </span>
+            </label>
+            <p className="mt-3 text-xs text-stone-600">
+              Po dodaniu w naczyniu będzie{' '}
+              <strong className="font-mono tabular-nums text-ink">
+                {formatProductionMassG(line.physicalAddedGrams + additionalGrams)} g
+              </strong>
+              .
+            </p>
+            <div className="mt-5 grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setAdditionalAmountDialogOpen(false)}
+                className="pro-focus-ring min-h-11 rounded-[10px] border border-ink/15 bg-white px-4 text-xs font-semibold text-ink"
+              >
+                Anuluj
+              </button>
+              <button
+                type="button"
+                disabled={additionalGrams <= 0}
+                onClick={() => {
+                  actions.topUpLine!(line.lineId, line.physicalAddedGrams + additionalGrams);
+                  setAdditionalAmountDialogOpen(false);
+                }}
+                className="pro-focus-ring min-h-11 rounded-[10px] bg-ink px-4 text-xs font-semibold text-white disabled:opacity-40"
+              >
+                Potwierdź dodanie
+              </button>
+            </div>
+          </div>
+        </DialogShell>
+      ) : null}
+    </>
   );
 }
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { RecipeInput } from '@/engine';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
+import { buildCanonicalNewRecipeStarter } from '@/features/recipes/newRecipeStarter';
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
 import {
   confirmProductionLine,
@@ -30,6 +31,44 @@ const make = () =>
     },
     plannedInput: input,
     startedAt: '2026-08-09T10:00:00.000Z',
+  });
+
+const ownerScenario = (): RecipeInput => {
+  const starter = buildCanonicalNewRecipeStarter({
+    visibleProductType: 'gelato',
+    servingModeId: 'temp_minus_11',
+    formulationStrategy: 'optimal',
+    targetBatchGrams: 1_000,
+  });
+  const grams = [480, 318, 48, 105, 46, 3] as const;
+  return {
+    items: starter.items.map((item, index) => ({
+      ...item,
+      id: ['milk', 'cream', 'smp', 'sucrose', 'dextrose', 'tara'][index]!,
+      planned_grams: grams[index]!,
+      actual_grams: null,
+    })),
+    mode: 'classic',
+    category: starter.category,
+    target_temperature_c: starter.targetTemperatureC,
+    target_batch_grams: 1_000,
+    machine_capacity_grams: null,
+    goals: { formulation_strategy: starter.formulationStrategy },
+  };
+};
+
+const makeOwnerScenario = () =>
+  createProductionSession({
+    sessionId: 'run-owner-scenario',
+    ownerUserId: 'owner',
+    source: {
+      recipeId: 'recipe',
+      recipeVersionId: 'version',
+      recipeVersionNumber: 1,
+      recipeName: 'Owner milk base',
+    },
+    plannedInput: ownerScenario(),
+    startedAt: '2026-08-25T10:00:00.000Z',
   });
 
 describe('production rescue orchestration', () => {
@@ -155,6 +194,82 @@ describe('production rescue orchestration', () => {
     expect(new Set(canonicalIds).size).toBe(canonicalIds.length);
   });
 
+  it('evaluates the owner Cream 320 g + Dextrose 59.5 g case with confirmed amounts as lower bounds', () => {
+    let run = makeOwnerScenario();
+    run = confirmProductionLine(
+      setDraftActualGrams(run, 'cream', 320),
+      'cream',
+      '2026-08-25T10:01:00.000Z',
+    );
+    run = confirmProductionLine(
+      setDraftActualGrams(run, 'dextrose', 59.5),
+      'dextrose',
+      '2026-08-25T10:02:00.000Z',
+    );
+
+    const assessment = assessProductionRescue(run);
+    const enlarge = assessment.options.find((option) => option.id === 'enlarge_batch');
+    expect(enlarge).toBeDefined();
+    expect(enlarge!.candidateInput.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'cream', planned_grams: expect.any(Number) }),
+        expect.objectContaining({ id: 'dextrose', planned_grams: expect.any(Number) }),
+      ]),
+    );
+    expect(
+      enlarge!.candidateInput.items.find((item) => item.id === 'cream')!.planned_grams,
+    ).toBeGreaterThanOrEqual(320);
+    expect(
+      enlarge!.candidateInput.items.find((item) => item.id === 'dextrose')!.planned_grams,
+    ).toBeGreaterThanOrEqual(59.5);
+    expect(enlarge!.instructions).toEqual(
+      expect.arrayContaining([expect.objectContaining({ lineId: 'dextrose', kind: 'add' })]),
+    );
+  });
+
+  it('can add more to an already-confirmed ingredient without subtracting its physical amount', () => {
+    let run = make();
+    const cream = run.lines.find((line) => line.name.toLowerCase().includes('cream'))!;
+    const sucrose = run.lines.find((line) => line.name.toLowerCase().includes('sucrose'))!;
+    run = confirmProductionLine(run, cream.lineId, '2026-08-25T10:01:00.000Z');
+    run = confirmProductionLine(
+      setDraftActualGrams(run, sucrose.lineId, sucrose.plannedGrams + 50),
+      sucrose.lineId,
+      '2026-08-25T10:02:00.000Z',
+    );
+
+    const enlarge = assessProductionRescue(run).options.find(
+      (option) => option.id === 'enlarge_batch',
+    );
+    expect(enlarge).toBeDefined();
+    const creamAddition = enlarge!.instructions.find(
+      (instruction) => instruction.lineId === cream.lineId && instruction.kind === 'add',
+    );
+    expect(creamAddition?.grams).toBeGreaterThan(0);
+    expect(creamAddition?.finalTargetGrams).toBeGreaterThan(cream.physicalAddedGrams);
+  });
+
+  it('treats an explicitly confirmed zero as a real deviation and never as false success', () => {
+    const run = makeOwnerScenario();
+    const entered = setDraftActualGrams(run, 'dextrose', 0);
+    expect(entered.lines.find((line) => line.lineId === 'dextrose')).toMatchObject({
+      draftActualEdited: true,
+      physicalAddedGrams: 0,
+      confirmed: false,
+    });
+
+    const confirmed = confirmProductionLine(entered, 'dextrose', '2026-08-25T10:01:00.000Z');
+    expect(confirmed.lines.find((line) => line.lineId === 'dextrose')).toMatchObject({
+      draftActualEdited: false,
+      physicalAddedGrams: 0,
+      confirmed: true,
+    });
+    const assessment = assessProductionRescue(confirmed);
+    expect(assessment.hasConfirmedDeviation).toBe(true);
+    expect(assessment.state).not.toBe('not_needed');
+    expect(assessment.options.every((option) => option.verifiedByEngine)).toBe(true);
+  });
+
   it('returns an honest impossible state instead of inventing grams when no candidate verifies', () => {
     let run = make();
     for (const line of run.lines) {
@@ -171,7 +286,7 @@ describe('production rescue orchestration', () => {
     const assessment = assessProductionRescue(run);
     if (assessment.state === 'impossible') {
       expect(assessment.options).toEqual([]);
-      expect(assessment.reason).toMatch(/Brak zweryfikowanej korekty/);
+      expect(assessment.reason).toMatch(/Brak bezpiecznej korekty/);
     } else {
       expect(assessment.options.every((option) => option.verifiedByEngine)).toBe(true);
     }

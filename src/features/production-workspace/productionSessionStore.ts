@@ -68,7 +68,7 @@ export function migrateProductionSessionStore(
   persisted: unknown,
   version: number,
 ): ProductionSessionStoreState {
-  if (version >= 6) return persisted as ProductionSessionStoreState;
+  if (version >= 7) return persisted as ProductionSessionStoreState;
   const state = persisted as {
     session?: ProductionSession | null;
     archivedSessions?: ProductionSession[];
@@ -85,6 +85,7 @@ export function migrateProductionSessionStore(
       degassingAcknowledged?: boolean;
       degassingAcknowledgedAt?: string | null;
       carbonatedProductIds?: string[];
+      lastDeviationDecision?: ProductionSession['lastDeviationDecision'];
     };
     const plannedComposition =
       legacy.plannedComposition ??
@@ -96,7 +97,6 @@ export function migrateProductionSessionStore(
       ...legacy,
       schemaVersion: 2,
       plannedComposition,
-      addonLines: legacy.addonLines ?? [],
       stage: legacy.stage ?? 'base',
       durableRescueAcceptedAt: legacy.durableRescueAcceptedAt ?? null,
       durableRescueRevision: legacy.durableRescueRevision ?? 0,
@@ -105,6 +105,15 @@ export function migrateProductionSessionStore(
       degassingAcknowledged: legacy.degassingAcknowledged ?? false,
       degassingAcknowledgedAt: legacy.degassingAcknowledgedAt ?? null,
       carbonatedProductIds: legacy.carbonatedProductIds ?? [],
+      lastDeviationDecision: legacy.lastDeviationDecision ?? null,
+      lines: legacy.lines.map((line) => ({
+        ...line,
+        draftActualEdited: line.draftActualEdited ?? false,
+      })),
+      addonLines: (legacy.addonLines ?? []).map((line) => ({
+        ...line,
+        draftActualEdited: line.draftActualEdited ?? false,
+      })),
     };
   };
   return {
@@ -208,7 +217,7 @@ export const useProductionSessionStore = create<ProductionSessionStoreState>()(
     }),
     {
       name: 'pinguino-production-session',
-      version: 6,
+      version: 7,
       migrate: migrateProductionSessionStore,
       partialize: (state) => ({
         session: state.session,

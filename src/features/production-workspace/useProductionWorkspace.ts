@@ -89,6 +89,21 @@ export type ProductionRescueAuthorizationState =
       message: string;
     };
 
+export type ProductionRescueOptionEvaluation =
+  | { status: 'loading' }
+  | {
+      status: 'available';
+      authorization: ProductionRescueAuthorization;
+      consumeIdempotencyKey: string;
+    }
+  | { status: 'unavailable'; reason: string }
+  | { status: 'error'; reason: string };
+
+export interface ProductionRescueOptionsEvaluationState {
+  basisKey: string | null;
+  options: Partial<Record<ProductionRescueStableOptionId, ProductionRescueOptionEvaluation>>;
+}
+
 export const productionRescueAuthorizationInvalidation = (
   authorization: Pick<
     ProductionRescueAuthorization,
@@ -118,18 +133,18 @@ export const rescueOptionUnavailableMessage = (
   error: unknown,
 ): string => {
   if (!isProductionRescueOptionUnavailableError(error)) {
-    return 'Nie udało się pobrać autoryzowanego Preview Rescue.';
+    return 'Nie udało się obliczyć tej opcji.';
   }
   const target = Number.isInteger(originalTargetG)
     ? originalTargetG.toFixed(0)
     : originalTargetG.toFixed(1);
   if (stableOptionId === 'keep_original_batch') {
-    return `Nie da się już zachować partii ${target} g przy tym, co jest w naczyniu. Wybierz powiększenie partii.`;
+    return `Niedostępne — pozostałych ilości nie można bezpiecznie dostosować do ${target} g.`;
   }
   if (stableOptionId === 'enlarge_batch') {
-    return 'Engine nie potwierdził żadnej większej partii, która zachowuje fizycznie dodane składniki.';
+    return 'Niedostępne — nie znaleziono bezpiecznej większej partii dla obecnych ilości.';
   }
-  return 'Bieżąca partia nie mieści się już w zatwierdzonych zakresach — potrzebna jest korekta.';
+  return 'Niedostępne — obecna partia nie mieści się w bezpiecznym zakresie.';
 };
 
 const productionRescueIdempotencyKey = (): string =>
@@ -140,17 +155,17 @@ const productionRescueChoices = [
   {
     id: 'keep_original_batch',
     title: 'Zachowaj pierwotną partię',
-    explanation: 'Serwer sprawdzi, czy pozostały plan można bezpiecznie skorygować.',
+    explanation: 'Dostosujemy tylko ilości, których jeszcze nie dodano.',
   },
   {
     id: 'enlarge_batch',
     title: 'Powiększ partię',
-    explanation: 'Serwer sprawdzi bezpieczne uzupełnienie partii po odchyleniu.',
+    explanation: 'Dodamy potrzebne ilości, aby zachować możliwie ten sam profil.',
   },
   {
     id: 'leave_as_is',
-    title: 'Pozostaw bez zmian',
-    explanation: 'Serwer potwierdzi, czy bieżąca partia nadal mieści się w bezpiecznym zakresie.',
+    title: 'Kontynuuj bez korekty',
+    explanation: 'Nie zmienimy dalszego planu i zaakceptujesz przewidywany wynik.',
   },
 ] as const satisfies ReadonlyArray<{
   id: ProductionRescueStableOptionId;
@@ -162,7 +177,7 @@ export const browserProductionRescueDecision = (session: ProductionSession | nul
   const hasConfirmedDeviation = Boolean(
     session?.status === 'in_progress' &&
     session.lines.some(
-      (line) => line.confirmed && Math.abs(line.physicalAddedGrams - line.plannedGrams) > 0.000001,
+      (line) => line.confirmed && Math.abs(line.physicalAddedGrams - line.targetGrams) > 0.000001,
     ),
   );
   return hasConfirmedDeviation
@@ -220,10 +235,7 @@ export const durableRescueRequiresReconciliation = (
   Boolean(remote.rescue && local && remote.rescue.revision !== local.durableRescueRevision);
 
 export type DurableProductionRecoveryRelation =
-  | 'missing_remote'
-  | 'new_rescue'
-  | 'new_actual'
-  | 'same';
+  'missing_remote' | 'new_rescue' | 'new_actual' | 'same';
 
 class MissingDurableProductionRunError extends Error {
   constructor() {
@@ -283,10 +295,7 @@ export type ProductionPrerequisiteCode =
   | 'owner_mismatch';
 
 export type ProductionPrerequisiteAction =
-  | 'open_preview'
-  | 'recalculate'
-  | 'return_to_recipe'
-  | 'archive_stale_session';
+  'open_preview' | 'recalculate' | 'return_to_recipe' | 'archive_stale_session';
 
 export type ProductionPrerequisite = {
   code: ProductionPrerequisiteCode;
@@ -365,6 +374,11 @@ export function useProductionWorkspace(enabled: boolean) {
     [],
   );
   const [rescueAuthorizationClock, setRescueAuthorizationClock] = useState(() => Date.now());
+  const [rescueOptionsEvaluation, setRescueOptionsEvaluation] =
+    useState<ProductionRescueOptionsEvaluationState>({ basisKey: null, options: {} });
+  const [selectedRescueOptionId, setSelectedRescueOptionId] =
+    useState<ProductionRescueStableOptionId | null>(null);
+  const [rescueOptionsRetryRevision, setRescueOptionsRetryRevision] = useState(0);
   const [reconcileRevision, setReconcileRevision] = useState(0);
   const [preStartHeatAcknowledgementKey, setPreStartHeatAcknowledgementKey] = useState<
     string | null
@@ -436,7 +450,7 @@ export function useProductionWorkspace(enabled: boolean) {
             ? prerequisite(
                 'preview_not_applied',
                 'Zastosuj recepturę wykonawczą',
-                'Preview jest gotowy, ale nie został jeszcze zastosowany. Produkcja nie uruchomi się z samego podglądu.',
+                'Podgląd wykonawczy jest gotowy, ale nie został jeszcze zastosowany. Produkcja nie uruchomi się z samego podglądu.',
                 'open_preview',
                 'Otwórz podgląd',
               )
@@ -765,6 +779,120 @@ export function useProductionWorkspace(enabled: boolean) {
     [session],
   );
   const score = monitorScoreView(forecastResult, forecastInput).match;
+  const plannedScore = useMemo(
+    () => monitorScoreView(calculateRecipe(plannedInput), plannedInput).match,
+    [plannedInput],
+  );
+  const rescueOptionsBasisKey =
+    session && rescue.state === 'options'
+      ? `${session.sessionId}:${session.durableActualRevision}:${session.durableRescueRevision}`
+      : null;
+
+  useEffect(() => {
+    if (
+      !enabled ||
+      !repositoryState.repository ||
+      !session ||
+      rescue.state !== 'options' ||
+      rescueOptionsBasisKey === null
+    ) {
+      setRescueOptionsEvaluation({ basisKey: null, options: {} });
+      setSelectedRescueOptionId(null);
+      return;
+    }
+    let cancelled = false;
+    const basisSession = session;
+    const loadingOptions = Object.fromEntries(
+      productionRescueChoices.map((option) => [option.id, { status: 'loading' as const }]),
+    );
+    setRescueOptionsEvaluation({ basisKey: rescueOptionsBasisKey, options: loadingOptions });
+    setSelectedRescueOptionId(null);
+
+    for (const option of productionRescueChoices) {
+      void repositoryState.repository
+        .authorizeRescue({
+          runId: basisSession.sessionId,
+          stableOptionId: option.id,
+          expectedActualRevision: basisSession.durableActualRevision,
+          expectedRescueRevision: basisSession.durableRescueRevision,
+          idempotencyKey: `production-decision:${basisSession.sessionId}:${basisSession.durableActualRevision}:${basisSession.durableRescueRevision}:${option.id}`,
+        })
+        .then((authorization) => {
+          if (cancelled) return;
+          const latest = sessionRef.current;
+          if (
+            latest?.sessionId !== basisSession.sessionId ||
+            latest.durableActualRevision !== basisSession.durableActualRevision ||
+            latest.durableRescueRevision !== basisSession.durableRescueRevision
+          ) {
+            return;
+          }
+          setRescueOptionsEvaluation((current) =>
+            current.basisKey === rescueOptionsBasisKey
+              ? {
+                  ...current,
+                  options: {
+                    ...current.options,
+                    [option.id]: {
+                      status: 'available',
+                      authorization,
+                      consumeIdempotencyKey: productionRescueIdempotencyKey(),
+                    },
+                  },
+                }
+              : current,
+          );
+        })
+        .catch((error) => {
+          if (cancelled) return;
+          const unavailable = isProductionRescueOptionUnavailableError(error);
+          const originalTarget = basisSession.plannedInput.target_batch_grams;
+          const confirmedMass = productionProgress(basisSession).confirmedMassG;
+          const reason =
+            option.id === 'keep_original_batch' && confirmedMass > originalTarget + 0.000001
+              ? `Niedostępne — w naczyniu jest już więcej niż ${originalTarget.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} g.`
+              : rescueOptionUnavailableMessage(option.id, originalTarget, error);
+          setRescueOptionsEvaluation((current) =>
+            current.basisKey === rescueOptionsBasisKey
+              ? {
+                  ...current,
+                  options: {
+                    ...current.options,
+                    [option.id]: unavailable
+                      ? { status: 'unavailable', reason }
+                      : { status: 'error', reason },
+                  },
+                }
+              : current,
+          );
+        });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    enabled,
+    repositoryState.repository,
+    rescue.state,
+    rescueOptionsBasisKey,
+    rescueOptionsRetryRevision,
+    session,
+  ]);
+
+  const currentRescueOptionsEvaluation =
+    rescueOptionsEvaluation.basisKey === rescueOptionsBasisKey
+      ? rescueOptionsEvaluation.options
+      : {};
+  const rescueOptionsCalculating = Object.values(currentRescueOptionsEvaluation).some(
+    (option) => option?.status === 'loading',
+  );
+  const recommendedRescueOptionId = rescueOptionsCalculating
+    ? undefined
+    : productionRescueChoices.find(
+        (option) => currentRescueOptionsEvaluation[option.id]?.status === 'available',
+      )?.id;
+  const effectiveSelectedRescueOptionId =
+    selectedRescueOptionId ?? recommendedRescueOptionId ?? null;
   const nameProcessDetails = (details: ProductProcessReadinessDetail[]) =>
     details.map((detail) => {
       const line = detail.lineId
@@ -917,7 +1045,7 @@ export function useProductionWorkspace(enabled: boolean) {
       });
       setPersistence({
         busy: false,
-        error: 'Nie zmieniono partii. Odśwież propozycję Rescue i spróbuj ponownie.',
+        error: 'Nie zmieniono partii. Spróbuj obliczyć opcję ponownie.',
       });
     } finally {
       setPersistence((current) => ({ ...current, busy: false }));
@@ -934,10 +1062,14 @@ export function useProductionWorkspace(enabled: boolean) {
     }
   };
 
-  const consumeAuthorizedRescue = async (): Promise<void> => {
+  const consumeRescueAuthorization = async (
+    selectedAuthorization: Extract<ProductionRescueAuthorizationState, { status: 'preview' }>,
+  ): Promise<void> => {
     if (
-      activeRescueAuthorization.status !== 'preview' ||
-      rescueAuthorizationInvalidation ||
+      productionRescueAuthorizationInvalidation(
+        selectedAuthorization.authorization,
+        sessionRef.current,
+      ) ||
       !repositoryState.repository ||
       persistence.busy
     ) {
@@ -948,10 +1080,10 @@ export function useProductionWorkspace(enabled: boolean) {
     setPersistence({ busy: true, error: null });
     try {
       const consumed = await repositoryState.repository.consumeRescue({
-        authorizationId: activeRescueAuthorization.authorization.authorizationId,
-        expectedActualRevision: activeRescueAuthorization.authorization.expectedActualRevision,
-        expectedRescueRevision: activeRescueAuthorization.authorization.expectedRescueRevision,
-        idempotencyKey: activeRescueAuthorization.consumeIdempotencyKey,
+        authorizationId: selectedAuthorization.authorization.authorizationId,
+        expectedActualRevision: selectedAuthorization.authorization.expectedActualRevision,
+        expectedRescueRevision: selectedAuthorization.authorization.expectedRescueRevision,
+        idempotencyKey: selectedAuthorization.consumeIdempotencyKey,
       });
       const durableRun = await repositoryState.repository.getRun(consumed.runId, ownerUserId ?? '');
       if (!durableRun?.rescue) {
@@ -962,9 +1094,26 @@ export function useProductionWorkspace(enabled: boolean) {
         throw new Error('The active Production run changed while Rescue was being applied.');
       }
       updateRescueAuthorization({ status: 'idle' });
+      const hydrated = hydrateProductionSessionFromRun(
+        durableRun,
+        source,
+        plannedInput,
+        plannedComposition,
+      );
       replaceSession(
         mergePendingProductionDrafts(
-          hydrateProductionSessionFromRun(durableRun, source, plannedInput, plannedComposition),
+          {
+            ...hydrated,
+            lastDeviationDecision: {
+              strategy: selectedAuthorization.authorization.stableOptionId,
+              acceptedAt:
+                durableRun.rescue?.acceptedAt ?? selectedAuthorization.authorization.authorizedAt,
+              sourceActualRevision: selectedAuthorization.authorization.expectedActualRevision,
+              rescueRevision: durableRun.rescue?.revision ?? hydrated.durableRescueRevision,
+              finalMassG: selectedAuthorization.authorization.preview.finalMassG,
+              scoreDisplay: selectedAuthorization.authorization.preview.scoreDisplay,
+            },
+          },
           latestSession,
         ),
       );
@@ -975,20 +1124,53 @@ export function useProductionWorkspace(enabled: boolean) {
             ? {
                 ...current,
                 refreshRequired: true,
-                error: 'Stan partii zmienił się od chwili autoryzacji Preview.',
+                error: 'Stan partii zmienił się od chwili obliczenia.',
               }
             : current,
         );
       } else {
         setPersistence({
           busy: false,
-          error: 'Nie zastosowano Rescue. Plan partii pozostaje bez zmian.',
+          error: 'Nie zastosowano korekty. Plan partii pozostaje bez zmian.',
         });
       }
       setReconcileRevision((current) => current + 1);
     } finally {
       setPersistence((current) => ({ ...current, busy: false }));
     }
+  };
+
+  const consumeAuthorizedRescue = async (): Promise<void> => {
+    if (activeRescueAuthorization.status !== 'preview' || rescueAuthorizationInvalidation) return;
+    await consumeRescueAuthorization(activeRescueAuthorization);
+  };
+
+  const selectRescueOption = (stableOptionId: ProductionRescueStableOptionId): void => {
+    const evaluated = currentRescueOptionsEvaluation[stableOptionId];
+    if (evaluated?.status !== 'available') return;
+    setSelectedRescueOptionId(stableOptionId);
+    updateRescueAuthorization({
+      status: 'preview',
+      authorization: evaluated.authorization,
+      consumeIdempotencyKey: evaluated.consumeIdempotencyKey,
+      refreshRequired: false,
+      error: null,
+    });
+  };
+
+  const applySelectedRescueOption = async (): Promise<void> => {
+    if (!effectiveSelectedRescueOptionId) return;
+    const evaluated = currentRescueOptionsEvaluation[effectiveSelectedRescueOptionId];
+    if (evaluated?.status !== 'available') return;
+    const selected: Extract<ProductionRescueAuthorizationState, { status: 'preview' }> = {
+      status: 'preview',
+      authorization: evaluated.authorization,
+      consumeIdempotencyKey: evaluated.consumeIdempotencyKey,
+      refreshRequired: false,
+      error: null,
+    };
+    updateRescueAuthorization(selected);
+    await consumeRescueAuthorization(selected);
   };
 
   return {
@@ -1003,6 +1185,12 @@ export function useProductionWorkspace(enabled: boolean) {
     progress,
     toppingProgress,
     score,
+    plannedScore,
+    rescueOptionStates: currentRescueOptionsEvaluation,
+    rescueOptionsCalculating,
+    recommendedRescueOptionId: recommendedRescueOptionId ?? null,
+    selectedRescueOptionId: effectiveSelectedRescueOptionId,
+    deviationDecisionUnresolved: rescue.state === 'options',
     corrections,
     processReadiness,
     /**
@@ -1117,6 +1305,9 @@ export function useProductionWorkspace(enabled: boolean) {
     requestRescueAuthorization,
     refreshRescueAuthorization,
     consumeAuthorizedRescue,
+    selectRescueOption,
+    applySelectedRescueOption,
+    retryRescueOptions: () => setRescueOptionsRetryRevision((current) => current + 1),
     dismissRescueAuthorization: () => updateRescueAuthorization({ status: 'idle' }),
     setDraftActual: (lineId: string, grams: number) => {
       if (persistence.busy) return;
@@ -1125,6 +1316,7 @@ export function useProductionWorkspace(enabled: boolean) {
     },
     confirmLine: async (lineId: string) => {
       if (!session || !repositoryState.repository || persistence.busy) return;
+      updateRescueAuthorization({ status: 'idle' });
       const previous = [...session.lines, ...session.addonLines].find(
         (line) => line.lineId === lineId,
       );
@@ -1204,6 +1396,13 @@ export function useProductionWorkspace(enabled: boolean) {
     },
     complete: async () => {
       if (!session || !repositoryState.repository || persistence.busy) return;
+      if (browserProductionRescueDecision(session).state !== 'not_needed') {
+        setPersistence({
+          busy: false,
+          error: 'Najpierw wybierz sposób postępowania z odchyleniem.',
+        });
+        return;
+      }
       setPersistence({ busy: true, error: null });
       try {
         const completionCandidate = completeProductionSession(

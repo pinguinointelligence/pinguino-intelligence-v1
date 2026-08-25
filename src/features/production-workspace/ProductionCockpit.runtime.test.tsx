@@ -5,9 +5,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
 import type { ProductionWorkspaceView } from './useProductionWorkspace';
 import { ProductionCockpit } from './ProductionCockpit';
-import { createProductionSession, productionProgress } from './productionSession';
+import {
+  confirmProductionLine,
+  createProductionSession,
+  productionProgress,
+} from './productionSession';
 
-describe('Production trusted Preview accessibility', () => {
+describe('Production correction decision accessibility', () => {
   let host: HTMLDivElement;
   let root: ReturnType<typeof createRoot>;
 
@@ -25,7 +29,7 @@ describe('Production trusted Preview accessibility', () => {
     host.remove();
   });
 
-  it('moves focus to the newly authorized live Preview', async () => {
+  it('moves focus to the newly opened live decision panel', async () => {
     const plannedInput = {
       ...DEFAULT_PRESET,
       items: DEFAULT_PRESET.items.map((item) => ({ ...item, actual_grams: null })),
@@ -99,13 +103,91 @@ describe('Production trusted Preview accessibility', () => {
       ),
     );
 
-    const preview = host.querySelector<HTMLElement>(
-      '[data-testid="production-rescue-authorized-preview"]',
+    const decisionPanel = host.querySelector<HTMLElement>(
+      '[data-testid="production-rescue-options"]',
     );
-    expect(preview).not.toBeNull();
-    expect(preview).toHaveProperty('tabIndex', -1);
-    expect(preview?.getAttribute('role')).toBe('status');
-    expect(preview?.getAttribute('aria-live')).toBe('polite');
-    expect(document.activeElement).toBe(preview);
+    expect(decisionPanel).not.toBeNull();
+    expect(decisionPanel).toHaveProperty('tabIndex', -1);
+    expect(decisionPanel?.getAttribute('role')).toBe('status');
+    expect(decisionPanel?.getAttribute('aria-live')).toBe('polite');
+    expect(document.activeElement).toBe(decisionPanel);
+  });
+
+  it('requires one explicit in-app confirmation before completing an accepted lower score', async () => {
+    const plannedInput = {
+      ...DEFAULT_PRESET,
+      items: DEFAULT_PRESET.items.map((item) => ({ ...item, actual_grams: null })),
+      machine_capacity_grams: null,
+    };
+    let session = createProductionSession({
+      sessionId: 'run-lower-score-1',
+      ownerUserId: 'owner-focus',
+      source: {
+        recipeId: 'recipe-focus',
+        recipeVersionId: 'version-focus',
+        recipeVersionNumber: 1,
+        recipeName: 'Lower score QA',
+      },
+      plannedInput,
+      startedAt: '2026-08-25T10:00:00.000Z',
+    });
+    for (const [index, line] of session.lines.entries()) {
+      session = confirmProductionLine(
+        session,
+        line.lineId,
+        `2026-08-25T10:${String(index + 1).padStart(2, '0')}:00.000Z`,
+      );
+    }
+    session = {
+      ...session,
+      lastDeviationDecision: {
+        strategy: 'leave_as_is',
+        acceptedAt: '2026-08-25T10:10:00.000Z',
+        sourceActualRevision: 6,
+        rescueRevision: 1,
+        finalMassG: plannedInput.target_batch_grams,
+        scoreDisplay: '8/10',
+      },
+    };
+    const complete = vi.fn();
+    const production = {
+      session,
+      progress: productionProgress(session),
+      toppingProgress: null,
+      rescue: { state: 'not_needed', options: [] },
+      score: { score: 8, label: 'Dobry wynik' },
+      plannedScore: { score: 10, label: 'Wyjątkowo dobrze dopasowana' },
+      prerequisite: null,
+      persistenceBusy: false,
+      persistenceError: null,
+      complete,
+    } as unknown as ProductionWorkspaceView;
+
+    await act(async () =>
+      root.render(
+        <ProductionCockpit
+          production={production}
+          onOpenPreview={vi.fn()}
+          onRecalculate={vi.fn()}
+          onReturnToRecipe={vi.fn()}
+        />,
+      ),
+    );
+    const finish = host.querySelector<HTMLButtonElement>('[data-testid="complete-production"]');
+    expect(finish?.textContent).toContain('Zakończ ważenie bazy');
+
+    await act(async () => finish?.click());
+    expect(complete).not.toHaveBeenCalled();
+    const dialog = document.querySelector<HTMLElement>(
+      '[data-testid="production-lower-score-completion-dialog"]',
+    );
+    expect(dialog?.textContent).toContain('Zaakceptowałeś kontynuację bez korekty');
+    expect(dialog?.querySelector('[data-testid="production-final-planned-score"]')).not.toBeNull();
+    expect(dialog?.querySelector('[data-testid="production-final-forecast-score"]')).not.toBeNull();
+    const confirm = [...(dialog?.querySelectorAll('button') ?? [])].find((button) =>
+      button.textContent?.includes('Zakończ z wynikiem 8'),
+    );
+    await act(async () => (confirm as HTMLButtonElement | undefined)?.click());
+    expect(complete).toHaveBeenCalledTimes(1);
   });
 });

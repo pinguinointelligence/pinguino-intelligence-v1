@@ -256,6 +256,70 @@ describe('Production trusted Rescue runtime races', () => {
     mocks.validateRecipeBehaviorOnServer.mockReset();
   });
 
+  it('automatically evaluates all standard choices and recommends them in product order', async () => {
+    const keep = deferred<ProductionRescueAuthorization>();
+    const local = useProductionSessionStore.getState().session!;
+    const authorizeRescue = vi.fn(
+      (input: Parameters<ProductionRepository['authorizeRescue']>[0]) => {
+        const result: ProductionRescueAuthorization = {
+          ...authorization(local.sessionId),
+          authorizationId: `authorization-${input.stableOptionId}`,
+          stableOptionId: input.stableOptionId,
+          preview: {
+            ...authorization(local.sessionId).preview,
+            title: input.stableOptionId,
+          },
+        };
+        return input.stableOptionId === 'keep_original_batch'
+          ? keep.promise
+          : Promise.resolve(result);
+      },
+    );
+    const repository = { authorizeRescue } as unknown as ProductionRepository;
+    mocks.resolveProductionRepository.mockReturnValue({
+      repository,
+      mode: 'backend',
+      isLocalDev: false,
+      unavailable: false,
+    });
+
+    await act(async () => root.render(<EnabledHarness />));
+    await act(async () => {
+      await vi.waitFor(() => expect(authorizeRescue).toHaveBeenCalledTimes(3));
+    });
+
+    expect(authorizeRescue.mock.calls.map(([input]) => input.stableOptionId)).toEqual([
+      'keep_original_batch',
+      'enlarge_batch',
+      'leave_as_is',
+    ]);
+    expect(
+      authorizeRescue.mock.calls.every(([input]) =>
+        input.idempotencyKey.startsWith(
+          `production-decision:${local.sessionId}:${local.durableActualRevision}:${local.durableRescueRevision}:`,
+        ),
+      ),
+    ).toBe(true);
+    expect(view?.rescueOptionStates.enlarge_batch?.status).toBe('available');
+    expect(view?.rescueOptionsCalculating).toBe(true);
+    expect(view?.recommendedRescueOptionId).toBeNull();
+    expect(view?.selectedRescueOptionId).toBeNull();
+
+    await act(async () => {
+      keep.resolve({
+        ...authorization(local.sessionId),
+        authorizationId: 'authorization-keep_original_batch',
+        stableOptionId: 'keep_original_batch',
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(view?.rescueOptionStates.keep_original_batch?.status).toBe('available');
+    expect(view?.rescueOptionsCalculating).toBe(false);
+    expect(view?.recommendedRescueOptionId).toBe('keep_original_batch');
+    expect(view?.selectedRescueOptionId).toBe('keep_original_batch');
+  });
+
   it('blocks operator edits while authorizing and ignores a late response after invalidation', async () => {
     const pending = deferred<ProductionRescueAuthorization>();
     const repository = {

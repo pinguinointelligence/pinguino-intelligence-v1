@@ -271,8 +271,7 @@ describe('Recipe ingredient table — quiet primary surface', () => {
       />,
     );
     const crown =
-      sheet.match(/<button[^>]*data-testid="row-mobile-main-toggle-[\s\S]*?<\/button>/)?.[0] ??
-      '';
+      sheet.match(/<button[^>]*data-testid="row-mobile-main-toggle-[\s\S]*?<\/button>/)?.[0] ?? '';
 
     expect(crown).toContain('aria-label="Ustaw składnik jako Główny"');
     expect(crown).toContain('aria-pressed="false"');
@@ -321,6 +320,7 @@ describe('Recipe ingredient table — quiet primary surface', () => {
       plannedGrams: baseItem.planned_grams,
       targetGrams: baseItem.planned_grams,
       draftActualGrams: baseItem.planned_grams,
+      draftActualEdited: false,
       physicalAddedGrams: 0,
       confirmed: false,
       confirmedAt: null,
@@ -342,7 +342,8 @@ describe('Recipe ingredient table — quiet primary surface', () => {
       />,
     );
     expect(text(production)).toContain('Faktycznie');
-    expect(text(production)).toContain('potwierdź');
+    expect(text(production)).toContain('DO DODANIA');
+    expect(production).toContain('potwierdź dodanie');
     expect(production).toContain(`data-testid="production-stepper-${baseItem.id}"`);
   });
 });
@@ -397,7 +398,8 @@ describe('Recipe ingredient table — locks, units and availability', () => {
 
     const lockedStandard = renderRow(baseItem, DEFAULT_INGREDIENT_ROW_META, true);
     const crown =
-      lockedStandard.match(/<button[^>]*data-testid="row-main-toggle-[\s\S]*?<\/button>/)?.[0] ?? '';
+      lockedStandard.match(/<button[^>]*data-testid="row-main-toggle-[\s\S]*?<\/button>/)?.[0] ??
+      '';
     expect(crown).not.toMatch(/\sdisabled(?:=|>)/);
   });
 

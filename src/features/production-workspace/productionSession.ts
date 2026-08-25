@@ -49,12 +49,23 @@ export interface ProductionLineState {
   targetGrams: number;
   /** Value shown in the always-visible stepper. Defaults to planned. */
   draftActualGrams: number;
+  /** The operator changed the editable value but has not physically confirmed it yet. */
+  draftActualEdited: boolean;
   /** Material already confirmed as physically added to the vessel. */
   physicalAddedGrams: number;
   confirmed: boolean;
   confirmedAt: string | null;
   confirmationOrder: number | null;
   recordCorrectionCount: number;
+}
+
+export interface ProductionDeviationDecision {
+  strategy: 'keep_original_batch' | 'enlarge_batch' | 'leave_as_is';
+  acceptedAt: string;
+  sourceActualRevision: number;
+  rescueRevision: number;
+  finalMassG: number;
+  scoreDisplay: string;
 }
 
 export interface ProductionSubstitution {
@@ -142,6 +153,8 @@ export interface ProductionSession {
   durableRescueRevision: number;
   /** Monotonic durable actual revision used for lost-response reconciliation. */
   durableActualRevision: number;
+  /** Latest explicit decision that resolved a confirmed deviation. */
+  lastDeviationDecision: ProductionDeviationDecision | null;
   /** Solver-verified additions required after production starts. The frozen plan remains untouched. */
   rescueAddedItems: RecipeItem[];
   lines: ProductionLineState[];
@@ -269,6 +282,7 @@ export function createProductionSession(input: CreateProductionSessionInput): Pr
     durableRescueAcceptedAt: null,
     durableRescueRevision: 0,
     durableActualRevision: 0,
+    lastDeviationDecision: null,
     rescueAddedItems: [],
     lines: orderedBaseItems.map((item) => ({
       lineId: item.id,
@@ -277,6 +291,7 @@ export function createProductionSession(input: CreateProductionSessionInput): Pr
       plannedGrams: item.planned_grams,
       targetGrams: item.planned_grams,
       draftActualGrams: item.planned_grams,
+      draftActualEdited: false,
       physicalAddedGrams: 0,
       confirmed: false,
       confirmedAt: null,
@@ -290,6 +305,7 @@ export function createProductionSession(input: CreateProductionSessionInput): Pr
       plannedGrams: item.planned_grams,
       targetGrams: item.planned_grams,
       draftActualGrams: item.planned_grams,
+      draftActualEdited: false,
       physicalAddedGrams: 0,
       confirmed: false,
       confirmedAt: null,
@@ -356,7 +372,7 @@ export function setDraftActualGrams(
     ) {
       throw new Error('A production adjustment cannot remove physically added material.');
     }
-    return { ...line, draftActualGrams: grams };
+    return { ...line, draftActualGrams: grams, draftActualEdited: true };
   });
 }
 
@@ -375,6 +391,7 @@ export function confirmProductionLine(
   const updated = updateLine(session, lineId, (line) => ({
     ...line,
     physicalAddedGrams: line.draftActualGrams,
+    draftActualEdited: false,
     confirmed: true,
     confirmedAt: at,
     confirmationOrder: nextOrder,
@@ -402,6 +419,7 @@ export function reopenProductionRecord(
       confirmedAt: null,
       confirmationOrder: null,
       recordCorrectionCount: line.recordCorrectionCount + 1,
+      draftActualEdited: true,
     };
   });
 }
@@ -443,6 +461,7 @@ export function topUpProductionLine(
       ...line,
       physicalAddedGrams: totalGrams,
       draftActualGrams: totalGrams,
+      draftActualEdited: false,
       confirmedAt: at,
     };
   });
@@ -461,7 +480,12 @@ export function correctRecordedPhysicalGrams(
     if (line.recordCorrectionCount < 1 || line.confirmed) {
       throw new Error('Record correction must be explicitly opened first.');
     }
-    return { ...line, physicalAddedGrams: grams, draftActualGrams: grams };
+    return {
+      ...line,
+      physicalAddedGrams: grams,
+      draftActualGrams: grams,
+      draftActualEdited: true,
+    };
   });
 }
 
@@ -515,6 +539,9 @@ export interface ProductionProgress {
   currentPlanMassG: number;
   /** What is still to be added under that current plan. Never negative. */
   remainingMassG: number;
+  /** Physical mass already above the current plan. Never negative. */
+  excessMassG: number;
+  massBalanceState: 'below' | 'exact' | 'above';
   /** True once an accepted Rescue moved the plan away from the original batch. */
   targetChanged: boolean;
   coherent: boolean;
@@ -530,6 +557,7 @@ export function productionProgress(session: ProductionSession): ProductionProgre
   );
   const originalTargetMassG = session.plannedInput.target_batch_grams;
   const currentPlanMassG = session.lines.reduce((sum, line) => sum + line.targetGrams, 0);
+  const balanceDeltaG = confirmedMassG - currentPlanMassG;
   return {
     confirmedCount: confirmed.length,
     totalCount: session.lines.length,
@@ -542,6 +570,9 @@ export function productionProgress(session: ProductionSession): ProductionProgre
     originalTargetMassG,
     currentPlanMassG,
     remainingMassG: Math.max(0, currentPlanMassG - confirmedMassG),
+    excessMassG: Math.max(0, balanceDeltaG),
+    massBalanceState:
+      Math.abs(balanceDeltaG) <= 0.05 ? 'exact' : balanceDeltaG > 0 ? 'above' : 'below',
     targetChanged: Math.abs(currentPlanMassG - originalTargetMassG) > 0.05,
     coherent: session.lines.length > 0 && confirmed.length === session.lines.length,
   };
@@ -604,6 +635,7 @@ export function applyVerifiedRescueInput(
       targetGrams: candidateFinalGrams,
       draftActualGrams:
         line.confirmed && !needsTopUp ? line.physicalAddedGrams : candidateFinalGrams,
+      draftActualEdited: false,
       confirmed: line.confirmed && !needsTopUp,
       confirmedAt: line.confirmed && !needsTopUp ? line.confirmedAt : null,
       confirmationOrder: line.confirmed && !needsTopUp ? line.confirmationOrder : null,
@@ -635,6 +667,7 @@ export function applyVerifiedRescueInput(
       plannedGrams: 0,
       targetGrams: item.planned_grams,
       draftActualGrams: item.planned_grams,
+      draftActualEdited: false,
       physicalAddedGrams: 0,
       confirmed: false,
       confirmedAt: null,
@@ -819,6 +852,34 @@ export function hydrateProductionSessionFromRun(
     };
   }
 
+  const decisionEvent = [...run.events]
+    .reverse()
+    .find((event) => event.type === 'deviation_decision_accepted');
+  const decision = decisionEvent?.amendment;
+  const strategy = decision?.stableOptionId;
+  if (
+    decisionEvent &&
+    (strategy === 'keep_original_batch' ||
+      strategy === 'enlarge_batch' ||
+      strategy === 'leave_as_is') &&
+    typeof decision?.sourceActualRevision === 'number' &&
+    typeof decision?.rescueRevision === 'number' &&
+    typeof decision?.finalMassG === 'number' &&
+    typeof decision?.scoreDisplay === 'string'
+  ) {
+    session = {
+      ...session,
+      lastDeviationDecision: {
+        strategy,
+        acceptedAt: decisionEvent.at,
+        sourceActualRevision: decision.sourceActualRevision,
+        rescueRevision: decision.rescueRevision,
+        finalMassG: decision.finalMassG,
+        scoreDisplay: decision.scoreDisplay,
+      },
+    };
+  }
+
   if (run.actual) {
     const actualById = new Map(run.actual.items.map((item, index) => [item.id, { item, index }]));
     const restoreLine = (line: ProductionLineState): ProductionLineState => {
@@ -828,6 +889,7 @@ export function hydrateProductionSessionFromRun(
       return {
         ...line,
         draftActualGrams: grams,
+        draftActualEdited: false,
         physicalAddedGrams: grams,
         confirmed: true,
         confirmedAt: recorded.item.confirmedAt ?? run.actual!.recordedAt,
@@ -897,8 +959,7 @@ export function mergePendingProductionDrafts(
     }
     const draftWasEdited =
       draft &&
-      (Math.abs(draft.draftActualGrams - draft.targetGrams) > PRODUCTION_GRAMS_EPSILON ||
-        draft.recordCorrectionCount > line.recordCorrectionCount);
+      (draft.draftActualEdited || draft.recordCorrectionCount > line.recordCorrectionCount);
     if (
       !draft ||
       !draftWasEdited ||
@@ -909,6 +970,7 @@ export function mergePendingProductionDrafts(
     return {
       ...line,
       draftActualGrams: draft.draftActualGrams,
+      draftActualEdited: draft.draftActualEdited,
       recordCorrectionCount: Math.max(line.recordCorrectionCount, draft.recordCorrectionCount),
     };
   };

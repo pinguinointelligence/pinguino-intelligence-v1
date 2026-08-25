@@ -88,7 +88,8 @@ describe('Production workspace touch-first UI', () => {
     expect(html).toContain('lg:w-[154px]');
     expect(html).toContain('data-category-symbol=');
     expect(html).toContain('text-[10px] leading-tight');
-    expect(html).toContain('basis-full lg:mt-0 lg:ml-auto lg:basis-auto');
+    expect(html).toContain('data-production-cell="physical-status"');
+    expect(html).toContain('md:grid-cols-[minmax(140px,1.1fr)_76px_minmax(190px,1fr)_116px_104px]');
     expect(html).not.toContain('text-[9px] leading-none');
     expect(html).not.toContain('mx-2 mb-2 rounded-[20px]');
     expect(html).not.toContain('grid-cols-[minmax(0,1fr)_48px]');
@@ -140,9 +141,43 @@ describe('Production workspace touch-first UI', () => {
         productionActions={{ setDraftActual: vi.fn(), confirmLine: vi.fn(), reopenRecord: vi.fn() }}
       />,
     );
-    expect(html).toContain('+2 g');
+    expect(html).toContain('+2 g ponad plan');
+    expect(html).toContain('DODANO');
+    expect(html).not.toContain('>RÓŻNICA<');
     expect(html).toContain('popraw zapis');
     expect(html).toContain('>↺</button>');
+  });
+
+  it('uses a Gellatti mistaken-entry dialog and contains no native confirmation', () => {
+    const source = readFileSync(
+      resolve(import.meta.dirname, '..', 'ingredient-builder', 'IngredientRow.tsx'),
+      'utf8',
+    );
+    expect(source).not.toContain('window.confirm');
+    expect(source).toContain('production-record-correction-dialog');
+    expect(source).toContain('Poprawiasz wcześniejszy wpis');
+    expect(source).toContain('Popraw błędny wpis');
+  });
+
+  it('keeps the Production table and physical workflow explicitly separated', () => {
+    const source = readFileSync(
+      resolve(import.meta.dirname, '..', 'ingredient-builder', 'IngredientBuilder.tsx'),
+      'utf8',
+    );
+    for (const heading of [
+      'Składnik',
+      'Plan',
+      'Faktycznie',
+      'Status / potwierdzenie',
+      'Odchylenie',
+    ]) {
+      expect(source).toContain(`'${heading}'`);
+    }
+    expect(source).toContain('Odważ składnik');
+    expect(source).toContain('Wpisz faktyczną ilość');
+    expect(source).toContain('Potwierdź dodanie');
+    expect(source).toContain('Potwierdzonej ilości nie można odjąć od naczynia.');
+    expect(source).not.toContain('Faktycznie · status / potwierdź');
   });
 
   it('makes the Owner 705 → 800 → +95 g deviation obvious in the shared rounded control', () => {
@@ -165,7 +200,7 @@ describe('Production workspace touch-first UI', () => {
 
     expect(html).toContain('>705 g</strong>');
     expect(html).toContain('value="800"');
-    expect(html).toContain('>+95 g</strong>');
+    expect(html).toContain('>+95 g ponad plan</strong>');
     expect(html).toContain('powyżej planu');
     expect(html).toContain('aria-label="Różnica względem planu: plus 95 gramów, powyżej planu"');
     expect(html).toContain('data-production-control-state="addition"');
@@ -200,7 +235,9 @@ describe('Production workspace touch-first UI', () => {
         />,
       );
       expect(html).toContain(`data-production-difference="${state}"`);
-      expect(html).toContain(`>${visibleDifference}</strong>`);
+      expect(html).toContain(
+        `>${visibleDifference}${state === 'under' ? ' poniżej planu' : ''}</strong>`,
+      );
       expect(html).toContain(label);
     },
   );
@@ -227,7 +264,8 @@ describe('Production workspace touch-first UI', () => {
 
     expect(html).toContain('data-production-mode="correction"');
     expect(html).toContain('data-production-control-state="correction"');
-    expect(html).toContain('POPRAW WPIS');
+    expect(html).toContain('DO POTWIERDZENIA');
+    expect(html).toContain('Poprawiasz zapis faktycznej ilości');
     expect(html).toContain(`aria-describedby="production-correction-${line.lineId}"`);
     expect(html).toContain('role="status"');
   });
@@ -490,7 +528,7 @@ describe('Production workspace touch-first UI', () => {
         }}
       />,
     );
-    expect(html).toContain('DODAJ JESZCZE 5 g');
+    expect(html).toContain('DODANO');
     expect(html).toContain('Dodaj brakujące 5 g');
     expect(html).toContain(`data-testid="production-top-up-${line.lineId}"`);
     // The physical floor stays visible, so nobody can read this as "remove 5 g".
@@ -776,8 +814,9 @@ describe('Production workspace touch-first UI', () => {
       />,
     );
     // §51 SCORE TRUTH — every pre-completion figure names the PLAN it describes.
-    expect(html).toContain('Przewidywany wynik po zakończeniu planu');
-    expect(html).toContain('Przewidywany wynik po zakończeniu aktualnego planu');
+    expect(html).toContain('Przewidywany wynik');
+    expect(html).toContain('data-testid="production-score-ring"');
+    expect(html.match(/data-testid="production-score-ring"/g) ?? []).toHaveLength(1);
     expect(html).toContain('0 / 6 składników');
     // §22 LIVE MONITOR — vessel, current plan and what is still to be added.
     expect(html).toContain('data-testid="production-vessel-mass"');
@@ -822,7 +861,7 @@ describe('Production workspace touch-first UI', () => {
     expect(html).not.toContain('-50 g');
   });
 
-  it('renders only the server-authorized Rescue Preview as applicable', () => {
+  it('renders the server-calculated outcomes as selectable decision cards', () => {
     const first = session.lines[0]!;
     const deviated = confirmProductionLine(
       setDraftActualGrams(session, first.lineId, first.plannedGrams + 50),
@@ -844,42 +883,53 @@ describe('Production workspace touch-first UI', () => {
       corrections: proposeCorrections({ input, context: 'planning', redact: false }),
       persistenceBusy: false,
       rescueAuthorizationInvalidation: null,
-      rescueAuthorization: {
-        status: 'preview',
-        consumeIdempotencyKey: 'consume-once',
-        refreshRequired: false,
-        error: null,
-        authorization: {
-          authorizationId: 'authorization-1',
-          candidateFingerprint: 'trusted-fingerprint-1',
-          runId: deviated.sessionId,
-          stableOptionId: 'enlarge_batch',
-          expectedActualRevision: deviated.durableActualRevision,
-          expectedRescueRevision: deviated.durableRescueRevision,
-          authorizedAt: '2026-08-19T10:02:00.000Z',
-          expiresAt: '2026-08-19T10:07:00.000Z',
-          preview: {
-            title: 'Powiększ partię',
-            explanation: 'Autoryzowana korekta bez zmiany potwierdzonych gramów.',
-            finalMassG: 1050,
-            scoreDisplay: '94%',
-            instructions: [
-              {
-                lineId: 'sugar',
-                ingredientName: 'Sugar',
-                kind: 'add',
-                grams: 50,
-                finalTargetGrams: 450,
-              },
-              {
-                lineId: 'cream',
-                ingredientName: 'Cream',
-                kind: 'reduce_pending_plan',
-                grams: 50,
-                finalTargetGrams: 350,
-              },
-            ],
+      plannedScore: { score: 10 },
+      recommendedRescueOptionId: 'enlarge_batch',
+      selectedRescueOptionId: 'enlarge_batch',
+      rescueOptionStates: {
+        keep_original_batch: {
+          status: 'unavailable',
+          reason: 'Niedostępne — potwierdzone ilości przekraczają zakres tej opcji.',
+        },
+        enlarge_batch: {
+          status: 'available',
+          consumeIdempotencyKey: 'consume-once',
+          authorization: {
+            authorizationId: 'authorization-1',
+            candidateFingerprint: 'trusted-fingerprint-1',
+            runId: deviated.sessionId,
+            stableOptionId: 'enlarge_batch',
+            expectedActualRevision: deviated.durableActualRevision,
+            expectedRescueRevision: deviated.durableRescueRevision,
+            authorizedAt: '2026-08-19T10:02:00.000Z',
+            expiresAt: '2026-08-19T10:07:00.000Z',
+            preview: {
+              title: 'Powiększ partię',
+              explanation: 'Autoryzowana korekta bez zmiany potwierdzonych gramów.',
+              finalMassG: 1050,
+              scoreDisplay: '94%',
+              instructions: [
+                {
+                  lineId: 'sugar',
+                  ingredientName: 'Sugar',
+                  kind: 'add',
+                  grams: 50,
+                  finalTargetGrams: 450,
+                },
+                {
+                  lineId: 'cream',
+                  ingredientName: 'Cream',
+                  kind: 'reduce_pending_plan',
+                  grams: 50,
+                  finalTargetGrams: 350,
+                },
+              ],
+            },
           },
+        },
+        leave_as_is: {
+          status: 'unavailable',
+          reason: 'Ta opcja nie jest bezpieczna dla obecnej partii.',
         },
       },
       setDraftActual: vi.fn(),
@@ -888,6 +938,9 @@ describe('Production workspace touch-first UI', () => {
       requestRescueAuthorization: vi.fn(),
       refreshRescueAuthorization: vi.fn(),
       consumeAuthorizedRescue: vi.fn(),
+      applySelectedRescueOption: vi.fn(),
+      selectRescueOption: vi.fn(),
+      retryRescueOptions: vi.fn(),
       dismissRescueAuthorization: vi.fn(),
       complete: vi.fn(),
     } as unknown as ProductionWorkspaceView;
@@ -899,67 +952,65 @@ describe('Production workspace touch-first UI', () => {
         onReturnToRecipe={vi.fn()}
       />,
     );
-    expect(html).toContain('Preview autoryzowany przez serwer');
-    expect(html).toContain('data-candidate-fingerprint="trusted-fingerprint-1"');
-    expect(html).toContain('data-testid="apply-authorized-production-rescue"');
-    expect(html).toContain('Powiększ do 1050 g');
-    expect(html).toContain('data-mobile-presentation="bottom-sheet"');
-    expect(html).toContain('fixed inset-x-0 bottom-0');
-    expect(html).toContain('sm:static');
+    expect(html).toContain('Jak chcesz postąpić z odchyleniem?');
+    expect(html).toContain('data-testid="production-rescue-options"');
+    expect(html).toContain('data-testid="production-decision-enlarge_batch"');
+    expect(html).toContain('data-decision-state="selected"');
+    expect(html).toMatch(
+      /<button(?=[^>]*data-testid="production-decision-leave_as_is")(?=[^>]*disabled="")/,
+    );
+    expect(html).toContain('Ta opcja nie jest bezpieczna dla obecnej partii.');
+    expect(html).toContain('Powiększ partię do 1050 g');
+    expect(html).toContain('Rekomendowane');
     expect(html).toContain('tabindex="-1"');
     expect(html).toContain('Nowy plan · Cream');
     expect(html).toContain('→ 350 g');
-    expect(html).not.toMatch(
-      /<button(?=[^>]*data-testid="apply-authorized-production-rescue")[^>]* disabled=""/,
-    );
-    expect(html).not.toContain('data-testid="production-rescue-options"');
+    expect(html).toContain('data-testid="apply-selected-production-decision"');
+    expect(html).toContain('Zastosuj nową partię');
+    expect(html).not.toContain('Pokaż preview');
+    expect(html).not.toContain('Odśwież propozycję Rescue');
+    expect(html).not.toContain('Engine');
+    expect(html).not.toContain('server authorizes');
 
-    if (view.rescueAuthorization.status !== 'preview') throw new Error('preview fixture required');
-    const previewAuthorization = view.rescueAuthorization;
-    const keepOriginalHtml = renderToStaticMarkup(
+    const enlargement = view.rescueOptionStates.enlarge_batch;
+    if (enlargement?.status !== 'available') throw new Error('available fixture required');
+    const lowerScoreHtml = renderToStaticMarkup(
       <ProductionCockpit
         production={
           {
             ...view,
-            rescueAuthorization: {
-              ...previewAuthorization,
-              authorization: {
-                ...previewAuthorization.authorization,
-                stableOptionId: 'keep_original_batch',
-                preview: {
-                  ...previewAuthorization.authorization.preview,
-                  finalMassG: 1000,
+            recommendedRescueOptionId: 'keep_original_batch',
+            selectedRescueOptionId: 'leave_as_is',
+            rescueOptionStates: {
+              ...view.rescueOptionStates,
+              leave_as_is: {
+                status: 'available',
+                consumeIdempotencyKey: 'consume-lower-score',
+                authorization: {
+                  ...enlargement.authorization,
+                  authorizationId: 'authorization-lower-score',
+                  stableOptionId: 'leave_as_is',
+                  preview: {
+                    title: 'Kontynuuj bez korekty',
+                    explanation: 'Obecna partia pozostaje bezpieczna.',
+                    finalMassG: 1050,
+                    scoreDisplay: '8/10',
+                    instructions: [],
+                  },
                 },
               },
             },
-          } as unknown as ProductionWorkspaceView
+          } as ProductionWorkspaceView
         }
         onOpenPreview={vi.fn()}
         onRecalculate={vi.fn()}
         onReturnToRecipe={vi.fn()}
       />,
     );
-    expect(keepOriginalHtml).toContain('Napraw do 1000 g');
-
-    const staleHtml = renderToStaticMarkup(
-      <ProductionCockpit
-        production={
-          {
-            ...view,
-            rescueAuthorizationInvalidation: 'expired',
-          } as unknown as ProductionWorkspaceView
-        }
-        onOpenPreview={vi.fn()}
-        onRecalculate={vi.fn()}
-        onReturnToRecipe={vi.fn()}
-      />,
-    );
-    expect(staleHtml).toMatch(
-      /<button(?=[^>]*data-testid="apply-authorized-production-rescue")[^>]*disabled=""/,
-    );
-    expect(staleHtml).toContain('Odśwież propozycję Rescue');
-    expect(staleHtml).toContain('data-testid="refresh-production-rescue-authorization"');
-    expect(staleHtml).toContain('Autoryzacja Preview wygasła');
+    expect(lowerScoreHtml).toContain('data-testid="production-decision-leave_as_is"');
+    expect(lowerScoreHtml).toContain('bg-pro-amber/40');
+    expect(lowerScoreHtml).toContain('✓ Wybrano');
+    expect(lowerScoreHtml).toContain('Akceptuję wynik i kontynuuję');
   });
 
   it('offers the completed run as an explicit transition to LabelWorkspace', () => {
