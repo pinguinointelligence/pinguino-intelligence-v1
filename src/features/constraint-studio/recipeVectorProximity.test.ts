@@ -691,7 +691,6 @@ describe('isolated multi-candidate neighborhood experiment — null hypothesis',
         }
       }
     },
-    120_000,
   );
 
   it('short-circuits at the original valid no-Crown vector without evaluating mutations', () => {
