@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { copy } from '@/copy/en';
 import type { EffectiveRecipeItem, LockType } from '@/engine';
 import { cn } from '@/lib/cn';
+import { iconButtonClasses } from '@/components/ui/buttonStyles';
 import { effectiveCostForIngredient } from '@/features/pro-core/effectiveRecipePricing';
 import { effectiveLineCost } from '@/features/pro-core/costing';
 import {
@@ -33,7 +34,10 @@ import {
 import { IngredientCategoryIcon } from './IngredientCategoryIcon';
 import { CarbonationBubbles } from '@/components/product/CarbonationBubbles';
 import { ingredientCategorySymbolFor } from './ingredientCategorySymbols';
-import { ProductionActualControl } from '@/features/production-workspace/ProductionActualControl';
+import {
+  ProductionActualControl,
+  ProductionConfirmationAction,
+} from '@/features/production-workspace/ProductionActualControl';
 import { productProcessPl, productRecommendedDosagePl } from '@/features/product-intelligence';
 import { useRecipeStore } from '@/stores/recipeStore';
 
@@ -56,8 +60,7 @@ export const ROW_GRID =
   'grid grid-cols-1 items-center gap-x-2 gap-y-3 md:grid-cols-[minmax(300px,1fr)_142px_150px_96px_28px] 2xl:grid-cols-[minmax(400px,1fr)_142px_150px_96px_28px]';
 export const COMPACT_ROW_GRID =
   'grid grid-cols-1 items-center gap-x-2 gap-y-3 md:grid-cols-[minmax(300px,1fr)_142px_150px_96px_28px]';
-export const PRODUCTION_ROW_GRID =
-  'grid grid-cols-1 items-center gap-x-2 gap-y-2 md:grid-cols-[minmax(140px,1.1fr)_76px_minmax(190px,1fr)_116px_104px] xl:grid-cols-[minmax(190px,1.2fr)_88px_minmax(220px,1fr)_128px_112px]';
+export const PRODUCTION_ROW_GRID = ROW_GRID;
 
 export interface IngredientRowActions {
   setPlannedGrams: (lineId: string, grams: number) => void;
@@ -123,6 +126,8 @@ export interface ProductionRowActions {
   /** §12/§20 — the operator physically added the missing grams. */
   topUpLine?: (lineId: string, totalGrams: number) => void;
   disabled?: boolean;
+  /** A completed run is an immutable visual record, not an editing surface. */
+  settled?: boolean;
 }
 
 export interface IngredientRowLockView {
@@ -846,7 +851,7 @@ function RecipeRow({
               aria-expanded={rowMenuOpen}
               aria-controls={`row-menu-dialog-${item.id}`}
               onClick={() => setRowMenuOpen(true)}
-              className="pro-focus-ring grid size-7 place-items-center rounded-full border border-ink/10 text-[11px] text-stone-500 hover:border-ink/35 hover:text-ink"
+              className={iconButtonClasses('xs')}
             >
               •••
             </button>
@@ -1004,6 +1009,17 @@ function ProductionRow({
       : line.draftActualEdited
         ? 'DO POTWIERDZENIA'
         : 'DO DODANIA';
+  const confirmActual = () => {
+    if (line.confirmed) {
+      actions.reopenRecord(line.lineId);
+      return;
+    }
+    if (correctionMode && value !== line.physicalAddedGrams) {
+      setRecordCorrectionDialogOpen(true);
+      return;
+    }
+    actions.confirmLine(line.lineId);
+  };
 
   return (
     <>
@@ -1045,6 +1061,45 @@ function ProductionRow({
               ) : null}
             </span>
           ) : null}
+          <span
+            className={cn(
+              'mt-1 inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] leading-tight font-semibold tracking-[0.03em]',
+              correctionMode
+                ? 'border-attention/30 bg-pro-amber text-attention'
+                : physicalStatus === 'DODANO'
+                  ? 'border-status-ideal/25 bg-pro-sage text-status-ideal'
+                  : 'border-ink/10 bg-stone-50 text-stone-600',
+            )}
+            data-testid={`production-mode-${line.lineId}`}
+            role="status"
+            aria-live="polite"
+          >
+            {physicalStatus}
+          </span>
+          {!actions.settled && owesTopUp && line.confirmed && actions.topUpLine ? (
+            <button
+              type="button"
+              disabled={actions.disabled}
+              onClick={() => actions.topUpLine!(line.lineId, line.targetGrams)}
+              className="pro-focus-ring mt-1 block min-h-9 rounded-lg border border-ink/15 bg-white px-2 py-1 text-[10px] font-semibold text-ink disabled:cursor-wait disabled:opacity-60"
+              data-testid={`production-top-up-${line.lineId}`}
+            >
+              Dodaj brakujące {formatProductionMassG(topUpGrams)} g
+            </button>
+          ) : !actions.settled && line.confirmed && actions.topUpLine ? (
+            <button
+              type="button"
+              disabled={actions.disabled}
+              onClick={() => {
+                setAdditionalGrams(step);
+                setAdditionalAmountDialogOpen(true);
+              }}
+              className="pro-focus-ring mt-1 block min-h-9 text-left text-[10px] font-semibold text-stone-600 underline decoration-ink/20 underline-offset-2 disabled:opacity-50"
+              data-testid={`production-add-more-${line.lineId}`}
+            >
+              Dodaj kolejną ilość
+            </button>
+          ) : null}
         </div>
         <div className="min-w-0 px-1 text-left md:text-right" data-production-cell="planned">
           <span className="block text-[10px] font-semibold text-stone-600 md:block">Plan</span>
@@ -1064,18 +1119,9 @@ function ProductionRow({
             correctionMode={correctionMode}
             disabled={actions.disabled}
             onChange={setValue}
-            onConfirm={() => {
-              if (line.confirmed) {
-                actions.reopenRecord(line.lineId);
-                return;
-              }
-              if (correctionMode && value !== line.physicalAddedGrams) {
-                setRecordCorrectionDialogOpen(true);
-                return;
-              }
-              actions.confirmLine(line.lineId);
-            }}
+            onConfirm={confirmActual}
             describedBy={correctionMode ? `production-correction-${line.lineId}` : undefined}
+            separateAction
           />
           {correctionMode ? (
             <p
@@ -1088,48 +1134,6 @@ function ProductionRow({
               Poprawiasz zapis faktycznej ilości — tylko jeśli poprzednia wartość była wpisana
               błędnie.
             </p>
-          ) : null}
-        </div>
-        <div className="min-w-0" data-production-cell="physical-status">
-          <FieldLabel>Status / potwierdzenie</FieldLabel>
-          <span
-            className={cn(
-              'inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] leading-tight font-semibold tracking-[0.03em]',
-              correctionMode
-                ? 'border-attention/30 bg-pro-amber text-attention'
-                : physicalStatus === 'DODANO'
-                  ? 'border-status-ideal/25 bg-pro-sage text-status-ideal'
-                  : 'border-ink/10 bg-stone-50 text-stone-600',
-            )}
-            data-testid={`production-mode-${line.lineId}`}
-            role="status"
-            aria-live="polite"
-          >
-            {physicalStatus}
-          </span>
-          {owesTopUp && line.confirmed && actions.topUpLine ? (
-            <button
-              type="button"
-              disabled={actions.disabled}
-              onClick={() => actions.topUpLine!(line.lineId, line.targetGrams)}
-              className="pro-focus-ring mt-1 block min-h-9 rounded-lg border border-ink/15 bg-white px-2 py-1 text-[10px] font-semibold text-ink disabled:cursor-wait disabled:opacity-60"
-              data-testid={`production-top-up-${line.lineId}`}
-            >
-              Dodaj brakujące {formatProductionMassG(topUpGrams)} g
-            </button>
-          ) : line.confirmed && actions.topUpLine ? (
-            <button
-              type="button"
-              disabled={actions.disabled}
-              onClick={() => {
-                setAdditionalGrams(step);
-                setAdditionalAmountDialogOpen(true);
-              }}
-              className="pro-focus-ring mt-1 block min-h-9 text-left text-[10px] font-semibold text-stone-600 underline decoration-ink/20 underline-offset-2 disabled:opacity-50"
-              data-testid={`production-add-more-${line.lineId}`}
-            >
-              Dodaj kolejną ilość
-            </button>
           ) : null}
         </div>
         <div
@@ -1147,6 +1151,17 @@ function ProductionRow({
             {formatProductionMassG(difference)} g
             {!exact ? ` ${difference > 0 ? 'ponad plan' : 'poniżej planu'}` : ''}
           </strong>
+        </div>
+        <div className="flex justify-start md:justify-end" data-production-cell="action">
+          <ProductionConfirmationAction
+            ingredientName={item.ingredient.name}
+            confirmed={line.confirmed}
+            correctionMode={correctionMode}
+            disabled={actions.disabled}
+            settled={actions.settled}
+            onConfirm={confirmActual}
+            describedBy={correctionMode ? `production-correction-${line.lineId}` : undefined}
+          />
         </div>
       </div>
 
@@ -1318,7 +1333,10 @@ export function IngredientRow({
     <div
       className={cn(
         mode === 'production'
-          ? 'border-b border-ink/[0.075] px-[var(--pro-mobile-gutter)] py-2 transition-colors hover:bg-stone-50 lg:px-3 lg:py-1.5'
+          ? cn(
+              'border-b border-ink/[0.075] px-[var(--pro-mobile-gutter)] py-2 lg:px-3 lg:py-1.5',
+              productionActions?.settled ? 'bg-stone-50/35' : 'transition-colors hover:bg-stone-50',
+            )
           : 'border-b border-ink/[0.075] px-[var(--pro-mobile-gutter)] py-1 transition-colors hover:bg-stone-50 lg:px-3 lg:py-1.5',
         mode === 'recipe' &&
           customerRoleFor(item.lock_type, meta) === 'main' &&

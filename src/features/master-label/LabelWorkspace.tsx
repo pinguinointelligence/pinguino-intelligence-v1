@@ -35,6 +35,7 @@ import {
 } from '@/services/labels/labelRepository';
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/cn';
+import { WorkflowNotice } from '@/components/shared/WorkflowNotice';
 
 const MARKET_CODES: readonly MarketProfileCode[] = ['EU', 'US', 'CA', 'UK', 'AU_NZ', 'CUSTOM'];
 export type LabelWorkspaceView = 'label' | 'settings';
@@ -254,9 +255,13 @@ export function LabelWorkspace({
 
   if (!profile) {
     return (
-      <p className="border border-status-error/25 p-4 text-sm text-status-error" role="alert">
-        {error ?? 'Profil etykiety jest niedostępny.'}
-      </p>
+      <WorkflowNotice
+        eyebrow="Etykieta"
+        title="Profil etykiety jest niedostępny"
+        description={error ?? 'Spróbuj ponownie za chwilę.'}
+        variant="blocking"
+        role="alert"
+      />
     );
   }
 
@@ -313,12 +318,14 @@ export function LabelWorkspace({
 
   if (!snapshot || !label) {
     return (
-      <div className="border-y border-ink/10 py-8" data-testid="label-workspace-empty">
-        <h2 className="text-lg font-semibold text-ink">Brak zakończonej partii</h2>
-        <p className="mt-2 text-sm text-stone-500">
-          Etykieta powstaje wyłącznie z immutable ACTUAL Production Snapshot.
-        </p>
-      </div>
+      <WorkflowNotice
+        className="my-3"
+        eyebrow="Etykieta"
+        title="Brak zakończonej partii"
+        description="Najpierw zakończ Produkcję. Etykieta powstaje z zatwierdzonego wyniku partii."
+        variant="neutral"
+        testId="label-workspace-empty"
+      />
     );
   }
 

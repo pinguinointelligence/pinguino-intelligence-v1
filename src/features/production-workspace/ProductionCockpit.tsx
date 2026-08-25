@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { ReadinessFrame } from '@/features/design-review/ReadinessMarker';
 import type { ProductionWorkspaceView } from './useProductionWorkspace';
 import { ProductionActualControl } from './ProductionActualControl';
-import { productionStepForGrams } from './productionSession';
+import { productionLotCodeForRun, productionStepForGrams } from './productionSession';
 import { isCatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
 import { CatalogVerificationBadge } from '@/features/global-catalog/CatalogVerificationBadge';
 import { buttonClasses } from '@/components/ui/buttonStyles';
@@ -11,9 +11,17 @@ import { cn } from '@/lib/cn';
 import { ScoreRing } from '@/features/pro-workbench/ScoreRing';
 import type { TenPointScore } from '@/features/recipe-score';
 import { DialogShell } from '@/components/ui/DialogShell';
+import { recipeTechnicalFit } from '@/features/recipe-score';
+import { PublishToCommunityDialog } from '@/features/community/ui/PublishToCommunityDialog';
+import { useCreatorProfile } from '@/features/community/useCreatorProfile';
 
 const formatPhysicalMassG = (value: number): string =>
   Number.isInteger(value) ? value.toFixed(0) : value.toFixed(3).replace(/\.?0+$/, '');
+
+const communityDismissed = (key: string | null): boolean => {
+  if (key === null || typeof window === 'undefined') return false;
+  return window.localStorage.getItem(key) === '1';
+};
 
 const scoreFromDisplay = (display: string | undefined): TenPointScore | null => {
   const value = Number(display?.match(/^(\d{1,2})\/10$/)?.[1]);
@@ -142,6 +150,29 @@ export function ProductionCockpit({
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [finishDialogOpen, setFinishDialogOpen] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [communityDialogKey, setCommunityDialogKey] = useState<string | null>(null);
+  const publishableRecipeId = session?.source.recipeId ?? null;
+  const publishableVersion = session?.source.recipeVersionNumber ?? null;
+  const communityDismissalKey =
+    publishableRecipeId && publishableVersion
+      ? `pinguino:production-community-dismissed:${publishableRecipeId}:v${publishableVersion}`
+      : null;
+  const [dismissedCommunityKey, setDismissedCommunityKey] = useState<string | null>(null);
+  const canPublishCompletion =
+    session?.status === 'completed' && publishableRecipeId !== null && publishableVersion !== null;
+  const hasCreatorProfile = useCreatorProfile(canPublishCompletion);
+  const communityCardDismissed =
+    communityDismissalKey === null ||
+    dismissedCommunityKey === communityDismissalKey ||
+    communityDismissed(communityDismissalKey);
+  const communityDialogOpen = communityDialogKey === communityDismissalKey;
+  const dismissCommunityCard = () => {
+    setDismissedCommunityKey(communityDismissalKey);
+    setCommunityDialogKey(null);
+    if (communityDismissalKey && typeof window !== 'undefined') {
+      window.localStorage.setItem(communityDismissalKey, '1');
+    }
+  };
   const toppingProgress = production.toppingProgress;
   const rescuePreviewRef = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -296,26 +327,56 @@ export function ProductionCockpit({
   }
 
   if (session.status === 'completed' && session.completionSnapshot) {
+    const snapshot = session.completionSnapshot;
+    const finalFit = recipeTechnicalFit(snapshot.finalResult);
+    const finalCost = snapshot.finalProduct?.costs?.total_cost ?? null;
+    const lotCode =
+      snapshot.lotCode ??
+      productionLotCodeForRun(
+        session.sessionId,
+        snapshot.productionCompletedAt ?? session.completedAt ?? session.startedAt,
+      );
     return (
       <div data-testid="production-completed">
-        <section className="m-3 rounded-[18px] border border-status-ideal/25 bg-status-ideal/[0.07] p-4 text-ink">
-          <p className="text-xs font-semibold tracking-[0.06em] text-[#2f6f3c] uppercase">
-            Partia gotowa
-          </p>
-          <div className="mt-1 flex items-end justify-between gap-3">
+        <section
+          className="m-3 rounded-[14px] border border-ink/10 bg-white p-4 text-ink shadow-pro-e0"
+          aria-label="Podsumowanie ukończonej partii"
+        >
+          <div className="flex items-end justify-between gap-3">
             <strong className="text-sm text-ink">{session.source.recipeName}</strong>
             <span className="font-mono text-lg font-semibold tabular-nums text-ink">
-              {formatPhysicalMassG(session.completionSnapshot.actualFinalMassG)} g
+              {formatPhysicalMassG(snapshot.actualFinalMassG)} g
             </span>
           </div>
-          {session.completionSnapshot.productComposition.toppings.some((item) =>
+          <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 border-y border-ink/8 py-3 text-xs">
+            <div className="col-span-2 flex items-center gap-2 sm:col-span-1">
+              <ScoreRing score={finalFit.score} testId="production-final-score-ring" />
+              <span>
+                <dt className="text-stone-500">Wynik końcowy</dt>
+                <dd className="mt-0.5 font-semibold text-ink">{finalFit.label}</dd>
+              </span>
+            </div>
+            <div>
+              <dt className="text-stone-500">LOT</dt>
+              <dd className="mt-1 truncate font-mono font-semibold tabular-nums text-ink">
+                {lotCode}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-stone-500">Koszt partii</dt>
+              <dd className="mt-1 font-mono font-semibold tabular-nums text-ink">
+                {finalCost === null ? 'Brak pełnych danych' : `${finalCost.toFixed(2)} €`}
+              </dd>
+            </div>
+          </dl>
+          {snapshot.productComposition.toppings.some((item) =>
             isCatalogLabelToppingIngredient(item.ingredient),
           ) ? (
             <div
               className="mt-3 flex flex-wrap gap-2"
               data-testid="production-completed-catalog-provenance"
             >
-              {session.completionSnapshot.productComposition.toppings.map((item) =>
+              {snapshot.productComposition.toppings.map((item) =>
                 isCatalogLabelToppingIngredient(item.ingredient) ? (
                   <span key={item.id} className="flex items-center gap-2 text-xs text-stone-700">
                     <span className="max-w-44 truncate">{item.ingredient.name}</span>
@@ -328,28 +389,71 @@ export function ProductionCockpit({
               )}
             </div>
           ) : null}
-          <button
-            type="button"
-            onClick={onOpenLabel}
-            disabled={!onOpenLabel}
-            className={cn(buttonClasses('primary', 'md'), 'mt-4 w-full justify-center')}
-            data-testid="production-go-to-label"
-          >
-            Przejdź do etykiety
-          </button>
-          <button
-            type="button"
-            onClick={prerequisite ? prerequisiteAction : () => void production.startNewSession()}
-            className="pro-focus-ring mt-2 min-h-11 w-full rounded-[12px] border border-ink/15 bg-white px-3 py-2 text-xs font-semibold text-ink"
-          >
-            {prerequisite ? prerequisite.actionLabel : 'Rozpocznij nową partię'}
-          </button>
+          <div className="mt-4 flex flex-col gap-2 sm:items-start">
+            <button
+              type="button"
+              onClick={onOpenLabel}
+              disabled={!onOpenLabel}
+              className={cn(buttonClasses('primary', 'md'), 'w-full sm:w-auto')}
+              data-testid="production-go-to-label"
+            >
+              Przejdź do etykiety
+            </button>
+            <button
+              type="button"
+              onClick={prerequisite ? prerequisiteAction : () => void production.startNewSession()}
+              className={cn(buttonClasses('ghost', 'md'), 'w-full sm:w-auto')}
+            >
+              {prerequisite ? prerequisite.actionLabel : 'Rozpocznij nową partię'}
+            </button>
+          </div>
           {prerequisite ? (
             <p className="mt-2 text-xs leading-relaxed text-stone-700" role="status">
               {prerequisite.message}
             </p>
           ) : null}
+          {canPublishCompletion && !communityCardDismissed ? (
+            <aside
+              className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-ink/8 pt-3"
+              data-testid="production-community-invitation"
+            >
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-ink">Pokaż swój wynik w Community</p>
+                <p className="mt-0.5 text-[11px] leading-relaxed text-stone-500">
+                  Opcjonalnie udostępnij zapisaną wersję tej receptury.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className={buttonClasses('ghost', 'sm')}
+                  onClick={() => setCommunityDialogKey(communityDismissalKey)}
+                >
+                  Udostępnij
+                </button>
+                <button
+                  type="button"
+                  className="pro-focus-ring grid size-10 place-items-center rounded-full text-stone-500 hover:bg-stone-100 hover:text-ink"
+                  onClick={dismissCommunityCard}
+                  aria-label="Ukryj zaproszenie do Community"
+                  title="Ukryj"
+                >
+                  ×
+                </button>
+              </div>
+            </aside>
+          ) : null}
         </section>
+        {communityDialogOpen && publishableRecipeId && publishableVersion ? (
+          <PublishToCommunityDialog
+            recipeId={publishableRecipeId}
+            versionNumber={publishableVersion}
+            defaultTitle={session.source.recipeName}
+            hasCreatorProfile={hasCreatorProfile}
+            onPublished={dismissCommunityCard}
+            onClose={() => setCommunityDialogKey(null)}
+          />
+        ) : null}
         {archiveSessionDialog}
       </div>
     );
@@ -394,10 +498,7 @@ export function ProductionCockpit({
               : 'Zakończ ważenie bazy';
 
   return (
-    <div
-      className="pro-scroll-safe space-y-3 p-3 pb-24 text-ink sm:pb-3"
-      data-testid="production-cockpit"
-    >
+    <div className="pro-scroll-safe space-y-3 p-3 text-ink" data-testid="production-cockpit">
       {production.persistenceError ? (
         <p
           className="rounded-[12px] border border-status-error/25 bg-status-error/[0.04] px-3 py-2 text-xs leading-relaxed text-status-error"
@@ -407,36 +508,14 @@ export function ProductionCockpit({
           {production.persistenceError}
         </p>
       ) : null}
-      <section className="overflow-hidden rounded-[18px] border border-ink/10 bg-white p-4 shadow-pro-e0">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold text-[#d7b768]">Produkcja</p>
-            <strong className="mt-1 block text-lg text-ink">
-              {progress.confirmedCount} / {progress.totalCount} składników
-            </strong>
-          </div>
-          <span className="flex items-center gap-2 text-left">
-            <ScoreRing score={score.score} testId="production-score-ring" />
-            <span>
-              <span className="block text-xs font-semibold text-ink">Przewidywany wynik</span>
-              <span className="mt-0.5 block text-[10px] leading-snug text-stone-600">
-                {score.label}
-              </span>
-            </span>
-          </span>
-        </div>
-        <div className="mt-3 h-2 overflow-hidden rounded-full bg-ink/8">
-          <span
-            className="block h-full rounded-full bg-status-ideal transition-[width]"
-            style={{
-              width: `${progress.totalCount > 0 ? (progress.confirmedCount / progress.totalCount) * 100 : 0}%`,
-            }}
-          />
-        </div>
+      <section className="border-b border-ink/8 px-1 pb-3" data-testid="production-batch-state">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-stone-500">
+          Bieżąca partia
+        </p>
         {/* §22/§23 LIVE MONITOR — physical truth first, plan second, and the
             gap between them. `W naczyniu` is measured only from confirmed
             additions; `Plan aktualny` follows an accepted scale-up. */}
-        <dl className="mt-3 grid grid-cols-3 gap-3 text-xs" data-testid="production-live-monitor">
+        <dl className="mt-2 grid grid-cols-3 gap-3 text-xs" data-testid="production-live-monitor">
           <div>
             <dt className="text-stone-500">W naczyniu</dt>
             <dd
@@ -509,7 +588,7 @@ export function ProductionCockpit({
           tabIndex={-1}
           role="status"
           aria-live="polite"
-          className="rounded-[18px] border border-[#d9c49a] bg-[#fbf8f1] p-4"
+          className="border-y border-[#d9c49a]/70 bg-[#fbf8f1] px-3 py-3"
           data-testid="production-rescue-options"
         >
           <p className="text-[10px] font-semibold tracking-[0.08em] text-[#8a5b23] uppercase">
@@ -522,7 +601,7 @@ export function ProductionCockpit({
             Potwierdzonych ilości nie odejmiemy. Możesz wybrać tylko wynik bezpiecznie obliczony dla
             obecnej zawartości naczynia.
           </p>
-          <div className="mt-3 space-y-2">
+          <div className="mt-3 divide-y divide-ink/8 rounded-[10px] bg-white/55 p-1">
             {(
               [
                 {
@@ -560,13 +639,13 @@ export function ProductionCockpit({
                   disabled={!available || production.persistenceBusy}
                   aria-pressed={selected}
                   className={cn(
-                    'pro-focus-ring w-full rounded-[12px] border bg-white p-3 text-left transition-colors',
-                    selected ? 'border-ink shadow-pro-sm' : 'border-ink/10',
+                    'pro-focus-ring w-full rounded-[9px] px-3 py-2.5 text-left transition-colors',
+                    selected ? 'bg-white ring-1 ring-ink/35' : 'hover:bg-white/70',
                     option.id === 'leave_as_is' &&
                       previewScore &&
                       production.plannedScore?.score &&
                       previewScore < production.plannedScore.score
-                      ? 'border-attention/35 bg-pro-amber/40'
+                      ? 'bg-pro-amber/40 ring-attention/35'
                       : null,
                     !available && 'cursor-not-allowed opacity-65',
                   )}
@@ -720,7 +799,7 @@ export function ProductionCockpit({
         </section>
       ) : session.lastDeviationDecision ? (
         <section
-          className="rounded-[14px] border border-status-ideal/25 bg-status-ideal/[0.06] p-3"
+          className="border-y border-status-ideal/20 bg-status-ideal/[0.05] px-3 py-2.5"
           data-testid="production-decision-applied"
         >
           <p className="text-xs font-semibold text-[#2f6f3c]">
@@ -935,29 +1014,6 @@ export function ProductionCockpit({
           </div>
         </DialogShell>
       ) : null}
-      <aside
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-ink/12 bg-white/95 px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-10px_28px_rgba(31,29,26,0.12)] backdrop-blur sm:hidden"
-        data-testid="production-mobile-sticky-status"
-        aria-label="Status bieżącej produkcji"
-      >
-        <div className="mx-auto grid max-w-lg grid-cols-3 items-center gap-2 text-[11px] text-stone-600">
-          <strong className="font-mono text-sm tabular-nums text-ink">
-            {progress.confirmedCount} / {progress.totalCount}
-          </strong>
-          <span className="text-center">
-            W naczyniu{' '}
-            <strong className="block font-mono text-xs tabular-nums text-ink">
-              {formatPhysicalMassG(progress.confirmedMassG)} g
-            </strong>
-          </span>
-          <span className="text-right">
-            Plan{' '}
-            <strong className="block font-mono text-xs tabular-nums text-ink">
-              {formatPhysicalMassG(progress.currentPlanMassG)} g
-            </strong>
-          </span>
-        </div>
-      </aside>
     </div>
   );
 }

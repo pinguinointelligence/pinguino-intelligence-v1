@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { cn } from '@/lib/cn';
+import { iconButtonClasses } from '@/components/ui/buttonStyles';
 import type { RecipeToppingItem } from '@/features/recipe-composition/recipeCompositionPersistence';
 import { DirectNumberControl } from './DirectNumberControl';
 import { IngredientCategoryIcon } from './IngredientCategoryIcon';
@@ -170,7 +171,7 @@ export function ToppingRow({
           <div className="relative justify-self-end">
             <button
               type="button"
-              className="pro-focus-ring grid size-7 place-items-center rounded-full border border-ink/10 text-[11px] text-stone-500 hover:border-ink/35 hover:text-ink"
+              className={iconButtonClasses('xs')}
               aria-label={`Opcje toppingu ${item.ingredient.name}`}
               aria-haspopup="dialog"
               aria-expanded={menuOpen}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/Button';
+import { WorkflowNotice } from '@/components/shared/WorkflowNotice';
 import { LabelWorkspace, type LabelWorkspaceView } from '@/features/master-label/LabelWorkspace';
 import {
   calculateRecipe,
@@ -241,12 +242,13 @@ function ProfileContent({
   return (
     <div className="w-full min-w-0 p-3" data-testid="pro-context-recipe">
       {legacyInspection ? (
-        <p
-          role="status"
-          className="mb-2 rounded-lg border border-ink/10 bg-stone-50 px-3 py-2 text-xs text-stone-700"
-        >
-          Podgląd historyczny. Przed edycją, zapisem lub produkcją utwórz zweryfikowaną wersję.
-        </p>
+        <WorkflowNotice
+          className="mb-2"
+          eyebrow="Historia receptury"
+          title="Podgląd historyczny"
+          description="Przed edycją, zapisem lub produkcją utwórz zweryfikowaną wersję."
+          variant="neutral"
+        />
       ) : null}
       <div
         className="grid min-w-0 items-start gap-3"
@@ -282,7 +284,7 @@ function ProfileContent({
         className="pro-focus-ring mt-2.5 flex min-h-11 w-full items-center justify-between rounded-[16px] border border-ink/10 bg-white px-4 text-left text-xs font-semibold text-ink shadow-pro-e0"
         data-testid="profile-learning-entry"
       >
-        <span>Dlaczego taki wynik i jak przygotować recepturę?</span>
+        <span>Wiedza o recepturze</span>
         <span aria-hidden>›</span>
       </button>
     </div>
@@ -318,14 +320,14 @@ function ProductionPanel({
 
   return (
     <div data-testid="pro-context-production">
-      <div className="m-3 border border-status-error/30 bg-status-error/[0.035] p-3" role="alert">
-        <h3 className="text-xs font-semibold text-status-error">
-          Nie udało się uruchomić sesji produkcji
-        </h3>
-        <p className="mt-1 text-xs leading-relaxed text-stone-600">
-          Wróć do Profilu receptury i otwórz Produkcję ponownie. Receptura nie została zmieniona.
-        </p>
-      </div>
+      <WorkflowNotice
+        className="m-3"
+        eyebrow="Produkcja"
+        title="Nie udało się uruchomić sesji produkcji"
+        description="Wróć do Profilu receptury i otwórz Produkcję ponownie. Receptura nie została zmieniona."
+        variant="blocking"
+        role="alert"
+      />
     </div>
   );
 }
@@ -408,6 +410,7 @@ export function RecipeProfilePanel({
   const [educationOpen, setEducationOpen] = useState(false);
   const tabPanelRef = useRef<HTMLDivElement>(null);
   const machineId = useRecipeStore((state) => state.machineId);
+  const machineLabel = useRecipeStore((state) => state.machineLabel);
   useEffect(() => {
     if (tabPanelRef.current) tabPanelRef.current.scrollTop = 0;
   }, [activeTab, educationOpen]);
@@ -451,6 +454,7 @@ export function RecipeProfilePanel({
           <ContextualEducationView
             input={input}
             machineId={machineId}
+            machineLabel={machineLabel}
             audience="pro"
             onBack={() => setEducationOpen(false)}
           />

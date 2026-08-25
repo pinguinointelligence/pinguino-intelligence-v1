@@ -537,9 +537,10 @@ export function ProductPickerPopover({
         const relation = option.catalog
           ? {
               entityKind: option.catalog.entityKind,
-              id: option.catalog.entityKind === 'pi_base'
-                ? option.catalog.mappedIngredientId!
-                : option.catalog.id,
+              id:
+                option.catalog.entityKind === 'pi_base'
+                  ? option.catalog.mappedIngredientId!
+                  : option.catalog.id,
             }
           : { entityKind: 'pi_base' as const, id: option.id.replace(/^mapper:/, '') };
         void markCatalogProductUsed(relation).catch(() => undefined);
@@ -776,67 +777,77 @@ export function ProductPickerPopover({
                 }}
               >
                 <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white">
-                  <div className="z-10 shrink-0 border-b border-ink/10 bg-white p-4">
-                    <div className="relative">
-                      <input
-                        ref={inputRef}
-                        type="text"
-                        role="combobox"
-                        aria-autocomplete="list"
-                        aria-expanded="true"
-                        aria-controls={listId}
-                        aria-activedescendant={
-                          visibleOptions.length > 0
-                            ? `${listId}-${visibleOptions[safeActiveIndex]?.id}`
-                            : undefined
-                        }
-                        aria-label={`Szukaj produktu — ${label}`}
-                        placeholder="Szukaj produktu, marki lub numeru artykułu…"
-                        value={query}
-                        onChange={(event) => {
-                          setQuery(event.currentTarget.value);
-                          setActiveIndex(0);
-                          setUnavailableNotice(null);
-                          setInformationOption(null);
-                        }}
-                        className="h-11 w-full rounded-xl border border-ink/15 bg-white px-4 pr-11 text-sm text-ink outline-none focus:border-[#f58a07] focus:ring-2 focus:ring-[#f58a07]/15"
-                      />
-                      {query ? (
-                        <button
-                          type="button"
-                          aria-label="Wyczyść wyszukiwanie"
-                          data-testid="product-picker-clear"
-                          onClick={() => {
-                            setQuery('');
+                  <div className="z-10 shrink-0 border-b border-ink/10 bg-white p-3 sm:p-4">
+                    <div className="flex items-center gap-2">
+                      <div className="relative min-w-0 flex-1">
+                        <input
+                          ref={inputRef}
+                          type="text"
+                          role="combobox"
+                          aria-autocomplete="list"
+                          aria-expanded="true"
+                          aria-controls={listId}
+                          aria-activedescendant={
+                            visibleOptions.length > 0
+                              ? `${listId}-${visibleOptions[safeActiveIndex]?.id}`
+                              : undefined
+                          }
+                          aria-label={`Szukaj produktu — ${label}`}
+                          placeholder="Szukaj produktu, marki lub numeru artykułu…"
+                          value={query}
+                          onChange={(event) => {
+                            setQuery(event.currentTarget.value);
                             setActiveIndex(0);
                             setUnavailableNotice(null);
                             setInformationOption(null);
-                            inputRef.current?.focus({ preventScroll: true });
                           }}
-                          className="pro-focus-ring absolute right-1 top-1 grid size-9 place-items-center rounded-lg text-base font-semibold text-stone-600 hover:bg-stone-100 hover:text-ink"
-                        >
-                          ×
-                        </button>
-                      ) : null}
-                    </div>
-                    {library.serverSearch ? (
+                          className="h-11 w-full rounded-xl border border-ink/15 bg-white px-4 pr-11 text-sm text-ink outline-none focus:border-[#f58a07] focus:ring-2 focus:ring-[#f58a07]/15"
+                        />
+                        {query ? (
+                          <button
+                            type="button"
+                            aria-label="Wyczyść wyszukiwanie"
+                            data-testid="product-picker-clear"
+                            onClick={() => {
+                              setQuery('');
+                              setActiveIndex(0);
+                              setUnavailableNotice(null);
+                              setInformationOption(null);
+                              inputRef.current?.focus({ preventScroll: true });
+                            }}
+                            className="pro-focus-ring absolute right-1 top-1 grid size-9 place-items-center rounded-lg text-base font-semibold text-stone-600 hover:bg-stone-100 hover:text-ink"
+                          >
+                            ×
+                          </button>
+                        ) : null}
+                      </div>
                       <button
                         type="button"
                         data-testid="product-picker-scan"
+                        aria-label={scanning ? 'Wróć do wyszukiwania' : 'Skanuj produkt'}
+                        title={scanning ? 'Wróć do wyszukiwania' : 'Skanuj produkt'}
                         onClick={() => {
                           setScanning((current) => !current);
                           setUnavailableNotice(null);
                           setInformationOption(null);
                         }}
-                        className="pro-focus-ring mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-ink/15 bg-white px-4 text-sm font-semibold text-ink hover:border-ink/35"
+                        className="pro-focus-ring grid size-11 shrink-0 place-items-center rounded-full border border-ink/15 bg-white text-base font-semibold text-ink hover:border-ink/35 lg:size-10"
                       >
                         <span aria-hidden>▣</span>
-                        {scanning ? 'Wróć do wyszukiwania' : 'Skanuj produkt'}
                       </button>
-                    ) : null}
+                      <button
+                        type="button"
+                        aria-label="Zamknij wyszukiwarkę produktów"
+                        title="Zamknij"
+                        className="pro-focus-ring grid size-11 shrink-0 place-items-center rounded-full border border-ink/15 bg-white text-lg font-semibold text-stone-600 hover:border-ink/35 hover:text-ink lg:size-10"
+                        onClick={() => close()}
+                      >
+                        <span aria-hidden>×</span>
+                      </button>
+                    </div>
                     <div
-                      className="mt-3 flex items-center gap-2 overflow-x-auto pb-1"
-                      aria-label={library.serverSearch ? 'Filtry katalogu' : undefined}
+                      className="mt-2 flex flex-wrap items-center gap-1.5"
+                      aria-label="Filtry katalogu"
                     >
                       {PICKER_FILTERS.map((filter) => (
                         <button
@@ -850,7 +861,7 @@ export function ProductPickerPopover({
                             setInformationOption(null);
                           }}
                           className={cn(
-                            'pro-focus-ring inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[11px] font-semibold',
+                            'pro-focus-ring inline-flex min-h-11 items-center gap-1 rounded-full border px-2.5 text-[11px] font-semibold lg:min-h-8 lg:px-2',
                             activeFilter === filter.id
                               ? 'border-[#29a447]/50 bg-[#effaf1] text-[#14762d]'
                               : 'border-ink/10 bg-white text-stone-600 hover:border-ink/25 hover:text-ink',
@@ -915,11 +926,33 @@ export function ProductPickerPopover({
                         }}
                       >
                         {visibleOptions.length === 0 ? (
-                          <p className="px-3 py-5 text-sm text-stone-600">
-                            {query.trim()
-                              ? 'Brak wyników. Zmień wyszukiwanie.'
-                              : 'Zacznij wpisywać nazwę produktu.'}
-                          </p>
+                          query.trim() && (!library.serverSearch || globalCatalog.isSettled) ? (
+                            <div className="px-3 py-5 text-sm text-stone-600">
+                              <p>Nie znaleziono produktu.</p>
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  className="pro-focus-ring min-h-11 rounded-full border border-ink/15 bg-white px-4 text-xs font-semibold text-ink"
+                                  onClick={() => setScanning(true)}
+                                >
+                                  Skanuj
+                                </button>
+                                <Link
+                                  to="/products/add"
+                                  className="pro-focus-ring inline-flex min-h-11 items-center rounded-full border border-ink/15 bg-white px-4 text-xs font-semibold text-ink"
+                                  onClick={() => close()}
+                                >
+                                  Dodaj ręcznie
+                                </Link>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="px-3 py-5 text-sm text-stone-600">
+                              {globalCatalog.isFetching
+                                ? 'Wczytuję katalog…'
+                                : 'Brak produktów w wybranym filtrze.'}
+                            </p>
+                          )
                         ) : (
                           segments.map((segment, segmentIndex) => {
                             const segmentOffset = segments
@@ -1158,30 +1191,6 @@ export function ProductPickerPopover({
                       {unavailableNotice}
                     </p>
                   ) : null}
-                  <div className="flex min-h-12 shrink-0 flex-wrap items-center justify-between gap-3 border-t border-ink/10 bg-white px-4 py-2 text-xs">
-                    <span className="text-stone-600">Nie znalazłeś produktu?</span>
-                    <Link
-                      to="/products/scan"
-                      className="pro-focus-ring rounded-lg px-2 py-1 font-semibold text-ink hover:bg-stone-100"
-                      onClick={() => close()}
-                    >
-                      Skanuj produkt →
-                    </Link>
-                    <Link
-                      to="/products/add"
-                      className="pro-focus-ring rounded-lg px-2 py-1 font-semibold text-ink hover:bg-stone-100"
-                      onClick={() => close()}
-                    >
-                      Dodaj ręcznie →
-                    </Link>
-                    <button
-                      type="button"
-                      className="pro-focus-ring rounded-lg px-2 py-1 font-semibold text-stone-600 hover:bg-stone-100"
-                      onClick={() => close()}
-                    >
-                      Zamknij
-                    </button>
-                  </div>
                 </div>
               </div>
             </>,

@@ -134,16 +134,15 @@ describe('one global menu and four local contexts', () => {
     const workbar = read('features', 'pro-core', 'ProWorkbar.tsx');
     const ingredient = read('features', 'ingredient-builder', 'IngredientRow.tsx');
     const topping = read('features', 'ingredient-builder', 'ToppingRow.tsx');
+    const buttons = read('components', 'ui', 'buttonStyles.ts');
     expect(page).toContain('data-testid="pro-plan-indicator"');
     expect(page).toContain('px-1.5 py-1 text-[8px]');
-    expect(workbar).toContain('grid size-9');
-    for (const source of [ingredient, topping]) {
-      expect(source).toContain('grid size-11');
-    }
     for (const source of [workbar, ingredient, topping]) {
-      expect(source).toContain('rounded-full border border-ink/10');
+      expect(source).toContain("iconButtonClasses('xs')");
       expect(source).toContain('•••');
     }
+    expect(buttons).toContain('rounded-full border border-ink/10');
+    expect(buttons).toContain("size === 'xs' ? 'size-7 text-[11px]'");
   });
 
   it('renders Profile, Monitor, Production and Summary as contextual controls', () => {
@@ -185,13 +184,13 @@ describe('recipe and production table modes', () => {
 
   it('Production replaces builder controls with plan, actual, difference and status', () => {
     const html = renderIngredients('production');
-    for (const label of ['Plan', 'Faktycznie', 'Odchylenie', 'Status / potwierdzenie'])
+    for (const label of ['Składnik / status', 'Plan', 'Faktycznie', 'Odchylenie'])
       expect(html).toContain(label);
     expect(html).toContain('data-testid="production-table-header"');
     expect(html).toContain('data-table-family="recipe"');
     expect(html).not.toContain('Szukaj składników');
     expect(html).not.toContain('Cena/kg');
-    expect(html).toContain('data-readiness="W PRZYGOTOWANIU"');
+    expect(html).not.toContain('data-readiness="W PRZYGOTOWANIU"');
   });
 
   it('keeps percentage and gram locks interactive and mutually visible', () => {
@@ -229,9 +228,10 @@ describe('recipe and production table modes', () => {
     expect(picker).toContain('Pokaż status danych produktu:');
     expect(picker).toContain('data-testid="product-data-status-dialog"');
     expect(picker).not.toContain('Nr art.');
-    expect(picker).toContain('Nie znalazłeś produktu?');
+    expect(picker).toContain('Nie znaleziono produktu.');
     expect(picker).toContain('Skanuj produkt');
-    expect(picker).toContain('to="/products/scan"');
+    expect(picker).toContain('to="/products/add"');
+    expect(picker).not.toContain('Nie znalazłeś produktu?');
     // The rule changed twice on 2026-08-24 and this guard now pins BOTH halves:
     // the picker searches the whole eligible catalogue, including the products the
     // owner imported or scanned…
@@ -341,6 +341,11 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
   it('names score concepts and provides shared keyboard/reduced-motion treatment', () => {
     const header = read('features', 'pro-workbench', 'WorkbenchIntelligenceHeader.tsx');
     const production = read('features', 'production-workspace', 'ProductionCockpit.tsx');
+    const productionHeader = read(
+      'features',
+      'production-workspace',
+      'ProductionWorkspaceHeader.tsx',
+    );
     const dock = read('features', 'pro-workbench', 'WorkbenchRecipeActionDock.tsx');
     const theme = read('styles', 'theme-pro-light.css');
     expect(dock).toContain('WorkbenchIntelligenceHeader');
@@ -348,7 +353,9 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     expect(dock).not.toContain('production.score');
     // §51 SCORE TRUTH — Production presents the live forecast beside the
     // physical vessel state, while the mass cards name plan and vessel separately.
-    expect(production).toContain('Przewidywany wynik');
+    expect(productionHeader).toContain('Przewidywany wynik');
+    expect(productionHeader).toContain('ScoreRing');
+    expect(production).not.toContain('production-score-ring');
     expect(production).toContain('W naczyniu');
     expect(production).toContain('>Cel</dt>');
     expect(production).not.toContain('Przewidywane dopasowanie partii');

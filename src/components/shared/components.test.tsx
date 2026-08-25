@@ -11,6 +11,24 @@ import { MetricValue } from './MetricValue';
 import { PlanGate } from './PlanGate';
 import { StatusChip } from './StatusChip';
 import { STATUS_LABELS, type IndicatorStatus } from './status';
+import { WorkflowNotice } from './WorkflowNotice';
+
+describe('WorkflowNotice', () => {
+  it('keeps one compact hierarchy for status, explanation and action', () => {
+    const html = renderToStaticMarkup(
+      <WorkflowNotice
+        eyebrow="Produkcja"
+        title="Wymagane sprawdzenie"
+        description="Krótki opis następnego kroku."
+        action={<button>Wróć do receptury</button>}
+      />,
+    );
+    expect(html).toContain('Produkcja');
+    expect(html).toContain('Wymagane sprawdzenie');
+    expect(html).toContain('Krótki opis następnego kroku.');
+    expect(html).toContain('Wróć do receptury');
+  });
+});
 
 describe('PlanGate — redact-at-source contract (Masterplan §10)', () => {
   const secret = 'SECRET-34.7-GRAMS';
@@ -111,7 +129,15 @@ describe('IndicatorBar — single glowing target zone (Phase 6C)', () => {
   const renderShell = () =>
     renderToStaticMarkup(
       <SurfaceToneContext.Provider value="shell">
-        <IndicatorBar min={6} max={24} value={14.5} targetMin={12} targetMax={17} status="ideal" label="POD" />
+        <IndicatorBar
+          min={6}
+          max={24}
+          value={14.5}
+          targetMin={12}
+          targetMax={17}
+          status="ideal"
+          label="POD"
+        />
       </SurfaceToneContext.Provider>,
     );
 

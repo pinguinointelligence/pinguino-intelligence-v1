@@ -5,7 +5,7 @@ import { useRecipeStore } from '@/stores/recipeStore';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { BATCH_UNITS, fromGrams, toGrams, type BatchUnit } from '@/lib/units';
 import { temperatureForMode } from '@/features/customer-flow/servingMode';
-import { VISIBLE_PRODUCT_TYPES, type VisibleProductType } from '@/features/studio/productType';
+import type { VisibleProductType } from '@/features/studio/productType';
 import {
   MACHINE_CATALOG,
   deriveMachineSetup,
@@ -27,22 +27,13 @@ import {
   FORMULATION_STRATEGIES,
   type FormulationStrategy,
 } from '@/features/formulation-strategy/strategy';
-import {
-  applyProfessionalStarterMachineSelection,
-  rebuildNewProRecipeStarter,
-  requestNewRecipeProductTypeChange,
-  requestProfessionalStarterServingChange,
-  requestNewRecipeStarterSettingsChange,
-  starterSettingsPatch,
-  type NewRecipeStarterSettingsPatch,
-} from '@/pages/destinations/startNewProRecipe';
-import { NewRecipeConfirmationDialog } from '@/features/recipes/NewRecipeConfirmationDialog';
 import { DeferredNumberInput } from '@/components/forms/DeferredNumberInput';
 import {
   isNewRecipeServingModeId,
   starterServingModeForTemperature,
-  type NewRecipeServingModeId,
 } from '@/features/recipes/newRecipeStarter';
+import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
+import { classifyProfileTransition, PRO_VISIBLE_PRODUCT_TYPES } from './profileCompatibility';
 
 const g = copy.studio.goal;
 const servingCopy = copy.proMachine.serving;
@@ -61,12 +52,6 @@ const SERVING_OPTIONS: readonly { id: string; label: string }[] = [
 
 const compactSelect =
   'h-11 min-w-0 rounded-[10px] border border-ink/12 bg-white px-3 text-[13px] text-ink shadow-pro-e0 transition-colors hover:border-ink/35 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#f58a07] lg:h-10 lg:text-xs';
-
-interface PendingStarterChange {
-  patch: NewRecipeStarterSettingsPatch;
-  homeMachineId?: string;
-  professionalServingModeId?: NewRecipeServingModeId;
-}
 
 function LabeledSelect<T extends string>({
   label,
@@ -137,9 +122,7 @@ export function WorkbenchSettingsLine({
   const openDraft = useRecipeProfileStore((state) => state.openDraft);
   const confirmSettings = useRecipeProfileStore((state) => state.confirmSettings);
   const [unit, setUnit] = useState<BatchUnit>('g');
-  const [pendingStarterChange, setPendingStarterChange] = useState<PendingStarterChange | null>(
-    null,
-  );
+  const [profileNotice, setProfileNotice] = useState<string | null>(null);
   const activeHomeMachines = useMemo(() => listActiveHomeMachines(MACHINE_CATALOG), []);
   const selectedHome =
     store.machineKind === 'home'
@@ -174,12 +157,15 @@ export function WorkbenchSettingsLine({
     const servingModeId = isNewRecipeServingModeId(id)
       ? id
       : starterServingModeForTemperature(temp);
-    const patch = starterSettingsPatch.serving(servingModeId);
-    const result = requestProfessionalStarterServingChange(servingModeId, professionalLabel);
-    if (result === 'confirmation_required') {
-      setPendingStarterChange({ patch, professionalServingModeId: servingModeId });
-      return;
-    }
+    store.setMachineSelection({
+      kind: 'professional',
+      servingModeId,
+      machineId: null,
+      label: professionalLabel,
+      temperatureC: temp,
+      batchGrams: null,
+      capacityGrams: null,
+    });
   };
 
   const selectProfessional = () =>
@@ -194,17 +180,6 @@ export function WorkbenchSettingsLine({
     if (setup.resolvedVisibleMode === null) return;
     const temp = temperatureForMode(setup.resolvedVisibleMode);
     if (temp === null) return;
-    const patch: NewRecipeStarterSettingsPatch = {
-      servingModeId: starterServingModeForTemperature(temp),
-      ...(setup.recommendedBatchGrams == null
-        ? {}
-        : { targetBatchGrams: Math.round(setup.recommendedBatchGrams) }),
-    };
-    const result = requestNewRecipeStarterSettingsChange(patch);
-    if (result === 'confirmation_required') {
-      setPendingStarterChange({ patch, homeMachineId: profile.id });
-      return;
-    }
     store.setMachineSelection({
       kind: 'home',
       servingModeId: setup.resolvedVisibleMode,
@@ -216,49 +191,35 @@ export function WorkbenchSettingsLine({
       batchGrams: null,
       capacityGrams: setup.recommendedBatchGrams,
     });
-    if (result === 'starter_replaced') {
-      useRecipeProfileStore.getState().acknowledgeRecalculation();
-    }
-    if (result === 'existing_recipe' && setup.recommendedBatchGrams != null) {
-      resizeBatchGrams(setup.recommendedBatchGrams);
-    }
   };
 
   const changeProductType = (next: VisibleProductType) => {
-    const result = requestNewRecipeProductTypeChange(next);
-    if (result === 'confirmation_required') {
-      setPendingStarterChange({ patch: starterSettingsPatch.product(next) });
+    const decision = classifyProfileTransition(buildRecipeInput(store), next);
+    if (!decision.supported) {
+      setProfileNotice(decision.message);
+      return;
     }
+    setProfileNotice(null);
+    store.setVisibleProductType(next);
   };
 
   const changeStrategy = (strategy: FormulationStrategy) => {
-    const result = requestNewRecipeStarterSettingsChange(starterSettingsPatch.strategy(strategy));
-    if (result === 'confirmation_required') {
-      setPendingStarterChange({ patch: starterSettingsPatch.strategy(strategy) });
-    } else if (result === 'existing_recipe') {
-      store.setFormulationStrategy(strategy);
-    }
+    store.setFormulationStrategy(strategy);
   };
 
   const changeBatch = (grams: number) => {
     const target = Math.round(grams);
     if (!(target > 0)) {
-      if (useRecipeStore.getState().newRecipeStarterKey === null) resizeBatchGrams(grams);
       return;
     }
-    const result = requestNewRecipeStarterSettingsChange(starterSettingsPatch.batch(target));
-    if (result === 'confirmation_required') {
-      setPendingStarterChange({ patch: starterSettingsPatch.batch(target) });
-    } else if (result === 'existing_recipe') {
-      resizeBatchGrams(target);
-    }
+    resizeBatchGrams(target);
   };
 
   return (
     <section
       className={cn(
-        'rounded-[18px] border shadow-pro-e1 transition-colors',
-        compact ? 'p-3 lg:p-2.5' : 'p-4',
+        'rounded-[14px] border shadow-pro-e0 transition-colors',
+        compact ? 'p-2.5 lg:p-2' : 'p-3',
         hardConflict
           ? 'border-status-error/45 bg-status-error/[0.035]'
           : confirmed
@@ -292,7 +253,7 @@ export function WorkbenchSettingsLine({
             {hardConflict
               ? 'Konflikt ustawień'
               : confirmed
-                ? '✓ Potwierdzone'
+                ? '✓ Ustawienia potwierdzone'
                 : 'Zmiany niepotwierdzone'}
           </span>
         </div>
@@ -303,12 +264,17 @@ export function WorkbenchSettingsLine({
           <LabeledSelect
             label={g.productTypeLabel}
             value={store.visibleProductType}
-            options={VISIBLE_PRODUCT_TYPES}
+            options={PRO_VISIBLE_PRODUCT_TYPES}
             labelOf={(option) => g.productTypes[option]}
             onChange={changeProductType}
             testid="workbench-product-type"
             stacked={compact}
           />
+          {profileNotice ? (
+            <p className="mt-1 text-[11px] leading-relaxed text-stone-600" role="status">
+              {profileNotice}
+            </p>
+          ) : null}
           {store.visibleProductType === 'vegan' ? (
             <ReadinessBadge
               className={cn('mt-1', !compact && 'ml-[7.3rem]')}
@@ -357,12 +323,12 @@ export function WorkbenchSettingsLine({
           ) : (
             <span
               className={cn(
-                'inline-flex w-full items-center justify-center rounded-[10px] border border-status-ideal/40 bg-status-ideal/[0.04] px-3 text-xs font-semibold text-status-ideal',
+                'inline-flex w-full items-center justify-center px-2 text-xs font-semibold text-status-ideal',
                 compact ? 'h-[52px] lg:h-10 2xl:h-[43px]' : 'min-h-11',
               )}
               data-testid="profile-settings-confirmed"
             >
-              ✓ Ustawienia sprawdzone
+              ✓ Ustawienia potwierdzone
             </span>
           )}
         </div>
@@ -503,49 +469,6 @@ export function WorkbenchSettingsLine({
           </p>
         </div>
       </div>
-      <NewRecipeConfirmationDialog
-        open={pendingStarterChange !== null}
-        title="Zmiana ustawień wymaga przebudowy składników."
-        description={null}
-        confirmLabel="Przebuduj"
-        onCancel={() => setPendingStarterChange(null)}
-        onConfirm={() => {
-          if (pendingStarterChange !== null) {
-            rebuildNewProRecipeStarter(pendingStarterChange.patch);
-            if (pendingStarterChange.homeMachineId) {
-              const profile = activeHomeMachines.find(
-                (candidate) => candidate.id === pendingStarterChange.homeMachineId,
-              );
-              if (profile) {
-                const setup = deriveMachineSetup(profile);
-                const temp = setup.resolvedVisibleMode
-                  ? temperatureForMode(setup.resolvedVisibleMode)
-                  : null;
-                if (temp !== null) {
-                  useRecipeStore.getState().setMachineSelection({
-                    kind: 'home',
-                    servingModeId: setup.resolvedVisibleMode!,
-                    machineId: profile.id,
-                    label: machineDisplayName(profile),
-                    temperatureC: temp,
-                    batchGrams: null,
-                    capacityGrams: setup.recommendedBatchGrams,
-                  });
-                }
-              }
-            } else if (pendingStarterChange.professionalServingModeId) {
-              applyProfessionalStarterMachineSelection(
-                pendingStarterChange.professionalServingModeId,
-                professionalLabel,
-              );
-            }
-            // The confirmed rebuild and final machine selection are one
-            // Engine-materialized starter transaction, not a pending PI edit.
-            useRecipeProfileStore.getState().acknowledgeRecalculation();
-          }
-          setPendingStarterChange(null);
-        }}
-      />
     </section>
   );
 }

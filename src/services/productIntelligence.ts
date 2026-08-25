@@ -850,7 +850,7 @@ export function productBehaviorBlockedMessage(result: ServerResolvedProductBehav
     return `Dla ${exact} brakuje aktualnego snapshotu ProductBehavior. Odśwież dane produktu i uruchom PI ponownie.`;
   }
   if (code === 'legacy_product_reference_unresolved') {
-    return `Nie udało się odtworzyć ${exact} z zapisanej referencji. Napraw referencję produktu albo wybierz jego aktualną wersję.`;
+    return 'Nie możemy jednoznacznie połączyć produktu ze starej wersji receptury z aktualnym katalogiem. Sprawdź produkt w recepturze.';
   }
   if (code === 'behavior_binding_stale' || code === 'behavior_binding_version_stale') {
     return `ProductBehavior binding dla ${exact} jest nieaktualny. Odśwież dane produktu i uruchom PI ponownie.`;

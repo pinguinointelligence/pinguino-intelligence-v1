@@ -16,40 +16,72 @@ describe('contextual education runtime surface', () => {
     );
     expect(html).toContain('data-testid="profile-education-view"');
     expect(html).toContain('← Wróć do receptury');
-    expect(html).toContain('CO WARTO WIEDZIEĆ O TEJ RECEPTURZE?');
-    expect(html.match(/data-testid="contextual-card"/g)).toHaveLength(3);
     expect(html.match(/data-testid="education-entry"/g)).toHaveLength(3);
+    expect(html).toContain('Twoja receptura w skrócie');
+    expect(html).toContain('Jak ją przygotować');
+    expect(html).toContain('Dowiedz się więcej');
+    expect(html).not.toContain('data-testid="contextual-card"');
     expect(html).not.toContain('education-ice-cockpit');
     expect(html).not.toContain('Wynik jakości');
     expect(html).not.toMatch(/Dlaczego \d+\/10/);
+    expect(html).not.toMatch(/\b1\s*\/\s*3\b/);
   });
 
-  it('uses the same surface with Home-first preparation order', () => {
+  it('uses the same three-answer order for Home without a separate quiz path', () => {
     const html = renderToStaticMarkup(
       <ContextualEducationView input={starterMilkBase()} audience="home" onBack={() => {}} />,
     );
-    const process = html.indexOf('Jak je przygotować?');
-    const ingredients = html.indexOf('Co robią składniki?');
-    const behavior = html.indexOf('Dlaczego lody zachowują się tak?');
-    expect(process).toBeGreaterThan(-1);
-    expect(ingredients).toBeGreaterThan(process);
-    expect(behavior).toBeGreaterThan(ingredients);
+    const summary = html.indexOf('Twoja receptura w skrócie');
+    const process = html.indexOf('Jak ją przygotować');
+    const advanced = html.indexOf('Dowiedz się więcej');
+    expect(summary).toBeGreaterThan(-1);
+    expect(process).toBeGreaterThan(summary);
+    expect(advanced).toBeGreaterThan(process);
+    expect(html.match(/data-testid="education-entry"/g)).toHaveLength(3);
   });
 
   it('implements tap/click controls and no hover-only lesson path', () => {
     expect(source).toContain('onClick={() => onOpen');
-    expect(source).toContain('onClick={() => setEffectId');
-    expect(source).toContain('min-h-11');
-    expect(source).toContain('min-h-11');
+    expect(source).toContain('<details');
+    expect(source).toContain('min-h-16');
+    expect(source).toContain('min-h-10');
     expect(source).not.toContain('onMouseEnter');
   });
 
-  it('uses original causal chips and qualitative dots, not a competitor-like bar profile', () => {
-    expect(source).toContain('data-testid="ingredient-effect-chip"');
-    expect(source).toContain('education-causal-chain');
+  it('uses actual recipe facts and qualitative dots, not invented examples or bar profiles', () => {
+    const input = starterMilkBase();
+    const html = renderToStaticMarkup(
+      <ContextualEducationView
+        input={input}
+        audience="pro"
+        initialLesson="ingredients"
+        onBack={() => {}}
+      />,
+    );
+    for (const item of input.items) {
+      expect(html).toContain(item.ingredient.name);
+    }
+    expect(html).not.toContain('Mango');
+    expect(html).not.toContain('Pistacja');
     expect(source).toContain('RelativeDots');
     expect(source).not.toContain('IndicatorBar');
     expect(source).not.toContain('ingredient-horizontal-bar');
+  });
+
+  it('reuses the current machine instead of presenting another selection flow', () => {
+    const html = renderToStaticMarkup(
+      <ContextualEducationView
+        input={starterMilkBase()}
+        machineId="fresh"
+        machineLabel="Maszyna profesjonalna"
+        initialLesson="process"
+        onBack={() => {}}
+      />,
+    );
+    expect(html).toContain('data-testid="selected-machine-guide"');
+    expect(html).toContain('Maszyna profesjonalna');
+    expect(html).not.toContain('<select');
+    expect(html).not.toContain('Potwierdź wybór');
   });
 
   it('contains no protected ranges, solver weights or hidden correction algorithms', () => {

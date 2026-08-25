@@ -11,6 +11,7 @@ import {
 } from '@/features/ingredient-builder/IngredientRow';
 import { monitorScoreView } from '@/features/pro-workbench/monitorSummaryView';
 import { ProductionCockpit } from './ProductionCockpit';
+import { ProductionWorkspaceHeader } from './ProductionWorkspaceHeader';
 import {
   confirmProductionLine,
   completeProductionSession,
@@ -85,14 +86,41 @@ describe('Production workspace touch-first UI', () => {
     expect(html).toContain('data-control-density="responsive"');
     expect(html).toContain('data-control-capacity="10000g"');
     expect(html).toContain('lg:min-h-7');
-    expect(html).toContain('lg:w-[154px]');
+    expect(html).toContain('data-production-cell="action"');
     expect(html).toContain('data-category-symbol=');
     expect(html).toContain('text-[10px] leading-tight');
-    expect(html).toContain('data-production-cell="physical-status"');
-    expect(html).toContain('md:grid-cols-[minmax(140px,1.1fr)_76px_minmax(190px,1fr)_116px_104px]');
+    expect(html).toContain('md:grid-cols-[minmax(300px,1fr)_142px_150px_96px_28px]');
     expect(html).not.toContain('text-[9px] leading-none');
     expect(html).not.toContain('mx-2 mb-2 rounded-[20px]');
     expect(html).not.toContain('grid-cols-[minmax(0,1fr)_48px]');
+  });
+
+  it('turns completed rows into settled records without a reopen affordance', () => {
+    const line = {
+      ...session.lines[0]!,
+      confirmed: true,
+      physicalAddedGrams: session.lines[0]!.targetGrams,
+      confirmedAt: '2026-08-09T10:01:00.000Z',
+      confirmationOrder: 1,
+    };
+    const html = renderToStaticMarkup(
+      <IngredientRow
+        item={result.items[0]!}
+        totalBatchG={result.total_batch_g}
+        actions={recipeActions}
+        mode="production"
+        productionLine={line}
+        productionActions={{
+          setDraftActual: vi.fn(),
+          confirmLine: vi.fn(),
+          reopenRecord: vi.fn(),
+          settled: true,
+        }}
+      />,
+    );
+    expect(html).toContain('data-production-confirmation="settled"');
+    expect(html).not.toContain('popraw zapis');
+    expect(html).not.toContain('Dodaj kolejną ilość');
   });
 
   it('renders the binding always-visible [−] actual [+] [✓] controls with 44px touch targets', () => {
@@ -160,24 +188,23 @@ describe('Production workspace touch-first UI', () => {
   });
 
   it('keeps the Production table and physical workflow explicitly separated', () => {
-    const source = readFileSync(
+    const builderSource = readFileSync(
       resolve(import.meta.dirname, '..', 'ingredient-builder', 'IngredientBuilder.tsx'),
       'utf8',
     );
-    for (const heading of [
-      'Składnik',
-      'Plan',
-      'Faktycznie',
-      'Status / potwierdzenie',
-      'Odchylenie',
-    ]) {
-      expect(source).toContain(`'${heading}'`);
+    const headerSource = readFileSync(
+      resolve(import.meta.dirname, 'ProductionWorkspaceHeader.tsx'),
+      'utf8',
+    );
+    for (const heading of ['Składnik / status', 'Plan', 'Faktycznie', 'Odchylenie']) {
+      expect(builderSource).toContain(`'${heading}'`);
     }
-    expect(source).toContain('Odważ składnik');
-    expect(source).toContain('Wpisz faktyczną ilość');
-    expect(source).toContain('Potwierdź dodanie');
-    expect(source).toContain('Potwierdzonej ilości nie można odjąć od naczynia.');
-    expect(source).not.toContain('Faktycznie · status / potwierdź');
+    expect(headerSource).toContain('Odważ');
+    expect(headerSource).toContain('Wpisz faktyczną ilość');
+    expect(headerSource).toContain('Potwierdź');
+    expect(builderSource).toContain('Potwierdzonej ilości nie można odjąć od naczynia.');
+    expect(builderSource).not.toContain('production.progress.confirmedCount');
+    expect(builderSource).not.toContain('Faktycznie · status / potwierdź');
   });
 
   it('makes the Owner 705 → 800 → +95 g deviation obvious in the shared rounded control', () => {
@@ -609,31 +636,34 @@ describe('Production workspace touch-first UI', () => {
   });
 
   it('renders one persisted degassing card and blocks Start until confirmation', () => {
-    const render = (acknowledged: boolean) => renderToStaticMarkup(
-      <ProductionCockpit
-        production={{
-          session: null,
-          progress: null,
-          prerequisite: null,
-          practicalReady: acknowledged,
-          source: session.source,
-          plannedInput: input,
-          heatInformation: [],
-          heatInformationAcknowledged: true,
-          carbonatedProducts: [
-            { productId: 'PR-ING-000001', name: 'Cola Zero', grams: 350 },
-            { productId: 'PM-ING-000002', name: 'Woda gazowana', grams: 50 },
-          ],
-          degassingRequired: true,
-          degassingAcknowledged: acknowledged,
-          acknowledgeDegassing: vi.fn(),
-          startNewSession: vi.fn(),
-        } as unknown as ProductionWorkspaceView}
-        onOpenPreview={vi.fn()}
-        onRecalculate={vi.fn()}
-        onReturnToRecipe={vi.fn()}
-      />,
-    );
+    const render = (acknowledged: boolean) =>
+      renderToStaticMarkup(
+        <ProductionCockpit
+          production={
+            {
+              session: null,
+              progress: null,
+              prerequisite: null,
+              practicalReady: acknowledged,
+              source: session.source,
+              plannedInput: input,
+              heatInformation: [],
+              heatInformationAcknowledged: true,
+              carbonatedProducts: [
+                { productId: 'PR-ING-000001', name: 'Cola Zero', grams: 350 },
+                { productId: 'PM-ING-000002', name: 'Woda gazowana', grams: 50 },
+              ],
+              degassingRequired: true,
+              degassingAcknowledged: acknowledged,
+              acknowledgeDegassing: vi.fn(),
+              startNewSession: vi.fn(),
+            } as unknown as ProductionWorkspaceView
+          }
+          onOpenPreview={vi.fn()}
+          onRecalculate={vi.fn()}
+          onReturnToRecipe={vi.fn()}
+        />,
+      );
     const pending = render(false);
     expect(pending.match(/data-testid="production-degassing"/g)).toHaveLength(1);
     expect(pending).toContain('Przed użyciem należy całkowicie odgazować');
@@ -645,7 +675,9 @@ describe('Production workspace touch-first UI', () => {
 
     const confirmed = render(true);
     expect(confirmed).toContain('data-acknowledged="true"');
-    const startTag = confirmed.match(/<button[^>]*data-testid="start-production-session"[^>]*>/)?.[0];
+    const startTag = confirmed.match(
+      /<button[^>]*data-testid="start-production-session"[^>]*>/,
+    )?.[0];
     expect(startTag).toBeDefined();
     expect(startTag).not.toContain(' disabled=');
   });
@@ -806,18 +838,25 @@ describe('Production workspace touch-first UI', () => {
       startNewSession: vi.fn(),
     } as unknown as ProductionWorkspaceView;
     const html = renderToStaticMarkup(
-      <ProductionCockpit
-        production={view}
-        onOpenPreview={vi.fn()}
-        onRecalculate={vi.fn()}
-        onReturnToRecipe={vi.fn()}
-      />,
+      <>
+        <ProductionWorkspaceHeader production={view} />
+        <ProductionCockpit
+          production={view}
+          onOpenPreview={vi.fn()}
+          onRecalculate={vi.fn()}
+          onReturnToRecipe={vi.fn()}
+        />
+      </>,
     );
     // §51 SCORE TRUTH — every pre-completion figure names the PLAN it describes.
     expect(html).toContain('Przewidywany wynik');
     expect(html).toContain('data-testid="production-score-ring"');
     expect(html.match(/data-testid="production-score-ring"/g) ?? []).toHaveLength(1);
     expect(html).toContain('0 / 6 składników');
+    expect(html.match(/0 \/ 6 składników/g) ?? []).toHaveLength(1);
+    expect(html).toContain('data-testid="production-workspace-header"');
+    expect(html).toContain('data-testid="production-workspace-progress"');
+    expect(html).toContain('data-testid="production-batch-state"');
     // §22 LIVE MONITOR — vessel, current plan and what is still to be added.
     expect(html).toContain('data-testid="production-vessel-mass"');
     expect(html).toContain('data-testid="production-current-plan-mass"');
@@ -826,6 +865,31 @@ describe('Production workspace touch-first UI', () => {
     expect(html).not.toContain('POD');
     expect(html).not.toContain('NPAC');
     expect(html).toContain('disabled=""');
+  });
+
+  it('replaces active instructions and numeric progress with one quiet completed state', () => {
+    const completedSession = {
+      ...session,
+      status: 'completed',
+      completedAt: '2026-08-09T11:00:00.000Z',
+      completionSnapshot: {
+        actualFinalMassG: input.target_batch_grams,
+        productComposition: { toppings: [] },
+      },
+    } as unknown as typeof session;
+    const view = {
+      session: completedSession,
+      progress: productionProgress(completedSession),
+      score: { score: 10, label: 'Wyjątkowo dobrze dopasowana' },
+    } as unknown as ProductionWorkspaceView;
+
+    const html = renderToStaticMarkup(<ProductionWorkspaceHeader production={view} />);
+    expect(html).toContain('data-production-state="completed"');
+    expect(html).toContain('✓ Partia gotowa');
+    expect(html).not.toContain('production-workspace-instructions');
+    expect(html).not.toContain('production-workspace-progress');
+    expect(html).not.toContain('składników');
+    expect(html).not.toContain('Przewidywany wynik');
   });
 
   it('renders the current authorized Rescue target as the operator plan', () => {
@@ -1047,7 +1111,10 @@ describe('Production workspace touch-first UI', () => {
       />,
     );
     expect(html).toContain('data-testid="production-completed"');
-    expect(html).toContain('Partia gotowa');
+    expect(html).not.toContain('Partia gotowa');
+    expect(html).toContain('Wynik końcowy');
+    expect(html).toContain('LOT-20260809-UIRUN');
+    expect(html).toContain('Koszt partii');
     expect(html).toContain('Przejdź do etykiety');
     expect(html).toContain('data-testid="production-go-to-label"');
     expect(html).not.toContain('/labels?run=ui-run');

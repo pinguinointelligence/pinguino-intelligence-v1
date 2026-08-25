@@ -42,15 +42,28 @@ const resolved = (
   module: 'MAIN',
   state: 'eligible',
   moduleEligibility: {
-    BASE_RECIPE: 'eligible', MAIN: 'eligible', OPTIMAL: 'eligible', ECO: 'eligible',
-    MONITOR: 'eligible', SAVE: 'eligible', PRODUCTION: 'eligible',
+    BASE_RECIPE: 'eligible',
+    MAIN: 'eligible',
+    OPTIMAL: 'eligible',
+    ECO: 'eligible',
+    MONITOR: 'eligible',
+    SAVE: 'eligible',
+    PRODUCTION: 'eligible',
   },
   mainPolicy: {
-    policyId: 'main-berry-fresh-dairy', policyVersion: '2', familyId: 'fruit',
-    subfamilyId: 'berry', formId: 'fresh', basis: 'FRUIT_EQUIVALENT',
-    ecoFloorPercent: 25, optimalCeilingPercent: 35, hardLimitPercent: 45,
-    mainEquivalentFactor: 1, requiresLiquidDairyCarrier: true,
-    liquidDairyCarrierFloorPercent: 30, approvedMixedFamilyIds: [],
+    policyId: 'main-berry-fresh-dairy',
+    policyVersion: '2',
+    familyId: 'fruit',
+    subfamilyId: 'berry',
+    formId: 'fresh',
+    basis: 'FRUIT_EQUIVALENT',
+    ecoFloorPercent: 25,
+    optimalCeilingPercent: 35,
+    hardLimitPercent: 45,
+    mainEquivalentFactor: 1,
+    requiresLiquidDairyCarrier: true,
+    liquidDairyCarrierFloorPercent: 30,
+    approvedMixedFamilyIds: [],
     evidenceStatus: 'owner_provisional',
   },
   sharedFacts: {
@@ -65,8 +78,13 @@ const resolved = (
     referencePrice: { pricePerKg: 5, currency: 'EUR', sourceVersion: 'mapper-v1' },
   },
   privateOverlay: {
-    favorite: true, recentAt: null, privatePricePerKg: 4, privatePriceCurrency: 'EUR',
-    supplier: 'Private supplier', note: 'Private note', stock: 2,
+    favorite: true,
+    recentAt: null,
+    privatePricePerKg: 4,
+    privatePriceCurrency: 'EUR',
+    supplier: 'Private supplier',
+    note: 'Private note',
+    stock: 2,
   },
   warnings: [],
   blockReasons: [],
@@ -75,27 +93,43 @@ const resolved = (
 
 describe('server Product Behavior snapshot boundary', () => {
   it('names the exact technical field, Mapper id, version and module in a blocked message', () => {
-    expect(productBehaviorBlockedMessage(resolved({
-      state: 'blocked',
-      blockReasons: [
-        'missing_technical_fields:pod_value,pac_value:product-2113:PI-ING-002113:version-2113:OPTIMAL:complete_technical_fields',
-      ],
-    }))).toBe(
+    expect(
+      productBehaviorBlockedMessage(
+        resolved({
+          state: 'blocked',
+          blockReasons: [
+            'missing_technical_fields:pod_value,pac_value:product-2113:PI-ING-002113:version-2113:OPTIMAL:complete_technical_fields',
+          ],
+        }),
+      ),
+    ).toBe(
       'Dokładny produkt product-2113 · wersja version-2113 · Mapper PI-ING-002113 · moduł OPTIMAL nie ma wymaganych pól technicznych: pod_value,pac_value. Uzupełnij wskazane pola i przelicz ponownie.',
     );
   });
 
   it('parses approval and process reason schemas without shifting Mapper/version/module', () => {
-    expect(productBehaviorBlockedMessage(resolved({
-      state: 'blocked',
-      blockReasons: ['approved_for_base_false:product-2113:PI-ING-002113:version-2113:BASE_RECIPE:choose_base_approved_product'],
-    }))).toBe(
+    expect(
+      productBehaviorBlockedMessage(
+        resolved({
+          state: 'blocked',
+          blockReasons: [
+            'approved_for_base_false:product-2113:PI-ING-002113:version-2113:BASE_RECIPE:choose_base_approved_product',
+          ],
+        }),
+      ),
+    ).toBe(
       'Dokładny produkt product-2113 · wersja version-2113 · Mapper PI-ING-002113 · moduł BASE_RECIPE ma approved_for_base=false. Wybierz produkt zatwierdzony dla Base.',
     );
-    expect(productBehaviorBlockedMessage(resolved({
-      state: 'blocked',
-      blockReasons: ['approved_for_engines_false:product-2113:PI-ING-002113:version-2113:OPTIMAL:choose_engine_approved_product'],
-    }))).toBe(
+    expect(
+      productBehaviorBlockedMessage(
+        resolved({
+          state: 'blocked',
+          blockReasons: [
+            'approved_for_engines_false:product-2113:PI-ING-002113:version-2113:OPTIMAL:choose_engine_approved_product',
+          ],
+        }),
+      ),
+    ).toBe(
       'Dokładny produkt product-2113 · wersja version-2113 · Mapper PI-ING-002113 · moduł OPTIMAL ma approved_for_engines=false. Może pozostać w Base, ale PI nie wykona obliczeń; wybierz produkt zatwierdzony dla Engine.',
     );
     // A legacy `process_evidence_unknown` reason has no message any more: the
@@ -110,35 +144,55 @@ describe('server Product Behavior snapshot boundary', () => {
         }),
       ),
     ).not.toContain('dowod');
-    expect(productBehaviorBlockedMessage(resolved({
-      state: 'blocked',
-      blockReasons: ['profile_not_approved:product-405:PI-ING-000405:version-405:ECO:change_profile_or_product'],
-    }))).toBe(
+    expect(
+      productBehaviorBlockedMessage(
+        resolved({
+          state: 'blocked',
+          blockReasons: [
+            'profile_not_approved:product-405:PI-ING-000405:version-405:ECO:change_profile_or_product',
+          ],
+        }),
+      ),
+    ).toBe(
       'Dokładny produkt product-405 · wersja version-405 · Mapper PI-ING-000405 · moduł ECO nie jest zgodny z bieżącym profilem. Zmień profil albo wybierz zgodny produkt.',
     );
-    expect(productBehaviorBlockedMessage(resolved({
-      state: 'blocked',
-      blockReasons: ['module_permission_missing:product-405:PI-ING-000405:version-405:LABEL:choose_module_eligible_product'],
-    }))).toBe(
+    expect(
+      productBehaviorBlockedMessage(
+        resolved({
+          state: 'blocked',
+          blockReasons: [
+            'module_permission_missing:product-405:PI-ING-000405:version-405:LABEL:choose_module_eligible_product',
+          ],
+        }),
+      ),
+    ).toBe(
       'Dokładny produkt product-405 · wersja version-405 · Mapper PI-ING-000405 · moduł LABEL nie ma uprawnienia ProductBehavior do tego modułu. Wybierz wersję kwalifikowaną dla modułu albo uzupełnij jego wymagane dane.',
     );
   });
 
   it('keeps stale and legacy resolver blockers exact on picker and handoff surfaces', () => {
-    expect(productBehaviorBlockedMessage(resolved({
-      state: 'blocked',
-      blockReasons: [
-        'product_version_stale:product-405:PI-ING-000405:version-405:OPTIMAL:refresh_product_data',
-      ],
-    }))).toContain(
-      'produkt product-405 · wersja version-405 · Mapper PI-ING-000405 · moduł OPTIMAL',
+    expect(
+      productBehaviorBlockedMessage(
+        resolved({
+          state: 'blocked',
+          blockReasons: [
+            'product_version_stale:product-405:PI-ING-000405:version-405:OPTIMAL:refresh_product_data',
+          ],
+        }),
+      ),
+    ).toContain('produkt product-405 · wersja version-405 · Mapper PI-ING-000405 · moduł OPTIMAL');
+    const legacyMessage = productBehaviorBlockedMessage(
+      resolved({
+        state: 'blocked',
+        blockReasons: [
+          'legacy_product_reference_unresolved:product-405:PI-ING-000405:version-405:RESTORE:repair_legacy_reference',
+        ],
+      }),
     );
-    expect(productBehaviorBlockedMessage(resolved({
-      state: 'blocked',
-      blockReasons: [
-        'legacy_product_reference_unresolved:product-405:PI-ING-000405:version-405:RESTORE:repair_legacy_reference',
-      ],
-    }))).toContain('Napraw referencję produktu');
+    expect(legacyMessage).toContain('Sprawdź produkt w recepturze');
+    expect(legacyMessage).not.toContain('product-405');
+    expect(legacyMessage).not.toContain('PI-ING-000405');
+    expect(legacyMessage).not.toContain('legacy_product_reference_unresolved');
   });
 
   it('preserves Estimated Mapper provenance and never promotes legacy pi_base to Verified', () => {
@@ -146,7 +200,9 @@ describe('server Product Behavior snapshot boundary', () => {
       lineId: 'watermelon',
       processScope: 'BASE_FORMULATION',
       resolved: resolved({
-        entityKind: 'mapper', catalogStatus: 'estimated', provenance: 'mapper',
+        entityKind: 'mapper',
+        catalogStatus: 'estimated',
+        provenance: 'mapper',
         mapperVerificationStatus: 'Estimated',
       }),
     });
@@ -163,12 +219,18 @@ describe('server Product Behavior snapshot boundary', () => {
   });
   it('freezes the exact server policy, context and module matrix', () => {
     const snapshot = snapshotServerResolvedProductBehavior({
-      lineId: 'line-1', processScope: 'BASE_FORMULATION', resolved: resolved(),
+      lineId: 'line-1',
+      processScope: 'BASE_FORMULATION',
+      resolved: resolved(),
     });
     expect(snapshot).toMatchObject({
-      resolutionState: 'RESOLVED', productVersionId: 'version-1',
-      mainPolicyId: 'main-berry-fresh-dairy', mainPolicyVersion: '2',
-      ecoFloorPercent: 25, optimalCeilingPercent: 35, hardLimitPercent: 45,
+      resolutionState: 'RESOLVED',
+      productVersionId: 'version-1',
+      mainPolicyId: 'main-berry-fresh-dairy',
+      mainPolicyVersion: '2',
+      ecoFloorPercent: 25,
+      optimalCeilingPercent: 35,
+      hardLimitPercent: 45,
       resolutionContext: { productProfile: 'milk_gelato', temperatureC: -12, mode: 'optimal' },
       moduleEligibility: { BASE_RECIPE: 'eligible', MAIN: 'eligible', OPTIMAL: 'eligible' },
     });
@@ -176,7 +238,9 @@ describe('server Product Behavior snapshot boundary', () => {
 
   it('never persists the account-private overlay inside shared recipe authority', () => {
     const snapshot = snapshotServerResolvedProductBehavior({
-      lineId: 'line-1', processScope: 'BASE_FORMULATION', resolved: resolved(),
+      lineId: 'line-1',
+      processScope: 'BASE_FORMULATION',
+      resolved: resolved(),
     });
     expect(snapshot.sharedFacts?.referencePrice?.pricePerKg).toBe(5);
     expect(snapshot).not.toHaveProperty('privateOverlay');
@@ -186,33 +250,47 @@ describe('server Product Behavior snapshot boundary', () => {
 
   it('fails write-capable module gates closed when the server denied that module', () => {
     const snapshot = snapshotServerResolvedProductBehavior({
-      lineId: 'line-1', processScope: 'BASE_FORMULATION',
-      resolved: resolved({ state: 'blocked', module: 'SAVE', moduleEligibility: { SAVE: 'blocked' } }),
+      lineId: 'line-1',
+      processScope: 'BASE_FORMULATION',
+      resolved: resolved({
+        state: 'blocked',
+        module: 'SAVE',
+        moduleEligibility: { SAVE: 'blocked' },
+      }),
     });
     expect(productBehaviorModuleGate({ 'line-1': snapshot }, 'SAVE', ['line-1'])).toMatchObject({
-      ready: false, blockedLineIds: ['line-1'],
+      ready: false,
+      blockedLineIds: ['line-1'],
     });
   });
 
   it('includes product, policy, context and shared facts in the recipe fingerprint', () => {
     const snapshot = snapshotServerResolvedProductBehavior({
-      lineId: 'line-1', processScope: 'BASE_FORMULATION', resolved: resolved(),
+      lineId: 'line-1',
+      processScope: 'BASE_FORMULATION',
+      resolved: resolved(),
     });
     const first = productBehaviorSnapshotFingerprint({ 'line-1': snapshot });
-    expect(productBehaviorSnapshotFingerprint({
-      'line-1': { ...snapshot, mainPolicyVersion: '3' },
-    })).not.toBe(first);
-    expect(productBehaviorSnapshotFingerprint({
-      'line-1': {
-        ...snapshot,
-        resolutionContext: { ...snapshot.resolutionContext!, temperatureC: -13 },
-      },
-    })).not.toBe(first);
-    expect(productBehaviorSnapshotFingerprint({
-      'line-1': {
-        ...snapshot,
-        sharedFacts: { ...snapshot.sharedFacts!, technicalComposition: { water: 85 } },
-      },
-    })).not.toBe(first);
+    expect(
+      productBehaviorSnapshotFingerprint({
+        'line-1': { ...snapshot, mainPolicyVersion: '3' },
+      }),
+    ).not.toBe(first);
+    expect(
+      productBehaviorSnapshotFingerprint({
+        'line-1': {
+          ...snapshot,
+          resolutionContext: { ...snapshot.resolutionContext!, temperatureC: -13 },
+        },
+      }),
+    ).not.toBe(first);
+    expect(
+      productBehaviorSnapshotFingerprint({
+        'line-1': {
+          ...snapshot,
+          sharedFacts: { ...snapshot.sharedFacts!, technicalComposition: { water: 85 } },
+        },
+      }),
+    ).not.toBe(first);
   });
 });

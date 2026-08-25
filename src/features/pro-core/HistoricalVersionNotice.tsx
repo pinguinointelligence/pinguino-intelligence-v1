@@ -21,6 +21,7 @@ import { recipeCapabilitiesFor } from './proCoreCapabilities';
 import { useProCorePersona } from './useProCorePersona';
 import { resolveRecipesRepository } from './proCoreRecipeRepo';
 import { useRestoreProCoreVersion } from './useProCoreRecipes';
+import { WorkflowNotice } from '@/components/shared/WorkflowNotice';
 
 const c = copy.recipes.historicalVersion;
 
@@ -79,29 +80,27 @@ export function HistoricalVersionNotice() {
   };
 
   return (
-    <section
-      role="status"
-      data-testid="historical-version-notice"
-      className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gold/35 bg-education-ivory/60 px-4 py-3"
-    >
-      <p className="text-sm text-stone-700">
-        <span className="font-semibold text-ink">
-          {c.heading(versionNumber, versionDate ? formatSavedRecipeDate(versionDate) : null)}
-        </span>{' '}
-        {c.body(latestVersionNumber)}
-      </p>
-      <span className="flex items-center gap-3">
-        {error ? <span className="text-xs text-status-error">{error}</span> : null}
-        <button
-          type="button"
-          className={buttonClasses('ivory', 'sm')}
-          disabled={restoreM.isPending || !caps.canRestoreRecipeVersion}
-          onClick={restore}
-          data-testid="historical-version-restore"
-        >
-          {restoreM.isPending ? c.restoring : c.restore}
-        </button>
-      </span>
-    </section>
+    <WorkflowNotice
+      className="mb-4"
+      eyebrow="Historia receptury"
+      title={c.heading(versionNumber, versionDate ? formatSavedRecipeDate(versionDate) : null)}
+      description={c.body(latestVersionNumber)}
+      variant="attention"
+      testId="historical-version-notice"
+      action={
+        <span className="flex items-center gap-3">
+          {error ? <span className="text-xs text-status-error">{error}</span> : null}
+          <button
+            type="button"
+            className={buttonClasses('ivory', 'sm')}
+            disabled={restoreM.isPending || !caps.canRestoreRecipeVersion}
+            onClick={restore}
+            data-testid="historical-version-restore"
+          >
+            {restoreM.isPending ? c.restoring : c.restore}
+          </button>
+        </span>
+      }
+    />
   );
 }

@@ -226,7 +226,11 @@ describe('Mapper-only product catalog', () => {
     // A Mapper-looking field on the browser snapshot authorizes nothing.
     const load = vi.fn(async () => null);
     const outcome = await resolveCurrentMapperCatalogSelection(
-      hit({ entityKind: 'commercial_product', status: 'verified', mappedIngredientId: 'PI-ING-000001' }),
+      hit({
+        entityKind: 'commercial_product',
+        status: 'verified',
+        mappedIngredientId: 'PI-ING-000001',
+      }),
       'BASE',
       load,
     );
@@ -237,9 +241,17 @@ describe('Mapper-only product catalog', () => {
   it('J refuses a blocked or unmapped catalogue product before anything is loaded', async () => {
     const load = vi.fn(async () => null);
     for (const forged of [
-      hit({ entityKind: 'commercial_product', status: 'blocked', mappedIngredientId: 'PI-ING-000001' }),
+      hit({
+        entityKind: 'commercial_product',
+        status: 'blocked',
+        mappedIngredientId: 'PI-ING-000001',
+      }),
       hit({ entityKind: 'commercial_product', status: 'verified', mappedIngredientId: null }),
-      hit({ entityKind: 'commercial_product', status: 'verified', mappedIngredientId: 'not-a-mapper-id' }),
+      hit({
+        entityKind: 'commercial_product',
+        status: 'verified',
+        mappedIngredientId: 'not-a-mapper-id',
+      }),
     ]) {
       expect(await resolveCurrentMapperCatalogSelection(forged, 'BASE', load)).toEqual({
         ok: false,
@@ -322,11 +334,12 @@ describe('Mapper-only picker source and UI contract', () => {
     expect(hook).not.toMatch(/localStorage|indexedDB/i);
   });
 
-  it('I searches the whole eligible catalogue, and keeps the add-product CTA', () => {
+  it('I searches the whole eligible catalogue, with scan/manual actions only in no-results UI', () => {
     const picker = read('src/features/ingredient-builder/ProductPickerPopover.tsx');
-    expect(picker).toContain('Nie znalazłeś produktu?');
-    expect(picker).toContain('Skanuj produkt');
-    expect(picker).toContain('to="/products/scan"');
+    expect(picker).toContain('Nie znaleziono produktu.');
+    expect(picker).toContain('Skanuj');
+    expect(picker).toContain('Dodaj ręcznie');
+    expect(picker).not.toContain('Nie znalazłeś produktu?');
     expect(picker).not.toContain('Katalog zawiera wyłącznie aktualne produkty Mappera.');
     // Owner decision: an imported commercial product must be findable in the
     // recipe picker. Restricting the query to pi_base made that impossible.

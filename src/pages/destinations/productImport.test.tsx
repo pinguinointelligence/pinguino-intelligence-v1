@@ -43,6 +43,10 @@ const shellRender = (el: ReactElement): string =>
   );
 const visibleText = (html: string): string =>
   html.replace(/<[^>]*>/g, ' ').replace(/&[a-z#0-9]+;/g, ' ');
+const actionIsDisabled = (html: string, label: string): boolean => {
+  const button = html.match(new RegExp(`<button[^>]*>[^<]*${label}`))?.[0] ?? '';
+  return /\sdisabled(?:=""|(?=[\s>]))/.test(button);
+};
 
 const CSV_ONE = 'brand,product name\nBabbi,Crumble';
 const CSV_MIX = 'brand,product name,warehouse_id\nBabbi,Crumble,W42\n,,Z';
@@ -181,7 +185,7 @@ describe('ImportActionBar — auth gating', () => {
         onSignIn={noop}
       />,
     );
-    expect(disabled).toContain('disabled');
+    expect(actionIsDisabled(disabled, c.import)).toBe(true);
     const enabled = shellRender(
       <ImportActionBar
         available
@@ -192,13 +196,13 @@ describe('ImportActionBar — auth gating', () => {
         onSignIn={noop}
       />,
     );
-    expect(enabled).not.toContain('disabled');
+    expect(actionIsDisabled(enabled, c.import)).toBe(false);
   });
   it('disables Import while an import is in flight (busy), even when importable', () => {
     const html = shellRender(
       <ImportActionBar available isSignedIn canImport busy onImport={noop} onSignIn={noop} />,
     );
-    expect(html).toContain('disabled');
+    expect(actionIsDisabled(html, c.import)).toBe(true);
   });
 });
 

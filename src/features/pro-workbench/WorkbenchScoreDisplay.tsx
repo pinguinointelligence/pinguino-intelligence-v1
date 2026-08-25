@@ -30,8 +30,7 @@ export function WorkbenchScoreDisplay({
     proteinPercent !== null && Number.isFinite(proteinPercent)
       ? proteinContentLabelPl(proteinPercent)
       : null;
-  const accessibleResult =
-    score === null ? label : `${score} na 10 — ${label}`;
+  const accessibleResult = score === null ? label : `${score} na 10 — ${label}`;
 
   return (
     <button
@@ -41,7 +40,8 @@ export function WorkbenchScoreDisplay({
       aria-label={`Dopasowanie techniczne receptury — ${heading}: ${accessibleResult}${
         proteinLabel === null ? '' : `. ${proteinLabel} — zawartość białka w recepturze`
       }`}
-      className="pro-focus-ring flex h-11 max-w-full shrink-0 items-center gap-2 rounded-xl border border-ink/10 bg-white px-3 text-left shadow-pro-e0 disabled:cursor-default"
+      className="pro-focus-ring flex h-11 max-w-full shrink-0 items-center gap-2 rounded-[10px] px-1.5 text-left disabled:cursor-default"
+      data-score-variant="compact-inline"
     >
       <ScoreRing score={score} />
       <span className="hidden min-w-0 sm:block">
