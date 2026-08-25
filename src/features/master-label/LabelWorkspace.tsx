@@ -1644,7 +1644,8 @@ function RunLabelEditor({
           </div>
         </SettingsSection>
 
-        {draft.purpose === 'retail_consumer' && ['US', 'CA', 'AU_NZ'].includes(draft.market) ? (
+        {draft.purpose === 'retail_consumer' &&
+        ['EU', 'UK', 'US', 'CA', 'AU_NZ'].includes(draft.market) ? (
           <RegulatoryNutritionFields
             value={draft}
             missing={draftPreflight.items.some(

@@ -196,6 +196,8 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(editor?.textContent).toContain('Zapisz jako domyślne');
     expect(editor?.textContent).toContain('Kopie');
     expect(editor?.textContent).toContain('LOT · nadawany automatycznie');
+    expect(editor?.textContent).toContain('Energia z authority rynku');
+    expect(editor?.textContent).toContain('Authority energii');
     expect(editor?.textContent).toContain('Wymagane pola profilu European Union są zawsze aktywne');
     expect(editor?.querySelector('[data-testid="optional-label-fields"] input')).not.toBeNull();
 
@@ -285,13 +287,14 @@ describe('LabelWorkspace unified actual-run surface', () => {
     const missingFields = () => settings.querySelectorAll('[data-missing-required="true"]');
 
     expect(missingCount()).toMatch(/Brakuje \d+ wymaganych informacji/);
-    expect(missingFields()).toHaveLength(6);
+    expect(missingFields()).toHaveLength(7);
     expect(
       [...missingFields()].map((field) => field.getAttribute('data-label-field')).sort(),
     ).toEqual([
       'allergens',
       'date_mark',
       'legal_product_name',
+      'market_nutrition',
       'net_quantity',
       'operator',
       'storage',
@@ -314,8 +317,20 @@ describe('LabelWorkspace unified actual-run surface', () => {
     await fill('operator', ['Gellatti Laboratory', '1 Test Street', 'ES']);
     await fill('storage', ['Keep frozen']);
     await fill('date_mark', ['2026-09-24']);
+    const nutrition = settings.querySelector<HTMLElement>('[data-label-field="market_nutrition"]')!;
+    await act(async () => setInputValue(nutrition.querySelector('input')!, '900'));
+    await act(async () => {
+      const authority = settings.querySelector<HTMLSelectElement>(
+        '[data-label-field="market_nutrition"] select',
+      )!;
+      const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set;
+      setter?.call(authority, 'market_factors');
+      authority.dispatchEvent(new Event('change', { bubbles: true }));
+    });
 
-    expect(missingFields()).toHaveLength(0);
+    expect([...missingFields()].map((field) => field.getAttribute('data-label-field'))).toEqual([
+      'market_nutrition',
+    ]);
   });
 
   it('uses accessible dots and Cancel returns without applying the draft', async () => {
