@@ -161,7 +161,7 @@ const MAX_MODELED_SUGAR_DRY_SOLIDS_FRACTION = 0.95;
  * not assigned an antifreeze coefficient. At or above this threshold the
  * unsupported solute fails closed.
  */
-const UNSUPPORTED_FREEZE_ACTIVE_TRACE_FRACTION = 0.0005;
+export const SORBET_UNSUPPORTED_FREEZE_ACTIVE_TRACE_FRACTION = 0.0005;
 
 const FRACTION_TOLERANCE = 1e-12;
 
@@ -274,7 +274,7 @@ export function solveSorbetFreezingPhysics(
   }
   const unsupportedTraceToleranceGrams = Math.max(
     massToleranceGrams,
-    input.totalMixtureGrams * UNSUPPORTED_FREEZE_ACTIVE_TRACE_FRACTION,
+    input.totalMixtureGrams * SORBET_UNSUPPORTED_FREEZE_ACTIVE_TRACE_FRACTION,
   );
   if (input.unsupportedFreezeActiveSolidsGrams >= unsupportedTraceToleranceGrams) {
     return unavailable('unsupported_freeze_active_solute');

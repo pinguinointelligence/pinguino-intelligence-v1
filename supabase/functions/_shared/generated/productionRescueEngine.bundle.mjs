@@ -1171,7 +1171,7 @@ const MIN_MODELED_SUGAR_DRY_SOLIDS_FRACTION = .571;
 * not assigned an antifreeze coefficient. At or above this threshold the
 * unsupported solute fails closed.
 */
-const UNSUPPORTED_FREEZE_ACTIVE_TRACE_FRACTION = 5e-4;
+const SORBET_UNSUPPORTED_FREEZE_ACTIVE_TRACE_FRACTION = 5e-4;
 const FRACTION_TOLERANCE = 1e-12;
 const finiteNonNegative = (value) => Number.isFinite(value) && value >= 0;
 const unavailable = (reason, parameters = null) => ({
@@ -1226,7 +1226,7 @@ function solveSorbetFreezingPhysics(input) {
 	const massToleranceGrams = Math.max(1e-9, input.totalMixtureGrams * 1e-9);
 	if (Math.abs(input.initialWaterGrams + input.totalDrySolidsGrams - input.totalMixtureGrams) > massToleranceGrams) return unavailable("mass_balance_mismatch");
 	if (!isSorbetFreezingTemperatureSupported(input.temperatureCelsius)) return unavailable("unsupported_temperature");
-	const unsupportedTraceToleranceGrams = Math.max(massToleranceGrams, input.totalMixtureGrams * UNSUPPORTED_FREEZE_ACTIVE_TRACE_FRACTION);
+	const unsupportedTraceToleranceGrams = Math.max(massToleranceGrams, input.totalMixtureGrams * SORBET_UNSUPPORTED_FREEZE_ACTIVE_TRACE_FRACTION);
 	if (input.unsupportedFreezeActiveSolidsGrams >= unsupportedTraceToleranceGrams) return unavailable("unsupported_freeze_active_solute");
 	const glucoseEquivalentGrams = input.glucoseGrams + input.dextroseGrams;
 	if (input.fructoseGrams + glucoseEquivalentGrams + input.sucroseGrams > input.totalDrySolidsGrams + massToleranceGrams) return unavailable("invalid_input");

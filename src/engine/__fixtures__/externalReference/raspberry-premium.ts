@@ -17,6 +17,7 @@
  * comparison; it does not enforce the deferred config decisions.
  */
 import type { ActiveRecipeFixture } from '../schema';
+import { ENGINE_RESULT_ACCEPTANCE_TOLERANCE } from '../../config/acceptance';
 import {
   CREAM_30,
   DEXTROSE,
@@ -72,5 +73,5 @@ export const externalReferenceRaspberryPremium: ActiveRecipeFixture = {
     total_solids: [31.0, 45.0],
     water: [57.0, 70.0],
   },
-  tolerance: 0.5,
+  tolerance: ENGINE_RESULT_ACCEPTANCE_TOLERANCE,
 };

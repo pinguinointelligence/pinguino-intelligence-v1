@@ -21,8 +21,8 @@
     "productionSessionSchema": 2
   },
   "bundle": {
-    "bytes": 325923,
-    "sha256": "07b888c94f3c60a1146208bdda381da148cfd065e45c75dd2523272a24058c4d",
+    "bytes": 325937,
+    "sha256": "947da6e92e656e6538b1acb336b527632fdcb7174bdc135f73815f353aff283b",
     "externalImports": 0,
     "dynamicImports": 0
   },
@@ -125,7 +125,7 @@
     },
     {
       "path": "src/engine/sorbetFreezingPhysics.ts",
-      "sha256": "f2285cb57aa994c2acf77411cfbdf106e7f535c2225883e3c4f4e758dfa05407"
+      "sha256": "f6c1f94566236a73ce856ec63c45cdb5dd33c35d5e9865378100532971d96148"
     },
     {
       "path": "src/engine/statuses.ts",
@@ -268,5 +268,5 @@
       "sha256": "5523e8a79f059b81594793260535fc3b4a85185fe9f5020de87c2c7782a44fdb"
     }
   ],
-  "sourceClosureSha256": "550f224ea0eed532db914f026c15ce77f02e48e590b5f65b6581332bb38e9c0d"
+  "sourceClosureSha256": "0d148aa109a239358f903fc3c4dc262760246c0b882f402a569c797cb7355743"
 }

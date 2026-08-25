@@ -36,6 +36,7 @@
  * protein (incl. the chocolate's 8.1 %). That delta is REPORTED, never "fixed".
  */
 import type { IngredientComponentProfile } from '../../types';
+import { ENGINE_RESULT_ACCEPTANCE_TOLERANCE } from '../../config/acceptance';
 import type { ActiveRecipeFixture } from '../schema';
 import {
   CREAM_30,
@@ -110,5 +111,5 @@ export const externalReferenceChocolate123: ActiveRecipeFixture = {
     cost_per_kg: 1.28,
     cost_per_serving_80g: 0.1,
   },
-  tolerance: 0.5,
+  tolerance: ENGINE_RESULT_ACCEPTANCE_TOLERANCE,
 };

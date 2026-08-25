@@ -330,6 +330,19 @@ export function assessProductProductionAccuracy(
           truthCredit(input, 'pod_value'),
           truthCredit(input, 'pac_value'),
         );
+        // POD/PAC are one paired 8-point authority. Record the pair explicitly
+        // without adding a second score: the weaker field decides both halves,
+        // exactly as the existing aggregate credit did.
+        for (const field of ['pod_value', 'pac_value'] as const) {
+          const truthValue = input.fieldTruth[field];
+          fields[field] = {
+            availablePoints: 4,
+            earnedPoints: round2(4 * sweetnessCredit),
+            creditFactor: sweetnessCredit,
+            state: truthValue?.state ?? 'UNKNOWN',
+            basis: truthValue?.basis ?? 'none',
+          };
+        }
       } else if (input.sweetnessPath.kind === 'trivially_zero') {
         sweetnessCredit = Math.min(
           truthCredit(input, 'total_sugars_percent'),

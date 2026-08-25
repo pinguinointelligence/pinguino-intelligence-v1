@@ -99,6 +99,28 @@ describe.runIf(existsSync(POLAND_FILE) && existsSync(OLD_AUDIT))(
         productsAtLeast85Before: oldScores.filter((value) => value >= 85).length,
         productsAtLeast85After: newScores.filter((value) => value >= 85).length,
         cappedAt84: rows.filter((row) => row.productionAccuracy.criticalCapApplied).length,
+        cappedProducts: rows
+          .filter((row) => row.productionAccuracy.criticalCapApplied)
+          .map((row) => ({
+            sourceProductId: row.sourceProductId,
+            productName: row.displayName,
+            role: row.recognition.intendedUsageRole,
+            rawProductAccuracy: row.productionAccuracy.rawProductAccuracy,
+            productAccuracy: row.productionAccuracy.productAccuracy,
+            blockers: row.productionAccuracy.criticalBlockers,
+            sweetnessPath: row.workingValues?.sweetnessPath ?? null,
+          })),
+        nonMaterialSweeteningProducts: rows
+          .filter((row) => row.workingValues?.sweetnessPath.materiality?.verdict === 'NON_MATERIAL')
+          .map((row) => ({
+            sourceProductId: row.sourceProductId,
+            productName: row.displayName,
+            role: row.recognition.intendedUsageRole,
+            rawProductAccuracy: row.productionAccuracy.rawProductAccuracy,
+            productAccuracy: row.productionAccuracy.productAccuracy,
+            blockers: row.productionAccuracy.criticalBlockers,
+            materiality: row.workingValues?.sweetnessPath.materiality,
+          })),
         readiness,
       };
 

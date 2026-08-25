@@ -42,6 +42,7 @@ import {
   ESTIMATED_READY_FLOOR,
   resolveProductWorkingValues,
 } from './productWorkingValues';
+import { classifyProductSemantics } from './productRecognition';
 
 const FINGERPRINT = 'b13f5db4affd9c3be5ccbe59b40920053197a3697a3fa1bd4a859406e8baed38';
 
@@ -722,6 +723,30 @@ describe('engine readiness contract', () => {
     expect(resolved.valueReadiness).toBe('READY');
   });
 
+  it('keeps genuinely unresolved water/solids as a critical composition blocker', () => {
+    const resolved = resolveProductWorkingValues(
+      {
+        ...base,
+        declared: {
+          fat_percent: 10,
+          protein_percent: 5,
+          carbohydrate_percent: 44,
+          total_sugars_percent: 40,
+          sucrose_percent: 40,
+          salt_percent: 0.1,
+          alcohol_percent: 0,
+          polyol_percent: 0,
+        },
+      },
+      knowledge,
+    );
+
+    expect(resolved.values.water_percent).toBeNull();
+    expect(resolved.values.total_solids_percent).toBeNull();
+    expect(resolved.criticalPhysicsBlockers).toContain('MISSING_WATER_PERCENT');
+    expect(resolved.engineReady).toBe(false);
+  });
+
   it('refuses a sugary product whose sugars have no known kind', () => {
     // The Engine's fallback would contribute zero, formulating as if 40 g of
     // sugar did nothing at all.
@@ -740,6 +765,117 @@ describe('engine readiness contract', () => {
     );
     expect(resolved.sweetnessPath.resolved).toBe(false);
     expect(resolved.valueReadiness).toBe('REVIEW');
+    expect(resolved.sweetnessPath.materiality).toMatchObject({
+      verdict: 'MATERIAL',
+    });
+    expect(resolved.sweetnessPath.materiality!.maxPodEffect).toBeGreaterThan(
+      resolved.sweetnessPath.materiality!.engineAcceptanceTolerance,
+    );
+    expect(resolved.criticalPhysicsBlockers).toContain('UNRESOLVED_SWEETENING_FREEZING_PATH');
+  });
+
+  it('does not turn a very small unresolved sugar spectrum into a critical blocker', () => {
+    const cocoaSemantic = classifyProductSemantics({
+      name: 'Cacao puro desgrasado en polvo',
+      brand: null,
+      manufacturer: null,
+      manufacturerCode: null,
+      gtin: null,
+      productType: 'food ingredient',
+      category: 'cocoa',
+      subcategory: 'cocoa powder',
+      variant: null,
+      ingredients: 'Cacao desgrasado en polvo',
+      nutrition: 'sugars 0.7 g',
+      description: null,
+      dosage: null,
+      technicalParameters: null,
+      sourceUrls: [],
+    });
+    const resolved = resolveProductWorkingValues(
+      {
+        ...base,
+        declared: {
+          water_percent: 0,
+          fat_percent: 16,
+          protein_percent: 25.5,
+          carbohydrate_percent: 16.3,
+          total_sugars_percent: 0.7,
+          salt_percent: 0.03,
+          alcohol_percent: 0,
+          polyol_percent: 0,
+        },
+        identity: {
+          name: 'Cacao puro desgrasado en polvo',
+          category: 'cocoa',
+          semantic: cocoaSemantic,
+        },
+      },
+      knowledge,
+    );
+
+    expect(resolved.values.total_sugars_percent).toBe(0.7);
+    expect(resolved.sweetnessPath).toMatchObject({
+      kind: 'unknown_non_material',
+      resolved: true,
+      materiality: {
+        verdict: 'NON_MATERIAL',
+        unresolvedSugarPercent: 0.7,
+      },
+    });
+    expect(resolved.sweetnessPath.materiality!.maxPodEffect).toBeLessThanOrEqual(
+      resolved.sweetnessPath.materiality!.engineAcceptanceTolerance,
+    );
+    expect(resolved.sweetnessPath.materiality!.maxNpacEffect).toBeLessThanOrEqual(
+      resolved.sweetnessPath.materiality!.engineAcceptanceTolerance,
+    );
+    expect(resolved.criticalPhysicsBlockers).not.toContain('UNRESOLVED_SWEETENING_FREEZING_PATH');
+  });
+
+  it('keeps an unresolved fruit spectrum critical when it can disable the Sorbet solver', () => {
+    const fruitSemantic = classifyProductSemantics({
+      name: 'Pulpa truskawkowa',
+      brand: null,
+      manufacturer: null,
+      manufacturerCode: null,
+      gtin: null,
+      productType: 'food ingredient',
+      category: 'fruit',
+      subcategory: 'fruit puree',
+      variant: null,
+      ingredients: 'Truskawki',
+      nutrition: 'sugars 0.1 g',
+      description: null,
+      dosage: null,
+      technicalParameters: null,
+      sourceUrls: [],
+    });
+    const resolved = resolveProductWorkingValues(
+      {
+        ...base,
+        declared: {
+          water_percent: 90,
+          total_solids_percent: 10,
+          fat_percent: 0,
+          protein_percent: 0,
+          carbohydrate_percent: 1,
+          total_sugars_percent: 0.1,
+          salt_percent: 0,
+          alcohol_percent: 0,
+          polyol_percent: 0,
+        },
+        identity: { name: 'Pulpa truskawkowa', category: 'fruit', semantic: fruitSemantic },
+      },
+      knowledge,
+    );
+
+    expect(resolved.sweetnessPath.materiality).toMatchObject({ verdict: 'MATERIAL' });
+    expect(resolved.sweetnessPath.materiality!.reasonCodes).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/^SORBET_UNSUPPORTED_FREEZE_ACTIVE_FRACTION_/),
+      ]),
+    );
+    expect(resolved.criticalPhysicsBlockers).toContain('UNRESOLVED_SWEETENING_FREEZING_PATH');
   });
 
   it('accepts a sugar-free product, whose powers are exactly zero', () => {
@@ -783,6 +919,52 @@ describe('engine readiness contract', () => {
     // The Engine's breakdown contributes 0 for polyols, so this must not pass.
     expect(resolved.sweetnessPath.resolved).toBe(false);
     expect(resolved.valueReadiness).toBe('REVIEW');
+    expect(resolved.sweetnessPath.materiality).toMatchObject({ verdict: 'MATERIAL' });
+    expect(resolved.sweetnessPath.materiality!.maxNpacEffect).toBeGreaterThan(
+      resolved.sweetnessPath.materiality!.engineAcceptanceTolerance,
+    );
+  });
+
+  it('keeps unknown alcohol freezing authority fail-closed for an alcohol product', () => {
+    const alcoholSemantic = classifyProductSemantics({
+      name: 'Unknown spirit 40%',
+      brand: null,
+      manufacturer: null,
+      manufacturerCode: null,
+      gtin: null,
+      productType: 'food ingredient',
+      category: 'alcohol',
+      subcategory: 'spirit',
+      variant: null,
+      ingredients: null,
+      nutrition: 'sugars 0 g',
+      description: 'Spirit for alcohol gelato',
+      dosage: null,
+      technicalParameters: null,
+      sourceUrls: [],
+    });
+    const resolved = resolveProductWorkingValues(
+      {
+        ...base,
+        declared: {
+          water_percent: 60,
+          fat_percent: 0,
+          protein_percent: 0,
+          carbohydrate_percent: 0,
+          total_sugars_percent: 0,
+          salt_percent: 0,
+          polyol_percent: 0,
+        },
+        identity: { name: 'Unknown spirit', category: 'alcohol', semantic: alcoholSemantic },
+      },
+      knowledge,
+    );
+
+    expect(resolved.sweetnessPath.materiality).toMatchObject({
+      verdict: 'MATERIAL',
+      alcoholAuthorityUnresolved: true,
+    });
+    expect(resolved.criticalPhysicsBlockers).toContain('UNRESOLVED_SWEETENING_FREEZING_PATH');
   });
 
   it('rejects a named sugar split that exceeds the declared total sugars', () => {

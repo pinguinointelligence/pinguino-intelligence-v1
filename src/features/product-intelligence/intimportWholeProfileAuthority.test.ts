@@ -284,6 +284,7 @@ describe('INTIMPORT trusted product-owned profile', () => {
     expect(pr?.productAccuracy).toBe(pm?.productAccuracy);
     expect(pr?.productAccuracyAssessment).toEqual(pm?.productAccuracyAssessment);
     expect(pr?.criticalPhysicsBlockers).toEqual(pm?.criticalPhysicsBlockers);
+    expect(pr?.sweetnessPath).toEqual(pm?.sweetnessPath);
     expect(pr?.productAccuracyAssessment.criticalCapApplied).toBe(false);
   });
 

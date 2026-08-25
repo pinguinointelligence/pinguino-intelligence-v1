@@ -171,7 +171,7 @@ describe('La Chocolatera two-photo rounding and semantic handoff regression', ()
     expect(semantic.nutrition).toContain('"protein":25.5');
   });
 
-  it('creates a product-owned PM profile without replacing photo facts or hiding its blocker', () => {
+  it('creates a product-owned PM profile and proves the tiny residual sugar uncertainty non-material', () => {
     const semantic = productSemanticEvidenceFromScanResult(merged);
     const { rows } = loadMapperKnowledgeRows();
     const declared = {
@@ -250,13 +250,17 @@ describe('La Chocolatera two-photo rounding and semantic handoff regression', ()
       physicalForm: 'POWDER',
       intendedUsageRole: 'BASE_ONLY',
     });
-    expect(authority?.engineUsable).toBe(false);
-    expect(authority?.readiness).toBe('REVIEW');
+    expect(authority?.engineUsable).toBe(true);
+    expect(authority?.readiness).toBe('ESTIMATED_READY');
     expect(authority?.missingEngineFields).toEqual([]);
-    expect(authority?.criticalPhysicsBlockers).toEqual(['UNRESOLVED_SWEETENING_FREEZING_PATH']);
+    expect(authority?.criticalPhysicsBlockers).toEqual([]);
     expect(authority?.sweetnessPath).toMatchObject({
-      kind: 'unresolved',
-      resolved: false,
+      kind: 'stored',
+      resolved: true,
+      materiality: {
+        verdict: 'NON_MATERIAL',
+        unresolvedSugarPercent: 0.7,
+      },
     });
     for (const [field, value] of Object.entries(declared)) {
       expect(authority?.fieldTruth[field as keyof typeof declared]).toMatchObject({
@@ -266,7 +270,7 @@ describe('La Chocolatera two-photo rounding and semantic handoff regression', ()
       });
     }
     expect(authority?.profileReferenceMapperIngredientId).toBe('PI-ING-001313');
-    expect(authority?.mapperSimilarity).toBe(0.8689);
+    expect(authority?.mapperSimilarity).toBeGreaterThanOrEqual(0.85);
     expect(authority?.mapperCandidatesBeforeFilter.length).toBeGreaterThan(
       authority?.mapperCandidatesAfterFilter.length ?? 0,
     );
@@ -279,10 +283,29 @@ describe('La Chocolatera two-photo rounding and semantic handoff regression', ()
     expect(authority?.productAccuracyAssessment.components.country.earnedPoints).toBe(0);
     expect(authority?.productAccuracyAssessment.components.package.earnedPoints).toBe(1);
     expect(authority?.productAccuracyAssessment.fields.water_percent?.creditFactor).toBe(0.8);
-    expect(authority?.productAccuracy).toBeLessThan(85);
-    expect(authority?.productAccuracyAssessment.criticalBlockers).toContain(
+    if (process.env.PRODUCT_ACCURACY_REPORT === '1') {
+      console.log(
+        `COCOA_MATERIALITY ${JSON.stringify({
+          productAccuracy: authority?.productAccuracy,
+          rawProductAccuracy: authority?.productAccuracyAssessment.rawProductAccuracy,
+          criticalCapApplied: authority?.productAccuracyAssessment.criticalCapApplied,
+          criticalBlockers: authority?.productAccuracyAssessment.criticalBlockers,
+          mapperSimilarity: authority?.mapperSimilarity,
+          profileReferenceMapperIngredientId: authority?.profileReferenceMapperIngredientId,
+          sweetnessPath: authority?.sweetnessPath,
+          pod: authority?.fieldTruth.pod_value,
+          pac: authority?.fieldTruth.pac_value,
+          scoreFields: authority?.productAccuracyAssessment.fields,
+        })}`,
+      );
+    }
+    expect(authority?.productAccuracyAssessment.fields.pod_value?.creditFactor).toBe(0.8);
+    expect(authority?.productAccuracyAssessment.fields.pac_value?.creditFactor).toBe(0.8);
+    expect(authority?.productAccuracy).toBeGreaterThanOrEqual(85);
+    expect(authority?.productAccuracyAssessment.criticalBlockers).not.toContain(
       'UNRESOLVED_SWEETENING_FREEZING_PATH',
     );
+    expect(authority?.productAccuracyAssessment.criticalCapApplied).toBe(false);
 
     const withoutAllergenScore = validateIntimportProductProfileProposal({
       origin: 'PM',

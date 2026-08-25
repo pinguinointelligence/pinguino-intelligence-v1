@@ -42,6 +42,10 @@ import {
   type ProductFieldTruthMap,
   type WorkingNumericField,
 } from './productFieldTruth.ts';
+import {
+  assessSweeteningFreezingMateriality,
+  type SweeteningFreezingMateriality,
+} from './sweeteningFreezingMateriality.ts';
 
 /**
  * What the Engine genuinely needs before it can compute with an ingredient.
@@ -198,12 +202,20 @@ export interface ProductWorkingValues {
   trace: string[];
 }
 
-export type SweetnessPathKind = 'stored' | 'sugar_spectrum' | 'trivially_zero' | 'unresolved';
+export type SweetnessPathKind =
+  | 'stored'
+  | 'sugar_spectrum'
+  | 'trivially_zero'
+  | 'unknown_non_material'
+  | 'unresolved';
 
 export interface SweetnessPath {
   kind: SweetnessPathKind;
   resolved: boolean;
   reason: string;
+  /** Present only when exact/derived/profile evidence left a real uncertainty
+   * for the Engine materiality authority to evaluate. */
+  materiality?: SweeteningFreezingMateriality;
 }
 
 /**
@@ -214,61 +226,134 @@ export interface SweetnessPath {
  * contributes ZERO for an unknown spectrum, so a sugary product with no spectrum
  * would formulate as if its sugars did nothing — which is the case this refuses.
  *
- * No POD/PAC arithmetic happens here. This only reports whether the Engine's own
- * calculation has what it needs.
+ * Exact/derived/profile authority resolves first. Any remaining uncertainty is
+ * delegated to the Engine-based materiality authority below.
  */
-export function sweetnessPathOf(fields: ProductFieldTruthMap): SweetnessPath {
-  if (fields.pod_value.value !== null && fields.pac_value.value !== null) {
+export function sweetnessPathOf(
+  fields: ProductFieldTruthMap,
+  semantic?: ProductWorkingValuesInput['identity']['semantic'],
+): SweetnessPath {
+  const powersVerified =
+    fields.pod_value.value !== null &&
+    fields.pac_value.value !== null &&
+    fields.pod_value.provenance.state === 'VERIFIED' &&
+    fields.pac_value.provenance.state === 'VERIFIED';
+  if (powersVerified) {
     return { kind: 'stored', resolved: true, reason: 'produkt niesie POD i PAC' };
   }
   const sugars = fields.total_sugars_percent.value;
-  const alcohol = fields.alcohol_percent.value ?? 0;
-  const polyol = fields.polyol_percent.value ?? 0;
-  if (sugars === 0 && alcohol === 0 && polyol === 0) {
+  const alcohol = fields.alcohol_percent.value;
+  const polyol = fields.polyol_percent.value;
+  const alcoholSemanticallyRelevant =
+    semantic?.ingredientFamily === 'alcohol' || semantic?.flavorDomain === 'ALCOHOL';
+  if (
+    sugars === null &&
+    !(alcohol === null && alcoholSemanticallyRelevant) &&
+    !(polyol !== null && polyol > 0) &&
+    semantic?.ingredientFamily !== 'other_sugar'
+  ) {
+    return {
+      kind: 'unknown_non_material',
+      resolved: true,
+      reason:
+        'cukry ogolem nieznane — brak ilosci jest osobnym blockerem skladu, nie automatycznym blockerem widma',
+    };
+  }
+  if (
+    sugars === 0 &&
+    (alcohol === 0 || (alcohol === null && !alcoholSemanticallyRelevant)) &&
+    (polyol === 0 || polyol === null)
+  ) {
     return {
       kind: 'trivially_zero',
       resolved: true,
-      reason: 'brak cukrow, alkoholu i polioli — obie moce sa dokladnie zerowe',
+      reason: 'brak cukrow i polioli oraz brak semantycznej przeslanki alkoholu — moce sa zerowe',
     };
   }
-  if (polyol > 0) {
-    // The Engine's typed breakdown contributes zero for polyols; their only
-    // correct path is a stored value or one of the five named polyols.
-    return {
-      kind: 'unresolved',
-      resolved: false,
-      reason:
-        'produkt zawiera poliole — Engine nie wyprowadzi dla nich POD/PAC bez wartosci zapisanej',
-    };
-  }
-  const spectrum = SUGAR_SPECTRUM_FIELDS.map(
-    (field) =>
-      (fields as Record<string, { value: number | null } | undefined>)[field]?.value ?? null,
-  ).filter((entry): entry is number => entry !== null);
-  if (sugars !== null && spectrum.length > 0) {
-    const named = spectrum.reduce((total, entry) => total + entry, 0);
-    if (named >= sugars - SUGAR_SPECTRUM_TOLERANCE) {
+  const verifiedSpectrum = SUGAR_SPECTRUM_FIELDS.map((field) => fields[field]).filter(
+    (truth) => truth.provenance.state === 'VERIFIED' && truth.value !== null,
+  );
+  if (sugars !== null && verifiedSpectrum.length > 0 && (polyol ?? 0) === 0) {
+    const named = verifiedSpectrum.reduce((total, truth) => total + (truth.value ?? 0), 0);
+    if (named + Number.EPSILON >= sugars) {
       return {
         kind: 'sugar_spectrum',
         resolved: true,
-        reason: `widmo cukrow pokrywa ${named.toFixed(1)} z ${sugars.toFixed(1)} g`,
+        reason: `zweryfikowane widmo cukrow pokrywa ${named.toFixed(1)} z ${sugars.toFixed(1)} g`,
       };
     }
+  }
+  if (sugars === 0 && alcohol !== null && alcohol > 0 && (polyol ?? 0) === 0) {
     return {
-      kind: 'unresolved',
-      resolved: false,
-      reason: `widmo cukrow pokrywa tylko ${named.toFixed(1)} z ${sugars.toFixed(1)} g`,
+      kind: 'sugar_spectrum',
+      resolved: true,
+      reason: 'cukry sa zerowe, a znana zawartosc alkoholu zasila deterministyczny NPAC Engine',
+    };
+  }
+
+  const profilePowers =
+    fields.pod_value.value !== null &&
+    fields.pac_value.value !== null &&
+    fields.pod_value.provenance.state === 'ESTIMATED' &&
+    fields.pac_value.provenance.state === 'ESTIMATED';
+  const profileNamedSugar = SUGAR_SPECTRUM_FIELDS.reduce((total, field) => {
+    const truth = fields[field];
+    return (
+      total +
+      (truth.value !== null &&
+      (truth.provenance.state === 'VERIFIED' || truth.provenance.basis === 'mapper_similar_profile')
+        ? truth.value
+        : 0)
+    );
+  }, 0);
+  if (
+    profilePowers &&
+    sugars !== null &&
+    (polyol ?? 0) === 0 &&
+    profileNamedSugar + Number.EPSILON >= sugars
+  ) {
+    return {
+      kind: 'stored',
+      resolved: true,
+      reason:
+        `zgodny profil Mappera uzupelnil widmo ${profileNamedSugar.toFixed(1)} z ` +
+        `${sugars.toFixed(1)} g oraz POD/PAC jako ESTIMATED`,
+    };
+  }
+  // When total sugar and both powers come from one accepted whole profile, the
+  // profile is already the compatible Mapper completion authority. A verified
+  // product sugar total, however, is stronger and leaves a real split question
+  // that must proceed to materiality rather than being hidden by the proxy.
+  if (profilePowers && fields.total_sugars_percent.provenance.state !== 'VERIFIED') {
+    return {
+      kind: 'stored',
+      resolved: true,
+      reason: 'zgodny profil Mappera dostarczyl komplet POD/PAC jako ESTIMATED',
+    };
+  }
+
+  const materiality = assessSweeteningFreezingMateriality({ fields, semantic });
+  if (materiality.verdict === 'NON_MATERIAL') {
+    return {
+      kind: profilePowers ? 'stored' : 'unknown_non_material',
+      resolved: true,
+      reason:
+        `pozostala niepewnosc nie jest materialna: POD Δmax ${materiality.maxPodEffect}, ` +
+        `NPAC Δmax ${materiality.maxNpacEffect}, tolerancja Engine ` +
+        `${materiality.engineAcceptanceTolerance}`,
+      materiality,
     };
   }
   return {
     kind: 'unresolved',
     resolved: false,
-    reason: 'produkt ma cukry, ale ich rodzaj jest nieznany — Engine policzylby zero',
+    reason:
+      `pozostala niepewnosc jest materialna: POD Δmax ${materiality.maxPodEffect}, ` +
+      `NPAC Δmax ${materiality.maxNpacEffect}, tolerancja Engine ` +
+      `${materiality.engineAcceptanceTolerance}`,
+    materiality,
   };
 }
-
-/** How much of the declared sugars may stay unattributed and still resolve. */
-export const SUGAR_SPECTRUM_TOLERANCE = 0.5;
 
 /** Macros the product itself states, used to validate a candidate profile. */
 function verifiedMacros(fields: ProductFieldTruthMap): Partial<Record<string, number>> {
@@ -386,16 +471,6 @@ export function resolveProductWorkingValues(
       // the consistency gate, leaving an accepted proxy supplying nothing.
       // Anything the product itself states is untouchable.
       if (fields[field].provenance.state === 'VERIFIED') continue;
-      // A proxy may lend its stored POD/PAC only when the sugar picture is
-      // wholly its own too. If this product states its own sugars, borrowing a
-      // neighbour's freezing power would pair one product's sugars with
-      // another's physics; the Engine derives it from the spectrum instead.
-      if (
-        (field === 'pod_value' || field === 'pac_value') &&
-        fields.total_sugars_percent.provenance.state === 'VERIFIED'
-      ) {
-        continue;
-      }
       const supplied = profileFieldValue(profileMatch, field);
       if (!supplied) continue;
       fields = {
@@ -502,7 +577,13 @@ export function resolveProductWorkingValues(
     ...REQUIRED_COMPOSITION_FIELDS.filter((field) => fields[field].value === null),
     ...(massBalanceKnown ? [] : (['water_percent'] as const)),
   ];
-  const power = sweetnessPathOf(fields);
+  const power = sweetnessPathOf(fields, input.identity.semantic);
+  if (power.materiality) {
+    trace.push(
+      `sweetening_materiality: ${power.materiality.verdict}`,
+      ...power.materiality.reasonCodes,
+    );
+  }
   const estimatedEngineFields = ENGINE_REQUIRED_WORKING_FIELDS.filter(
     (field) => fields[field].provenance.state === 'ESTIMATED',
   );

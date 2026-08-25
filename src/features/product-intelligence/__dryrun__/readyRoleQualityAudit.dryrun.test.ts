@@ -213,8 +213,30 @@ describe.runIf(existsSync(POLAND_FILE) && existsSync(PRIOR_FINAL_TRACE))(
         };
       });
 
-      expect(auditRows.filter((row) => row.audit_outcome === 'READY_PASS')).toHaveLength(134);
-      expect(auditRows.filter((row) => row.audit_outcome === 'MOVED_TO_REVIEW')).toHaveLength(4);
+      if (process.env.PRODUCT_ACCURACY_REPORT === '1') {
+        console.log(
+          `READY_ROLE_MATERIALITY_AUDIT ${JSON.stringify({
+            outcomes: Object.fromEntries(
+              ['READY_PASS', 'MOVED_TO_REVIEW', 'SUSPICIOUS_READY_FAIL'].map((outcome) => [
+                outcome,
+                auditRows.filter((row) => row.audit_outcome === outcome).length,
+              ]),
+            ),
+            notReadyPass: auditRows
+              .filter((row) => row.audit_outcome !== 'READY_PASS')
+              .map((row) => ({
+                sourceProductId: row.source_product_id,
+                productName: row.product_name,
+                outcome: row.audit_outcome,
+                finalStatus: row.final_status,
+                reasonCodes: row.final_reason_codes,
+              })),
+          })}`,
+        );
+      }
+
+      expect(auditRows.filter((row) => row.audit_outcome === 'READY_PASS')).toHaveLength(133);
+      expect(auditRows.filter((row) => row.audit_outcome === 'MOVED_TO_REVIEW')).toHaveLength(5);
       expect(auditRows.filter((row) => row.audit_outcome === 'SUSPICIOUS_READY_FAIL')).toEqual([]);
       expect(auditRows.filter((row) => row.verified_overwrite_count > 0)).toEqual([]);
 
@@ -226,7 +248,7 @@ describe.runIf(existsSync(POLAND_FILE) && existsSync(PRIOR_FINAL_TRACE))(
         ]),
       );
       expect(readyRoleCounts).toEqual({
-        BASE_ONLY: 100,
+        BASE_ONLY: 99,
         TOPPING_ONLY: 30,
         BASE_AND_TOPPING: 4,
       });
@@ -253,8 +275,8 @@ describe.runIf(existsSync(POLAND_FILE) && existsSync(PRIOR_FINAL_TRACE))(
             execution: 'READ_ONLY_LOCAL_DETERMINISTIC',
             modelCalls: 0,
             audited: 138,
-            readyPass: 134,
-            movedToReview: 4,
+            readyPass: 133,
+            movedToReview: 5,
             suspiciousReady: 0,
             verifiedOverwrites: 0,
             readyRoleCounts,
