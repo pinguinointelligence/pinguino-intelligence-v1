@@ -155,8 +155,8 @@ top-level evidence field names. reasonCodes are concise uppercase audit facts, n
 const semanticEvidenceFromRequest = (value: unknown): ProductSemanticEvidence | null => {
   const raw = objectValue(value);
   const allowed = new Set([
-    'name', 'brand', 'manufacturer', 'manufacturerCode', 'productType', 'category',
-    'subcategory', 'variant', 'ingredients', 'description', 'dosage',
+    'name', 'brand', 'manufacturer', 'manufacturerCode', 'gtin', 'productType', 'category',
+    'subcategory', 'variant', 'ingredients', 'nutrition', 'description', 'dosage',
     'technicalParameters', 'sourceUrls',
   ]);
   if (Object.keys(raw).some((key) => !allowed.has(key))) return null;
@@ -167,11 +167,13 @@ const semanticEvidenceFromRequest = (value: unknown): ProductSemanticEvidence | 
     brand: textOrNull(raw.brand),
     manufacturer: textOrNull(raw.manufacturer),
     manufacturerCode: textOrNull(raw.manufacturerCode),
+    gtin: textOrNull(raw.gtin),
     productType: textOrNull(raw.productType),
     category: textOrNull(raw.category),
     subcategory: textOrNull(raw.subcategory),
     variant: textOrNull(raw.variant),
     ingredients: textOrNull(raw.ingredients),
+    nutrition: textOrNull(raw.nutrition),
     description: textOrNull(raw.description),
     dosage: textOrNull(raw.dosage),
     technicalParameters: textOrNull(raw.technicalParameters),
@@ -319,6 +321,7 @@ Deno.serve(async (request) => {
     try {
       const response = await fetch('https://api.openai.com/v1/responses', {
         method: 'POST',
+        signal: AbortSignal.timeout(30_000),
         headers: {
           Authorization: `Bearer ${openAiKey}`,
           'Content-Type': 'application/json',
@@ -367,12 +370,13 @@ Deno.serve(async (request) => {
         }).map((part) => objectValue(part).text)
           .filter((text): text is string => typeof text === 'string').join('')
       : null;
-    let modelOutput: unknown = null;
-    try {
-      modelOutput = outputText ? JSON.parse(outputText) : null;
-    } catch {
-      modelOutput = null;
-    }
+    const modelOutput: unknown = (() => {
+      try {
+        return outputText ? JSON.parse(outputText) : null;
+      } catch {
+        return null;
+      }
+    })();
     const classification = validateProductSemanticModelOutput(evidence, modelOutput);
     if (!classification) {
       const rejectedResult = {

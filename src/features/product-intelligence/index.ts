@@ -8,5 +8,6 @@ export * from './useMonitorRecipeBehaviorRefresh';
 export * from './recipeBehaviorAuthority';
 export * from './productDosageAuthority';
 export * from './productProcessInformation';
+export * from './productRecognition';
 export * from './ownerInulinPolicy';
 export * from './refreshRecipeBehaviorWorkingCopy';

@@ -304,11 +304,21 @@ function serverProductProfileProposal(
     brand: clippedText(canonicalInput.brand, 120),
     manufacturer: clippedText(sourceEvidence.manufacturer, 160),
     manufacturerCode: labelled('Kod producenta'),
+    gtin: serverInput.matchInput.barcode ?? null,
     productType: clippedText(sourceEvidence.productType, 80),
     category: clippedText(sourceEvidence.sourceCategory, 160) ?? serverInput.matchInput.category ?? null,
     subcategory: clippedText(sourceEvidence.sourceSubcategory, 160) ?? serverInput.matchInput.subcategory ?? null,
     variant: clippedText(sourceEvidence.variant, 160),
     ingredients: clippedText(sourceEvidence.ingredients, 2_000),
+    nutrition: [
+      ['basis', sourceEvidence.nutritionBasis],
+      ['kcal', sourceEvidence.energyKcal],
+      ['fat_g', sourceEvidence.fat],
+      ['carbohydrate_g', sourceEvidence.carbohydrate],
+      ['protein_g', sourceEvidence.protein],
+      ['salt_g', sourceEvidence.salt],
+    ].flatMap(([label, value]) => evidenceValuePresent(value) ? [`${label}:${String(value)}`] : [])
+      .join(' | ') || null,
     description: labelled('Opis') ?? clippedText(sourceEvidence.notes, 1_000),
     dosage: clippedText(sourceEvidence.dosage, 240),
     technicalParameters,
@@ -417,14 +427,15 @@ async function trustedIntimportSemanticClassification(input: {
   service: ServiceClient;
   actorUserId: string;
   proposal: NonNullable<ReturnType<typeof serverProductProfileProposal>>;
+  recognitionEvidence: ProductSemanticEvidence;
 }): Promise<ProductSemanticClassification | null> {
-  const deterministic = classifyProductSemantics(input.proposal.recognitionEvidence);
+  const deterministic = classifyProductSemantics(input.recognitionEvidence);
   const receipt = input.proposal.semanticEvidenceReceipt;
   if (!receipt) return deterministic;
   const expectedReceipt = await sha256Text(stableJson({
     action: 'semantic_classification',
     classifierVersion: PRODUCT_RECOGNITION_VERSION,
-    evidence: canonicalizeProductSemanticEvidence(input.proposal.recognitionEvidence),
+    evidence: canonicalizeProductSemanticEvidence(input.recognitionEvidence),
   }));
   if (receipt !== expectedReceipt) return null;
   const { data, error } = await input.service
@@ -451,6 +462,7 @@ type TrustedIntimportEvidence = {
   evidence: ProductEvidenceInput;
   provenance: Partial<Record<ProductEvidenceField, IntimportTrustedEvidenceProvenance>>;
   carbonationEvidence: CarbonationEvidence[];
+  recognitionEvidence: ProductSemanticEvidence;
 };
 
 const evidenceValuePresent = (value: unknown): boolean =>
@@ -491,6 +503,37 @@ async function trustedIntimportEvidence(input: {
   const fields: Partial<Record<ProductEvidenceField, EvidenceSource>> = {};
   const provenance: Partial<Record<ProductEvidenceField, IntimportTrustedEvidenceProvenance>> = {};
   const carbonationEvidence: CarbonationEvidence[] = [];
+  let recognitionEvidence = canonicalizeProductSemanticEvidence(
+    input.proposal.recognitionEvidence,
+  );
+  const semanticNutrition = new Map<string, string>();
+  for (const part of (recognitionEvidence.nutrition ?? '').split('|')) {
+    const [label, ...value] = part.trim().split(':');
+    if (label && value.length > 0) semanticNutrition.set(label, value.join(':'));
+  }
+  const semanticNutritionLabels: Readonly<Record<string, string>> = {
+    nutritionBasis: 'basis',
+    energyKcal: 'kcal',
+    fat: 'fat_g',
+    carbohydrate: 'carbohydrate_g',
+    protein: 'protein_g',
+    salt: 'salt_g',
+  };
+  const mergeRecognitionFact = (
+    field: ProductEvidenceField,
+    value: unknown,
+    factSourceUrl: string,
+  ) => {
+    const text = String(value).trim();
+    if (field === 'ingredients') recognitionEvidence.ingredients = text;
+    else if (field === 'dosage') recognitionEvidence.dosage = text;
+    else if (field === 'technicalParameters') recognitionEvidence.technicalParameters = text;
+    else if (field === 'manufacturer') recognitionEvidence.manufacturer = text;
+    else if (field === 'barcode') recognitionEvidence.gtin = text;
+    const nutritionLabel = semanticNutritionLabels[String(field)];
+    if (nutritionLabel) semanticNutrition.set(nutritionLabel, text);
+    recognitionEvidence.sourceUrls = [...recognitionEvidence.sourceUrls, factSourceUrl];
+  };
   const direct = (field: ProductEvidenceField, value: unknown) => {
     if (!evidenceValuePresent(value)) return;
     fields[field] = sourceAuthority.evidenceSource;
@@ -665,6 +708,7 @@ async function trustedIntimportEvidence(input: {
           retrievedAt: clippedText(fact.retrievedAt, 80),
           evidenceReceipt: receipt,
         };
+        mergeRecognitionFact(field, fact.value, factSourceUrl);
         if (field === 'ingredients') {
           const exactSource =
             authority.authority === 'AUTHORITATIVE_RETAILER'
@@ -707,7 +751,12 @@ async function trustedIntimportEvidence(input: {
   // Reject stale or forged browser evidence. A valid enriched client object is
   // an exact transport copy of the independently rebuilt server truth.
   if (stableJson(evidence) !== stableJson(input.proposal.evidence)) return null;
-  return { evidence, provenance, carbonationEvidence };
+  recognitionEvidence.nutrition = semanticNutrition.size > 0
+    ? [...semanticNutrition.entries()].map(([label, value]) => `${label}:${value}`).join(' | ')
+    : null;
+  recognitionEvidence.sourceUrls = [...new Set(recognitionEvidence.sourceUrls)];
+  recognitionEvidence = canonicalizeProductSemanticEvidence(recognitionEvidence);
+  return { evidence, provenance, carbonationEvidence, recognitionEvidence };
 }
 
 function serverManualProductProfileProposal(
@@ -717,6 +766,7 @@ function serverManualProductProfileProposal(
   declared: Partial<Record<WorkingNumericField, number>>;
   declaredBasis: Partial<Record<WorkingNumericField, 'user_confirmed'>>;
   evidence: ProductEvidenceInput;
+  recognitionEvidence: ProductSemanticEvidence;
 } | null {
   const facts = objectValue(canonicalInput.facts);
   const nutrition = objectValue(facts.nutrition);
@@ -767,6 +817,33 @@ function serverManualProductProfileProposal(
     ...(typeof declared.salt_percent === 'number' ? { salt: 'user_confirmed' as const } : {}),
     ...(ean ? { barcode: 'user_confirmed' as const } : {}),
   };
+  const semanticNutrition = [
+    ['basis', nutrition.basis],
+    ['kcal', nutrition.energyKcal],
+    ['fat_g', nutrition.fat],
+    ['carbohydrate_g', nutrition.carbohydrate],
+    ['sugars_g', nutrition.sugars],
+    ['protein_g', nutrition.protein],
+    ['salt_g', nutrition.salt],
+  ].flatMap(([label, value]) => evidenceValuePresent(value) ? [`${label}:${String(value)}`] : []);
+  const recognitionEvidence = canonicalizeProductSemanticEvidence({
+    name,
+    brand,
+    manufacturer: brand,
+    manufacturerCode: null,
+    gtin: ean,
+    productType: null,
+    category: typeof canonicalInput.category === 'string' ? canonicalInput.category : null,
+    subcategory: null,
+    variant: null,
+    ingredients: clippedText(facts.ingredientsText, 2_000),
+    nutrition: semanticNutrition.length > 0 ? semanticNutrition.join(' | ') : null,
+    description: null,
+    dosage: null,
+    technicalParameters: null,
+    sourceUrls: [],
+  });
+  const recognition = classifyProductSemantics(recognitionEvidence);
   return {
     matchInput: {
       name,
@@ -787,14 +864,17 @@ function serverManualProductProfileProposal(
         ...(typeof declared.fiber_percent === 'number' ? { fiber_percent: declared.fiber_percent } : {}),
         ...(typeof declared.salt_percent === 'number' ? { salt_percent: declared.salt_percent } : {}),
       },
-      technical: false,
+      technical: recognition.isTechnicalProduct,
+      semantic: recognition,
     },
     declared,
     declaredBasis,
     evidence: {
-      kind: 'normal_food', fields, validatedBarcode: ean !== null,
+      kind: recognition.isTechnicalProduct ? 'technical' : 'normal_food',
+      fields, validatedBarcode: ean !== null,
       exactCanonicalMatch: false, mapperFamilyMatch: false, materialConflicts: [],
     },
+    recognitionEvidence,
   };
 }
 
@@ -1433,6 +1513,7 @@ Deno.serve(async (request) => {
         service,
         actorUserId: auth.user.id,
         proposal,
+        recognitionEvidence: trustedEvidence.recognitionEvidence,
       });
       if (!trustedRecognition) {
         return json({ error: 'intimport_semantic_evidence_untrusted' }, 409);
@@ -1443,7 +1524,7 @@ Deno.serve(async (request) => {
         matchInput: proposal.matchInput,
         declared: proposal.declared,
         evidence: trustedEvidence.evidence,
-        recognitionEvidence: proposal.recognitionEvidence,
+        recognitionEvidence: trustedEvidence.recognitionEvidence,
         trustedRecognition,
         evidenceProvenance: trustedEvidence.provenance,
         carbonationEvidence: trustedEvidence.carbonationEvidence,
@@ -1473,6 +1554,7 @@ Deno.serve(async (request) => {
         declared: proposal.declared,
         declaredBasis: proposal.declaredBasis,
         evidence: proposal.evidence,
+        recognitionEvidence: proposal.recognitionEvidence,
         proposedTechnicalComposition: objectValue(objectValue(canonicalInput.facts).technicalComposition),
         rows: await loadMapperAuthorityRows(service),
       });

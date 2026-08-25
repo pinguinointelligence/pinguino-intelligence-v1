@@ -12,6 +12,10 @@ const profileAuthority = readFileSync(
   resolve(root, 'supabase/functions/_shared/intimportWholeProfileAuthority.ts'),
   'utf8',
 );
+const catalogSubmit = readFileSync(
+  resolve(root, 'supabase/functions/catalog-submit/index.ts'),
+  'utf8',
+);
 
 describe('Product Recognition V2 server boundary', () => {
   it('reuses the existing authenticated OpenAI backend with strict structured output', () => {
@@ -22,6 +26,7 @@ describe('Product Recognition V2 server boundary', () => {
     expect(edge).toContain("type: 'json_schema'");
     expect(edge).toContain('PRODUCT_RECOGNITION_MODEL_SCHEMA');
     expect(edge).toContain('validateProductSemanticModelOutput');
+    expect(edge).toContain('AbortSignal.timeout(30_000)');
   });
 
   it('caches by exact evidence and enforces a server-side import cap', () => {
@@ -41,6 +46,10 @@ describe('Product Recognition V2 server boundary', () => {
     expect(profileAuthority).toContain(
       'technical: recognition?.isTechnicalProduct ?? (input.matchInput.technical === true)',
     );
+    expect(catalogSubmit).toContain('recognitionEvidence: trustedEvidence.recognitionEvidence');
+    expect(catalogSubmit).toContain('mergeRecognitionFact(field, fact.value, factSourceUrl)');
+    expect(catalogSubmit).toContain('origin: \'PM\'');
+    expect(catalogSubmit).toContain('recognitionEvidence: proposal.recognitionEvidence');
   });
 
   it('stores no secret and gives clients no write permission', () => {

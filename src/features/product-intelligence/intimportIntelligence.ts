@@ -160,16 +160,27 @@ export function semanticEvidenceFromIntimportCandidate(
   candidate: IntimportCandidate,
 ): ProductSemanticEvidence {
   const technical = candidate.source['Technical Parameters'];
+  const nutrition = [
+    ['basis', candidate.source['Nutrition Basis']],
+    ['kcal', candidate.source['Energy kcal']],
+    ['fat_g', candidate.source['Fat g']],
+    ['carbohydrate_g', candidate.source['Carbohydrates g']],
+    ['sugars_g', candidate.source['Sugars g']],
+    ['protein_g', candidate.source['Protein g']],
+    ['salt_g', candidate.source['Salt g']],
+  ].flatMap(([label, value]) => value ? [`${label}:${value}`] : []);
   return {
     name: candidate.displayName,
     brand: candidate.source.Brand,
     manufacturer: candidate.source.Manufacturer,
     manufacturerCode: labelledTechnicalValue(technical, 'Kod producenta'),
+    gtin: candidate.ean,
     productType: candidate.source['Product Type'],
     category: candidate.sourceCategory,
     subcategory: candidate.sourceSubcategory,
     variant: candidate.source['Variant Original'] ?? candidate.source['Variant English'],
     ingredients: candidate.source['Ingredients Original'] ?? candidate.source['Ingredients English'],
+    nutrition: nutrition.length > 0 ? nutrition.join(' | ') : null,
     description: labelledTechnicalValue(technical, 'Opis') ?? candidate.source.Notes,
     dosage: candidate.source['Professional Dosage'],
     technicalParameters: technical,
@@ -362,8 +373,9 @@ export function assessIntimportProduct(
   index: IntimportCanonicalIndex = {},
   mapper: MapperKnowledge | null = null,
   recognitionOverride: ProductSemanticClassification | null = null,
+  recognitionEvidenceOverride: ProductSemanticEvidence | null = null,
 ): IntimportProductIntelligence {
-  const recognitionEvidence = semanticEvidenceFromIntimportCandidate(candidate);
+  const recognitionEvidence = recognitionEvidenceOverride ?? semanticEvidenceFromIntimportCandidate(candidate);
   const deterministicRecognition = classifyProductSemantics(recognitionEvidence);
   const recognition =
     recognitionOverride?.evidenceFingerprint === deterministicRecognition.evidenceFingerprint
@@ -600,6 +612,7 @@ export function runIntimportLocalIntelligence(
   index: IntimportCanonicalIndex = {},
   mapper: MapperKnowledge | null = null,
   recognitionOverrides: ReadonlyMap<number, ProductSemanticClassification> = new Map(),
+  recognitionEvidenceOverrides: ReadonlyMap<number, ProductSemanticEvidence> = new Map(),
 ): { rows: IntimportProductIntelligence[]; summary: IntimportLocalSummary } {
   // INVALID rows have no usable identity and are not products to research.
   const rows = candidates
@@ -609,6 +622,7 @@ export function runIntimportLocalIntelligence(
       index,
       mapper,
       recognitionOverrides.get(candidate.rowIndex) ?? null,
+      recognitionEvidenceOverrides.get(candidate.rowIndex) ?? null,
     ));
 
   const count = (route: EnrichmentRoute) => rows.filter((row) => row.route === route).length;

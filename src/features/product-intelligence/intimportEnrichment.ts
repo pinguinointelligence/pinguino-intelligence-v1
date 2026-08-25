@@ -27,6 +27,11 @@ import {
   type IntimportProductIntelligence,
 } from './intimportIntelligence';
 import type { SourceAuthorityClass } from './sourceAuthority';
+import {
+  canonicalizeProductSemanticEvidence,
+  classifyProductSemantics,
+  type ProductSemanticEvidence,
+} from './productRecognition';
 
 /** One external observation. `null` value means "looked, found nothing". */
 export interface EnrichmentFact {
@@ -140,6 +145,48 @@ function mergeFacts(
     applied.push(fact);
   }
   return { evidence: { ...base, fields }, applied };
+}
+
+const NUTRITION_SEMANTIC_LABELS: Readonly<Record<string, string>> = {
+  nutritionBasis: 'basis',
+  energyKcal: 'kcal',
+  fat: 'fat_g',
+  carbohydrate: 'carbohydrate_g',
+  protein: 'protein_g',
+  salt: 'salt_g',
+};
+
+/** Keep semantic evidence and accepted enrichment facts on the same exact row. */
+function mergeSemanticFacts(
+  base: ProductSemanticEvidence,
+  facts: readonly EnrichmentFact[],
+): ProductSemanticEvidence {
+  const merged: ProductSemanticEvidence = {
+    ...base,
+    sourceUrls: [...base.sourceUrls],
+  };
+  const nutrition = new Map<string, string>();
+  for (const part of (base.nutrition ?? '').split('|')) {
+    const [label, ...value] = part.trim().split(':');
+    if (label && value.length > 0) nutrition.set(label, value.join(':'));
+  }
+  for (const fact of facts) {
+    const value = fact.value === null ? null : String(fact.value).trim();
+    if (!value) continue;
+    if (fact.field === 'ingredients') merged.ingredients = value;
+    else if (fact.field === 'dosage') merged.dosage = value;
+    else if (fact.field === 'technicalParameters') merged.technicalParameters = value;
+    else if (fact.field === 'manufacturer') merged.manufacturer = value;
+    else if (fact.field === 'barcode') merged.gtin = value;
+    const nutritionLabel = NUTRITION_SEMANTIC_LABELS[String(fact.field)];
+    if (nutritionLabel) nutrition.set(nutritionLabel, value);
+    if (fact.sourceUrl) merged.sourceUrls = [...merged.sourceUrls, fact.sourceUrl];
+  }
+  merged.nutrition = nutrition.size > 0
+    ? [...nutrition.entries()].map(([label, value]) => `${label}:${value}`).join(' | ')
+    : null;
+  merged.sourceUrls = [...new Set(merged.sourceUrls)];
+  return canonicalizeProductSemanticEvidence(merged);
 }
 
 const CREDIT_ORDER: Readonly<Record<EvidenceSource, number>> = Object.freeze({
@@ -295,6 +342,10 @@ export async function runIntimportEnrichment(
             response.facts,
           );
           const assessment = assessProductConfidence(evidence);
+          const recognitionEvidence = mergeSemanticFacts(
+            intelligence.recognitionEvidence,
+            applied,
+          );
           results.push(
             settle(row, assessment.confidence, {
               // This is the seam that used to drop the enriched evidence: the
@@ -306,6 +357,8 @@ export async function runIntimportEnrichment(
               callsUsed: cached ? 0 : response.calls,
               cacheHit: Boolean(cached),
               appliedFacts: applied,
+              recognitionEvidence,
+              recognition: classifyProductSemantics(recognitionEvidence),
               enrichmentEvidenceReceipts: response.evidenceReceipt
                 ? [
                     ...new Set([

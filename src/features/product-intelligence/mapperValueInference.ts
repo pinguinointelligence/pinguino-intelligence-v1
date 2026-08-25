@@ -1138,6 +1138,7 @@ const semanticDecisionFor = (
       category: row.ingredient_category ?? null,
       subcategory: row.ingredient_subcategory ?? null,
       brand: row.brand ?? null,
+      gtin: row.ean_code ?? null,
     })
   : { compatible: true as const, reasonCodes: [] as string[] };
 

@@ -308,6 +308,7 @@ export function ProductImportPage() {
             {},
             mapper,
             semantic.classifications,
+            new Map(outcome.products.map((row) => [row.rowIndex, row.recognitionEvidence])),
           ).rows
         : outcome.products;
       const enrichedByRow = new Map(outcome.products.map((row) => [row.rowIndex, row] as const));

@@ -384,6 +384,34 @@ describe('targeted enrichment pipeline', () => {
     expect(products[0]!.autoImportEligible).toBe(false);
   });
 
+  it('propagates accepted enrichment facts into the semantic evidence fingerprint', async () => {
+    const call = vi.fn(async () => ({
+      facts: [
+        {
+          field: 'ingredients' as const,
+          value: 'Orzechy laskowe 100%.',
+          source: 'manufacturer' as const,
+          sourceUrl: 'https://manufacturer.example/hazelnut',
+        },
+        { field: 'manufacturer' as const, value: 'Exact Maker', source: 'manufacturer' as const },
+        { field: 'barcode' as const, value: '5902425088609', source: 'barcode_registry' as const },
+      ],
+      calls: 1,
+    }));
+    const input = toEnrichmentRows([row({ 'Product Name Original': 'Produkt X' })]);
+    const before = input[0]!.intelligence.recognition.evidenceFingerprint;
+    const { products } = await runIntimportEnrichment(input, call);
+    expect(products[0]!.recognitionEvidence).toMatchObject({
+      ingredients: 'Orzechy laskowe 100%.',
+      manufacturer: 'Exact Maker',
+      gtin: '5902425088609',
+    });
+    expect(products[0]!.recognitionEvidence.sourceUrls).toContain(
+      'https://manufacturer.example/hazelnut',
+    );
+    expect(products[0]!.recognition.evidenceFingerprint).not.toBe(before);
+  });
+
   it('lifts a properly sourced product over the import floor', async () => {
     const call = provider();
     // Same missing data, but the row cites its manufacturer's own domain.

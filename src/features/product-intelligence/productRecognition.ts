@@ -112,11 +112,13 @@ export interface ProductSemanticEvidence {
   brand: string | null;
   manufacturer: string | null;
   manufacturerCode: string | null;
+  gtin: string | null;
   productType: string | null;
   category: string | null;
   subcategory: string | null;
   variant: string | null;
   ingredients: string | null;
+  nutrition: string | null;
   description: string | null;
   dosage: string | null;
   technicalParameters: string | null;
@@ -144,11 +146,13 @@ export function canonicalizeProductSemanticEvidence(
     brand: semanticText(input.brand, 120),
     manufacturer: semanticText(input.manufacturer, 160),
     manufacturerCode: semanticText(input.manufacturerCode, 100),
+    gtin: semanticText(input.gtin, 20),
     productType: semanticText(input.productType, 80),
     category: semanticText(input.category, 160),
     subcategory: semanticText(input.subcategory, 160),
     variant: semanticText(input.variant, 160),
     ingredients: semanticText(input.ingredients, 2_000),
+    nutrition: semanticText(input.nutrition, 1_000),
     description: semanticText(input.description, 2_000),
     dosage: semanticText(input.dosage, 240),
     technicalParameters: semanticText(input.technicalParameters, 2_000),
@@ -189,6 +193,7 @@ export interface MapperSemanticCandidate {
   category: string | null;
   subcategory: string | null;
   brand: string | null;
+  gtin?: string | null;
 }
 
 export interface MapperSemanticCompatibility {
@@ -645,8 +650,8 @@ export function validateProductSemanticModelOutput(
   const dosageValue = dosageRaw.value;
   const reasonCodes = stringArray(raw.reasonCodes, /^[A-Z0-9_:-]{1,80}$/);
   const allowedEvidenceRefs = new Set([
-    'name', 'brand', 'manufacturer', 'manufacturerCode', 'productType', 'category',
-    'subcategory', 'variant', 'ingredients', 'description', 'dosage',
+    'name', 'brand', 'manufacturer', 'manufacturerCode', 'gtin', 'productType', 'category',
+    'subcategory', 'variant', 'ingredients', 'nutrition', 'description', 'dosage',
     'technicalParameters', 'sourceUrls',
   ]);
   const evidenceRefs = stringArray(raw.evidenceRefs, /^[A-Za-z][A-Za-z0-9]*$/);
@@ -779,11 +784,13 @@ export function evaluateMapperSemanticCompatibility(
     brand: candidate.brand,
     manufacturer: candidate.brand,
     manufacturerCode: candidate.ingredientId,
+    gtin: candidate.gtin ?? null,
     productType: 'mapper_reference',
     category: candidate.category,
     subcategory: candidate.subcategory,
     variant: null,
     ingredients: null,
+    nutrition: null,
     description: null,
     dosage: null,
     technicalParameters: null,

@@ -190,6 +190,7 @@ describe.runIf(existsSync(POLAND_FILE) && existsSync(ACCEPTED_OWNER_AUDIT))(
               category: donor.ingredient_category ?? null,
               subcategory: donor.ingredient_subcategory ?? null,
               brand: donor.brand ?? null,
+              gtin: donor.ean_code ?? null,
             })
           : null;
         const suspiciousReasons = [
@@ -279,11 +280,13 @@ describe.runIf(existsSync(POLAND_FILE) && existsSync(ACCEPTED_OWNER_AUDIT))(
           brand: row.brand ?? null,
           manufacturer: row.brand ?? null,
           manufacturerCode: row.ingredient_id,
+          gtin: row.ean_code ?? null,
           productType: 'mapper_reference',
           category: row.ingredient_category ?? null,
           subcategory: row.ingredient_subcategory ?? null,
           variant: null,
           ingredients: null,
+          nutrition: null,
           description: null,
           dosage: null,
           technicalParameters: null,
@@ -412,6 +415,6 @@ describe.runIf(existsSync(POLAND_FILE) && existsSync(ACCEPTED_OWNER_AUDIT))(
       expect(createHash('sha256').update(readFileSync(MAPPER_FILE)).digest('hex')).toBe(mapperBefore);
 
       console.log(`PRODUCT_RECOGNITION_V2_AUDIT ${JSON.stringify(summary, null, 2)}`);
-    });
+    }, 20_000);
   },
 );
