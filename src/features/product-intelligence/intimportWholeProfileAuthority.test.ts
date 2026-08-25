@@ -139,6 +139,23 @@ describe('INTIMPORT whole-profile match validation', () => {
 });
 
 describe('INTIMPORT trusted product-owned profile', () => {
+  const inulinRecognitionEvidence = {
+    name: 'Inulin powder',
+    brand: 'Test',
+    manufacturer: 'Test',
+    manufacturerCode: null,
+    gtin: '12345670',
+    productType: 'food ingredient',
+    category: 'fibre inulin powder',
+    subcategory: 'inulin',
+    variant: null,
+    ingredients: 'inulin',
+    nutrition: null,
+    description: 'powder ingredient for gelato',
+    dosage: null,
+    technicalParameters: null,
+    sourceUrls: [],
+  };
   const completeEvidence = {
     kind: 'normal_food' as const,
     fields: {
@@ -205,6 +222,7 @@ describe('INTIMPORT trusted product-owned profile', () => {
       matchInput: input(),
       declared: {},
       evidence: completeEvidence,
+      recognitionEvidence: inulinRecognitionEvidence,
       rows: [baseRow()],
     });
     expect(accepted?.productAccuracy).toBeGreaterThanOrEqual(85);
@@ -218,6 +236,7 @@ describe('INTIMPORT trusted product-owned profile', () => {
         ...completeEvidence,
         fields: { identity: 'web_search' as const },
       },
+      recognitionEvidence: inulinRecognitionEvidence,
       rows: [baseRow()],
     });
     expect(weak?.productAccuracy).toBeLessThan(85);
@@ -246,6 +265,26 @@ describe('INTIMPORT trusted product-owned profile', () => {
     });
     expect(profile('PR')?.carbonation).toEqual(profile('PM')?.carbonation);
     expect(profile('PR')?.carbonation.status).toBe('CARBONATED');
+  });
+
+  it('produces identical field truth, Product Accuracy, cap and reasons for identical PR/PM evidence', () => {
+    const profile = (origin: 'PR' | 'PM') => validateIntimportProductProfileProposal({
+      origin,
+      proposedMapperIngredientId: null,
+      matchInput: input(),
+      declared: {},
+      evidence: completeEvidence,
+      recognitionEvidence: inulinRecognitionEvidence,
+      rows: [baseRow()],
+    });
+    const pr = profile('PR');
+    const pm = profile('PM');
+
+    expect(pr?.fieldTruth).toEqual(pm?.fieldTruth);
+    expect(pr?.productAccuracy).toBe(pm?.productAccuracy);
+    expect(pr?.productAccuracyAssessment).toEqual(pm?.productAccuracyAssessment);
+    expect(pr?.criticalPhysicsBlockers).toEqual(pm?.criticalPhysicsBlockers);
+    expect(pr?.productAccuracyAssessment.criticalCapApplied).toBe(false);
   });
 
   it('ignores a forged browser final composition and publishes only the recomputed profile', () => {

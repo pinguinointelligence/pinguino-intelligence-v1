@@ -1019,6 +1019,8 @@ describe('INTIMPORT import handoff', () => {
       technicalAuthorityRequired: boolean;
       compositionReadiness?: string;
       productAccuracy?: number;
+      legacyEvidenceAccuracy?: number;
+      productAccuracyAssessment?: { authority?: string };
       fields: Record<string, { state: string; basis: string }>;
     };
 
@@ -1051,11 +1053,15 @@ describe('INTIMPORT import handoff', () => {
     expect(plan.engineUsable).toBe(0);
   });
 
-  it('keeps Product Accuracy separate from historical Engine profile admission', () => {
+  it('retains the legacy evidence score only as audit beside production Product Accuracy', () => {
     const entry = planIntimportImport([row('ESTIMATED_READY', false, 84.99)]).rows[0]!;
     expect(entry.state).toBe('READY_ESTIMATED');
     expect(entry.engineUsable).toBe(true);
-    expect(intelligenceOf(entry).productAccuracy).toBe(84.99);
+    expect(intelligenceOf(entry).legacyEvidenceAccuracy).toBe(84.99);
+    expect(intelligenceOf(entry).productAccuracy).toBeLessThan(85);
+    expect(intelligenceOf(entry).productAccuracyAssessment).toMatchObject({
+      authority: 'PRODUCT_PRODUCTION_ACCURACY_V1',
+    });
   });
 
   it('reports low Product Accuracy separately from profile and ProductBehavior readiness', () => {

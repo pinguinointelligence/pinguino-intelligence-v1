@@ -1,6 +1,9 @@
 /**
- * Canonical product-evidence confidence — ONE deterministic scorer shared by
- * every ingestion channel (Scanner, INTIMPORT, future manual input).
+ * Legacy product-evidence completeness score shared by every ingestion channel.
+ *
+ * This remains the deterministic enrichment/import routing signal. It is not
+ * the customer-facing Product Accuracy authority; that authority lives in
+ * `productProductionAccuracy.ts` and is persisted separately.
  *
  * DETERMINISTIC BY CONSTRUCTION. The number is computed from the evidence a
  * product actually carries — identity, GTIN, brand/manufacturer, quantity,

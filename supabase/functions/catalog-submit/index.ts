@@ -4,6 +4,7 @@ import { evidenceImageDimensionsAllowed } from '../_shared/evidenceImageDimensio
 import {
   INTIMPORT_PRODUCT_PROFILE_AUTHORITY,
   INTIMPORT_WHOLE_PROFILE_AUTHORITY,
+  finalizeProductProductionAccuracy,
   validateIntimportProductProfileProposal,
   type IntimportMapperAuthorityRow,
   type IntimportTrustedEvidenceProvenance,
@@ -1571,6 +1572,10 @@ Deno.serve(async (request) => {
         productProfile: serverProductProfileAuthority,
         behaviorRows: await loadMapperBehaviorAuthorityRows(service),
       });
+      serverProductProfileAuthority = finalizeProductProductionAccuracy(
+        serverProductProfileAuthority,
+        serverProductBehaviorAuthority,
+      );
     } catch {
       return json({ error: 'product_behavior_authority_unavailable' }, 503);
     }
@@ -1673,6 +1678,9 @@ Deno.serve(async (request) => {
     ...(serverProductProfileAuthority
       ? {
           productAccuracy: serverProductProfileAuthority.productAccuracy,
+          rawProductAccuracy:
+            serverProductProfileAuthority.productAccuracyAssessment.rawProductAccuracy,
+          productAccuracyAssessment: serverProductProfileAuthority.productAccuracyAssessment,
           readiness: serverProductProfileAuthority.readiness,
           engineUsable: serverProductProfileAuthority.engineUsable,
           missingEngineFields: serverProductProfileAuthority.missingEngineFields,

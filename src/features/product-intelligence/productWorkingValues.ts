@@ -176,6 +176,10 @@ export interface ProductWorkingValues {
   missingEngineFields: WorkingNumericField[];
   /** How POD/PAC can be resolved for this product — Engine-derived, not stored. */
   sweetnessPath: SweetnessPath;
+  /** Canonical blockers derived from the same Engine requirements and
+   * readiness verdict above. Product Accuracy consumes these; it never owns a
+   * second critical-field list. */
+  criticalPhysicsBlockers: string[];
   /** The Mapper profile this product is judged to be represented by, if any. */
   profileMatch: ProfileMatch | null;
   /** Engine-required fields whose value is an estimate. */
@@ -554,6 +558,17 @@ export function resolveProductWorkingValues(
   const technicalAuthorityRequired =
     input.technical && !input.technicalAuthority && valueReadiness !== 'REVIEW';
   const readiness: ProductReadiness = valueReadiness;
+  const criticalPhysicsBlockers = [
+    ...missingEngineFields.map((field) => `MISSING_${field.toUpperCase()}`),
+    ...(power.resolved ? [] : ['UNRESOLVED_SWEETENING_FREEZING_PATH']),
+    ...(plausibility.contradictedByDeclaration ? ['SELF_CONTRADICTORY_DECLARATION'] : []),
+    ...(readiness === 'REVIEW' &&
+    missingEngineFields.length === 0 &&
+    power.resolved &&
+    !plausibility.contradictedByDeclaration
+      ? ['PROFILE_CONFIDENCE_BELOW_ENGINE_READY_FLOOR']
+      : []),
+  ];
 
   const mapperReferences = [
     ...new Set(
@@ -572,6 +587,7 @@ export function resolveProductWorkingValues(
     engineReady: valueReadiness === 'READY' || valueReadiness === 'ESTIMATED_READY',
     missingEngineFields,
     sweetnessPath: power,
+    criticalPhysicsBlockers,
     profileMatch,
     estimatedEngineFields,
     mapperTiersUsed: inference.tiersUsed,

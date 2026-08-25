@@ -35,6 +35,12 @@ import {
   type ProductSemanticClassification,
   type ProductSemanticEvidence,
 } from '../../../src/features/product-intelligence/productRecognition.ts';
+import {
+  assessProductProductionAccuracy,
+  type ProductProductionAccuracyBehavior,
+  type ProductProductionAccuracyAssessment,
+} from '../../../src/features/product-intelligence/productProductionAccuracy.ts';
+import { classifyProspectiveProductBehavior } from '../../../src/features/product-intelligence/productBehaviorAuthority.ts';
 
 export const INTIMPORT_WHOLE_PROFILE_AUTHORITY = 'INTIMPORT_WHOLE_PROFILE_MATCH' as const;
 
@@ -82,6 +88,10 @@ export interface IntimportTrustedProductProfile {
   articleIdentity: 'PRODUCT_OWNED';
   origin: 'PR' | 'PM';
   productAccuracy: number;
+  /** Previous metadata-oriented score retained only for before/after audit and
+   * enrichment routing. It is never the customer-facing Product Accuracy. */
+  legacyEvidenceAccuracy: number;
+  productAccuracyAssessment: ProductProductionAccuracyAssessment;
   /** Exact, server-validated evidence used for the deterministic score. */
   evidence: ProductEvidenceInput;
   evidenceProvenance: Partial<Record<ProductEvidenceField, IntimportTrustedEvidenceProvenance>>;
@@ -137,9 +147,7 @@ export interface IntimportProductProfileProposalInput {
   /** Server-ledger validated model result. Browser values never enter here. */
   trustedRecognition?: ProductSemanticClassification | null;
   /** Supplied only by the server after ledger/source validation. */
-  evidenceProvenance?: Partial<
-    Record<ProductEvidenceField, IntimportTrustedEvidenceProvenance>
-  >;
+  evidenceProvenance?: Partial<Record<ProductEvidenceField, IntimportTrustedEvidenceProvenance>>;
   /** Server-derived exact assertions only. Browser product names never enter. */
   carbonationEvidence?: readonly CarbonationEvidence[];
   /** Deliberately ignored. It exists only so callers/tests can prove that a
@@ -197,11 +205,7 @@ export function validateIntimportWholeProfileProposal(
   const mapperFingerprint = fingerprintMapperRows(input.rows);
   const knowledge = buildMapperKnowledge(input.rows, mapperFingerprint);
   const match = findProfileMatch(input.matchInput, knowledge);
-  if (
-    match.confidence < PROFILE_MATCH_FLOOR ||
-    match.rejected !== null ||
-    match.basis === 'none'
-  ) {
+  if (match.confidence < PROFILE_MATCH_FLOOR || match.rejected !== null || match.basis === 'none') {
     return null;
   }
 
@@ -245,7 +249,8 @@ export function validateIntimportProductProfileProposal(
     ? classifyProductSemantics(input.recognitionEvidence)
     : null;
   const recognition =
-    input.trustedRecognition && deterministicRecognition &&
+    input.trustedRecognition &&
+    deterministicRecognition &&
     input.trustedRecognition.authority === 'PRODUCT_RECOGNITION_V2' &&
     input.trustedRecognition.evidenceFingerprint === deterministicRecognition.evidenceFingerprint
       ? input.trustedRecognition
@@ -258,12 +263,12 @@ export function validateIntimportProductProfileProposal(
     input.rows.filter(isBindableIntimportMapperTarget),
     mapperFingerprint,
   );
-  const assessment = assessProductConfidence(input.evidence);
+  const evidenceAssessment = assessProductConfidence(input.evidence);
   const resolved = resolveProductWorkingValues(
     {
       declared: input.declared,
       declaredBasis: input.declaredBasis,
-      declaredConfidence: assessment.confidence / 100,
+      declaredConfidence: evidenceAssessment.confidence / 100,
       identity: {
         name: input.matchInput.name,
         variant: input.matchInput.variant,
@@ -273,7 +278,7 @@ export function validateIntimportProductProfileProposal(
         barcode: input.matchInput.barcode,
         semantic: recognition,
       },
-      technical: recognition?.isTechnicalProduct ?? (input.matchInput.technical === true),
+      technical: recognition?.isTechnicalProduct ?? input.matchInput.technical === true,
       technicalAuthority: false,
     },
     knowledge,
@@ -304,26 +309,34 @@ export function validateIntimportProductProfileProposal(
       mapperFingerprint: truth.provenance.mapperFingerprint,
     };
   }
-  const criticalPhysicsBlockers = [
-    ...resolved.missingEngineFields.map((field) => `MISSING_${field.toUpperCase()}`),
-    ...(resolved.sweetnessPath.resolved
-      ? []
-      : ['UNRESOLVED_SWEETENING_FREEZING_PATH']),
-    ...(resolved.contradictedByDeclaration ? ['SELF_CONTRADICTORY_DECLARATION'] : []),
-    ...(resolved.readiness === 'REVIEW' &&
-    resolved.missingEngineFields.length === 0 &&
-    resolved.sweetnessPath.resolved &&
-    !resolved.contradictedByDeclaration
-      ? ['PROFILE_CONFIDENCE_BELOW_ENGINE_READY_FLOOR']
-      : []),
-  ];
+  const criticalPhysicsBlockers = [...resolved.criticalPhysicsBlockers];
+  const prospectiveBehavior = classifyProspectiveProductBehavior({
+    kind: input.evidence.kind,
+    engineUsable: resolved.engineReady,
+    profileMatch: resolved.profileMatch,
+    recognition,
+    criticalPhysicsBlockers,
+  });
+  const productAccuracyAssessment = assessProductProductionAccuracy({
+    evidence: input.evidence,
+    evidenceProvenance: input.evidenceProvenance,
+    fieldTruth,
+    mapperWholeProfileSimilarity: acceptedMatch?.confidence ?? null,
+    recognition,
+    engineUsable: resolved.engineReady,
+    criticalPhysicsBlockers,
+    sweetnessPath: resolved.sweetnessPath,
+    behavior: prospectiveBehavior,
+  });
 
   return {
     authority: PRODUCT_PROFILE_AUTHORITY,
     validationMode: 'server_recomputed_product_profile',
     articleIdentity: 'PRODUCT_OWNED',
     origin: input.origin ?? 'PR',
-    productAccuracy: assessment.confidence,
+    productAccuracy: productAccuracyAssessment.productAccuracy,
+    legacyEvidenceAccuracy: evidenceAssessment.confidence,
+    productAccuracyAssessment,
     evidence: {
       ...input.evidence,
       fields: { ...input.evidence.fields },
@@ -336,8 +349,8 @@ export function validateIntimportProductProfileProposal(
     // handling, while Engine admission is decided by the resolved critical
     // physical profile. Do not fold the aggregate evidence score into physics.
     engineUsable: resolved.engineReady,
-    criticalReadiness: assessment.criticalReadiness,
-    missingCritical: [...assessment.missingCritical],
+    criticalReadiness: evidenceAssessment.criticalReadiness,
+    missingCritical: [...evidenceAssessment.missingCritical],
     missingEngineFields: [...resolved.missingEngineFields],
     criticalPhysicsBlockers,
     sweetnessPath: { ...resolved.sweetnessPath },
@@ -362,11 +375,38 @@ export function validateIntimportProductProfileProposal(
       acceptedMatch && acceptedMatch.basis !== 'none' ? acceptedMatch.basis : null,
     mapperCandidatesBeforeFilter: [...(resolved.profileMatch?.candidatesBeforeFilter ?? [])],
     mapperCandidatesAfterFilter: [...(resolved.profileMatch?.candidatesAfterFilter ?? [])],
-    mapperRejectedCandidates: (resolved.profileMatch?.rejectedCandidates ?? []).map((candidate) => ({
-      ingredientId: candidate.ingredientId,
-      reasonCodes: [...candidate.reasonCodes],
-    })),
+    mapperRejectedCandidates: (resolved.profileMatch?.rejectedCandidates ?? []).map(
+      (candidate) => ({
+        ingredientId: candidate.ingredientId,
+        reasonCodes: [...candidate.reasonCodes],
+      }),
+    ),
     mapperFingerprint,
     recognition,
+  };
+}
+
+/** Freeze the customer-facing Product Accuracy against the exact ProductBehavior
+ * authority that will be persisted. PR and PM both call this after the shared
+ * server behavior validation; no origin-specific weights or gates exist. */
+export function finalizeProductProductionAccuracy<T extends IntimportTrustedProductProfile>(
+  profile: T,
+  behavior: ProductProductionAccuracyBehavior,
+): T {
+  const productAccuracyAssessment = assessProductProductionAccuracy({
+    evidence: profile.evidence,
+    evidenceProvenance: profile.evidenceProvenance,
+    fieldTruth: profile.fieldTruth,
+    mapperWholeProfileSimilarity: profile.mapperSimilarity,
+    recognition: profile.recognition,
+    engineUsable: profile.engineUsable,
+    criticalPhysicsBlockers: profile.criticalPhysicsBlockers,
+    sweetnessPath: profile.sweetnessPath,
+    behavior,
+  });
+  return {
+    ...profile,
+    productAccuracy: productAccuracyAssessment.productAccuracy,
+    productAccuracyAssessment,
   };
 }

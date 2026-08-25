@@ -87,6 +87,8 @@ export interface ProductIngestResult extends CatalogSubmissionResult {
   ingestEventId: string | null;
   productCode?: string | null;
   productAccuracy?: number;
+  rawProductAccuracy?: number;
+  productAccuracyAssessment?: Record<string, unknown>;
   readiness?: string;
   engineUsable?: boolean;
   missingEngineFields?: string[];

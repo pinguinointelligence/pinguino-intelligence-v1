@@ -473,8 +473,11 @@ describe('targeted enrichment pipeline', () => {
       rows: [],
     });
     expect(trusted?.evidence.fields.ingredients).toBe('manufacturer');
-    expect(trusted?.productAccuracy).toBe(enriched.assessment.confidence);
-    expect(trusted?.productAccuracy).toBeGreaterThan(initialAccuracy);
+    expect(trusted?.legacyEvidenceAccuracy).toBe(enriched.assessment.confidence);
+    expect(trusted?.legacyEvidenceAccuracy).toBeGreaterThan(initialAccuracy);
+    expect(trusted?.productAccuracyAssessment.authority).toBe('PRODUCT_PRODUCTION_ACCURACY_V1');
+    expect(trusted?.productAccuracy).toBeLessThanOrEqual(84);
+    expect(trusted?.productAccuracyAssessment.criticalBlockers.length).toBeGreaterThan(0);
   });
 
   it('leaves a product that stays under 85 in review', async () => {

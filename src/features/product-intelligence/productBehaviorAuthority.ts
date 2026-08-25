@@ -1,8 +1,4 @@
-import {
-  PROFILE_MATCH_FLOOR,
-  profileDonor,
-  type ProfileMatch,
-} from './mapperValueInference.ts';
+import { PROFILE_MATCH_FLOOR, profileDonor, type ProfileMatch } from './mapperValueInference.ts';
 import type {
   ProductIntendedUsageRole,
   ProductSemanticClassification,
@@ -82,6 +78,10 @@ export interface TrustedProductBehaviorAuthority {
 
 export interface ProductBehaviorProductProfile {
   engineUsable: boolean;
+  /** Product-owned physics blockers produced by the shared PR/PM completion
+   * authority. Their presence proves that a profile exists even when it must
+   * remain fail-closed for Engine use. */
+  criticalPhysicsBlockers?: readonly string[];
   evidence: { kind: 'normal_food' | 'technical' };
   profileReferenceMapperIngredientId: string | null;
   mapperFingerprint: string;
@@ -105,12 +105,16 @@ export function classifyProspectiveProductBehavior(input: {
   engineUsable: boolean;
   profileMatch: ProfileMatch | null;
   recognition?: ProductSemanticClassification | null;
+  criticalPhysicsBlockers?: readonly string[];
 }): ProspectiveProductBehaviorAuthority {
   const intendedUsageRole = input.recognition?.intendedUsageRole ?? 'BASE_ONLY';
   const dosageInterpretation = input.recognition?.dosage ?? null;
-  const baseRequested = intendedUsageRole === 'BASE_ONLY' || intendedUsageRole === 'BASE_AND_TOPPING';
-  const toppingRequested = intendedUsageRole === 'TOPPING_ONLY' || intendedUsageRole === 'BASE_AND_TOPPING';
-  if (!input.engineUsable) {
+  const baseRequested =
+    intendedUsageRole === 'BASE_ONLY' || intendedUsageRole === 'BASE_AND_TOPPING';
+  const toppingRequested =
+    intendedUsageRole === 'TOPPING_ONLY' || intendedUsageRole === 'BASE_AND_TOPPING';
+  if (!input.engineUsable && baseRequested) {
+    const profileReasons = [...new Set(input.criticalPhysicsBlockers ?? [])];
     return {
       classificationOutcome: 'unknown_requires_review',
       baseRecipeEligible: false,
@@ -118,10 +122,14 @@ export function classifyProspectiveProductBehavior(input: {
       intendedUsageRole,
       dosageInterpretation,
       referenceMapperIngredientId: null,
-      classificationReasonCodes: ['product_owned_profile_missing'],
+      classificationReasonCodes:
+        profileReasons.length > 0 ? profileReasons : ['product_owned_profile_incomplete'],
     };
   }
-  if (input.recognition?.isTechnicalProduct === true || (!input.recognition && input.kind === 'technical')) {
+  if (
+    input.recognition?.isTechnicalProduct === true ||
+    (!input.recognition && input.kind === 'technical')
+  ) {
     return {
       classificationOutcome: 'blocked',
       baseRecipeEligible: false,
@@ -186,7 +194,7 @@ export function classifyProspectiveProductBehavior(input: {
   if (
     reference.is_active === false ||
     (baseRequested && reference.approved_for_base !== true) ||
-    reference.approved_for_engines !== true ||
+    (baseRequested && reference.approved_for_engines !== true) ||
     !verifiedPrefix(reference.verification_status)
   ) {
     return {
@@ -298,16 +306,26 @@ export function validateProductBehaviorAuthority(input: {
   const profile = input.productProfile;
   const recognition = profile.recognition ?? null;
   const intendedUsageRole = recognition?.intendedUsageRole ?? 'BASE_ONLY';
-  const baseRequested = intendedUsageRole === 'BASE_ONLY' || intendedUsageRole === 'BASE_AND_TOPPING';
-  const toppingRequested = intendedUsageRole === 'TOPPING_ONLY' || intendedUsageRole === 'BASE_AND_TOPPING';
-  if (!profile.engineUsable) {
+  const baseRequested =
+    intendedUsageRole === 'BASE_ONLY' || intendedUsageRole === 'BASE_AND_TOPPING';
+  const toppingRequested =
+    intendedUsageRole === 'TOPPING_ONLY' || intendedUsageRole === 'BASE_AND_TOPPING';
+  if (!profile.engineUsable && baseRequested) {
+    const profileReasons = [
+      ...new Set(
+        (profile.criticalPhysicsBlockers ?? []).filter((reason) => reason.trim().length > 0),
+      ),
+    ];
     return unresolvedAuthority({
       profile,
       outcome: 'unknown_requires_review',
-      reasons: ['product_owned_profile_missing'],
+      reasons: profileReasons.length > 0 ? profileReasons : ['product_owned_profile_incomplete'],
     });
   }
-  if (recognition?.isTechnicalProduct === true || (!recognition && profile.evidence.kind === 'technical')) {
+  if (
+    recognition?.isTechnicalProduct === true ||
+    (!recognition && profile.evidence.kind === 'technical')
+  ) {
     return unresolvedAuthority({
       profile,
       outcome: 'blocked',

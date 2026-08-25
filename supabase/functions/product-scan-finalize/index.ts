@@ -6,6 +6,7 @@ import {
   stableJson,
 } from '../_shared/productScanner.ts';
 import {
+  finalizeProductProductionAccuracy,
   validateIntimportProductProfileProposal,
   type IntimportMapperAuthorityRow,
   type IntimportTrustedProductProfile,
@@ -601,6 +602,10 @@ Deno.serve(async (request) => {
       productProfile: productProfileAuthority,
       behaviorRows: await loadMapperBehaviorAuthorityRows(service),
     });
+    productProfileAuthority = finalizeProductProductionAccuracy(
+      productProfileAuthority,
+      productBehaviorAuthority,
+    );
   } catch {
     await releaseCreationSlot();
     return json({ error: 'pm_product_behavior_unavailable' }, 503);
@@ -711,6 +716,8 @@ Deno.serve(async (request) => {
     ...result,
     productBehaviorAuthority,
     productAccuracy: productProfileAuthority.productAccuracy,
+    rawProductAccuracy: productProfileAuthority.productAccuracyAssessment.rawProductAccuracy,
+    productAccuracyAssessment: productProfileAuthority.productAccuracyAssessment,
     readiness: productProfileAuthority.readiness,
     engineUsable: productProfileAuthority.engineUsable,
     missingEngineFields: productProfileAuthority.missingEngineFields,

@@ -271,6 +271,78 @@ describe('La Chocolatera two-photo rounding and semantic handoff regression', ()
       authority?.mapperCandidatesAfterFilter.length ?? 0,
     );
     expect(authority?.mapperCandidatesAfterFilter).toContain('PI-ING-001313');
+    expect(authority?.productAccuracyAssessment.components.nutrition.earnedPoints).toBeGreaterThan(
+      35,
+    );
+    expect(authority?.productAccuracyAssessment.components.ean.earnedPoints).toBe(0);
+    expect(authority?.productAccuracyAssessment.components.manufacturer.earnedPoints).toBe(0);
+    expect(authority?.productAccuracyAssessment.components.country.earnedPoints).toBe(0);
+    expect(authority?.productAccuracyAssessment.components.package.earnedPoints).toBe(1);
+    expect(authority?.productAccuracyAssessment.fields.water_percent?.creditFactor).toBe(0.8);
+    expect(authority?.productAccuracy).toBeLessThan(85);
+    expect(authority?.productAccuracyAssessment.criticalBlockers).toContain(
+      'UNRESOLVED_SWEETENING_FREEZING_PATH',
+    );
+
+    const withoutAllergenScore = validateIntimportProductProfileProposal({
+      origin: 'PM',
+      proposedMapperIngredientId: null,
+      recognitionEvidence: semantic,
+      matchInput: {
+        name: semantic.name,
+        variant: semantic.variant,
+        brand: semantic.brand,
+        category: semantic.category,
+        subcategory: semantic.subcategory,
+        barcode: semantic.gtin,
+        knownMacros: {
+          fat_percent: 16,
+          protein_percent: 25.5,
+          carbohydrate_percent: 16.3,
+          total_sugars_percent: 0.7,
+          fiber_percent: 31.7,
+          salt_percent: 0.03,
+        },
+        technical: false,
+      },
+      declared,
+      declaredBasis: Object.fromEntries(
+        Object.keys(declared).map((field) => [field, 'product_declared']),
+      ),
+      evidence: {
+        kind: 'normal_food',
+        fields: {
+          identity: 'label',
+          brand: 'label',
+          variant: 'label',
+          netQuantity: 'label',
+          ingredients: 'label',
+          energyKcal: 'label',
+          fat: 'label',
+          carbohydrate: 'label',
+          protein: 'label',
+          salt: 'label',
+        },
+        validatedBarcode: false,
+        exactCanonicalMatch: false,
+        mapperFamilyMatch: false,
+        materialConflicts: [],
+      },
+      rows: rows as unknown as IntimportMapperAuthorityRow[],
+    });
+    expect(withoutAllergenScore?.productAccuracy).toBe(authority?.productAccuracy);
+    if (process.env.PRODUCT_ACCURACY_REPORT === '1') {
+      console.log(
+        `PRODUCT_ACCURACY_COCOA ${JSON.stringify({
+          legacy: authority?.legacyEvidenceAccuracy,
+          raw: authority?.productAccuracyAssessment.rawProductAccuracy,
+          final: authority?.productAccuracy,
+          capped: authority?.productAccuracyAssessment.criticalCapApplied,
+          blockers: authority?.productAccuracyAssessment.criticalBlockers,
+          components: authority?.productAccuracyAssessment.components,
+        })}`,
+      );
+    }
   });
 });
 

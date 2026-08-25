@@ -101,6 +101,8 @@ const productProfile = (
   articleIdentity: 'PRODUCT_OWNED',
   origin: 'PR',
   productAccuracy: 92,
+  legacyEvidenceAccuracy: 92,
+  productAccuracyAssessment: {} as IntimportTrustedProductProfile['productAccuracyAssessment'],
   evidence: {
     kind: 'normal_food',
     fields: { identity: 'source_file', ingredients: 'source_file' },
@@ -186,16 +188,36 @@ const profileMatch = (overrides: Partial<ProfileMatch> = {}): ProfileMatch => ({
 
 describe('prospective ProductBehavior authority', () => {
   it('publishes one topping role contract for a manufacturer-confirmed variegato', () => {
-    expect(classifyProspectiveProductBehavior({
-      kind: 'normal_food',
-      engineUsable: true,
-      profileMatch: profileMatch(),
-      recognition: variegatoRecognition,
-    })).toMatchObject({
+    expect(
+      classifyProspectiveProductBehavior({
+        kind: 'normal_food',
+        engineUsable: true,
+        profileMatch: profileMatch(),
+        recognition: variegatoRecognition,
+      }),
+    ).toMatchObject({
       classificationOutcome: 'classified',
       intendedUsageRole: 'TOPPING_ONLY',
       baseRecipeEligible: false,
       toppingEligible: true,
+    });
+  });
+
+  it('does not apply BASE freezing readiness to a TOPPING_ONLY role', () => {
+    expect(
+      classifyProspectiveProductBehavior({
+        kind: 'normal_food',
+        engineUsable: false,
+        profileMatch: profileMatch(),
+        recognition: variegatoRecognition,
+        criticalPhysicsBlockers: ['UNRESOLVED_SWEETENING_FREEZING_PATH'],
+      }),
+    ).toMatchObject({
+      classificationOutcome: 'classified',
+      intendedUsageRole: 'TOPPING_ONLY',
+      baseRecipeEligible: false,
+      toppingEligible: true,
+      classificationReasonCodes: [],
     });
   });
 
@@ -254,12 +276,14 @@ describe('prospective ProductBehavior authority', () => {
 
   it('does not classify an otherwise complete product while required semantics remain unresolved', () => {
     expect(unresolvedFormRecognition.modelRequired).toBe(true);
-    expect(classifyProspectiveProductBehavior({
-      kind: 'normal_food',
-      engineUsable: true,
-      profileMatch: profileMatch(),
-      recognition: unresolvedFormRecognition,
-    })).toMatchObject({
+    expect(
+      classifyProspectiveProductBehavior({
+        kind: 'normal_food',
+        engineUsable: true,
+        profileMatch: profileMatch(),
+        recognition: unresolvedFormRecognition,
+      }),
+    ).toMatchObject({
       classificationOutcome: 'unknown_requires_review',
       baseRecipeEligible: false,
       toppingEligible: false,
@@ -284,6 +308,31 @@ describe('prospective ProductBehavior authority', () => {
 });
 
 describe('server-owned immutable ProductBehavior authority', () => {
+  it('reports the persisted PM profile blocker instead of claiming the profile is missing', () => {
+    const authority = validateProductBehaviorAuthority({
+      productProfile: productProfile({
+        origin: 'PM',
+        engineUsable: false,
+        criticalReadiness: false,
+        criticalPhysicsBlockers: ['UNRESOLVED_SWEETENING_FREEZING_PATH'],
+        sweetnessPath: {
+          kind: 'unresolved',
+          resolved: false,
+          reason: 'widmo cukrow nie pokrywa zadeklarowanych cukrow',
+        },
+      }),
+      behaviorRows: [behaviorRow()],
+    });
+
+    expect(authority).toMatchObject({
+      classificationOutcome: 'unknown_requires_review',
+      baseRecipeEligible: false,
+      runtimeMapperIngredientId: null,
+      classificationReasonCodes: ['UNRESOLVED_SWEETENING_FREEZING_PATH'],
+    });
+    expect(authority.classificationReasonCodes).not.toContain('product_owned_profile_missing');
+  });
+
   it('keeps the same topping-only role at the server authority boundary', () => {
     const authority = validateProductBehaviorAuthority({
       productProfile: productProfile({ recognition: variegatoRecognition }),
@@ -297,6 +346,24 @@ describe('server-owned immutable ProductBehavior authority', () => {
       runtimeMapperIngredientId: null,
     });
     expect(authority.profilePermissions).toMatchObject({ BASE_RECIPE: false, TOPPING: true });
+  });
+
+  it('keeps TOPPING_ONLY classified when only BASE physics is unresolved', () => {
+    const authority = validateProductBehaviorAuthority({
+      productProfile: productProfile({
+        engineUsable: false,
+        recognition: variegatoRecognition,
+        criticalPhysicsBlockers: ['UNRESOLVED_SWEETENING_FREEZING_PATH'],
+      }),
+      behaviorRows: [behaviorRow()],
+    });
+    expect(authority).toMatchObject({
+      classificationOutcome: 'classified',
+      intendedUsageRole: 'TOPPING_ONLY',
+      baseRecipeEligible: false,
+      toppingEligible: true,
+      runtimeMapperIngredientId: null,
+    });
   });
 
   it('copies semantic behavior only and keeps Mapper out of runtime identity/composition', () => {

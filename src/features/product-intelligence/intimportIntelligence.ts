@@ -46,9 +46,7 @@ import {
   type CarbonationEvidence,
   type CarbonationProfile,
 } from '@/data/products/carbonation';
-import {
-  productBehaviorModuleGate,
-} from './productBehaviorAccess';
+import { productBehaviorModuleGate } from './productBehaviorAccess';
 import type { ProductBehaviorSnapshot } from './contracts';
 import {
   classifyProspectiveProductBehavior,
@@ -59,6 +57,11 @@ import {
   type ProductSemanticClassification,
   type ProductSemanticEvidence,
 } from './productRecognition';
+import {
+  assessProductProductionAccuracy,
+  productionAccuracyTruthFromWorkingFields,
+  type ProductProductionAccuracyAssessment,
+} from './productProductionAccuracy';
 
 /** Canonical lookups the caller supplies. Kept injected so this stays pure. */
 export interface IntimportCanonicalIndex {
@@ -84,6 +87,9 @@ export interface IntimportProductIntelligence {
   exactCanonicalMatch: boolean;
   existingProductId: string | null;
   assessment: ProductConfidenceAssessment;
+  /** Customer-facing production usefulness score. `assessment` above remains
+   * only the legacy evidence/enrichment router for before/after audit. */
+  productionAccuracy: ProductProductionAccuracyAssessment;
   /** How strong the row's own declared source actually is (§9). */
   sourceAuthority: SourceAuthorityAssessment;
   /**
@@ -142,9 +148,7 @@ export interface IntimportProductIntelligence {
   };
 }
 
-function productKind(
-  recognition: ProductSemanticClassification,
-): ProductKind {
+function productKind(recognition: ProductSemanticClassification): ProductKind {
   return recognition.isTechnicalProduct ? 'technical' : 'normal_food';
 }
 
@@ -168,7 +172,7 @@ export function semanticEvidenceFromIntimportCandidate(
     ['sugars_g', candidate.source['Sugars g']],
     ['protein_g', candidate.source['Protein g']],
     ['salt_g', candidate.source['Salt g']],
-  ].flatMap(([label, value]) => value ? [`${label}:${value}`] : []);
+  ].flatMap(([label, value]) => (value ? [`${label}:${value}`] : []));
   return {
     name: candidate.displayName,
     brand: candidate.source.Brand,
@@ -179,7 +183,8 @@ export function semanticEvidenceFromIntimportCandidate(
     category: candidate.sourceCategory,
     subcategory: candidate.sourceSubcategory,
     variant: candidate.source['Variant Original'] ?? candidate.source['Variant English'],
-    ingredients: candidate.source['Ingredients Original'] ?? candidate.source['Ingredients English'],
+    ingredients:
+      candidate.source['Ingredients Original'] ?? candidate.source['Ingredients English'],
     nutrition: nutrition.length > 0 ? nutrition.join(' | ') : null,
     description: labelledTechnicalValue(technical, 'Opis') ?? candidate.source.Notes,
     dosage: candidate.source['Professional Dosage'],
@@ -375,7 +380,8 @@ export function assessIntimportProduct(
   recognitionOverride: ProductSemanticClassification | null = null,
   recognitionEvidenceOverride: ProductSemanticEvidence | null = null,
 ): IntimportProductIntelligence {
-  const recognitionEvidence = recognitionEvidenceOverride ?? semanticEvidenceFromIntimportCandidate(candidate);
+  const recognitionEvidence =
+    recognitionEvidenceOverride ?? semanticEvidenceFromIntimportCandidate(candidate);
   const deterministicRecognition = classifyProductSemantics(recognitionEvidence);
   const recognition =
     recognitionOverride?.evidenceFingerprint === deterministicRecognition.evidenceFingerprint
@@ -488,21 +494,32 @@ export function assessIntimportProduct(
           'fiber_percent',
           'salt_percent',
         ] as const
-      ).flatMap((field) =>
-        typeof declared[field] === 'number' ? [[field, declared[field]]] : [],
-      ),
+      ).flatMap((field) => (typeof declared[field] === 'number' ? [[field, declared[field]]] : [])),
     ),
     technical: kind === 'technical',
     semantic: recognition,
   };
-  const carbonation = classifyCarbonation(
-    intimportCarbonationEvidence(candidate, sourceAuthority),
-  );
+  const carbonation = classifyCarbonation(intimportCarbonationEvidence(candidate, sourceAuthority));
   const productBehaviorAuthority = classifyProspectiveProductBehavior({
     kind,
     engineUsable: workingValues?.engineReady === true,
     profileMatch: workingValues?.profileMatch ?? null,
     recognition,
+    criticalPhysicsBlockers: workingValues?.criticalPhysicsBlockers ?? [],
+  });
+  const productionAccuracy = assessProductProductionAccuracy({
+    evidence,
+    fieldTruth: workingValues ? productionAccuracyTruthFromWorkingFields(workingValues.fields) : {},
+    mapperWholeProfileSimilarity: workingValues?.profileMatch?.confidence ?? null,
+    recognition,
+    engineUsable: workingValues?.engineReady === true,
+    criticalPhysicsBlockers: workingValues?.criticalPhysicsBlockers ?? ['PRODUCT_ENGINE_NOT_READY'],
+    sweetnessPath: workingValues?.sweetnessPath ?? {
+      kind: 'unresolved',
+      resolved: false,
+      reason: 'brak profilu roboczego',
+    },
+    behavior: productBehaviorAuthority,
   });
 
   const profileMatch = workingValues?.profileMatch ?? null;
@@ -531,6 +548,7 @@ export function assessIntimportProduct(
     exactCanonicalMatch,
     existingProductId,
     assessment,
+    productionAccuracy,
     sourceAuthority,
     researchIdentity: {
       brand: candidate.source.Brand,
@@ -617,13 +635,15 @@ export function runIntimportLocalIntelligence(
   // INVALID rows have no usable identity and are not products to research.
   const rows = candidates
     .filter((candidate) => candidate.state !== 'INVALID' && candidate.state !== 'DUPLICATE')
-    .map((candidate) => assessIntimportProduct(
-      candidate,
-      index,
-      mapper,
-      recognitionOverrides.get(candidate.rowIndex) ?? null,
-      recognitionEvidenceOverrides.get(candidate.rowIndex) ?? null,
-    ));
+    .map((candidate) =>
+      assessIntimportProduct(
+        candidate,
+        index,
+        mapper,
+        recognitionOverrides.get(candidate.rowIndex) ?? null,
+        recognitionEvidenceOverrides.get(candidate.rowIndex) ?? null,
+      ),
+    );
 
   const count = (route: EnrichmentRoute) => rows.filter((row) => row.route === route).length;
   const enrichable = rows.filter((row) => !NO_WEB_ROUTES.has(row.route));
@@ -638,8 +658,7 @@ export function runIntimportLocalIntelligence(
       webRequired: count('WEB_REQUIRED'),
       reviewRequired: count('REVIEW_REQUIRED'),
       identityConflicts: candidates.filter(
-        (candidate) =>
-          candidate.state === 'REVIEW_REQUIRED' && candidate.duplicateOfRow !== null,
+        (candidate) => candidate.state === 'REVIEW_REQUIRED' && candidate.duplicateOfRow !== null,
       ).length,
       familyMatches: rows.filter((row) => row.familyApplied).length,
       // One targeted call per genuinely missing field, capped per product.
@@ -699,6 +718,39 @@ export interface IntimportImportPlan {
   engineUsable: number;
 }
 
+function productionAccuracyOf(
+  row: IntimportProductIntelligence,
+): ProductProductionAccuracyAssessment {
+  if (row.productionAccuracy) return row.productionAccuracy;
+  const values = row.workingValues;
+  const criticalPhysicsBlockers =
+    values?.criticalPhysicsBlockers ??
+    (values?.engineReady === true ? [] : ['PRODUCT_ENGINE_NOT_READY']);
+  const behavior =
+    row.productBehaviorAuthority ??
+    classifyProspectiveProductBehavior({
+      kind: row.evidence.kind,
+      engineUsable: values?.engineReady === true,
+      profileMatch: values?.profileMatch ?? null,
+      recognition: row.recognition ?? null,
+      criticalPhysicsBlockers,
+    });
+  return assessProductProductionAccuracy({
+    evidence: row.evidence,
+    fieldTruth: values ? productionAccuracyTruthFromWorkingFields(values.fields) : {},
+    mapperWholeProfileSimilarity: values?.profileMatch?.confidence ?? null,
+    recognition: row.recognition,
+    engineUsable: values?.engineReady === true,
+    criticalPhysicsBlockers,
+    sweetnessPath: values?.sweetnessPath ?? {
+      kind: 'unresolved',
+      resolved: false,
+      reason: 'brak profilu roboczego',
+    },
+    behavior,
+  });
+}
+
 export interface IntimportReadinessSummary {
   sourceAnalyzed: number;
   workingProfileComplete: number;
@@ -744,11 +796,12 @@ export function planIntimportImport(
 
   for (const row of rows) {
     const values = row.workingValues;
+    const productionAccuracy = productionAccuracyOf(row);
     // Composition decides. A professional product is not held back for missing
     // dosage or process — those are informational and carry no authority.
-    // Product Accuracy remains independent routing/enrichment information; the
-    // historical Engine contract admits the product-owned profile on resolved
-    // critical physics, not on the aggregate Product Accuracy score.
+    // Engine admission remains owned by canonical physics/ProductBehavior. The
+    // customer-facing Product Accuracy reports the same requirements and caps at
+    // 84 when one is unresolved; it is explanatory, never a bypass permission.
     const state: ImportedProductState = !values
       ? 'REVIEW'
       : values.valueReadiness === 'READY'
@@ -798,8 +851,10 @@ export function planIntimportImport(
         version: 2,
         state,
         engineUsable: state === 'READY_VERIFIED' || state === 'READY_ESTIMATED',
-        productAccuracy: row.assessment.confidence,
-        criticalReadiness: row.assessment.criticalReadiness,
+        productAccuracy: productionAccuracy.productAccuracy,
+        legacyEvidenceAccuracy: row.assessment.confidence,
+        productAccuracyAssessment: productionAccuracy,
+        criticalReadiness: productionAccuracy.criticalBlockers.length === 0,
         // Two independent facts, deliberately never folded together.
         compositionReadiness: values?.valueReadiness ?? 'REVIEW',
         // INFORMATIONAL ONLY (owner decision, 2026-08-23). Recorded for audit,
@@ -878,10 +933,10 @@ export function summarizeIntimportReadiness(
     const lineId = `intimport-source:${planned.sourceProductId ?? planned.rowIndex}`;
     const gate = productBehaviorModuleGate(behaviorSnapshots, 'BASE_RECIPE', [lineId]);
     const prospective = rows[index]?.productBehaviorAuthority;
-    const accepted = gate.ready || (
-      prospective?.classificationOutcome === 'classified' &&
-      (prospective.baseRecipeEligible === true || prospective.toppingEligible === true)
-    );
+    const accepted =
+      gate.ready ||
+      (prospective?.classificationOutcome === 'classified' &&
+        (prospective.baseRecipeEligible === true || prospective.toppingEligible === true));
     if (accepted) {
       productBehaviorAuthorityPass += 1;
       engineReady += 1;
@@ -908,7 +963,7 @@ export function summarizeIntimportReadiness(
         row.workingValues?.valueReadiness === 'ESTIMATED_READY',
     ).length,
     productAccuracyPass: rows.filter(
-      (row) => row.assessment.confidence >= AUTO_IMPORT_FLOOR,
+      (row) => productionAccuracyOf(row).productAccuracy >= AUTO_IMPORT_FLOOR,
     ).length,
     criticalPhysicsResolved: rows.filter((row) => row.workingValues?.engineReady === true).length,
     productProfileReady: plan.engineUsable,
