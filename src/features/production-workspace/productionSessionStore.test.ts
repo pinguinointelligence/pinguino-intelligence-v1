@@ -136,6 +136,40 @@ describe('production session store', () => {
     });
   });
 
+  it('upgrades a persisted v6 session without losing the accepted degassing state', () => {
+    start();
+    const current = structuredClone(useProductionSessionStore.getState().session!);
+    const legacy = structuredClone(current) as typeof current & {
+      lastDeviationDecision?: typeof current.lastDeviationDecision;
+    };
+    Reflect.deleteProperty(legacy, 'lastDeviationDecision');
+    for (const line of [...legacy.lines, ...legacy.addonLines]) {
+      Reflect.deleteProperty(line, 'draftActualEdited');
+    }
+    legacy.degassingRequired = true;
+    legacy.degassingAcknowledged = true;
+    legacy.degassingAcknowledgedAt = '2026-08-25T09:00:00.000Z';
+    legacy.carbonatedProductIds = ['carbonated-product-1'];
+
+    const migrated = migrateProductionSessionStore(
+      { session: legacy, archivedSessions: [] },
+      6,
+    ) as { session: typeof current };
+
+    expect(migrated.session).toMatchObject({
+      lastDeviationDecision: null,
+      degassingRequired: true,
+      degassingAcknowledged: true,
+      degassingAcknowledgedAt: '2026-08-25T09:00:00.000Z',
+      carbonatedProductIds: ['carbonated-product-1'],
+    });
+    expect(
+      [...migrated.session.lines, ...migrated.session.addonLines].every(
+        (line) => line.draftActualEdited === false,
+      ),
+    ).toBe(true);
+  });
+
   it('does not expose a browser action that can apply a local Rescue candidate', () => {
     start();
     expect('applyVerifiedRescue' in useProductionSessionStore.getState()).toBe(false);

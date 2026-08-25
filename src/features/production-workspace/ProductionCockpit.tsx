@@ -274,10 +274,10 @@ export function ProductionCockpit({
               ? 'Uruchamianie partii…'
               : production.degassingRequired && !production.degassingAcknowledged
                 ? 'Najpierw potwierdź odgazowanie'
-              : (production.heatInformation?.length ?? 0) > 0 &&
-                  !production.heatInformationAcknowledged
-                ? 'Najpierw potwierdź informację'
-                : 'Rozpocznij partię'}
+                : (production.heatInformation?.length ?? 0) > 0 &&
+                    !production.heatInformationAcknowledged
+                  ? 'Najpierw potwierdź informację'
+                  : 'Rozpocznij partię'}
           </button>
           {production.sessionStartError ? (
             <p className="mt-2 text-xs leading-relaxed text-status-error" role="alert">

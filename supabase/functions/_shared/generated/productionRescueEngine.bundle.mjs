@@ -7379,6 +7379,7 @@ function createProductionSession(input) {
 		durableRescueAcceptedAt: null,
 		durableRescueRevision: 0,
 		durableActualRevision: 0,
+		lastDeviationDecision: null,
 		rescueAddedItems: [],
 		lines: orderedBaseItems.map((item) => ({
 			lineId: item.id,
@@ -7387,6 +7388,7 @@ function createProductionSession(input) {
 			plannedGrams: item.planned_grams,
 			targetGrams: item.planned_grams,
 			draftActualGrams: item.planned_grams,
+			draftActualEdited: false,
 			physicalAddedGrams: 0,
 			confirmed: false,
 			confirmedAt: null,
@@ -7400,6 +7402,7 @@ function createProductionSession(input) {
 			plannedGrams: item.planned_grams,
 			targetGrams: item.planned_grams,
 			draftActualGrams: item.planned_grams,
+			draftActualEdited: false,
 			physicalAddedGrams: 0,
 			confirmed: false,
 			confirmedAt: null,
@@ -7478,6 +7481,7 @@ function applyVerifiedRescueInput(session, candidate) {
 			...line,
 			targetGrams: candidateFinalGrams,
 			draftActualGrams: line.confirmed && !needsTopUp ? line.physicalAddedGrams : candidateFinalGrams,
+			draftActualEdited: false,
 			confirmed: line.confirmed && !needsTopUp,
 			confirmedAt: line.confirmed && !needsTopUp ? line.confirmedAt : null,
 			confirmationOrder: line.confirmed && !needsTopUp ? line.confirmationOrder : null
@@ -7499,6 +7503,7 @@ function applyVerifiedRescueInput(session, candidate) {
 		plannedGrams: 0,
 		targetGrams: item.planned_grams,
 		draftActualGrams: item.planned_grams,
+		draftActualEdited: false,
 		physicalAddedGrams: 0,
 		confirmed: false,
 		confirmedAt: null,
@@ -7621,6 +7626,20 @@ function hydrateProductionSessionFromRun(run, source, plannedInput, plannedCompo
 			durableRescueRevision: run.rescue.revision
 		};
 	}
+	const decisionEvent = [...run.events].reverse().find((event) => event.type === "deviation_decision_accepted");
+	const decision = decisionEvent?.amendment;
+	const strategy = decision?.stableOptionId;
+	if (decisionEvent && (strategy === "keep_original_batch" || strategy === "enlarge_batch" || strategy === "leave_as_is") && typeof decision?.sourceActualRevision === "number" && typeof decision?.rescueRevision === "number" && typeof decision?.finalMassG === "number" && typeof decision?.scoreDisplay === "string") session = {
+		...session,
+		lastDeviationDecision: {
+			strategy,
+			acceptedAt: decisionEvent.at,
+			sourceActualRevision: decision.sourceActualRevision,
+			rescueRevision: decision.rescueRevision,
+			finalMassG: decision.finalMassG,
+			scoreDisplay: decision.scoreDisplay
+		}
+	};
 	if (run.actual) {
 		const actualById = new Map(run.actual.items.map((item, index) => [item.id, {
 			item,
@@ -7633,6 +7652,7 @@ function hydrateProductionSessionFromRun(run, source, plannedInput, plannedCompo
 			return {
 				...line,
 				draftActualGrams: grams,
+				draftActualEdited: false,
 				physicalAddedGrams: grams,
 				confirmed: true,
 				confirmedAt: recorded.item.confirmedAt ?? run.actual.recordedAt,
@@ -7897,7 +7917,7 @@ function assessProductionRescue(session) {
 	const originalTarget = session.plannedInput.target_batch_grams;
 	const keep = bestOption("keep_original_batch", (mass) => `Napraw do ${formatBatchMassG(mass)} g`, () => "Zmienia wyłącznie to, czego jeszcze nie potwierdzono, i zachowuje docelową masę partii.", session, forecastInput, "planning", (mass) => Math.abs(mass - originalTarget) <= .1);
 	if (keep) options.push(keep);
-	const enlarge = bestOption("enlarge_batch", (mass) => `Powiększ do ${formatBatchMassG(mass)} g`, (mass) => `Najmniejsza partia powyżej ${formatBatchMassG(originalTarget)} g, którą Engine potwierdził dla tego, co jest już w naczyniu: ${formatBatchMassG(mass)} g.`, session, forecastInput, "actual_batch", (mass) => mass > originalTarget + .1);
+	const enlarge = bestOption("enlarge_batch", (mass) => `Powiększ do ${formatBatchMassG(mass)} g`, (mass) => `Najmniejsza bezpieczna partia powyżej ${formatBatchMassG(originalTarget)} g dla tego, co jest już w naczyniu: ${formatBatchMassG(mass)} g.`, session, forecastInput, "actual_batch", (mass) => mass > originalTarget + .1);
 	if (enlarge) options.push(enlarge);
 	if (nativeSafe(forecastInput, forecastResult)) {
 		const practical = practicalizeProductionRescueCandidate(session, forecastInput, Math.round(totalFor(forecastInput)));
@@ -7924,7 +7944,7 @@ function assessProductionRescue(session) {
 		forecastScoreDisplay: forecastScore.display,
 		hasConfirmedDeviation,
 		options,
-		reason: options.length > 0 ? null : "Brak zweryfikowanej korekty, która zachowuje fizycznie dodane składniki i natywne zakresy Engine."
+		reason: options.length > 0 ? null : "Brak bezpiecznej korekty, która zachowuje fizycznie dodane składniki i zatwierdzone zakresy receptury."
 	};
 }
 
