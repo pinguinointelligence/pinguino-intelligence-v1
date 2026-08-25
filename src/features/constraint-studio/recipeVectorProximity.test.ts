@@ -515,6 +515,56 @@ describe('isolated multi-candidate neighborhood experiment — null hypothesis',
     },
   );
 
+  it('keeps an unreachable Horchata ECO corner near x_user instead of chasing sub-precision severity', () => {
+    const source = horchata('eco');
+    const input: RecipeInput = {
+      ...source,
+      goals: {
+        ...source.goals,
+        direction_targets_active: true,
+        direction_targets: { sweetness: -1, softness: -2, creaminess: 0, flavor: 0 },
+      },
+    };
+    const built = buildOptimizePreview(input, { byLineId: {} }, '2026-08-25T00:00:00.000Z', {
+      requirePracticalPreview: true,
+      effectivePriceOverrides: HORCHATA_PRICES,
+    });
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    expect(built.preview.directionTargetUnreached).toBe(true);
+    expect(recipeDirectionViolations(built.preview.proposedInput)).toHaveLength(1);
+    expect(
+      built.preview.proposedInput.items.find((item) => item.id === 'cinnamon')?.planned_grams,
+    ).toBeLessThan(10);
+    expect(vectorDistance(input, built.preview.proposedInput)).toBeLessThan(6);
+    const committed = commitPreview(
+      input,
+      { byLineId: {} },
+      built.preview,
+      '2026-08-25T00:00:01.000Z',
+      'horchata-eco-nearest-proximity',
+      [],
+      undefined,
+      null,
+      null,
+      {
+        baseFingerprint: built.preview.baseFingerprint,
+        targetFingerprint: directionTargetFingerprint(input),
+        candidateFingerprint: workingStateFingerprint(
+          built.preview.proposedInput,
+          built.preview.nextConstraints,
+        ),
+      },
+      null,
+      {},
+      [],
+      null,
+      null,
+      { requirePracticalPreview: true, effectivePriceOverrides: HORCHATA_PRICES },
+    );
+    expect(committed).toMatchObject({ ok: true });
+  });
+
   it('short-circuits at the original valid no-Crown vector without evaluating mutations', () => {
     const input = horchata('optimal');
     const result = experimentalNeighborhoodSearch(

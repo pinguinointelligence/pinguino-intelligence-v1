@@ -37,6 +37,12 @@ import {
 } from '@/features/formulation-strategy/strategy';
 
 const EPSILON = 1e-9;
+/** Direction severity is normalized by target-band half-width. Differences
+ * below one thousandth are smaller than the executable whole-gram solver can
+ * meaningfully distinguish; treat them as one NEAREST tier so x_user proximity
+ * breaks the tie instead of rewarding a 20x flavour-line expansion for a
+ * sub-display-precision metric gain. */
+const DIRECTION_SEVERITY_EQUIVALENCE = 0.001;
 
 export interface ExperimentalSearchOptions {
   beamWidth: number;
@@ -219,6 +225,9 @@ export function evaluateExperimentalCandidate(
 const compareNumber = (left: number, right: number): number =>
   Math.abs(left - right) <= EPSILON ? 0 : left < right ? -1 : 1;
 
+const compareDirectionSeverity = (left: number, right: number): number =>
+  Math.abs(left - right) <= DIRECTION_SEVERITY_EQUIVALENCE ? 0 : left < right ? -1 : 1;
+
 /** Negative means `left` is preferred. The order mirrors the product brief. */
 export function compareExperimentalCandidateMeasures(
   left: ExperimentalCandidateMeasure,
@@ -234,7 +243,10 @@ export function compareExperimentalCandidateMeasures(
   if (compared !== 0) return compared;
   compared = compareNumber(left.explicitTargetViolationCount, right.explicitTargetViolationCount);
   if (compared !== 0) return compared;
-  compared = compareNumber(left.explicitTargetSeverityPoints, right.explicitTargetSeverityPoints);
+  compared = compareDirectionSeverity(
+    left.explicitTargetSeverityPoints,
+    right.explicitTargetSeverityPoints,
+  );
   if (compared !== 0) return compared;
   // Crown is an explicit user request and therefore precedes proximity.
   compared = compareNumber(right.crownGrams, left.crownGrams);

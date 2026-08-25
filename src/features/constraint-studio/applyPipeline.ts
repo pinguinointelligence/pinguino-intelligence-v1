@@ -1518,6 +1518,18 @@ function mainSafePreview(
       violatedMetrics: ['standard_presence_removal_not_allowed'],
     };
   }
+  // One presentation contract for every Preview producer: if the executable
+  // recipe still misses any supported active Direction axis, the served UI
+  // must collect the same explicit best-achievable consent that commitPreview
+  // independently requires. Formulation, local correction and promoted search
+  // all converge here, so none can expose an Apply button without its token.
+  const direction = assessRecipeDirection(
+    preview.proposedInput,
+    calculateRecipe(preview.proposedInput),
+  );
+  if (direction.active && direction.supportedAxisCount > 0 && !direction.reached) {
+    preview.directionTargetUnreached = true;
+  }
   if (preview.proposedInput.category === 'vegan_gelato') {
     const issues = veganRecipeEligibilityIssues(preview.proposedInput.items);
     if (issues.length > 0) {
@@ -2624,14 +2636,15 @@ const requiredLineContractViolations = (before: RecipeInput, after: RecipeInput)
 };
 
 /**
- * Post-solve proximity polish for a no-Main recipe that ALREADY reaches every
- * exact Direction target. The reached candidate is a seed, not authority: it
+ * Post-solve proximity polish for a no-Main exact Direction recipe. The
+ * established candidate is a seed, not authority: it
  * is re-evaluated alongside x_user by the same hard/target/proximity hierarchy,
  * and every explored vector passes the normal constraint, required-line,
- * ProductBehavior and ECO-flavour gates. The search can therefore only keep or
- * improve a reached recipe; it cannot trade away the target to buy proximity.
+ * ProductBehavior and ECO-flavour gates. A reached recipe cannot trade away
+ * its target; a NEAREST recipe may only move to the same violation count and a
+ * better/equivalent severity tier before proximity is allowed to decide.
  */
-const polishReachedDirectionVector = (
+const polishDirectionVector = (
   input: RecipeInput,
   set: ConstraintSet,
   reached: RecipeInput,
@@ -2689,7 +2702,6 @@ const polishReachedDirectionVector = (
   );
   if (!practicalSeedResult.ok) return reached;
   const practicalSeed = practicalSeedResult.audit.executableInput;
-  if (recipeDirectionViolations(practicalSeed).length > 0) return reached;
   const polished = experimentalNeighborhoodSearch(input, polishSet, {
     beamWidth: 20,
     evaluationBudget: 100_000,
@@ -2705,7 +2717,9 @@ const polishReachedDirectionVector = (
           productBehaviorSnapshots: options.productBehaviorSnapshots,
         }).ok),
   });
-  return polished.status === 'candidate' ? polished.input : reached;
+  return polished.status === 'candidate' || polished.status === 'nearest'
+    ? polished.input
+    : reached;
 };
 
 export interface ManualIngredientTargetProof {
@@ -5158,7 +5172,7 @@ function buildFormulationPreviewInternal(
   // (distance 1.3677 from [14,15]) while a legal 15.1365 candidate — distance
   // 0.1365 — was reachable from the same draft. Conceding while something
   // strictly nearer exists is precisely the non-nearest NEAREST this fixes.
-  const directionRanked = polishReachedDirectionVector(
+  const directionRanked = polishDirectionVector(
     input,
     set,
     improveDirectionNearestVector(input, set, working, createdAt, options),
@@ -6872,7 +6886,7 @@ function buildOptimizePreviewWithDirection(
 
   // SHARED DIRECTION NEAREST: rank the final candidate by its distance to the
   // band the user actually requested before it is practicalized into a Preview.
-  working = polishReachedDirectionVector(
+  working = polishDirectionVector(
     input,
     set,
     improveDirectionNearestVector(input, set, working, createdAt, options),
