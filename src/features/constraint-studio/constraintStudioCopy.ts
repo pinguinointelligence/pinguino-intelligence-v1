@@ -421,7 +421,7 @@ export const constraintStudioCopy = {
         unlocked: 'AI może zmieniać',
         grams: 'Zablokowana gramatura',
         range: 'Zakres (analiza)',
-        main: 'Składnik główny',
+        main: 'Główny · PI może zmieniać grupowo',
         required: 'Wymagany',
         already_added: 'Już dodany',
         poured: 'Odważony (rzeczywisty)',
@@ -429,6 +429,7 @@ export const constraintStudioCopy = {
       source: {
         user_padlock: 'kłódka użytkownika (ta sesja)',
         saved_recipe: 'z zapisanej receptury',
+        main_role: 'rola i proporcja Główna',
         engine_lock: 'ustawienie receptury',
         poured_actual: 'ratowanie partii / produkcja',
         none: '—',

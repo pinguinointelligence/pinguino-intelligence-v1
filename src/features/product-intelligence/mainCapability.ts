@@ -211,7 +211,8 @@ export function resolveMainCapability(input: {
   return capability('MAIN_UNKNOWN', 'unknown_product', snapshot);
 }
 
-/** True when the Main group must be held exactly at the owner's grams (§6). */
+/** True when sensory-envelope authority remains with the owner. This protects
+ * Main selection and group ratio; it does not create an exact gram lock. */
 export function isUserHeldMainSnapshot(
   snapshot: ProductBehaviorSnapshot | null | undefined,
 ): boolean {
@@ -219,9 +220,10 @@ export function isUserHeldMainSnapshot(
 }
 
 /**
- * Line ids whose Main role is user-held. §21: a group that mixes calibrated
- * and uncalibrated Mains has no combined approved envelope, so the entire
- * group becomes user-held rather than borrowing one member's science.
+ * Line ids whose Main sensory envelope is user-held. §21: a group that mixes
+ * calibrated and uncalibrated Mains has no combined approved envelope, so the
+ * entire group avoids borrowing one member's science. The group may still move
+ * together through the unchanged Engine safety frontier.
  */
 export function userHeldMainLineIds(input: {
   items: ReadonlyArray<{ id: string; lock_type?: string | null }>;

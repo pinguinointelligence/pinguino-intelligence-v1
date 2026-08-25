@@ -238,10 +238,9 @@ export function verifyMainEnvelope(input: {
 }): MainEnvelopeVerification {
   const technicalOnlyMainLineIds = new Set(input.technicalOnlyMainLineIds ?? []);
   // GLOBAL MAIN AUTHORITY §6/§21: a Main group holding at least one product
-  // without an approved envelope is USER-HELD. There is no combined approved
-  // range to verify, so the envelope contract does not apply — the owner's
-  // grams and ratio are protected by the Main identity contract instead, and
-  // the Engine still judges the resulting recipe truthfully.
+  // without an approved envelope has no combined sensory range to verify. The
+  // Main identity contract protects membership and ratio, while absolute grams
+  // remain movable through the unchanged Engine and hard safety gates.
   const userHeld = new Set(
     userHeldMainLineIds({
       items: input.recipe.items,

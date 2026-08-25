@@ -448,6 +448,8 @@ export function ProWorkspacePage() {
       }
       await runPiRecalculationWithTerminal(undefined, piRunGeneration);
     } catch {
+      const publishedTerminal = useConstraintStudioStore.getState().recalculationTerminal;
+      if (publishedTerminal !== null && publishedTerminal.state !== 'WORKING') return;
       useConstraintStudioStore.setState({
         recalculationTerminal: {
           state: 'ERROR',

@@ -4158,9 +4158,10 @@ function resolveMainCapability(input) {
 	return capability("MAIN_UNKNOWN", "unknown_product", snapshot);
 }
 /**
-* Line ids whose Main role is user-held. §21: a group that mixes calibrated
-* and uncalibrated Mains has no combined approved envelope, so the entire
-* group becomes user-held rather than borrowing one member's science.
+* Line ids whose Main sensory envelope is user-held. §21: a group that mixes
+* calibrated and uncalibrated Mains has no combined approved envelope, so the
+* entire group avoids borrowing one member's science. The group may still move
+* together through the unchanged Engine safety frontier.
 */
 function userHeldMainLineIds(input) {
 	const excluded = new Set(input.excludeLineIds ?? []);

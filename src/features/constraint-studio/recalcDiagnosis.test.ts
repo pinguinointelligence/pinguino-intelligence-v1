@@ -18,11 +18,7 @@ import type { RecipeInput, RecipeItem } from '@/engine';
 import { findDemoIngredient } from '@/data/demoIngredients';
 import { buildOptimizePreview } from './applyPipeline';
 import { constraintStudioCopy } from './constraintStudioCopy';
-import {
-  buildLockReport,
-  diagnoseRecalcFailure,
-  isAllLocked,
-} from './recalcDiagnosis';
+import { buildLockReport, diagnoseRecalcFailure, isAllLocked } from './recalcDiagnosis';
 
 const NOW = '2026-07-22T00:00:00.000Z';
 
@@ -63,13 +59,16 @@ const cleanBase = () => [
 const NO_CONSTRAINTS = { byLineId: {} };
 
 describe('Phase 4 — no-lock recalculation at every professional temperature', () => {
-  it.each([-11, -12, -13])('temperature %d: real preview, solver aims at that band cell', (temp) => {
-    const result = buildOptimizePreview(input(temp, cleanBase()), NO_CONSTRAINTS, NOW);
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.preview.lines.length).toBeGreaterThan(0);
-    expect(result.preview.violationsAfter).toBeLessThan(result.preview.violationsBefore);
-  });
+  it.each([-11, -12, -13])(
+    'temperature %d: real preview, solver aims at that band cell',
+    (temp) => {
+      const result = buildOptimizePreview(input(temp, cleanBase()), NO_CONSTRAINTS, NOW);
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.preview.lines.length).toBeGreaterThan(0);
+      expect(result.preview.violationsAfter).toBeLessThan(result.preview.violationsBefore);
+    },
+  );
 
   it('−11, −12 and −13 produce DIFFERENT proposals (temperature-aware targeting, one shared route)', () => {
     // Owner P0 (recalc duplication): the solver's dextrose addition now UPDATES
@@ -221,7 +220,58 @@ describe('failure classification (owner taxonomy)', () => {
   });
 });
 
-describe('lock report — the owner\'s REAL v5 recipe shape (poured actual on Cream 30 %)', () => {
+describe('Crown diagnosis is separate from real lock authority', () => {
+  const crowns = (count: number) =>
+    Array.from({ length: count }, (_, index) =>
+      line(`main-${index + 1}`, index % 2 === 0 ? 'banana' : 'raspberry', 100, 'main'),
+    );
+
+  it.each([1, 2, 3])(
+    '%i Crown rows remain adjustable and do not inflate blocked count',
+    (count) => {
+      const recipe = input(-11, [...cleanBase(), ...crowns(count)]);
+      const report = buildLockReport(recipe, NO_CONSTRAINTS);
+      const mainRows = report.filter((row) => row.lockState === 'main');
+      expect(mainRows).toHaveLength(count);
+      expect(mainRows.every((row) => row.userSet && row.adjustable)).toBe(true);
+
+      const diagnosis = diagnoseRecalcFailure({
+        input: recipe,
+        constraints: NO_CONSTRAINTS,
+        issue: { ok: false, code: 'no_proposal' },
+        servingModeId: 'temp_minus_11',
+      });
+      expect(diagnosis.lockedCount).toBe(0);
+      expect(diagnosis.code).toBe('optimizer_no_solution');
+    },
+  );
+
+  it('Crown plus a real lock reports only the real lock as blocked', () => {
+    const recipe = input(-11, [...cleanBase(), ...crowns(2)]);
+    const constraints = {
+      byLineId: { 'main-1': { mode: 'locked' as const, grams: 100 } },
+    };
+    const diagnosis = diagnoseRecalcFailure({
+      input: recipe,
+      constraints,
+      issue: { ok: false, code: 'no_proposal' },
+      servingModeId: 'temp_minus_11',
+    });
+    expect(diagnosis.lockedCount).toBe(1);
+    expect(diagnosis.code).toBe('locked_constraints_conflict');
+    expect(diagnosis.lockReport.find((row) => row.lineId === 'main-1')).toMatchObject({
+      lockState: 'grams',
+      source: 'user_padlock',
+      adjustable: false,
+    });
+    expect(diagnosis.lockReport.find((row) => row.lineId === 'main-2')).toMatchObject({
+      lockState: 'main',
+      adjustable: true,
+    });
+  });
+});
+
+describe("lock report — the owner's REAL v5 recipe shape (poured actual on Cream 30 %)", () => {
   it('classifies the poured line as immutable rescue material, everything else adjustable', () => {
     const items = [
       line('milk-base:milk_3_5', 'milk_3_5', 1670),

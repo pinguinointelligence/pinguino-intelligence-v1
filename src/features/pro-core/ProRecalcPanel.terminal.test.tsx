@@ -144,6 +144,53 @@ describe('PI visible terminal contract', () => {
     });
   });
 
+  it('preserves the same truthful Multi-Main refusal on first run and retry when cleanup crosses the deadline', async () => {
+    vi.useFakeTimers();
+    const messagePl =
+      'Nie można zachować proporcji grupy Głównej przy aktywnych blokadach gramowych.';
+    const outcomes: unknown[] = [];
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const generation = beginPiRecalculation();
+      const pending = runPiRecalculationWithTerminal(
+        async () => {
+          useConstraintStudioStore.setState({
+            previewIssue: {
+              ok: false,
+              code: 'main_ratio_conflict',
+              lineIds: ['main-a', 'main-b'],
+              ingredientNames: ['Main A', 'Main B'],
+              messagePl,
+            },
+            recalculationTerminal: {
+              state: 'BLOCKED_WITH_EXACT_ACTION',
+              code: 'main_ratio_conflict',
+              messagePl,
+              action: 'return_to_recipe',
+            },
+          });
+          await new Promise<void>(() => undefined);
+        },
+        generation,
+        1_000,
+      );
+
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(1_000);
+      await pending;
+      const terminal = useConstraintStudioStore.getState().recalculationTerminal;
+      outcomes.push(terminal);
+      expect(terminal).toMatchObject({
+        state: 'BLOCKED_WITH_EXACT_ACTION',
+        code: 'main_ratio_conflict',
+        messagePl,
+      });
+      expect(JSON.stringify(terminal)).not.toContain('Nie udało się zakończyć przeliczenia');
+    }
+
+    expect(outcomes[1]).toEqual(outcomes[0]);
+  });
+
   it('never lets an older async run overwrite the newest visible WORKING state', async () => {
     const olderGeneration = beginPiRecalculation();
     const newerGeneration = beginPiRecalculation();

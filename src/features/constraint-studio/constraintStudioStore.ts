@@ -2596,6 +2596,17 @@ export async function runPiRecalculationWithTerminal(
     }
   } catch (error) {
     if (!isCurrentPiRun(ownedGeneration)) return;
+    const publishedTerminal = useConstraintStudioStore.getState().recalculationTerminal;
+    if (publishedTerminal !== null && publishedTerminal.state !== 'WORKING') {
+      // A truthful domain result wins over later worker cleanup, transport
+      // rejection, or the watchdog. Invalidate a timed-out generation so its
+      // late continuation cannot replace the already-published refusal.
+      if (error instanceof PiRecalculationDeadlineError || deadlineTriggered) {
+        abortActivePiWorker();
+        activePiRunGeneration += 1;
+      }
+      return;
+    }
     if (error instanceof PiRecalculationDeadlineError || deadlineTriggered) {
       // Invalidate this generation without starting another visible run. A late
       // ProductBehavior response can no longer publish into the timed-out UI.
