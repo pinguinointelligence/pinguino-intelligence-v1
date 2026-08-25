@@ -104,7 +104,9 @@ import { resolveFunctionalRole, type FunctionalRole } from '@/features/formulati
 import { flavourHeldLineIds } from '@/features/formulation/flavourMutationAuthority';
 import {
   buildUserIntentBaseline,
+  MATERIAL_USER_INTENT_DRIFT,
   measureUserIntentDrift,
+  normalizedLineDrift,
   userIntentDriftTotal,
   type UserIntentDeviation,
 } from '@/features/formulation/userLineIntent';
@@ -294,6 +296,10 @@ export interface OptimizePreviewOptions extends FormulationOptions {
    * search so those probes do not recurse into the search themselves. Never set
    * by a caller. */
   directionNearestPass?: boolean;
+  /** INTERNAL. Set while a material-drift line is temporarily held at x_user
+   * to generate an alternative candidate. It prevents nested soft-anchor
+   * probes while retaining the independent Direction-neighborhood search. */
+  softAnchorPass?: boolean;
 }
 
 /* ── fingerprints (staleness guard) ──────────────────────────────────────── */
@@ -2652,6 +2658,7 @@ const polishDirectionVector = (
   input: RecipeInput,
   set: ConstraintSet,
   reached: RecipeInput,
+  createdAt: string,
   options: OptimizePreviewOptions,
 ): RecipeInput => {
   if (
@@ -2719,16 +2726,69 @@ const polishDirectionVector = (
         }).ok),
   } as const;
   const seedReached = recipeDirectionViolations(practicalSeed).length === 0;
+  // A material fold-change on any positive user line is evidence that the
+  // current search path may be using that line as a composition lever rather
+  // than preserving the entered vector. Generate an alternative by holding
+  // EACH such line at x_user one at a time, then remove the temporary hold and
+  // judge the resulting complete vector under the ORIGINAL constraints. This
+  // is a candidate-generation detour only: no ingredient/profile identity is
+  // encoded, and a held probe can win solely through the normal hierarchy
+  // (hard validity → exact target/NEAREST → whole-vector proximity).
+  const practicalByLineId = new Map(
+    practicalSeed.items.map((item) => [item.id, item.planned_grams] as const),
+  );
+  const softAnchorCandidates: RecipeInput[] = [];
+  if (options.softAnchorPass !== true) {
+    for (const item of input.items) {
+      const proposed = practicalByLineId.get(item.id);
+      if (
+        proposed === undefined ||
+        item.lock_type !== 'unlocked' ||
+        item.actual_grams !== null ||
+        item.planned_grams <= 0 ||
+        (item.user_intent_anchor_grams ?? 0) <= 0 ||
+        set.byLineId[item.id] !== undefined ||
+        normalizedLineDrift(item.planned_grams, proposed, input.target_batch_grams) <=
+          MATERIAL_USER_INTENT_DRIFT
+      ) {
+        continue;
+      }
+      const probeSet: ConstraintSet = {
+        ...set,
+        byLineId: {
+          ...set.byLineId,
+          [item.id]: { mode: 'locked', grams: item.planned_grams },
+        },
+      };
+      const probe = buildOptimizePreview(input, probeSet, createdAt, {
+        ...options,
+        softAnchorPass: true,
+      });
+      if (!probe.ok || probe.preview.diagnosticOnly === true) continue;
+      softAnchorCandidates.push({ ...input, items: probe.preview.proposedInput.items });
+    }
+  }
   const polished = experimentalNeighborhoodSearch(input, polishSet, {
     ...searchOptions,
     ...(seedReached ? { seedInputs: [practicalSeed] } : {}),
   });
-  if (seedReached) return polished.status === 'candidate' ? polished.input : reached;
-  if (polished.status !== 'nearest') return reached;
-  const seedMeasure = evaluateExperimentalCandidate(input, practicalSeed, polishSet, searchOptions);
-  return compareExperimentalCandidateMeasures(polished.measure, seedMeasure, strategy) < 0
-    ? polished.input
-    : practicalSeed;
+  let best = {
+    input: practicalSeed,
+    measure: evaluateExperimentalCandidate(input, practicalSeed, polishSet, searchOptions),
+  };
+  if (
+    (polished.status === 'candidate' || polished.status === 'nearest') &&
+    compareExperimentalCandidateMeasures(polished.measure, best.measure, strategy) < 0
+  ) {
+    best = { input: polished.input, measure: polished.measure };
+  }
+  for (const candidate of softAnchorCandidates) {
+    const measure = evaluateExperimentalCandidate(input, candidate, polishSet, searchOptions);
+    if (compareExperimentalCandidateMeasures(measure, best.measure, strategy) < 0) {
+      best = { input: candidate, measure };
+    }
+  }
+  return best.input;
 };
 
 export interface ManualIngredientTargetProof {
@@ -5185,6 +5245,7 @@ function buildFormulationPreviewInternal(
     input,
     set,
     improveDirectionNearestVector(input, set, working, createdAt, options),
+    createdAt,
     options,
   );
   // §13 — NEVER carry a stale Main proof. The Main frontier ran against the
@@ -5801,58 +5862,69 @@ function improveDirectionNearestVector(
   // A surviving incumbent already inside every requested band is ACHIEVED.
   if (incumbentSurvives && best.measure.missedAxes === 0) return working;
 
-  for (const axis of requested) {
-    // §27 — only an axis that actually MISSES its band can be improved by
-    // re-aiming it, so a satisfied axis is never probed.
-    if (best.measure.missedAxes === 0) break;
-    if ((best.measure.perAxis.find((entry) => entry.axis === axis.axis)?.distance ?? 0) <= 0) {
-      continue;
-    }
+  // A two-axis target can require a two-axis GENERATOR detour. Probing one
+  // selector coordinate at a time missed that class completely: Piña Colada
+  // at Sweetness +2 / Hardness 0 could only expose its nearer legal vector
+  // when a sibling Sweetness AND sibling Hardness were used together to
+  // generate it. The resulting grams are still scored solely against the
+  // ORIGINAL request. Enumerate the bounded Cartesian neighborhood of the
+  // currently missed axes; with the two supported axes and three siblings per
+  // axis this is at most 4×4−1 = 15 full probes.
+  const missedAxes = requested.filter(
+    (axis) => (best.measure.perAxis.find((entry) => entry.axis === axis.axis)?.distance ?? 0) > 0,
+  );
+  const choices = missedAxes.map((axis) => {
     const asked = askedTargets[axis.axis];
-    // §27 — probe the NEAREST selector positions first. A neighbouring band is
-    // the likeliest source of a nearer candidate, so this ordering combined
-    // with the exact-hit exit below usually settles after one or two probes
-    // instead of the full four. The order cannot be pruned by direction: at
-    // Protein −11 the candidate nearest to +2's band [16,17] was produced by
-    // asking for LESS sweetness (+1 → POD 15.5571), so a "need more ⇒ only ask
-    // higher" shortcut would have missed the correct answer entirely.
-    const byProximity = [...DIRECTION_LEVELS]
+    const siblings = [...DIRECTION_LEVELS]
       .filter((level) => level !== asked)
       .sort((left, right) => Math.abs(left - asked) - Math.abs(right - asked) || left - right)
-      // BOUNDED, and deliberately so: the two NEAREST positions. This is a real
-      // cap and is stated rather than hidden — a candidate three or four
-      // positions away could in principle be nearer. It is not a guess: the
-      // cross-profile matrix in `sharedDirectionNearestMatrix.test.ts` asserts
-      // the full contract for every level against ALL FIVE levels' delivered
-      // candidates, across Gelato/Sorbet/Vegan/Protein × 3 temperatures, so an
-      // insufficient bound fails loudly there rather than degrading silently.
-      // Every historically proven defect is repaired within this bound
-      // (Protein −11 +2 ← +1, Protein −13 −1 ← −2, Gelato −13 0 ← −1).
       .slice(0, DIRECTION_NEAREST_MAX_PROBES);
-    for (const level of byProximity) {
-      // Nothing can beat a candidate already inside the requested band.
-      if (best.measure.missedAxes === 0) break;
-      const probe = buildOptimizePreview(
-        {
-          ...input,
-          goals: {
-            ...input.goals,
-            direction_targets: { ...askedTargets, [axis.axis]: level },
-          },
-        } as RecipeInput,
-        set,
-        createdAt,
-        probeOptions,
-      );
-      if (!probe.ok) continue;
-      // Rebase onto the ORIGINAL request: the user asked for their own level,
-      // so only the gram vector is borrowed — never the probe's goals.
-      const candidate: RecipeInput = { ...input, items: probe.preview.proposedInput.items };
-      if (!legal(candidate, targetMainGrams)) continue;
-      const measure = directionDistance(candidate, requested);
-      const order = compareDirectionDistance(measure, best.measure);
-      if (order !== null && order < 0) best = { input: candidate, measure };
+    return { axis: axis.axis, asked, levels: [asked, ...siblings] };
+  });
+  const probeTargets: RecipeDirectionTarget[][] = [];
+  const enumerateTargets = (index: number, selected: RecipeDirectionTarget[]): void => {
+    if (index === choices.length) {
+      if (selected.some((level, position) => level !== choices[position]!.asked)) {
+        probeTargets.push(selected);
+      }
+      return;
     }
+    for (const level of choices[index]!.levels) {
+      enumerateTargets(index + 1, [...selected, level]);
+    }
+  };
+  enumerateTargets(0, []);
+  probeTargets.sort(
+    (left, right) =>
+      left.reduce((sum: number, level, index) => sum + Math.abs(level - choices[index]!.asked), 0) -
+        right.reduce(
+          (sum: number, level, index) => sum + Math.abs(level - choices[index]!.asked),
+          0,
+        ) || left.join(',').localeCompare(right.join(',')),
+  );
+  for (const levels of probeTargets) {
+    if (best.measure.missedAxes === 0) break;
+    const directionTargets = { ...askedTargets };
+    choices.forEach((choice, index) => {
+      directionTargets[choice.axis] = levels[index]!;
+    });
+    const probe = buildOptimizePreview(
+      {
+        ...input,
+        goals: { ...input.goals, direction_targets: directionTargets },
+      } as RecipeInput,
+      set,
+      createdAt,
+      probeOptions,
+    );
+    if (!probe.ok) continue;
+    // Rebase onto the ORIGINAL request: a sibling selector position is only a
+    // candidate generator and can never replace the user's target identity.
+    const candidate: RecipeInput = { ...input, items: probe.preview.proposedInput.items };
+    if (!legal(candidate, targetMainGrams)) continue;
+    const measure = directionDistance(candidate, requested);
+    const order = compareDirectionDistance(measure, best.measure);
+    if (order !== null && order < 0) best = { input: candidate, measure };
   }
   return best.input;
 }
@@ -6899,6 +6971,7 @@ function buildOptimizePreviewWithDirection(
     input,
     set,
     improveDirectionNearestVector(input, set, working, createdAt, options),
+    createdAt,
     options,
   );
 

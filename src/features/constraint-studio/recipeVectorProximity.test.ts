@@ -178,6 +178,54 @@ const hazelnut = (): RecipeInput => ({
   },
 });
 
+const cocktailSorbet = (
+  recipe: 'dark-rum-ginger' | 'pina-colada',
+  sweetness: -2 | -1 | 0 | 1 | 2,
+): RecipeInput => {
+  const fixtures = {
+    'dark-rum-ginger': [
+      ['ginger-beer', 'PI-ING-001831', 350],
+      ['rum', 'PI-ING-000035', 40],
+      ['lime', 'PI-ING-001525', 100],
+      ['water', 'PI-ING-001409', 354],
+      ['sucrose', 'PI-ING-000514', 50],
+      ['dextrose', 'PI-ING-000494', 50],
+      ['inulin', 'PI-ING-000456', 55],
+      ['tara', 'PI-ING-000492', 1],
+    ],
+    'pina-colada': [
+      ['pineapple', 'PI-ING-000389', 500],
+      ['coconut-milk', 'PI-ING-000149', 200],
+      ['water', 'PI-ING-001409', 79],
+      ['rum', 'PI-ING-000035', 40],
+      ['sucrose', 'PI-ING-000514', 70],
+      ['dextrose', 'PI-ING-000494', 60],
+      ['inulin', 'PI-ING-000456', 50],
+      ['tara', 'PI-ING-000492', 1],
+    ],
+  } as const;
+  return {
+    items: fixtures[recipe].map(([id, ingredientId, grams]) => ({
+      id,
+      ingredient: ingredient(ingredientId),
+      planned_grams: grams,
+      actual_grams: null,
+      lock_type: 'unlocked' as const,
+      user_intent_anchor_grams: grams,
+    })),
+    mode: 'classic',
+    category: 'sorbet',
+    target_temperature_c: -11,
+    target_batch_grams: 1_000,
+    machine_capacity_grams: null,
+    goals: {
+      formulation_strategy: 'optimal',
+      direction_targets_active: true,
+      direction_targets: { sweetness, softness: 0, creaminess: 0, flavor: 0 },
+    },
+  };
+};
+
 const proteinMinus11 = (): RecipeInput => ({
   items: [
     ['cream', 'PI-ING-000180', 110],
@@ -571,6 +619,52 @@ describe('isolated multi-candidate neighborhood experiment — null hypothesis',
     },
   );
 
+  it.each([
+    [-11, -2, -2],
+    [-12, -2, -1],
+    [-13, -2, 1],
+  ] as const)(
+    'keeps Cinnamon near 2 g or proves the exact Horchata target needs movement (%d °C, sweetness %d, hardness %d)',
+    (temperature, sweetness, softness) => {
+      const source = horchata('optimal');
+      const input: RecipeInput = {
+        ...source,
+        target_temperature_c: temperature,
+        goals: {
+          ...source.goals,
+          direction_targets_active: true,
+          direction_targets: { sweetness, softness, creaminess: 0, flavor: 0 },
+        },
+      };
+      const built = buildOptimizePreview(input, { byLineId: {} }, '2026-08-25T00:00:00.000Z', {
+        requirePracticalPreview: true,
+      });
+      expect(built.ok, built.ok ? '' : JSON.stringify(built)).toBe(true);
+      if (!built.ok) return;
+      const cinnamon = built.preview.proposedInput.items.find(
+        (item) => item.id === 'cinnamon',
+      )?.planned_grams;
+      expect(cinnamon).toBeLessThan(25);
+      expect(vectorDistance(input, built.preview.proposedInput)).toBeLessThan(10);
+      if ((cinnamon ?? 0) >= 10) {
+        // A substantial movement is accepted only with proof that it buys the
+        // explicit target: the same full pipeline with this user line held at
+        // x_user remains truthfully NEAREST, while the selected vector reaches.
+        expect(recipeDirectionViolations(built.preview.proposedInput)).toEqual([]);
+        const locked = buildOptimizePreview(
+          input,
+          { byLineId: { cinnamon: { mode: 'locked', grams: 2 } } },
+          '2026-08-25T00:00:00.000Z',
+          { requirePracticalPreview: true, softAnchorPass: true },
+        );
+        expect(locked.ok, locked.ok ? '' : JSON.stringify(locked)).toBe(true);
+        if (locked.ok) {
+          expect(recipeDirectionViolations(locked.preview.proposedInput).length).toBeGreaterThan(0);
+        }
+      }
+    },
+  );
+
   it('short-circuits at the original valid no-Crown vector without evaluating mutations', () => {
     const input = horchata('optimal');
     const result = experimentalNeighborhoodSearch(
@@ -655,5 +749,57 @@ describe('isolated multi-candidate neighborhood experiment — null hypothesis',
     expect(built.preview.proteinFormulation?.qualification.qualified).toBe(false);
     expect(built.preview.diagnosticOnly).toBe(true);
     expect(built.preview.diagnosticReason).toBe('protein_claim_residual');
+  });
+});
+
+describe('Sorbet Direction candidate selection — historical monotonicity', () => {
+  const deliveredPod = (recipe: 'dark-rum-ginger' | 'pina-colada', sweetness: -2 | -1 | 1 | 2) => {
+    const input = cocktailSorbet(recipe, sweetness);
+    const built = buildOptimizePreview(input, { byLineId: {} }, '2026-08-25T00:00:00.000Z', {
+      requirePracticalPreview: true,
+    });
+    expect(built.ok, built.ok ? '' : JSON.stringify(built)).toBe(true);
+    if (!built.ok) return Number.NaN;
+    const committed = commitPreview(
+      input,
+      { byLineId: {} },
+      built.preview,
+      '2026-08-25T00:00:01.000Z',
+      `sorbet-monotonic-${recipe}-${sweetness}`,
+      [],
+      undefined,
+      null,
+      null,
+      {
+        baseFingerprint: built.preview.baseFingerprint,
+        targetFingerprint: directionTargetFingerprint(input),
+        candidateFingerprint: workingStateFingerprint(
+          built.preview.proposedInput,
+          built.preview.nextConstraints,
+        ),
+      },
+      null,
+      {},
+      [],
+      null,
+      null,
+      { requirePracticalPreview: true },
+    );
+    expect(committed, JSON.stringify(committed)).toMatchObject({ ok: true });
+    const pod = calculateRecipe(built.preview.proposedInput).pod_points;
+    expect(pod).not.toBeNull();
+    return pod ?? Number.NaN;
+  };
+
+  it('does not move Dark Rum & Ginger backwards from sweetness -2 to -1', () => {
+    const lower = deliveredPod('dark-rum-ginger', -2);
+    const higher = deliveredPod('dark-rum-ginger', -1);
+    expect(higher).toBeGreaterThanOrEqual(lower - 0.001);
+  });
+
+  it('does not move Piña Colada backwards from sweetness +1 to +2', () => {
+    const lower = deliveredPod('pina-colada', 1);
+    const higher = deliveredPod('pina-colada', 2);
+    expect(higher).toBeGreaterThanOrEqual(lower - 0.001);
   });
 });
