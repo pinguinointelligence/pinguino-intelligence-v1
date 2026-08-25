@@ -1,10 +1,17 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/client';
 import { getCurrentUser } from '@/services/auth';
-import type { FacilityDefaults, MasterLabelData } from '@/features/master-label/masterLabel';
+import {
+  normalizeMasterLabelData,
+  type FacilityDefaults,
+  type MasterLabelData,
+} from '@/features/master-label/masterLabel';
 import type { MarketProfileCode, MasterLabelFieldId } from '@/features/master-label/marketProfiles';
 import type { ProductionCompletionSnapshot } from '@/features/production-workspace/productionSession';
-import type { LabelPrinterSettings } from '@/features/master-label/printerProfiles';
+import {
+  normalizePrinterSettings,
+  type LabelPrinterSettings,
+} from '@/features/master-label/printerProfiles';
 
 const PROFILE_TABLE = 'account_label_profiles';
 const RUN_LABEL_TABLE = 'production_run_label_snapshots';
@@ -120,6 +127,7 @@ type RunLabelRow = {
 
 const mapProfile = (row: ProfileRow): AccountLabelProfile => {
   const fallback = defaultAccountLabelProfile(row.owner_user_id, row.updated_at);
+  const presentation = { ...fallback.presentation, ...(row.presentation ?? {}) };
   return {
     ...fallback,
     market: row.market,
@@ -129,14 +137,23 @@ const mapProfile = (row: ProfileRow): AccountLabelProfile => {
     logoPath: row.logo_path,
     enabledOptionalFields: row.enabled_optional_fields ?? fallback.enabledOptionalFields,
     facilityDefaults: { ...fallback.facilityDefaults, ...(row.facility_defaults ?? {}) },
-    presentation: { ...fallback.presentation, ...(row.presentation ?? {}) },
+    presentation: {
+      ...presentation,
+      printer: normalizePrinterSettings({
+        ...fallback.presentation.printer,
+        ...(row.presentation?.printer ?? {}),
+        widthMm: row.presentation?.printer?.widthMm ?? presentation.widthMm,
+        heightMm: row.presentation?.printer?.heightMm ?? presentation.heightMm,
+        copies: row.presentation?.printer?.copies ?? presentation.copies,
+      }),
+    },
   };
 };
 
 const mapRunLabel = (row: RunLabelRow): RunLabelSnapshot => ({
   runId: row.run_id,
   ownerUserId: row.owner_user_id,
-  label: row.master_label,
+  label: normalizeMasterLabelData(row.master_label),
   accountProfileSnapshot: row.account_profile_snapshot,
   logoPath: row.logo_path,
   createdAt: row.created_at,

@@ -337,6 +337,55 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
   };
 }
 
+/**
+ * Forward-hydrate immutable label snapshots written before newer print and
+ * regulatory fields existed. The stored snapshot is never rewritten: missing
+ * authority becomes an explicit fail-closed default in the runtime view.
+ */
+export function normalizeMasterLabelData(value: MasterLabelData): MasterLabelData {
+  const legacy = value as Partial<MasterLabelData>;
+  const labelLanguages =
+    legacy.labelLanguages && legacy.labelLanguages.length > 0 ? legacy.labelLanguages : ['pl'];
+  const nutritionSource = legacy.nutritionSource ?? null;
+  const regulatoryDefaults = defaultRegulatoryNutrition(nutritionSource, labelLanguages);
+  const regulatoryNutrition = legacy.regulatoryNutrition as
+    Partial<RegulatoryNutritionInputs> | undefined;
+  const size = legacy.size ?? { widthMm: 90, heightMm: 60 };
+  const copies = legacy.copies ?? 1;
+  return {
+    ...value,
+    purpose: legacy.purpose ?? 'retail_consumer',
+    packagingContext: legacy.packagingContext ?? 'prepacked',
+    labelLanguages,
+    regulatoryNutrition: {
+      ...regulatoryDefaults,
+      ...regulatoryNutrition,
+      servingDescription: {
+        ...regulatoryDefaults.servingDescription,
+        ...(regulatoryNutrition?.servingDescription ?? {}),
+      },
+    },
+    servingQuantityG: legacy.servingQuantityG ?? null,
+    format: legacy.format ?? 'rectangle',
+    size,
+    copies,
+    systemPrinter: 'system',
+    printer: normalizePrinterSettings({
+      ...DEFAULT_PRINTER_SETTINGS,
+      ...(legacy.printer ?? {}),
+      widthMm: legacy.printer?.widthMm ?? size.widthMm,
+      heightMm: legacy.printer?.heightMm ?? size.heightMm,
+      copies: legacy.printer?.copies ?? copies,
+    }),
+    regulatoryReview: {
+      translations: legacy.regulatoryReview?.translations ?? false,
+      ingredientOrderAndQuid: legacy.regulatoryReview?.ingredientOrderAndQuid ?? false,
+      marketSpecific: legacy.regulatoryReview?.marketSpecific ?? false,
+    },
+    preflightAcknowledged: legacy.preflightAcknowledged ?? false,
+  };
+}
+
 export interface LabelPreflightItem {
   field:
     | MasterLabelFieldId

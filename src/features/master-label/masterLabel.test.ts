@@ -11,6 +11,7 @@ import {
   addOptionalField,
   buildLabelPreflight,
   buildMasterLabelData,
+  normalizeMasterLabelData,
   requestFieldRemoval,
   type MasterLabelData,
 } from './masterLabel';
@@ -545,6 +546,40 @@ describe('Master Label — one actual-batch source model', () => {
     expect(preflight.readyForSystemPrint).toBe(false);
     expect(preflight.regulatoryProfileVerified).toBe(false);
     expect(() => buildMasterLabelPrintHtml(data)).toThrow('Master Label preflight is incomplete.');
+  });
+
+  it('hydrates legacy immutable snapshots with fail-closed regulatory and printer defaults', () => {
+    const current = build();
+    const legacy = structuredClone(current) as unknown as Record<string, unknown>;
+    delete legacy['purpose'];
+    delete legacy['packagingContext'];
+    delete legacy['regulatoryNutrition'];
+    delete legacy['printer'];
+    delete legacy['regulatoryReview'];
+    delete legacy['preflightAcknowledged'];
+
+    const normalized = normalizeMasterLabelData(legacy as unknown as MasterLabelData);
+    expect(normalized).toMatchObject({
+      masterLabelId: current.masterLabelId,
+      sourceCompletionSessionId: current.sourceCompletionSessionId,
+      purpose: 'retail_consumer',
+      packagingContext: 'prepacked',
+      preflightAcknowledged: false,
+      regulatoryReview: {
+        translations: false,
+        ingredientOrderAndQuid: false,
+        marketSpecific: false,
+      },
+      printer: {
+        profileId: 'system_a4_letter',
+        widthMm: current.size.widthMm,
+        heightMm: current.size.heightMm,
+        copies: current.copies,
+      },
+    });
+    expect(normalized.regulatoryNutrition.servingQuantityG).toBeNull();
+    expect(() => buildLabelPreflight(normalized)).not.toThrow();
+    expect(buildLabelPreflight(normalized).readyForSystemPrint).toBe(false);
   });
 
   it('prints N safe copies only when the verified market preflight is complete', () => {
