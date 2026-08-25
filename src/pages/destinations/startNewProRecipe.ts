@@ -124,6 +124,10 @@ export function requestNewRecipeStarterSettingsChange(
 export const starterSettingsPatch = {
   product: (visibleProductType: VisibleProductType): NewRecipeStarterSettingsPatch => ({
     visibleProductType,
+    // Every fresh product-family initialization starts in OPTIMAL. ECO is an
+    // explicit choice made after initialization, never inherited from the
+    // recipe/profile that was just replaced.
+    formulationStrategy: 'optimal',
   }),
   serving: (servingModeId: NewRecipeServingModeId): NewRecipeStarterSettingsPatch => ({
     servingModeId,
