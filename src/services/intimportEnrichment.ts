@@ -16,6 +16,11 @@ import type {
 } from '@/features/product-intelligence/intimportEnrichment';
 import type { EvidenceSource, ProductEvidenceField } from '@/features/product-intelligence/productEvidenceConfidence';
 import type { SourceAuthorityClass } from '@/features/product-intelligence/sourceAuthority';
+import type {
+  SemanticClassificationProvider,
+  SemanticClassificationResponse,
+} from '@/features/product-intelligence/intimportSemanticClassification';
+import { classifyProductSemantics } from '@/features/product-intelligence/productRecognition';
 
 export interface IntimportEnrichmentIdentity {
   brand: string | null;
@@ -159,5 +164,69 @@ export function createIntimportWebProvider(options: {
       calls: payload.cacheHit ? 0 : (payload.calls ?? 0),
       evidenceReceipt: payload.evidenceReceipt,
     };
+  };
+}
+
+/** Existing Edge backend, key, project, model and quota controls — semantic mode. */
+export function createIntimportSemanticProvider(options: {
+  importId: string;
+  onTelemetry?: (telemetry: {
+    calls: number;
+    cacheHit: boolean;
+    model: string | null;
+    error: string | null;
+  }) => void;
+}): SemanticClassificationProvider {
+  return async (request): Promise<SemanticClassificationResponse> => {
+    const deterministic = classifyProductSemantics(request.evidence);
+    if (!deterministic.modelRequired || !supabase) {
+      return {
+        classification: deterministic,
+        calls: 0,
+        cacheHit: true,
+        evidenceReceipt: null,
+        model: null,
+        error: supabase ? null : 'backend_unavailable',
+      };
+    }
+    const { data, error } = await supabase.functions.invoke('intimport-enrich', {
+      body: {
+        action: 'semantic_classification',
+        importId: options.importId,
+        evidence: request.evidence,
+      },
+    });
+    if (error) {
+      const status = (error as { context?: { status?: number } }).context?.status;
+      return {
+        classification: deterministic,
+        calls: 0,
+        cacheHit: false,
+        evidenceReceipt: null,
+        model: null,
+        capReached: status === 429,
+        error: error.message ?? 'semantic_provider_unavailable',
+      };
+    }
+    const payload = (data ?? {}) as Partial<SemanticClassificationResponse>;
+    const classification = payload.classification?.authority === 'PRODUCT_RECOGNITION_V2'
+      ? payload.classification
+      : deterministic;
+    const response: SemanticClassificationResponse = {
+      classification,
+      calls: payload.calls ?? 0,
+      cacheHit: payload.cacheHit === true,
+      evidenceReceipt: payload.evidenceReceipt ?? null,
+      model: payload.model ?? null,
+      capReached: payload.capReached === true,
+      error: payload.error ?? null,
+    };
+    options.onTelemetry?.({
+      calls: response.calls,
+      cacheHit: response.cacheHit,
+      model: response.model,
+      error: response.error ?? null,
+    });
+    return response;
   };
 }

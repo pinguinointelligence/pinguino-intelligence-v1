@@ -3,6 +3,10 @@ import {
   profileDonor,
   type ProfileMatch,
 } from './mapperValueInference.ts';
+import type {
+  ProductIntendedUsageRole,
+  ProductSemanticClassification,
+} from './productRecognition.ts';
 
 export const PRODUCT_BEHAVIOR_AUTHORITY = 'PRODUCT_BEHAVIOR_V1' as const;
 
@@ -14,6 +18,8 @@ export type ProductBehaviorClassificationOutcome =
 export interface ProspectiveProductBehaviorAuthority {
   classificationOutcome: ProductBehaviorClassificationOutcome;
   baseRecipeEligible: boolean;
+  toppingEligible: boolean;
+  intendedUsageRole: ProductIntendedUsageRole;
   referenceMapperIngredientId: string | null;
   classificationReasonCodes: string[];
 }
@@ -46,6 +52,8 @@ export interface TrustedProductBehaviorAuthority {
   articleIdentity: 'PRODUCT_OWNED';
   classificationOutcome: ProductBehaviorClassificationOutcome;
   baseRecipeEligible: boolean;
+  toppingEligible: boolean;
+  intendedUsageRole: ProductIntendedUsageRole;
   /** Audit/reference knowledge only. The canonical binding column stays null. */
   referenceMapperIngredientId: string | null;
   runtimeMapperIngredientId: null;
@@ -75,6 +83,9 @@ export interface ProductBehaviorProductProfile {
   evidence: { kind: 'normal_food' | 'technical' };
   profileReferenceMapperIngredientId: string | null;
   mapperFingerprint: string;
+  /** Server-recomputed Recognition V2 semantics. Optional only for historical
+   * product versions, which retain their previous BASE_ONLY behavior. */
+  recognition?: ProductSemanticClassification | null;
 }
 
 const REVIEW_REASON = 'family_and_form_evidence_missing';
@@ -91,21 +102,49 @@ export function classifyProspectiveProductBehavior(input: {
   kind: 'normal_food' | 'technical';
   engineUsable: boolean;
   profileMatch: ProfileMatch | null;
+  recognition?: ProductSemanticClassification | null;
 }): ProspectiveProductBehaviorAuthority {
+  const intendedUsageRole = input.recognition?.intendedUsageRole ?? 'BASE_ONLY';
+  const baseRequested = intendedUsageRole === 'BASE_ONLY' || intendedUsageRole === 'BASE_AND_TOPPING';
+  const toppingRequested = intendedUsageRole === 'TOPPING_ONLY' || intendedUsageRole === 'BASE_AND_TOPPING';
   if (!input.engineUsable) {
     return {
       classificationOutcome: 'unknown_requires_review',
       baseRecipeEligible: false,
+      toppingEligible: false,
+      intendedUsageRole,
       referenceMapperIngredientId: null,
       classificationReasonCodes: ['product_owned_profile_missing'],
     };
   }
-  if (input.kind === 'technical') {
+  if (input.recognition?.isTechnicalProduct === true || (!input.recognition && input.kind === 'technical')) {
     return {
       classificationOutcome: 'blocked',
       baseRecipeEligible: false,
+      toppingEligible: false,
+      intendedUsageRole,
       referenceMapperIngredientId: null,
       classificationReasonCodes: [TECHNICAL_REASON],
+    };
+  }
+  if (input.recognition?.modelRequired === true) {
+    return {
+      classificationOutcome: 'unknown_requires_review',
+      baseRecipeEligible: false,
+      toppingEligible: false,
+      intendedUsageRole,
+      referenceMapperIngredientId: null,
+      classificationReasonCodes: ['product_semantics_unresolved'],
+    };
+  }
+  if (intendedUsageRole === 'NEITHER_REVIEW') {
+    return {
+      classificationOutcome: 'unknown_requires_review',
+      baseRecipeEligible: false,
+      toppingEligible: false,
+      intendedUsageRole,
+      referenceMapperIngredientId: null,
+      classificationReasonCodes: ['product_role_unresolved'],
     };
   }
   const match = input.profileMatch;
@@ -118,6 +157,8 @@ export function classifyProspectiveProductBehavior(input: {
     return {
       classificationOutcome: 'unknown_requires_review',
       baseRecipeEligible: false,
+      toppingEligible: false,
+      intendedUsageRole,
       referenceMapperIngredientId: null,
       classificationReasonCodes: [REVIEW_REASON],
     };
@@ -127,26 +168,32 @@ export function classifyProspectiveProductBehavior(input: {
     return {
       classificationOutcome: 'unknown_requires_review',
       baseRecipeEligible: false,
+      toppingEligible: false,
+      intendedUsageRole,
       referenceMapperIngredientId: null,
       classificationReasonCodes: [REVIEW_REASON],
     };
   }
   if (
     reference.is_active === false ||
-    reference.approved_for_base !== true ||
+    (baseRequested && reference.approved_for_base !== true) ||
     reference.approved_for_engines !== true ||
     !verifiedPrefix(reference.verification_status)
   ) {
     return {
       classificationOutcome: 'unknown_requires_review',
       baseRecipeEligible: false,
+      toppingEligible: false,
+      intendedUsageRole,
       referenceMapperIngredientId: null,
       classificationReasonCodes: [MODULE_REASON],
     };
   }
   return {
     classificationOutcome: 'classified',
-    baseRecipeEligible: true,
+    baseRecipeEligible: baseRequested,
+    toppingEligible: toppingRequested,
+    intendedUsageRole,
     referenceMapperIngredientId: reference.ingredient_id,
     classificationReasonCodes: [],
   };
@@ -177,6 +224,7 @@ const fingerprint = (value: unknown): string => {
 const restrictedPermissions = (source: Record<string, unknown> = {}): Record<string, unknown> => ({
   ...source,
   BASE_RECIPE: false,
+  TOPPING: false,
   MAIN: false,
   OPTIMAL: false,
   ECO: false,
@@ -193,12 +241,15 @@ function unresolvedAuthority(input: {
   reference?: MapperProductBehaviorAuthorityRow | null;
 }): TrustedProductBehaviorAuthority {
   const reference = input.reference ?? null;
+  const intendedUsageRole = input.profile.recognition?.intendedUsageRole ?? 'BASE_ONLY';
   const result = {
     authority: PRODUCT_BEHAVIOR_AUTHORITY,
     validationMode: 'server_recomputed_product_behavior' as const,
     articleIdentity: 'PRODUCT_OWNED' as const,
     classificationOutcome: input.outcome,
     baseRecipeEligible: false,
+    toppingEligible: false,
+    intendedUsageRole,
     referenceMapperIngredientId: reference?.mapper_ingredient_id ?? null,
     runtimeMapperIngredientId: null,
     mapperBehaviorBindingId: reference?.id ?? null,
@@ -233,6 +284,10 @@ export function validateProductBehaviorAuthority(input: {
   behaviorRows: readonly MapperProductBehaviorAuthorityRow[];
 }): TrustedProductBehaviorAuthority {
   const profile = input.productProfile;
+  const recognition = profile.recognition ?? null;
+  const intendedUsageRole = recognition?.intendedUsageRole ?? 'BASE_ONLY';
+  const baseRequested = intendedUsageRole === 'BASE_ONLY' || intendedUsageRole === 'BASE_AND_TOPPING';
+  const toppingRequested = intendedUsageRole === 'TOPPING_ONLY' || intendedUsageRole === 'BASE_AND_TOPPING';
   if (!profile.engineUsable) {
     return unresolvedAuthority({
       profile,
@@ -240,11 +295,25 @@ export function validateProductBehaviorAuthority(input: {
       reasons: ['product_owned_profile_missing'],
     });
   }
-  if (profile.evidence.kind === 'technical') {
+  if (recognition?.isTechnicalProduct === true || (!recognition && profile.evidence.kind === 'technical')) {
     return unresolvedAuthority({
       profile,
       outcome: 'blocked',
       reasons: [TECHNICAL_REASON],
+    });
+  }
+  if (recognition?.modelRequired === true) {
+    return unresolvedAuthority({
+      profile,
+      outcome: 'unknown_requires_review',
+      reasons: ['product_semantics_unresolved'],
+    });
+  }
+  if (intendedUsageRole === 'NEITHER_REVIEW') {
+    return unresolvedAuthority({
+      profile,
+      outcome: 'unknown_requires_review',
+      reasons: ['product_role_unresolved'],
     });
   }
   const referenceId = profile.profileReferenceMapperIngredientId;
@@ -266,7 +335,7 @@ export function validateProductBehaviorAuthority(input: {
     });
   }
   const reference = references[0]!;
-  if (reference.profile_permissions.BASE_RECIPE !== true) {
+  if (baseRequested && reference.profile_permissions.BASE_RECIPE !== true) {
     return unresolvedAuthority({
       profile,
       outcome: 'unknown_requires_review',
@@ -283,7 +352,9 @@ export function validateProductBehaviorAuthority(input: {
     validationMode: 'server_recomputed_product_behavior',
     articleIdentity: 'PRODUCT_OWNED',
     classificationOutcome: 'classified',
-    baseRecipeEligible: true,
+    baseRecipeEligible: baseRequested,
+    toppingEligible: toppingRequested,
+    intendedUsageRole,
     referenceMapperIngredientId: reference.mapper_ingredient_id,
     runtimeMapperIngredientId: null,
     mapperBehaviorBindingId: reference.id,
@@ -297,7 +368,11 @@ export function validateProductBehaviorAuthority(input: {
     veganEligibility: reference.vegan_eligibility,
     proteinBehavior: reference.protein_behavior,
     approvedLiquidDairyCarrier: reference.approved_liquid_dairy_carrier,
-    profilePermissions: structuredClone(reference.profile_permissions),
+    profilePermissions: {
+      ...structuredClone(reference.profile_permissions),
+      BASE_RECIPE: baseRequested,
+      TOPPING: toppingRequested,
+    },
     processBehavior: structuredClone(reference.process_behavior),
     behaviorRole: reference.behavior_role,
     mainPolicyStatus: reference.main_policy_status,

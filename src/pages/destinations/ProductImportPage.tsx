@@ -31,7 +31,11 @@ import {
   type EnrichmentProgress,
   type EnrichmentRunSummary,
 } from '@/features/product-intelligence/intimportEnrichment';
-import { createIntimportWebProvider } from '@/services/intimportEnrichment';
+import { runIntimportSemanticClassification } from '@/features/product-intelligence/intimportSemanticClassification';
+import {
+  createIntimportSemanticProvider,
+  createIntimportWebProvider,
+} from '@/services/intimportEnrichment';
 import { loadMapperKnowledge } from '@/services/mapperKnowledge';
 import {
   planIntimportDedup,
@@ -283,10 +287,46 @@ export function ProductImportPage() {
         undefined,
         setEnrichProgress,
       );
+      const semantic = await runIntimportSemanticClassification(
+        outcome.products,
+        createIntimportSemanticProvider({ importId }),
+      );
+      // Recognition owns the compatible Mapper universe, so a semantic result
+      // must be followed by a fresh local pass. This is still read-only: it
+      // reloads immutable Mapper knowledge and writes no product or PI row.
+      let mapper = null;
+      try {
+        mapper = await loadMapperKnowledge();
+      } catch {
+        setMapperNotice(
+          'Mapper niedostępny po klasyfikacji — zachowano bezpieczny wynik sprzed ponownego dopasowania.',
+        );
+      }
+      const reanalysed = intimport && mapper
+        ? runIntimportLocalIntelligence(
+            intimport.candidates,
+            {},
+            mapper,
+            semantic.classifications,
+          ).rows
+        : outcome.products;
+      const enrichedByRow = new Map(outcome.products.map((row) => [row.rowIndex, row] as const));
+      const finalRows = reanalysed.map((row) => {
+        const enriched = enrichedByRow.get(row.rowIndex);
+        return enriched
+          ? {
+              ...row,
+              evidence: enriched.evidence,
+              assessment: enriched.assessment,
+              enrichmentEvidenceReceipts: enriched.enrichmentEvidenceReceipts,
+              semanticEvidenceReceipt: semantic.evidenceReceipts.get(row.rowIndex) ?? null,
+            }
+          : row;
+      });
       // Import must consume the enriched assessments/evidence returned by the
       // explicit research pass. Keeping the pre-web rows here silently threw
       // away the new Product Accuracy and could admit/refuse on stale evidence.
-      setLocalRows(outcome.products);
+      setLocalRows(finalRows);
       setEnrichSummary(outcome.summary);
     } catch (error) {
       setEnrichError(errorMessage(error));

@@ -29,6 +29,11 @@ import {
   type CarbonationEvidence,
   type CarbonationProfile,
 } from '../../../src/data/products/carbonation.ts';
+import {
+  classifyProductSemantics,
+  type ProductSemanticClassification,
+  type ProductSemanticEvidence,
+} from '../../../src/features/product-intelligence/productRecognition.ts';
 
 export const INTIMPORT_WHOLE_PROFILE_AUTHORITY = 'INTIMPORT_WHOLE_PROFILE_MATCH' as const;
 
@@ -96,6 +101,7 @@ export interface IntimportTrustedProductProfile {
   mapperSimilarity: number | null;
   mapperProfileBasis: Exclude<ProfileMatchBasis, 'none'> | null;
   mapperFingerprint: string;
+  recognition: ProductSemanticClassification | null;
 }
 
 export interface IntimportTrustedEvidenceProvenance {
@@ -118,6 +124,11 @@ export interface IntimportProductProfileProposalInput {
   declared: Partial<Record<WorkingNumericField, number | null>>;
   declaredBasis?: Partial<Record<WorkingNumericField, 'product_declared' | 'user_confirmed'>>;
   evidence: ProductEvidenceInput;
+  /** Exact public evidence. When present the server recomputes Recognition V2;
+   * no submitted semantic verdict is trusted. */
+  recognitionEvidence?: ProductSemanticEvidence | null;
+  /** Server-ledger validated model result. Browser values never enter here. */
+  trustedRecognition?: ProductSemanticClassification | null;
   /** Supplied only by the server after ledger/source validation. */
   evidenceProvenance?: Partial<
     Record<ProductEvidenceField, IntimportTrustedEvidenceProvenance>
@@ -223,6 +234,15 @@ export function validateIntimportProductProfileProposal(
   input: IntimportProductProfileProposalInput,
 ): IntimportTrustedProductProfile | null {
   const mapperFingerprint = fingerprintMapperRows(input.rows);
+  const deterministicRecognition = input.recognitionEvidence
+    ? classifyProductSemantics(input.recognitionEvidence)
+    : null;
+  const recognition =
+    input.trustedRecognition && deterministicRecognition &&
+    input.trustedRecognition.authority === 'PRODUCT_RECOGNITION_V2' &&
+    input.trustedRecognition.evidenceFingerprint === deterministicRecognition.evidenceFingerprint
+      ? input.trustedRecognition
+      : deterministicRecognition;
   // Only verified, Engine-approved Mapper rows may contribute estimates. The
   // browser's proposed ID is deliberately ignored: the server recomputes the
   // donor from canonical facts, and a stale/wrong hint must degrade to the
@@ -244,8 +264,9 @@ export function validateIntimportProductProfileProposal(
         category: input.matchInput.category,
         subcategory: input.matchInput.subcategory,
         barcode: input.matchInput.barcode,
+        semantic: recognition,
       },
-      technical: input.matchInput.technical === true,
+      technical: recognition?.isTechnicalProduct ?? (input.matchInput.technical === true),
       technicalAuthority: false,
     },
     knowledge,
@@ -318,5 +339,6 @@ export function validateIntimportProductProfileProposal(
     mapperProfileBasis:
       acceptedMatch && acceptedMatch.basis !== 'none' ? acceptedMatch.basis : null,
     mapperFingerprint,
+    recognition,
   };
 }

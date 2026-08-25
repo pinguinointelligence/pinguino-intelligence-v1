@@ -101,7 +101,7 @@ const FAMILY_RULES: readonly FamilyRule[] = [
     family: 'nut_paste',
     technical: false,
     pattern:
-      /\b(hazelnut|almond|pistachio|cashew|walnut|peanut|macadamia|pecan)\b[^,;]{0,16}\b(paste|butter|praline|pasta)\b|\bpasta\s*(orzechow|migdalow|pistacjow)/i,
+      /\b(hazelnut|almond|pistachio|cashew|walnut|peanut|macadamia|pecan)\b[^,;]{0,16}\b(paste|butter|praline|pasta)\b|\bpasta\s*(?:z\s+)?(orzechow|migdalow|pistacjow)/i,
     categories: ['nut', 'flavor_paste'],
   },
   {

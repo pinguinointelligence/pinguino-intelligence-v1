@@ -367,6 +367,7 @@ export function resolveProductWorkingValues(
       barcode: input.identity.barcode,
       knownMacros: verifiedMacros(fields),
       technical: input.technical,
+      semantic: input.identity.semantic,
     },
     knowledge,
   );

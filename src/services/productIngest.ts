@@ -263,6 +263,10 @@ export function canonicalIngestFromLegacyProduct(
               )
                 ? intimportProposal.enrichmentEvidenceReceipts
                 : [],
+              semanticEvidenceReceipt:
+                typeof intimportProposal.semanticEvidenceReceipt === 'string'
+                  ? intimportProposal.semanticEvidenceReceipt
+                  : null,
             },
           }
         : {}),
@@ -314,6 +318,9 @@ export function canonicalIngestFromLegacyProduct(
               // never permissions or browser-issued accuracy.
               catalogImportSourceEvidence: {
                 manufacturer: intimportFields.Manufacturer ?? input.supplier ?? null,
+                productType: intimportFields['Product Type'] ?? null,
+                sourceCategory: intimportFields.Category ?? input.product_category ?? null,
+                sourceSubcategory: intimportFields.Subcategory ?? null,
                 variant:
                   intimportFields['Variant Original'] ??
                   intimportFields['Variant English'] ??
@@ -325,6 +332,7 @@ export function canonicalIngestFromLegacyProduct(
                 dosage: intimportFields['Professional Dosage'] ?? input.usage_notes ?? null,
                 technicalParameters:
                   intimportFields['Technical Parameters'] ?? input.engine_notes ?? null,
+                notes: intimportFields.Notes ?? null,
                 primarySourceUrl: intimportFields['Primary Source URL'] ?? input.source_url ?? null,
                 technicalPdfUrl: intimportFields['Technical PDF URL'] ?? input.product_url ?? null,
                 ingredients:

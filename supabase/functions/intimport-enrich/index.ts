@@ -1,6 +1,14 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 import { classifySourceAuthority } from '../_shared/sourceAuthority.ts';
 import { sha256Text, stableJson } from '../_shared/productScanner.ts';
+import {
+  PRODUCT_RECOGNITION_MODEL_SCHEMA,
+  PRODUCT_RECOGNITION_VERSION,
+  canonicalizeProductSemanticEvidence,
+  classifyProductSemantics,
+  validateProductSemanticModelOutput,
+  type ProductSemanticEvidence,
+} from '../../../src/features/product-intelligence/productRecognition.ts';
 
 /**
  * INTIMPORT targeted web enrichment — the real external provider.
@@ -131,6 +139,48 @@ Rules:
   "not found" is always better than a plausible guess.
 - Never state how confident you are. Confidence is computed elsewhere from the evidence.`;
 
+const SEMANTIC_SYSTEM_PROMPT = `You classify product semantics for Gellatti. You do not create nutrition or chemistry.
+
+Use only the exact evidence object provided. Determine what the product is, its physical form,
+its intended BASE/TOPPING role, whether it is genuinely technical or dosage-dependent, and what
+the stated dosage means. "professional" is market context, never by itself technical. q.b./quanto
+basta/as desired is not a missing fixed dose and is not automatically topping: combine it with
+manufacturer category, description, form and intended use. A genuine stabilizer, emulsifier,
+integrator or dosage-critical base remains technical.
+
+Never invent fat, protein, water, solids, sugars, POD, PAC, density, dosage values or dosage units.
+If evidence is insufficient, use UNKNOWN or NEITHER_REVIEW. evidenceRefs may contain only exact
+top-level evidence field names. reasonCodes are concise uppercase audit facts, not hidden reasoning.`;
+
+const semanticEvidenceFromRequest = (value: unknown): ProductSemanticEvidence | null => {
+  const raw = objectValue(value);
+  const allowed = new Set([
+    'name', 'brand', 'manufacturer', 'manufacturerCode', 'productType', 'category',
+    'subcategory', 'variant', 'ingredients', 'description', 'dosage',
+    'technicalParameters', 'sourceUrls',
+  ]);
+  if (Object.keys(raw).some((key) => !allowed.has(key))) return null;
+  const textOrNull = (entry: unknown): string | null =>
+    typeof entry === 'string' ? entry : null;
+  return canonicalizeProductSemanticEvidence({
+    name: textOrNull(raw.name),
+    brand: textOrNull(raw.brand),
+    manufacturer: textOrNull(raw.manufacturer),
+    manufacturerCode: textOrNull(raw.manufacturerCode),
+    productType: textOrNull(raw.productType),
+    category: textOrNull(raw.category),
+    subcategory: textOrNull(raw.subcategory),
+    variant: textOrNull(raw.variant),
+    ingredients: textOrNull(raw.ingredients),
+    description: textOrNull(raw.description),
+    dosage: textOrNull(raw.dosage),
+    technicalParameters: textOrNull(raw.technicalParameters),
+    sourceUrls: Array.isArray(raw.sourceUrls)
+      ? raw.sourceUrls.filter((url): url is string => typeof url === 'string')
+      : [],
+  });
+};
+
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
@@ -165,6 +215,213 @@ Deno.serve(async (request) => {
   }
 
   const importId = typeof body.importId === 'string' ? body.importId.slice(0, 64) : null;
+  if (body.action === 'semantic_classification') {
+    const evidence = semanticEvidenceFromRequest(body.evidence);
+    if (!importId || !evidence) return json({ error: 'invalid_semantic_request' }, 400);
+    const deterministic = classifyProductSemantics(evidence);
+    if (!deterministic.modelRequired) {
+      return json({
+        classification: deterministic,
+        evidenceReceipt: null,
+        cacheHit: true,
+        calls: 0,
+        model: null,
+        deterministicOnly: true,
+      });
+    }
+
+    const semanticModel = Deno.env.get('INTIMPORT_ENRICHMENT_MODEL') || 'gpt-5.6-luna';
+    const semanticCap = numberEnv('INTIMPORT_MAX_EXTERNAL_CALLS_PER_IMPORT', 40);
+    const idempotencyKey = await sha256Text(stableJson({
+      action: 'semantic_classification',
+      classifierVersion: PRODUCT_RECOGNITION_VERSION,
+      evidence,
+    }));
+    const { data: cachedSemantic, error: cacheError } = await service
+      .from('intimport_semantic_classification_usage')
+      .select('result_json')
+      .eq('user_id', auth.user.id)
+      .eq('idempotency_key', idempotencyKey)
+      .maybeSingle();
+    if (cacheError) return json({ error: 'semantic_cache_unavailable' }, 503);
+    if (cachedSemantic?.result_json) {
+      const cachedResult = objectValue(cachedSemantic.result_json);
+      const cachedClassification = objectValue(cachedResult.classification);
+      if (
+        cachedClassification.authority === PRODUCT_RECOGNITION_VERSION &&
+        cachedClassification.classificationSource === 'SERVER_MODEL' &&
+        cachedClassification.evidenceFingerprint === deterministic.evidenceFingerprint
+      ) {
+        return json({
+          ...cachedResult,
+          evidenceReceipt: idempotencyKey,
+          cacheHit: true,
+          calls: 0,
+        });
+      }
+      return json({
+        classification: deterministic,
+        evidenceReceipt: null,
+        cacheHit: true,
+        calls: 0,
+        model: semanticModel,
+        error: typeof cachedResult.error === 'string'
+          ? cachedResult.error
+          : 'semantic_attempt_not_repeated',
+      });
+    }
+
+    const { data: reservation, error: semanticReservationError } = await service.rpc(
+      'reserve_intimport_semantic_classification',
+      {
+        p_user_id: auth.user.id,
+        p_import_id: importId,
+        p_idempotency_key: idempotencyKey,
+        p_classifier_version: PRODUCT_RECOGNITION_VERSION,
+        p_model: semanticModel,
+        p_evidence_fingerprint: deterministic.evidenceFingerprint,
+        p_cap: semanticCap,
+      },
+    );
+    if (semanticReservationError) return json({ error: 'semantic_usage_unavailable' }, 503);
+    if (reservation === 'CAP_REACHED') {
+      return json({
+        error: 'intimport_semantic_call_cap_reached',
+        cap: semanticCap,
+      }, 429);
+    }
+    if (reservation !== 'RESERVED') {
+      return json({
+        classification: deterministic,
+        evidenceReceipt: null,
+        cacheHit: true,
+        calls: 0,
+        model: semanticModel,
+        error: 'semantic_attempt_not_repeated',
+      });
+    }
+
+    const finalizeSemanticAttempt = async (result: Record<string, unknown>) => service
+      .from('intimport_semantic_classification_usage')
+      .update({
+        input_tokens: Number(result.inputTokens ?? 0),
+        output_tokens: Number(result.outputTokens ?? 0),
+        latency_ms: Number(result.latencyMs ?? 0),
+        result_json: result,
+      })
+      .eq('user_id', auth.user.id)
+      .eq('idempotency_key', idempotencyKey);
+
+    const prompt = `Exact product evidence (the only allowed source):\n${JSON.stringify(evidence)}\n` +
+      `Deterministic unresolved dimensions: ${deterministic.modelReasonCodes.join(', ') || 'none'}.`;
+    const startedAt = Date.now();
+    let semanticPayload: Record<string, unknown>;
+    try {
+      const response = await fetch('https://api.openai.com/v1/responses', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${openAiKey}`,
+          'Content-Type': 'application/json',
+          'OpenAI-Project': projectId,
+        },
+        body: JSON.stringify({
+          model: semanticModel,
+          input: [
+            { role: 'system', content: [{ type: 'input_text', text: SEMANTIC_SYSTEM_PROMPT }] },
+            { role: 'user', content: [{ type: 'input_text', text: prompt }] },
+          ],
+          text: {
+            format: {
+              type: 'json_schema',
+              name: 'gellatti_product_recognition_v2',
+              strict: true,
+              schema: PRODUCT_RECOGNITION_MODEL_SCHEMA,
+            },
+          },
+        }),
+      });
+      semanticPayload = objectValue(await response.json());
+      if (!response.ok) throw new Error('provider_request_failed');
+    } catch {
+      const errorResult = {
+        status: 'ERROR',
+        calls: 1,
+        model: semanticModel,
+        latencyMs: Date.now() - startedAt,
+        error: 'semantic_provider_unavailable',
+      };
+      await finalizeSemanticAttempt(errorResult);
+      return json({
+        classification: deterministic,
+        evidenceReceipt: null,
+        cacheHit: false,
+        calls: 1,
+        model: semanticModel,
+        error: 'semantic_provider_unavailable',
+      });
+    }
+    const outputText = Array.isArray(semanticPayload.output)
+      ? semanticPayload.output.flatMap((item) => {
+          const row = objectValue(item);
+          return Array.isArray(row.content) ? row.content : [];
+        }).map((part) => objectValue(part).text)
+          .filter((text): text is string => typeof text === 'string').join('')
+      : null;
+    let modelOutput: unknown = null;
+    try {
+      modelOutput = outputText ? JSON.parse(outputText) : null;
+    } catch {
+      modelOutput = null;
+    }
+    const classification = validateProductSemanticModelOutput(evidence, modelOutput);
+    if (!classification) {
+      const rejectedResult = {
+        status: 'ERROR',
+        calls: 1,
+        model: semanticModel,
+        latencyMs: Date.now() - startedAt,
+        inputTokens: Number(objectValue(semanticPayload.usage).input_tokens ?? 0),
+        outputTokens: Number(objectValue(semanticPayload.usage).output_tokens ?? 0),
+        error: 'semantic_output_rejected',
+      };
+      await finalizeSemanticAttempt(rejectedResult);
+      return json({
+        classification: deterministic,
+        evidenceReceipt: null,
+        cacheHit: false,
+        calls: 1,
+        model: semanticModel,
+        error: 'semantic_output_rejected',
+      });
+    }
+    const usage = objectValue(semanticPayload.usage);
+    const semanticResult = {
+      status: 'CLASSIFIED',
+      classification,
+      calls: 1,
+      model: semanticModel,
+      latencyMs: Date.now() - startedAt,
+      inputTokens: Number(usage.input_tokens ?? 0),
+      outputTokens: Number(usage.output_tokens ?? 0),
+    };
+    const { error: semanticUpdateError } = await finalizeSemanticAttempt(semanticResult);
+    if (semanticUpdateError) {
+      return json({
+        classification: deterministic,
+        evidenceReceipt: null,
+        cacheHit: false,
+        calls: 1,
+        model: semanticModel,
+        error: 'semantic_ledger_write_failed',
+      });
+    }
+    return json({
+      ...semanticResult,
+      evidenceReceipt: idempotencyKey,
+      cacheHit: false,
+    });
+  }
+
   const product = objectValue(body.product);
   const requestedFields = Array.isArray(body.fields)
     ? body.fields.filter((f): f is string => typeof f === 'string' && RESEARCHABLE.has(f))

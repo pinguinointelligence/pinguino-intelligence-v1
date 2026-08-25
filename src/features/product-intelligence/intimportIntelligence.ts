@@ -54,6 +54,11 @@ import {
   classifyProspectiveProductBehavior,
   type ProspectiveProductBehaviorAuthority,
 } from './productBehaviorAuthority';
+import {
+  classifyProductSemantics,
+  type ProductSemanticClassification,
+  type ProductSemanticEvidence,
+} from './productRecognition';
 
 /** Canonical lookups the caller supplies. Kept injected so this stays pure. */
 export interface IntimportCanonicalIndex {
@@ -68,6 +73,11 @@ export interface IntimportProductIntelligence {
   sourceProductId: string | null;
   displayName: string | null;
   kind: ProductKind;
+  /** One semantic authority shared by donor filtering and ProductBehavior. */
+  recognition: ProductSemanticClassification;
+  recognitionEvidence: ProductSemanticEvidence;
+  /** Server ledger receipt for a model-filled semantic result, when used. */
+  semanticEvidenceReceipt: string | null;
   family: ProductFamilyMatch | null;
   /** True only when the family evidence was strong enough to count. */
   familyApplied: boolean;
@@ -116,20 +126,58 @@ export interface IntimportProductIntelligence {
   productBehaviorAuthority: ProspectiveProductBehaviorAuthority;
   /** Exact public inputs used by the frozen whole-profile matcher. */
   profileMatchInput: ProfileMatchInput;
+  /** Concise, machine-readable decision facts. Never model chain-of-thought. */
+  recognitionTrace: {
+    semanticClassificationSource: string;
+    semanticConfidence: number;
+    mapperCandidatesBeforeFilter: string[];
+    mapperCandidatesAfterFilter: string[];
+    selectedMapperDonor: string | null;
+    mapperSimilarity: number | null;
+    rejectedMapperCandidates: { ingredientId: string; reasonCodes: string[] }[];
+    dosageInterpretation: ProductSemanticClassification['dosage'];
+    finalRole: ProductSemanticClassification['intendedUsageRole'];
+    finalStatus: 'ENGINE_READY' | 'REVIEW' | 'BLOCKED' | 'IDENTITY_CONFLICT';
+    finalReasonCodes: string[];
+  };
 }
 
-/** Source Product Type / Category values that mean "professional / technical". */
-const TECHNICAL_TYPES = new Set(['professional', 'technical']);
-const TECHNICAL_FAMILIES = new Set(['stabilizer_hydrocolloid', 'emulsifier']);
-
 function productKind(
-  candidate: IntimportCandidate,
-  family: ProductFamilyMatch | null,
+  recognition: ProductSemanticClassification,
 ): ProductKind {
-  const type = (candidate.source['Product Type'] ?? '').trim().toLowerCase();
-  if (TECHNICAL_TYPES.has(type)) return 'technical';
-  if (family && TECHNICAL_FAMILIES.has(family.family)) return 'technical';
-  return 'normal_food';
+  return recognition.isTechnicalProduct ? 'technical' : 'normal_food';
+}
+
+const labelledTechnicalValue = (value: string | null | undefined, label: string): string | null => {
+  const source = value?.trim() ?? '';
+  if (!source) return null;
+  const match = source.match(new RegExp(`(?:^|\\|)\\s*${label}\\s*:\\s*([^|]+)`, 'i'));
+  return match?.[1]?.trim() || null;
+};
+
+/** Exact source evidence used by both the local pass and server recomputation. */
+export function semanticEvidenceFromIntimportCandidate(
+  candidate: IntimportCandidate,
+): ProductSemanticEvidence {
+  const technical = candidate.source['Technical Parameters'];
+  return {
+    name: candidate.displayName,
+    brand: candidate.source.Brand,
+    manufacturer: candidate.source.Manufacturer,
+    manufacturerCode: labelledTechnicalValue(technical, 'Kod producenta'),
+    productType: candidate.source['Product Type'],
+    category: candidate.sourceCategory,
+    subcategory: candidate.sourceSubcategory,
+    variant: candidate.source['Variant Original'] ?? candidate.source['Variant English'],
+    ingredients: candidate.source['Ingredients Original'] ?? candidate.source['Ingredients English'],
+    description: labelledTechnicalValue(technical, 'Opis') ?? candidate.source.Notes,
+    dosage: candidate.source['Professional Dosage'],
+    technicalParameters: technical,
+    sourceUrls: [
+      candidate.source['Primary Source URL'],
+      candidate.source['Technical PDF URL'],
+    ].filter((url): url is string => !!url && !['not_found', 'not_applicable'].includes(url)),
+  };
 }
 
 /**
@@ -313,7 +361,14 @@ export function assessIntimportProduct(
   candidate: IntimportCandidate,
   index: IntimportCanonicalIndex = {},
   mapper: MapperKnowledge | null = null,
+  recognitionOverride: ProductSemanticClassification | null = null,
 ): IntimportProductIntelligence {
+  const recognitionEvidence = semanticEvidenceFromIntimportCandidate(candidate);
+  const deterministicRecognition = classifyProductSemantics(recognitionEvidence);
+  const recognition =
+    recognitionOverride?.evidenceFingerprint === deterministicRecognition.evidenceFingerprint
+      ? recognitionOverride
+      : deterministicRecognition;
   const family = inferMapperFamily({
     name: candidate.displayName,
     variant: candidate.source['Variant Original'] ?? candidate.source['Variant English'],
@@ -328,7 +383,7 @@ export function assessIntimportProduct(
   const existingProductId = existingByBarcode ?? candidate.existingProductId ?? null;
   const exactCanonicalMatch = existingProductId !== null;
 
-  const kind = productKind(candidate, family);
+  const kind = productKind(recognition);
   const sourceAuthority = classifySourceAuthority({
     url: candidate.source['Primary Source URL'] ?? candidate.source['Technical PDF URL'],
     brand: candidate.source.Brand,
@@ -392,6 +447,7 @@ export function assessIntimportProduct(
             category: candidate.sourceCategory,
             subcategory: candidate.sourceSubcategory,
             barcode: candidate.ean,
+            semantic: recognition,
           },
           technical: kind === 'technical',
           // INTIMPORT never resolves a manufacturer's dosage authority. The
@@ -425,6 +481,7 @@ export function assessIntimportProduct(
       ),
     ),
     technical: kind === 'technical',
+    semantic: recognition,
   };
   const carbonation = classifyCarbonation(
     intimportCarbonationEvidence(candidate, sourceAuthority),
@@ -433,13 +490,30 @@ export function assessIntimportProduct(
     kind,
     engineUsable: workingValues?.engineReady === true,
     profileMatch: workingValues?.profileMatch ?? null,
+    recognition,
   });
+
+  const profileMatch = workingValues?.profileMatch ?? null;
+  const selectedMapperDonor = profileMatch ? profileDonor(profileMatch) : null;
+  const finalStatus: IntimportProductIntelligence['recognitionTrace']['finalStatus'] =
+    candidate.state === 'REVIEW_REQUIRED' && candidate.duplicateOfRow !== null
+      ? 'IDENTITY_CONFLICT'
+      : !workingValues?.engineReady
+        ? 'REVIEW'
+        : productBehaviorAuthority.classificationOutcome === 'blocked'
+          ? 'BLOCKED'
+          : productBehaviorAuthority.classificationOutcome === 'classified'
+            ? 'ENGINE_READY'
+            : 'REVIEW';
 
   return {
     rowIndex: candidate.rowIndex,
     sourceProductId: candidate.sourceProductId,
     displayName: candidate.displayName,
     kind,
+    recognition,
+    recognitionEvidence,
+    semanticEvidenceReceipt: null,
     family,
     familyApplied,
     exactCanonicalMatch,
@@ -469,6 +543,23 @@ export function assessIntimportProduct(
     workingValues,
     productBehaviorAuthority,
     profileMatchInput,
+    recognitionTrace: {
+      semanticClassificationSource: recognition.classificationSource,
+      semanticConfidence: recognition.confidence,
+      mapperCandidatesBeforeFilter: profileMatch?.candidatesBeforeFilter ?? [],
+      mapperCandidatesAfterFilter: profileMatch?.candidatesAfterFilter ?? [],
+      selectedMapperDonor: selectedMapperDonor?.ingredient_id ?? null,
+      mapperSimilarity: profileMatch?.confidence ?? null,
+      rejectedMapperCandidates: profileMatch?.rejectedCandidates ?? [],
+      dosageInterpretation: recognition.dosage,
+      finalRole: recognition.intendedUsageRole,
+      finalStatus,
+      finalReasonCodes: [
+        ...recognition.reasonCodes,
+        ...productBehaviorAuthority.classificationReasonCodes,
+        ...(profileMatch?.rejected ? [profileMatch.rejected] : []),
+      ],
+    },
   };
 }
 
@@ -508,11 +599,17 @@ export function runIntimportLocalIntelligence(
   candidates: readonly IntimportCandidate[],
   index: IntimportCanonicalIndex = {},
   mapper: MapperKnowledge | null = null,
+  recognitionOverrides: ReadonlyMap<number, ProductSemanticClassification> = new Map(),
 ): { rows: IntimportProductIntelligence[]; summary: IntimportLocalSummary } {
   // INVALID rows have no usable identity and are not products to research.
   const rows = candidates
     .filter((candidate) => candidate.state !== 'INVALID' && candidate.state !== 'DUPLICATE')
-    .map((candidate) => assessIntimportProduct(candidate, index, mapper));
+    .map((candidate) => assessIntimportProduct(
+      candidate,
+      index,
+      mapper,
+      recognitionOverrides.get(candidate.rowIndex) ?? null,
+    ));
 
   const count = (route: EnrichmentRoute) => rows.filter((row) => row.route === route).length;
   const enrichable = rows.filter((row) => !NO_WEB_ROUTES.has(row.route));
@@ -684,7 +781,7 @@ export function planIntimportImport(
     (insert as Record<string, unknown>).extracted_json = {
       ...existing,
       productIntelligence: {
-        version: 1,
+        version: 2,
         state,
         engineUsable: state === 'READY_VERIFIED' || state === 'READY_ESTIMATED',
         productAccuracy: row.assessment.confidence,
@@ -696,6 +793,9 @@ export function planIntimportImport(
         // selection, Base use, an Engine calculation, Preview, Apply or Save.
         technicalAuthorityRequired: values?.technicalAuthorityRequired ?? false,
         needsEnrichment: state === 'REVIEW',
+        recognition: row.recognition,
+        recognitionTrace: row.recognitionTrace,
+        productBehaviorAuthority: row.productBehaviorAuthority,
         profileMatch: values?.profileMatch
           ? {
               confidence: values.profileMatch.confidence,
@@ -714,6 +814,8 @@ export function planIntimportImport(
           sourceProductId: row.sourceProductId,
           declared,
           evidence: row.evidence,
+          recognitionEvidence: row.recognitionEvidence,
+          semanticEvidenceReceipt: row.semanticEvidenceReceipt,
           enrichmentEvidenceReceipts: row.enrichmentEvidenceReceipts,
         },
         fields: provenance,
@@ -764,7 +866,7 @@ export function summarizeIntimportReadiness(
     const prospective = rows[index]?.productBehaviorAuthority;
     const accepted = gate.ready || (
       prospective?.classificationOutcome === 'classified' &&
-      prospective.baseRecipeEligible === true
+      (prospective.baseRecipeEligible === true || prospective.toppingEligible === true)
     );
     if (accepted) {
       productBehaviorAuthorityPass += 1;

@@ -6,6 +6,39 @@ import {
   type MapperProductBehaviorAuthorityRow,
 } from './productBehaviorAuthority';
 import type { IntimportTrustedProductProfile } from '../../../supabase/functions/_shared/intimportWholeProfileAuthority';
+import { classifyProductSemantics } from './productRecognition';
+
+const variegatoRecognition = classifyProductSemantics({
+  name: 'Variegato pistacchio',
+  brand: 'Comprital',
+  manufacturer: 'Comprital',
+  manufacturerCode: 'V1',
+  productType: 'professional',
+  category: 'Professional gelato products',
+  subcategory: 'Variegato',
+  variant: null,
+  ingredients: null,
+  description: 'Do przekładania i dekoracji lodów.',
+  dosage: 'q.b.',
+  technicalParameters: null,
+  sourceUrls: [],
+});
+
+const unresolvedFormRecognition = classifyProductSemantics({
+  name: 'Czekolada bez informacji o formie',
+  brand: 'Test',
+  manufacturer: 'Test',
+  manufacturerCode: null,
+  productType: null,
+  category: 'Chocolate',
+  subcategory: null,
+  variant: null,
+  ingredients: null,
+  description: null,
+  dosage: null,
+  technicalParameters: null,
+  sourceUrls: [],
+});
 
 const behaviorRow = (
   overrides: Partial<MapperProductBehaviorAuthorityRow> = {},
@@ -78,6 +111,7 @@ const productProfile = (
   mapperSimilarity: 0.94,
   mapperProfileBasis: 'commodity_name',
   mapperFingerprint: 'runtime-2088-deadbeef',
+  recognition: null,
   ...overrides,
 });
 
@@ -117,10 +151,27 @@ const profileMatch = (overrides: Partial<ProfileMatch> = {}): ProfileMatch => ({
   family: 'dairy_liquid',
   reasons: [],
   rejected: null,
+  candidatesBeforeFilter: ['PI-ING-000123'],
+  candidatesAfterFilter: ['PI-ING-000123'],
+  rejectedCandidates: [],
   ...overrides,
 });
 
 describe('prospective ProductBehavior authority', () => {
+  it('publishes one topping role contract for a manufacturer-confirmed variegato', () => {
+    expect(classifyProspectiveProductBehavior({
+      kind: 'normal_food',
+      engineUsable: true,
+      profileMatch: profileMatch(),
+      recognition: variegatoRecognition,
+    })).toMatchObject({
+      classificationOutcome: 'classified',
+      intendedUsageRole: 'TOPPING_ONLY',
+      baseRecipeEligible: false,
+      toppingEligible: true,
+    });
+  });
+
   it('accepts normal food only when the frozen whole-profile reference is eligible', () => {
     expect(
       classifyProspectiveProductBehavior({
@@ -146,8 +197,25 @@ describe('prospective ProductBehavior authority', () => {
     ).toEqual({
       classificationOutcome: 'unknown_requires_review',
       baseRecipeEligible: false,
+      toppingEligible: false,
+      intendedUsageRole: 'BASE_ONLY',
       referenceMapperIngredientId: null,
       classificationReasonCodes: ['family_and_form_evidence_missing'],
+    });
+  });
+
+  it('does not classify an otherwise complete product while required semantics remain unresolved', () => {
+    expect(unresolvedFormRecognition.modelRequired).toBe(true);
+    expect(classifyProspectiveProductBehavior({
+      kind: 'normal_food',
+      engineUsable: true,
+      profileMatch: profileMatch(),
+      recognition: unresolvedFormRecognition,
+    })).toMatchObject({
+      classificationOutcome: 'unknown_requires_review',
+      baseRecipeEligible: false,
+      toppingEligible: false,
+      classificationReasonCodes: ['product_semantics_unresolved'],
     });
   });
 
@@ -168,6 +236,21 @@ describe('prospective ProductBehavior authority', () => {
 });
 
 describe('server-owned immutable ProductBehavior authority', () => {
+  it('keeps the same topping-only role at the server authority boundary', () => {
+    const authority = validateProductBehaviorAuthority({
+      productProfile: productProfile({ recognition: variegatoRecognition }),
+      behaviorRows: [behaviorRow()],
+    });
+    expect(authority).toMatchObject({
+      classificationOutcome: 'classified',
+      intendedUsageRole: 'TOPPING_ONLY',
+      baseRecipeEligible: false,
+      toppingEligible: true,
+      runtimeMapperIngredientId: null,
+    });
+    expect(authority.profilePermissions).toMatchObject({ BASE_RECIPE: false, TOPPING: true });
+  });
+
   it('copies semantic behavior only and keeps Mapper out of runtime identity/composition', () => {
     const authority = validateProductBehaviorAuthority({
       productProfile: productProfile(),
@@ -202,6 +285,19 @@ describe('server-owned immutable ProductBehavior authority', () => {
       referenceMapperIngredientId: null,
       runtimeMapperIngredientId: null,
       classificationReasonCodes: ['family_and_form_evidence_missing'],
+    });
+  });
+
+  it('repeats the unresolved-semantics gate at the server authority boundary', () => {
+    const authority = validateProductBehaviorAuthority({
+      productProfile: productProfile({ recognition: unresolvedFormRecognition }),
+      behaviorRows: [behaviorRow()],
+    });
+    expect(authority).toMatchObject({
+      classificationOutcome: 'unknown_requires_review',
+      baseRecipeEligible: false,
+      toppingEligible: false,
+      classificationReasonCodes: ['product_semantics_unresolved'],
     });
   });
 

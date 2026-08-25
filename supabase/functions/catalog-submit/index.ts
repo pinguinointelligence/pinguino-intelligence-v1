@@ -32,6 +32,13 @@ import {
   type MapperProductBehaviorAuthorityRow,
   type TrustedProductBehaviorAuthority,
 } from '../../../src/features/product-intelligence/productBehaviorAuthority.ts';
+import {
+  PRODUCT_RECOGNITION_VERSION,
+  canonicalizeProductSemanticEvidence,
+  classifyProductSemantics,
+  type ProductSemanticClassification,
+  type ProductSemanticEvidence,
+} from '../../../src/features/product-intelligence/productRecognition.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -274,11 +281,39 @@ function serverProductProfileProposal(
   matchInput: ProfileMatchInput;
   declared: Partial<Record<WorkingNumericField, number>>;
   evidence: ProductEvidenceInput;
+  recognitionEvidence: ProductSemanticEvidence;
+  semanticEvidenceReceipt: string | null;
   enrichmentEvidenceReceipts: string[];
   sourceProductId: string | null;
 } | null {
   const serverInput = serverMatchInput(canonicalInput);
   if (!serverInput) return null;
+  const canonicalFacts = objectValue(canonicalInput.facts);
+  const sourceEvidence = objectValue(canonicalFacts.catalogImportSourceEvidence);
+  const technicalParameters = clippedText(sourceEvidence.technicalParameters, 2_000);
+  const labelled = (label: string): string | null => {
+    if (!technicalParameters) return null;
+    const match = technicalParameters.match(new RegExp(`(?:^|\\|)\\s*${label}\\s*:\\s*([^|]+)`, 'i'));
+    return match?.[1]?.trim() || null;
+  };
+  const sourceUrls = [sourceEvidence.primarySourceUrl, sourceEvidence.technicalPdfUrl]
+    .filter((value): value is string => typeof value === 'string' && value.trim() !== '')
+    .map((value) => value.slice(0, 400));
+  const recognitionEvidence: ProductSemanticEvidence = {
+    name: clippedText(canonicalInput.displayName, 200),
+    brand: clippedText(canonicalInput.brand, 120),
+    manufacturer: clippedText(sourceEvidence.manufacturer, 160),
+    manufacturerCode: labelled('Kod producenta'),
+    productType: clippedText(sourceEvidence.productType, 80),
+    category: clippedText(sourceEvidence.sourceCategory, 160) ?? serverInput.matchInput.category ?? null,
+    subcategory: clippedText(sourceEvidence.sourceSubcategory, 160) ?? serverInput.matchInput.subcategory ?? null,
+    variant: clippedText(sourceEvidence.variant, 160),
+    ingredients: clippedText(sourceEvidence.ingredients, 2_000),
+    description: labelled('Opis') ?? clippedText(sourceEvidence.notes, 1_000),
+    dosage: clippedText(sourceEvidence.dosage, 240),
+    technicalParameters,
+    sourceUrls,
+  };
 
   const rawDeclared = objectValue(rawProposal.declared);
   const declared: Partial<Record<WorkingNumericField, number>> = {};
@@ -296,6 +331,7 @@ function serverProductProfileProposal(
     'declared',
     'evidence',
     'enrichmentEvidenceReceipts',
+    'semanticEvidenceReceipt',
   ]);
   if (Object.keys(rawProposal).some((key) => !allowedProposalKeys.has(key))) return null;
   const allowedEvidenceKeys = new Set([
@@ -346,6 +382,14 @@ function serverProductProfileProposal(
         ? rawProposal.enrichmentEvidenceReceipts.length
         : 0)
   ) return null;
+  const semanticEvidenceReceipt =
+    typeof rawProposal.semanticEvidenceReceipt === 'string' &&
+    /^[0-9a-f]{64}$/.test(rawProposal.semanticEvidenceReceipt)
+      ? rawProposal.semanticEvidenceReceipt
+      : null;
+  if (rawProposal.semanticEvidenceReceipt !== null &&
+      rawProposal.semanticEvidenceReceipt !== undefined &&
+      semanticEvidenceReceipt === null) return null;
 
   return {
     proposedMapperIngredientId:
@@ -362,9 +406,45 @@ function serverProductProfileProposal(
       mapperFamilyMatch: rawEvidence.mapperFamilyMatch as boolean,
       materialConflicts: rawEvidence.materialConflicts as string[],
     },
+    recognitionEvidence,
+    semanticEvidenceReceipt,
     enrichmentEvidenceReceipts: [...new Set(enrichmentEvidenceReceipts)],
     sourceProductId,
   };
+}
+
+async function trustedIntimportSemanticClassification(input: {
+  service: ServiceClient;
+  actorUserId: string;
+  proposal: NonNullable<ReturnType<typeof serverProductProfileProposal>>;
+}): Promise<ProductSemanticClassification | null> {
+  const deterministic = classifyProductSemantics(input.proposal.recognitionEvidence);
+  const receipt = input.proposal.semanticEvidenceReceipt;
+  if (!receipt) return deterministic;
+  const expectedReceipt = await sha256Text(stableJson({
+    action: 'semantic_classification',
+    classifierVersion: PRODUCT_RECOGNITION_VERSION,
+    evidence: canonicalizeProductSemanticEvidence(input.proposal.recognitionEvidence),
+  }));
+  if (receipt !== expectedReceipt) return null;
+  const { data, error } = await input.service
+    .from('intimport_semantic_classification_usage')
+    .select('idempotency_key,classifier_version,evidence_fingerprint,result_json')
+    .eq('user_id', input.actorUserId)
+    .eq('idempotency_key', receipt)
+    .maybeSingle();
+  if (error || !data) return null;
+  const result = objectValue(data.result_json);
+  const classification = objectValue(result.classification) as unknown as ProductSemanticClassification;
+  if (
+    data.idempotency_key !== receipt ||
+    data.classifier_version !== PRODUCT_RECOGNITION_VERSION ||
+    data.evidence_fingerprint !== deterministic.evidenceFingerprint ||
+    classification.authority !== PRODUCT_RECOGNITION_VERSION ||
+    classification.classificationSource !== 'SERVER_MODEL' ||
+    classification.evidenceFingerprint !== deterministic.evidenceFingerprint
+  ) return null;
+  return classification;
 }
 
 type TrustedIntimportEvidence = {
@@ -1349,12 +1429,22 @@ Deno.serve(async (request) => {
       if (!trustedEvidence) {
         return json({ error: 'intimport_product_evidence_untrusted' }, 409);
       }
+      const trustedRecognition = await trustedIntimportSemanticClassification({
+        service,
+        actorUserId: auth.user.id,
+        proposal,
+      });
+      if (!trustedRecognition) {
+        return json({ error: 'intimport_semantic_evidence_untrusted' }, 409);
+      }
       const authority = validateIntimportProductProfileProposal({
         origin: 'PR',
         proposedMapperIngredientId: proposal.proposedMapperIngredientId,
         matchInput: proposal.matchInput,
         declared: proposal.declared,
         evidence: trustedEvidence.evidence,
+        recognitionEvidence: proposal.recognitionEvidence,
+        trustedRecognition,
         evidenceProvenance: trustedEvidence.provenance,
         carbonationEvidence: trustedEvidence.carbonationEvidence,
         proposedTechnicalComposition: objectValue(objectValue(canonicalInput.facts).technicalComposition),

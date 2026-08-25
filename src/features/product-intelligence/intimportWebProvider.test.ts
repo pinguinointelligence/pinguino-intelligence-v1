@@ -120,8 +120,8 @@ describe('auto-import floor and no-web threshold are distinct', () => {
 
 /* ── §16 / §15 technical products ─────────────────────────────────────────── */
 
-describe('researched dosage stays informational', () => {
-  it('researches technical evidence for a professional product', () => {
+describe('professional context and researched dosage stay informational', () => {
+  it('does not classify or research a product as technical merely because it is professional', () => {
     const intelligence = intelligenceFor(
       row({
         'Product Type': 'professional',
@@ -130,10 +130,10 @@ describe('researched dosage stays informational', () => {
         Subcategory: 'Bazy specjalne',
       }),
     );
-    expect(intelligence.kind).toBe('technical');
-    // The research plan must actually ask for the technical evidence.
-    expect(intelligence.enrichmentTargets).toContain('dosage');
-    expect(intelligence.enrichmentTargets).toContain('technicalParameters');
+    expect(intelligence.kind).toBe('normal_food');
+    expect(intelligence.recognition.isProfessionalProduct).toBe(true);
+    expect(intelligence.recognition.isTechnicalProduct).toBe(false);
+    expect(intelligence.enrichmentTargets).not.toContain('dosage');
   });
 
   it('keeps a researched manufacturer dosage as information, not as permission', async () => {
@@ -152,9 +152,9 @@ describe('researched dosage stays informational', () => {
     // The researched `50 g/kg` is stored as the manufacturer said it. It is
     // never normalized, never converted, and never a condition of import.
     expect(products[0]!.assessment.missingCritical).not.toContain('dosage');
-    // Whatever this row's overall confidence turns out to be, the dosage is
-    // never the thing standing in its way.
-    expect(products[0]!.assessment.criticalReadiness).toBe(true);
+    // The dosage is never the thing standing in its way. A normal product may
+    // still need its own ingredient/nutrition evidence.
+    expect(products[0]!.assessment.missingCritical).not.toContain('dosage');
   });
 });
 
@@ -274,9 +274,13 @@ describe('provider runs server-side only', () => {
     // The first live run showed the provider ignoring max_tool_calls and making
     // up to 3 searches for one job (25 across 10 jobs). Counting rows would have
     // allowed roughly three times the advertised ceiling.
-    expect(edgeSource).toContain("select('web_calls')");
-    expect(edgeSource).not.toMatch(/select\('id', \{ count: 'exact'/);
-    expect(edgeSource).toContain('const usedSoFar = (usageRows ?? []).reduce(');
+    const webCap = edgeSource.slice(
+      edgeSource.indexOf('Import-wide cap, counted SERVER-SIDE on ACTUAL provider web searches'),
+      edgeSource.indexOf('// Only public product identity leaves the system'),
+    );
+    expect(webCap).toContain("select('web_calls')");
+    expect(webCap).not.toMatch(/select\('id', \{ count: 'exact'/);
+    expect(webCap).toContain('const usedSoFar = (usageRows ?? []).reduce(');
   });
 
   it('reports the real number of searches, never a clamped one', () => {
