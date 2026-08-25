@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
 import {
   beginPiRecalculation,
+  cancelPiRecalculation,
   productBehaviorTerminal,
   runPiRecalculationWithTerminal,
   serverBehaviorPreviewIssue,
@@ -21,9 +22,9 @@ import { ProRecalcPanel } from './ProRecalcPanel';
 let host: HTMLDivElement;
 let root: Root;
 
-const renderPanel = async (onClose = vi.fn()) => {
+const renderPanel = async (onClose = vi.fn(), retryRunner?: () => Promise<void>) => {
   await act(async () => {
-    root.render(<ProRecalcPanel open onClose={onClose} />);
+    root.render(<ProRecalcPanel open onClose={onClose} retryRunner={retryRunner} />);
   });
 };
 
@@ -73,16 +74,15 @@ describe('PI visible terminal contract', () => {
     expect(document.body.textContent).toContain('PI przelicza recepturę…');
     expect(
       document.querySelector<HTMLButtonElement>('[data-testid="pro-recalc-close"]')?.disabled,
-    ).toBe(true);
+    ).toBe(false);
+    expect(document.querySelector('[data-testid="pro-recalc-close"]')?.textContent).toBe('Anuluj');
 
     await act(async () => {
       await runPiRecalculationWithTerminal(async () => undefined, generation);
     });
     expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual({
-      state: 'BLOCKED_WITH_EXACT_ACTION',
-      code: 'apply_failed',
+      state: 'ERROR',
       messagePl: 'PI zakończyło przeliczenie bez wyniku. Wróć do receptury i spróbuj ponownie.',
-      action: 'return_to_recipe',
     });
     expect(document.body.textContent).toContain('PI zakończyło przeliczenie bez wyniku.');
     expect(document.body.textContent).not.toContain('Stara odmowa produktu.');
@@ -96,10 +96,8 @@ describe('PI visible terminal contract', () => {
     }, generation);
 
     expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual({
-      state: 'BLOCKED_WITH_EXACT_ACTION',
-      code: 'apply_failed',
+      state: 'ERROR',
       messagePl: 'PI nie mogło dokończyć przeliczenia. Wróć do receptury i spróbuj ponownie.',
-      action: 'return_to_recipe',
     });
     await renderPanel();
     expect(document.body.textContent).toContain('PI nie mogło dokończyć przeliczenia.');
@@ -108,6 +106,7 @@ describe('PI visible terminal contract', () => {
 
   it('times out a never-settling ProductBehavior call and ignores its late response', async () => {
     vi.useFakeTimers();
+    const recipeBefore = structuredClone(useRecipeStore.getState().items);
     const generation = beginPiRecalculation();
     let resolveLate!: () => void;
     const late = new Promise<void>((resolve) => {
@@ -118,16 +117,15 @@ describe('PI visible terminal contract', () => {
     await vi.advanceTimersByTimeAsync(1_000);
     await pending;
     expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual({
-      state: 'BLOCKED_WITH_EXACT_ACTION',
-      code: 'apply_failed',
-      messagePl:
-        'Serwer nie odpowiedział w bezpiecznym czasie. Receptura nie została zmieniona. Wróć do receptury i spróbuj ponownie.',
-      action: 'return_to_recipe',
+      state: 'TIMEOUT',
+      messagePl: 'Nie udało się zakończyć przeliczenia. Twoja receptura nie została zmieniona.',
     });
+    expect(useRecipeStore.getState().items).toEqual(recipeBefore);
 
     const onClose = vi.fn();
     await renderPanel(onClose);
-    expect(document.body.textContent).toContain('Serwer nie odpowiedział w bezpiecznym czasie.');
+    expect(document.body.textContent).toContain('Nie udało się zakończyć przeliczenia.');
+    expect(document.body.textContent).toContain('Twoja receptura nie została zmieniona.');
     const close = document.querySelector<HTMLButtonElement>('[data-testid="pro-recalc-close"]')!;
     expect(close.disabled).toBe(false);
     await act(async () => close.click());
@@ -142,8 +140,7 @@ describe('PI visible terminal contract', () => {
       throw new Error('newer run failed');
     }, newerGeneration);
     expect(useConstraintStudioStore.getState().recalculationTerminal).toMatchObject({
-      state: 'BLOCKED_WITH_EXACT_ACTION',
-      code: 'apply_failed',
+      state: 'ERROR',
     });
   });
 
@@ -158,8 +155,65 @@ describe('PI visible terminal contract', () => {
       throw new Error('newest run failed');
     }, newerGeneration);
     expect(useConstraintStudioStore.getState().recalculationTerminal).toMatchObject({
-      state: 'BLOCKED_WITH_EXACT_ACTION',
-      code: 'apply_failed',
+      state: 'ERROR',
+    });
+  });
+
+  it('cancels safely, preserves newer edits, and isolates the late response', async () => {
+    const originalLine = useRecipeStore.getState().items[0]!;
+    const generation = beginPiRecalculation();
+    let resolveLate!: () => void;
+    const late = new Promise<void>((resolve) => {
+      resolveLate = resolve;
+    });
+    const pending = runPiRecalculationWithTerminal(() => late, generation, 30_000);
+    const onClose = vi.fn();
+    await renderPanel(onClose);
+
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>('[data-testid="pro-recalc-close"]')!.click();
+    });
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual({
+      state: 'CANCELLED',
+    });
+
+    useRecipeStore.getState().setPlannedGrams(originalLine.id, originalLine.planned_grams + 7);
+    const editedGrams = useRecipeStore.getState().items[0]!.planned_grams;
+    const newerGeneration = beginPiRecalculation();
+    resolveLate();
+    await pending;
+
+    expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual({ state: 'WORKING' });
+    expect(useRecipeStore.getState().items[0]!.planned_grams).toBe(editedGrams);
+    await runPiRecalculationWithTerminal(async () => {
+      throw new Error('new request failed independently');
+    }, newerGeneration);
+    expect(useConstraintStudioStore.getState().recalculationTerminal).toMatchObject({
+      state: 'ERROR',
+    });
+  });
+
+  it('wires the recovery action to a fresh retry runner', async () => {
+    useConstraintStudioStore.setState({
+      recalculationTerminal: {
+        state: 'ERROR',
+        messagePl: 'PI nie mogło dokończyć przeliczenia.',
+      },
+    });
+    const retryRunner = vi.fn(async () => {
+      cancelPiRecalculation();
+      useConstraintStudioStore.setState({ recalculationTerminal: { state: 'NO_CHANGE_NEEDED' } });
+    });
+    await renderPanel(vi.fn(), retryRunner);
+
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>('[data-testid="pro-recalc-retry"]')!.click();
+      await Promise.resolve();
+    });
+    expect(retryRunner).toHaveBeenCalledOnce();
+    expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual({
+      state: 'NO_CHANGE_NEEDED',
     });
   });
 
@@ -292,7 +346,9 @@ describe('PI visible terminal contract', () => {
 
     expect(document.body.textContent).toContain('Możliwy kolejny krok: Dekstroza');
     expect(document.body.textContent).toContain('PI nie doda tego składnika automatycznie');
-    expect(document.querySelector('[data-testid="direction-rescue-add-ingredient"]')).not.toBeNull();
+    expect(
+      document.querySelector('[data-testid="direction-rescue-add-ingredient"]'),
+    ).not.toBeNull();
   });
 
   it('renders zero-gram Base feedback with the exact product and return action', async () => {
@@ -416,9 +472,7 @@ describe('PI visible terminal contract', () => {
     expect(document.body.textContent).toContain('Historyczna wersja pozostanie bez zmian.');
     expect(document.body.textContent).toContain(lines[0]!.ingredient.name);
     expect(document.body.textContent).toContain(lines[1]!.ingredient.name);
-    expect(document.body.textContent).toContain(
-      'Utwórz nową wersję z aktualnymi danymi produktów',
-    );
+    expect(document.body.textContent).toContain('Utwórz nową wersję z aktualnymi danymi produktów');
     expect(document.body.textContent).not.toContain('Wybierz inny produkt');
     expect(document.body.textContent).not.toContain('Uzupełnij dane produktu');
   });

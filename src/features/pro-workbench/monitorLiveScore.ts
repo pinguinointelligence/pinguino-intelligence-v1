@@ -18,6 +18,7 @@
 import type { RecipeInput, RecipeResult } from '@/engine';
 import type { TenPointScore } from '@/features/recipe-score';
 import { formatProteinPercentPl } from '@/features/protein-gelato/proteinReadout';
+import { assessProteinFormulation } from '@/features/protein-gelato/proteinAuthority';
 import { monitorScoreView } from './monitorSummaryView';
 
 export type MonitorLiveScoreState =
@@ -44,6 +45,7 @@ export interface MonitorLiveScoreView {
    * derived from one another.
    */
   proteinPercent: number | null;
+  proteinEnergySharePercent: number | null;
 }
 
 export interface MonitorScoreComparisonView {
@@ -71,11 +73,13 @@ const view = (
   score: TenPointScore | null,
   label: string,
   proteinPercent: number | null = null,
+  proteinEnergySharePercent: number | null = null,
 ): MonitorLiveScoreView => ({
   state,
   score,
   label,
   proteinPercent,
+  proteinEnergySharePercent,
   ariaText:
     (score === null ? `${subject}: ${label}` : `${subject}: ${score} na 10 — ${label}`) +
     (proteinPercent === null ? '' : ` Białko ${formatProteinPercentPl(proteinPercent)}.`),
@@ -87,11 +91,17 @@ const view = (
  * reads, so a manual gram edit moves it live exactly as it moves the score.
  * Toppings are post-production and never enter this result.
  */
-const proteinOutputPercent = (
+const proteinOutput = (
   input: RecipeInput,
   result: RecipeResult,
-): number | null =>
-  input.category === 'protein_gelato' ? result.percentages.protein_percent : null;
+): { percent: number | null; energySharePercent: number | null } | null => {
+  if (input.category !== 'protein_gelato') return null;
+  const assessment = assessProteinFormulation(input, result);
+  return {
+    percent: assessment.actualPercent,
+    energySharePercent: assessment.qualification.energySharePercent,
+  };
+};
 
 function evaluate(
   subject: string,
@@ -105,10 +115,26 @@ function evaluate(
   if (hasPlaceholderLine(input)) {
     return view(subject, 'awaiting_grams', null, AWAITING_GRAMS_LABEL);
   }
-  const proteinPercent = proteinOutputPercent(input, result);
+  const protein = proteinOutput(input, result);
   const match = monitorScoreView(result, input).match;
-  if (match.score === null) return view(subject, 'no_data', null, match.label, proteinPercent);
-  return view(subject, 'scored', match.score, match.label, proteinPercent);
+  if (match.score === null) {
+    return view(
+      subject,
+      'no_data',
+      null,
+      match.label,
+      protein?.percent ?? null,
+      protein?.energySharePercent ?? null,
+    );
+  }
+  return view(
+    subject,
+    'scored',
+    match.score,
+    match.label,
+    protein?.percent ?? null,
+    protein?.energySharePercent ?? null,
+  );
 }
 
 /**

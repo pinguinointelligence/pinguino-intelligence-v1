@@ -501,8 +501,10 @@ export interface TemplateLookup {
   unsupportedReason: 'no_template_for_category' | 'no_template_for_temperature' | null;
 }
 
-/** Resolve the formulation seed for a category × serving temperature. Protein
- * and any unknown category are honestly unsupported — never routed elsewhere.
+/** Resolve the neutral formulation seed for a category × serving temperature.
+ * Protein is present in the approved registry; recipe-aware Protein route and
+ * flavour selection is refined by `selectFormulationTemplateForRecipe` below.
+ * Any unknown category is honestly unsupported — never routed elsewhere.
  *
  * Owner addendum item 2: scans `RUNTIME_REGISTRY` ONLY, so this function is
  * structurally incapable of returning a non-approved template. */

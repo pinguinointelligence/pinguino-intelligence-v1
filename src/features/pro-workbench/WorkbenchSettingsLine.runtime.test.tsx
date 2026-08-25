@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { useRecipeStore } from '@/stores/recipeStore';
+import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { useRecipeProfileStore } from './recipeProfileStore';
 import { WorkbenchSettingsLine } from './WorkbenchSettingsLine';
 
@@ -167,6 +168,64 @@ describe('WorkbenchSettingsLine deferred batch editing', () => {
     expect(host.querySelector('[data-testid="profile-settings-confirmed"]')?.textContent).toContain(
       'Ustawienia potwierdzone',
     );
+  });
+
+  it('routes Gelato to a native Sorbet draft only after explicit structural confirmation', async () => {
+    const source = buildRecipeInput(useRecipeStore.getState());
+    useRecipeStore.getState().loadRecipeInput(source, {
+      savedId: 'saved-gelato-source',
+      savedName: 'Gelato source',
+      versionNumber: 3,
+    });
+    await act(async () =>
+      root.render(
+        <WorkbenchSettingsLine
+          actualBatchG={useRecipeStore.getState().target_batch_grams}
+          compact
+        />,
+      ),
+    );
+
+    await selectValue('workbench-product-type', 'sorbet');
+
+    expect(useRecipeStore.getState().visibleProductType).toBe('gelato');
+    expect(host.textContent).toContain('Sorbet korzysta z innej bazy');
+    expect(host.querySelector('[role="dialog"]')).not.toBeNull();
+
+    await act(async () =>
+      (host.querySelector('[data-testid="confirm-new-recipe"]') as HTMLButtonElement).click(),
+    );
+    const fresh = useRecipeStore.getState();
+    expect(fresh.visibleProductType).toBe('sorbet');
+    expect(fresh.category).toBe('sorbet');
+    expect(fresh.formulation_strategy).toBe('optimal');
+    expect(fresh.savedRecipeId).toBeNull();
+    expect(fresh.items.some((item) => item.ingredient.flags?.is_dairy === true)).toBe(false);
+  });
+
+  it('keeps engineering readiness and the large Protein result out of normal Settings', async () => {
+    await act(async () => useRecipeStore.getState().startNewRecipe('vegan'));
+    await act(async () =>
+      root.render(
+        <WorkbenchSettingsLine
+          actualBatchG={useRecipeStore.getState().target_batch_grams}
+          compact
+        />,
+      ),
+    );
+    expect(host.textContent).not.toContain('CZĘŚCIOWO PODŁĄCZONE');
+
+    await act(async () => useRecipeStore.getState().startNewRecipe('protein'));
+    await act(async () =>
+      root.render(
+        <WorkbenchSettingsLine
+          actualBatchG={useRecipeStore.getState().target_batch_grams}
+          compact
+        />,
+      ),
+    );
+    expect(host.textContent).not.toContain('BIAŁKO W RECEPTURZE');
+    expect(host.textContent).not.toContain('To metryka wyniku');
   });
 });
 

@@ -10,7 +10,7 @@ import {
 import { monitorScoreView } from './monitorSummaryView';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { scorePresentationSource } from './scorePresentationSource';
-import { proteinContentLabelPl } from '@/features/protein-gelato/proteinReadout';
+import { assessProteinFormulation } from '@/features/protein-gelato/proteinAuthority';
 import { WorkbenchScoreDisplay } from './WorkbenchScoreDisplay';
 
 export function WorkbenchIntelligenceHeader({
@@ -61,11 +61,22 @@ export function WorkbenchIntelligenceHeader({
   // Protein v2: measured content of the SAME candidate the ring is describing,
   // so a preview that lowers protein while raising the score renders exactly
   // that. Never a target, never an input to the score.
-  const displayedProteinPercent = useMemo(() => {
+  const displayedProtein = useMemo(() => {
     if (input.category !== 'protein_gelato') return null;
-    if (previewInput !== null) return calculateRecipe(previewInput).percentages.protein_percent;
-    return current ? result.percentages.protein_percent : null;
-  }, [current, input.category, previewInput, result]);
+    if (previewInput !== null) {
+      const assessment = assessProteinFormulation(previewInput, calculateRecipe(previewInput));
+      return {
+        percent: assessment.actualPercent,
+        energySharePercent: assessment.qualification.energySharePercent,
+      };
+    }
+    if (!current) return null;
+    const assessment = assessProteinFormulation(input, result);
+    return {
+      percent: assessment.actualPercent,
+      energySharePercent: assessment.qualification.energySharePercent,
+    };
+  }, [current, input, previewInput, result]);
   const scoreSource = scorePresentationSource({
     previewReady: previewMatch !== null,
     currentReady: current,
@@ -106,7 +117,8 @@ export function WorkbenchIntelligenceHeader({
           <WorkbenchScoreDisplay
             score={displayedMatch.score}
             label={displayedMatch.label}
-            proteinPercent={displayedProteinPercent}
+            proteinPercent={displayedProtein?.percent ?? null}
+            proteinEnergySharePercent={displayedProtein?.energySharePercent ?? null}
             preview={previewMatch !== null}
             onOpenLearning={onOpenLearning}
           />
@@ -159,15 +171,6 @@ export function WorkbenchIntelligenceHeader({
               : 'Wynik pojawi się po przeliczeniu'}
           </span>
           {/* Protein v2: measured content, never a target and never a control. */}
-          {displayedProteinPercent === null ? null : (
-            <span
-              className="mt-0.5 block truncate font-mono text-[10px] font-semibold tabular-nums text-ink"
-              data-testid="workbench-header-protein"
-              data-protein-percent={displayedProteinPercent}
-            >
-              {proteinContentLabelPl(displayedProteinPercent)}
-            </span>
-          )}
         </span>
         <span
           className="grid size-12 shrink-0 place-items-center rounded-[12px] bg-[#101113] font-mono text-lg font-semibold text-white shadow-pro-e1"

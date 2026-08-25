@@ -113,7 +113,7 @@ export function MainRatioEditor({
         className="pro-focus-ring mt-1 h-11 w-full rounded-lg border border-ink/12 bg-white px-3 font-mono text-sm text-ink"
       />
       <span className="mt-1 block leading-relaxed text-stone-500">
-        Brak własnej wagi oznacza równy podział. Gramy startowe nie ustalają proporcji.
+        Waga odzwierciedla bieżącą proporcję gramów. Możesz ją też ustawić ręcznie.
       </span>
     </label>
   );

@@ -394,7 +394,7 @@ describe('Recipe ingredient table — locks, units and availability', () => {
     );
     expect(ratio).toContain('waga proporcji Main');
     expect(ratio).toContain('value="2"');
-    expect(text(ratio)).toContain('Gramy startowe nie ustalają proporcji');
+    expect(text(ratio)).toContain('Waga odzwierciedla bieżącą proporcję gramów');
 
     const lockedStandard = renderRow(baseItem, DEFAULT_INGREDIENT_ROW_META, true);
     const crown =

@@ -450,10 +450,8 @@ export function ProWorkspacePage() {
     } catch {
       useConstraintStudioStore.setState({
         recalculationTerminal: {
-          state: 'BLOCKED_WITH_EXACT_ACTION',
-          code: 'apply_failed',
+          state: 'ERROR',
           messagePl: 'PI nie mogło dokończyć przeliczenia. Wróć do receptury i spróbuj ponownie.',
-          action: 'return_to_recipe',
         },
       });
     }

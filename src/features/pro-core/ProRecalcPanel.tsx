@@ -21,6 +21,7 @@ import {
 } from '@/features/constraint-studio/constraintStudioCopy';
 import {
   applyPreviewWithServerAuthority,
+  cancelPiRecalculation,
   createExplicitStandardRemovalPreviewWithServerAuthority,
   isUndoAvailable,
   runPiRecalculationWithTerminal,
@@ -293,9 +294,11 @@ function RecalcDiagnosisView({
               Dane produktów w tej wersji są nieaktualne.
             </p>
             <p className="text-xs leading-relaxed text-ivory/70">
-              Dotyczy: {[
-                ...new Set(issue.productBehaviorIssues?.map((entry) => entry.lineName) ?? []),
-              ].join(', ')}. Historyczna wersja pozostanie bez zmian.
+              Dotyczy:{' '}
+              {[...new Set(issue.productBehaviorIssues?.map((entry) => entry.lineName) ?? [])].join(
+                ', ',
+              )}
+              . Historyczna wersja pozostanie bez zmian.
             </p>
           </div>
         ) : (
@@ -583,7 +586,17 @@ export function DirectionBestDecision({
   );
 }
 
-export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function ProRecalcPanel({
+  open,
+  onClose,
+  retryRunner = runPiRecalculationWithTerminal,
+}: {
+  open: boolean;
+  onClose: () => void;
+  /** Test seam for the recovery button; production always uses the canonical
+   * request-generation + timeout wrapper. */
+  retryRunner?: () => Promise<void>;
+}) {
   const panelRef = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
   const [refreshingProductBehavior, setRefreshingProductBehavior] = useState(false);
@@ -606,7 +619,9 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        if (useConstraintStudioStore.getState().recalculationTerminal?.state === 'WORKING') return;
+        if (useConstraintStudioStore.getState().recalculationTerminal?.state === 'WORKING') {
+          cancelPiRecalculation();
+        }
         onCloseRef.current();
         return;
       }
@@ -760,6 +775,15 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
     })();
   };
 
+  const closeOrCancel = () => {
+    if (recalculationTerminal?.state === 'WORKING') cancelPiRecalculation();
+    onClose();
+  };
+
+  const retryRecalculation = () => {
+    void retryRunner();
+  };
+
   if (!open) return null;
 
   // One-screen workbench (owner 2026-07-24): the recalculation is a COMPACT OVERLAY
@@ -773,9 +797,8 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
     <div className="fixed inset-0 z-[80]" data-testid="pro-recalc-overlay">
       <button
         type="button"
-        aria-label={r.close}
-        onClick={recalculationTerminal?.state === 'WORKING' ? undefined : onClose}
-        disabled={recalculationTerminal?.state === 'WORKING'}
+        aria-label={recalculationTerminal?.state === 'WORKING' ? 'Anuluj przeliczenie' : r.close}
+        onClick={closeOrCancel}
         className="absolute inset-0 h-full w-full bg-black/60 motion-safe:animate-[appFadeIn_150ms_ease-out]"
       />
       <section
@@ -792,12 +815,11 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
           <p className="text-xs font-medium tracking-label text-ivory/60 uppercase">{r.title}</p>
           <button
             type="button"
-            onClick={onClose}
-            disabled={recalculationTerminal?.state === 'WORKING'}
+            onClick={closeOrCancel}
             data-testid="pro-recalc-close"
             className="min-h-11 rounded-lg border border-ivory/20 px-3 py-1.5 text-xs font-medium text-ivory transition-colors hover:border-ivory/40 disabled:cursor-wait disabled:opacity-50"
           >
-            {r.close}
+            {recalculationTerminal?.state === 'WORKING' ? 'Anuluj' : r.close}
           </button>
         </div>
 
@@ -825,6 +847,39 @@ export function ProRecalcPanel({ open, onClose }: { open: boolean; onClose: () =
               >
                 Przejdź do ustawień
               </button>
+            </div>
+          ) : null}
+
+          {recalculationTerminal?.state === 'TIMEOUT' ||
+          recalculationTerminal?.state === 'ERROR' ? (
+            <div className="space-y-3" data-testid="pro-recalc-recoverable-error" role="alert">
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-ivory">
+                  {recalculationTerminal.state === 'TIMEOUT'
+                    ? 'Nie udało się zakończyć przeliczenia.'
+                    : 'Nie udało się przeliczyć receptury.'}
+                </p>
+                <p className="text-sm leading-relaxed text-ivory/80">
+                  {recalculationTerminal.messagePl}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={retryRecalculation}
+                  className="inline-flex min-h-11 items-center justify-center rounded-lg bg-ivory px-4 py-2 text-sm font-semibold text-shell"
+                  data-testid="pro-recalc-retry"
+                >
+                  Spróbuj ponownie
+                </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory"
+                >
+                  Wróć do receptury
+                </button>
+              </div>
             </div>
           ) : null}
 

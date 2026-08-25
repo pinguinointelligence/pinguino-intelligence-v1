@@ -1,12 +1,31 @@
 import type { ConstraintPreview } from './applyPipeline';
 import { formatGramsPl } from './constraintStudioCopy';
+import { captureMainIngredientIntent } from '@/features/formulation/mainIngredientContract';
+
+const compactMainName = (name: string): string => name.split(' · ')[0]?.trim() || name;
+
+const formatRatioWeight = (weight: number): string =>
+  Number(weight.toFixed(3)).toLocaleString('pl-PL', { maximumFractionDigits: 3 });
+
+/** Concise Preview evidence for the already-verified Main contract. Preview
+ * builders and the final Apply door remain the trust authority; this function
+ * only presents their retained ratio metadata. */
+export function multiMainPreservationSummaryPl(preview: ConstraintPreview): string | null {
+  const mains = captureMainIngredientIntent(preview.proposedInput);
+  if (mains.length < 2) return null;
+  return `Multi-Main: ${mains.map((main) => compactMainName(main.ingredientName)).join(' : ')} = ${mains
+    .map((main) => formatRatioWeight(main.ratioWeight))
+    .join(' : ')} — zachowane`;
+}
 
 const lockedMainRatioDistortionPl = (preview: ConstraintPreview): string | null => {
   const main = preview.proposedInput.items.filter(
     (item) => item.lock_type === 'main' && item.planned_grams > 0,
   );
   if (main.length < 2) return null;
-  const locked = main.filter((item) => preview.nextConstraints.byLineId[item.id]?.mode === 'locked');
+  const locked = main.filter(
+    (item) => preview.nextConstraints.byLineId[item.id]?.mode === 'locked',
+  );
   if (locked.length === 0 || locked.length === main.length) return null;
   const totalWeight = main.reduce((sum, item) => sum + (item.main_ratio_weight ?? 1), 0);
   const totalGrams = main.reduce((sum, item) => sum + item.planned_grams, 0);

@@ -7663,6 +7663,9 @@ export type ScorePresentationSource = 'CURRENT_RECIPE' | 'PREVIEW' | 'APPLIED_RE
 
 export type RecalculationTerminalState =
   | { state: 'WORKING' }
+  | { state: 'TIMEOUT'; messagePl: string }
+  | { state: 'ERROR'; messagePl: string }
+  | { state: 'CANCELLED' }
   | { state: 'PREVIEW_READY' }
   | { state: 'NO_CHANGE_NEEDED' }
   | { state: 'BEST_ACHIEVABLE' }

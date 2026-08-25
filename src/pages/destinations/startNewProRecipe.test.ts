@@ -28,7 +28,7 @@ describe('visible + Nowa receptura action', () => {
     useCustomerPriceStore.getState().clear();
   });
 
-  it('detaches the previous saved draft and applies per-product account defaults', () => {
+  it('detaches the previous saved draft, keeps non-mode product defaults, and starts OPTIMAL', () => {
     const previous = useRecipeStore.getState();
     const savedInput = {
       items: previous.items.map((item) => ({ ...item, ingredient: { ...item.ingredient } })),
@@ -64,7 +64,7 @@ describe('visible + Nowa receptura action', () => {
     expect(fresh.savedRecipeId).toBeNull();
     expect(fresh.savedRecipeName).toBeNull();
     expect(fresh.target_batch_grams).toBe(1_200);
-    expect(fresh.formulation_strategy).toBe('eco');
+    expect(fresh.formulation_strategy).toBe('optimal');
     expect(useRecipeProfileStore.getState().directionIntents.sweetness).toBe(-2);
     expect(savedInput.target_batch_grams).toBe(875);
   });
@@ -196,15 +196,108 @@ describe('visible + Nowa receptura action', () => {
     expect(changed.items.some((item) => /milk|cream/i.test(item.ingredient.name))).toBe(false);
   });
 
-  it('uses the canonical profile instead of inheriting the previously opened recipe', () => {
-    useRecipeStore.setState({ visibleProductType: 'sorbet', category: 'sorbet' });
+  it.each([
+    ['gelato', 'milk_gelato'],
+    ['sorbet', 'sorbet'],
+    ['vegan', 'vegan_gelato'],
+    ['protein', 'protein_gelato'],
+  ] as const)(
+    'preserves the current %s family when + Nowa receptura supplies that context',
+    (visibleProductType, category) => {
+      const distinctiveItems = useRecipeStore.getState().items.map((item, index) => ({
+        ...item,
+        planned_grams: index === 0 ? 777 : item.planned_grams,
+      }));
+      useRecipeStore.setState({
+        visibleProductType,
+        category,
+        formulation_strategy: 'eco',
+        items: distinctiveItems,
+        savedRecipeId: 'source-recipe',
+        savedRecipeName: 'Source name',
+        currentVersionNumber: 7,
+      });
+      const source = useRecipeStore.getState();
+      const sourceSnapshot = structuredClone({
+        items: source.items,
+        savedRecipeId: source.savedRecipeId,
+        savedRecipeName: source.savedRecipeName,
+        currentVersionNumber: source.currentVersionNumber,
+        formulation_strategy: source.formulation_strategy,
+      });
 
-    startNewProRecipe();
+      startNewProRecipe(visibleProductType);
 
-    expect(useRecipeStore.getState().visibleProductType).toBe('gelato');
+      const fresh = useRecipeStore.getState();
+      expect(fresh.visibleProductType).toBe(visibleProductType);
+      expect(fresh.category).toBe(category);
+      expect(fresh.formulation_strategy).toBe('optimal');
+      expect(fresh.savedRecipeId).toBeNull();
+      expect(fresh.savedRecipeName).toBeNull();
+      expect(fresh.currentVersionNumber).toBeNull();
+      expect(fresh.items).not.toEqual(sourceSnapshot.items);
+      expect(sourceSnapshot).toMatchObject({
+        savedRecipeId: 'source-recipe',
+        savedRecipeName: 'Source name',
+        currentVersionNumber: 7,
+        formulation_strategy: 'eco',
+      });
+      expect(sourceSnapshot.items[0]?.planned_grams).toBe(777);
+    },
+  );
+
+  it.each(['eco', 'optimal'] as const)(
+    'reopens a saved %s recipe with its persisted mode',
+    (mode) => {
+      const current = useRecipeStore.getState();
+      current.loadRecipeInput(
+        {
+          items: structuredClone(current.items),
+          mode: 'classic',
+          category: current.category,
+          target_temperature_c: current.target_temperature_c,
+          target_batch_grams: current.target_batch_grams,
+          machine_capacity_grams: null,
+          goals: { formulation_strategy: mode },
+        },
+        { savedId: `saved-${mode}`, savedName: `Saved ${mode}`, versionNumber: 2 },
+      );
+
+      expect(useRecipeStore.getState().formulation_strategy).toBe(mode);
+    },
+  );
+
+  it('uses OPTIMAL for a new/reset draft even when an old account default says ECO', () => {
+    useRecipeProfileStore.getState().saveDefaults('local-device:gelato', {
+      visibleProductType: 'gelato',
+      mode: 'classic',
+      formulationStrategy: 'eco',
+      targetBatchGrams: 1_000,
+      machineKind: 'professional',
+      machineId: null,
+      machineLabel: 'Maszyna profesjonalna',
+      servingModeId: 'temp_minus_12',
+      targetTemperatureC: -12,
+      machineCapacityGrams: null,
+      directionTargets: DEFAULT_DIRECTION_TARGETS,
+    });
+
+    useRecipeStore.getState().resetToDemo();
+    expect(useRecipeStore.getState().formulation_strategy).toBe('optimal');
+
+    const current = useRecipeStore.getState();
+    current.loadRecipeInput({
+      items: structuredClone(current.items),
+      mode: 'classic',
+      category: current.category,
+      target_temperature_c: current.target_temperature_c,
+      target_batch_grams: current.target_batch_grams,
+      machine_capacity_grams: null,
+    });
+    expect(useRecipeStore.getState().formulation_strategy).toBe('optimal');
   });
 
-  it('prefers an explicit account-level product-profile default over the canonical default', () => {
+  it('uses an explicit account-level product-profile default without inheriting its ECO mode', () => {
     useRecipeProfileStore.getState().saveDefaults('local-device', {
       visibleProductType: 'vegan',
       mode: 'classic',
@@ -223,7 +316,7 @@ describe('visible + Nowa receptura action', () => {
 
     const fresh = useRecipeStore.getState();
     expect(fresh.visibleProductType).toBe('vegan');
-    expect(fresh.formulation_strategy).toBe('eco');
+    expect(fresh.formulation_strategy).toBe('optimal');
     expect(fresh.target_temperature_c).toBe(-13);
     expect(fresh.target_batch_grams).toBe(1_275);
   });

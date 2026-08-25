@@ -12,7 +12,6 @@ import {
 } from '@/engine';
 import { ContextualEducationView } from '@/features/education/ContextualEducationView';
 import { useRecipeStore } from '@/stores/recipeStore';
-import { assessProteinFormulation } from '@/features/protein-gelato/proteinAuthority';
 import { WorkbenchSettingsLine } from './WorkbenchSettingsLine';
 import { ProfileDirectionAxes } from './ProfileDirectionAxes';
 import { MonitorPanelContent } from './MonitorPanelContent';
@@ -262,14 +261,7 @@ function ProfileContent({
             <LockedPIPreview />
           </div>
         )}
-        <WorkbenchSettingsLine
-          actualBatchG={result.total_batch_g}
-          proteinFormulation={
-            profileReadable ? assessProteinFormulation(input, frozenNutritionResult) : null
-          }
-          className="min-w-0"
-          compact
-        />
+        <WorkbenchSettingsLine actualBatchG={result.total_batch_g} className="min-w-0" compact />
         {recipeBar ? <div className="min-w-0">{recipeBar}</div> : null}
         <NutritionCostProfileGrid
           result={frozenNutritionResult}

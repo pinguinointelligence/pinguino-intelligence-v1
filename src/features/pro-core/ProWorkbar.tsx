@@ -90,7 +90,7 @@ export function ProWorkbar({ variant = 'bar' }: { variant?: 'bar' | 'panel' }) {
   const blockedMsg = save.blocked ? w.blocked[save.blocked] : null;
 
   const createNewDraft = () => {
-    startNewProRecipe();
+    startNewProRecipe(visibleProductType);
     setNameDraft(null);
     setNameError(null);
     setNewRecipeConfirmOpen(false);

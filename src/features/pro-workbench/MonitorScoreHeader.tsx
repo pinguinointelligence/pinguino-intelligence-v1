@@ -1,4 +1,4 @@
-import { proteinContentLabelPl } from '@/features/protein-gelato/proteinReadout';
+import { ProteinMetric } from '@/features/protein-gelato/ProteinMetric';
 import { ScoreRing } from './ScoreRing';
 import type { MonitorLiveScoreView, MonitorScoreComparisonView } from './monitorLiveScore';
 
@@ -8,15 +8,12 @@ import type { MonitorLiveScoreView, MonitorScoreComparisonView } from './monitor
  * target. Rendered only in Protein mode.
  */
 function ProteinOutput({ view, testId }: { view: MonitorLiveScoreView; testId: string }) {
-  if (view.proteinPercent === null || !Number.isFinite(view.proteinPercent)) return null;
   return (
-    <span
-      className="mt-0.5 block font-mono text-[10px] font-semibold tabular-nums text-ink"
-      data-testid={testId}
-      data-protein-percent={view.proteinPercent}
-    >
-      {proteinContentLabelPl(view.proteinPercent)}
-    </span>
+    <ProteinMetric
+      proteinPercent={view.proteinPercent}
+      energySharePercent={view.proteinEnergySharePercent}
+      testId={testId}
+    />
   );
 }
 
@@ -50,13 +47,13 @@ export function MonitorScoreHeader({
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <div className="flex min-w-0 flex-1 items-center gap-2" data-testid="monitor-score-current">
+          <ProteinOutput view={current} testId="monitor-score-protein-current" />
           <ScoreRing score={current.score} testId="monitor-score-ring-current" />
           <span className="min-w-0" aria-label={current.ariaText}>
             <strong className="block text-xs font-semibold text-ink">Wynik aktualny</strong>
             <span className="mt-0.5 block text-[10px] leading-snug text-stone-600">
               {current.label}
             </span>
-            <ProteinOutput view={current} testId="monitor-score-protein-current" />
           </span>
         </div>
 
@@ -73,6 +70,7 @@ export function MonitorScoreHeader({
               className="flex min-w-0 flex-1 items-center gap-2"
               data-testid="monitor-score-proposed"
             >
+              <ProteinOutput view={proposed} testId="monitor-score-protein-proposed" />
               <ScoreRing score={proposed.score} testId="monitor-score-ring-proposed" />
               <span className="min-w-0" aria-label={proposed.ariaText}>
                 <strong className="block text-xs font-semibold text-ink">
@@ -81,7 +79,6 @@ export function MonitorScoreHeader({
                 <span className="mt-0.5 block text-[10px] leading-snug text-stone-600">
                   {proposed.label}
                 </span>
-                <ProteinOutput view={proposed} testId="monitor-score-protein-proposed" />
               </span>
             </div>
           </>

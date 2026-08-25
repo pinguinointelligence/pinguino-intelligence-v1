@@ -70,5 +70,6 @@ describe('Recipes Hub new-recipe guard', () => {
     await click(newRecipe ?? null);
     await click(host.querySelector('[data-testid="confirm-new-recipe"]'));
     expect(mocks.start).toHaveBeenCalledTimes(1);
+    expect(mocks.start).toHaveBeenCalledWith('gelato');
   });
 });

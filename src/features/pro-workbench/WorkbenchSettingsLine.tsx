@@ -21,8 +21,6 @@ import {
   useRecipeProfileStore,
 } from './recipeProfileStore';
 import { profileSnapshotFromState } from './recipeProfilePersistence';
-import { ProteinContentReadout } from '@/features/protein-gelato/ProteinContentReadout';
-import type { ProteinFormulationAssessment } from '@/features/protein-gelato/proteinAuthority';
 import {
   FORMULATION_STRATEGIES,
   type FormulationStrategy,
@@ -34,6 +32,11 @@ import {
 } from '@/features/recipes/newRecipeStarter';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { classifyProfileTransition, PRO_VISIBLE_PRODUCT_TYPES } from './profileCompatibility';
+import { NewRecipeConfirmationDialog } from '@/features/recipes/NewRecipeConfirmationDialog';
+import {
+  isUntouchedNewRecipeStarter,
+  startNewProRecipe,
+} from '@/pages/destinations/startNewProRecipe';
 
 const g = copy.studio.goal;
 const servingCopy = copy.proMachine.serving;
@@ -103,12 +106,10 @@ function LabeledSelect<T extends string>({
 
 export function WorkbenchSettingsLine({
   actualBatchG,
-  proteinFormulation = null,
   className,
   compact = false,
 }: {
   actualBatchG: number;
-  proteinFormulation?: ProteinFormulationAssessment | null;
   className?: string;
   compact?: boolean;
 }) {
@@ -123,6 +124,7 @@ export function WorkbenchSettingsLine({
   const confirmSettings = useRecipeProfileStore((state) => state.confirmSettings);
   const [unit, setUnit] = useState<BatchUnit>('g');
   const [profileNotice, setProfileNotice] = useState<string | null>(null);
+  const [pendingBaseProfile, setPendingBaseProfile] = useState<VisibleProductType | null>(null);
   const activeHomeMachines = useMemo(() => listActiveHomeMachines(MACHINE_CATALOG), []);
   const selectedHome =
     store.machineKind === 'home'
@@ -194,9 +196,28 @@ export function WorkbenchSettingsLine({
   };
 
   const changeProductType = (next: VisibleProductType) => {
-    const decision = classifyProfileTransition(buildRecipeInput(store), next);
+    if (next === store.visibleProductType) return;
+    const decision = classifyProfileTransition(
+      buildRecipeInput(store),
+      next,
+      store.visibleProductType,
+    );
     if (!decision.supported) {
       setProfileNotice(decision.message);
+      return;
+    }
+    if (decision.kind === 'new_base_required') {
+      const replaceableStarter =
+        store.newRecipeStarterKey !== null && isUntouchedNewRecipeStarter();
+      const savedSourceSafe = store.savedRecipeId !== null && !store.dirty;
+      if (!replaceableStarter && !savedSourceSafe) {
+        setProfileNotice(
+          'Ta zmiana wymaga innej bazy. Najpierw zapisz bieżącą recepturę, a następnie utwórz nową wersję w wybranym profilu.',
+        );
+        return;
+      }
+      setProfileNotice(null);
+      setPendingBaseProfile(next);
       return;
     }
     setProfileNotice(null);
@@ -274,31 +295,6 @@ export function WorkbenchSettingsLine({
             <p className="mt-1 text-[11px] leading-relaxed text-stone-600" role="status">
               {profileNotice}
             </p>
-          ) : null}
-          {store.visibleProductType === 'vegan' ? (
-            <ReadinessBadge
-              className={cn('mt-1', !compact && 'ml-[7.3rem]')}
-              state="CZĘŚCIOWO PODŁĄCZONE"
-              details={{
-                limitation:
-                  'Bramka składników Vegan działa; dokładne zweryfikowane kandydaty Soy z Mapper 2088 są obsługiwane, a -11/-12 nadal wymagają walidacji produkcyjnej.',
-                calculationImpact:
-                  'Niezweryfikowane składniki blokują Preview i Apply; wynik natywny nie obejmuje jeszcze FP, T50 ani celów sensorycznych.',
-                remaining:
-                  'Zweryfikować produkcyjnie -11/-12 oraz dostarczyć zatwierdzone dane FP/T50; Direction pozostaje zablokowane do czasu pełnej, bezpiecznej ścieżki Preview/Apply.',
-              }}
-            />
-          ) : null}
-          {store.visibleProductType === 'protein' ? (
-            <div className={cn('mt-1', !compact && 'ml-[7.3rem]')}>
-              {proteinFormulation !== null && proteinFormulation.applicable ? (
-                <ProteinContentReadout assessment={proteinFormulation} />
-              ) : (
-                <p role="status" className="text-xs text-stone-500">
-                  Białko — oczekuje na walidację produktów
-                </p>
-              )}
-            </div>
           ) : null}
         </div>
 
@@ -469,6 +465,27 @@ export function WorkbenchSettingsLine({
           </p>
         </div>
       </div>
+      <NewRecipeConfirmationDialog
+        open={pendingBaseProfile !== null}
+        onCancel={() => setPendingBaseProfile(null)}
+        onConfirm={() => {
+          if (pendingBaseProfile === null) return;
+          startNewProRecipe(pendingBaseProfile);
+          setPendingBaseProfile(null);
+          setProfileNotice(null);
+        }}
+        title={`Zmienić typ receptury na ${pendingBaseProfile === null ? '' : g.productTypes[pendingBaseProfile]}?`}
+        description={
+          pendingBaseProfile === null
+            ? null
+            : `${g.productTypes[pendingBaseProfile]} korzysta z innej bazy. Bieżąca zapisana receptura pozostanie bez zmian.`
+        }
+        confirmLabel={
+          pendingBaseProfile === null
+            ? 'Utwórz nową wersję'
+            : `Utwórz wersję ${g.productTypes[pendingBaseProfile]}`
+        }
+      />
     </section>
   );
 }

@@ -4603,9 +4603,10 @@ function verifyMainIngredientIdentity(before, after, byLineId = {}) {
 	};
 }
 /**
-* Resolve a deterministic Main-group allocation. Starting grams never define
-* the ratio: missing ratio metadata means equal weights. Exact locks win per
-* line without locking the rest of the group; unlocked lines share the
+* Resolve a deterministic Main-group allocation. New user-created Crown sets
+* persist their entered gram relationship as ratio metadata; legacy drafts
+* without that metadata retain the accepted equal-share fallback. Exact locks
+* win per line without locking the rest of the group; unlocked lines share the
 * remaining mass by their confirmed weights. Stable largest-remainder rounding
 * keeps every executable Main amount whole-gram and the split within 1 g.
 */

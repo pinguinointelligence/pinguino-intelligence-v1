@@ -78,14 +78,21 @@ describe('§40.1–2 — no user-selectable protein target anywhere', () => {
 describe('§40.16 — Score and protein % are two different things, side by side', () => {
   it('shows the protein content beside the ring without a visual /10', () => {
     const html = renderToStaticMarkup(
-      <WorkbenchScoreDisplay score={10} label="Wyjątkowo dobrze dopasowana" preview={false} proteinPercent={8.42} />,
+      <WorkbenchScoreDisplay
+        score={10}
+        label="Wyjątkowo dobrze dopasowana"
+        preview={false}
+        proteinPercent={8.42}
+        proteinEnergySharePercent={20.6}
+      />,
     );
     expect(html).toContain('data-testid="workbench-score-ring"');
     expect(html).toContain('data-testid="workbench-score-protein"');
     // The current architecture draws the ring as a partial SVG arc — the
     // Protein read-out must sit BESIDE it, never inside it.
     expect(html).toContain('data-testid="workbench-score-ring-arc"');
-    expect(html).toContain('Białko 8,4%');
+    expect(html).toContain('8,4% białka');
+    expect(html).toContain('21% energii');
     expect(html).toContain('Wynik aktualny');
     expect(html).toContain('Wyjątkowo dobrze dopasowana');
     // The ring never renders a visible "/10" (owner-approved Score ring
@@ -96,8 +103,9 @@ describe('§40.16 — Score and protein % are two different things, side by side
       /data-testid="workbench-score-ring"[\s\S]*?<\/svg><span[^>]*>([^<]*)</,
     );
     expect(numeral?.[1]).toBe('10');
-    const proteinCell = html.match(/data-testid="workbench-score-protein"[^>]*>([^<]*)</);
-    expect(proteinCell?.[1]).toBe('Białko 8,4%');
+    expect(html.indexOf('data-testid="workbench-score-protein"')).toBeLessThan(
+      html.indexOf('data-testid="workbench-score-ring"'),
+    );
   });
 
   it('omits the protein read-out entirely outside Protein mode', () => {
@@ -124,10 +132,16 @@ describe('§40.16 — Score and protein % are two different things, side by side
     ];
     for (const row of rows) {
       const html = renderToStaticMarkup(
-        <WorkbenchScoreDisplay score={row.score} label="—" preview={false} proteinPercent={row.protein} />,
+        <WorkbenchScoreDisplay
+          score={row.score}
+          label="—"
+          preview={false}
+          proteinPercent={row.protein}
+          proteinEnergySharePercent={20}
+        />,
       );
       expect(html).toContain(`data-score="${row.score}"`);
-      expect(html).toContain(proteinContentLabelPl(row.protein));
+      expect(html).toContain(`${formatProteinPercentPl(row.protein)} białka`);
     }
   });
 });

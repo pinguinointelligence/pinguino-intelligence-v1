@@ -43,6 +43,7 @@ import {
 } from './startNewProRecipe';
 import { NewRecipeConfirmationDialog } from '@/features/recipes/NewRecipeConfirmationDialog';
 import { SharedWithMePanel } from '@/features/community/ui/SharedWithMePanel';
+import { useRecipeStore } from '@/stores/recipeStore';
 
 const r = copy.nav.recipes;
 const d = r.discovery;
@@ -674,6 +675,7 @@ export function RecipesHubPage() {
   const reviewModeEnabled = useReviewMode();
   const ownerReviewAccess = useOwnerReviewAccess();
   const persona = useProCorePersona();
+  const currentVisibleProductType = useRecipeStore((state) => state.visibleProductType);
   // Defence in depth: the review hook already requires Pro, but the page also
   // refuses to mount executable Owner Review cards for Demo/Home personas.
   const ownerReviewMode = reviewModeEnabled && ownerReviewAccess && persona === 'pro';
@@ -687,7 +689,7 @@ export function RecipesHubPage() {
       : 'pinguino';
   const newRecipeHref = persona === 'pro' ? '/pro/recipe' : persona === 'home' ? '/home' : '/start';
   const openNewRecipe = () => {
-    if (persona === 'pro') startNewProRecipe();
+    if (persona === 'pro') startNewProRecipe(currentVisibleProductType);
     const destination = pendingExecutableHref ?? newRecipeHref;
     setPendingExecutableHref(null);
     setNewRecipeConfirmOpen(false);

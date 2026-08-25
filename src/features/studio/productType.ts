@@ -24,7 +24,9 @@
  * BANDS. Fruit, nuts and alcohol are FLAVOUR COMPONENTS of a canonical family, never
  * families of their own. The canonical runtime families are exactly:
  *   Gelato (→ milk_gelato / chocolate_gelato) · Sorbet (→ sorbet) ·
- *   Vegan (→ vegan_gelato) · Protein (honest-unsupported, never silently re-profiled).
+ *   Vegan (→ vegan_gelato) · Protein (→ protein_gelato).
+ * Protein is a native profile with its own qualification authority and seeded
+ * cells; its physical serving envelope deliberately reuses Standard Gelato.
  *
  * The allowed set is DERIVED from the engine's own seeded-cell list, so seeding a new
  * cell in `targets.ts` automatically unlocks that category for runtime — this module

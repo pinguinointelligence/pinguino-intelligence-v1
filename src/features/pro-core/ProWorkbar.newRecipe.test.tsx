@@ -88,6 +88,7 @@ describe('ProWorkbar new-recipe confirmation', () => {
     await click(host.querySelector('[data-testid="pro-workbar-new-recipe"]'));
 
     expect(mocks.start).toHaveBeenCalledTimes(1);
+    expect(mocks.start).toHaveBeenCalledWith('gelato');
     expect(host.querySelector('[role="dialog"]')).toBeNull();
   });
 

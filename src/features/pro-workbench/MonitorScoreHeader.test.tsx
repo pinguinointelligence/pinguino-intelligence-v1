@@ -32,6 +32,17 @@ const visibleText = (html: string) =>
 const broken = () => withGrams(starterMilkBase(), starterLine('sucrose'), 420);
 
 describe('Monitor score header — current recipe', () => {
+  it('reuses the compact Protein metric with mass and energy outputs to the left of Score', () => {
+    const protein: RecipeInput = { ...starterMilkBase(), category: 'protein_gelato' };
+    const html = render(protein);
+    expect(html).toContain('data-testid="monitor-score-protein-current"');
+    expect(html).toContain('% białka');
+    expect(html).toContain('% energii');
+    expect(html.indexOf('monitor-score-protein-current')).toBeLessThan(
+      html.indexOf('monitor-score-ring-current'),
+    );
+  });
+
   it('renders the live current score with its verdict', () => {
     const html = render(starterMilkBase());
     expect(html).toContain('data-testid="monitor-score-header"');

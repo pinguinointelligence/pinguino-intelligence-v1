@@ -5,6 +5,7 @@ import {
   detectViolations,
   type EffectiveRecipeItem,
   type EngineIngredient,
+  type RecipeDirectionTarget,
   type RecipeInput,
 } from '@/engine';
 import { findDemoIngredient } from '@/data/demoIngredients';
@@ -21,6 +22,7 @@ import {
   type ConstraintPreview,
 } from '@/features/constraint-studio/applyPipeline';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
+import { ConstraintPreviewCard } from '@/features/constraint-studio/ui/ConstraintPreviewCard';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/contracts';
 import { useRecipeStore } from '@/stores/recipeStore';
@@ -117,6 +119,39 @@ const ownerInput = (
 
 const NO = { byLineId: {} };
 
+const assertMainRatio = (before: RecipeInput, after: RecipeInput, expectedRatio: number): void => {
+  const banana = after.items.find((item) => item.id === 'line-banana')!;
+  const secondMain = after.items.find((item) => item.id === 'line-strawberry')!;
+  expect(banana.planned_grams).toBeGreaterThan(0);
+  expect(secondMain.planned_grams).toBeGreaterThan(0);
+  expect(banana.planned_grams / secondMain.planned_grams).toBeCloseTo(expectedRatio, 2);
+  expect(verifyMainIngredientIdentity(before, after)).toMatchObject({ ok: true });
+};
+
+const offBatchOwnerInput = (
+  bananaGrams: number,
+  secondMainGrams: number,
+  weights: readonly [number, number] | undefined,
+  strategy: 'optimal' | 'eco',
+  sweetness: RecipeDirectionTarget = 0,
+  softness: RecipeDirectionTarget = 0,
+  temperature = -13,
+): RecipeInput => {
+  const base = ownerInput(bananaGrams, secondMainGrams, [], 1_000, weights);
+  return {
+    ...base,
+    target_temperature_c: temperature,
+    items: base.items.map((item) =>
+      item.id === 'line-milk' ? { ...item, planned_grams: item.planned_grams + 300 } : item,
+    ),
+    goals: {
+      formulation_strategy: strategy,
+      direction_targets: { sweetness, softness, creaminess: 0, flavor: 0 },
+      direction_targets_active: sweetness !== 0 || softness !== 0,
+    },
+  };
+};
+
 const mainSnapshot = (lineId: string, mapperIngredientId: string): ProductBehaviorSnapshot => ({
   schemaVersion: 1,
   resolutionState: 'RESOLVED',
@@ -195,6 +230,58 @@ describe('multi-main role is a set in the canonical recipe draft', () => {
     ]);
   });
 
+  it('captures the current Crown gram relationship and refreshes it after direct Main gram edits', () => {
+    const draft = offBatchOwnerInput(548, 152, undefined, 'optimal');
+    useRecipeStore.setState({
+      items: draft.items.map((item) => ({ ...item, lock_type: 'unlocked' })),
+      target_batch_grams: draft.target_batch_grams,
+      target_temperature_c: draft.target_temperature_c,
+      category: draft.category,
+      productBehaviorSnapshots: {
+        'line-banana': mainSnapshot('line-banana', BANANA.id),
+        'line-strawberry': mainSnapshot('line-strawberry', STRAWBERRIES.id),
+      },
+    });
+
+    useRecipeStore.getState().setMainIngredient('line-banana');
+    useRecipeStore.getState().setMainIngredient('line-strawberry');
+    useRecipeStore.getState().setPlannedGrams('line-banana', 150);
+    useRecipeStore.getState().setPlannedGrams('line-strawberry', 150);
+
+    const input = buildRecipeInput(useRecipeStore.getState());
+    const mains = input.items.filter((item) => item.lock_type === 'main');
+    expect(mains.map((item) => item.main_ratio_weight)).toEqual([1, 1]);
+    const result = buildOptimizePreview(input, NO, '2026-08-25T00:00:00.000Z');
+    expect(result.ok, JSON.stringify(result)).toBe(true);
+    if (!result.ok) return;
+    assertMainRatio(input, result.preview.proposedInput, 1);
+  });
+
+  it('derives a 2:1 Crown contract from the user-entered Main grams', () => {
+    const draft = ownerInput(200, 100);
+    useRecipeStore.setState({
+      items: draft.items.map((item) => ({ ...item, lock_type: 'unlocked' })),
+      target_batch_grams: draft.target_batch_grams,
+      target_temperature_c: draft.target_temperature_c,
+      category: draft.category,
+      productBehaviorSnapshots: {
+        'line-banana': mainSnapshot('line-banana', BANANA.id),
+        'line-strawberry': mainSnapshot('line-strawberry', STRAWBERRIES.id),
+      },
+    });
+
+    useRecipeStore.getState().setMainIngredient('line-banana');
+    useRecipeStore.getState().setMainIngredient('line-strawberry');
+
+    const input = buildRecipeInput(useRecipeStore.getState());
+    const mains = input.items.filter((item) => item.lock_type === 'main');
+    expect(mains.map((item) => item.main_ratio_weight)).toEqual([2, 1]);
+    const result = buildOptimizePreview(input, NO, '2026-08-25T00:00:00.000Z');
+    expect(result.ok, JSON.stringify(result)).toBe(true);
+    if (!result.ok) return;
+    assertMainRatio(input, result.preview.proposedInput, 2);
+  });
+
   it('renders the existing crown for every Main line without redesigning it', () => {
     const actions = {
       setPlannedGrams: () => undefined,
@@ -224,6 +311,90 @@ describe('multi-main role is a set in the canonical recipe draft', () => {
 });
 
 describe('owner runtime fixtures — identity and ratio are hard formulation intent', () => {
+  it('preserves the owner Banana/Cranberry 150:150 ratio while reconciling 1300 g to 1000 g', () => {
+    const input: RecipeInput = {
+      mode: 'classic',
+      category: 'milk_gelato',
+      target_temperature_c: -12,
+      target_batch_grams: 1_000,
+      machine_capacity_grams: null,
+      goals: { formulation_strategy: 'optimal' },
+      items: [
+        line('line-banana', BANANA, 150),
+        line(
+          'line-strawberry',
+          { ...STRAWBERRIES, name: 'CRANBERRY · Fresh Fruit' },
+          150,
+        ),
+        line('line-milk', findDemoIngredient('milk_3_5')!, 672, 'unlocked'),
+        line('line-cream', findDemoIngredient('cream_30')!, 130, 'unlocked'),
+        line('line-smp', findDemoIngredient('smp')!, 35, 'unlocked'),
+        line('line-sucrose', findDemoIngredient('sucrose')!, 130, 'unlocked'),
+        line('line-dextrose', findDemoIngredient('dextrose')!, 30, 'unlocked'),
+        line('line-tara', findDemoIngredient('tara_gum')!, 3, 'unlocked'),
+      ],
+    };
+    expect(plannedSum(input)).toBe(1_300);
+
+    const result = buildOptimizePreview(input, NO, '2026-08-25T00:00:00.000Z');
+
+    expect(result.ok, JSON.stringify(result)).toBe(true);
+    if (!result.ok) return;
+    const banana = result.preview.proposedInput.items.find((item) => item.id === 'line-banana')!;
+    const cranberry = result.preview.proposedInput.items.find(
+      (item) => item.id === 'line-strawberry',
+    )!;
+    expect(plannedSum(result.preview.proposedInput)).toBe(1_000);
+    expect(banana.planned_grams).toBeGreaterThan(0);
+    expect(cranberry.planned_grams).toBeGreaterThan(0);
+    expect(Math.abs(banana.planned_grams - cranberry.planned_grams)).toBeLessThanOrEqual(1);
+    expect(verifyMainIngredientIdentity(input, result.preview.proposedInput)).toMatchObject({
+      ok: true,
+    });
+    const previewHtml = renderToStaticMarkup(
+      <ConstraintPreviewCard
+        preview={result.preview}
+        onApply={() => undefined}
+        onCancel={() => undefined}
+      />,
+    );
+    expect(previewHtml).toContain('Multi-Main: BANANA : CRANBERRY = 1 : 1 — zachowane');
+  });
+
+  it.each([
+    ['OPTIMAL', 'optimal', 0, 0, -13],
+    ['ECO', 'eco', 0, 0, -13],
+    ['Sweetness target', 'optimal', 2, 0, -13],
+    ['Hardness target', 'optimal', 0, 2, -13],
+    ['temperature change', 'optimal', 0, 0, -11],
+  ] as const)(
+    'preserves 2:1 Multi-Main through %s recalculation',
+    (_label, strategy, sweetness, softness, temperature) => {
+      const input = offBatchOwnerInput(
+        200,
+        100,
+        [2, 1],
+        strategy,
+        sweetness,
+        softness,
+        temperature,
+      );
+      const result = buildOptimizePreview(input, NO, '2026-08-25T00:00:00.000Z');
+      expect(result.ok, JSON.stringify(result)).toBe(true);
+      if (!result.ok) return;
+      assertMainRatio(input, result.preview.proposedInput, 2);
+    },
+  );
+
+  it('preserves 1:2 Multi-Main while increasing the target batch from 1000 g to 1500 g', () => {
+    const input = ownerInput(100, 200, [], 1_000, [1, 2]);
+    const result = buildBatchRescalePreview(input, NO, 1_500, '2026-08-25T00:00:00.000Z');
+    expect(result.ok, JSON.stringify(result)).toBe(true);
+    if (!result.ok) return;
+    expect(plannedSum(result.preview.proposedInput)).toBe(1_500);
+    assertMainRatio(input, result.preview.proposedInput, 0.5);
+  });
+
   it('rejects a forged 49/51 split and changed ratio metadata for a 50/50 group', () => {
     const input = ownerInput(50, 50, [], 100);
     const split = {

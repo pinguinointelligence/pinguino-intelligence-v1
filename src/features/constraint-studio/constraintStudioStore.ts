@@ -681,6 +681,20 @@ export function beginPiRecalculation(): number {
 }
 
 /**
+ * Safely isolates a user-cancelled run. ProductBehavior transports that do not
+ * expose AbortSignal may still finish in the background, but their generation
+ * can no longer publish snapshots, Preview, terminal state, or recipe writes.
+ */
+export function cancelPiRecalculation(): void {
+  if (useConstraintStudioStore.getState().recalculationTerminal?.state !== 'WORKING') return;
+  activePiRunGeneration += 1;
+  useConstraintStudioStore.setState({
+    ...CLEAR_STAGED,
+    recalculationTerminal: { state: 'CANCELLED' },
+  });
+}
+
+/**
  * OWNER FINAL INTEGRATION ADDENDUM (Agent C) — the persisted §17 slice: the
  * CONSTRAINT SET and nothing else. `preview` / `previewIssue` / `blocked` /
  * `feasibility` are staged results of ONE click and must never outlive the tab
@@ -2296,6 +2310,12 @@ export async function createOptimizePreviewWithServerAuthority(generation?: numb
         return;
       }
       proposedSnapshots = proposedAuthority.snapshots;
+      if (
+        !isCurrentPiRun(ownedGeneration) ||
+        useRecipeStore.getState().draftRevision !== draft.revision
+      ) {
+        return;
+      }
       useRecipeStore.getState().syncProductBehaviorSnapshots(validation.snapshots);
       if (!isCurrentPiRun(ownedGeneration)) return;
       if (
@@ -2314,6 +2334,12 @@ export async function createOptimizePreviewWithServerAuthority(generation?: numb
         return;
       }
     }
+  }
+  if (
+    !isCurrentPiRun(ownedGeneration) ||
+    useRecipeStore.getState().draftRevision !== draft.revision
+  ) {
+    return;
   }
   useRecipeStore.getState().syncProductBehaviorSnapshots(validation.snapshots);
   if (!isCurrentPiRun(ownedGeneration)) return;
@@ -2444,10 +2470,8 @@ export async function runPiRecalculationWithTerminal(
     if (useConstraintStudioStore.getState().recalculationTerminal?.state === 'WORKING') {
       useConstraintStudioStore.setState({
         recalculationTerminal: {
-          state: 'BLOCKED_WITH_EXACT_ACTION',
-          code: 'apply_failed',
+          state: 'ERROR',
           messagePl: 'PI zakończyło przeliczenie bez wyniku. Wróć do receptury i spróbuj ponownie.',
-          action: 'return_to_recipe',
         },
       });
     }
@@ -2463,11 +2487,8 @@ export async function runPiRecalculationWithTerminal(
         directionBestCandidate: null,
         blocked: null,
         recalculationTerminal: {
-          state: 'BLOCKED_WITH_EXACT_ACTION',
-          code: 'apply_failed',
-          messagePl:
-            'Serwer nie odpowiedział w bezpiecznym czasie. Receptura nie została zmieniona. Wróć do receptury i spróbuj ponownie.',
-          action: 'return_to_recipe',
+          state: 'TIMEOUT',
+          messagePl: 'Nie udało się zakończyć przeliczenia. Twoja receptura nie została zmieniona.',
         },
       });
       return;
@@ -2478,10 +2499,8 @@ export async function runPiRecalculationWithTerminal(
       directionBestCandidate: null,
       blocked: null,
       recalculationTerminal: {
-        state: 'BLOCKED_WITH_EXACT_ACTION',
-        code: 'apply_failed',
+        state: 'ERROR',
         messagePl: 'PI nie mogło dokończyć przeliczenia. Wróć do receptury i spróbuj ponownie.',
-        action: 'return_to_recipe',
       },
     });
   } finally {

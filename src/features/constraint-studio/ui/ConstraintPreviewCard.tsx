@@ -10,7 +10,10 @@ import {
   formatGramsDeltaPl,
   formatGramsPl,
 } from '../constraintStudioCopy';
-import { mainObjectiveSummaryPl } from '../mainObjectivePresentation';
+import {
+  mainObjectiveSummaryPl,
+  multiMainPreservationSummaryPl,
+} from '../mainObjectivePresentation';
 import {
   customerFormulationSourcePl,
   customerSolverSourcePl,
@@ -127,6 +130,7 @@ export function ConstraintPreviewCard({
   const outcome = preview.outcomeClassification;
   const selectedDirection = directionSummary(preview);
   const mainObjectiveSummary = mainObjectiveSummaryPl(preview);
+  const multiMainSummary = multiMainPreservationSummaryPl(preview);
   const protectedFacts = [
     [
       'Blokady',
@@ -207,6 +211,15 @@ export function ConstraintPreviewCard({
         >
           {mainObjectiveSummary}
         </div>
+      ) : null}
+
+      {multiMainSummary ? (
+        <p
+          className="mt-3 text-xs font-medium leading-relaxed text-ivory/75"
+          data-testid="preview-multi-main-preserved"
+        >
+          {multiMainSummary}
+        </p>
       ) : null}
 
       {selectedDirection ? (

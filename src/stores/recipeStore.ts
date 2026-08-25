@@ -117,6 +117,24 @@ const preserveOwnerReviewGate = (
     blockReasons: [...new Set([...current.blockReasons, OWNER_REVIEW_GATE_REASON])],
   };
 };
+
+/**
+ * The customer's positive Crown grams are the default Multi-Main relationship.
+ * Persist that relationship through the existing `main_ratio_weight` contract
+ * whenever the Main set is created or a Main gram value is edited. An explicit
+ * ratio-editor change may still override these weights afterwards.
+ */
+const mainRatioWeightsFromCurrentGrams = (items: RecipeItem[]): RecipeItem[] => {
+  const mains = items.filter((item) => item.lock_type === 'main');
+  if (mains.length < 2 || mains.some((item) => !(item.planned_grams > 0))) return items;
+  const unit = Math.min(...mains.map((item) => item.planned_grams));
+  return items.map((item) =>
+    item.lock_type === 'main'
+      ? { ...item, main_ratio_weight: item.planned_grams / unit }
+      : item,
+  );
+};
+
 type CostPriority = NonNullable<RecipeGoals['cost_priority']>;
 
 export type AddIngredientResult =
@@ -1387,17 +1405,18 @@ export const useRecipeStore = create<RecipeState>()(
             requestedGrams,
           );
           const targetGrams = aggregate.grams;
+          const items = state.items.map((item) => {
+            const next = { ...item };
+            delete next.user_target_grams;
+            if (item.id !== lineId) return next;
+            next.planned_grams = targetGrams;
+            next.user_target_grams = targetGrams;
+            if (targetGrams > 0) next.user_intent_anchor_grams = targetGrams;
+            else delete next.user_intent_anchor_grams;
+            return next;
+          });
           return {
-            items: state.items.map((item) => {
-              const next = { ...item };
-              delete next.user_target_grams;
-              if (item.id !== lineId) return next;
-              next.planned_grams = targetGrams;
-              next.user_target_grams = targetGrams;
-              if (targetGrams > 0) next.user_intent_anchor_grams = targetGrams;
-              else delete next.user_intent_anchor_grams;
-              return next;
-            }),
+            items: line.lock_type === 'main' ? mainRatioWeightsFromCurrentGrams(items) : items,
             dirty: true,
             draftRevision: state.draftRevision + 1,
           };
@@ -1481,8 +1500,8 @@ export const useRecipeStore = create<RecipeState>()(
         })),
 
       setLockType: (lineId, lockType) =>
-        set((state) => ({
-          items: state.items.map((item) =>
+        set((state) => {
+          const items = state.items.map((item) =>
             item.id === lineId
               ? (() => {
                   const withoutRange = { ...item };
@@ -1493,10 +1512,13 @@ export const useRecipeStore = create<RecipeState>()(
                   return { ...withoutRange, lock_type: lockType };
                 })()
               : item,
-          ),
-          dirty: true,
-          draftRevision: state.draftRevision + 1,
-        })),
+          );
+          return {
+            items: lockType === 'main' ? mainRatioWeightsFromCurrentGrams(items) : items,
+            dirty: true,
+            draftRevision: state.draftRevision + 1,
+          };
+        }),
 
       setPercentLock: (lineId, percent) => {
         if (percent !== null && (!Number.isFinite(percent) || percent < 0 || percent > 100)) return;
@@ -1598,10 +1620,11 @@ export const useRecipeStore = create<RecipeState>()(
           );
           if (mainBehaviorBlockReason(state.productBehaviorSnapshots[lineId], snapshotRequired))
             return {};
+          const items = state.items.map((item) =>
+            item.id === lineId ? { ...item, lock_type: 'main' as const } : item,
+          );
           return {
-            items: state.items.map((item) =>
-              item.id === lineId ? { ...item, lock_type: 'main' } : item,
-            ),
+            items: mainRatioWeightsFromCurrentGrams(items),
             dirty: true,
             draftRevision: state.draftRevision + 1,
           };
@@ -1736,7 +1759,10 @@ export const useRecipeStore = create<RecipeState>()(
                 machineLabel: null,
               }),
           formulation_strategy: normalizeFormulationStrategy(
-            profile?.formulationStrategy ?? input.goals?.formulation_strategy ?? input.mode,
+            // Account defaults may configure machine/batch/profile context,
+            // but they never turn a newly loaded draft into ECO implicitly.
+            // Saved/derived payloads still preserve an explicit persisted mode.
+            metadata?.formulationStrategy ?? input.goals?.formulation_strategy ?? input.mode,
           ),
           flavor_intensity: input.goals?.flavor_intensity ?? 'balanced',
           cost_priority: input.goals?.cost_priority ?? 'balanced',
@@ -1845,9 +1871,11 @@ export const useRecipeStore = create<RecipeState>()(
         const defaults =
           specificDefaults ??
           (legacyDefaults?.visibleProductType === visible ? legacyDefaults : null);
-        const formulationStrategy = normalizeFormulationStrategy(
-          defaults?.formulationStrategy ?? 'optimal',
-        );
+        // A genuinely new recipe always starts OPTIMAL. Persisted ECO belongs
+        // to an existing saved recipe and is restored by `loadRecipeInput`; it
+        // is never a default for a fresh identity, even when older account
+        // preferences still contain `formulationStrategy: eco`.
+        const formulationStrategy: FormulationStrategy = 'optimal';
         const starterServingMode = isNewRecipeServingModeId(defaults?.servingModeId)
           ? defaults.servingModeId
           : starterServingModeForTemperature(defaults?.targetTemperatureC);
@@ -2045,6 +2073,7 @@ export const useRecipeStore = create<RecipeState>()(
         set((state) => ({
           ...base,
           ...(defaults ? profileFields(defaults, base.items, base.category) : {}),
+          formulation_strategy: 'optimal',
           draftRevision: state.draftRevision + 1,
           draftContextSeq: state.draftContextSeq + 1,
         }));

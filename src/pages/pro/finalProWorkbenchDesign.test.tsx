@@ -272,12 +272,12 @@ describe('profile semantics and readiness', () => {
     // preparation gate and no Sorbet-only branch in the settings line.
     expect(settings).not.toContain("visibleProductType === 'sorbet'");
     expect(settings).not.toContain('Sorbet nie blokuje');
-    expect(settings).toContain("visibleProductType === 'vegan'");
-    // Protein Engine v2 (owner decision 2026-08-22): the Protein branch renders
-    // a READ-ONLY content read-out, never a target control.
-    expect(settings).toContain('<ProteinContentReadout');
+    expect(settings).not.toContain("visibleProductType === 'vegan'");
+    // Result metrics do not belong inside Settings. Protein uses the shared,
+    // compact result component beside Score and inside Monitor.
+    expect(settings).not.toContain('<ProteinContentReadout');
     expect(settings).not.toContain('ProteinTargetControl');
-    expect(settings).toContain('Mapper 2088');
+    expect(settings).not.toContain('Mapper 2088');
     expect(settings).not.toContain('testid="workbench-quality"');
     expect(settings).toContain('testid="workbench-strategy"');
     expect(settings).toContain("label: 'OPTIMAL'");
@@ -285,7 +285,7 @@ describe('profile semantics and readiness', () => {
     expect(settings).toContain('Priorytet smaku.');
     expect(settings).toContain('Priorytet kosztu.');
     expect(settings).not.toContain('const MODES: ProductMode[]');
-    expect(settings).toContain('CZĘŚCIOWO PODŁĄCZONE');
+    expect(settings).not.toContain('CZĘŚCIOWO PODŁĄCZONE');
   });
 
   it('hides serving mode for home machines and keeps it for professional machines', () => {
