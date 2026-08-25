@@ -21,7 +21,8 @@ describe('INTIMPORT evidence stays server-authoritative', () => {
     expect(edge).toContain(".from('intimport_enrichment_usage')");
     expect(edge).toContain(".eq('user_id', input.actorUserId)");
     expect(edge).toContain(".in('idempotency_key', receipts)");
-    expect(edge).toContain('if (expectedReceipt !== receipt) return null;');
+    expect(edge).toContain('if (expectedReceipt !== receipt || result.cacheRevision');
+    expect(edge).toContain('proveExactProductIdentity(');
     expect(edge).toContain("fact.sourceAuthorityClass !== authority.authority");
     expect(edge).toContain("fact.evidenceSource !== authority.evidenceSource");
   });

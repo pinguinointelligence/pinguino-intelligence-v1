@@ -553,8 +553,8 @@ describe('Product Recognition V2 — Mapper semantic hard contradictions', () =>
       }),
     );
     expect(biscuits).toMatchObject({
-      productArchetype: 'CONFECTIONERY',
-      ingredientFamily: 'confectionery',
+      productArchetype: 'BISCUIT_WAFER',
+      ingredientFamily: 'biscuit_wafer',
       physicalForm: 'SOLID',
     });
 
@@ -596,12 +596,12 @@ describe('Product Recognition V2 — Mapper semantic hard contradictions', () =>
     );
 
     expect(gum).toMatchObject({
-      productArchetype: 'UNKNOWN',
-      ingredientFamily: 'unknown',
-      physicalForm: 'UNKNOWN',
+      productArchetype: 'CHEWING_GUM',
+      ingredientFamily: 'chewing_gum',
+      physicalForm: 'SOLID',
       intendedUsageRole: 'NEITHER_REVIEW',
-      classificationSource: 'REVIEW_REQUIRED',
-      modelRequired: true,
+      classificationSource: 'DETERMINISTIC',
+      modelRequired: false,
     });
     expect(gum.reasonCodes).not.toContain('ARCHETYPE_CONFECTIONERY');
   });

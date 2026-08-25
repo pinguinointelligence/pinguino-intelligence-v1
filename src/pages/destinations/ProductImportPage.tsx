@@ -116,6 +116,7 @@ export function ProductImportPage() {
   const [rollbackRemaining, setRollbackRemaining] = useState<number | null>(null);
   const [runError, setRunError] = useState<string | null>(null);
   const cancellationRequested = useRef(false);
+  const enrichmentRunRef = useRef<{ baseId: string; segment: number } | null>(null);
   // Wall-clock of the last completed row. The page schedules nothing: progress
   // events are themselves the liveness signal, arriving about once a second, and
   // a stalled import is visible as a timestamp that stops advancing.
@@ -150,6 +151,7 @@ export function ProductImportPage() {
     setLastProgressAt(null);
     setPreflight(null);
     setPreflightError(null);
+    enrichmentRunRef.current = null;
   };
 
   useEffect(() => {
@@ -252,7 +254,8 @@ export function ProductImportPage() {
     if (localRows.length === 0) return;
     setEnriching(true);
     setEnrichError(null);
-    const importId = `intimport-${Date.now().toString(36)}`;
+    enrichmentRunRef.current ??= { baseId: `intimport-${Date.now().toString(36)}`, segment: 1 };
+    const importId = `${enrichmentRunRef.current.baseId}-s${enrichmentRunRef.current.segment}`;
     const identityByKey = new Map(
       localRows.map((row) => [row.rowIndex, row.researchIdentity] as const),
     );
@@ -267,6 +270,7 @@ export function ProductImportPage() {
           importId,
           identityFor: (request) =>
             identityByKey.get(request.rowIndex) ?? {
+              sourceProductId: null,
               brand: null,
               manufacturer: null,
               name: request.displayName,
@@ -289,10 +293,27 @@ export function ProductImportPage() {
         undefined,
         setEnrichProgress,
       );
+      setEnrichSummary(outcome.summary);
+      if (outcome.summary.runStatus === 'PAUSED_BUDGET') {
+        enrichmentRunRef.current.segment += 1;
+        setEnrichError(
+          `Research paused safely after ${outcome.summary.processed}/${outcome.summary.products}. ` +
+          'No untouched row was finalized. Run enrichment again to resume from durable source receipts.',
+        );
+        return;
+      }
       const semantic = await runIntimportSemanticClassification(
         outcome.products,
         createIntimportSemanticProvider({ importId }),
       );
+      if (semantic.summary.runStatus === 'PAUSED_BUDGET') {
+        enrichmentRunRef.current.segment += 1;
+        setEnrichError(
+          `Semantic classification paused safely after ${semantic.summary.processed}/${semantic.summary.products}. ` +
+          'No untouched row was finalized. Run enrichment again to resume.',
+        );
+        return;
+      }
       // Recognition owns the compatible Mapper universe, so a semantic result
       // must be followed by a fresh local pass. This is still read-only: it
       // reloads immutable Mapper knowledge and writes no product or PI row.
@@ -318,6 +339,7 @@ export function ProductImportPage() {
       // away the new Product Accuracy and could admit/refuse on stale evidence.
       setLocalRows(finalRows);
       setEnrichSummary(outcome.summary);
+      enrichmentRunRef.current = null;
     } catch (error) {
       setEnrichError(errorMessage(error));
     } finally {

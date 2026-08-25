@@ -183,7 +183,7 @@ describe('research is targeted, not generic', () => {
     expect(asked.length).toBeGreaterThan(0);
   });
 
-  it('caps the fields asked per product', async () => {
+  it('asks the complete useful missing-field set in one bounded source step', async () => {
     const intelligence = intelligenceFor(row());
     let asked: readonly string[] = [];
     const provider = vi.fn(async (request: { fields: readonly string[] }) => {
@@ -191,7 +191,8 @@ describe('research is targeted, not generic', () => {
       return { facts: [], calls: 1 };
     });
     await runIntimportEnrichment([{ intelligence, barcode: null }], provider);
-    expect(asked.length).toBeLessThanOrEqual(3);
+    expect(asked.length).toBeGreaterThan(3);
+    expect(asked).toEqual(expect.arrayContaining(['ingredients', 'fat', 'protein', 'salt']));
   });
 });
 
@@ -264,9 +265,9 @@ describe('provider runs server-side only', () => {
     expect(edgeSource).toContain('ownerProvided: false');
   });
 
-  it('enforces the import-wide cap server-side', () => {
-    expect(edgeSource).toContain('INTIMPORT_MAX_EXTERNAL_CALLS_PER_IMPORT');
-    expect(edgeSource).toContain('intimport_import_call_cap_reached');
+  it('enforces an emergency run ceiling server-side', () => {
+    expect(edgeSource).toContain('INTIMPORT_EMERGENCY_MAX_EXTERNAL_CALLS_PER_RUN');
+    expect(edgeSource).toContain('intimport_emergency_budget_paused');
     expect(edgeSource).toContain("from('intimport_enrichment_usage')");
   });
 
@@ -275,8 +276,8 @@ describe('provider runs server-side only', () => {
     // up to 3 searches for one job (25 across 10 jobs). Counting rows would have
     // allowed roughly three times the advertised ceiling.
     const webCap = edgeSource.slice(
-      edgeSource.indexOf('Import-wide cap, counted SERVER-SIDE on ACTUAL provider web searches'),
-      edgeSource.indexOf('// Only public product identity leaves the system'),
+      edgeSource.indexOf('// Emergency ceiling only.'),
+      edgeSource.indexOf("if (stepKind === 'OPEN_FOOD_FACTS_EXACT_GTIN'"),
     );
     expect(webCap).toContain("select('web_calls')");
     expect(webCap).not.toMatch(/select\('id', \{ count: 'exact'/);
@@ -295,13 +296,14 @@ describe('provider runs server-side only', () => {
       edgeSource.indexOf('const idempotencyKey'),
       edgeSource.indexOf('const { data: cached }'),
     );
-    expect(keyBlock).toContain('stableJson({ identity, fields:');
+    expect(keyBlock).toContain("cacheRevision: 'INTIMPORT_EXACT_SKU_EVIDENCE_V2'");
+    expect(keyBlock).toContain('identity,');
     expect(keyBlock).not.toMatch(/stableJson\(\{ importId/);
   });
 
   it('bounds tool calls per product', () => {
     expect(edgeSource).toContain('max_tool_calls: maxPerProduct');
-    expect(edgeSource).toContain("Math.min(2, numberEnv('INTIMPORT_MAX_CALLS_PER_PRODUCT', 2))");
+    expect(edgeSource).toContain("Math.min(3, numberEnv('INTIMPORT_MAX_CALLS_PER_SOURCE_STEP', 2))");
   });
 
   it('degrades one product rather than failing the batch', () => {

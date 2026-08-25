@@ -148,6 +148,7 @@ export interface IntimportProductIntelligence {
    * allowed to leave the system.
    */
   researchIdentity: {
+    sourceProductId: string | null;
     brand: string | null;
     manufacturer: string | null;
     name: string | null;
@@ -329,15 +330,25 @@ const SEARCHABLE_BY_KIND: Readonly<Record<ProductKind, readonly ProductEvidenceF
       'barcode',
       'manufacturer',
       'netQuantity',
+      'countryOfOrigin',
     ],
     technical: [
       'dosage',
       'technicalParameters',
       'technicalSource',
       'ingredients',
+      'nutritionBasis',
+      'fat',
+      'carbohydrate',
+      'sugars',
+      'fiber',
+      'protein',
+      'salt',
+      'allergens',
       'manufacturer',
       'barcode',
       'netQuantity',
+      'countryOfOrigin',
       'energyKcal',
     ],
   });
@@ -545,10 +556,11 @@ export function assessIntimportProduct(
     name: candidate.displayName,
     variant: candidate.source['Variant Original'] ?? candidate.source['Variant English'],
     barcode: candidate.ean,
-    netQuantity:
-      [candidate.source['Net Quantity Value'], candidate.source['Net Quantity Unit']]
-        .filter(Boolean)
-        .join(' ') || null,
+    netQuantity: typeof candidate.insert.package_size === 'string'
+      ? candidate.insert.package_size
+      : [candidate.source['Net Quantity Value'], candidate.source['Net Quantity Unit']]
+          .filter(Boolean)
+          .join(' ') || null,
     knownSourceUrl: candidate.source['Primary Source URL'],
     technicalPdfUrl: candidate.source['Technical PDF URL'],
     missingFields: targets,
@@ -670,15 +682,17 @@ export function assessIntimportProduct(
     productionAccuracy,
     sourceAuthority,
     researchIdentity: {
+      sourceProductId: candidate.sourceProductId,
       brand: candidate.source.Brand,
       manufacturer: candidate.source.Manufacturer,
       name: candidate.displayName,
       variant: candidate.source['Variant Original'] ?? candidate.source['Variant English'],
       barcode: candidate.ean,
-      netQuantity:
-        [candidate.source['Net Quantity Value'], candidate.source['Net Quantity Unit']]
-          .filter(Boolean)
-          .join(' ') || null,
+      netQuantity: typeof candidate.insert.package_size === 'string'
+        ? candidate.insert.package_size
+        : [candidate.source['Net Quantity Value'], candidate.source['Net Quantity Unit']]
+            .filter(Boolean)
+            .join(' ') || null,
       knownSourceUrl: candidate.source['Primary Source URL'],
       technicalPdfUrl: candidate.source['Technical PDF URL'],
     },
@@ -782,9 +796,10 @@ export function runIntimportLocalIntelligence(
         (candidate) => candidate.state === 'REVIEW_REQUIRED' && candidate.duplicateOfRow !== null,
       ).length,
       familyMatches: rows.filter((row) => row.familyApplied).length,
-      // One targeted call per genuinely missing field, capped per product.
+      // Every unresolved product gets its bounded ordered source plan. This is
+      // an estimate of source steps, not an artificial three-field ceiling.
       estimatedMaxExternalCalls: enrichable.reduce(
-        (sum, row) => sum + Math.min(row.enrichmentTargets.length, MAX_CALLS_PER_PRODUCT),
+        (sum, row) => sum + row.researchPlan.steps.length,
         0,
       ),
       valueReadiness: mapper
@@ -803,9 +818,6 @@ export function runIntimportLocalIntelligence(
     },
   };
 }
-
-/** Hard per-product ceiling on external calls. */
-export const MAX_CALLS_PER_PRODUCT = 3;
 
 /* ── import handoff ────────────────────────────────────────────────────────── */
 

@@ -29,18 +29,18 @@
   "productsWithEstimatedFieldAfter": 623,
   "readinessBefore": {
     "READY": 0,
-    "ESTIMATED_READY": 450,
-    "REVIEW": 370
+    "ESTIMATED_READY": 444,
+    "REVIEW": 376
   },
   "readinessAfter": {
     "READY": 0,
-    "ESTIMATED_READY": 424,
-    "REVIEW": 396
+    "ESTIMATED_READY": 417,
+    "REVIEW": 403
   },
   "finalClassification": {
     "READY_VERIFIED": 0,
-    "READY_ESTIMATED": 424,
-    "REVIEW_REQUIRED": 396
+    "READY_ESTIMATED": 417,
+    "REVIEW_REQUIRED": 403
   },
   "engineFieldTruthStateBefore": {
     "VERIFIED": 625,
@@ -57,10 +57,10 @@
   "readyOnlyBecauseOfRetailerMacros": 0,
   "remainingBlockers": {
     "physical_inconsistency": 10,
-    "missing_sugar_split": 94,
+    "missing_sugar_split": 102,
     "missing_water_solids": 214,
     "missing_required_macro": 76,
-    "weak_field_confidence": 2
+    "weak_field_confidence": 1
   },
   "gainedWaterSolidsAtOrAbove85": 523,
   "derivedComplementsAdded": 51,

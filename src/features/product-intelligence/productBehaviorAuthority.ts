@@ -162,6 +162,26 @@ export function classifyProspectiveProductBehavior(input: {
       classificationReasonCodes: ['product_role_unresolved'],
     };
   }
+  // A resolved, ordinary topping is judged on topping semantics. It does not
+  // need a base formulation profile, water/solids or a technical dosage merely
+  // to be used as a solid inclusion/decorative component.
+  if (
+    intendedUsageRole === 'TOPPING_ONLY' &&
+    input.kind === 'normal_food' &&
+    input.recognition &&
+    input.recognition.isTechnicalProduct === false &&
+    input.recognition.physicalForm !== 'UNKNOWN'
+  ) {
+    return {
+      classificationOutcome: 'classified',
+      baseRecipeEligible: false,
+      toppingEligible: true,
+      intendedUsageRole,
+      dosageInterpretation,
+      referenceMapperIngredientId: null,
+      classificationReasonCodes: [],
+    };
+  }
   const match = input.profileMatch;
   if (
     !match ||

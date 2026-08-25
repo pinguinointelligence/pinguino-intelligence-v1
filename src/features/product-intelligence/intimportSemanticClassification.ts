@@ -1,6 +1,10 @@
 /** Bounded semantic-classifier orchestration for the explicit owner enrichment action. */
 import type { IntimportProductIntelligence } from './intimportIntelligence';
-import type { ProductSemanticClassification, ProductSemanticEvidence } from './productRecognition';
+import type {
+  ProductSemanticClassification,
+  ProductSemanticEvidence,
+  ProductSemanticValidationError,
+} from './productRecognition';
 
 export interface SemanticClassificationRequest {
   rowIndex: number;
@@ -15,6 +19,9 @@ export interface SemanticClassificationResponse {
   model: string | null;
   capReached?: boolean;
   error?: string | null;
+  validationErrors?: ProductSemanticValidationError[];
+  repairAttempted?: boolean;
+  repairAccepted?: boolean;
 }
 
 export type SemanticClassificationProvider = (
@@ -29,6 +36,13 @@ export interface SemanticClassificationSummary {
   cacheHits: number;
   unresolved: number;
   capReached: boolean;
+  runStatus: 'COMPLETED' | 'PAUSED_BUDGET';
+  processed: number;
+  pending: number;
+  nextRowIndex: number | null;
+  rejectedWithDiagnostics: number;
+  repairAttempted: number;
+  repairAccepted: number;
 }
 
 export async function runIntimportSemanticClassification(
@@ -42,59 +56,50 @@ export async function runIntimportSemanticClassification(
 }> {
   const decisions = new Map<number, ProductSemanticClassification>();
   const receipts = new Map<number, string>();
-  const cache = new Map<string, Promise<SemanticClassificationResponse>>();
-  const queue = [...rows];
+  const cache = new Map<string, SemanticClassificationResponse>();
   let deterministicOnly = 0;
   let modelAttempted = 0;
   let modelCalls = 0;
   let cacheHits = 0;
   let capReached = false;
+  let rejectedWithDiagnostics = 0;
+  let repairAttempted = 0;
+  let repairAccepted = 0;
+  void concurrency; // sequence is deliberate: an emergency pause has an exact resume cursor
 
-  const workers = Array.from({ length: Math.max(1, Math.min(8, concurrency)) }, async () => {
-    for (;;) {
-      const row = queue.shift();
-      if (!row) return;
-      if (!row.recognition.modelRequired || capReached) {
-        decisions.set(row.rowIndex, row.recognition);
-        deterministicOnly += 1;
-        continue;
-      }
-      modelAttempted += 1;
-      const key = row.recognition.evidenceFingerprint;
-      const cached = cache.get(key);
-      const request =
-        cached ??
-        provider({
-          rowIndex: row.rowIndex,
-          evidence: row.recognitionEvidence,
-        });
-      if (!cached) cache.set(key, request);
-      const response = await request;
-      if (response.capReached) {
-        capReached = true;
-        decisions.set(row.rowIndex, row.recognition);
-        continue;
-      }
-      if (cached || response.cacheHit) cacheHits += 1;
-      if (!cached) modelCalls += response.calls;
-      const classification = response.classification;
-      // The server result must be pinned to the exact evidence sent. Anything
-      // else degrades to the deterministic REVIEW result.
-      const accepted =
-        classification.authority === 'PRODUCT_RECOGNITION_V2' &&
-        classification.evidenceFingerprint === key
-          ? classification
-          : row.recognition;
-      decisions.set(row.rowIndex, accepted);
-      if (
-        response.evidenceReceipt &&
-        accepted.classificationSource === 'SERVER_MODEL' &&
-        accepted.evidenceFingerprint === key
-      )
-        receipts.set(row.rowIndex, response.evidenceReceipt);
+  for (const row of rows) {
+    if (!row.recognition.modelRequired) {
+      decisions.set(row.rowIndex, row.recognition);
+      deterministicOnly += 1;
+      continue;
     }
-  });
-  await Promise.all(workers);
+    modelAttempted += 1;
+    const key = row.recognition.evidenceFingerprint;
+    const cached = cache.get(key);
+    const response = cached ?? await provider({ rowIndex: row.rowIndex, evidence: row.recognitionEvidence });
+    if (response.capReached) {
+      capReached = true;
+      break; // neither this row nor untouched rows receive a fabricated final decision
+    }
+    if (!cached) cache.set(key, response);
+    if (cached || response.cacheHit) cacheHits += 1;
+    if (!cached) modelCalls += response.calls;
+    if (response.validationErrors?.length) rejectedWithDiagnostics += 1;
+    if (response.repairAttempted) repairAttempted += 1;
+    if (response.repairAccepted) repairAccepted += 1;
+    const classification = response.classification;
+    const accepted =
+      classification.authority === 'PRODUCT_RECOGNITION_V2' &&
+      classification.evidenceFingerprint === key
+        ? classification
+        : row.recognition;
+    decisions.set(row.rowIndex, accepted);
+    if (
+      response.evidenceReceipt &&
+      accepted.classificationSource === 'SERVER_MODEL' &&
+      accepted.evidenceFingerprint === key
+    ) receipts.set(row.rowIndex, response.evidenceReceipt);
+  }
 
   return {
     classifications: decisions,
@@ -107,6 +112,13 @@ export async function runIntimportSemanticClassification(
       cacheHits,
       unresolved: [...decisions.values()].filter((entry) => entry.modelRequired).length,
       capReached,
+      runStatus: capReached ? 'PAUSED_BUDGET' : 'COMPLETED',
+      processed: decisions.size,
+      pending: rows.length - decisions.size,
+      nextRowIndex: decisions.size < rows.length ? rows[decisions.size]?.rowIndex ?? null : null,
+      rejectedWithDiagnostics,
+      repairAttempted,
+      repairAccepted,
     },
   };
 }

@@ -23,6 +23,7 @@ import type {
 import { classifyProductSemantics } from '@/features/product-intelligence/productRecognition';
 
 export interface IntimportEnrichmentIdentity {
+  sourceProductId: string | null;
   brand: string | null;
   manufacturer: string | null;
   name: string | null;
@@ -65,6 +66,7 @@ export interface IntimportEnrichmentTelemetry {
   notFound: string[];
   authorityByField: Record<string, SourceAuthorityClass>;
   error: string | null;
+  crossSkuRejections: { sourceUrl: string; reasonCodes: string[] }[];
 }
 
 /**
@@ -110,6 +112,7 @@ export function createIntimportWebProvider(options: {
         notFound: [...request.fields],
         authorityByField: {},
         error: error.message ?? 'provider_unavailable',
+        crossSkuRejections: [],
       });
       return { facts: [], calls: 0 };
     }
@@ -127,6 +130,8 @@ export function createIntimportWebProvider(options: {
       model?: string;
       error?: string;
       evidenceReceipt?: string;
+      researchOutcome?: EnrichmentResponse['researchOutcome'];
+      crossSkuRejections?: { sourceUrl: string; reasonCodes: string[] }[];
     };
 
     const serverFacts = payload.facts ?? [];
@@ -157,12 +162,15 @@ export function createIntimportWebProvider(options: {
         serverFacts.map((fact) => [fact.field, fact.sourceAuthorityClass]),
       ),
       error: payload.error ?? null,
+      crossSkuRejections: payload.crossSkuRejections ?? [],
     });
 
     return {
       facts,
       calls: payload.cacheHit ? 0 : (payload.calls ?? 0),
       evidenceReceipt: payload.evidenceReceipt,
+      researchOutcome: payload.researchOutcome ?? 'STEP_COMPLETE',
+      crossSkuRejections: payload.crossSkuRejections ?? [],
     };
   };
 }
@@ -220,6 +228,9 @@ export function createIntimportSemanticProvider(options: {
       model: payload.model ?? null,
       capReached: payload.capReached === true,
       error: payload.error ?? null,
+      validationErrors: payload.validationErrors,
+      repairAttempted: payload.repairAttempted === true,
+      repairAccepted: payload.repairAccepted === true,
     };
     options.onTelemetry?.({
       calls: response.calls,

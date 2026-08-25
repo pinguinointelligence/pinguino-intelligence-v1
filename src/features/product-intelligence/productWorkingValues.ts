@@ -29,9 +29,11 @@ import {
   PROFILE_MATCH_FLOOR,
   type ProfileMatch,
   type MapperInferenceInput,
+  type MapperInferenceResult,
   type MapperInferenceTier,
   type MapperKnowledge,
 } from './mapperValueInference.ts';
+import { isProductSemanticResolvedForMapper } from './productRecognition.ts';
 import {
   applyFieldTruth,
   emptyFieldTruthMap,
@@ -434,7 +436,17 @@ export function resolveProductWorkingValues(
       knownMacros[field] = known.value;
     }
   }
-  const inference = inferMapperValues({ ...input.identity, knownMacros }, knowledge);
+  const mapperSemanticsResolved = isProductSemanticResolvedForMapper(input.identity.semantic);
+  const inference: MapperInferenceResult = mapperSemanticsResolved
+    ? inferMapperValues({ ...input.identity, knownMacros }, knowledge)
+    : {
+        fields: {},
+        tiersUsed: [],
+        exactRow: null,
+        family: null,
+        trace: ['mapper_skipped: family/form/role unresolved'],
+        bestCohort: null,
+      };
   for (const field of WORKING_NUMERIC_FIELDS) {
     const candidate = inference.fields[field];
     if (candidate) fields = applyFieldTruth(fields, field, candidate);
@@ -446,21 +458,23 @@ export function resolveProductWorkingValues(
   // represented by a physical profile, not whether each number is independently
   // provable. A profile clearing the floor fills what is still missing at once,
   // as ESTIMATED. Nothing the product already states is touched.
-  const profileMatch = findProfileMatch(
-    {
-      name: input.identity.name,
-      variant: input.identity.variant,
-      brand: input.identity.brand,
-      category: input.identity.category,
-      subcategory: input.identity.subcategory,
-      barcode: input.identity.barcode,
-      knownMacros: verifiedMacros(fields),
-      technical: input.technical,
-      semantic: input.identity.semantic,
-    },
-    knowledge,
-  );
-  if (profileMatch.confidence >= PROFILE_MATCH_FLOOR) {
+  const profileMatch = mapperSemanticsResolved
+    ? findProfileMatch(
+        {
+          name: input.identity.name,
+          variant: input.identity.variant,
+          brand: input.identity.brand,
+          category: input.identity.category,
+          subcategory: input.identity.subcategory,
+          barcode: input.identity.barcode,
+          knownMacros: verifiedMacros(fields),
+          technical: input.technical,
+          semantic: input.identity.semantic,
+        },
+        knowledge,
+      )
+    : null;
+  if (profileMatch && profileMatch.confidence >= PROFILE_MATCH_FLOOR) {
     let filled = 0;
     for (const field of WORKING_NUMERIC_FIELDS) {
       // The accepted profile is the AUTHORITY for the formulation vector, so it
@@ -493,7 +507,7 @@ export function resolveProductWorkingValues(
       `profile_match: ${profileMatch.basis} ${Math.round(profileMatch.confidence * 100)}% → ${filled} pol`,
       ...profileMatch.reasons,
     );
-  } else if (profileMatch.rejected) {
+  } else if (profileMatch?.rejected) {
     trace.push(`profile_match odrzucony: ${profileMatch.rejected}`);
   }
 
@@ -606,7 +620,7 @@ export function resolveProductWorkingValues(
       ? null
       : leansOnProfile
         ? Math.max(
-            profileMatch.confidence,
+            profileMatch?.confidence ?? 0,
             round4(
               confidenceFields.reduce(
                 (min, field) => Math.min(min, fields[field].provenance.confidence),

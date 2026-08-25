@@ -35,16 +35,13 @@ describe('Product Recognition V2 server boundary', () => {
 
   it('caches by exact evidence and enforces a server-side import cap', () => {
     expect(edge).toContain("from('intimport_semantic_classification_usage')");
-    expect(edge).toContain("action: 'semantic_classification'");
-    expect(edge).toContain('classifierVersion: PRODUCT_RECOGNITION_VERSION');
-    expect(edge).toContain('cacheRevision: PRODUCT_RECOGNITION_CACHE_REVISION');
-    expect(edge).toContain("numberEnv('INTIMPORT_MAX_SEMANTIC_CALLS_PER_IMPORT', 40)");
-    expect(edge).toContain('const semanticCap = Math.min(');
-    expect(edge).toContain("numberEnv('INTIMPORT_MAX_EXTERNAL_CALLS_PER_IMPORT', 40)");
+    expect(edge).toContain('productSemanticIdempotencyPayload(evidence)');
+    expect(edge).toContain("numberEnv('INTIMPORT_EMERGENCY_MAX_SEMANTIC_CALLS_PER_RUN', 2_000)");
+    expect(edge).toContain("numberEnv('INTIMPORT_EMERGENCY_MAX_EXTERNAL_CALLS_PER_RUN', 4_000)");
     expect(edge).toContain("'reserve_intimport_semantic_classification'");
     expect(migration).toContain('pg_advisory_xact_lock');
     expect(migration).toContain("return 'CAP_REACHED'");
-    expect(edge).toContain('intimport_semantic_call_cap_reached');
+    expect(edge).toContain('intimport_emergency_budget_paused');
     expect(edge).toContain('semantic_attempt_not_repeated');
   });
 

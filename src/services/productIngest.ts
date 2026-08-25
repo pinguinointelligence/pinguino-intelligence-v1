@@ -328,9 +328,10 @@ export function canonicalIngestFromLegacyProduct(
                   intimportFields['Variant English'] ??
                   null,
                 netQuantity:
-                  [intimportFields['Net Quantity Value'], intimportFields['Net Quantity Unit']]
+                  input.package_size ??
+                  ([intimportFields['Net Quantity Value'], intimportFields['Net Quantity Unit']]
                     .filter((value) => typeof value === 'string' && value.trim() !== '')
-                    .join(' ') || null,
+                    .join(' ') || null),
                 dosage: intimportFields['Professional Dosage'] ?? input.usage_notes ?? null,
                 technicalParameters:
                   intimportFields['Technical Parameters'] ?? input.engine_notes ?? null,

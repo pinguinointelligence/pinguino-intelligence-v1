@@ -28,6 +28,14 @@ export type ProductArchetype =
   | 'CHOCOLATE'
   | 'TEA'
   | 'COFFEE'
+  | 'CHEWING_GUM'
+  | 'BISCUIT_WAFER'
+  | 'BAKED_GOOD'
+  | 'YEAST'
+  | 'LEAVENING_AGENT'
+  | 'CULINARY_ACID'
+  | 'EDIBLE_OIL'
+  | 'CARAMEL_SPREAD'
   | 'CONFECTIONERY'
   | 'FLAVOR_PASTE'
   | 'FLAVOR_CONCENTRATE'
@@ -46,6 +54,14 @@ export type ProductSemanticFamily =
   | ProductFamilyId
   | 'tea'
   | 'coffee'
+  | 'chewing_gum'
+  | 'biscuit_wafer'
+  | 'baked_good'
+  | 'yeast'
+  | 'leavening_agent'
+  | 'culinary_acid'
+  | 'edible_oil'
+  | 'caramel_spread'
   | 'cocoa'
   | 'nut'
   | 'savory_spread'
@@ -158,6 +174,16 @@ export function canonicalizeProductSemanticEvidence(
   };
 }
 
+/** Exact bytes hashed by Edge and verified by catalog-submit. */
+export function productSemanticIdempotencyPayload(input: ProductSemanticEvidence): object {
+  return {
+    action: 'semantic_classification',
+    classifierVersion: PRODUCT_RECOGNITION_VERSION,
+    cacheRevision: PRODUCT_RECOGNITION_CACHE_REVISION,
+    evidence: canonicalizeProductSemanticEvidence(input),
+  };
+}
+
 export interface ProductSemanticClassification {
   authority: typeof PRODUCT_RECOGNITION_VERSION;
   classificationSource: 'DETERMINISTIC' | 'SERVER_MODEL' | 'REVIEW_REQUIRED';
@@ -231,6 +257,14 @@ const PRODUCT_ARCHETYPES: readonly ProductArchetype[] = [
   'CHOCOLATE',
   'TEA',
   'COFFEE',
+  'CHEWING_GUM',
+  'BISCUIT_WAFER',
+  'BAKED_GOOD',
+  'YEAST',
+  'LEAVENING_AGENT',
+  'CULINARY_ACID',
+  'EDIBLE_OIL',
+  'CARAMEL_SPREAD',
   'CONFECTIONERY',
   'FLAVOR_PASTE',
   'FLAVOR_CONCENTRATE',
@@ -268,6 +302,14 @@ const SEMANTIC_FAMILIES: readonly ProductSemanticFamily[] = [
   'alcohol',
   'tea',
   'coffee',
+  'chewing_gum',
+  'biscuit_wafer',
+  'baked_good',
+  'yeast',
+  'leavening_agent',
+  'culinary_acid',
+  'edible_oil',
+  'caramel_spread',
   'cocoa',
   'nut',
   'savory_spread',
@@ -576,6 +618,33 @@ const archetypeOf = (
 ): ProductArchetype => {
   const taxonomy = `${category} ${subcategory}`;
   const all = `${identity} ${taxonomy} ${description}`;
+  // Resolve the WHOLE commercial subject before looking at component words
+  // such as cream, coating, cocoa filling or "instant". These reusable
+  // families deliberately precede all component/post-process classifiers.
+  if (/\b(guma do zuc|chewing gum|bubble gum|gum do zuc)\w*/.test(identity)) {
+    return 'CHEWING_GUM';
+  }
+  if (
+    /\b(wafel\w*|wafer\w*|biscuit\w*|herbatnik\w*|ciastk\w*|biszkopt\w*|markiz\w*)/.test(
+      identity,
+    )
+  ) {
+    return 'BISCUIT_WAFER';
+  }
+  if (/\b(drozdz\w*|yeast)\b/.test(identity)) return 'YEAST';
+  if (/\b(soda oczyszczona|baking soda|proszek do pieczenia|baking powder)\b/.test(identity)) {
+    return 'LEAVENING_AGENT';
+  }
+  if (/\b(kwasek cytrynowy|kwas cytrynowy|citric acid|acido citrico)\b/.test(identity)) {
+    return 'CULINARY_ACID';
+  }
+  if (/\b(oliwa|olive oil|olej jadalny|edible oil)\b/.test(identity)) return 'EDIBLE_OIL';
+  if (/\b(kajmak|masa krowkowa|dulce de leche|caramel spread)\b/.test(identity)) {
+    return 'CARAMEL_SPREAD';
+  }
+  if (/\b(paczek|donut|rogalik|croissant|babka|ciasto francuskie|pastry)\w*/.test(identity)) {
+    return 'BAKED_GOOD';
+  }
   // Product identity beats a retail container or a flavour adjective. A cake
   // mix described as chocolate is still a bakery mix, never chocolate.
   if (
@@ -709,6 +778,22 @@ const semanticFamilyOf = (
   if (archetype === 'BAKERY_MIX') return 'bakery_mix';
   if (archetype === 'TEA') return 'tea';
   if (archetype === 'COFFEE') return 'coffee';
+  if (archetype === 'CHEWING_GUM') return 'chewing_gum';
+  if (archetype === 'BISCUIT_WAFER') return 'biscuit_wafer';
+  if (archetype === 'BAKED_GOOD') return 'baked_good';
+  if (archetype === 'YEAST') return 'yeast';
+  if (archetype === 'LEAVENING_AGENT') return 'leavening_agent';
+  if (archetype === 'CULINARY_ACID') return 'culinary_acid';
+  if (archetype === 'EDIBLE_OIL') return 'edible_oil';
+  if (archetype === 'CARAMEL_SPREAD') return 'caramel_spread';
+  if (archetype === 'BASE_MIX') return 'base_mix';
+  if (archetype === 'STABILIZER') return 'stabilizer_hydrocolloid';
+  if (archetype === 'EMULSIFIER') return 'emulsifier';
+  if (archetype === 'NUT_PASTE') return 'nut_paste';
+  if (archetype === 'FRUIT_PRODUCT') return 'fruit';
+  if (archetype === 'CHOCOLATE') return 'chocolate';
+  if (archetype === 'FLAVOR_PASTE' || archetype === 'FLAVOR_CONCENTRATE') return 'flavor_paste';
+  if (archetype === 'INTEGRATOR') return 'technical_additive';
   if (archetype === 'CONFECTIONERY') return 'confectionery';
   if (archetype === 'VARIEGATO') return 'variegato';
   if (archetype === 'TOPPING') return 'topping';
@@ -724,8 +809,13 @@ const formOf = (
   subcategory: string,
   description: string,
   archetype: ProductArchetype,
+  inferredFamily: ProductFamilyId | null,
 ): ProductPhysicalForm => {
   const all = `${identity} ${category} ${subcategory} ${description}`;
+  if (['CHEWING_GUM', 'BISCUIT_WAFER', 'BAKED_GOOD'].includes(archetype)) return 'SOLID';
+  if (['YEAST', 'LEAVENING_AGENT', 'CULINARY_ACID'].includes(archetype)) return 'POWDER';
+  if (archetype === 'EDIBLE_OIL') return 'LIQUID';
+  if (archetype === 'CARAMEL_SPREAD') return 'PASTE';
   if (archetype === 'COCOA_POWDER' || archetype === 'BAKERY_MIX') return 'POWDER';
   if (archetype === 'WHOLE_NUT' || archetype === 'DRIED_MIX') return 'DRY';
   if (archetype === 'SAVORY_SPREAD') return 'PASTE';
@@ -754,6 +844,27 @@ const formOf = (
   }
   if (archetype === 'TEA') return 'DRY';
   if (archetype === 'COFFEE') return 'DRY';
+  const familyForm: Partial<Record<ProductFamilyId, ProductPhysicalForm>> = {
+    plant_protein_isolate: 'POWDER',
+    dairy_protein: 'POWDER',
+    coconut_fat: 'SOLID',
+    cocoa_butter: 'SOLID',
+    liquid_vegetable_oil: 'LIQUID',
+    nut_paste: 'PASTE',
+    sugar_sucrose: 'POWDER',
+    glucose_dextrose: 'POWDER',
+    other_sugar: 'POWDER',
+    stabilizer_hydrocolloid: 'POWDER',
+    emulsifier: 'POWDER',
+    fibre_inulin: 'POWDER',
+    starch: 'POWDER',
+    plant_beverage: 'LIQUID',
+    dairy_liquid: 'LIQUID',
+    flavor_paste: 'PASTE',
+    base_mix: 'POWDER',
+    alcohol: 'LIQUID',
+  };
+  if (inferredFamily && familyForm[inferredFamily]) return familyForm[inferredFamily]!;
   return 'UNKNOWN';
 };
 
@@ -781,6 +892,10 @@ const flavorDomainOf = (text: string, archetype: ProductArchetype): ProductFlavo
 };
 
 const roleOf = (archetype: ProductArchetype, all: string): ProductIntendedUsageRole => {
+  if (['CHEWING_GUM', 'YEAST', 'LEAVENING_AGENT'].includes(archetype)) return 'NEITHER_REVIEW';
+  if (['BISCUIT_WAFER', 'BAKED_GOOD'].includes(archetype)) return 'TOPPING_ONLY';
+  if (archetype === 'CARAMEL_SPREAD') return 'BASE_AND_TOPPING';
+  if (['CULINARY_ACID', 'EDIBLE_OIL'].includes(archetype)) return 'BASE_ONLY';
   if (archetype === 'WHOLE_NUT') return 'BASE_AND_TOPPING';
   if (archetype === 'DRIED_MIX') return 'TOPPING_ONLY';
   if (archetype === 'SAVORY_SPREAD' || archetype === 'BAKERY_MIX') return 'NEITHER_REVIEW';
@@ -803,6 +918,15 @@ const mapperCategoriesFor = (
   if (archetype === 'COCOA_POWDER') return ['cocoa', 'chocolate'];
   if (archetype === 'WHOLE_NUT') return ['nut'];
   if (archetype === 'DRIED_MIX') return ['inclusion', 'bakery_inclusion'];
+  if (archetype === 'CHEWING_GUM' || archetype === 'YEAST' || archetype === 'LEAVENING_AGENT') {
+    return [];
+  }
+  if (archetype === 'BISCUIT_WAFER' || archetype === 'BAKED_GOOD') {
+    return ['inclusion', 'bakery_inclusion', 'confectionery_inclusion'];
+  }
+  if (archetype === 'CULINARY_ACID') return ['technical_additive'];
+  if (archetype === 'EDIBLE_OIL') return ['fat', 'oil'];
+  if (archetype === 'CARAMEL_SPREAD') return ['variegato', 'flavor_paste', 'topping'];
   if (archetype === 'SAVORY_SPREAD' || archetype === 'BAKERY_MIX') return [];
   if (archetype === 'VARIEGATO') return ['variegato', 'flavor_paste'];
   if (archetype === 'TOPPING') return ['topping', 'flavor_syrup', 'flavor_paste'];
@@ -852,7 +976,14 @@ export function classifyProductSemantics(
     inferredFamily,
   );
   const ingredientFamily = semanticFamilyOf(productArchetype, inferredFamily);
-  const physicalForm = formOf(identity, category, subcategory, description, productArchetype);
+  const physicalForm = formOf(
+    identity,
+    category,
+    subcategory,
+    description,
+    productArchetype,
+    inferredFamily,
+  );
   const dosage = parseProductDosage(input.dosage);
   const intendedUsageRole = roleOf(productArchetype, all);
   const flavorDomain = flavorDomainOf(all, productArchetype);
@@ -952,6 +1083,203 @@ const stringArray = (value: unknown, pattern: RegExp): string[] | null => {
   return [...new Set(value as string[])];
 };
 
+export type ProductSemanticValidationIssue =
+  | 'MALFORMED_JSON'
+  | 'SCHEMA_MISMATCH'
+  | 'ENUM_MISMATCH'
+  | 'UNSUPPORTED_TAXONOMY'
+  | 'MISSING_EVIDENCE_REFERENCE'
+  | 'SEMANTIC_CONTRADICTION'
+  | 'SECURITY_VIOLATION'
+  | 'OTHER';
+
+export interface ProductSemanticValidationError {
+  path: string;
+  returnedValue: unknown;
+  expected: string | readonly string[];
+  rule: string;
+  issue: ProductSemanticValidationIssue;
+}
+
+export interface ProductSemanticValidationResult {
+  classification: ProductSemanticClassification | null;
+  errors: ProductSemanticValidationError[];
+}
+
+/** Mapper may run only after all three semantic routing dimensions are real. */
+export function isProductSemanticResolvedForMapper(
+  semantic: ProductSemanticClassification | null | undefined,
+): boolean {
+  if (!semantic) return true; // historical callers without Recognition V2 retain their accepted path
+  return (
+    semantic.modelRequired === false &&
+    semantic.ingredientFamily !== 'unknown' &&
+    semantic.physicalForm !== 'UNKNOWN' &&
+    semantic.intendedUsageRole !== 'NEITHER_REVIEW'
+  );
+}
+
+const allowedEvidenceRefs = new Set([
+  'name',
+  'brand',
+  'manufacturer',
+  'manufacturerCode',
+  'gtin',
+  'productType',
+  'category',
+  'subcategory',
+  'variant',
+  'ingredients',
+  'nutrition',
+  'description',
+  'dosage',
+  'technicalParameters',
+  'sourceUrls',
+]);
+
+const validationError = (
+  path: string,
+  returnedValue: unknown,
+  expected: string | readonly string[],
+  rule: string,
+  issue: ProductSemanticValidationIssue,
+): ProductSemanticValidationError => ({ path, returnedValue, expected, rule, issue });
+
+const enumError = <T extends string>(
+  errors: ProductSemanticValidationError[],
+  path: string,
+  value: unknown,
+  allowed: readonly T[],
+): void => {
+  if (!enumValue(value, allowed)) {
+    errors.push(validationError(path, value, allowed, 'enum', 'ENUM_MISMATCH'));
+  }
+};
+
+/**
+ * The one model-output contract shared by browser, Edge validation and server
+ * persistence. Diagnostics are deliberately field-level so a single bounded
+ * representation repair can be attempted without weakening semantic safety.
+ */
+export function validateProductSemanticModelOutputDetailed(
+  evidenceInput: ProductSemanticEvidence,
+  rawOutput: unknown,
+): ProductSemanticValidationResult {
+  const evidence = canonicalizeProductSemanticEvidence(evidenceInput);
+  const base = classifyProductSemantics(evidence);
+  const errors: ProductSemanticValidationError[] = [];
+  if (!rawOutput || typeof rawOutput !== 'object' || Array.isArray(rawOutput)) {
+    return {
+      classification: null,
+      errors: [validationError('$', rawOutput, 'object', 'type', 'MALFORMED_JSON')],
+    };
+  }
+  const raw = rawOutput as Record<string, unknown>;
+  enumError(errors, '$.productArchetype', raw.productArchetype, PRODUCT_ARCHETYPES);
+  enumError(errors, '$.ingredientFamily', raw.ingredientFamily, SEMANTIC_FAMILIES);
+  enumError(errors, '$.physicalForm', raw.physicalForm, PHYSICAL_FORMS);
+  enumError(errors, '$.intendedUsageRole', raw.intendedUsageRole, USAGE_ROLES);
+  enumError(errors, '$.flavorDomain', raw.flavorDomain, FLAVOR_DOMAINS);
+  for (const key of ['professional', 'technical', 'dosageDependent'] as const) {
+    if (typeof raw[key] !== 'boolean') {
+      errors.push(validationError(`$.${key}`, raw[key], 'boolean', 'type', 'SCHEMA_MISMATCH'));
+    }
+  }
+  if (
+    typeof raw.confidence !== 'number' ||
+    !Number.isFinite(raw.confidence) ||
+    raw.confidence < 0 ||
+    raw.confidence > 1
+  ) {
+    errors.push(
+      validationError('$.confidence', raw.confidence, 'number in [0,1]', 'range', 'SCHEMA_MISMATCH'),
+    );
+  }
+  const dosageRaw = objectValue(raw.dosage);
+  if (!raw.dosage || Object.keys(dosageRaw).length === 0) {
+    errors.push(validationError('$.dosage', raw.dosage, 'object', 'type', 'SCHEMA_MISMATCH'));
+  }
+  enumError(errors, '$.dosage.semantics', dosageRaw.semantics, DOSAGE_SEMANTICS);
+  enumError(errors, '$.dosage.unit', dosageRaw.unit, DOSAGE_UNITS);
+  enumError(errors, '$.dosage.basis', dosageRaw.basis, DOSAGE_BASES);
+  if (
+    !(dosageRaw.value === null ||
+      (typeof dosageRaw.value === 'number' && Number.isFinite(dosageRaw.value)))
+  ) {
+    errors.push(
+      validationError('$.dosage.value', dosageRaw.value, 'finite number or null', 'type', 'SCHEMA_MISMATCH'),
+    );
+  }
+  const arrays: readonly [string, unknown, RegExp][] = [
+    ['compatibleMapperCategories', raw.compatibleMapperCategories, /^[a-z0-9_ -]{1,80}$/i],
+    ['forbiddenMapperCategories', raw.forbiddenMapperCategories, /^[a-z0-9_ -]{1,80}$/i],
+    ['reasonCodes', raw.reasonCodes, /^[A-Z0-9_:-]{1,80}$/],
+    ['evidenceRefs', raw.evidenceRefs, /^[A-Za-z][A-Za-z0-9]*$/],
+  ];
+  for (const [key, value, pattern] of arrays) {
+    if (!stringArray(value, pattern)) {
+      errors.push(
+        validationError(`$.${key}`, value, 'array of contract strings', 'array_items', 'SCHEMA_MISMATCH'),
+      );
+    }
+  }
+  const refs = stringArray(raw.evidenceRefs, /^[A-Za-z][A-Za-z0-9]*$/) ?? [];
+  for (let index = 0; index < refs.length; index += 1) {
+    const ref = refs[index]!;
+    const present =
+      allowedEvidenceRefs.has(ref) &&
+      (ref === 'sourceUrls'
+        ? evidence.sourceUrls.length > 0
+        : meaningful(evidence[ref as keyof Omit<ProductSemanticEvidence, 'sourceUrls'>]) !== null);
+    if (!present) {
+      errors.push(
+        validationError(
+          `$.evidenceRefs[${index}]`,
+          ref,
+          'reference to a present evidence field',
+          'evidence_reference',
+          'MISSING_EVIDENCE_REFERENCE',
+        ),
+      );
+    }
+  }
+
+  // Exact deterministic dimensions are immutable but need no rejection: the
+  // merge below preserves them. Only unresolved dimensions accept model input.
+  if (
+    (dosageRaw.value !== null && dosageRaw.value !== undefined && dosageRaw.value !== base.dosage.value) ||
+    (base.dosage.value !== null && dosageRaw.value !== base.dosage.value)
+  ) {
+    errors.push(
+      validationError(
+        '$.dosage.value',
+        dosageRaw.value,
+        base.dosage.value === null ? 'null (no exact dosage evidence)' : String(base.dosage.value),
+        'no_numeric_invention',
+        'SECURITY_VIOLATION',
+      ),
+    );
+  }
+  if (base.dosage.unit !== 'UNKNOWN' && dosageRaw.unit !== base.dosage.unit) {
+    errors.push(
+      validationError('$.dosage.unit', dosageRaw.unit, base.dosage.unit, 'exact_dosage_authority', 'SEMANTIC_CONTRADICTION'),
+    );
+  }
+  if (base.dosage.semantics !== 'UNKNOWN' && dosageRaw.semantics !== base.dosage.semantics) {
+    errors.push(
+      validationError('$.dosage.semantics', dosageRaw.semantics, base.dosage.semantics, 'exact_dosage_authority', 'SEMANTIC_CONTRADICTION'),
+    );
+  }
+  if (errors.length > 0) return { classification: null, errors };
+  const classification = mergeValidatedProductSemanticModelOutput(evidence, rawOutput);
+  return classification
+    ? { classification, errors: [] }
+    : {
+        classification: null,
+        errors: [validationError('$', rawOutput, 'valid semantic contract', 'merge', 'OTHER')],
+      };
+}
+
 /**
  * Validate and merge a semantic model result.
  *
@@ -959,7 +1287,7 @@ const stringArray = (value: unknown, pattern: RegExp): string[] | null => {
  * UNKNOWN/REVIEW dimensions, and it may never introduce a dosage number that
  * the exact evidence parser did not already find.
  */
-export function validateProductSemanticModelOutput(
+function mergeValidatedProductSemanticModelOutput(
   evidence: ProductSemanticEvidence,
   rawOutput: unknown,
 ): ProductSemanticClassification | null {
@@ -977,23 +1305,6 @@ export function validateProductSemanticModelOutput(
   const dosageBasisValue = enumValue(dosageRaw.basis, DOSAGE_BASES);
   const dosageValue = dosageRaw.value;
   const reasonCodes = stringArray(raw.reasonCodes, /^[A-Z0-9_:-]{1,80}$/);
-  const allowedEvidenceRefs = new Set([
-    'name',
-    'brand',
-    'manufacturer',
-    'manufacturerCode',
-    'gtin',
-    'productType',
-    'category',
-    'subcategory',
-    'variant',
-    'ingredients',
-    'nutrition',
-    'description',
-    'dosage',
-    'technicalParameters',
-    'sourceUrls',
-  ]);
   const evidenceRefs = stringArray(raw.evidenceRefs, /^[A-Za-z][A-Za-z0-9]*$/);
   const mapperCategoryPattern = /^[a-z0-9_ -]{1,80}$/i;
   const compatible = stringArray(raw.compatibleMapperCategories, mapperCategoryPattern);
@@ -1098,6 +1409,13 @@ export function validateProductSemanticModelOutput(
   };
 }
 
+export function validateProductSemanticModelOutput(
+  evidence: ProductSemanticEvidence,
+  rawOutput: unknown,
+): ProductSemanticClassification | null {
+  return validateProductSemanticModelOutputDetailed(evidence, rawOutput).classification;
+}
+
 const wetForms = new Set<ProductPhysicalForm>(['PASTE', 'PUREE', 'LIQUID', 'SAUCE', 'COATING']);
 const dryForms = new Set<ProductPhysicalForm>(['DRY', 'POWDER', 'SOLID']);
 const formContradiction = (a: ProductPhysicalForm, b: ProductPhysicalForm): boolean =>
@@ -1113,10 +1431,10 @@ const compatibleFamilyGroups: readonly (readonly ProductSemanticFamily[])[] = [
   ['chocolate', 'cocoa_butter'],
 ];
 const familyCompatible = (a: ProductSemanticFamily, b: ProductSemanticFamily): boolean =>
-  a === 'unknown' ||
-  b === 'unknown' ||
-  a === b ||
-  compatibleFamilyGroups.some((group) => group.includes(a) && group.includes(b));
+  a !== 'unknown' &&
+  b !== 'unknown' &&
+  (a === b ||
+    compatibleFamilyGroups.some((group) => group.includes(a) && group.includes(b)));
 
 const flavorContradiction = (a: ProductFlavorDomain, b: ProductFlavorDomain): boolean => {
   if (a === 'UNKNOWN' || b === 'UNKNOWN' || a === b) return false;
@@ -1156,6 +1474,12 @@ export function evaluateMapperSemanticCompatibility(
     sourceUrls: [],
   });
   const reasonCodes: string[] = [];
+  if (!isProductSemanticResolvedForMapper(product)) {
+    reasonCodes.push('SEMANTIC_PRODUCT_UNRESOLVED');
+  }
+  if (!isProductSemanticResolvedForMapper(candidateSemantic)) {
+    reasonCodes.push('SEMANTIC_MAPPER_CANDIDATE_UNRESOLVED');
+  }
   if (!familyCompatible(product.ingredientFamily, candidateSemantic.ingredientFamily)) {
     reasonCodes.push('SEMANTIC_FAMILY_CONTRADICTION');
   }

@@ -3,13 +3,14 @@ import { classifySourceAuthority } from '../_shared/sourceAuthority.ts';
 import { sha256Text, stableJson } from '../_shared/productScanner.ts';
 import {
   PRODUCT_RECOGNITION_MODEL_SCHEMA,
-  PRODUCT_RECOGNITION_CACHE_REVISION,
   PRODUCT_RECOGNITION_VERSION,
   canonicalizeProductSemanticEvidence,
   classifyProductSemantics,
-  validateProductSemanticModelOutput,
+  productSemanticIdempotencyPayload,
+  validateProductSemanticModelOutputDetailed,
   type ProductSemanticEvidence,
 } from '../../../src/features/product-intelligence/productRecognition.ts';
+import { proveExactProductIdentity } from '../../../src/features/product-intelligence/exactProductEvidence.ts';
 
 /**
  * INTIMPORT targeted web enrichment — the real external provider.
@@ -94,13 +95,26 @@ const ENRICHMENT_SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['url', 'title', 'kind'],
+        required: ['url', 'title', 'kind', 'productIdentity'],
         properties: {
           url: { type: 'string' },
           title: { type: 'string' },
           kind: {
             type: 'string',
             enum: ['manufacturer', 'brand', 'technical_pdf', 'retailer', 'database', 'other'],
+          },
+          productIdentity: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['productName', 'brand', 'variant', 'barcode', 'netQuantity', 'sourceProductId'],
+            properties: {
+              productName: { type: ['string', 'null'] },
+              brand: { type: ['string', 'null'] },
+              variant: { type: ['string', 'null'] },
+              barcode: { type: ['string', 'null'] },
+              netQuantity: { type: ['string', 'null'] },
+              sourceProductId: { type: ['string', 'null'] },
+            },
           },
         },
       },
@@ -111,12 +125,25 @@ const ENRICHMENT_SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['field', 'value', 'sourceUrl'],
+        required: ['field', 'value', 'sourceUrl', 'productIdentity'],
         properties: {
           field: { type: 'string' },
           /** Verbatim from the source. Never inferred, never paraphrased into a claim. */
           value: { type: 'string' },
           sourceUrl: { type: 'string' },
+          productIdentity: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['productName', 'brand', 'variant', 'barcode', 'netQuantity', 'sourceProductId'],
+            properties: {
+              productName: { type: ['string', 'null'] },
+              brand: { type: ['string', 'null'] },
+              variant: { type: ['string', 'null'] },
+              barcode: { type: ['string', 'null'] },
+              netQuantity: { type: ['string', 'null'] },
+              sourceProductId: { type: ['string', 'null'] },
+            },
+          },
         },
       },
     },
@@ -138,6 +165,8 @@ Rules:
   nutrition value from a similar product, never reconstruct an EAN.
 - Every fact must cite the exact sourceUrl it came from, and that URL must be one you
   actually consulted.
+- For every source, return the identity printed in the exact item block. A domain,
+  catalogue page or nearby product is not item evidence. Never copy facts across SKUs.
 - If you cannot find a field from a source you trust, put it in notFound. An honest
   "not found" is always better than a plausible guess.
 - Never state how confident you are. Confidence is computed elsewhere from the evidence.`;
@@ -247,17 +276,11 @@ Deno.serve(async (request) => {
     }
 
     const semanticModel = Deno.env.get('INTIMPORT_ENRICHMENT_MODEL') || 'gpt-5.6-luna';
-    // Semantic classification does not perform web search and must not inherit
-    // the much smaller web-enrichment budget. It has its own optional setting,
-    // with an absolute server ceiling of 40 classifications per import.
-    const semanticCap = Math.min(40, numberEnv('INTIMPORT_MAX_SEMANTIC_CALLS_PER_IMPORT', 40));
+    // Emergency run ceiling only. It pauses work and is intentionally far above
+    // a normal catalogue run; it is not a quality policy or a 40-row classifier.
+    const semanticCap = numberEnv('INTIMPORT_EMERGENCY_MAX_SEMANTIC_CALLS_PER_RUN', 2_000);
     const idempotencyKey = await sha256Text(
-      stableJson({
-        action: 'semantic_classification',
-        classifierVersion: PRODUCT_RECOGNITION_VERSION,
-        cacheRevision: PRODUCT_RECOGNITION_CACHE_REVISION,
-        evidence,
-      }),
+      stableJson(productSemanticIdempotencyPayload(evidence)),
     );
     const { data: cachedSemantic, error: cacheError } = await service
       .from('intimport_semantic_classification_usage')
@@ -310,7 +333,8 @@ Deno.serve(async (request) => {
     if (reservation === 'CAP_REACHED') {
       return json(
         {
-          error: 'intimport_semantic_call_cap_reached',
+          error: 'intimport_emergency_budget_paused',
+          capReached: true,
           cap: semanticCap,
         },
         429,
@@ -343,8 +367,7 @@ Deno.serve(async (request) => {
       `Exact product evidence (the only allowed source):\n${JSON.stringify(evidence)}\n` +
       `Deterministic unresolved dimensions: ${deterministic.modelReasonCodes.join(', ') || 'none'}.`;
     const startedAt = Date.now();
-    let semanticPayload: Record<string, unknown>;
-    try {
+    const requestSemantic = async (userPrompt: string): Promise<Record<string, unknown>> => {
       const response = await fetch('https://api.openai.com/v1/responses', {
         method: 'POST',
         signal: AbortSignal.timeout(30_000),
@@ -357,7 +380,7 @@ Deno.serve(async (request) => {
           model: semanticModel,
           input: [
             { role: 'system', content: [{ type: 'input_text', text: SEMANTIC_SYSTEM_PROMPT }] },
-            { role: 'user', content: [{ type: 'input_text', text: prompt }] },
+            { role: 'user', content: [{ type: 'input_text', text: userPrompt }] },
           ],
           text: {
             format: {
@@ -369,8 +392,31 @@ Deno.serve(async (request) => {
           },
         }),
       });
-      semanticPayload = objectValue(await response.json());
+      const payload = objectValue(await response.json());
       if (!response.ok) throw new Error('provider_request_failed');
+      return payload;
+    };
+    const outputFrom = (payload: Record<string, unknown>): { text: string | null; value: unknown } => {
+      const text = Array.isArray(payload.output)
+        ? payload.output
+            .flatMap((item) => {
+              const row = objectValue(item);
+              return Array.isArray(row.content) ? row.content : [];
+            })
+            .map((part) => objectValue(part).text)
+            .filter((entry): entry is string => typeof entry === 'string')
+            .join('')
+        : null;
+      try {
+        return { text, value: text ? JSON.parse(text) : null };
+      } catch {
+        return { text, value: null };
+      }
+    };
+
+    let semanticPayload: Record<string, unknown>;
+    try {
+      semanticPayload = await requestSemantic(prompt);
     } catch {
       const errorResult = {
         status: 'ERROR',
@@ -389,53 +435,73 @@ Deno.serve(async (request) => {
         error: 'semantic_provider_unavailable',
       });
     }
-    const outputText = Array.isArray(semanticPayload.output)
-      ? semanticPayload.output
-          .flatMap((item) => {
-            const row = objectValue(item);
-            return Array.isArray(row.content) ? row.content : [];
-          })
-          .map((part) => objectValue(part).text)
-          .filter((text): text is string => typeof text === 'string')
-          .join('')
-      : null;
-    const modelOutput: unknown = (() => {
+    const firstOutput = outputFrom(semanticPayload);
+    let validation = validateProductSemanticModelOutputDetailed(evidence, firstOutput.value);
+    let classification = validation.classification;
+    let calls = 1;
+    let repairAttempted = false;
+    let repairAccepted = false;
+    let repairPayload: Record<string, unknown> | null = null;
+    const repairable = validation.errors.length > 0 && validation.errors.every((error) =>
+      ['MALFORMED_JSON', 'SCHEMA_MISMATCH', 'ENUM_MISMATCH', 'MISSING_EVIDENCE_REFERENCE'].includes(error.issue)
+    );
+    if (!classification && repairable) {
+      repairAttempted = true;
+      const repairPrompt =
+        `${prompt}\n\nYour previous JSON was rejected only at these contract paths:\n` +
+        `${JSON.stringify(validation.errors)}\nPrevious output:\n${firstOutput.text ?? 'null'}\n` +
+        'Return the same evidence-grounded classification in the exact schema. Repair representation only; do not invent or broaden evidence.';
       try {
-        return outputText ? JSON.parse(outputText) : null;
+        repairPayload = await requestSemantic(repairPrompt);
+        calls += 1;
+        validation = validateProductSemanticModelOutputDetailed(evidence, outputFrom(repairPayload).value);
+        classification = validation.classification;
+        repairAccepted = classification !== null;
       } catch {
-        return null;
+        // The original field-level diagnostics remain the exact rejection evidence.
       }
-    })();
-    const classification = validateProductSemanticModelOutput(evidence, modelOutput);
+    }
     if (!classification) {
+      const firstUsage = objectValue(semanticPayload.usage);
+      const repairUsage = objectValue(repairPayload?.usage);
       const rejectedResult = {
         status: 'ERROR',
-        calls: 1,
+        calls,
         model: semanticModel,
         latencyMs: Date.now() - startedAt,
-        inputTokens: Number(objectValue(semanticPayload.usage).input_tokens ?? 0),
-        outputTokens: Number(objectValue(semanticPayload.usage).output_tokens ?? 0),
+        inputTokens: Number(firstUsage.input_tokens ?? 0) + Number(repairUsage.input_tokens ?? 0),
+        outputTokens: Number(firstUsage.output_tokens ?? 0) + Number(repairUsage.output_tokens ?? 0),
         error: 'semantic_output_rejected',
+        validationErrors: validation.errors,
+        repairAttempted,
+        repairAccepted: false,
       };
       await finalizeSemanticAttempt(rejectedResult);
       return json({
         classification: deterministic,
         evidenceReceipt: null,
         cacheHit: false,
-        calls: 1,
+        calls,
         model: semanticModel,
         error: 'semantic_output_rejected',
+        validationErrors: validation.errors,
+        repairAttempted,
+        repairAccepted: false,
       });
     }
     const usage = objectValue(semanticPayload.usage);
+    const repairUsage = objectValue(repairPayload?.usage);
     const semanticResult = {
       status: 'CLASSIFIED',
       classification,
-      calls: 1,
+      calls,
       model: semanticModel,
       latencyMs: Date.now() - startedAt,
-      inputTokens: Number(usage.input_tokens ?? 0),
-      outputTokens: Number(usage.output_tokens ?? 0),
+      inputTokens: Number(usage.input_tokens ?? 0) + Number(repairUsage.input_tokens ?? 0),
+      outputTokens: Number(usage.output_tokens ?? 0) + Number(repairUsage.output_tokens ?? 0),
+      validationErrors: [],
+      repairAttempted,
+      repairAccepted,
     };
     const { error: semanticUpdateError } = await finalizeSemanticAttempt(semanticResult);
     if (semanticUpdateError) {
@@ -463,46 +529,15 @@ Deno.serve(async (request) => {
     return json({ error: 'invalid_enrichment_request' }, 400);
   }
 
-  const maxPerProduct = Math.min(2, numberEnv('INTIMPORT_MAX_CALLS_PER_PRODUCT', 2));
-  const maxPerImport = numberEnv('INTIMPORT_MAX_EXTERNAL_CALLS_PER_IMPORT', 40);
+  const maxPerProduct = Math.min(3, numberEnv('INTIMPORT_MAX_CALLS_PER_SOURCE_STEP', 2));
+  const maxPerImport = numberEnv('INTIMPORT_EMERGENCY_MAX_EXTERNAL_CALLS_PER_RUN', 4_000);
   const model = Deno.env.get('INTIMPORT_ENRICHMENT_MODEL') || 'gpt-5.6-luna';
-
-  // Import-wide cap, counted SERVER-SIDE on ACTUAL provider web searches.
-  //
-  // Counting rows here would have been wrong: the first live run showed the
-  // provider ignoring `max_tool_calls` and making up to 3 searches for a single
-  // job (25 searches across 10 jobs). A row count would therefore have allowed
-  // roughly three times the ceiling it advertises. A client-supplied counter
-  // would be worthless as a spend control either way.
-  const { data: usageRows, error: countError } = await service
-    .from('intimport_enrichment_usage')
-    .select('web_calls')
-    .eq('user_id', auth.user.id)
-    .eq('import_id', importId);
-  if (countError) return json({ error: 'enrichment_usage_unavailable' }, 503);
-  const usedSoFar = (usageRows ?? []).reduce(
-    (sum, row) => sum + Number((row as { web_calls: number }).web_calls ?? 0),
-    0,
-  );
-  // Reserve conservatively BEFORE spending. One response can invoke several
-  // searches (3 observed live despite max_tool_calls: 2), so admitting a call
-  // whenever `used < cap` would overshoot. Refuse unless the WORST case still
-  // fits under the ceiling.
-  if (usedSoFar + WORST_CASE_SEARCHES_PER_CALL > maxPerImport) {
-    return json(
-      {
-        error: 'intimport_import_call_cap_reached',
-        callsUsed: usedSoFar,
-        cap: maxPerImport,
-        worstCaseReserve: WORST_CASE_SEARCHES_PER_CALL,
-      },
-      429,
-    );
-  }
 
   // Only public product identity leaves the system — never recipes, never
   // account data (§38).
   const identity = {
+    sourceProductId:
+      typeof product.sourceProductId === 'string' ? product.sourceProductId.slice(0, 120) : null,
     brand: typeof product.brand === 'string' ? product.brand.slice(0, 120) : null,
     manufacturer:
       typeof product.manufacturer === 'string' ? product.manufacturer.slice(0, 160) : null,
@@ -533,7 +568,12 @@ Deno.serve(async (request) => {
   // id meant a second run re-researched everything at full price — observed live
   // as 25 fresh searches and zero cache hits on an identical subset.
   const idempotencyKey = await sha256Text(
-    stableJson({ identity, fields: [...requestedFields].sort() }),
+    stableJson({
+      cacheRevision: 'INTIMPORT_EXACT_SKU_EVIDENCE_V2',
+      identity,
+      researchStep: { kind: stepKind, url: stepUrl, allowedDomains },
+      fields: [...requestedFields].sort(),
+    }),
   );
 
   const { data: cached } = await service
@@ -551,6 +591,149 @@ Deno.serve(async (request) => {
     });
   }
 
+  // Emergency ceiling only. Durable cache is checked first, so resuming a run
+  // reuses completed source steps without spending or being blocked by budget.
+  const { data: usageRows, error: countError } = await service
+    .from('intimport_enrichment_usage')
+    .select('web_calls')
+    .eq('user_id', auth.user.id)
+    .eq('import_id', importId);
+  if (countError) return json({ error: 'enrichment_usage_unavailable' }, 503);
+  const usedSoFar = (usageRows ?? []).reduce(
+    (sum, row) => sum + Number((row as { web_calls: number }).web_calls ?? 0),
+    0,
+  );
+  if (usedSoFar + WORST_CASE_SEARCHES_PER_CALL > maxPerImport) {
+    return json({
+      error: 'intimport_emergency_budget_paused',
+      capReached: true,
+      callsUsed: usedSoFar,
+      cap: maxPerImport,
+      worstCaseReserve: WORST_CASE_SEARCHES_PER_CALL,
+    }, 429);
+  }
+
+  if (stepKind === 'OPEN_FOOD_FACTS_EXACT_GTIN' && identity.barcode) {
+    const exactCode = identity.barcode.replace(/\D/g, '');
+    const apiUrl = `https://world.openfoodfacts.org/api/v2/product/${exactCode}.json`;
+    const sourceUrl = `https://world.openfoodfacts.org/product/${exactCode}`;
+    const startedAt = Date.now();
+    let offPayload: Record<string, unknown> = {};
+    try {
+      const response = await fetch(apiUrl, {
+        signal: AbortSignal.timeout(15_000),
+        headers: {
+          'User-Agent': 'Gellatti-INTIMPORT/2.0 (https://pinguinoai.com; product-research@pinguinoai.com)',
+          Accept: 'application/json',
+        },
+      });
+      offPayload = objectValue(await response.json());
+      if (!response.ok) throw new Error('open_food_facts_unavailable');
+    } catch {
+      offPayload = {};
+    }
+    const offProduct = objectValue(offPayload.product);
+    const observedCode = String(offProduct.code ?? offPayload.code ?? '').replace(/\D/g, '');
+    const exactBarcode = observedCode !== '' && observedCode.padStart(14, '0') === exactCode.padStart(14, '0');
+    const nutriments = objectValue(offProduct.nutriments);
+    const valueByField: Readonly<Record<string, unknown>> = {
+      ingredients: offProduct.ingredients_text_pl ?? offProduct.ingredients_text,
+      allergens: offProduct.allergens ?? (Array.isArray(offProduct.allergens_tags)
+        ? offProduct.allergens_tags.map(String).join(', ')
+        : null),
+      nutritionBasis: Object.keys(nutriments).some((key) => key.endsWith('_100g')) ? '100 g' : null,
+      energyKcal: nutriments['energy-kcal_100g'],
+      fat: nutriments.fat_100g,
+      carbohydrate: nutriments.carbohydrates_100g,
+      sugars: nutriments.sugars_100g,
+      fiber: nutriments.fiber_100g,
+      protein: nutriments.proteins_100g,
+      salt: nutriments.salt_100g,
+      barcode: exactBarcode ? observedCode : null,
+      manufacturer: offProduct.manufacturer,
+      netQuantity: offProduct.quantity,
+      countryOfOrigin: offProduct.origins ?? (Array.isArray(offProduct.origins_tags)
+        ? offProduct.origins_tags.map(String).join(', ')
+        : null),
+    };
+    const identityProof = proveExactProductIdentity(
+      {
+        name: identity.name,
+        brand: identity.brand,
+        variant: identity.variant,
+        barcode: identity.barcode,
+        netQuantity: identity.netQuantity,
+        sourceProductId: identity.sourceProductId,
+        knownSourceUrl: identity.knownSourceUrl,
+      },
+      {
+        productName: typeof offProduct.product_name === 'string' ? offProduct.product_name : null,
+        brand: typeof offProduct.brands === 'string' ? offProduct.brands.split(',')[0]?.trim() ?? null : null,
+        variant: null,
+        barcode: exactBarcode ? observedCode : null,
+        netQuantity: typeof offProduct.quantity === 'string' ? offProduct.quantity : null,
+        sourceProductId: null,
+        sourceUrl,
+        sourceTitle: typeof offProduct.product_name === 'string' ? offProduct.product_name : 'Open Food Facts',
+      },
+    );
+    const facts = exactBarcode && identityProof.accepted
+      ? requestedFields.flatMap((field) => {
+          const value = valueByField[field];
+          if (value === null || value === undefined || String(value).trim() === '') return [];
+          return [{
+            field,
+            value: String(value),
+            sourceUrl,
+            sourceDomain: 'world.openfoodfacts.org',
+            sourceTitle: String(offProduct.product_name ?? 'Open Food Facts'),
+            sourceAuthorityClass: 'STRUCTURED_PRODUCT_DATABASE',
+            evidenceSource: field === 'barcode' ? 'barcode_registry' : 'retailer',
+            retrievedAt: new Date().toISOString(),
+            exactProductIdentityProof: identityProof,
+            observedProductIdentity: {
+              productName: typeof offProduct.product_name === 'string' ? offProduct.product_name : null,
+              brand: typeof offProduct.brands === 'string' ? offProduct.brands.split(',')[0]?.trim() ?? null : null,
+              variant: null,
+              barcode: exactBarcode ? observedCode : null,
+              netQuantity: typeof offProduct.quantity === 'string' ? offProduct.quantity : null,
+              sourceProductId: null,
+            },
+          }];
+        })
+      : [];
+    const result = {
+      cacheRevision: 'INTIMPORT_EXACT_SKU_EVIDENCE_V2',
+      requestIdentity: identity,
+      researchStep: { kind: stepKind, url: stepUrl, allowedDomains },
+      requestedFields,
+      facts,
+      sources: exactBarcode ? [{ url: sourceUrl, title: String(offProduct.product_name ?? 'Open Food Facts') }] : [],
+      notFound: requestedFields.filter((field) => !facts.some((fact) => fact.field === field)),
+      crossSkuRejections: identityProof.accepted ? [] : [{ sourceUrl, reasonCodes: identityProof.reasonCodes }],
+      researchOutcome: 'STEP_COMPLETE',
+      calls: 1,
+      webCalls: 1,
+      latencyMs: Date.now() - startedAt,
+      inputTokens: 0,
+      outputTokens: 0,
+      model: 'open-food-facts-api-v2',
+    };
+    await service.from('intimport_enrichment_usage').insert({
+      user_id: auth.user.id,
+      import_id: importId,
+      idempotency_key: idempotencyKey,
+      model: result.model,
+      web_calls: 1,
+      input_tokens: 0,
+      output_tokens: 0,
+      latency_ms: result.latencyMs,
+      fields_requested: requestedFields,
+      result_json: result,
+    });
+    return json({ ...result, evidenceReceipt: idempotencyKey, cacheHit: false });
+  }
+
   const askedFor = requestedFields.join(', ');
   const directive =
     stepKind === 'OWNER_TECHNICAL_PDF' && stepUrl
@@ -561,9 +744,7 @@ Deno.serve(async (request) => {
           `It is the manufacturer's/brand's own page. Do not search elsewhere unless it genuinely lacks the field.\n`
         : stepKind === 'OFFICIAL_DOMAIN_SEARCH'
           ? `Search ONLY the official domain(s) ${allowedDomains.join(', ')} for this exact product.\n`
-          : stepKind === 'GTIN_LOOKUP'
-            ? `Look the exact GTIN up in the structured product databases available to you.\n`
-            : stepKind === 'RETAILER_SEARCH'
+          : stepKind === 'RETAILER_SEARCH'
               ? `No official source carried the missing fields. A recognized retailer listing for the exact product is acceptable now.\n`
               : `No stronger source is available. Open search is a last resort; prefer the most authoritative page you can find.\n`;
 
@@ -656,14 +837,44 @@ Deno.serve(async (request) => {
     }
   }
 
+  const crossSkuRejections: { sourceUrl: string; reasonCodes: string[] }[] = [];
   // Authority is decided HERE, from the actual URL — never from the model's own
-  // claim about what kind of source it used.
+  // claim. Item identity is independently proven for EVERY fact, so two blocks
+  // on one generic catalogue URL cannot leak values across SKUs.
   const facts = (Array.isArray(parsed.facts) ? parsed.facts : []).flatMap((item) => {
     const row = objectValue(item);
     const field = String(row.field ?? '');
     const value = typeof row.value === 'string' ? row.value.trim() : '';
     const sourceUrl = typeof row.sourceUrl === 'string' ? row.sourceUrl : '';
     if (!RESEARCHABLE.has(field) || value === '' || !requestedFields.includes(field)) return [];
+    const factIdentity = objectValue(row.productIdentity);
+    const identityProof = proveExactProductIdentity(
+      {
+        name: identity.name,
+        brand: identity.brand,
+        variant: identity.variant,
+        barcode: identity.barcode,
+        netQuantity: identity.netQuantity,
+        sourceProductId: identity.sourceProductId,
+        knownSourceUrl: identity.knownSourceUrl,
+      },
+      {
+        productName: typeof factIdentity.productName === 'string' ? factIdentity.productName : null,
+        brand: typeof factIdentity.brand === 'string' ? factIdentity.brand : null,
+        variant: typeof factIdentity.variant === 'string' ? factIdentity.variant : null,
+        barcode: typeof factIdentity.barcode === 'string' ? factIdentity.barcode : null,
+        netQuantity: typeof factIdentity.netQuantity === 'string' ? factIdentity.netQuantity : null,
+        sourceProductId: typeof factIdentity.sourceProductId === 'string'
+          ? factIdentity.sourceProductId
+          : null,
+        sourceUrl,
+        sourceTitle: sourceByUrl.get(sourceUrl)?.title ?? null,
+      },
+    );
+    if (!identityProof.accepted) {
+      crossSkuRejections.push({ sourceUrl, reasonCodes: identityProof.reasonCodes });
+      return [];
+    }
     const authority = classifySourceAuthority({
       url: sourceUrl,
       brand: identity.brand,
@@ -681,6 +892,17 @@ Deno.serve(async (request) => {
         sourceAuthorityClass: authority.authority,
         evidenceSource: authority.evidenceSource,
         retrievedAt: new Date().toISOString(),
+        exactProductIdentityProof: identityProof,
+        observedProductIdentity: {
+          productName: typeof factIdentity.productName === 'string' ? factIdentity.productName : null,
+          brand: typeof factIdentity.brand === 'string' ? factIdentity.brand : null,
+          variant: typeof factIdentity.variant === 'string' ? factIdentity.variant : null,
+          barcode: typeof factIdentity.barcode === 'string' ? factIdentity.barcode : null,
+          netQuantity: typeof factIdentity.netQuantity === 'string' ? factIdentity.netQuantity : null,
+          sourceProductId: typeof factIdentity.sourceProductId === 'string'
+            ? factIdentity.sourceProductId
+            : null,
+        },
       },
     ];
   });
@@ -691,11 +913,15 @@ Deno.serve(async (request) => {
     : 0;
   const usage = objectValue(payload.usage);
   const result = {
+    cacheRevision: 'INTIMPORT_EXACT_SKU_EVIDENCE_V2',
     requestIdentity: identity,
+    researchStep: { kind: stepKind, url: stepUrl, allowedDomains },
     requestedFields,
     facts,
     sources: [...sourceByUrl.values()],
     notFound: Array.isArray(parsed.notFound) ? parsed.notFound.map(String) : [],
+    crossSkuRejections,
+    researchOutcome: 'STEP_COMPLETE',
     // Report what the provider ACTUALLY did. Clamping this to the intended
     // per-product ceiling under-reported real usage by 28% on the first live
     // run (18 reported vs 25 actual) and would quietly understate spend.

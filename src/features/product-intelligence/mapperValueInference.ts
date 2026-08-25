@@ -41,6 +41,7 @@ import {
 } from './productFieldTruth.ts';
 import {
   evaluateMapperSemanticCompatibility,
+  isProductSemanticResolvedForMapper,
   type ProductSemanticClassification,
 } from './productRecognition.ts';
 
@@ -534,6 +535,16 @@ export function inferMapperValues(
   input: MapperInferenceInput,
   knowledge: MapperKnowledge,
 ): MapperInferenceResult {
+  if (!isProductSemanticResolvedForMapper(input.semantic)) {
+    return {
+      fields: {},
+      tiersUsed: [],
+      exactRow: null,
+      family: null,
+      trace: ['mapper_skipped: family/form/role unresolved'],
+      bestCohort: null,
+    };
+  }
   const fields: Partial<Record<WorkingNumericField, FieldTruth>> = {};
   const tiersUsed: MapperInferenceTier[] = [];
   const trace: string[] = [];
@@ -1176,6 +1187,13 @@ export function findProfileMatch(
     reasons: ['brak zgodnego profilu'], rejected: null,
     candidatesBeforeFilter: [], candidatesAfterFilter: [], rejectedCandidates: [],
   };
+  if (!isProductSemanticResolvedForMapper(input.semantic)) {
+    return {
+      ...none,
+      rejected: 'family/form/role unresolved — Mapper authority withheld',
+      reasons: ['mapper_skipped: family/form/role unresolved'],
+    };
+  }
   const rejectedById = new Map<string, Set<string>>();
   const reject = (row: MapperKnowledgeRow, reasonCodes: readonly string[]) => {
     const reasons = rejectedById.get(row.ingredient_id) ?? new Set<string>();

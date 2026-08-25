@@ -1,6 +1,23 @@
 {
   "packs": [
     {
+      "pack": "goBIO",
+      "products": 26,
+      "ready": 0,
+      "estimatedReady": 6,
+      "unresolved": 20,
+      "withDeclaredNutrition": 1,
+      "withGtin": 2,
+      "officialSourceRows": 1,
+      "retailerSourceRows": 25,
+      "domains": {
+        "biedronka.pl": 25,
+        "world.openfoodfacts.org": 1
+      },
+      "expectedDiscoveryCalls": 1,
+      "expectedImprovedPerCall": 20
+    },
+    {
       "pack": "McCormick Polska S.A. – Stefanowo",
       "products": 28,
       "ready": 0,
@@ -17,21 +34,38 @@
       "expectedImprovedPerCall": 14
     },
     {
-      "pack": "goBIO",
-      "products": 26,
+      "pack": "Jeronimo Martins Polska S.A. – Kostrzyn",
+      "products": 14,
       "ready": 0,
-      "estimatedReady": 13,
-      "unresolved": 13,
-      "withDeclaredNutrition": 1,
-      "withGtin": 2,
-      "officialSourceRows": 1,
-      "retailerSourceRows": 25,
+      "estimatedReady": 6,
+      "unresolved": 8,
+      "withDeclaredNutrition": 8,
+      "withGtin": 0,
+      "officialSourceRows": 10,
+      "retailerSourceRows": 4,
       "domains": {
-        "biedronka.pl": 25,
-        "world.openfoodfacts.org": 1
+        "tabele-kalorii.pl": 10,
+        "biedronka.pl": 4
       },
       "expectedDiscoveryCalls": 1,
-      "expectedImprovedPerCall": 13
+      "expectedImprovedPerCall": 8
+    },
+    {
+      "pack": "BakaD'Or",
+      "products": 18,
+      "ready": 0,
+      "estimatedReady": 3,
+      "unresolved": 15,
+      "withDeclaredNutrition": 13,
+      "withGtin": 4,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 18,
+      "domains": {
+        "zakupy.biedronka.pl": 1,
+        "biedronka.pl": 17
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 7.5
     },
     {
       "pack": "Lipton",
@@ -64,40 +98,6 @@
       },
       "expectedDiscoveryCalls": 2,
       "expectedImprovedPerCall": 7
-    },
-    {
-      "pack": "Jeronimo Martins Polska S.A. – Kostrzyn",
-      "products": 14,
-      "ready": 0,
-      "estimatedReady": 8,
-      "unresolved": 6,
-      "withDeclaredNutrition": 8,
-      "withGtin": 0,
-      "officialSourceRows": 10,
-      "retailerSourceRows": 4,
-      "domains": {
-        "tabele-kalorii.pl": 10,
-        "biedronka.pl": 4
-      },
-      "expectedDiscoveryCalls": 1,
-      "expectedImprovedPerCall": 6
-    },
-    {
-      "pack": "BakaD'Or",
-      "products": 18,
-      "ready": 0,
-      "estimatedReady": 7,
-      "unresolved": 11,
-      "withDeclaredNutrition": 13,
-      "withGtin": 4,
-      "officialSourceRows": 0,
-      "retailerSourceRows": 18,
-      "domains": {
-        "zakupy.biedronka.pl": 1,
-        "biedronka.pl": 17
-      },
-      "expectedDiscoveryCalls": 2,
-      "expectedImprovedPerCall": 5.5
     },
     {
       "pack": "Baitz",
@@ -134,22 +134,6 @@
     },
     {
       "pack": "Kinder",
-      "products": 8,
-      "ready": 0,
-      "estimatedReady": 0,
-      "unresolved": 8,
-      "withDeclaredNutrition": 0,
-      "withGtin": 0,
-      "officialSourceRows": 0,
-      "retailerSourceRows": 8,
-      "domains": {
-        "zakupy.biedronka.pl": 8
-      },
-      "expectedDiscoveryCalls": 2,
-      "expectedImprovedPerCall": 4
-    },
-    {
-      "pack": "Lindt",
       "products": 8,
       "ready": 0,
       "estimatedReady": 0,
@@ -208,6 +192,22 @@
       "retailerSourceRows": 7,
       "domains": {
         "zakupy.biedronka.pl": 7
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 3.5
+    },
+    {
+      "pack": "Lindt",
+      "products": 8,
+      "ready": 0,
+      "estimatedReady": 1,
+      "unresolved": 7,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 8,
+      "domains": {
+        "zakupy.biedronka.pl": 8
       },
       "expectedDiscoveryCalls": 2,
       "expectedImprovedPerCall": 3.5
@@ -470,6 +470,38 @@
       "expectedImprovedPerCall": 1.5
     },
     {
+      "pack": "Alpro",
+      "products": 5,
+      "ready": 0,
+      "estimatedReady": 2,
+      "unresolved": 3,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 5,
+      "domains": {
+        "zakupy.biedronka.pl": 5
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 1.5
+    },
+    {
+      "pack": "Danone sp. z o.o., ul. Bobrowiecka 8, 00-728 Warszawa 801 331 133 info.polska@alpro.com",
+      "products": 4,
+      "ready": 0,
+      "estimatedReady": 1,
+      "unresolved": 3,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 4,
+      "domains": {
+        "zakupy.biedronka.pl": 4
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 1.5
+    },
+    {
       "pack": "Go Vege",
       "products": 4,
       "ready": 0,
@@ -505,8 +537,8 @@
       "pack": "Okręgowa Spółdzielnia Mleczarska w Łowiczu",
       "products": 7,
       "ready": 0,
-      "estimatedReady": 5,
-      "unresolved": 2,
+      "estimatedReady": 6,
+      "unresolved": 1,
       "withDeclaredNutrition": 3,
       "withGtin": 6,
       "officialSourceRows": 0,
@@ -515,7 +547,7 @@
         "biedronka.pl": 7
       },
       "expectedDiscoveryCalls": 2,
-      "expectedImprovedPerCall": 1
+      "expectedImprovedPerCall": 0.5
     },
     {
       "pack": "Spółdzielnia Mleczarska Mlekovita",
@@ -534,22 +566,6 @@
       "expectedImprovedPerCall": 0.5
     },
     {
-      "pack": "Alpro",
-      "products": 5,
-      "ready": 0,
-      "estimatedReady": 4,
-      "unresolved": 1,
-      "withDeclaredNutrition": 0,
-      "withGtin": 0,
-      "officialSourceRows": 0,
-      "retailerSourceRows": 5,
-      "domains": {
-        "zakupy.biedronka.pl": 5
-      },
-      "expectedDiscoveryCalls": 2,
-      "expectedImprovedPerCall": 0.5
-    },
-    {
       "pack": "Mleczna Dolina",
       "products": 5,
       "ready": 0,
@@ -561,22 +577,6 @@
       "retailerSourceRows": 5,
       "domains": {
         "biedronka.pl": 5
-      },
-      "expectedDiscoveryCalls": 2,
-      "expectedImprovedPerCall": 0
-    },
-    {
-      "pack": "Danone sp. z o.o., ul. Bobrowiecka 8, 00-728 Warszawa 801 331 133 info.polska@alpro.com",
-      "products": 4,
-      "ready": 0,
-      "estimatedReady": 4,
-      "unresolved": 0,
-      "withDeclaredNutrition": 0,
-      "withGtin": 0,
-      "officialSourceRows": 0,
-      "retailerSourceRows": 4,
-      "domains": {
-        "zakupy.biedronka.pl": 4
       },
       "expectedDiscoveryCalls": 2,
       "expectedImprovedPerCall": 0

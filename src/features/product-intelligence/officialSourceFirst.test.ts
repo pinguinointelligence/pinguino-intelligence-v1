@@ -104,7 +104,7 @@ describe('owner-supplied official evidence is consumed first', () => {
 
   it('puts an exact GTIN lookup ahead of retailer and open web', () => {
     const plan = planFor({ barcode: '5902425088609' });
-    const gtin = plan.steps.findIndex((s) => s.kind === 'GTIN_LOOKUP');
+    const gtin = plan.steps.findIndex((s) => s.kind === 'OPEN_FOOD_FACTS_EXACT_GTIN');
     const retailer = plan.steps.findIndex((s) => s.kind === 'RETAILER_SEARCH');
     expect(gtin).toBeGreaterThanOrEqual(0);
     expect(gtin).toBeLessThan(retailer);
@@ -177,7 +177,8 @@ describe('cache identity is the product, not the import run', () => {
       keyStart,
       edgeSource.indexOf('const { data: cached }', keyStart),
     );
-    expect(keyBlock).toContain('stableJson({ identity, fields:');
+    expect(keyBlock).toContain("cacheRevision: 'INTIMPORT_EXACT_SKU_EVIDENCE_V2'");
+    expect(keyBlock).toContain('identity,');
     expect(keyBlock).not.toMatch(/importId/);
   });
 
@@ -199,7 +200,7 @@ describe('cache identity is the product, not the import run', () => {
   it('looks the cache up without filtering by import', () => {
     const lookup = edgeSource.slice(
       edgeSource.indexOf('const { data: cached }'),
-      edgeSource.indexOf('const askedFor'),
+      edgeSource.indexOf('// Emergency ceiling only.'),
     );
     expect(lookup).toContain(".eq('idempotency_key', idempotencyKey)");
     expect(lookup).not.toContain(".eq('import_id'");
@@ -271,8 +272,8 @@ describe('call caps count real searches and stop before exceeding', () => {
     expect(summary.capReached).toBe(true);
   });
 
-  it('a per-product limit of 2 makes a third field-batch impossible', () => {
-    expect(edgeSource).toContain("Math.min(2, numberEnv('INTIMPORT_MAX_CALLS_PER_PRODUCT', 2))");
+  it('bounds each ordered source step independently', () => {
+    expect(edgeSource).toContain("Math.min(3, numberEnv('INTIMPORT_MAX_CALLS_PER_SOURCE_STEP', 2))");
     expect(edgeSource).toContain('max_tool_calls: maxPerProduct');
   });
 });

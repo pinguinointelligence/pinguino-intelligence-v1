@@ -139,6 +139,7 @@ export interface IntimportCandidate {
   sourceCategory: string | null;
   sourceSubcategory: string | null;
   nutritionBasis: IntimportNutritionBasis;
+  package: IntimportPackageNormalization;
   insert: ProductInsert;
   /** All 36 official fields, sentinel-normalized. Nothing is thrown away. */
   source: Record<IntimportColumn, string | null>;
@@ -149,6 +150,69 @@ export interface IntimportCandidate {
   duplicateOfRow: number | null;
   /** Canonical product this row already exists as, when state is EXISTING. */
   existingProductId: string | null;
+}
+
+export interface IntimportPackageNormalization {
+  packageCount: number | null;
+  unitQuantity: number | null;
+  totalNetQuantity: number | null;
+  unit: 'g' | 'kg' | 'ml' | 'l' | null;
+  source: 'identity_multipack' | 'source_columns' | 'unknown';
+}
+
+const packageNumber = (value: string | null | undefined): number | null => {
+  if (isMissingValue(value)) return null;
+  const parsed = Number(value!.trim().replace(',', '.'));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+};
+
+const roundPackage = (value: number): number => Math.round(value * 1_000) / 1_000;
+
+/** General multipack normalizer; it never contains SKU-specific exceptions. */
+export function normalizeIntimportPackage(input: {
+  netQuantity: string | null;
+  netUnit: string | null;
+  packageCount: string | null;
+  identityText: string;
+}): IntimportPackageNormalization {
+  const normalizedIdentity = input.identityText
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[-_/]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+  const expression = normalizedIdentity.match(
+    /(?:^|\D)(\d{1,4})\s*(?:x|×)\s*(\d+(?:[.,]\d+)?)\s*(kg|g|ml|l)\b/i,
+  );
+  if (expression) {
+    const packageCount = Number(expression[1]);
+    const unitQuantity = Number(expression[2]!.replace(',', '.'));
+    const unit = expression[3]!.toLowerCase() as IntimportPackageNormalization['unit'];
+    if (Number.isFinite(packageCount) && Number.isFinite(unitQuantity)) {
+      return {
+        packageCount,
+        unitQuantity,
+        totalNetQuantity: roundPackage(packageCount * unitQuantity),
+        unit,
+        source: 'identity_multipack',
+      };
+    }
+  }
+  const netQuantity = packageNumber(input.netQuantity);
+  const packageCount = packageNumber(input.packageCount) ?? (netQuantity === null ? null : 1);
+  const unit = (input.netUnit?.trim().toLowerCase() ?? null) as IntimportPackageNormalization['unit'];
+  if (netQuantity !== null && unit && ['g', 'kg', 'ml', 'l'].includes(unit)) {
+    return {
+      packageCount,
+      unitQuantity: packageCount && packageCount > 1 ? netQuantity : netQuantity,
+      totalNetQuantity: packageCount && packageCount > 1
+        ? roundPackage(netQuantity * packageCount)
+        : netQuantity,
+      unit,
+      source: 'source_columns',
+    };
+  }
+  return { packageCount, unitQuantity: netQuantity, totalNetQuantity: null, unit: null, source: 'unknown' };
 }
 
 /**
@@ -311,10 +375,27 @@ export function mapIntimportRow(row: Record<string, string>, rowIndex: number): 
   const netQuantity = source['Net Quantity Value'];
   const netUnit = source['Net Quantity Unit'];
   const packageCount = source['Package Count'];
-  const packageSize = [netQuantity, netUnit].filter(Boolean).join(' ').trim();
-  if (packageSize) {
-    const count = packageCount && packageCount !== '1' ? ` × ${packageCount}` : '';
-    assign(insert, 'package_size', `${packageSize}${count}`);
+  const packageNormalization = normalizeIntimportPackage({
+    netQuantity,
+    netUnit,
+    packageCount,
+    identityText: [
+      displayName,
+      variant,
+      source['Primary Source URL'],
+      source.Notes,
+    ].filter(Boolean).join(' '),
+  });
+  if (packageNormalization.totalNetQuantity !== null && packageNormalization.unit) {
+    const detail =
+      packageNormalization.packageCount && packageNormalization.packageCount > 1
+        ? ` (${packageNormalization.packageCount} × ${packageNormalization.unitQuantity} ${packageNormalization.unit})`
+        : '';
+    assign(
+      insert,
+      'package_size',
+      `${packageNormalization.totalNetQuantity} ${packageNormalization.unit}${detail}`,
+    );
   }
 
   // ── text evidence ───────────────────────────────────────────────────────────
@@ -367,7 +448,9 @@ export function mapIntimportRow(row: Record<string, string>, rowIndex: number): 
   assign(insert, 'catalog_source', 'INTIMPORT');
 
   // Every official field is retained, including those the product UI cannot show.
-  assign(insert, 'extracted_json', { intimport: { version: 1, fields: source } });
+  assign(insert, 'extracted_json', {
+    intimport: { version: 2, fields: source, package: packageNormalization },
+  });
 
   // ── state ───────────────────────────────────────────────────────────────────
   let state: IntimportRowState;
@@ -397,6 +480,7 @@ export function mapIntimportRow(row: Record<string, string>, rowIndex: number): 
     sourceCategory,
     sourceSubcategory,
     nutritionBasis,
+    package: packageNormalization,
     insert,
     source,
     warnings,
@@ -457,8 +541,10 @@ export function parseINTIMPORT(
       brand: candidate.source.Brand,
       name: candidate.displayName,
       variant: candidate.source['Variant Original'] ?? candidate.source['Variant English'],
-      netQuantity: candidate.source['Net Quantity Value'],
-      unit: candidate.source['Net Quantity Unit'],
+      netQuantity: candidate.package.totalNetQuantity === null
+        ? candidate.source['Net Quantity Value']
+        : String(candidate.package.totalNetQuantity),
+      unit: candidate.package.unit ?? candidate.source['Net Quantity Unit'],
     });
 
     // A checksum-valid GTIN is the strongest identity; fall back to the deterministic key.

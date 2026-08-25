@@ -231,7 +231,7 @@ describe('INTIMPORT field retention', () => {
     const candidate = mapIntimportRow(filled, 1);
     expect(candidate.insert.brand).toBe('ACME');
     expect(candidate.insert.supplier).toBe('ACME Sp. z o.o.');
-    expect(candidate.insert.package_size).toBe('1 kg × 6');
+    expect(candidate.insert.package_size).toBe('6 kg (6 × 1 kg)');
     expect(candidate.insert.detected_text).toBe('Guma tara.');
     expect(candidate.insert.allergens).toBe('Brak deklarowanych alergenów.');
     expect(candidate.insert.usage_notes).toBe('0.2–0.4%');

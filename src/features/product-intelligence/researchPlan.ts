@@ -25,14 +25,14 @@ import type { ProductEvidenceField } from './productEvidenceConfidence';
 
 /** How a single research attempt should be carried out. */
 export type ResearchStepKind =
+  /** Exact-barcode read from Open Food Facts; no fuzzy name lookup. */
+  | 'OPEN_FOOD_FACTS_EXACT_GTIN'
   /** Open a specific official URL the owner already supplied. */
   | 'OWNER_OFFICIAL_URL'
   /** Open the supplied official technical/specification PDF. */
   | 'OWNER_TECHNICAL_PDF'
   /** Search, hard-restricted to the manufacturer's/brand's own domain. */
   | 'OFFICIAL_DOMAIN_SEARCH'
-  /** Look the exact GTIN up in structured product databases. */
-  | 'GTIN_LOOKUP'
   /** Search, restricted to recognized retailers. */
   | 'RETAILER_SEARCH'
   /** Unrestricted search — genuinely the last resort. */
@@ -74,8 +74,7 @@ export interface ResearchPlan {
   officialDomain: string | null;
 }
 
-/** Structured GTIN/product databases worth an exact-code lookup. */
-const GTIN_DATABASES = ['world.openfoodfacts.org', 'openfoodfacts.org', 'gs1.org'];
+const OPEN_FOOD_FACTS_DOMAINS = ['world.openfoodfacts.org', 'openfoodfacts.org'];
 
 /** Recognized retailers, used only as a restricted fallback tier. */
 const RETAILERS = [
@@ -117,12 +116,11 @@ export function officialDomainFor(input: ResearchPlanInput): string | null {
 /**
  * Build the ordered research plan (§4: A → G).
  *
- * A. the supplied official Primary Source URL
- * B. the supplied official Technical PDF
+ * A. exact validated GTIN through Open Food Facts
+ * B. the supplied official technical/source URL
  * C. the exact official manufacturer/brand domain
- * D. exact GTIN structured lookup
- * E. authoritative retailer
- * F/G. open web, last
+ * D. authoritative retailer
+ * E. open web, last
  *
  * Steps A–D are never skipped when they are available.
  */
@@ -139,6 +137,17 @@ export function buildResearchPlan(input: ResearchPlanInput): ResearchPlan {
           ownerProvided: true,
         })
       : null;
+
+  // A checksum-valid barcode is the strongest external item identity. OFF is
+  // queried by that exact code only, before any page or fuzzy name search.
+  if (input.barcode) {
+    steps.push({
+      kind: 'OPEN_FOOD_FACTS_EXACT_GTIN',
+      url: `https://world.openfoodfacts.org/api/v2/product/${input.barcode}.json`,
+      allowedDomains: [...OPEN_FOOD_FACTS_DOMAINS],
+      reason: `dokładny odczyt Open Food Facts po GTIN ${input.barcode}`,
+    });
+  }
 
   // B before A for technical products would be tempting, but the PDF is the
   // stronger document whenever it exists, so it leads when present.
@@ -177,15 +186,6 @@ export function buildResearchPlan(input: ResearchPlanInput): ResearchPlan {
       url: null,
       allowedDomains: [officialDomain],
       reason: `wyszukiwanie dokładnego produktu w obrębie oficjalnej domeny (${officialDomain})`,
-    });
-  }
-
-  if (input.barcode) {
-    steps.push({
-      kind: 'GTIN_LOOKUP',
-      url: null,
-      allowedDomains: [...GTIN_DATABASES],
-      reason: `dokładne wyszukiwanie po GTIN ${input.barcode}`,
     });
   }
 

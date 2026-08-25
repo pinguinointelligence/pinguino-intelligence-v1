@@ -29,6 +29,7 @@ import {
 } from '../../../src/features/product-intelligence/mapperFamilyInference.ts';
 import { isValidGtin } from '../../../src/features/global-catalog/normalization.ts';
 import { classifySourceAuthority } from '../_shared/sourceAuthority.ts';
+import { proveExactProductIdentity } from '../../../src/features/product-intelligence/exactProductEvidence.ts';
 import type { CarbonationEvidence } from '../../../src/data/products/carbonation.ts';
 import {
   validateProductBehaviorAuthority,
@@ -39,6 +40,7 @@ import {
   PRODUCT_RECOGNITION_VERSION,
   canonicalizeProductSemanticEvidence,
   classifyProductSemantics,
+  productSemanticIdempotencyPayload,
   type ProductSemanticClassification,
   type ProductSemanticEvidence,
 } from '../../../src/features/product-intelligence/productRecognition.ts';
@@ -438,11 +440,9 @@ async function trustedIntimportSemanticClassification(input: {
   const deterministic = classifyProductSemantics(input.recognitionEvidence);
   const receipt = input.proposal.semanticEvidenceReceipt;
   if (!receipt) return deterministic;
-  const expectedReceipt = await sha256Text(stableJson({
-    action: 'semantic_classification',
-    classifierVersion: PRODUCT_RECOGNITION_VERSION,
-    evidence: canonicalizeProductSemanticEvidence(input.recognitionEvidence),
-  }));
+  const expectedReceipt = await sha256Text(
+    stableJson(productSemanticIdempotencyPayload(input.recognitionEvidence)),
+  );
   if (receipt !== expectedReceipt) return null;
   const { data, error } = await input.service
     .from('intimport_semantic_classification_usage')
@@ -662,6 +662,7 @@ async function trustedIntimportEvidence(input: {
   }
 
   const researchIdentity = {
+    sourceProductId: input.proposal.sourceProductId,
     brand,
     manufacturer,
     name: clippedText(match.name, 200),
@@ -689,11 +690,25 @@ async function trustedIntimportEvidence(input: {
       const requestedFields = Array.isArray(usage.fields_requested)
         ? usage.fields_requested.filter((field): field is string => typeof field === 'string')
         : [];
-      const expectedReceipt = await sha256Text(
-        stableJson({ identity: researchIdentity, fields: [...requestedFields].sort() }),
-      );
-      if (expectedReceipt !== receipt) return null;
       const result = objectValue(usage.result_json);
+      const requestIdentity = objectValue(result.requestIdentity);
+      const researchStep = objectValue(result.researchStep);
+      if (stableJson(requestIdentity) !== stableJson(researchIdentity)) return null;
+      const expectedReceipt = await sha256Text(stableJson({
+        cacheRevision: 'INTIMPORT_EXACT_SKU_EVIDENCE_V2',
+        identity: researchIdentity,
+        researchStep: {
+          kind: researchStep.kind,
+          url: researchStep.url ?? null,
+          allowedDomains: Array.isArray(researchStep.allowedDomains)
+            ? researchStep.allowedDomains
+            : [],
+        },
+        fields: [...requestedFields].sort(),
+      }));
+      if (expectedReceipt !== receipt || result.cacheRevision !== 'INTIMPORT_EXACT_SKU_EVIDENCE_V2') {
+        return null;
+      }
       const resultFacts = Array.isArray(result.facts) ? result.facts : [];
       for (const rawFact of resultFacts) {
         const fact = objectValue(rawFact);
@@ -701,6 +716,29 @@ async function trustedIntimportEvidence(input: {
         if (!EVIDENCE_FIELDS.has(field) || !requestedFields.includes(field)) return null;
         const factSourceUrl = clippedText(fact.sourceUrl, 400);
         if (!factSourceUrl || !evidenceValuePresent(fact.value)) return null;
+        const observedIdentity = objectValue(fact.observedProductIdentity);
+        const exactProductProof = proveExactProductIdentity(
+          {
+            name: researchIdentity.name,
+            brand: researchIdentity.brand,
+            variant: researchIdentity.variant,
+            barcode: researchIdentity.barcode,
+            netQuantity: researchIdentity.netQuantity,
+            sourceProductId: researchIdentity.sourceProductId,
+            knownSourceUrl: researchIdentity.knownSourceUrl,
+          },
+          {
+            productName: clippedText(observedIdentity.productName, 200),
+            brand: clippedText(observedIdentity.brand, 120),
+            variant: clippedText(observedIdentity.variant, 160),
+            barcode: clippedText(observedIdentity.barcode, 20),
+            netQuantity: clippedText(observedIdentity.netQuantity, 60),
+            sourceProductId: clippedText(observedIdentity.sourceProductId, 120),
+            sourceUrl: factSourceUrl,
+            sourceTitle: clippedText(fact.sourceTitle, 300),
+          },
+        );
+        if (!exactProductProof.accepted) return null;
         const authority = classifySourceAuthority({
           url: factSourceUrl,
           brand: researchIdentity.brand,

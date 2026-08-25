@@ -23,7 +23,6 @@ import {
   type ProductEvidenceInput,
 } from './productEvidenceConfidence';
 import {
-  MAX_CALLS_PER_PRODUCT,
   runIntimportLocalIntelligence,
   type IntimportReassessmentOverride,
   type IntimportProductIntelligence,
@@ -83,6 +82,10 @@ export interface EnrichmentResponse {
   evidenceReceipt?: string;
   /** Server refused before spending because the import-wide cap is exhausted. */
   capReached?: boolean;
+  /** Product-level source result. STEP_COMPLETE means continue to the next
+   * planned source while useful fields are still missing. */
+  researchOutcome?: 'ENRICHED' | 'STEP_COMPLETE' | 'SEARCH_EXHAUSTED' | 'SOURCE_CONFLICT';
+  crossSkuRejections?: readonly { sourceUrl: string; reasonCodes: string[] }[];
 }
 
 export type EnrichmentProvider = (request: EnrichmentRequest) => Promise<EnrichmentResponse>;
@@ -118,6 +121,8 @@ export interface EnrichedProduct extends IntimportProductIntelligence {
   finalRoute: EnrichmentRoute;
   autoImportEligible: boolean;
   appliedFacts: EnrichmentFact[];
+  researchOutcome: 'NOT_NEEDED' | 'ENRICHED' | 'SEARCH_EXHAUSTED' | 'SOURCE_CONFLICT';
+  crossSkuRejections: { sourceUrl: string; reasonCodes: string[] }[];
 }
 
 export interface EnrichmentProgress {
@@ -130,6 +135,10 @@ export interface EnrichmentProgress {
 
 export interface EnrichmentRunSummary {
   products: number;
+  runStatus: 'COMPLETED' | 'PAUSED_BUDGET';
+  processed: number;
+  pending: number;
+  nextRowIndex: number | null;
   webSkippedHighConfidence: number;
   webSkippedExisting: number;
   webAttempted: number;
@@ -425,119 +434,126 @@ export async function runIntimportEnrichment(
       callsUsed: extra.callsUsed ?? 0,
       cacheHit: extra.cacheHit ?? false,
       appliedFacts: extra.appliedFacts ?? [],
+      researchOutcome: extra.researchOutcome ?? 'NOT_NEEDED',
+      crossSkuRejections: extra.crossSkuRejections ?? [],
       finalRoute,
       autoImportEligible: isAutoImportEligible(assessment),
     };
   };
 
-  // Bounded worker pool — never hundreds of simultaneous requests.
-  const queue = [...rows];
-  const workers = Array.from({ length: Math.max(1, caps.concurrency) }, async () => {
-    for (;;) {
-      const row = queue.shift();
-      if (!row) return;
-      const { intelligence } = row;
+  // One product is completed through its ordered source plan before another is
+  // admitted. This makes emergency pause/resume exact and prevents in-flight
+  // requests from overshooting the shared ceiling.
+  for (const row of rows) {
+    const { intelligence } = row;
+    if (intelligence.route === 'EXISTING') {
+      results.push(settle(row, intelligence.assessment.confidence, {
+        webSkippedReason: 'istniejący produkt kanoniczny — brak potrzeby wyszukiwania',
+      }));
+    } else if (intelligence.assessment.confidence >= NO_WEB_CONFIDENCE) {
+      results.push(settle(row, intelligence.assessment.confidence, {
+        webSkippedReason: `lokalna pewność ≥${NO_WEB_CONFIDENCE}% — wyszukiwanie zbędne`,
+      }));
+    } else if (intelligence.enrichmentTargets.length === 0) {
+      results.push(settle(row, intelligence.assessment.confidence, {
+        webSkippedReason: 'brak pól, które wyszukiwanie mogłoby uzupełnić',
+      }));
+    } else {
+      let evidence = row.evidence ?? intelligence.evidence;
+      let recognitionEvidence = intelligence.recognitionEvidence;
+      let recognition = intelligence.recognition;
+      let fields = intelligence.enrichmentTargets.filter((field) => !evidence.fields[field]);
+      let appliedFacts: EnrichmentFact[] = [];
+      let receipts = [...intelligence.enrichmentEvidenceReceipts];
+      let productCalls = 0;
+      let productCacheHit = false;
+      let outcome: EnrichedProduct['researchOutcome'] = 'SEARCH_EXHAUSTED';
+      let crossSkuRejections: EnrichedProduct['crossSkuRejections'] = [];
+      let attempted = false;
+      const plan = intelligence.researchPlan.steps;
 
-      if (intelligence.route === 'EXISTING') {
-        results.push(
-          settle(row, intelligence.assessment.confidence, {
-            webSkippedReason: 'istniejący produkt kanoniczny — brak potrzeby wyszukiwania',
-          }),
-        );
-      } else if (intelligence.assessment.confidence >= NO_WEB_CONFIDENCE) {
-        // The hard cost rule: local evidence already suffices.
-        results.push(
-          settle(row, intelligence.assessment.confidence, {
-            webSkippedReason: `lokalna pewność ≥${NO_WEB_CONFIDENCE}% — wyszukiwanie zbędne`,
-          }),
-        );
-      } else if (intelligence.enrichmentTargets.length === 0) {
-        results.push(
-          settle(row, intelligence.assessment.confidence, {
-            webSkippedReason: 'brak pól, które wyszukiwanie mogłoby uzupełnić',
-          }),
-        );
-      } else if (capExhausted()) {
-        capReached = true;
-        results.push(
-          settle(row, intelligence.assessment.confidence, {
-            webSkippedReason: 'osiągnięto limit wywołań/kosztu importu',
-          }),
-        );
-      } else {
-        const key = enrichmentCacheKey(intelligence, row.barcode);
-        const cached = cache.get(key);
-        const response =
-          cached ??
-          (await provider({
-            cacheKey: key,
-            rowIndex: intelligence.rowIndex,
-            displayName: intelligence.displayName,
-            brand: intelligence.researchIdentity.brand,
-            barcode: row.barcode,
-            fields: intelligence.enrichmentTargets.slice(0, MAX_CALLS_PER_PRODUCT),
-            researchStepIndex: 0,
-          }));
-        if (response.capReached) {
-          // A server-side spend refusal is a truthful terminal state, not an
-          // exception that discards every enriched row already completed.
+      for (let researchStepIndex = 0; researchStepIndex < plan.length && fields.length > 0; researchStepIndex += 1) {
+        if (capExhausted()) {
           capReached = true;
-          results.push(
-            settle(row, intelligence.assessment.confidence, {
-              webSkippedReason: 'osiągnięto serwerowy limit wywołań importu',
-            }),
-          );
+          break;
+        }
+        const identityKey = enrichmentCacheKey(intelligence, row.barcode);
+        const step = plan[researchStepIndex]!;
+        const key = `${identityKey}|${step.kind}|${step.url ?? ''}|${[...fields].sort().join(',')}`;
+        const cached = cache.get(key);
+        const response = cached ?? await provider({
+          cacheKey: key,
+          rowIndex: intelligence.rowIndex,
+          displayName: intelligence.displayName,
+          brand: intelligence.researchIdentity.brand,
+          barcode: row.barcode,
+          fields,
+          researchStepIndex,
+        });
+        if (response.capReached) {
+          capReached = true;
+          break;
+        }
+        attempted = true;
+        if (cached) {
+          cacheHits += 1;
+          productCacheHit = true;
         } else {
-          if (cached) cacheHits += 1;
-          else {
-            cache.set(key, response);
-            callsUsed += response.calls;
-            spendUsd += response.estimatedCostUsd ?? 0;
-          }
-          webAttempted += 1;
-
-          const { evidence, applied } = mergeFacts(
-            row.evidence ?? intelligence.evidence,
-            response.facts,
-          );
-          const assessment = assessProductConfidence(evidence);
-          const recognitionEvidence = mergeSemanticFacts(
-            intelligence.recognitionEvidence,
-            applied,
-          );
-          results.push(
-            settle(row, assessment.confidence, {
-              evidence,
-              assessment,
-              webAttempted: true,
-              callsUsed: cached ? 0 : response.calls,
-              cacheHit: Boolean(cached),
-              appliedFacts: applied,
-              recognitionEvidence,
-              recognition: classifyProductSemantics(recognitionEvidence),
-              enrichmentEvidenceReceipts: response.evidenceReceipt
-                ? [
-                    ...new Set([
-                      ...intelligence.enrichmentEvidenceReceipts,
-                      response.evidenceReceipt,
-                    ]),
-                  ]
-                : intelligence.enrichmentEvidenceReceipts,
-            }),
-          );
+          cache.set(key, response);
+          callsUsed += response.calls;
+          productCalls += response.calls;
+          spendUsd += response.estimatedCostUsd ?? 0;
+        }
+        const merged = mergeFacts(evidence, response.facts);
+        evidence = merged.evidence;
+        appliedFacts = [...appliedFacts, ...merged.applied];
+        recognitionEvidence = mergeSemanticFacts(recognitionEvidence, merged.applied);
+        recognition = classifyProductSemantics(recognitionEvidence);
+        if (response.evidenceReceipt) receipts = [...new Set([...receipts, response.evidenceReceipt])];
+        crossSkuRejections = [
+          ...crossSkuRejections,
+          ...(response.crossSkuRejections ?? []).map((entry) => ({
+            sourceUrl: entry.sourceUrl,
+            reasonCodes: [...entry.reasonCodes],
+          })),
+        ];
+        fields = intelligence.enrichmentTargets.filter((field) => !evidence.fields[field]);
+        if (response.researchOutcome === 'SOURCE_CONFLICT') {
+          outcome = 'SOURCE_CONFLICT';
+          break;
+        }
+        if (fields.length === 0 || response.researchOutcome === 'ENRICHED') {
+          outcome = 'ENRICHED';
+          break;
+        }
+        if (response.researchOutcome === 'SEARCH_EXHAUSTED') break;
+        // Responses from pre-closeout test/local providers had no source
+        // outcome. Treat that legacy contract as one complete search, while the
+        // production provider returns STEP_COMPLETE to traverse the whole plan.
+        if (!response.researchOutcome) {
+          outcome = merged.applied.length > 0 ? 'ENRICHED' : 'SEARCH_EXHAUSTED';
+          break;
         }
       }
-
-      onProgress?.({
-        processed: results.length,
-        total: rows.length,
-        webAttempted,
-        callsUsed,
-        spendUsd,
-      });
+      if (capReached) break; // current product is resumable, not falsely finalized
+      if (attempted) webAttempted += 1;
+      const assessment = assessProductConfidence(evidence);
+      results.push(settle(row, assessment.confidence, {
+        evidence,
+        assessment,
+        webAttempted: attempted,
+        callsUsed: productCalls,
+        cacheHit: productCacheHit,
+        appliedFacts,
+        recognitionEvidence,
+        recognition,
+        enrichmentEvidenceReceipts: receipts,
+        researchOutcome: outcome,
+        crossSkuRejections,
+      }));
     }
-  });
-  await Promise.all(workers);
+    onProgress?.({ processed: results.length, total: rows.length, webAttempted, callsUsed, spendUsd });
+  }
 
   results.sort((left, right) => left.rowIndex - right.rowIndex);
   const count = (route: EnrichmentRoute) =>
@@ -546,7 +562,11 @@ export async function runIntimportEnrichment(
   return {
     products: results,
     summary: {
-      products: results.length,
+      products: rows.length,
+      runStatus: capReached ? 'PAUSED_BUDGET' : 'COMPLETED',
+      processed: results.length,
+      pending: rows.length - results.length,
+      nextRowIndex: results.length < rows.length ? rows[results.length]?.intelligence.rowIndex ?? null : null,
       webSkippedHighConfidence: results.filter((row) =>
         row.webSkippedReason?.includes(`≥${NO_WEB_CONFIDENCE}%`),
       ).length,

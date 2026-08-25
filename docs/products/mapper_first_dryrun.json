@@ -21,16 +21,16 @@
   "assessed": 820,
   "readiness": {
     "READY": 0,
-    "ESTIMATED_READY": 450,
-    "REVIEW": 370
+    "ESTIMATED_READY": 444,
+    "REVIEW": 376
   },
   "valueReadiness": {
     "READY": 0,
-    "ESTIMATED_READY": 450,
-    "REVIEW": 370
+    "ESTIMATED_READY": 444,
+    "REVIEW": 376
   },
-  "workingProfileComplete": 450,
-  "workingProfileCompleteShare": 0.5488,
+  "workingProfileComplete": 444,
+  "workingProfileCompleteShare": 0.5415,
   "familyAssigned": 229,
   "familyHistogram": {
     "chocolate": 6,
@@ -229,7 +229,7 @@
     "salt_percent": 174
   },
   "gapDistribution": {
-    "0": 76,
+    "0": 82,
     "1": 13,
     "2": 34,
     "3": 43,
@@ -265,12 +265,12 @@
   },
   "sourcePacks": {
     "totalProducts": 820,
-    "productsNeedingResearch": 801,
-    "packsNeedingResearch": 136,
+    "productsNeedingResearch": 815,
+    "packsNeedingResearch": 143,
     "packsWithOfficialEntryPoint": 3,
-    "packsWithOnlyWeakEntryPoints": 133,
-    "estimatedCallsPackStrategy": 200,
-    "estimatedCallsPerProductStrategy": 1602,
+    "packsWithOnlyWeakEntryPoints": 140,
+    "estimatedCallsPackStrategy": 207,
+    "estimatedCallsPerProductStrategy": 1630,
     "byKind": {
       "official_domain": 5,
       "manufacturer": 51,
@@ -525,6 +525,17 @@
         ]
       },
       {
+        "label": "Okręgowa Spółdzielnia Mleczarska w Łowiczu",
+        "kind": "manufacturer",
+        "products": 7,
+        "needingResearch": 7,
+        "entryPoints": 3,
+        "officialEntryPoints": 0,
+        "topEntryPoint": "https://www.biedronka.pl/pl/historie-z-mlecznej-doliny",
+        "topEntryAuthority": "AUTHORITATIVE_RETAILER",
+        "missingNumeric": []
+      },
+      {
         "label": "Bakello",
         "kind": "brand",
         "products": 6,
@@ -611,24 +622,6 @@
           "carbohydrate_percent",
           "total_sugars_percent",
           "salt_percent"
-        ]
-      },
-      {
-        "label": "Delikate",
-        "kind": "brand",
-        "products": 5,
-        "needingResearch": 5,
-        "entryPoints": 1,
-        "officialEntryPoints": 0,
-        "topEntryPoint": "https://www.biedronka.pl/pl/delikate",
-        "topEntryAuthority": "AUTHORITATIVE_RETAILER",
-        "missingNumeric": [
-          "water_percent",
-          "total_solids_percent",
-          "fat_percent",
-          "protein_percent",
-          "carbohydrate_percent",
-          "total_sugars_percent"
         ]
       }
     ]

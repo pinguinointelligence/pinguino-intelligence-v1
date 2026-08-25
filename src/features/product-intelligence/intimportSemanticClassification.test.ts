@@ -59,12 +59,12 @@ describe('bounded semantic-classifier orchestration', () => {
     expect(result.evidenceReceipts.size).toBe(0);
   });
 
-  it('calls the existing semantic provider when a broad source category conflicts with identity', async () => {
+  it('calls the existing semantic provider when identity remains genuinely ambiguous', async () => {
     const source = assessIntimportProduct(
       candidateWith(
-        'Airwaves Cool Cassis bezcukrowa guma do żucia',
-        'Bakery & sweets',
-        'Słodycze — bieżący katalog online',
+        'Kamis Bazylia',
+        'Coffee, tea & spices',
+        'Spices',
       ),
     );
     expect(source.recognition.modelRequired).toBe(true);

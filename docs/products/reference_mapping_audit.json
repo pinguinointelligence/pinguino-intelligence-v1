@@ -522,7 +522,7 @@
       "sharedTokens": [
         "skyr"
       ],
-      "currentFieldsProduced": 14,
+      "currentFieldsProduced": 16,
       "currentTiers": [
         "mapper_similar_profile",
         "mapper_family_consensus"
@@ -1008,7 +1008,7 @@
       "verdict": "NO_LONGER_NEEDED",
       "reason": "produkt ma dziś komplet danych źródłowych — proxy nie jest potrzebne",
       "sharedTokens": [],
-      "currentFieldsProduced": 18,
+      "currentFieldsProduced": 20,
       "currentTiers": [
         "mapper_family_consensus"
       ],
@@ -1984,7 +1984,7 @@
       "verdict": "NO_LONGER_NEEDED",
       "reason": "produkt ma dziś komplet danych źródłowych — proxy nie jest potrzebne",
       "sharedTokens": [],
-      "currentFieldsProduced": 18,
+      "currentFieldsProduced": 20,
       "currentTiers": [
         "mapper_similar_profile"
       ],
@@ -2018,7 +2018,7 @@
       "verdict": "NO_LONGER_NEEDED",
       "reason": "produkt ma dziś komplet danych źródłowych — proxy nie jest potrzebne",
       "sharedTokens": [],
-      "currentFieldsProduced": 13,
+      "currentFieldsProduced": 15,
       "currentTiers": [
         "mapper_family_consensus"
       ],
@@ -2052,11 +2052,11 @@
       "verdict": "NO_LONGER_NEEDED",
       "reason": "produkt ma dziś komplet danych źródłowych — proxy nie jest potrzebne",
       "sharedTokens": [],
-      "currentFieldsProduced": 16,
+      "currentFieldsProduced": 18,
       "currentTiers": [
         "mapper_family_consensus"
       ],
-      "currentReadiness": "ESTIMATED_READY"
+      "currentReadiness": "REVIEW"
     },
     {
       "productId": "PL-BIE-00069",
@@ -2086,7 +2086,7 @@
       "verdict": "NO_LONGER_NEEDED",
       "reason": "produkt ma dziś komplet danych źródłowych — proxy nie jest potrzebne",
       "sharedTokens": [],
-      "currentFieldsProduced": 13,
+      "currentFieldsProduced": 15,
       "currentTiers": [
         "mapper_family_consensus"
       ],
@@ -2205,7 +2205,7 @@
       "verdict": "NO_LONGER_NEEDED",
       "reason": "produkt ma dziś komplet danych źródłowych — proxy nie jest potrzebne",
       "sharedTokens": [],
-      "currentFieldsProduced": 16,
+      "currentFieldsProduced": 18,
       "currentTiers": [
         "mapper_family_consensus"
       ],
@@ -2222,7 +2222,7 @@
       "verdict": "NO_LONGER_NEEDED",
       "reason": "produkt ma dziś komplet danych źródłowych — proxy nie jest potrzebne",
       "sharedTokens": [],
-      "currentFieldsProduced": 17,
+      "currentFieldsProduced": 19,
       "currentTiers": [
         "mapper_family_consensus"
       ],
@@ -2261,7 +2261,7 @@
       "sharedTokens": [
         "skyr"
       ],
-      "currentFieldsProduced": 14,
+      "currentFieldsProduced": 16,
       "currentTiers": [
         "mapper_similar_profile",
         "mapper_family_consensus"
@@ -2281,7 +2281,7 @@
       "sharedTokens": [
         "skyr"
       ],
-      "currentFieldsProduced": 18,
+      "currentFieldsProduced": 20,
       "currentTiers": [
         "mapper_similar_profile",
         "mapper_family_consensus"
@@ -2360,7 +2360,7 @@
       "sharedTokens": [
         "skyr"
       ],
-      "currentFieldsProduced": 16,
+      "currentFieldsProduced": 18,
       "currentTiers": [
         "mapper_similar_profile",
         "mapper_family_consensus"
@@ -2380,7 +2380,7 @@
       "sharedTokens": [
         "skyr"
       ],
-      "currentFieldsProduced": 18,
+      "currentFieldsProduced": 20,
       "currentTiers": [
         "mapper_similar_profile",
         "mapper_family_consensus"
@@ -2416,7 +2416,7 @@
       "verdict": "NO_LONGER_NEEDED",
       "reason": "produkt ma dziś komplet danych źródłowych — proxy nie jest potrzebne",
       "sharedTokens": [],
-      "currentFieldsProduced": 13,
+      "currentFieldsProduced": 15,
       "currentTiers": [
         "mapper_family_consensus"
       ],
@@ -2569,7 +2569,7 @@
       "verdict": "NO_LONGER_NEEDED",
       "reason": "produkt ma dziś komplet danych źródłowych — proxy nie jest potrzebne",
       "sharedTokens": [],
-      "currentFieldsProduced": 18,
+      "currentFieldsProduced": 20,
       "currentTiers": [
         "mapper_family_consensus"
       ],
@@ -2810,11 +2810,11 @@
       "verdict": "NO_LONGER_NEEDED",
       "reason": "produkt ma dziś komplet danych źródłowych — proxy nie jest potrzebne",
       "sharedTokens": [],
-      "currentFieldsProduced": 18,
+      "currentFieldsProduced": 20,
       "currentTiers": [
         "mapper_family_consensus"
       ],
-      "currentReadiness": "ESTIMATED_READY"
+      "currentReadiness": "REVIEW"
     },
     {
       "productId": "PL-BIE-00129",
@@ -2827,7 +2827,7 @@
       "verdict": "NO_LONGER_NEEDED",
       "reason": "produkt ma dziś komplet danych źródłowych — proxy nie jest potrzebne",
       "sharedTokens": [],
-      "currentFieldsProduced": 13,
+      "currentFieldsProduced": 15,
       "currentTiers": [
         "mapper_family_consensus"
       ],
@@ -2861,7 +2861,7 @@
       "verdict": "NO_LONGER_NEEDED",
       "reason": "produkt ma dziś komplet danych źródłowych — proxy nie jest potrzebne",
       "sharedTokens": [],
-      "currentFieldsProduced": 18,
+      "currentFieldsProduced": 20,
       "currentTiers": [
         "mapper_similar_profile",
         "mapper_family_consensus"

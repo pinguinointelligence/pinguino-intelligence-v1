@@ -588,10 +588,10 @@ describe('targeted enrichment pipeline', () => {
     });
     expect(summary.callsUsed).toBeLessThanOrEqual(3);
     expect(summary.capReached).toBe(true);
-    const stopped = products.filter((p) => p.webSkippedReason?.includes('limit'));
-    expect(stopped.length).toBeGreaterThan(0);
-    // Nothing silently overspent, and the untouched rows are held for review.
-    for (const product of stopped) expect(product.finalRoute).toBe('REVIEW_REQUIRED');
+    expect(summary.runStatus).toBe('PAUSED_BUDGET');
+    expect(summary.pending).toBeGreaterThan(0);
+    // Untouched rows have no fabricated final result at all.
+    expect(products).toHaveLength(summary.processed);
   });
 
   it('keeps completed enrichment when the server reports its authoritative cap', async () => {
@@ -621,10 +621,11 @@ describe('targeted enrichment pipeline', () => {
 
     expect(summary.capReached).toBe(true);
     expect(serverCapped).toHaveBeenCalledTimes(2);
-    expect(products).toHaveLength(8);
+    expect(products).toHaveLength(1);
+    expect(summary.processed).toBe(1);
+    expect(summary.pending).toBe(7);
     expect(products[0]!.evidence.fields.ingredients).toBe('manufacturer');
     expect(products[0]!.enrichmentEvidenceReceipts).toEqual(['b'.repeat(64)]);
-    expect(products.slice(1).every((product) => product.finalRoute === 'REVIEW_REQUIRED')).toBe(true);
   });
 
   it('uses a bounded worker pool rather than one call per row at once', async () => {

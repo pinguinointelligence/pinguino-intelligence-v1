@@ -11,13 +11,13 @@
   "readiness": {
     "xlsx": {
       "READY": 0,
-      "ESTIMATED_READY": 320,
-      "REVIEW": 500
+      "ESTIMATED_READY": 206,
+      "REVIEW": 614
     },
     "csv": {
       "READY": 0,
-      "ESTIMATED_READY": 320,
-      "REVIEW": 500
+      "ESTIMATED_READY": 206,
+      "REVIEW": 614
     }
   },
   "dedup": {
