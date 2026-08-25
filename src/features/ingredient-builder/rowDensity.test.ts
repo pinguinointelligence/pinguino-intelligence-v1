@@ -24,6 +24,9 @@ const control = read('features', 'ingredient-builder', 'DirectNumberControl.tsx'
 const price = read('features', 'ingredient-builder', 'IngredientPriceControl.tsx');
 const builder = read('features', 'ingredient-builder', 'IngredientBuilder.tsx');
 const buttonStyles = read('components', 'ui', 'buttonStyles.ts');
+const legacyNotice = read('features', 'ingredient-builder', 'LegacyRecipeReferenceNotice.tsx');
+const picker = read('features', 'ingredient-builder', 'ProductPickerPopover.tsx');
+const intelligenceHeader = read('features', 'pro-workbench', 'WorkbenchIntelligenceHeader.tsx');
 
 describe('D1 — no dead strip above the first ingredient', () => {
   it('the header band takes space only when it renders something', () => {
@@ -34,7 +37,9 @@ describe('D1 — no dead strip above the first ingredient', () => {
       "mode === 'production' && production?.session?.status === 'in_progress'",
     );
     expect(builder).toContain("? 'border-b border-ink/8 px-3 py-1.5'");
-    expect(builder).toContain("? 'px-3 pt-2 pb-1'\n                : null");
+    expect(builder).toContain(
+      "? 'px-[var(--pro-mobile-gutter)] pt-2 pb-1 lg:px-3'\n                : null",
+    );
   });
 
   it('production mode keeps compact reminder spacing only while a run is active', () => {
@@ -123,5 +128,31 @@ describe('D7/D8 — the „Moja" badge is gone, the mark explains itself', () =>
 
   it('the source is exposed for QA without reading colour', () => {
     expect(price).toContain("data-price-source={own ? 'customer_override' : 'reference'}");
+  });
+});
+
+describe('D11 — the complete left Recipe workspace follows the row system', () => {
+  it('integrates multiple historical products in a compact responsive list', () => {
+    expect(legacyNotice).toContain('`${issues.length} historycznych produktów wymaga sprawdzenia`');
+    expect(legacyNotice).toContain('sm:grid-cols-2');
+    expect(legacyNotice).toContain('min-h-11');
+    expect(legacyNotice).toContain('lg:h-7 lg:min-h-0');
+  });
+
+  it('aligns every summary and toolbar to the ingredient-row gutter', () => {
+    expect(builder.match(/px-\[var\(--pro-mobile-gutter\)\]/g)).toHaveLength(6);
+    expect(builder.match(/lg:px-3/g)?.length).toBeGreaterThanOrEqual(5);
+    expect(builder).toContain('data-testid="base-mass-total"');
+    expect(builder).toContain('data-testid="ingredient-action-toolbar"');
+    expect(builder).toContain('data-testid="topping-mass-total"');
+    expect(builder).toContain('data-testid="composition-mass-summary"');
+  });
+
+  it('uses one 44 px / rounded-xl action family with an explicit hierarchy', () => {
+    expect(picker).toContain(
+      "scope === 'BASE_FORMULATION'\n            ? 'border border-ink/20 bg-white text-ink hover:border-ink/40'\n            : 'border border-ink/10 bg-stone-50 text-stone-700 hover:border-ink/25'",
+    );
+    expect(picker).toContain('inline-flex h-11 items-center justify-center rounded-xl');
+    expect(intelligenceHeader).toContain('flex h-11 shrink-0 items-center gap-2 rounded-xl');
   });
 });

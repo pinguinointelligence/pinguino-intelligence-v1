@@ -77,6 +77,7 @@ import {
 import { type ProductDoseMeta } from './productDoseSuggestion';
 import { clampOwnerStabilizerComponentGrams } from '@/features/recipe-constraints';
 import { LegacyRecipeReferenceNotice } from './LegacyRecipeReferenceNotice';
+import { WorkflowNotice } from '@/components/shared/WorkflowNotice';
 
 const b = copy.studio.builder;
 const headCell = 'text-xs font-medium tracking-[0.04em] text-ivory/70 uppercase';
@@ -626,18 +627,16 @@ export function IngredientBuilder({
   });
   const infeasibleNotice =
     mode === 'recipe' && unresolved.length > 0 ? (
-      <div
+      <WorkflowNotice
         role="alert"
-        className="border-b border-status-error/25 bg-status-error/[0.055] px-3 py-2"
-        data-testid="recipe-infeasible-notice"
-      >
-        <p className="text-xs font-semibold tracking-[0.04em] text-status-error uppercase">
-          {b.ingredientTable.infeasible.title}
-        </p>
-        <p className="mt-1 text-xs leading-relaxed text-stone-600">
-          {b.ingredientTable.infeasible.body} ({unresolved.map((entry) => entry.name).join(', ')})
-        </p>
-      </div>
+        variant="blocking"
+        className="rounded-none border-x-0 border-t-0"
+        title={b.ingredientTable.infeasible.title}
+        description={`${b.ingredientTable.infeasible.body} (${unresolved
+          .map((entry) => entry.name)
+          .join(', ')})`}
+        testId="recipe-infeasible-notice"
+      />
     ) : null;
 
   const addIngredientAndResolveRequiredRole = (
@@ -849,7 +848,7 @@ export function IngredientBuilder({
             mode === 'production' && production?.session?.status === 'in_progress'
               ? 'border-b border-ink/8 px-3 py-1.5'
               : hasRecipeNotice
-                ? 'px-3 pt-2 pb-1'
+                ? 'px-[var(--pro-mobile-gutter)] pt-2 pb-1 lg:px-3'
                 : null,
           )}
         >
@@ -871,13 +870,12 @@ export function IngredientBuilder({
             </div>
           ) : null}
           {mode === 'recipe' && pickerNotice ? (
-            <p
-              className="mt-2 rounded-xl border border-gold/25 bg-education-ivory px-3 py-2 text-xs text-stone-700"
-              role="status"
-              data-testid="product-picker-notice"
-            >
-              {pickerNotice}
-            </p>
+            <WorkflowNotice
+              className="mt-2"
+              title={pickerNotice}
+              variant="neutral"
+              testId="product-picker-notice"
+            />
           ) : null}
           <p
             className="sr-only"
@@ -895,16 +893,16 @@ export function IngredientBuilder({
             />
           ) : null}
           {mode === 'recipe' && compositionRoleIssues.length > 0 ? (
-            <div
-              className="mt-2 rounded-xl border border-attention/30 bg-attention/[0.07] px-3 py-2 text-xs text-stone-700"
-              role="status"
-              data-testid="composition-migration-ambiguity"
+            <WorkflowNotice
+              className="mt-2"
+              title={
+                compositionRoleIssues.length === 1
+                  ? '1 historyczny wpis wymaga decyzji'
+                  : `${compositionRoleIssues.length} historycznych wpisów wymaga decyzji`
+              }
+              variant="attention"
+              testId="composition-migration-ambiguity"
             >
-              <p>
-                {compositionRoleIssues.length === 1
-                  ? '1 historyczny wpis wymaga decyzji.'
-                  : `${compositionRoleIssues.length} historyczne wpisy wymagają decyzji.`}
-              </p>
               <ul className="mt-1 space-y-1">
                 {compositionRoleIssues.map((issue) => {
                   const line = items.find((item) => item.id === issue.lineId);
@@ -916,7 +914,7 @@ export function IngredientBuilder({
                   );
                 })}
               </ul>
-            </div>
+            </WorkflowNotice>
           ) : null}
           {mode === 'recipe' ? duplicateNotice : null}
         </div>
@@ -946,7 +944,7 @@ export function IngredientBuilder({
                 {mode === 'recipe' ? (
                   <>
                     <div
-                      className="flex items-center justify-between border-t border-ink/10 bg-stone-50 px-4 py-3"
+                      className="flex items-center justify-between border-t border-ink/10 bg-stone-50/70 px-[var(--pro-mobile-gutter)] py-2 lg:px-3"
                       data-testid="base-mass-total"
                     >
                       <span className="text-xs font-semibold tracking-[0.04em] text-stone-600 uppercase">
@@ -957,7 +955,7 @@ export function IngredientBuilder({
                       </strong>
                     </div>
                     <div
-                      className="flex min-w-0 flex-wrap items-center gap-2 border-t border-ink/10 bg-white px-3 py-3"
+                      className="flex min-w-0 flex-wrap items-center gap-2 border-t border-ink/10 bg-white px-[var(--pro-mobile-gutter)] py-2 lg:px-3"
                       data-testid="ingredient-action-toolbar"
                     >
                       <div
@@ -992,7 +990,7 @@ export function IngredientBuilder({
                       className="border-t border-status-ideal/15"
                       aria-labelledby="topping-section-heading"
                     >
-                      <div className="flex min-w-0 items-center justify-between gap-3 bg-pro-sage/22 px-4 py-3">
+                      <div className="flex min-w-0 items-center justify-between gap-3 bg-pro-sage/18 px-[var(--pro-mobile-gutter)] py-2 lg:px-3">
                         <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
                           <h3
                             id="topping-section-heading"
@@ -1075,7 +1073,7 @@ export function CompositionMassSummary({
 }) {
   return (
     <div
-      className="border-t border-ink/10 bg-white px-4 py-3"
+      className="border-t border-ink/10 bg-white px-[var(--pro-mobile-gutter)] py-2.5 lg:px-3"
       data-testid="composition-mass-summary"
     >
       <div className="flex items-center justify-between">

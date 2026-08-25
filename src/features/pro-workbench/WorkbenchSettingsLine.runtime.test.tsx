@@ -170,8 +170,43 @@ describe('WorkbenchSettingsLine deferred batch editing', () => {
     );
   });
 
+  it('routes the untouched fresh Gelato selector to native Protein P12 instead of relabelling G11', async () => {
+    await selectValue('workbench-product-type', 'protein');
+
+    const fresh = useRecipeStore.getState();
+    expect(fresh.visibleProductType).toBe('protein');
+    expect(fresh.category).toBe('protein_gelato');
+    expect(fresh.newRecipeStarterTemplateId).toBe('protein_dairy_neutral_minus12_v1');
+    expect(fresh.formulation_strategy).toBe('optimal');
+    expect(
+      Object.fromEntries(
+        fresh.items.map((item) => [
+          item.ingredient.canonical_ingredient_id ?? item.ingredient.id,
+          item.planned_grams,
+        ]),
+      ),
+    ).toEqual({
+      'PI-ING-000236': 522,
+      'PI-ING-000180': 114,
+      'PI-ING-000264': 81,
+      'PI-ING-001409': 104,
+      'PI-ING-000514': 71,
+      'PI-ING-000494': 106,
+      'PI-ING-000492': 2,
+    });
+    expect(host.querySelector('[role="dialog"]')).toBeNull();
+  });
+
   it('changes dairy Protein to Gelato in place under the shared dairy-family authority', async () => {
     await act(async () => useRecipeStore.getState().startNewRecipe('protein'));
+    const protein = buildRecipeInput(useRecipeStore.getState());
+    await act(async () =>
+      useRecipeStore.getState().loadRecipeInput(protein, {
+        savedId: 'saved-protein-source',
+        savedName: 'Protein source',
+        versionNumber: 4,
+      }),
+    );
     await act(async () =>
       root.render(
         <WorkbenchSettingsLine
@@ -224,10 +259,7 @@ describe('WorkbenchSettingsLine deferred batch editing', () => {
     expect(fresh.savedRecipeId).toBeNull();
     expect(fresh.newRecipeStarterTemplateId).toBe('S02');
     expect(
-      fresh.items.map((item) => [
-        item.ingredient.canonical_ingredient_id,
-        item.planned_grams,
-      ]),
+      fresh.items.map((item) => [item.ingredient.canonical_ingredient_id, item.planned_grams]),
     ).toEqual([
       ['PI-ING-001409', 161],
       ['PI-ING-000514', 90],
