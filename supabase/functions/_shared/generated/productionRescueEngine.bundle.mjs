@@ -7684,11 +7684,10 @@ function buildFinalActualInput(session) {
 	};
 }
 const productionTopUpTaskId = (revisionId, lineId) => `production-top-up:${revisionId}:${encodeURIComponent(lineId)}`;
-function materializeAuthorizedProductionTopUps(session, rescueRevision, sourceActualRevision, authorizedAt) {
-	const authorizedAtMs = authorizedAt === void 0 ? NaN : Date.parse(authorizedAt);
-	if (Number.isFinite(authorizedAtMs) && session.lines.some((line) => {
-		if (line.confirmedAt === null || Math.abs(line.physicalAddedGrams - line.targetGrams) <= 1e-6) return false;
-		return line.physicalAddedGrams > line.targetGrams + 1e-6 || Date.parse(line.confirmedAt) > authorizedAtMs;
+function materializeAuthorizedProductionTopUps(session, rescueRevision, sourceActualRevision, executedAfterAuthorizationLineIds = /* @__PURE__ */ new Set()) {
+	if (session.lines.some((line) => {
+		if (!executedAfterAuthorizationLineIds.has(line.lineId)) return false;
+		return Math.abs(line.physicalAddedGrams - line.targetGrams) > 1e-6;
 	})) return {
 		...session,
 		topUpTasks: session.topUpTasks.map((task) => task.status === "pending" ? {
@@ -7699,7 +7698,7 @@ function materializeAuthorizedProductionTopUps(session, rescueRevision, sourceAc
 	const existingByKey = new Map(session.topUpTasks.map((task) => [`${task.revisionId}:${task.sourceRecipeLineId}`, task]));
 	const materialized = [];
 	const lines = session.lines.map((line) => {
-		const confirmedBeforeAuthorization = line.confirmedAt !== null && (authorizedAt === void 0 || Date.parse(line.confirmedAt) <= Date.parse(authorizedAt));
+		const confirmedBeforeAuthorization = line.confirmedAt !== null && !executedAfterAuthorizationLineIds.has(line.lineId);
 		const authorizedDeltaG = line.targetGrams - line.physicalAddedGrams;
 		if (!confirmedBeforeAuthorization || authorizedDeltaG <= 1e-6) return line;
 		const existing = existingByKey.get(`${rescueRevision}:${line.lineId}`);
@@ -7735,6 +7734,19 @@ function materializeAuthorizedProductionTopUps(session, rescueRevision, sourceAc
 		lines,
 		topUpTasks: [...history, ...materialized.filter((task) => !historyIds.has(task.taskId))]
 	};
+}
+function productionLineIdsExecutedAfterRescue(run, rescueRevision) {
+	let decisionIndex = -1;
+	for (let index = 0; index < run.events.length; index += 1) {
+		const event = run.events[index];
+		if (event.type === "deviation_decision_accepted" && event.amendment?.rescueRevision === rescueRevision) decisionIndex = index;
+	}
+	if (decisionIndex < 0) return /* @__PURE__ */ new Set();
+	return new Set(run.events.slice(decisionIndex + 1).flatMap((event) => {
+		if (event.type !== "ingredient_actual_confirmed" && event.type !== "actual_entry_corrected") return [];
+		const lineId = event.amendment?.lineId;
+		return typeof lineId === "string" && lineId.length > 0 ? [lineId] : [];
+	}));
 }
 function applyVerifiedRescueInput(session, candidate, rescueRevision = session.durableRescueRevision + 1) {
 	requireActive(session);
@@ -7963,7 +7975,7 @@ function hydrateProductionSessionFromRun(run, source, plannedInput, plannedCompo
 			internalProductionNote: run.actual.operatorNotes ?? ""
 		};
 	}
-	if (run.rescue && run.actual) session = materializeAuthorizedProductionTopUps(session, run.rescue.revision, session.lastDeviationDecision?.sourceActualRevision ?? run.actual.revision, run.rescue.acceptedAt);
+	if (run.rescue && run.actual) session = materializeAuthorizedProductionTopUps(session, run.rescue.revision, session.lastDeviationDecision?.sourceActualRevision ?? run.actual.revision, productionLineIdsExecutedAfterRescue(run, run.rescue.revision));
 	return run.status === "completed" ? completeProductionSession(session, calculateRecipe(buildFinalActualInput(session)), run.completedAt ?? run.updatedAt, run.actual?.recordedBy ?? run.ownerUserId) : session;
 }
 

@@ -26,6 +26,7 @@ Engine/Rescue authorized proposal
   -> durable actual vector + append-only physical event
   -> hydrateProductionSessionFromRun
   -> remaining revision-bound tasks rematerialize from Rescue + actual facts
+       stale checks use append-only server event order, never browser/server clock comparison
 ```
 
 The Recipe duplicate guard is bypassed because the materializer writes only to
@@ -41,9 +42,11 @@ still use the existing `rescueAddedItems` path; a positive addition for an exist
 - A newly confirmed off-target physical value invalidates pending tasks because their correction
   basis is stale.
 - Confirming one task exactly completes only that task; sibling tasks remain pending.
-- The server-owned Rescue snapshot, actual vector, confirmation timestamps, actual revision, and
-  Rescue revision reconstruct pending tasks after reload. Local persistence stores delta drafts but
-  cannot promote them to physical facts.
+- The server-owned Rescue snapshot, actual vector, append-only execution-event order, actual
+  revision, and Rescue revision reconstruct pending tasks after reload. Browser confirmation
+  timestamps may come from a clock ahead of or behind the server and are therefore not used to
+  decide whether an authorized task is stale. Local persistence stores delta drafts but cannot
+  promote them to physical facts.
 - Explicit confirmation is the only operation that increments vessel mass.
 
 ## UI materialization

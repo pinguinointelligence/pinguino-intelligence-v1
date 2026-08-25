@@ -738,22 +738,12 @@ function materializeAuthorizedProductionTopUps(
   session: ProductionSession,
   rescueRevision: number,
   sourceActualRevision: number,
-  authorizedAt?: string,
+  executedAfterAuthorizationLineIds: ReadonlySet<string> = new Set(),
 ): ProductionSession {
-  const authorizedAtMs = authorizedAt === undefined ? Number.NaN : Date.parse(authorizedAt);
   const correctionBecameStale =
-    Number.isFinite(authorizedAtMs) &&
     session.lines.some((line) => {
-      if (
-        line.confirmedAt === null ||
-        Math.abs(line.physicalAddedGrams - line.targetGrams) <= PRODUCTION_GRAMS_EPSILON
-      ) {
-        return false;
-      }
-      return (
-        line.physicalAddedGrams > line.targetGrams + PRODUCTION_GRAMS_EPSILON ||
-        Date.parse(line.confirmedAt) > authorizedAtMs
-      );
+      if (!executedAfterAuthorizationLineIds.has(line.lineId)) return false;
+      return Math.abs(line.physicalAddedGrams - line.targetGrams) > PRODUCTION_GRAMS_EPSILON;
     });
   if (correctionBecameStale) {
     return {
@@ -769,8 +759,7 @@ function materializeAuthorizedProductionTopUps(
   const materialized: ProductionTopUpTask[] = [];
   const lines = session.lines.map((line) => {
     const confirmedBeforeAuthorization =
-      line.confirmedAt !== null &&
-      (authorizedAt === undefined || Date.parse(line.confirmedAt) <= Date.parse(authorizedAt));
+      line.confirmedAt !== null && !executedAfterAuthorizationLineIds.has(line.lineId);
     const authorizedDeltaG = line.targetGrams - line.physicalAddedGrams;
     if (!confirmedBeforeAuthorization || authorizedDeltaG <= PRODUCTION_GRAMS_EPSILON) {
       return line;
@@ -818,6 +807,39 @@ function materializeAuthorizedProductionTopUps(
     lines,
     topUpTasks: [...history, ...materialized.filter((task) => !historyIds.has(task.taskId))],
   };
+}
+
+function productionLineIdsExecutedAfterRescue(
+  run: ProductionRun,
+  rescueRevision: number,
+): ReadonlySet<string> {
+  // Confirmation timestamps originate in the operator browser, while Rescue
+  // acceptance and append-only events are stamped by the server. Clock skew
+  // must never make a valid task disappear; server event order is the durable
+  // chronology for executions that happened after this Rescue revision.
+  let decisionIndex = -1;
+  for (let index = 0; index < run.events.length; index += 1) {
+    const event = run.events[index]!;
+    if (
+      event.type === 'deviation_decision_accepted' &&
+      event.amendment?.rescueRevision === rescueRevision
+    ) {
+      decisionIndex = index;
+    }
+  }
+  if (decisionIndex < 0) return new Set();
+  return new Set(
+    run.events.slice(decisionIndex + 1).flatMap((event) => {
+      if (
+        event.type !== 'ingredient_actual_confirmed' &&
+        event.type !== 'actual_entry_corrected'
+      ) {
+        return [];
+      }
+      const lineId = event.amendment?.lineId;
+      return typeof lineId === 'string' && lineId.length > 0 ? [lineId] : [];
+    }),
+  );
 }
 
 export function applyVerifiedRescueInput(
@@ -1174,7 +1196,7 @@ export function hydrateProductionSessionFromRun(
       session,
       run.rescue.revision,
       session.lastDeviationDecision?.sourceActualRevision ?? run.actual.revision,
-      run.rescue.acceptedAt,
+      productionLineIdsExecutedAfterRescue(run, run.rescue.revision),
     );
   }
 

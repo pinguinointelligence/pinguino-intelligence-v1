@@ -239,6 +239,88 @@ describe('authorized Production top-up tasks', () => {
     expect(pendingProductionTopUpTasks(hydrated).every((task) => task.revisionId === 3)).toBe(true);
   });
 
+  it('does not discard authorized tasks when the operator clock is ahead of the server clock', () => {
+    const confirmed = confirmFirst(2);
+    const rescued = authorizeTopUps(
+      confirmed,
+      [
+        { lineId: confirmed.lines[0]!.lineId, deltaG: 0.8 },
+        { lineId: confirmed.lines[1]!.lineId, deltaG: 0.5 },
+      ],
+      3,
+    );
+    const durable = durableRun(confirmed, rescued);
+    durable.rescue = {
+      ...durable.rescue!,
+      // Confirmation chronology is recorded by the operator's browser while
+      // Rescue acceptance is stamped by the server. Their clocks may differ.
+      acceptedAt: '2026-08-25T08:00:30.000Z',
+    };
+
+    const hydrated = hydrateProductionSessionFromRun(
+      durable,
+      confirmed.source,
+      confirmed.plannedInput,
+      confirmed.plannedComposition,
+    );
+
+    expect(pendingProductionTopUpTasks(hydrated).map((task) => task.sourceRecipeLineId)).toEqual([
+      confirmed.lines[0]!.lineId,
+      confirmed.lines[1]!.lineId,
+    ]);
+  });
+
+  it('invalidates durable tasks when a later server event records a new off-target execution', () => {
+    const confirmed = confirmFirst(2);
+    const rescued = authorizeTopUps(
+      confirmed,
+      [
+        { lineId: confirmed.lines[0]!.lineId, deltaG: 0.8 },
+        { lineId: confirmed.lines[1]!.lineId, deltaG: 0.5 },
+      ],
+      3,
+    );
+    const durable = durableRun(confirmed, rescued);
+    durable.actual = { ...durable.actual!, revision: 3 };
+    durable.events = [
+      {
+        eventId: 'decision-3',
+        type: 'deviation_decision_accepted',
+        at: '2026-08-25T08:04:00.000Z',
+        by: durable.ownerUserId,
+        detail: null,
+        amendment: {
+          stableOptionId: 'restore_original_recipe',
+          sourceActualRevision: 2,
+          rescueRevision: 3,
+          finalMassG: rescued.lines.reduce((sum, line) => sum + line.targetGrams, 0),
+          scoreDisplay: '10',
+        },
+      },
+      {
+        eventId: 'later-actual',
+        type: 'ingredient_actual_confirmed',
+        at: '2026-08-25T08:05:00.000Z',
+        by: durable.ownerUserId,
+        detail: confirmed.lines[0]!.name,
+        amendment: {
+          lineId: confirmed.lines[0]!.lineId,
+          actualGrams: confirmed.lines[0]!.physicalAddedGrams,
+          action: 'confirm',
+        },
+      },
+    ];
+
+    const hydrated = hydrateProductionSessionFromRun(
+      durable,
+      confirmed.source,
+      confirmed.plannedInput,
+      confirmed.plannedComposition,
+    );
+
+    expect(pendingProductionTopUpTasks(hydrated)).toEqual([]);
+  });
+
   it('invalidates pending tasks after a new deviation and replaces them from the next revision', () => {
     const confirmed = confirmFirst(2);
     const line = confirmed.lines[0]!;
