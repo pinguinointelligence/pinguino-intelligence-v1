@@ -17,6 +17,7 @@ import {
 import {
   resolveProductWorkingValues,
   type ProductReadiness,
+  type SweetnessPath,
 } from '../../../src/features/product-intelligence/productWorkingValues.ts';
 import {
   WORKING_NUMERIC_FIELDS,
@@ -90,6 +91,9 @@ export interface IntimportTrustedProductProfile {
   criticalReadiness: boolean;
   missingCritical: string[];
   missingEngineFields: WorkingNumericField[];
+  /** Exact reason a numerically complete profile can still be withheld. */
+  criticalPhysicsBlockers: string[];
+  sweetnessPath: SweetnessPath;
   allergenEvidenceStatus: 'CONFIRMED' | 'USER_CONFIRMED' | 'NOT_CONFIRMED';
   ingredientsEvidenceStatus: 'CONFIRMED' | 'USER_CONFIRMED' | 'NOT_CONFIRMED';
   technicalComposition: Record<string, number>;
@@ -100,6 +104,9 @@ export interface IntimportTrustedProductProfile {
   profileReferenceMapperIngredientId: string | null;
   mapperSimilarity: number | null;
   mapperProfileBasis: Exclude<ProfileMatchBasis, 'none'> | null;
+  mapperCandidatesBeforeFilter: string[];
+  mapperCandidatesAfterFilter: string[];
+  mapperRejectedCandidates: { ingredientId: string; reasonCodes: string[] }[];
   mapperFingerprint: string;
   recognition: ProductSemanticClassification | null;
 }
@@ -297,6 +304,19 @@ export function validateIntimportProductProfileProposal(
       mapperFingerprint: truth.provenance.mapperFingerprint,
     };
   }
+  const criticalPhysicsBlockers = [
+    ...resolved.missingEngineFields.map((field) => `MISSING_${field.toUpperCase()}`),
+    ...(resolved.sweetnessPath.resolved
+      ? []
+      : ['UNRESOLVED_SWEETENING_FREEZING_PATH']),
+    ...(resolved.contradictedByDeclaration ? ['SELF_CONTRADICTORY_DECLARATION'] : []),
+    ...(resolved.readiness === 'REVIEW' &&
+    resolved.missingEngineFields.length === 0 &&
+    resolved.sweetnessPath.resolved &&
+    !resolved.contradictedByDeclaration
+      ? ['PROFILE_CONFIDENCE_BELOW_ENGINE_READY_FLOOR']
+      : []),
+  ];
 
   return {
     authority: PRODUCT_PROFILE_AUTHORITY,
@@ -319,6 +339,8 @@ export function validateIntimportProductProfileProposal(
     criticalReadiness: assessment.criticalReadiness,
     missingCritical: [...assessment.missingCritical],
     missingEngineFields: [...resolved.missingEngineFields],
+    criticalPhysicsBlockers,
+    sweetnessPath: { ...resolved.sweetnessPath },
     allergenEvidenceStatus:
       input.evidence.fields.allergens === 'user_confirmed'
         ? 'USER_CONFIRMED'
@@ -338,6 +360,12 @@ export function validateIntimportProductProfileProposal(
     mapperSimilarity: acceptedMatch?.confidence ?? null,
     mapperProfileBasis:
       acceptedMatch && acceptedMatch.basis !== 'none' ? acceptedMatch.basis : null,
+    mapperCandidatesBeforeFilter: [...(resolved.profileMatch?.candidatesBeforeFilter ?? [])],
+    mapperCandidatesAfterFilter: [...(resolved.profileMatch?.candidatesAfterFilter ?? [])],
+    mapperRejectedCandidates: (resolved.profileMatch?.rejectedCandidates ?? []).map((candidate) => ({
+      ingredientId: candidate.ingredientId,
+      reasonCodes: [...candidate.reasonCodes],
+    })),
     mapperFingerprint,
     recognition,
   };

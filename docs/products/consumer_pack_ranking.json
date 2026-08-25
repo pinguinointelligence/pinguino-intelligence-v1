@@ -66,6 +66,40 @@
       "expectedImprovedPerCall": 7
     },
     {
+      "pack": "Jeronimo Martins Polska S.A. – Kostrzyn",
+      "products": 14,
+      "ready": 0,
+      "estimatedReady": 8,
+      "unresolved": 6,
+      "withDeclaredNutrition": 8,
+      "withGtin": 0,
+      "officialSourceRows": 10,
+      "retailerSourceRows": 4,
+      "domains": {
+        "tabele-kalorii.pl": 10,
+        "biedronka.pl": 4
+      },
+      "expectedDiscoveryCalls": 1,
+      "expectedImprovedPerCall": 6
+    },
+    {
+      "pack": "BakaD'Or",
+      "products": 18,
+      "ready": 0,
+      "estimatedReady": 7,
+      "unresolved": 11,
+      "withDeclaredNutrition": 13,
+      "withGtin": 4,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 18,
+      "domains": {
+        "zakupy.biedronka.pl": 1,
+        "biedronka.pl": 17
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 5.5
+    },
+    {
       "pack": "Baitz",
       "products": 10,
       "ready": 0,
@@ -83,45 +117,11 @@
       "expectedImprovedPerCall": 5
     },
     {
-      "pack": "Jeronimo Martins Polska S.A. – Kostrzyn",
-      "products": 14,
-      "ready": 0,
-      "estimatedReady": 9,
-      "unresolved": 5,
-      "withDeclaredNutrition": 8,
-      "withGtin": 0,
-      "officialSourceRows": 10,
-      "retailerSourceRows": 4,
-      "domains": {
-        "tabele-kalorii.pl": 10,
-        "biedronka.pl": 4
-      },
-      "expectedDiscoveryCalls": 1,
-      "expectedImprovedPerCall": 5
-    },
-    {
-      "pack": "BakaD'Or",
-      "products": 18,
-      "ready": 0,
-      "estimatedReady": 9,
-      "unresolved": 9,
-      "withDeclaredNutrition": 13,
-      "withGtin": 4,
-      "officialSourceRows": 0,
-      "retailerSourceRows": 18,
-      "domains": {
-        "zakupy.biedronka.pl": 1,
-        "biedronka.pl": 17
-      },
-      "expectedDiscoveryCalls": 2,
-      "expectedImprovedPerCall": 4.5
-    },
-    {
       "pack": "GO Active",
       "products": 11,
       "ready": 0,
-      "estimatedReady": 2,
-      "unresolved": 9,
+      "estimatedReady": 1,
+      "unresolved": 10,
       "withDeclaredNutrition": 11,
       "withGtin": 0,
       "officialSourceRows": 0,
@@ -130,7 +130,7 @@
         "biedronka.pl": 11
       },
       "expectedDiscoveryCalls": 2,
-      "expectedImprovedPerCall": 4.5
+      "expectedImprovedPerCall": 5
     },
     {
       "pack": "Kinder",
@@ -278,6 +278,22 @@
       "expectedImprovedPerCall": 3
     },
     {
+      "pack": "Dr. Oetker",
+      "products": 5,
+      "ready": 0,
+      "estimatedReady": 0,
+      "unresolved": 5,
+      "withDeclaredNutrition": 0,
+      "withGtin": 0,
+      "officialSourceRows": 0,
+      "retailerSourceRows": 5,
+      "domains": {
+        "zakupy.biedronka.pl": 5
+      },
+      "expectedDiscoveryCalls": 2,
+      "expectedImprovedPerCall": 2.5
+    },
+    {
       "pack": "Milka",
       "products": 5,
       "ready": 0,
@@ -324,22 +340,6 @@
       },
       "expectedDiscoveryCalls": 2,
       "expectedImprovedPerCall": 2.5
-    },
-    {
-      "pack": "Dr. Oetker",
-      "products": 5,
-      "ready": 0,
-      "estimatedReady": 1,
-      "unresolved": 4,
-      "withDeclaredNutrition": 0,
-      "withGtin": 0,
-      "officialSourceRows": 0,
-      "retailerSourceRows": 5,
-      "domains": {
-        "zakupy.biedronka.pl": 5
-      },
-      "expectedDiscoveryCalls": 2,
-      "expectedImprovedPerCall": 2
     },
     {
       "pack": "Nimm2",

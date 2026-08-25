@@ -1,4 +1,5 @@
 import type { SourceAuthorityClass } from '../../../src/features/product-intelligence/sourceAuthority.ts';
+import type { ProductSemanticEvidence } from '../../../src/features/product-intelligence/productRecognition.ts';
 
 export const PRODUCT_SCAN_SCHEMA_VERSION = 'gellatti_product_scan_v1';
 
@@ -945,6 +946,59 @@ export function stableJson(value: unknown): string {
       .join(',')}}`;
   }
   return JSON.stringify(value) ?? 'null';
+}
+
+/**
+ * Build the exact Product Recognition evidence owned by a finished scanner
+ * result. This is deliberately deterministic: saving a PM must not depend on a
+ * second vision/model interpretation, and the verified label facts stay the
+ * only semantic input used by Mapper filtering.
+ */
+export function productSemanticEvidenceFromScanResult(value: unknown): ProductSemanticEvidence {
+  const root = objectValue(value);
+  const identity = objectValue(root.identity);
+  const nutrition = objectValue(root.nutrition);
+  const firstBarcode = Array.isArray(root.barcodes)
+    ? normalizeValidatedBarcode(objectValue(root.barcodes[0]).value)
+    : null;
+  const sourceUrls = Array.isArray(root.externalSources)
+    ? root.externalSources.flatMap((entry) => {
+        const url = objectValue(entry).url;
+        return typeof url === 'string' && /^https:\/\//i.test(url) ? [url] : [];
+      })
+    : [];
+  const claims = Array.isArray(root.claims)
+    ? root.claims.filter((claim): claim is string => typeof claim === 'string')
+    : [];
+  const description = [
+    ...claims,
+    typeof root.storageInstructions === 'string' ? root.storageInstructions : null,
+  ]
+    .filter((entry): entry is string => Boolean(entry?.trim()))
+    .join(' | ');
+
+  return {
+    name:
+      typeof identity.displayName === 'string'
+        ? identity.displayName
+        : typeof identity.originalName === 'string'
+          ? identity.originalName
+          : null,
+    brand: typeof identity.brand === 'string' ? identity.brand : null,
+    manufacturer: typeof root.manufacturer === 'string' ? root.manufacturer : null,
+    manufacturerCode: null,
+    gtin: firstBarcode,
+    productType: 'consumer_scanner',
+    category: typeof identity.category === 'string' ? identity.category : null,
+    subcategory: null,
+    variant: typeof identity.variant === 'string' ? identity.variant : null,
+    ingredients: typeof root.ingredientsText === 'string' ? root.ingredientsText : null,
+    nutrition: Object.keys(nutrition).length > 0 ? stableJson(nutrition) : null,
+    description: description || null,
+    dosage: null,
+    technicalParameters: null,
+    sourceUrls: [...new Set(sourceUrls)],
+  };
 }
 
 /**

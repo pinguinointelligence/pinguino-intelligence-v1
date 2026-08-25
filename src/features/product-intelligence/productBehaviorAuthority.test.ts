@@ -116,6 +116,8 @@ const productProfile = (
   criticalReadiness: true,
   missingCritical: [],
   missingEngineFields: [],
+  criticalPhysicsBlockers: [],
+  sweetnessPath: { kind: 'trivially_zero', resolved: true, reason: 'test fixture' },
   allergenEvidenceStatus: 'CONFIRMED',
   ingredientsEvidenceStatus: 'CONFIRMED',
   technicalComposition: {
@@ -132,6 +134,9 @@ const productProfile = (
   profileReferenceMapperIngredientId: 'PI-ING-000123',
   mapperSimilarity: 0.94,
   mapperProfileBasis: 'commodity_name',
+  mapperCandidatesBeforeFilter: ['PI-ING-000123'],
+  mapperCandidatesAfterFilter: ['PI-ING-000123'],
+  mapperRejectedCandidates: [],
   mapperFingerprint: 'runtime-2088-deadbeef',
   recognition: null,
   ...overrides,
