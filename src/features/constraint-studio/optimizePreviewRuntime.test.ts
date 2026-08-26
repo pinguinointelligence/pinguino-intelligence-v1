@@ -49,6 +49,43 @@ describe('off-main-thread Optimize runtime', () => {
     expect(worker.terminate).toHaveBeenCalledOnce();
   });
 
+  it('publishes the truthful domain result before optional rescue work finishes', async () => {
+    const { worker, listeners } = fakeWorker();
+    const onDeferredRescueAdvice = vi.fn();
+    const pending = runOptimizePreviewOffMainThread(
+      request,
+      undefined,
+      () => worker,
+      onDeferredRescueAdvice,
+    );
+    const posted = vi.mocked(worker.postMessage).mock.calls[0]![0] as { id: string };
+    const result = { ok: false, code: 'unsafe_proposal' } as BuildPreviewResult;
+
+    listeners.get('message')?.(
+      new MessageEvent('message', {
+        data: { id: posted.id, ok: true, stage: 'result', result, rescuePending: true },
+      }),
+    );
+
+    await expect(pending).resolves.toEqual({ result, rescueAdvice: null });
+    expect(worker.terminate).not.toHaveBeenCalled();
+
+    const rescueAdvice = { trigger: 'hard_band' };
+    listeners.get('message')?.(
+      new MessageEvent('message', {
+        data: {
+          id: posted.id,
+          ok: true,
+          stage: 'complete',
+          computation: { result, rescueAdvice },
+        },
+      }),
+    );
+
+    expect(onDeferredRescueAdvice).toHaveBeenCalledWith(rescueAdvice);
+    expect(worker.terminate).toHaveBeenCalledOnce();
+  });
+
   it('terminates immediately on AbortSignal so Cancel and deadline remain interactive', async () => {
     const { worker } = fakeWorker();
     const controller = new AbortController();

@@ -2362,6 +2362,26 @@ export async function createOptimizePreviewWithServerAuthority(
     productBehaviorSnapshots: validation.snapshots,
     technicalOnlyMainLineIds,
   };
+  let publishedResult: BuildPreviewResult | null = null;
+  let deferredRescueAdvice: RescueIngredientAdvice | null | undefined;
+  const publishDeferredRescueAdvice = (advice: RescueIngredientAdvice | null): void => {
+    if (publishedResult === null) {
+      deferredRescueAdvice = advice;
+      return;
+    }
+    if (
+      !isCurrentPiRun(ownedGeneration) ||
+      useRecipeStore.getState().draftRevision !== draft.revision
+    ) {
+      return;
+    }
+    const state = useConstraintStudioStore.getState();
+    const samePublishedResult = publishedResult.ok
+      ? state.preview?.baseFingerprint === publishedResult.preview.baseFingerprint ||
+        state.directionBestCandidate?.baseFingerprint === publishedResult.preview.baseFingerprint
+      : state.previewIssue?.code === publishedResult.code;
+    if (samePublishedResult) useConstraintStudioStore.setState({ rescueAdvice: advice });
+  };
   const computation = await runOptimizePreviewOffMainThread(
     {
       input: draft.input,
@@ -2370,6 +2390,8 @@ export async function createOptimizePreviewWithServerAuthority(
       options: optimizeOptions,
     },
     signal,
+    undefined,
+    publishDeferredRescueAdvice,
   );
   const rawProposal = computation.result;
   let proposedSnapshots: Record<string, ProductBehaviorSnapshot> | undefined;
@@ -2451,6 +2473,10 @@ export async function createOptimizePreviewWithServerAuthority(
     ...computation,
     createdAt: optimizeCreatedAt,
   });
+  publishedResult = rawProposal;
+  if (deferredRescueAdvice !== undefined) {
+    publishDeferredRescueAdvice(deferredRescueAdvice);
+  }
   if (useConstraintStudioStore.getState().recalculationTerminal?.state !== 'NO_CHANGE_NEEDED') {
     return;
   }

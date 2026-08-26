@@ -37,6 +37,8 @@ import {
   directionTargetFingerprint,
   workingStateFingerprint,
 } from '@/features/constraint-studio/applyPipeline';
+import { PI_RECALCULATION_DEADLINE_MS } from '@/features/constraint-studio/constraintStudioStore';
+import { computeOptimizePreviewResult } from '@/features/constraint-studio/optimizePreviewComputation';
 
 const MAPPER = readFileSync(
   resolve(process.cwd(), 'docs/ingredients/validation/mapper_basement.csv'),
@@ -157,6 +159,28 @@ const ownerBananaCranberryFixture = (): RecipeInput => {
   };
 };
 
+const servedOwnerBananaCranberryFixture = (): RecipeInput => {
+  const starter = buildCanonicalNewRecipeStarter({
+    visibleProductType: 'protein',
+    servingModeId: 'temp_minus_13',
+    formulationStrategy: 'eco',
+    targetBatchGrams: 1_000,
+  });
+  return {
+    mode: 'classic',
+    category: 'protein_gelato',
+    target_temperature_c: starter.targetTemperatureC,
+    target_batch_grams: 1_000,
+    machine_capacity_grams: null,
+    items: [
+      ...starter.items,
+      line('banana-main', BANANA, 352, 'main', 352 / 136),
+      line('cranberry-main', CRANBERRY, 136, 'main', 1),
+    ],
+    goals: { formulation_strategy: 'eco' },
+  };
+};
+
 const snapshotsFor = (input: RecipeInput): Record<string, ProductBehaviorSnapshot> => {
   const snaps = productBehaviorTestSnapshots(input);
   for (const id of input.items.filter((item) => item.lock_type === 'main').map((item) => item.id)) {
@@ -199,6 +223,51 @@ const calibratedProteinFruitSnapshots = (
       moduleEligibility: { ...snapshots[lineId]!.moduleEligibility, MAIN: 'eligible' },
     } as ProductBehaviorSnapshot;
   }
+  return snapshots;
+};
+
+const servedOwnerBananaCranberrySnapshots = (
+  input: RecipeInput,
+): Record<string, ProductBehaviorSnapshot> => {
+  const snapshots = snapshotsFor(input);
+  snapshots['banana-main'] = {
+    ...snapshots['banana-main']!,
+    familyId: 'fruit',
+    subfamilyId: 'banana',
+    formId: 'fresh',
+    behaviorRole: 'MAIN_PROFILE_SPECIFIC',
+    mainClassification: 'MAIN_PROFILE_SPECIFIC',
+    mainCapability: 'MAIN_CAPABLE',
+    mainAuthority: 'CALIBRATED',
+    mainCalibrationLevel: 'EXACT_PRODUCT',
+    mainPolicyId: 'main-protein-fruit-combination-v2',
+    mainPolicyVersion: '2',
+    ecoFloorPercent: 10,
+    optimalCeilingPercent: 17.1,
+    hardLimitPercent: 17.1,
+    multiMainHardLimitPercent: 20.7,
+    mainEquivalentFactor: 1,
+    mainBasis: 'FRUIT_EQUIVALENT',
+  } as ProductBehaviorSnapshot;
+  snapshots['cranberry-main'] = {
+    ...snapshots['cranberry-main']!,
+    familyId: 'fruit',
+    subfamilyId: 'berry',
+    formId: 'fresh',
+    behaviorRole: 'MAIN_PROFILE_SPECIFIC',
+    mainClassification: 'MAIN_PROFILE_SPECIFIC',
+    mainCapability: 'MAIN_CAPABLE_UNCALIBRATED',
+    mainAuthority: 'USER_HELD',
+    mainCalibrationLevel: 'NONE',
+    mainPolicyId: null,
+    mainPolicyVersion: null,
+    ecoFloorPercent: null,
+    optimalCeilingPercent: null,
+    hardLimitPercent: null,
+    multiMainHardLimitPercent: null,
+    mainEquivalentFactor: null,
+    mainBasis: null,
+  } as ProductBehaviorSnapshot;
   return snapshots;
 };
 
@@ -474,6 +543,34 @@ describe('Protein Crown group authority regressions', () => {
     expect(signature(successful[1]!)).toEqual(signature(successful[0]!));
     expect(signature(successful[2]!)).toEqual(signature(successful[0]!));
   });
+
+  it('publishes the exact served -13 ECO Banana 352 g + Cranberry 136 g domain result before the UI watchdog', () => {
+    const input = servedOwnerBananaCranberryFixture();
+    const snapshots = servedOwnerBananaCranberrySnapshots(input);
+    expect(input.items.reduce((sum, item) => sum + item.planned_grams, 0)).toBe(1_488);
+
+    const started = performance.now();
+    const built = computeOptimizePreviewResult({
+      input,
+      constraints: NONE,
+      createdAt: AT,
+      options: {
+        productBehaviorSnapshots: snapshots,
+        technicalOnlyMainLineIds: [],
+      },
+    });
+    const runtimeMs = performance.now() - started;
+
+    expect(built).toMatchObject({ ok: false, code: 'unsafe_proposal' });
+    expect(runtimeMs).toBeLessThan(PI_RECALCULATION_DEADLINE_MS);
+    console.info(
+      'SERVED_OWNER_PROTEIN ' +
+        JSON.stringify({
+          runtimeMs: Math.round(runtimeMs),
+          result: built,
+        }),
+    );
+  }, 120_000);
 
   it('runs a single Crown through the shared Main frontier instead of the Protein shortcut', () => {
     const base = fixture(1);
