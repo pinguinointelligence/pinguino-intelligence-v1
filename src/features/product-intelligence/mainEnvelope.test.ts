@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 import type { RecipeInput } from '@/engine';
 import { findDemoIngredient } from '@/data/demoIngredients';
 import type { ProductBehaviorSnapshot } from './contracts';
-import { mainEnvelopeSearchCeilingGrams, verifyMainEnvelope } from './mainEnvelope';
+import {
+  mainEnvelopeSearchCeilingGrams,
+  mainEnvelopeSearchFloorGrams,
+  verifyMainEnvelope,
+} from './mainEnvelope';
 import {
   bindProductBehaviorToPreview,
   buildBatchRescalePreview,
@@ -300,6 +304,12 @@ describe('versioned Main envelope', () => {
     ).toBe(350);
   });
 
+  it('feeds the approved Main floor into candidate search without creating a gram hold', () => {
+    expect(mainEnvelopeSearchFloorGrams({ recipe: recipe(250, 400), snapshots: snapshots() })).toBe(
+      250,
+    );
+  });
+
   it('uses concentration-equivalent mass and refuses an unapproved mixed family', () => {
     const compoundRecipe = recipe(500, 300);
     expect(
@@ -452,6 +462,50 @@ describe('versioned Main envelope', () => {
       hardLimitPercent: 60,
       policyId: 'main-sorbet-exact-fruit-60-v1',
     });
+  });
+
+  it('projects the exact Sorbet Multi-Main floor through the stored user ratio', () => {
+    const base = recipe(300, 0);
+    const sorbetRecipe: RecipeInput = {
+      ...base,
+      category: 'sorbet',
+      items: [
+        { ...base.items[0]!, planned_grams: 300, main_ratio_weight: 2 },
+        {
+          id: 'lime',
+          ingredient: ingredient('raspberry'),
+          planned_grams: 150,
+          actual_grams: null,
+          lock_type: 'main',
+          main_ratio_weight: 1,
+        },
+        { ...base.items[2]!, planned_grams: 550 },
+      ],
+    };
+    const exactSorbetSnapshot = (lineId: string, mapperIngredientId: string) =>
+      snapshot(lineId, {
+        mapperIngredientId,
+        familyId: 'fruit',
+        mainPolicyId: 'main-sorbet-exact-fruit-60-v1',
+        mainPolicyVersion: '1',
+        ecoFloorPercent: 60,
+        optimalCeilingPercent: 60,
+        hardLimitPercent: 60,
+        multiMainHardLimitPercent: 60,
+        mainEquivalentFactor: 1,
+        requiresLiquidDairyCarrier: false,
+        liquidDairyCarrierFloorPercent: null,
+      });
+
+    expect(
+      mainEnvelopeSearchFloorGrams({
+        recipe: sorbetRecipe,
+        snapshots: {
+          berry: exactSorbetSnapshot('berry', 'PI-ING-001553'),
+          lime: exactSorbetSnapshot('lime', 'PI-ING-000369'),
+        },
+      }),
+    ).toBe(600);
   });
 
   it('uses individual Sorbet envelopes when no shared combination cap exists', () => {

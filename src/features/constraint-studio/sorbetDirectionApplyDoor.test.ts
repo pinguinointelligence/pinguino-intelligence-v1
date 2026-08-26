@@ -11,7 +11,7 @@ import { evaluateFreezingStabilityStatus } from '@/features/recipe-constraints/f
 import { buildCanonicalNewRecipeStarter } from '@/features/recipes/newRecipeStarter';
 import { useCustomerPriceStore } from '@/stores/customerPriceStore';
 import { useRecipeStore } from '@/stores/recipeStore';
-import { workingStateFingerprint } from './applyPipeline';
+import { buildOptimizePreview, workingStateFingerprint } from './applyPipeline';
 import { useConstraintStudioStore } from './constraintStudioStore';
 
 /**
@@ -96,6 +96,37 @@ const servedSorbet = (direction: Direction): RecipeInput => {
   };
 };
 
+const servedTwoCrownSorbet = (): RecipeInput => {
+  const input = servedSorbet({});
+  const strawberry = input.items.find((item) => item.id === 'line-strawberry')!;
+  return {
+    ...input,
+    items: [
+      ...input.items.filter((item) => item.id !== strawberry.id),
+      {
+        ...strawberry,
+        planned_grams: 150,
+        main_ratio_weight: 150,
+        user_intent_anchor_grams: 150,
+      },
+      {
+        id: 'line-banana',
+        ingredient: sorbetMapperIngredient('PI-ING-000345'),
+        planned_grams: 150,
+        actual_grams: null,
+        lock_type: 'main',
+        main_ratio_weight: 150,
+        user_intent_anchor_grams: 150,
+      },
+    ],
+    goals: {
+      formulation_strategy: 'optimal',
+      direction_targets_active: true,
+      direction_targets: { sweetness: 0, softness: 0, creaminess: 0, flavor: 0 },
+    },
+  };
+};
+
 /** Server-shaped authority: structural lines NOT_MAIN / STANDARD_ONLY with no profile list,
  * the Main bound to the exact 60 % Sorbet policy, inulin dose frozen. */
 const servedSnapshots = (input: RecipeInput): Record<string, ProductBehaviorSnapshot> => {
@@ -145,6 +176,36 @@ describe('Apply door — Sorbet exact Direction keeps the Main group byte-exact 
   beforeEach(() => {
     useCustomerPriceStore.setState({ overridesByCanonicalId: {} });
   });
+
+  it('measures the exact served 150/150 Sorbet domain result without a runtime failure', () => {
+    const input = servedTwoCrownSorbet();
+    const started = performance.now();
+    const result = buildOptimizePreview(input, { byLineId: {} }, '2026-08-26T00:00:00.000Z', {
+      productBehaviorSnapshots: servedSnapshots(input),
+      technicalOnlyMainLineIds: [],
+      requirePracticalPreview: true,
+    });
+    const runtimeMs = performance.now() - started;
+
+    expect(result).toMatchObject({ ok: false, code: 'unsafe_proposal' });
+    expect(
+      input.items
+        .filter((item) => item.lock_type === 'main')
+        .map((item) => ({ grams: item.planned_grams, ratio: item.main_ratio_weight })),
+    ).toEqual([
+      { grams: 150, ratio: 150 },
+      { grams: 150, ratio: 150 },
+    ]);
+    expect(runtimeMs).toBeLessThan(30_000);
+    console.info(
+      'SERVED_TWO_CROWN_SORBET ' +
+        JSON.stringify({
+          runtimeMs: Math.round(runtimeMs),
+          outcome: result.ok ? 'preview' : result.code,
+          directionScore: result.ok ? result.preview.directionAssessment?.score : null,
+        }),
+    );
+  }, 120_000);
 
   it('applies the accepted nearest-achievable softness −1 Preview (Main 600 g held, Dobra afterwards)', () => {
     const input = servedSorbet({ softness: -1 });

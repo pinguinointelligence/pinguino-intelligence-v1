@@ -143,6 +143,7 @@ import {
 } from '@/features/formulation/mainIngredientContract';
 import {
   mainEnvelopeSearchCeilingGrams,
+  mainEnvelopeSearchFloorGrams,
   productBehaviorModuleGate,
   productBehaviorRequiredLineIds,
   productBehaviorSnapshotFingerprint,
@@ -3477,6 +3478,13 @@ function maximizeMainFromStart(
         ? 'eco'
         : 'optimal',
   });
+  const behaviorFloor = mainEnvelopeSearchFloorGrams({
+    recipe: identityInput,
+    snapshots: options.productBehaviorSnapshots ?? {},
+    technicalOnlyMainLineIds: options.technicalOnlyMainLineIds,
+  });
+  const searchFloor =
+    behaviorFloor === null ? 1 : Math.max(1, Math.ceil(behaviorFloor - MAIN_OBJECTIVE_EPSILON_G));
   const upper = probe(behaviorCeiling ?? identityInput.target_batch_grams);
   // A user-entered Crown group may start ABOVE its hard ProductBehavior
   // envelope. The ordinary maximization interval assumes the starting point
@@ -3494,7 +3502,7 @@ function maximizeMainFromStart(
     let descendingAttempts = 0;
     for (
       let total = Math.floor(behaviorCeiling + MAIN_OBJECTIVE_EPSILON_G) - 1;
-      total >= 1 && descendingAttempts < MAIN_TECHNICAL_PROBE_BUDGET;
+      total >= searchFloor && descendingAttempts < MAIN_TECHNICAL_PROBE_BUDGET;
       total -= 1
     ) {
       descendingAttempts += 1;
@@ -3732,12 +3740,6 @@ function maximizeMainTechnicalObjective(
     };
   }
   const linearConstraintSet = solverHolds(identityInput, set);
-  const linearBound = mainTechnicalLinearUpperBound({
-    recipe: identityInput,
-    constraints: linearConstraintSet,
-    snapshots: options.productBehaviorSnapshots ?? {},
-    excludedIngredientIds: options.excludedIngredientIds,
-  });
   const batchUpperBound = Math.max(1, Math.floor(identityInput.target_batch_grams));
   const behaviorCeiling = mainEnvelopeSearchCeilingGrams({
     recipe: identityInput,
@@ -3745,14 +3747,27 @@ function maximizeMainTechnicalObjective(
     technicalOnlyMainLineIds: options.technicalOnlyMainLineIds,
     mode: behaviorMode,
   });
-  const linearUpperBound =
-    linearBound.status === 'certified'
-      ? (linearBound.wholeGramUpperBound ?? batchUpperBound)
-      : batchUpperBound;
+  const behaviorFloor = mainEnvelopeSearchFloorGrams({
+    recipe: identityInput,
+    snapshots: options.productBehaviorSnapshots ?? {},
+    technicalOnlyMainLineIds: options.technicalOnlyMainLineIds,
+  });
+  const searchFloor =
+    behaviorFloor === null ? 1 : Math.max(1, Math.ceil(behaviorFloor - MAIN_OBJECTIVE_EPSILON_G));
   const behaviorUpperBound =
     behaviorCeiling === null
       ? batchUpperBound
       : Math.floor(behaviorCeiling + MAIN_OBJECTIVE_EPSILON_G);
+  const linearBound = mainTechnicalLinearUpperBound({
+    recipe: identityInput,
+    constraints: linearConstraintSet,
+    snapshots: options.productBehaviorSnapshots ?? {},
+    excludedIngredientIds: options.excludedIngredientIds,
+  });
+  const linearUpperBound =
+    linearBound.status === 'certified'
+      ? (linearBound.wholeGramUpperBound ?? batchUpperBound)
+      : batchUpperBound;
   const upperBound = Math.max(1, Math.min(batchUpperBound, linearUpperBound, behaviorUpperBound));
   const behaviorCeilingIsLimiting =
     behaviorCeiling !== null && behaviorUpperBound <= Math.min(linearUpperBound, batchUpperBound);
@@ -4148,7 +4163,7 @@ function maximizeMainTechnicalObjective(
       seedCandidates.map((candidate) => Math.round(mainGroupTotal(identityInput, candidate))),
     ),
   ]
-    .filter((total) => total >= 1 && total <= searchStart)
+    .filter((total) => total >= searchFloor && total <= searchStart)
     .sort((left, right) => right - left);
   for (const total of seedTotals) {
     const outcome = probe(total);
@@ -4161,7 +4176,7 @@ function maximizeMainTechnicalObjective(
     }
   }
   let frontierAttempts = 0;
-  for (let total = searchStart; total >= 1; total -= 1) {
+  for (let total = searchStart; total >= searchFloor; total -= 1) {
     if (frontierAttempts >= MAIN_TECHNICAL_PROBE_BUDGET) break;
     frontierAttempts += 1;
     attempts += 1;

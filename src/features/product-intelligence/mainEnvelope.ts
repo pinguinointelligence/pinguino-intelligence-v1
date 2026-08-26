@@ -413,3 +413,48 @@ export function mainEnvelopeSearchCeilingGrams(input: {
     envelope.totalWeightedEquivalentFactor
   );
 }
+
+/**
+ * Project the published Main sensory floor onto the current user ratio.
+ *
+ * This is the lower-bound counterpart to `mainEnvelopeSearchCeilingGrams`.
+ * It supplies no acceptance authority: candidates at or above this projection
+ * still pass `verifyMainEnvelope`, practicalization and the deterministic
+ * Engine. It only prevents a frontier search from enumerating group totals
+ * that the same immutable ProductBehavior envelope already proves impossible.
+ */
+export function mainEnvelopeSearchFloorGrams(input: {
+  recipe: RecipeInput;
+  snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
+  technicalOnlyMainLineIds?: readonly string[];
+}): number | null {
+  const technicalOnlyMainLineIds = new Set(input.technicalOnlyMainLineIds ?? []);
+  const mains = input.recipe.items.filter(
+    (item) => item.lock_type === 'main' && !technicalOnlyMainLineIds.has(item.id),
+  );
+  if (mains.length === 0 || mains.some((item) => !input.snapshots[item.id])) return null;
+  // No invented percentage floor for user-held Main (§4).
+  if (
+    mains.some((item) => resolveMainCapability({ snapshot: input.snapshots[item.id] }).userHeld)
+  ) {
+    return null;
+  }
+  const snapshots = mains.map((item) => input.snapshots[item.id]!);
+  const first = snapshots[0]!;
+  if (snapshots.length === 1) {
+    if (first.ecoFloorPercent === null || first.mainEquivalentFactor === null) return null;
+    return (
+      (input.recipe.target_batch_grams * first.ecoFloorPercent) / 100 / first.mainEquivalentFactor
+    );
+  }
+
+  const envelope = resolveMultiMainEnvelope(
+    mains.map((item) => ({ item, snapshot: input.snapshots[item.id]! })),
+  );
+  if (envelope === null) return null;
+  return (
+    (((input.recipe.target_batch_grams * envelope.floorPercent) / 100) *
+      envelope.totalRatioWeight) /
+    envelope.totalWeightedEquivalentFactor
+  );
+}
