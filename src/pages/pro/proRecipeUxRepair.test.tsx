@@ -566,9 +566,10 @@ describe('truthful states', () => {
     const html = renderToStaticMarkup(
       <ConstraintPreviewCard preview={preview} onApply={() => {}} onCancel={() => {}} />,
     );
-    expect(html).toContain('data-testid="preview-zero-unchanged"');
-    expect(html).toContain(constraintStudioCopy.preview.zeroUnchangedNote);
-    expect(html.indexOf('Sacharoza')).toBeLessThan(html.indexOf('Dekstroza'));
-    expect(html).toContain('data-testid="preview-totals"');
+    expect(html).toContain('data-testid="preview-toggle-unchanged"');
+    expect(html).toContain('Pokaż bez zmian');
+    expect(html).toContain('Sacharoza');
+    expect(html).not.toContain('Dekstroza');
+    expect(html).not.toContain('data-testid="preview-totals"');
   });
 });

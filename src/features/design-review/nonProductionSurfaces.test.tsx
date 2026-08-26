@@ -104,6 +104,7 @@ describe('formulation provenance — presentation-layer marking only', () => {
         preview={previewWithTemplate('reference_derived')}
         onApply={() => {}}
         onCancel={() => {}}
+        showTechnicalDetails
       />,
     );
     expect(html).toContain('data-testid="nonprod-badge-preview-reference-template"');
@@ -117,6 +118,7 @@ describe('formulation provenance — presentation-layer marking only', () => {
         preview={previewWithTemplate('approved')}
         onApply={() => {}}
         onCancel={() => {}}
+        showTechnicalDetails
       />,
     );
     expect(html).not.toContain('nonprod-badge');

@@ -432,6 +432,7 @@ describe('owner runtime fixtures — identity and ratio are hard formulation int
         preview={result.preview}
         onApply={() => undefined}
         onCancel={() => undefined}
+        showTechnicalDetails
       />,
     );
     expect(previewHtml).toContain('Multi-Main: BANANA : CRANBERRY = 1 : 1 — zachowane');

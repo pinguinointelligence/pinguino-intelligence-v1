@@ -157,6 +157,29 @@ const servedSnapshots = (input: RecipeInput): Record<string, ProductBehaviorSnap
   return snapshots;
 };
 
+const servedTwoCrownSnapshots = (
+  input: RecipeInput,
+): Record<string, ProductBehaviorSnapshot> => {
+  const snapshots = servedSnapshots(input);
+  const banana = snapshots['line-banana'];
+  if (!banana) throw new Error('Served two-Crown fixture is missing Banana authority');
+  snapshots['line-banana'] = {
+    ...banana,
+    mainCapability: 'MAIN_CAPABLE_UNCALIBRATED',
+    mainAuthority: 'USER_HELD',
+    mainCalibrationLevel: 'NONE',
+    mainPolicyId: null,
+    mainPolicyVersion: null,
+    ecoFloorPercent: null,
+    optimalCeilingPercent: null,
+    hardLimitPercent: null,
+    multiMainHardLimitPercent: null,
+    mainEquivalentFactor: null,
+    mainBasis: null,
+  };
+  return snapshots;
+};
+
 const load = (input: RecipeInput) => {
   useConstraintStudioStore.getState().resetForTests();
   useRecipeProfileStore.getState().resetForTests();
@@ -181,13 +204,23 @@ describe('Apply door — Sorbet exact Direction keeps the Main group byte-exact 
     const input = servedTwoCrownSorbet();
     const started = performance.now();
     const result = buildOptimizePreview(input, { byLineId: {} }, '2026-08-26T00:00:00.000Z', {
-      productBehaviorSnapshots: servedSnapshots(input),
+      productBehaviorSnapshots: servedTwoCrownSnapshots(input),
       technicalOnlyMainLineIds: [],
       requirePracticalPreview: true,
     });
     const runtimeMs = performance.now() - started;
 
-    expect(result).toMatchObject({ ok: false, code: 'unsafe_proposal' });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error(JSON.stringify(result));
+    const proposedMains = result.preview.proposedInput.items.filter(
+      (item) => item.lock_type === 'main',
+    );
+    expect(proposedMains.map((item) => item.main_ratio_weight)).toEqual([150, 150]);
+    expect(
+      Math.abs(proposedMains[0]!.planned_grams - proposedMains[1]!.planned_grams),
+    ).toBeLessThanOrEqual(1);
+    expect(proposedMains.every((item) => item.planned_grams > 0)).toBe(true);
+    expect(proposedMains.reduce((sum, item) => sum + item.planned_grams, 0)).toBeGreaterThan(300);
     expect(
       input.items
         .filter((item) => item.lock_type === 'main')
@@ -196,19 +229,16 @@ describe('Apply door — Sorbet exact Direction keeps the Main group byte-exact 
       { grams: 150, ratio: 150 },
       { grams: 150, ratio: 150 },
     ]);
-    // The browser worker is materially slower than the Node fixture. A local
-    // result near the 30 s UI watchdog still becomes the generic technical
-    // error on served staging (measured at 13.8 s locally before the bounded
-    // LP-proof repair). Keep enough headroom for the exact domain refusal to
-    // reach the UI on its first attempt; do not mask a deterministic loop by
-    // enlarging the watchdog again.
+    // The browser worker is materially slower than the Node fixture. Keep
+    // enough headroom for the exact domain result to reach the UI on its first
+    // attempt; do not mask deterministic search work by enlarging the watchdog.
     expect(runtimeMs).toBeLessThan(8_000);
     console.info(
       'SERVED_TWO_CROWN_SORBET ' +
         JSON.stringify({
           runtimeMs: Math.round(runtimeMs),
-          outcome: result.ok ? 'preview' : result.code,
-          directionScore: result.ok ? result.preview.directionAssessment?.score : null,
+          outcome: 'preview',
+          directionScore: result.preview.directionAssessment?.score,
         }),
     );
   }, 120_000);

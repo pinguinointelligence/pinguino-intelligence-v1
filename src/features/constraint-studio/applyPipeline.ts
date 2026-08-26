@@ -147,6 +147,7 @@ import {
   productBehaviorModuleGate,
   productBehaviorRequiredLineIds,
   productBehaviorSnapshotFingerprint,
+  resolveMainCapability,
   verifyMainEnvelope,
   type MainEnvelopeViolation,
   type ProductBehaviorSnapshot,
@@ -3661,6 +3662,8 @@ const MAIN_TECHNICAL_MAXIMUM_ENABLED = true;
 // UI thread. When the guard is reached the proof remains honestly bounded
 // BEST_ACHIEVABLE; it is never promoted to a certified maximum.
 export const MAIN_TECHNICAL_PROBE_BUDGET = 2_000;
+const MAIN_TECHNICAL_NO_CEILING_COARSE_PROBES = 12;
+const MAIN_TECHNICAL_NO_CEILING_REFINE_PROBES = 12;
 
 type MainTechnicalProbe =
   | { ok: true; input: RecipeInput; mainGrams: number; score: number | null }
@@ -3784,21 +3787,31 @@ function maximizeMainTechnicalObjective(
     behaviorCeiling === null
       ? batchUpperBound
       : Math.floor(behaviorCeiling + MAIN_OBJECTIVE_EPSILON_G);
-  // A published ProductBehavior ceiling already supplies an independent upper
-  // authority. In that case the continuous LP is enough to tighten it: the
-  // floor of a continuous maximum is a safe whole-gram upper bound, and the
-  // candidate at min(LP, ProductBehavior) still passes the unchanged integer
-  // allocation, practicalization, Engine, lock and Main-ratio gates below.
-  // Branch-and-bound cannot accept a recipe; it could only tighten a failed
-  // starting probe. Groups WITHOUT a published ceiling retain the original
-  // single 4,096-node integer proof, so user-held Main and real locks do not
-  // pay for a redundant continuous solve or lose any certification authority.
+  const allMainSnapshotsResolved = mains.every(
+    (main) => options.productBehaviorSnapshots?.[main.lineId] !== undefined,
+  );
+  const serverResolvedUserHeldMainGroup =
+    (options.technicalOnlyMainLineIds?.length ?? 0) === 0 &&
+    allMainSnapshotsResolved &&
+    mains.some((main) =>
+      resolveMainCapability({
+        snapshot: options.productBehaviorSnapshots?.[main.lineId],
+        snapshotRequired: true,
+      }).userHeld,
+    );
+  // A published ceiling, or a fully server-resolved user-held group, already
+  // supplies the authority shape needed for the continuous upper bound. The
+  // exact candidate still passes integer ratio allocation, practicalization,
+  // Engine, locks and Main authority below. Pure Engine/demo inputs without
+  // snapshots retain the historical integer proof and byte-exact frontier.
   const linearBound = mainTechnicalLinearUpperBound({
     recipe: identityInput,
     constraints: linearConstraintSet,
     snapshots: options.productBehaviorSnapshots ?? {},
     excludedIngredientIds: options.excludedIngredientIds,
-    ...(behaviorCeiling !== null ? { certifyWholeGram: false } : {}),
+    ...(behaviorCeiling !== null || serverResolvedUserHeldMainGroup
+      ? { certifyWholeGram: false }
+      : {}),
   });
   const linearUpperBound =
     linearBound.status === 'certified'
@@ -4032,7 +4045,14 @@ function maximizeMainTechnicalObjective(
       constraints: solverSet,
       snapshots: options.productBehaviorSnapshots ?? {},
       excludedIngredientIds: options.excludedIngredientIds,
-      integerNodeBudget: 256,
+      ...(behaviorCeiling === null && serverResolvedUserHeldMainGroup
+        ? {
+            // This server-resolved no-ceiling path consumes only a candidate
+            // vector. Allocation, practicalization, Engine, locks and Main
+            // ratio remain the acceptance authority for its rounded proposal.
+            certifyWholeGram: false,
+          }
+        : { integerNodeBudget: 256 }),
     });
     if (
       candidateRelaxation.status === 'certified' &&
@@ -4212,29 +4232,97 @@ function maximizeMainTechnicalObjective(
     }
   }
   let frontierAttempts = 0;
-  for (let total = searchStart; total >= searchFloor; total -= 1) {
-    if (frontierAttempts >= MAIN_TECHNICAL_PROBE_BUDGET) break;
+  const invariantAuthorityFailure = (
+    outcome: Extract<MainTechnicalProbe, { ok: false }>,
+  ): boolean =>
+    outcome.reason === 'main_identity' ||
+    outcome.rules.some(
+      (rule) =>
+        rule === 'main_behavior_missing' ||
+        rule === 'main_identity_changed' ||
+        rule.startsWith('product_behavior_'),
+    );
+  const recordFrontierProbe = (total: number): MainTechnicalProbe => {
     frontierAttempts += 1;
     attempts += 1;
     const outcome = probe(total);
-    if (outcome.ok) {
-      accepted = outcome;
-      break;
+    if (!outcome.ok) rejected.set(total, outcome);
+    return outcome;
+  };
+  let boundedNoCeilingSearch = false;
+  if (behaviorCeiling === null && serverResolvedUserHeldMainGroup && !exactOnly) {
+    // Without a published ProductBehavior ceiling, descending one gram at a
+    // time cannot certify a global maximum: every accepted candidate remains
+    // BEST_ACHIEVABLE unless the independent LP upper bound itself passes.
+    // Bracket the highest safe region with a deterministic coarse ladder, then
+    // refine that witnessed interval. This changes search work only; every
+    // candidate still passes the unchanged complete acceptance authority.
+    boundedNoCeilingSearch = true;
+    const span = Math.max(0, searchStart - searchFloor);
+    const coarseTotals = [
+      ...new Set([
+        searchStart,
+        Math.max(searchFloor, Math.min(searchStart, Math.round(startingMainGrams))),
+        ...seedTotals,
+        ...Array.from(
+          { length: MAIN_TECHNICAL_NO_CEILING_COARSE_PROBES },
+          (_, index) =>
+            Math.max(
+              searchFloor,
+              Math.round(
+                searchStart -
+                  (span * (index + 1)) / MAIN_TECHNICAL_NO_CEILING_COARSE_PROBES,
+              ),
+            ),
+        ),
+        searchFloor,
+      ]),
+    ].sort((left, right) => right - left);
+    let nearestRejectedAbove: number | null = null;
+    for (const total of coarseTotals) {
+      const outcome = recordFrontierProbe(total);
+      if (outcome.ok) {
+        accepted = outcome;
+        break;
+      }
+      nearestRejectedAbove = total;
+      if (invariantAuthorityFailure(outcome)) break;
     }
-    rejected.set(total, outcome);
-    // Product authority/identity failures do not depend on grams. Descending
-    // through the whole batch cannot turn a missing binding/snapshot into a
-    // valid product, so stop deterministically after the first proof instead
-    // of spending hundreds of identical Engine probes.
-    const invariantAuthorityFailure =
-      outcome.reason === 'main_identity' ||
-      outcome.rules.some(
-        (rule) =>
-          rule === 'main_behavior_missing' ||
-          rule === 'main_identity_changed' ||
-          rule.startsWith('product_behavior_'),
-      );
-    if (exactOnly || invariantAuthorityFailure) break;
+    if (accepted && nearestRejectedAbove !== null) {
+      let acceptedTotal = Math.round(accepted.mainGrams);
+      let rejectedExclusive = nearestRejectedAbove;
+      while (
+        acceptedTotal + 1 < rejectedExclusive &&
+        frontierAttempts <
+          MAIN_TECHNICAL_NO_CEILING_COARSE_PROBES +
+            MAIN_TECHNICAL_NO_CEILING_REFINE_PROBES
+      ) {
+        const total = Math.floor((acceptedTotal + rejectedExclusive) / 2);
+        const outcome = recordFrontierProbe(total);
+        if (outcome.ok) {
+          accepted = outcome;
+          acceptedTotal = Math.round(outcome.mainGrams);
+        } else {
+          rejectedExclusive = total;
+          if (invariantAuthorityFailure(outcome)) break;
+        }
+      }
+    }
+    if (accepted === null && fallbackAccepted !== null) accepted = fallbackAccepted;
+  } else {
+    for (let total = searchStart; total >= searchFloor; total -= 1) {
+      if (frontierAttempts >= MAIN_TECHNICAL_PROBE_BUDGET) break;
+      const outcome = recordFrontierProbe(total);
+      if (outcome.ok) {
+        accepted = outcome;
+        break;
+      }
+      // Product authority/identity failures do not depend on grams. Descending
+      // through the whole batch cannot turn a missing binding/snapshot into a
+      // valid product, so stop deterministically after the first proof instead
+      // of spending hundreds of identical Engine probes.
+      if (exactOnly || invariantAuthorityFailure(outcome)) break;
+    }
   }
   if (accepted === null) {
     if (fallbackAccepted !== null) {
@@ -4331,13 +4419,13 @@ function maximizeMainTechnicalObjective(
       executableMainGrams: maximum,
       firstHigherRejectedGrams: mathematicallyCertified
         ? maximum + 1
-        : maximum < searchStart
+        : nextFailure !== null
           ? maximum + 1
           : null,
       firstHigherRejectedReason: mathematicallyCertified
         ? 'certified_upper_bound'
-        : maximum < searchStart
-          ? (nextFailure?.reason ?? 'batch_or_constraints')
+        : nextFailure !== null
+          ? nextFailure.reason
           : null,
       technicalScore: accepted.score,
       attempts,
@@ -4346,7 +4434,9 @@ function maximizeMainTechnicalObjective(
       testedHigherCandidateCount: rejected.size,
       limitingTechnicalRules: mathematicallyCertified
         ? limitingCertifiedRules
-        : (nextFailure?.rules ?? ['heuristic_search_limit']),
+        : (nextFailure?.rules ?? [
+            boundedNoCeilingSearch ? 'bounded_no_ceiling_search' : 'heuristic_search_limit',
+          ]),
       ...(behaviorCeilingIsLimiting ||
       (linearBound.status === 'certified' && linearBound.wholeGramUpperBound !== null)
         ? {

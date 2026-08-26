@@ -78,7 +78,25 @@ describe('compact ingredient article panel', () => {
 
     const panel = document.querySelector(`[data-testid="row-menu-${baseItem.id}"]`);
     expect(panel?.getAttribute('data-placement')).toBe('responsive');
-    expect(panel?.querySelector('[data-testid="article-panel-quick-actions"]')).not.toBeNull();
+    expect(panel?.getAttribute('data-overlay-scope')).toBe('viewport');
+    expect(panel?.className).toContain('sm:justify-center');
+    expect(host?.querySelector(`[data-testid="row-menu-${baseItem.id}"]`)).toBeNull();
+    expect(panel?.parentElement).toBe(document.body);
+    const quickActions = panel?.querySelector('[data-testid="article-panel-quick-actions"]');
+    expect(quickActions).not.toBeNull();
+    expect(quickActions?.getAttribute('data-control-height')).toBe('36');
+    expect(
+      panel
+        ?.querySelector('[data-testid="article-panel-role-control"]')
+        ?.getAttribute('data-control-height'),
+    ).toBe('36');
+    const iconActions = [
+      ...(panel?.querySelectorAll<HTMLButtonElement>('[data-article-action="true"]') ?? []),
+    ];
+    expect(iconActions).toHaveLength(6);
+    expect(iconActions.every((action) => action.className.includes('h-9'))).toBe(true);
+    expect(panel?.querySelectorAll('[data-icon-family="gellatti-line"]')).toHaveLength(6);
+    expect(panel?.querySelector('[data-testid="article-panel-header"]')).not.toBeNull();
     expect(panel?.textContent).not.toContain('Standardowy');
     expect(panel?.textContent).not.toContain('Kolejność');
 
@@ -134,6 +152,11 @@ describe('compact ingredient article panel', () => {
     const badge = panel?.querySelector<HTMLButtonElement>('[data-main-presentation="badge"]');
     expect(badge?.textContent).toBe('Główny');
     expect(badge?.getAttribute('aria-label')).toBe('Usuń rolę główną');
+    expect(badge?.className).toContain('h-9');
+    const ratio = panel?.querySelector('[data-testid="article-panel-main-ratio"]');
+    expect(ratio?.getAttribute('data-visual-priority')).toBe('quiet');
+    expect(ratio?.textContent).toContain('Proporcja Main');
+    expect(ratio?.textContent).not.toContain('Waga proporcji');
     await click(badge ?? null);
     expect(rowActions.setCustomerRole).toHaveBeenCalledWith(baseItem.id, 'standard');
   });

@@ -241,29 +241,43 @@ const syntheticPreview = (): ConstraintPreview => {
 };
 
 describe('ConstraintPreviewCard (§19.1)', () => {
-  const html = render(
+  const customerHtml = render(
     <ConstraintPreviewCard preview={syntheticPreview()} onApply={noop} onCancel={noop} />,
   );
+  const adminHtml = render(
+    <ConstraintPreviewCard
+      preview={syntheticPreview()}
+      onApply={noop}
+      onCancel={noop}
+      showTechnicalDetails
+    />,
+  );
 
-  it('renders the proposal header and disables Apply when the proposal misses its batch target', () => {
-    expect(html).toContain('PINGÜINO proponuje:');
-    expect(html).toContain('data-testid="preview-apply-disabled"');
-    expect(html).toContain(copy.preview.applyDisabledDiagnostic);
-    expect(html).toContain('Anuluj');
-    expect(html).toContain('684 g');
-    expect(html).toContain('1000 g');
+  it('renders the compact customer header and disables Apply when the proposal misses its batch target', () => {
+    expect(customerHtml).toContain('Proponowane zmiany receptury');
+    expect(customerHtml).toContain('data-testid="preview-summary"');
+    expect(customerHtml).toContain('data-testid="preview-apply-disabled"');
+    expect(customerHtml).toContain(copy.preview.applyDisabledDiagnostic);
+    expect(customerHtml).toContain('Wróć');
+    expect(customerHtml).not.toContain('Suma przed:');
+    expect(customerHtml).not.toContain('Parametry poza optymalnym zakresem');
   });
 
-  it('shows old→new with the locked-unchanged note and the U+2212 delta', () => {
-    expect(html).toContain('bez zmian · zablokowane');
-    expect(html).toContain('82 g');
-    expect(html).toContain('74 g');
-    expect(html).toContain('−8 g');
-    expect(html).toContain('nowy składnik');
+  it('shows changed old→new grams by default and keeps unchanged rows behind the toggle', () => {
+    expect(customerHtml).toContain('82 g');
+    expect(customerHtml).toContain('74 g');
+    expect(customerHtml).toContain('−8 g');
+    expect(customerHtml).toContain('nowy składnik');
+    expect(customerHtml).toContain('Pokaż bez zmian');
+    expect(customerHtml).not.toContain('bez zmian · zablokowane');
+    expect(customerHtml).not.toContain('Mleko');
   });
 
-  it('reports the honest out-of-band delta without band values', () => {
-    expect(html).toContain('Parametry poza optymalnym zakresem: 2 → 0');
+  it('keeps the honest out-of-band delta in the admin-only technical accordion', () => {
+    expect(adminHtml).toContain('data-testid="preview-technical-details"');
+    expect(adminHtml).toContain('Szczegóły techniczne');
+    expect(adminHtml).toContain('Parametry poza optymalnym zakresem: 2 → 0');
+    expect(customerHtml).not.toContain('data-testid="preview-technical-details"');
   });
 
   it('names a verified identity swap and the selected human direction without exposing bands', () => {
@@ -289,7 +303,12 @@ describe('ConstraintPreviewCard (§19.1)', () => {
       },
     };
     const directedHtml = render(
-      <ConstraintPreviewCard preview={preview} onApply={noop} onCancel={noop} />,
+      <ConstraintPreviewCard
+        preview={preview}
+        onApply={noop}
+        onCancel={noop}
+        showTechnicalDetails
+      />,
     );
 
     expect(directedHtml).toContain('data-testid="preview-substitution"');
@@ -312,7 +331,12 @@ describe('ConstraintPreviewCard (§19.1)', () => {
       reason: 'product_dosage',
     };
     const rendered = render(
-      <ConstraintPreviewCard preview={preview} onApply={noop} onCancel={noop} />,
+      <ConstraintPreviewCard
+        preview={preview}
+        onApply={noop}
+        onCancel={noop}
+        showTechnicalDetails
+      />,
     );
     expect(rendered).toContain('data-testid="preview-safety-lock-conflict"');
     expect(rendered).toContain('Blokada przekracza zatwierdzony zakres systemu stabilizatora');
@@ -332,7 +356,12 @@ describe('ConstraintPreviewCard (§19.1)', () => {
       reason: 'constraint_feasibility',
     };
     const rendered = render(
-      <ConstraintPreviewCard preview={preview} onApply={noop} onCancel={noop} />,
+      <ConstraintPreviewCard
+        preview={preview}
+        onApply={noop}
+        onCancel={noop}
+        showTechnicalDetails
+      />,
     );
     expect(rendered).toContain('data-testid="preview-safety-lock-conflict"');
     expect(rendered).toContain('Blokada wymusza twardo nieprawidłową recepturę');
@@ -362,7 +391,12 @@ describe('ConstraintPreviewCard (§19.1)', () => {
         })),
       };
       const rendered = render(
-        <ConstraintPreviewCard preview={preview} onApply={noop} onCancel={noop} />,
+        <ConstraintPreviewCard
+          preview={preview}
+          onApply={noop}
+          onCancel={noop}
+          showTechnicalDetails
+        />,
       );
       expect(rendered).toContain(
         `Główne: <strong class="font-mono tabular-nums text-ivory">${expected}</strong>`,
@@ -409,7 +443,12 @@ describe('ConstraintPreviewCard (§19.1)', () => {
       },
     ];
     const rendered = render(
-      <ConstraintPreviewCard preview={preview} onApply={noop} onCancel={noop} />,
+      <ConstraintPreviewCard
+        preview={preview}
+        onApply={noop}
+        onCancel={noop}
+        showTechnicalDetails
+      />,
     );
     expect(rendered).toContain('Udział lodu');
     expect(rendered).toContain('Przed: 43.2%');
@@ -444,9 +483,14 @@ describe('ConstraintPreviewCard (§19.1)', () => {
     preview.diagnosticReason = 'protein_claim_residual';
 
     const rendered = render(
-      <ConstraintPreviewCard preview={preview} onApply={noop} onCancel={noop} />,
+      <ConstraintPreviewCard
+        preview={preview}
+        onApply={noop}
+        onCancel={noop}
+        showTechnicalDetails
+      />,
     );
-    expect(rendered).toContain('10/10');
+    expect(rendered).toContain('10 / 10');
     expect(rendered).toContain(
       'Kierunek osiągnięty tylko w podglądzie diagnostycznym. Receptura nadal nie jest gotowa do Apply.',
     );
