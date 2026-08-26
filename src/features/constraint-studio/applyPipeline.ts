@@ -3758,11 +3758,21 @@ function maximizeMainTechnicalObjective(
     behaviorCeiling === null
       ? batchUpperBound
       : Math.floor(behaviorCeiling + MAIN_OBJECTIVE_EPSILON_G);
+  // A published ProductBehavior ceiling already supplies an independent upper
+  // authority. In that case the continuous LP is enough to tighten it: the
+  // floor of a continuous maximum is a safe whole-gram upper bound, and the
+  // candidate at min(LP, ProductBehavior) still passes the unchanged integer
+  // allocation, practicalization, Engine, lock and Main-ratio gates below.
+  // Branch-and-bound cannot accept a recipe; it could only tighten a failed
+  // starting probe. Groups WITHOUT a published ceiling retain the original
+  // single 4,096-node integer proof, so user-held Main and real locks do not
+  // pay for a redundant continuous solve or lose any certification authority.
   const linearBound = mainTechnicalLinearUpperBound({
     recipe: identityInput,
     constraints: linearConstraintSet,
     snapshots: options.productBehaviorSnapshots ?? {},
     excludedIngredientIds: options.excludedIngredientIds,
+    ...(behaviorCeiling !== null ? { certifyWholeGram: false } : {}),
   });
   const linearUpperBound =
     linearBound.status === 'certified'
