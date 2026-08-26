@@ -173,7 +173,7 @@
     },
     {
       "path": "src/features/product-intelligence/mainEnvelope.ts",
-      "sha256": "3916282e17c85c63b9d8afb42fa322e6e255986e48e60bb7a01b8dd77e67c479"
+      "sha256": "7661d466154f90efb2e00df4f1454d8e6df0b92f1ad65d599c0dfe95170c976b"
     },
     {
       "path": "src/features/product-intelligence/ownerInulinPolicy.ts",
@@ -268,5 +268,5 @@
       "sha256": "5523e8a79f059b81594793260535fc3b4a85185fe9f5020de87c2c7782a44fdb"
     }
   ],
-  "sourceClosureSha256": "9a05b14753fcb6e112beeea48ea9bc4ca4e2d0694b7860ae9ffc080d27a99841"
+  "sourceClosureSha256": "6d7329e382578130fdcb7acb120463817217d82aae0312f28d2840ec2540fdea"
 }
