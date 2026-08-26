@@ -8082,6 +8082,33 @@ function candidateFromProposal(forecastInput, proposal, context) {
 	};
 }
 const sourceItemFor = (session, lineId) => [...session.plannedInput.items, ...session.rescueAddedItems].find((item) => item.id === lineId);
+/**
+* The immutable recipe version remains the audit origin, while accepted Rescue
+* targets become the canonical plan for the next deviation. Rebuild that plan
+* from Production lines so a second restore scales the accepted revision, not
+* a stale 1000 g source vector.
+*/
+function currentCanonicalProductionPlan(session) {
+	const lineById = new Map(session.lines.map((line) => [line.lineId, line]));
+	const items = [...session.plannedInput.items, ...session.rescueAddedItems].map((item) => {
+		const line = lineById.get(item.id);
+		if (!line) throw new Error(`Production line missing for ${item.id}.`);
+		return {
+			...item,
+			planned_grams: line.targetGrams,
+			actual_grams: null,
+			lock_type: item.lock_type === "already_added" ? "unlocked" : item.lock_type
+		};
+	});
+	return {
+		...session.plannedInput,
+		target_batch_grams: totalFor({
+			...session.plannedInput,
+			items
+		}),
+		items
+	};
+}
 function persistedProductionConstraint(source, candidate, sourceBatchGrams) {
 	if (source?.grams_constraint !== void 0) return {
 		mode: "locked",
@@ -8150,13 +8177,13 @@ function practicalizeProductionRescueCandidate(session, exactCandidate, targetBa
 }
 /**
 * Physical Production entries already support 0.1 g precision (the owner case
-* itself contains 58.5 g). A minimum-material rescue may therefore remain a
-* tenth-gram execution plan instead of being distorted by the separate
-* whole-gram recipe-publication model. This is validation only: the candidate
-* still comes from Engine Rescue and is re-run by the canonical Engine here.
+* itself contains 58.5 g). An Engine recovery may therefore remain a tenth-
+* gram execution plan instead of being distorted by the separate whole-gram
+* recipe-publication model. This is validation only: the candidate still comes
+* from Engine Rescue and is re-run by the canonical Engine here.
 */
 function tenthGramProductionAudit(session, exactCandidate) {
-	const executableInput = {
+	const baseExecutableInput = {
 		...exactCandidate,
 		items: exactCandidate.items.map((item) => ({
 			...item,
@@ -8165,41 +8192,72 @@ function tenthGramProductionAudit(session, exactCandidate) {
 			lock_type: item.lock_type === "already_added" ? "unlocked" : item.lock_type
 		}))
 	};
-	executableInput.target_batch_grams = totalFor(executableInput);
-	if (executableInput.items.some((item) => Math.abs(item.planned_grams * 10 - Math.round(item.planned_grams * 10)) > 1e-8)) return null;
-	if (!verifyConstraintsPreserved(productionConstraintSet(session, executableInput), executableInput).ok) return null;
+	const physicalById = new Map(session.lines.map((line) => [line.lineId, line.physicalAddedGrams]));
+	let executableCandidates = [baseExecutableInput];
+	for (const [index, item] of baseExecutableInput.items.entries()) {
+		if (!isTemplateControlledStabilizer(item.ingredient)) continue;
+		const physicalFloor = physicalById.get(item.id) ?? 0;
+		const choices = [
+			Math.round(item.planned_grams),
+			Math.floor(item.planned_grams),
+			Math.ceil(item.planned_grams)
+		].filter((grams, position, values) => grams > 0 && grams + 1e-6 >= physicalFloor && values.indexOf(grams) === position);
+		executableCandidates = executableCandidates.flatMap((candidate) => choices.map((grams) => ({
+			...candidate,
+			items: candidate.items.map((candidateItem, candidateIndex) => candidateIndex === index ? {
+				...candidateItem,
+				planned_grams: grams
+			} : candidateItem)
+		}))).slice(0, 128);
+	}
 	const exactResult = calculateRecipe(exactCandidate);
-	const executableResult = calculateRecipe(executableInput);
 	const exactHardMetrics = detectViolations(exactResult).map((violation) => violation.metric);
-	const executableHardMetrics = detectViolations(executableResult).map((violation) => violation.metric);
-	return {
-		modelVersion: "production-tenth-gram-v1",
-		exactInput: exactCandidate,
-		exactResult,
-		executableInput,
-		executableResult,
-		lines: executableInput.items.map((item) => {
-			const exact = exactCandidate.items.find((candidate) => candidate.id === item.id);
-			const exactGrams = exact.actual_grams ?? exact.planned_grams;
-			return {
-				lineId: item.id,
-				ingredientName: item.ingredient.name,
-				exactGrams,
-				practicalGrams: item.planned_grams,
-				deltaGrams: item.planned_grams - exactGrams,
-				residualAdjusted: false,
-				protection: session.lines.some((line) => line.lineId === item.id && line.physicalAddedGrams > 1e-6) ? "physical" : "editable"
-			};
-		}),
-		targetBatchGrams: executableInput.target_batch_grams,
-		exactTotalGrams: exactResult.total_batch_g,
-		executableTotalGrams: executableResult.total_batch_g,
-		residualBeforeReconciliationGrams: 0,
-		residualAfterReconciliationGrams: 0,
-		exactHardMetrics,
-		executableHardMetrics,
-		hardGatePassed: executableHardMetrics.length === 0
-	};
+	executableCandidates = executableCandidates.map((candidate) => ({
+		...candidate,
+		target_batch_grams: totalFor(candidate)
+	})).sort((left, right) => left.items.reduce((sum, item, index) => {
+		const exactItem = exactCandidate.items[index];
+		return sum + Math.abs(item.planned_grams - (exactItem.actual_grams ?? exactItem.planned_grams));
+	}, 0) - right.items.reduce((sum, item, index) => {
+		const exactItem = exactCandidate.items[index];
+		return sum + Math.abs(item.planned_grams - (exactItem.actual_grams ?? exactItem.planned_grams));
+	}, 0));
+	for (const executableInput of executableCandidates) {
+		if (executableInput.items.some((item) => Math.abs(item.planned_grams * 10 - Math.round(item.planned_grams * 10)) > 1e-8)) continue;
+		if (!verifyConstraintsPreserved(productionConstraintSet(session, executableInput), executableInput).ok) continue;
+		const executableResult = calculateRecipe(executableInput);
+		const executableHardMetrics = detectViolations(executableResult).map((violation) => violation.metric);
+		if (executableHardMetrics.length > 0) continue;
+		return {
+			modelVersion: "production-tenth-gram-v1",
+			exactInput: exactCandidate,
+			exactResult,
+			executableInput,
+			executableResult,
+			lines: executableInput.items.map((item) => {
+				const exact = exactCandidate.items.find((candidate) => candidate.id === item.id);
+				const exactGrams = exact.actual_grams ?? exact.planned_grams;
+				return {
+					lineId: item.id,
+					ingredientName: item.ingredient.name,
+					exactGrams,
+					practicalGrams: item.planned_grams,
+					deltaGrams: item.planned_grams - exactGrams,
+					residualAdjusted: false,
+					protection: session.lines.some((line) => line.lineId === item.id && line.physicalAddedGrams > 1e-6) ? "physical" : "editable"
+				};
+			}),
+			targetBatchGrams: executableInput.target_batch_grams,
+			exactTotalGrams: exactResult.total_batch_g,
+			executableTotalGrams: executableResult.total_batch_g,
+			residualBeforeReconciliationGrams: 0,
+			residualAfterReconciliationGrams: 0,
+			exactHardMetrics,
+			executableHardMetrics,
+			hardGatePassed: true
+		};
+	}
+	return null;
 }
 function instructionsFor(before, after, actions) {
 	const beforeById = new Map(before.items.map((item) => [item.id, item]));
@@ -8222,6 +8280,7 @@ function instructionsFor(before, after, actions) {
 	return instructions.sort((a, b) => (a.kind === "add" ? 0 : 1) - (b.kind === "add" ? 0 : 1) || a.ingredientName.localeCompare(b.ingredientName));
 }
 function bestOption(id, title, explanation, session, forecastInput, context, acceptMass, recoveryObjective = null) {
+	const canonicalPlan = currentCanonicalProductionPlan(session);
 	const proposed = proposeAutoFix({
 		input: forecastInput,
 		context,
@@ -8239,13 +8298,13 @@ function bestOption(id, title, explanation, session, forecastInput, context, acc
 	});
 	const recovery = recoveryObjective ? proposeBatchRecovery({
 		input: forecastInput,
-		baselineInput: session.plannedInput,
+		baselineInput: canonicalPlan,
 		objective: recoveryObjective
 	}) : null;
 	const completedCandidates = [...solverCandidates, ...recovery?.candidates.map((candidate) => ({
 		input: candidate.input,
 		actions: candidate.actions,
-		precision: recoveryObjective === "minimum_safe" ? "tenth" : "whole"
+		precision: "tenth"
 	})) ?? []];
 	const candidates = [];
 	for (const completed of completedCandidates) {
@@ -8275,7 +8334,7 @@ function bestOption(id, title, explanation, session, forecastInput, context, acc
 			});
 			continue;
 		}
-		const practicalTargets = id === "keep_original_batch" ? [session.plannedInput.target_batch_grams] : [...new Set([
+		const practicalTargets = id === "keep_original_batch" ? [canonicalPlan.target_batch_grams] : [...new Set([
 			Math.round(exactMass),
 			Math.ceil(exactMass),
 			Math.floor(exactMass),
@@ -8318,6 +8377,14 @@ function bestOption(id, title, explanation, session, forecastInput, context, acc
 		}
 	};
 }
+const emptyStrategyTrace = () => ({
+	solverProposalCount: 0,
+	evaluatedCandidateCount: 0,
+	generatedSafeCandidateCount: 0,
+	acceptedCandidateCount: 0,
+	hardReasonSets: [],
+	finalCandidateGrams: []
+});
 /**
 * Product-layer rescue orchestration. It never invents quantities: every
 * exposed candidate was generated and re-run by the existing Engine. Options
@@ -8341,27 +8408,33 @@ function assessProductionRescue(session) {
 		strategyTrace: {}
 	};
 	const options = [];
-	const originalTarget = session.plannedInput.target_batch_grams;
-	const shouldOfferRecovery = !nativeSafe(forecastInput, forecastResult) || forecastScore.display !== "10/10";
-	const keepSearch = bestOption("keep_original_batch", (mass) => `Napraw do ${formatBatchMassG(mass)} g`, () => "Zmienia wyłącznie to, czego jeszcze nie potwierdzono, i zachowuje docelową masę partii.", session, forecastInput, "planning", (mass) => Math.abs(mass - originalTarget) <= .1);
-	if (shouldOfferRecovery && keepSearch.option) options.push(keepSearch.option);
-	const enlargeSearch = bestOption("enlarge_batch", (mass) => `Minimalna bezpieczna korekta · ${formatBatchMassG(mass)} g`, (mass) => `Najmniejsza bezpieczna partia powyżej ${formatBatchMassG(originalTarget)} g dla tego, co jest już w naczyniu: ${formatBatchMassG(mass)} g.`, session, forecastInput, "actual_batch", (mass) => mass > originalTarget + .1, "minimum_safe");
-	if (shouldOfferRecovery && enlargeSearch.option) options.push(enlargeSearch.option);
-	const restoreSearch = bestOption("restore_original_recipe", (mass) => `Przywróć oryginalną recepturę · ${formatBatchMassG(mass)} g`, (mass) => `Skaluje wyjściową recepturę do ${formatBatchMassG(mass)} g i może ponownie otworzyć potwierdzone produkty wyłącznie jako dodatnie dolewki.`, session, forecastInput, "actual_batch", (mass) => mass > originalTarget + .1, "restore_original_profile");
-	if (shouldOfferRecovery && restoreSearch.option) options.push(restoreSearch.option);
-	if (nativeSafe(forecastInput, forecastResult)) {
-		const practical = practicalizeProductionRescueCandidate(session, forecastInput, Math.round(totalFor(forecastInput)));
-		if (practical.ok && nativeSafe(practical.audit.executableInput, practical.audit.executableResult)) {
-			const candidateInput = practical.audit.executableInput;
+	const currentTarget = currentCanonicalProductionPlan(session).target_batch_grams;
+	const keepSearch = bestOption("keep_original_batch", (mass) => `Napraw do ${formatBatchMassG(mass)} g`, () => "Zmienia wyłącznie to, czego jeszcze nie potwierdzono, i zachowuje docelową masę partii.", session, forecastInput, "planning", (mass) => Math.abs(mass - currentTarget) <= .1);
+	if (keepSearch.option) options.push(keepSearch.option);
+	const enlargeSearch = hardSafety.safe ? {
+		option: null,
+		trace: emptyStrategyTrace()
+	} : bestOption("enlarge_batch", (mass) => `Minimalna bezpieczna korekta · ${formatBatchMassG(mass)} g`, (mass) => `Najmniejsza bezpieczna partia powyżej ${formatBatchMassG(currentTarget)} g dla tego, co jest już w naczyniu: ${formatBatchMassG(mass)} g.`, session, forecastInput, "actual_batch", (mass) => mass > currentTarget + .1, "minimum_safe");
+	if (enlargeSearch.option) options.push(enlargeSearch.option);
+	const restoreSearch = bestOption("restore_original_recipe", (mass) => `Przywróć oryginalną recepturę · ${formatBatchMassG(mass)} g`, (mass) => `Skaluje wyjściową recepturę do ${formatBatchMassG(mass)} g i może ponownie otworzyć potwierdzone produkty wyłącznie jako dodatnie dolewki.`, session, forecastInput, "actual_batch", (mass) => mass > currentTarget + .1, "restore_original_profile");
+	if (restoreSearch.option) options.push(restoreSearch.option);
+	if (hardSafety.safe) {
+		let continuationAudit = tenthGramProductionAudit(session, forecastInput);
+		if (!continuationAudit) {
+			const practical = practicalizeProductionRescueCandidate(session, forecastInput, Math.round(totalFor(forecastInput)));
+			continuationAudit = practical.ok ? practical.audit : null;
+		}
+		if (continuationAudit && preservesPhysicalReality(session, continuationAudit.executableInput) && nativeSafe(continuationAudit.executableInput, continuationAudit.executableResult)) {
+			const candidateInput = continuationAudit.executableInput;
 			options.push({
 				id: "leave_as_is",
 				title: "Kontynuuj bez korekty",
 				explanation: "Przewidywana gotowa partia pozostaje w zatwierdzonych zakresach technologicznych.",
-				finalMassG: practical.audit.executableResult.total_batch_g,
-				scoreDisplay: recipeFitForInput(candidateInput, practical.audit.executableResult).display,
+				finalMassG: continuationAudit.executableResult.total_batch_g,
+				scoreDisplay: recipeFitForInput(candidateInput, continuationAudit.executableResult).display,
 				exactCandidateInput: forecastInput,
 				candidateInput,
-				practicalAudit: practical.audit,
+				practicalAudit: continuationAudit,
 				instructions: instructionsFor(forecastInput, candidateInput, []),
 				verifiedByEngine: true
 			});

@@ -21,8 +21,8 @@
     "productionSessionSchema": 2
   },
   "bundle": {
-    "bytes": 330519,
-    "sha256": "7f8ddb42c04cc03acc68bec78dd886742a8e42a8c6a55aa77451445dbbc77118",
+    "bytes": 333253,
+    "sha256": "be3472fd376c3fff2b1049aea8300870ee8d8923b2a58d6e2f2b5587fa2a8147",
     "externalImports": 0,
     "dynamicImports": 0
   },
@@ -193,7 +193,7 @@
     },
     {
       "path": "src/features/production-workspace/productionRescue.ts",
-      "sha256": "f25cc4d26008a8d3cd0dc8482187e2aee27d34c347329616c5a9261eeb4c769a"
+      "sha256": "aca362ee21cb918df50a9121659949adc918de8636071bcb8ce216616cb61008"
     },
     {
       "path": "src/features/production-workspace/productionSession.ts",
@@ -268,5 +268,5 @@
       "sha256": "5523e8a79f059b81594793260535fc3b4a85185fe9f5020de87c2c7782a44fdb"
     }
   ],
-  "sourceClosureSha256": "02ef63c6843c8005d63a19081e7fca970f00525113c976dc2f3d6a84285f4cd5"
+  "sourceClosureSha256": "6069c9b8c0e189f0c2a753721f97ca64efb1e914bc4cd659fb46beba0258c357"
 }

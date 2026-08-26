@@ -475,11 +475,38 @@ export function ProductionCockpit({
     production.plannedScore?.score != null &&
     score.score != null &&
     score.score < production.plannedScore.score;
+  const decisionOptions = [
+    {
+      id: 'keep_original_batch',
+      title: `Zachowaj ${formatPhysicalMassG(progress.currentPlanMassG)} g`,
+      explanation:
+        'Dostosujemy ilości, których jeszcze nie dodano. Potwierdzonych ilości nie odejmiemy.',
+    },
+    {
+      id: 'enlarge_batch',
+      title: 'Minimalna bezpieczna korekta',
+      explanation: 'Dodamy najmniejszą ilość materiału, która przywraca twarde zakresy.',
+    },
+    {
+      id: 'restore_original_recipe',
+      title: 'Przywróć oryginalną recepturę',
+      explanation:
+        'Dodamy odpowiednie ilości wszystkich potrzebnych produktów, aby wrócić do wyjściowych proporcji.',
+    },
+    {
+      id: 'leave_as_is',
+      title: 'Kontynuuj bez korekty',
+      explanation: `Nie zmienimy dalszego planu${production.plannedScore?.score && score.score ? `. Przewidywany wynik: ${production.plannedScore.score} → ${score.score}.` : '.'}`,
+    },
+  ] as const;
   const everyDecisionUnavailable =
     rescue?.state === 'options' &&
-    (['keep_original_batch', 'enlarge_batch', 'leave_as_is'] as const).every(
-      (optionId) => production.rescueOptionStates?.[optionId]?.status === 'unavailable',
+    decisionOptions.every(
+      (option) => production.rescueOptionStates?.[option.id]?.status === 'unavailable',
     );
+  const visibleDecisionOptions = decisionOptions.filter(
+    (option) => production.rescueOptionStates?.[option.id]?.status !== 'unavailable',
+  );
   const completionLabel = production.persistenceBusy
     ? 'Zapisywanie partii…'
     : correctionCalculating
@@ -603,33 +630,7 @@ export function ProductionCockpit({
             obecnej zawartości naczynia.
           </p>
           <div className="mt-3 divide-y divide-ink/8 rounded-[10px] bg-white/55 p-1">
-            {(
-              [
-                {
-                  id: 'keep_original_batch',
-                  title: `Zachowaj ${formatPhysicalMassG(progress.originalTargetMassG)} g`,
-                  explanation:
-                    'Dostosujemy ilości, których jeszcze nie dodano. Potwierdzonych ilości nie odejmiemy.',
-                },
-                {
-                  id: 'enlarge_batch',
-                  title: 'Minimalna bezpieczna korekta',
-                  explanation:
-                    'Dodamy najmniejszą ilość materiału, która przywraca twarde zakresy.',
-                },
-                {
-                  id: 'restore_original_recipe',
-                  title: 'Przywróć oryginalną recepturę',
-                  explanation:
-                    'Dodamy odpowiednie ilości wszystkich potrzebnych produktów, aby wrócić do wyjściowych proporcji.',
-                },
-                {
-                  id: 'leave_as_is',
-                  title: 'Kontynuuj bez korekty',
-                  explanation: `Nie zmienimy dalszego planu${production.plannedScore?.score && score.score ? `. Przewidywany wynik: ${production.plannedScore.score} → ${score.score}.` : '.'}`,
-                },
-              ] as const
-            ).map((option) => {
+            {visibleDecisionOptions.map((option) => {
               const evaluation = production.rescueOptionStates?.[option.id];
               const selected = production.selectedRescueOptionId === option.id;
               const recommended = production.recommendedRescueOptionId === option.id;

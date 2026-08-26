@@ -1,7 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { detectViolations, evaluateAdditiveRecoveryNeighborhood, type RecipeInput } from '@/engine';
+import {
+  calculateRecipe,
+  detectViolations,
+  evaluateAdditiveRecoveryNeighborhood,
+  type RecipeInput,
+} from '@/engine';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
 import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
@@ -9,11 +14,17 @@ import { buildCanonicalNewRecipeStarter } from '@/features/recipes/newRecipeStar
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
 import { parseCsv } from '@/lib/csv';
 import {
+  applyVerifiedRescueInput,
   confirmProductionLine,
+  confirmProductionTopUpTask,
   createProductionSession,
+  pendingProductionTopUpTasks,
   setDraftActualGrams,
+  topUpProductionLine,
 } from './productionSession';
-import { assessProductionRescue } from './productionRescue';
+import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
+import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
+import { assessProductionHardSafety, assessProductionRescue } from './productionRescue';
 
 const input: RecipeInput = {
   items: DEFAULT_PRESET.items.map((item) => ({ ...item, actual_grams: null })),
@@ -189,7 +200,271 @@ const exactOwnerSessionAtCheckpoint = (confirmedCount: 1 | 3 | 6, smpOverageG: n
   return run;
 };
 
+const exactP0DeviationInput = (): RecipeInput => {
+  const rows = [
+    ['milk', 'PI-ING-000236', 300],
+    ['cream', 'PI-ING-000180', 128],
+    ['skimmed_milk', 'PI-ING-000270', 76],
+    ['sucrose', 'PI-ING-000514', 81],
+    ['dextrose', 'PI-ING-000494', 66],
+    ['tara', 'PI-ING-000492', 3],
+    ['cherry_tomatoes', 'PI-ING-000350', 346],
+  ] as const;
+  return {
+    items: rows.map(([id, ingredientId, grams]) => ({
+      id,
+      ingredient: verifiedMapperIngredient(ingredientId),
+      planned_grams: grams,
+      actual_grams: null,
+      lock_type: 'unlocked' as const,
+    })),
+    mode: 'classic',
+    category: 'milk_gelato',
+    target_temperature_c: -11,
+    target_batch_grams: 1_000,
+    machine_capacity_grams: null,
+    goals: { formulation_strategy: 'optimal' },
+  };
+};
+
+const makeP0DeviationSession = () => {
+  const plannedInput = exactP0DeviationInput();
+  return createProductionSession({
+    sessionId: 'run-p0-deviation-matrix',
+    ownerUserId: 'owner',
+    source: {
+      recipeId: 'recipe-p0-deviation-matrix',
+      recipeVersionId: 'version-p0-deviation-matrix',
+      recipeVersionNumber: 1,
+      recipeName: 'Cherry tomato gelato',
+    },
+    plannedInput,
+    plannedComposition: {
+      schemaVersion: 1,
+      baseScope: 'BASE_FORMULATION',
+      baseOrder: plannedInput.items.map((item) => item.id),
+      toppings: [],
+      behaviorSnapshots: productBehaviorTestSnapshots(plannedInput),
+      migrationAmbiguities: [],
+    },
+    startedAt: '2026-08-26T12:00:00.000Z',
+  });
+};
+
+const p0SessionWithDeviation = (
+  changedLineId: 'dextrose' | 'skimmed_milk' | 'cherry_tomatoes',
+  actualGrams: number,
+) => {
+  let run = makeP0DeviationSession();
+  const changedIndex = run.lines.findIndex((line) => line.lineId === changedLineId);
+  for (const [index, line] of run.lines.entries()) {
+    if (index > changedIndex) break;
+    const grams = line.lineId === changedLineId ? actualGrams : line.plannedGrams;
+    run = confirmProductionLine(
+      setDraftActualGrams(run, line.lineId, grams),
+      line.lineId,
+      `2026-08-26T12:${String(index + 1).padStart(2, '0')}:00.000Z`,
+    );
+  }
+  return run;
+};
+
 describe('production rescue orchestration', () => {
+  it('covers the exact P0 Dextrose +1 g strategy matrix without a zero-mass minimum correction', () => {
+    const run = p0SessionWithDeviation('dextrose', 67);
+    const assessment = assessProductionRescue(run);
+    const options = new Map(assessment.options.map((option) => [option.id, option]));
+
+    expect(assessment.hardSafety.safe).toBe(true);
+    expect(options.get('leave_as_is')).toMatchObject({ scoreDisplay: '10/10' });
+    expect(options.get('restore_original_recipe')).toMatchObject({
+      finalMassG: expect.closeTo(1_015, 0),
+      scoreDisplay: '10/10',
+    });
+    expect(assessment.options.map((option) => option.id)).toEqual([
+      'restore_original_recipe',
+      'leave_as_is',
+    ]);
+    expect(options.has('enlarge_batch')).toBe(false);
+  });
+
+  it('restores the exact P0 Skimmed Milk +4.5 g fixture and records exact hard-gate proof', () => {
+    const plannedInput = exactP0DeviationInput();
+    const plannedResult = calculateRecipe(plannedInput);
+    let run = p0SessionWithDeviation('skimmed_milk', 80.5);
+    const assessment = assessProductionRescue(run);
+    const restore = assessment.options.find((option) => option.id === 'restore_original_recipe');
+
+    expect(recipeFitForInput(plannedInput, plannedResult).display).toBe('10/10');
+    expect(assessment.forecastResult.total_batch_g).toBe(1_004.5);
+    expect(assessment.forecastScoreDisplay).toBe('10/10');
+    expect(assessment.hardSafety).toEqual({
+      safe: true,
+      violationMetrics: [],
+      provisional: false,
+      capacityExceeded: false,
+      nativeProfileValidated: true,
+    });
+    expect(plannedResult.pod_points).toBeCloseTo(14.936142, 9);
+    expect(plannedResult.pac_points).toBeCloseTo(27.948964, 9);
+    expect(plannedResult.percentages.solids_percent).toBeCloseTo(31.00262, 9);
+    expect(plannedResult.percentages.water_percent).toBeCloseTo(68.99738, 9);
+    expect(plannedResult.scores).not.toBeNull();
+    expect(plannedResult.scores!.overall).toBeCloseTo(83.44466666666666, 9);
+    expect(assessment.forecastResult.pod_points).toBeCloseTo(14.905785963165751, 9);
+    expect(assessment.forecastResult.pac_points).toBeCloseTo(28.083677451468397, 9);
+    expect(assessment.forecastResult.percentages.solids_percent).toBeCloseTo(
+      31.265485316077644,
+      9,
+    );
+    expect(assessment.forecastResult.percentages.water_percent).toBeCloseTo(
+      68.73451468392236,
+      9,
+    );
+    expect(assessment.forecastResult.scores).not.toBeNull();
+    expect(assessment.forecastResult.scores!.overall).toBeCloseTo(83.38966318234611, 9);
+    expect(
+      plannedResult.indicators.map(({ key, value, status }) => ({ key, value, status })),
+    ).toEqual(
+      expect.arrayContaining([
+        { key: 'npac', value: 40.50728303016724, status: 'good' },
+        { key: 'ice_fraction', value: 46.57564569037903, status: 'good' },
+        { key: 'lactose', value: 5.695599999999999, status: 'good' },
+        { key: 'lactose_sandiness_risk', value: 8.254806196988929, status: 'good' },
+        { key: 'fat', value: 5.0215, status: 'good' },
+        {
+          key: 'aerating_protein',
+          value: expect.closeTo(3.9136, 9),
+          status: 'ideal',
+        },
+        { key: 'protein_in_solids', value: 12.623449243967123, status: 'good' },
+        { key: 'total_solids', value: expect.closeTo(31.00262, 9), status: 'good' },
+        { key: 'water', value: expect.closeTo(68.99738, 9), status: 'good' },
+      ]),
+    );
+    expect(
+      assessment.forecastResult.indicators.map(({ key, value, status }) => ({
+        key,
+        value,
+        status,
+      })),
+    ).toEqual(
+      expect.arrayContaining([
+        { key: 'npac', value: 40.858188321561585, status: 'good' },
+        { key: 'ice_fraction', value: 46.20524566057388, status: 'good' },
+        { key: 'lactose', value: 5.898556495769039, status: 'good' },
+        { key: 'lactose_sandiness_risk', value: 8.581651478727567, status: 'good' },
+        { key: 'fat', value: 5.002588352414136, status: 'good' },
+        {
+          key: 'aerating_protein',
+          value: expect.closeTo(4.055998008959682, 9),
+          status: 'ideal',
+        },
+        { key: 'protein_in_solids', value: 12.972765232829975, status: 'good' },
+        {
+          key: 'total_solids',
+          value: expect.closeTo(31.265485316077644, 9),
+          status: 'good',
+        },
+        { key: 'water', value: expect.closeTo(68.73451468392236, 9), status: 'good' },
+      ]),
+    );
+    expect(assessment.options.map((option) => option.id)).toEqual([
+      'restore_original_recipe',
+      'leave_as_is',
+    ]);
+    expect(restore).toMatchObject({
+      finalMassG: 1_060.1,
+      scoreDisplay: '10/10',
+      verifiedByEngine: true,
+    });
+    expect(
+      restore!.exactCandidateInput.items.reduce(
+        (sum, item) => sum + (item.actual_grams ?? item.planned_grams),
+        0,
+      ),
+    ).toBeCloseTo(1_059.3, 1);
+    expect(
+      assessProductionHardSafety(restore!.candidateInput, restore!.practicalAudit.executableResult),
+    ).toMatchObject({ safe: true, violationMetrics: [] });
+    run = applyVerifiedRescueInput(run, restore!.candidateInput, 1);
+    expect(pendingProductionTopUpTasks(run).length).toBeGreaterThan(0);
+    expect(run.lines.find((line) => line.lineId === 'skimmed_milk')?.physicalAddedGrams).toBe(80.5);
+  });
+
+  it('uses the accepted current canonical plan as the restore seed after a second deviation', () => {
+    let run = p0SessionWithDeviation('cherry_tomatoes', 400);
+    const firstRestore = assessProductionRescue(run).options.find(
+      (option) => option.id === 'restore_original_recipe',
+    )!;
+    run = applyVerifiedRescueInput(run, firstRestore.candidateInput, 1);
+    for (const task of pendingProductionTopUpTasks(run)) {
+      run = confirmProductionTopUpTask(run, task.taskId, '2026-08-26T13:00:00.000Z');
+    }
+    const acceptedBatchG = run.lines.reduce((sum, line) => sum + line.targetGrams, 0);
+    const dextrose = run.lines.find((line) => line.lineId === 'dextrose')!;
+    run = topUpProductionLine(
+      run,
+      dextrose.lineId,
+      dextrose.targetGrams + 1,
+      '2026-08-26T13:10:00.000Z',
+    );
+    const secondRestore = assessProductionRescue(run).options.find(
+      (option) => option.id === 'restore_original_recipe',
+    );
+    const expectedScale = (dextrose.targetGrams + 1) / dextrose.targetGrams;
+    const exactSeedG = secondRestore?.exactCandidateInput.items.reduce(
+      (sum, item) => sum + (item.actual_grams ?? item.planned_grams),
+      0,
+    );
+
+    expect(secondRestore).toBeDefined();
+    expect(exactSeedG).toBeCloseTo(acceptedBatchG * expectedScale, 0);
+    expect(secondRestore!.finalMassG).toBeGreaterThan(acceptedBatchG);
+    expect(secondRestore!.verifiedByEngine).toBe(true);
+  });
+
+  it('keeps the exact P0 Tomatoes +54 g restore route applicable through top-up completion', () => {
+    let run = p0SessionWithDeviation('cherry_tomatoes', 400);
+    const assessment = assessProductionRescue(run);
+    const restore = assessment.options.find((option) => option.id === 'restore_original_recipe');
+
+    expect(assessment.forecastScoreDisplay).toBe('9/10');
+    expect(assessment.hardSafety).toMatchObject({
+      safe: false,
+      violationMetrics: ['total_solids', 'water', 'fat'],
+    });
+    expect(assessment.options.map((option) => option.id)).toEqual([
+      'restore_original_recipe',
+    ]);
+    expect(restore).toMatchObject({
+      finalMassG: 1_156.6,
+      scoreDisplay: '10/10',
+      verifiedByEngine: true,
+    });
+    run = applyVerifiedRescueInput(run, restore!.candidateInput, 1);
+    expect(pendingProductionTopUpTasks(run).length).toBeGreaterThan(0);
+    expect(new Set(run.lines.map((line) => line.canonicalIngredientId)).size).toBe(
+      run.lines.length,
+    );
+
+    for (const task of pendingProductionTopUpTasks(run)) {
+      run = confirmProductionTopUpTask(run, task.taskId, '2026-08-26T13:00:00.000Z');
+    }
+    expect(pendingProductionTopUpTasks(run)).toEqual([]);
+    const finalInput = {
+      ...restore!.candidateInput,
+      items: restore!.candidateInput.items.map((item) => ({
+        ...item,
+        actual_grams: item.planned_grams,
+      })),
+    };
+    expect(assessProductionHardSafety(finalInput, calculateRecipe(finalInput))).toMatchObject({
+      safe: true,
+      violationMetrics: [],
+    });
+  });
+
   it('permanently reproduces the owner 3/8 confirmed skimmed-milk +2.5 g incident against the completed forecast', () => {
     let run = makeExactOwnerEightLineSession();
     for (const [lineId, grams, minute] of [
@@ -224,18 +499,24 @@ describe('production rescue orchestration', () => {
       expect.objectContaining({ lineId: 'sucrose', grams: 4.5, finalTargetGrams: 63.5 }),
     ]);
     const restore = assessment.options.find((option) => option.id === 'restore_original_recipe');
-    expect(restore).toMatchObject({ finalMassG: 1045, scoreDisplay: '10/10' });
+    expect(restore).toMatchObject({ finalMassG: 1044.5, scoreDisplay: '10/10' });
     expect(restore?.instructions).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ lineId: 'milk', grams: 26, finalTargetGrams: 610 }),
-        expect.objectContaining({ lineId: 'cream', grams: 4, finalTargetGrams: 102 }),
         expect.objectContaining({
-          lineId: 'skimmed_milk_powder',
-          grams: 0.5,
-          finalTargetGrams: 59,
+          lineId: 'milk',
+          grams: expect.closeTo(26.1, 5),
+          finalTargetGrams: expect.closeTo(610.1, 5),
+        }),
+        expect.objectContaining({
+          lineId: 'cream',
+          grams: expect.closeTo(4.4, 5),
+          finalTargetGrams: expect.closeTo(102.4, 5),
         }),
       ]),
     );
+    expect(
+      restore?.instructions.some((instruction) => instruction.lineId === 'skimmed_milk_powder'),
+    ).toBe(false);
     expect(assessment.options.some((option) => option.id === 'leave_as_is')).toBe(false);
     expect(assessment.strategyTrace.enlarge_batch).toMatchObject({
       generatedSafeCandidateCount: expect.any(Number),
@@ -270,12 +551,12 @@ describe('production rescue orchestration', () => {
     const expectedByOverage = {
       1: {
         preserve: false,
-        enlarge: true,
+        enlarge: false,
         restore: true,
         unchanged: true,
         hardReasons: [],
-        candidateCount: 12,
-        minimumFinalG: 1001.1,
+        candidateCount: 0,
+        minimumFinalG: null,
       },
       2.5: {
         preserve: false,
@@ -314,7 +595,8 @@ describe('production rescue orchestration', () => {
         unchanged: row.unchanged,
         hardReasons: row.hardReasons,
         candidateCount: row.candidateCount,
-        minimumFinalG: Math.min(...row.finalCandidateGrams),
+        minimumFinalG:
+          row.finalCandidateGrams.length > 0 ? Math.min(...row.finalCandidateGrams) : null,
       }).toEqual(expected);
     }
 
@@ -536,9 +818,12 @@ describe('production rescue orchestration', () => {
     );
 
     const assessment = assessProductionRescue(run);
-    expect(assessment.options.map((option) => option.id)).toEqual(['leave_as_is']);
-    expect(assessment.options[0]?.verifiedByEngine).toBe(true);
-    expect(assessment.options[0]?.scoreDisplay).toBe('10/10');
+    expect(assessment.options.map((option) => option.id)).toEqual([
+      'restore_original_recipe',
+      'leave_as_is',
+    ]);
+    expect(assessment.options.every((option) => option.verifiedByEngine)).toBe(true);
+    expect(assessment.options.every((option) => option.scoreDisplay === '10/10')).toBe(true);
   });
 
   it('can add more to an already-confirmed ingredient without subtracting its physical amount', () => {

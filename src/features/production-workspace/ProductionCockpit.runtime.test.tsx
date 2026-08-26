@@ -153,6 +153,10 @@ describe('Production correction decision accessibility', () => {
           status: 'unavailable',
           reason: 'Niedostępne — Engine nie znalazł bezpiecznej większej partii.',
         },
+        restore_original_recipe: {
+          status: 'unavailable',
+          reason: 'Niedostępne — nie można przywrócić proporcji.',
+        },
         leave_as_is: {
           status: 'unavailable',
           reason: 'Niedostępne — przekroczono twardy zakres laktozy.',
@@ -192,6 +196,90 @@ describe('Production correction decision accessibility', () => {
     );
     await act(async () => (confirm as HTMLButtonElement | undefined)?.click());
     expect(cancelCurrentSession).toHaveBeenCalledTimes(1);
+  });
+
+  it('never renders the no-safe state while restore-original-proportions is feasible', async () => {
+    const plannedInput = {
+      ...DEFAULT_PRESET,
+      items: DEFAULT_PRESET.items.map((item) => ({ ...item, actual_grams: null })),
+      machine_capacity_grams: null,
+    };
+    const session = createProductionSession({
+      sessionId: 'run-restore-available-1',
+      ownerUserId: 'owner-focus',
+      source: {
+        recipeId: 'recipe-focus',
+        recipeVersionId: 'version-focus',
+        recipeVersionNumber: 1,
+        recipeName: 'Restore available QA',
+      },
+      plannedInput,
+      startedAt: '2026-08-26T10:00:00.000Z',
+    });
+    const authorization = {
+      authorizationId: 'authorization-restore-1',
+      candidateFingerprint: 'c'.repeat(64),
+      runId: session.sessionId,
+      stableOptionId: 'restore_original_recipe' as const,
+      expectedActualRevision: 1,
+      expectedRescueRevision: 0,
+      authorizedAt: '2026-08-26T10:01:00.000Z',
+      expiresAt: '2099-08-26T10:06:00.000Z',
+      preview: {
+        title: 'Przywróć oryginalną recepturę · 1157 g',
+        explanation: 'Serwer zweryfikował plan.',
+        finalMassG: 1_157,
+        scoreDisplay: '10/10',
+        instructions: [],
+      },
+    };
+    const unavailable = { status: 'unavailable' as const, reason: 'Niedostępne.' };
+    const production = {
+      session,
+      progress: productionProgress(session),
+      toppingProgress: null,
+      rescue: { state: 'options', options: [] },
+      score: { score: 10, label: 'Wyjątkowo dobrze dopasowana' },
+      plannedScore: { score: 10, label: 'Wyjątkowo dobrze dopasowana' },
+      prerequisite: null,
+      persistenceBusy: false,
+      persistenceError: null,
+      rescueOptionsCalculating: false,
+      selectedRescueOptionId: 'restore_original_recipe',
+      recommendedRescueOptionId: 'restore_original_recipe',
+      rescueOptionStates: {
+        keep_original_batch: unavailable,
+        enlarge_batch: unavailable,
+        restore_original_recipe: {
+          status: 'available',
+          authorization,
+          consumeIdempotencyKey: 'consume-restore-1',
+        },
+        leave_as_is: unavailable,
+      },
+    } as unknown as ProductionWorkspaceView;
+
+    await act(async () =>
+      root.render(
+        <ProductionCockpit
+          production={production}
+          onOpenPreview={vi.fn()}
+          onRecalculate={vi.fn()}
+          onReturnToRecipe={vi.fn()}
+        />,
+      ),
+    );
+
+    expect(host.querySelector('[data-testid="production-decision-recovery"]')).toBeNull();
+    expect(
+      host.querySelector('[data-testid="production-decision-restore_original_recipe"]'),
+    ).not.toBeNull();
+    expect(
+      host.querySelector('[data-testid="production-decision-keep_original_batch"]'),
+    ).toBeNull();
+    expect(host.querySelector('[data-testid="production-decision-enlarge_batch"]')).toBeNull();
+    expect(host.querySelector('[data-testid="production-decision-leave_as_is"]')).toBeNull();
+    expect(host.textContent).not.toContain('Żadna bezpieczna korekta nie jest dostępna');
   });
 
   it('requires one explicit in-app confirmation before completing an accepted lower score', async () => {

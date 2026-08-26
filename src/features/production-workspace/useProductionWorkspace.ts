@@ -945,12 +945,13 @@ export function useProductionWorkspace(enabled: boolean) {
         .catch((error) => {
           if (cancelled) return;
           const unavailable = isProductionRescueOptionUnavailableError(error);
-          const originalTarget = basisSession.plannedInput.target_batch_grams;
-          const confirmedMass = productionProgress(basisSession).confirmedMassG;
+          const basisProgress = productionProgress(basisSession);
+          const currentTarget = basisProgress.currentPlanMassG;
+          const confirmedMass = basisProgress.confirmedMassG;
           const reason =
-            option.id === 'keep_original_batch' && confirmedMass > originalTarget + 0.000001
-              ? `Niedostępne — w naczyniu jest już więcej niż ${originalTarget.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} g.`
-              : rescueOptionUnavailableMessage(option.id, originalTarget, error);
+            option.id === 'keep_original_batch' && confirmedMass > currentTarget + 0.000001
+              ? `Niedostępne — w naczyniu jest już więcej niż ${currentTarget.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} g.`
+              : rescueOptionUnavailableMessage(option.id, currentTarget, error);
           setRescueOptionsEvaluation((current) =>
             current.basisKey === rescueOptionsEvaluationKey
               ? {
@@ -998,11 +999,22 @@ export function useProductionWorkspace(enabled: boolean) {
   const rescueOptionsCalculating = Object.values(currentRescueOptionsEvaluation).some(
     (option) => option?.status === 'loading',
   );
+  const unchangedEvaluation = currentRescueOptionsEvaluation.leave_as_is;
+  const unchangedIsSafeTen =
+    unchangedEvaluation?.status === 'available' &&
+    unchangedEvaluation.authorization.preview.scoreDisplay === '10/10';
   const recommendedRescueOptionId = rescueOptionsCalculating
     ? undefined
-    : (
-        ['leave_as_is', 'keep_original_batch', 'enlarge_batch', 'restore_original_recipe'] as const
-      ).find((optionId) => currentRescueOptionsEvaluation[optionId]?.status === 'available');
+    : unchangedIsSafeTen
+      ? ('leave_as_is' as const)
+      : (
+          [
+            'keep_original_batch',
+            'enlarge_batch',
+            'restore_original_recipe',
+            'leave_as_is',
+          ] as const
+        ).find((optionId) => currentRescueOptionsEvaluation[optionId]?.status === 'available');
   const effectiveSelectedRescueOptionId =
     (selectedRescueOption.basisKey === rescueOptionsEvaluationKey
       ? selectedRescueOption.optionId

@@ -1052,6 +1052,10 @@ describe('Production workspace touch-first UI', () => {
             },
           },
         },
+        restore_original_recipe: {
+          status: 'unavailable',
+          reason: 'Ta opcja nie przywraca bezpiecznie proporcji.',
+        },
         leave_as_is: {
           status: 'unavailable',
           reason: 'Ta opcja nie jest bezpieczna dla obecnej partii.',
@@ -1081,10 +1085,9 @@ describe('Production workspace touch-first UI', () => {
     expect(html).toContain('data-testid="production-rescue-options"');
     expect(html).toContain('data-testid="production-decision-enlarge_batch"');
     expect(html).toContain('data-decision-state="selected"');
-    expect(html).toMatch(
-      /<button(?=[^>]*data-testid="production-decision-leave_as_is")(?=[^>]*disabled="")/,
-    );
-    expect(html).toContain('Ta opcja nie jest bezpieczna dla obecnej partii.');
+    expect(html).not.toContain('data-testid="production-decision-leave_as_is"');
+    expect(html).not.toContain('Ta opcja nie jest bezpieczna dla obecnej partii.');
+    expect(html).not.toContain('data-testid="production-decision-restore_original_recipe"');
     expect(html).toContain('Minimalna bezpieczna korekta · 1050 g');
     expect(html).toContain('Rekomendowane');
     expect(html).toContain('tabindex="-1"');

@@ -213,6 +213,21 @@ const noZeroGramRows = (input: RecipeInput, label = '') => {
   ).toBe(true);
 };
 
+const noZeroProductionRows = (input: RecipeInput, label = '') => {
+  const zeros = input.items.filter((item) => !(item.planned_grams > 0));
+  expect(
+    zeros.map((item) => item.id),
+    `${label} must not carry 0 g rows`.trim(),
+  ).toEqual([]);
+  expect(
+    input.items.every(
+      (item) =>
+        Math.abs(item.planned_grams * 10 - Math.round(item.planned_grams * 10)) <= 1e-8,
+    ),
+    `${label} must use executable Production precision (0.1 g)`.trim(),
+  ).toBe(true);
+};
+
 const storeItems = () =>
   useRecipeStore.getState().items.map((item) => [item.id, item.planned_grams] as const);
 
@@ -634,7 +649,7 @@ describe('Zero-gram executable recipe invariant', () => {
     ]);
   });
 
-  it('12. Rescue path: every rescue candidate is a whole-gram recipe without 0 g rows', () => {
+  it('12. Rescue path: every rescue candidate uses executable Production precision without 0 g rows', () => {
     const input: RecipeInput = {
       items: DEFAULT_PRESET.items.map((item) => ({ ...item, actual_grams: null })),
       mode: 'classic',
@@ -664,7 +679,7 @@ describe('Zero-gram executable recipe invariant', () => {
     const assessment = assessProductionRescue(confirmed);
     expect(['options', 'impossible', 'not_needed']).toContain(assessment.state);
     for (const option of assessment.options) {
-      noZeroGramRows(option.candidateInput, `rescue ${option.id}`);
+      noZeroProductionRows(option.candidateInput, `rescue ${option.id}`);
     }
     // Direct practicalization of a rescue candidate that zeroes an optional,
     // not-yet-added line omits that line instead of keeping 0 g.
