@@ -1,6 +1,6 @@
 # Crown / Multi-Main stress summary — final
 
-Baseline/phase SHA: working-tree-on-f5d57bdfefb04405d5249f76460e96ef9e08b0b9
+Baseline/phase SHA: 154cf99149a7e69f3bac40ff673dcaff36cba707
 
 ## Totals
 
@@ -23,7 +23,7 @@ Baseline/phase SHA: working-tree-on-f5d57bdfefb04405d5249f76460e96ef9e08b0b9
 
 - Worst ratio-share drift: 0.15621716 (VEGAN-2C-06).
 - Largest non-Main formulation drift: 725 g (SORBET-1C-05).
-- Slowest Preview: 318756 ms (SORBET-3C-03).
+- Slowest Preview: 358603 ms (SORBET-5C-01).
 
 ## Non-PASS by Crown count
 
