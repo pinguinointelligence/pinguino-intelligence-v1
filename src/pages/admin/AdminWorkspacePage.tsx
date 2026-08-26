@@ -11,6 +11,7 @@ import { AdminCommunitySection } from '@/features/admin/AdminCommunitySection';
 import { AdminInvitesSection } from '@/features/admin/AdminInvitesSection';
 import { AdminPartnersSection } from '@/features/admin/AdminPartnersSection';
 import { AdminUsersSection } from '@/features/admin/AdminUsersSection';
+import { AdminCustomerAddedProductsSection } from '@/features/admin/AdminCustomerAddedProductsSection';
 import {
   adminProductRequestAction,
   approveProductRequest,
@@ -25,7 +26,7 @@ import {
 } from '@/services/adminControl';
 
 const NAV = [
-  ['overview','OVERVIEW'],['product-requests','PRODUCT REQUESTS'],['catalog','CATALOG & COUNTRIES'],
+  ['overview','OVERVIEW'],['customer-added-products','CUSTOMER-ADDED PRODUCTS'],['product-requests','PRODUCT REQUESTS'],['catalog','CATALOG & COUNTRIES'],
   ['users','USERS'],['revenue','SUBSCRIPTIONS & REVENUE'],['partners','PARTNERS'],
   ['community','COMMUNITY & CONTENT'],['operations','OPERATIONS'],['audit','AUDIT LOG'],
   ['settings','ADMIN SETTINGS'],
@@ -65,6 +66,7 @@ export function AdminWorkspacePage() {
 function AdminSection({ section }: { section: Section }) {
   if (section==='overview') return <Overview />;
   if (section==='product-requests') return <ProductRequests />;
+  if (section==='customer-added-products') return <AdminCustomerAddedProductsSection />;
   if (section==='users') return <AdminUsersSection />;
   if (section==='revenue') return <Directory section="FINANCE" />;
   if (section==='partners') return <AdminPartnersSection />;

@@ -49,6 +49,7 @@ const SCANNER_MISSING_FIELDS = new Set([
   'nutrition',
   'ingredientsText',
   'allergensText',
+  'production_declarations',
 ]);
 const objectValue = (value: unknown): Record<string, unknown> =>
   value && typeof value === 'object' && !Array.isArray(value)

@@ -6,47 +6,75 @@ import { describe, expect, it } from 'vitest';
 const ROOT = resolve(import.meta.dirname, '..', '..', '..');
 const read = (...parts: string[]) => readFileSync(join(ROOT, ...parts), 'utf8');
 const base = read('supabase', 'migrations', '20260826120000_admin_partner_controlled_catalog.sql');
-const readModels = read('supabase', 'migrations', '20260826121000_controlled_catalog_read_models.sql');
-const partner = read('supabase', 'migrations', '20260826122000_partner_workspace_and_public_links.sql');
+const readModels = read(
+  'supabase',
+  'migrations',
+  '20260826121000_controlled_catalog_read_models.sql',
+);
+const partner = read(
+  'supabase',
+  'migrations',
+  '20260826122000_partner_workspace_and_public_links.sql',
+);
 const operations = read('supabase', 'migrations', '20260826123000_admin_operational_actions.sql');
 const missingFieldConflict = read(
-  'supabase', 'migrations', '20260826124000_product_request_missing_field_conflict_fix.sql',
+  'supabase',
+  'migrations',
+  '20260826124000_product_request_missing_field_conflict_fix.sql',
 );
 const catalogGuard = read(
-  'supabase', 'migrations', '20260826125000_admin_catalog_guard_context_fix.sql',
+  'supabase',
+  'migrations',
+  '20260826125000_admin_catalog_guard_context_fix.sql',
 );
 const partnerRandom = read(
-  'supabase', 'migrations', '20260826126000_partner_content_link_random_fix.sql',
+  'supabase',
+  'migrations',
+  '20260826126000_partner_content_link_random_fix.sql',
 );
 const requestPrAuthority = read(
-  'supabase', 'migrations', '20260826127000_admin_product_request_pr_authority.sql',
+  'supabase',
+  'migrations',
+  '20260826127000_admin_product_request_pr_authority.sql',
 );
 const requestRoleReadiness = read(
-  'supabase', 'migrations', '20260826128000_product_request_persisted_role_readiness.sql',
+  'supabase',
+  'migrations',
+  '20260826128000_product_request_persisted_role_readiness.sql',
 );
 const catalogRetirePreflight = read(
-  'supabase', 'migrations', '20260826129000_admin_catalog_retire_preflight.sql',
+  'supabase',
+  'migrations',
+  '20260826129000_admin_catalog_retire_preflight.sql',
 );
 const catalogRetireHashKey = read(
-  'supabase', 'migrations', '20260826130000_admin_catalog_retire_preflight_hash_key.sql',
+  'supabase',
+  'migrations',
+  '20260826130000_admin_catalog_retire_preflight_hash_key.sql',
 );
 const referralClickConflict = read(
-  'supabase', 'migrations', '20260826131000_referral_click_dedupe_conflict_fix.sql',
+  'supabase',
+  'migrations',
+  '20260826131000_referral_click_dedupe_conflict_fix.sql',
 );
 const requestFilterProjection = read(
-  'supabase', 'migrations', '20260826132000_admin_product_request_filter_projection.sql',
+  'supabase',
+  'migrations',
+  '20260826132000_admin_product_request_filter_projection.sql',
 );
 const requestExactCandidateColumns = read(
-  'supabase', 'migrations', '20260826133000_admin_product_request_exact_candidate_columns.sql',
+  'supabase',
+  'migrations',
+  '20260826133000_admin_product_request_exact_candidate_columns.sql',
 );
 
 describe('controlled customer product intake', () => {
-  it('revokes the historical Scanner product-creation RPCs and uses a request on no exact match', () => {
+  it('keeps historical PM creation revoked while final Scanner uses customer-added authority', () => {
     expect(base).toContain('revoke execute on function public.reserve_product_scan_creation_v1');
     expect(base).toContain('revoke execute on function public.complete_product_scan_creation_v1');
     const finalize = read('supabase', 'functions', 'product-scan-finalize', 'index.ts');
-    expect(finalize).toContain("requestResult.kind !== 'product_request'");
-    expect(finalize).toContain("'gellatti_submit_product_request_v1'");
+    expect(finalize).toContain("'gellatti_upsert_customer_added_product_v1'");
+    expect(finalize).toContain("origin: 'CUSTOMER_ADDED'");
     expect(finalize).not.toContain('reserve_product_scan_creation_v1');
     expect(finalize).not.toContain('complete_product_scan_creation_v1');
   });
@@ -63,7 +91,9 @@ describe('controlled customer product intake', () => {
     expect(submit).toContain('product_request_approval_binding_required');
     expect(submit).toContain("canonicalInput.provenance !== 'product_add_request_admin_v1'");
     expect(requestPrAuthority).toContain('product_add_request_admin_v1');
-    expect(requestPrAuthority).toContain("request_authority.status in ('SUBMITTED','ADMIN_REVIEW','NEEDS_INFO','RESUBMITTED')");
+    expect(requestPrAuthority).toContain(
+      "request_authority.status in ('SUBMITTED','ADMIN_REVIEW','NEEDS_INFO','RESUBMITTED')",
+    );
     expect(requestRoleReadiness).toContain('productBehaviorAuthority,baseRecipeEligible');
     expect(requestRoleReadiness).toContain("pb.profile_permissions->>'BASE_RECIPE'");
   });
@@ -85,11 +115,19 @@ describe('controlled customer product intake', () => {
     expect(requestExactCandidateColumns).toContain('candidate_variant.ean');
     const workspace = read('src', 'pages', 'admin', 'AdminWorkspacePage.tsx');
     for (const label of [
-      'User filter', 'Brand filter', 'EAN filter', 'Market country filter',
-      'Submitted from date filter', 'Submitted to date filter', 'Minimum age days',
-      'Assigned Admin filter', 'Missing field filter', 'Exact match candidate filter',
+      'User filter',
+      'Brand filter',
+      'EAN filter',
+      'Market country filter',
+      'Submitted from date filter',
+      'Submitted to date filter',
+      'Minimum age days',
+      'Assigned Admin filter',
+      'Missing field filter',
+      'Exact match candidate filter',
       'Request source filter',
-    ]) expect(workspace).toContain(`aria-label="${label}"`);
+    ])
+      expect(workspace).toContain(`aria-label="${label}"`);
     expect(workspace).toContain('aria-label="Final approval preview"');
     expect(workspace).toContain('ProductBehavior role');
     expect(workspace).toContain('Usage readiness');
@@ -99,7 +137,14 @@ describe('controlled customer product intake', () => {
 
 describe('Admin server and RLS boundaries', () => {
   it('supports six permission-bearing roles and rejects client-only authority', () => {
-    for (const role of ['super_admin','catalog_admin','support_admin','partner_admin','finance_admin','content_moderator']) {
+    for (const role of [
+      'super_admin',
+      'catalog_admin',
+      'support_admin',
+      'partner_admin',
+      'finance_admin',
+      'content_moderator',
+    ]) {
       expect(base).toContain(`'${role}'`);
     }
     expect(base).toContain('security definer');
@@ -111,7 +156,7 @@ describe('Admin server and RLS boundaries', () => {
     expect(base).toContain("'product-request-evidence','product-request-evidence',false");
     expect(operations).toContain('product_request_evidence_read_admin');
     const edge = read('supabase', 'functions', 'admin-control', 'index.ts');
-    expect(edge).toContain("createSignedUrl(item.storage_path, 300)");
+    expect(edge).toContain('createSignedUrl(item.storage_path, 300)');
     expect(edge).not.toContain('getPublicUrl');
   });
 
@@ -120,7 +165,9 @@ describe('Admin server and RLS boundaries', () => {
     expect(operations).toContain('mapper_reference_is_read_only');
     expect(operations).toContain('public.ingest_product_v1');
     expect(operations).toContain("'operation','retire'");
-    expect(operations).not.toMatch(/(insert|update|delete)\s+(into\s+|from\s+)?public\.mapper_basement/i);
+    expect(operations).not.toMatch(
+      /(insert|update|delete)\s+(into\s+|from\s+)?public\.mapper_basement/i,
+    );
     expect(catalogGuard).toContain("set_config('app.canonical_product_ingest','v1',true)");
     expect(catalogGuard).toContain('v_prior_ingest_context');
     expect(catalogRetirePreflight).toContain('preflight_product_ingest_v1');
@@ -176,7 +223,9 @@ describe('server-confirmed Admin finance notifications', () => {
   it('dedupes by paid invoice and excludes zero/failed payments from sound', () => {
     expect(operations).toContain("new.event_type in ('invoice.paid','invoice.payment_succeeded')");
     expect(operations).toContain('v_amount>0');
-    expect(operations).toContain("'stripe-payment:'||case when new.livemode then 'live' else 'test' end||':'||v_object_id");
+    expect(operations).toContain(
+      "'stripe-payment:'||case when new.livemode then 'live' else 'test' end||':'||v_object_id",
+    );
     expect(operations).toContain('sound_eligible');
     expect(operations).toContain('on conflict(dedupe_key) do nothing');
     expect(readModels).toContain("'soundPlayedAt', q.sound_played_at");

@@ -200,17 +200,37 @@ export async function analyzeProductImages(input: {
 }
 
 export async function finalizeProductScan(input: {
+  action?: 'preview' | 'finalize';
   sessionId: string;
   idempotencyKey: string;
-  marketCountryCode?: string | null;
+  customerFamily?:
+    | 'dairy'
+    | 'fruit'
+    | 'cocoa_chocolate'
+    | 'nut_paste'
+    | 'alcohol'
+    | 'sweetener'
+    | 'beverage'
+    | 'technical'
+    | 'other'
+    | null;
   confirmations?: {
+    packageEvidenceExhausted?: boolean;
+    /** Historical caller fields remain accepted at the service boundary. */
     noAdditionalAllergenStatementVisible?: boolean;
     notOnLabelFields?: string[];
     productFields?: {
-      nutrition: Record<string, number>;
-      nutritionBasis: 'per_100g' | 'per_100ml' | null;
-      ingredientsText: string | null;
-      allergensText: string | null;
+      barcode?: string | null;
+      identity?: {
+        displayName?: string | null;
+        brand?: string | null;
+        explicitlyUnbranded?: boolean;
+      };
+      nutrition?: Record<string, number | string | null>;
+      ingredientsText?: string | null;
+      allergensText?: string | null;
+      productionDeclarations?: Record<string, number | string | null>;
+      nutritionBasis?: 'per_100g' | 'per_100ml' | null;
     };
   };
   privateOverlay: {
@@ -284,12 +304,14 @@ export async function uploadProductRequestEvidence(input: {
   if (authError || !auth.user) throw new Error('Zaloguj się, aby przesłać dowody produktu.');
   for (const [index, asset] of input.assets.entries()) {
     const checksum = await sha256File(asset.file);
-    const extension = asset.file.type === 'image/png' ? 'png' : asset.file.type === 'image/webp' ? 'webp' : 'jpg';
+    const extension =
+      asset.file.type === 'image/png' ? 'png' : asset.file.type === 'image/webp' ? 'webp' : 'jpg';
     const path = `${auth.user.id}/${input.requestId}/${asset.id}.${extension}`;
     const { error: uploadError } = await supabase.storage
       .from('product-request-evidence')
       .upload(path, asset.file, { contentType: asset.file.type, upsert: false });
-    if (uploadError && !/already exists/i.test(uploadError.message)) throw new Error(uploadError.message);
+    if (uploadError && !/already exists/i.test(uploadError.message))
+      throw new Error(uploadError.message);
     const { error: registerError } = await supabase.rpc(
       'gellatti_register_product_request_evidence_v1',
       {
@@ -308,7 +330,8 @@ export async function uploadProductRequestEvidence(input: {
         },
       },
     );
-    if (registerError && !/duplicate/i.test(registerError.message)) throw new Error(registerError.message);
+    if (registerError && !/duplicate/i.test(registerError.message))
+      throw new Error(registerError.message);
   }
 }
 

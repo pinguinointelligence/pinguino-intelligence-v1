@@ -16,19 +16,18 @@ describe('Product Scanner server/client/security boundary', () => {
   const finalize = read('supabase/functions/product-scan-finalize/index.ts');
   const migration = read('supabase/migrations/20260821120000_product_scanner_v1.sql');
 
-  it('offers one capture session across camera/upload/drop/paste with local barcode detection', () => {
-    expect(ui).toContain('navigator.mediaDevices.getUserMedia');
+  it('offers one native capture session across camera/upload/drop/paste with local barcode detection', () => {
+    expect(ui).toContain('capture="environment"');
+    expect(ui).toContain('accept={PRODUCT_SCAN_ACCEPT}');
+    expect(ui).toContain('multiple');
     expect(ui).toContain("void addFiles(files, 'paste')");
     expect(ui).toContain("void addFiles([...event.dataTransfer.files], 'drop')");
-    expect(ui).toContain('camera_auto');
-    expect(ui).toContain('RollingBestFrameWindow');
     expect(ui).toContain('getSharedBarcodeDecoder');
-    expect(ui).toContain('createLiveFrameSource');
-    expect(ui).toContain('Usuń');
-    expect(ui).toContain('Skanuj kamerą');
-    expect(ui).toContain('Dodaj zdjęcia');
+    expect(ui).toContain('Zrób zdjęcie');
+    expect(ui).toContain('Wybierz zdjęcia');
+    expect(ui).not.toContain('navigator.mediaDevices.getUserMedia');
+    expect(ui).not.toContain('<video');
     expect(ui).not.toMatch(/MediaRecorder|RTCPeerConnection|webrtc/i);
-    expect(ui).toContain("document.addEventListener('visibilitychange'");
   });
 
   it('keeps the OpenAI key and model choice server-only', () => {
@@ -81,17 +80,17 @@ describe('Product Scanner server/client/security boundary', () => {
     expect(migration).not.toMatch(
       /(?:insert|update|delete|truncate)\s+(?:table\s+)?public\.mapper_basement/i,
     );
-    expect(finalize).not.toContain('p_private_overlay: privateOverlay');
-    expect(finalize).toContain("'gellatti_submit_product_request_v1'");
+    expect(finalize).toContain('p_private_overlay: privateOverlay');
+    expect(finalize).toContain("'gellatti_upsert_customer_added_product_v1'");
   });
 
-  it('pins the exact Basic/Pro product quota and excludes failures/duplicates', () => {
+  it('keeps legacy Scanner cost quotas without allocating retired PM creation slots', () => {
     expect(migration).toContain("v_plan='pro' and v_month>=50");
     expect(migration).toContain("v_plan='basic' and v_month>=10");
     expect(migration).toContain("v_plan='basic' and v_lifetime>=5 and v_day>=1");
     expect(migration).toContain("status=case when p_created then 'consumed' else 'released' end");
     expect(finalize).not.toContain('reserve_product_scan_creation_v1');
-    expect(finalize).toContain('usableProductCreated: false');
+    expect(finalize).toContain('usableProductCreated: true');
     expect(migration).toContain('from public.account_profiles where user_id=p_actor_user_id');
     expect(migration).toContain("v_timezone:='UTC'");
   });
@@ -117,17 +116,11 @@ describe('Product Scanner server/client/security boundary', () => {
     expect(analyze).toContain('p_result: cumulativeResult');
   });
 
-  it('keeps ordinary missing allergen declaration behind one truthful owner confirmation', () => {
-    expect(finalize).toContain('noAdditionalAllergenStatementVisible');
-    expect(finalize).toContain("missingCriticalFields[0] === 'allergen_confirmation'");
-    expect(finalize).toContain('absence_of_statement_is_not_no_allergens');
-    expect(finalize).toContain('missingFieldsAfterNotOnLabelConfirmation');
-    expect(finalize).toContain('absence_only_not_zero_or_none');
-    expect(finalize).toContain('userConfirmedNotOnLabelFields');
-    expect(finalize).toContain('validation.highRiskAuthorityRequired !== true');
-    expect(finalize).toContain('result_json: scanResult');
-    expect(finalize).toContain('modelValidation: effectiveValidation');
-    expect(finalize).toContain(".select('id')");
+  it('never converts exhausted package evidence into a synthetic allergen fact', () => {
+    expect(ui).toContain('Nie mam więcej informacji na opakowaniu');
+    expect(finalize).toContain('packageEvidenceExhausted');
+    expect(finalize).not.toContain('no allergens');
+    expect(finalize).not.toContain('brak alergenów');
   });
 
   it('records safe cost/rate diagnostics without raw IPs or images', () => {
@@ -172,36 +165,34 @@ describe('Product Scanner server/client/security boundary', () => {
     expect(ui).toContain("void addFiles(files, 'gallery')");
     // One analyse path, one finalize path — there is no second ingestion pipeline.
     expect(ui.match(/analyzeProductImages\(/g)?.length).toBe(1);
-    expect(ui.match(/finalizeProductScan\(/g)?.length).toBe(1);
+    expect(ui.match(/finalizeProductScan\(/g)?.length).toBe(2);
   });
 
   it('sends only new evidence and the canonical list of unresolved fields', () => {
     expect(ui).toContain('analyzedAssetIds');
-    expect(ui).toContain('missingFieldsForAnalysis');
+    expect(ui).toContain('INITIAL_MISSING_FIELDS');
     expect(service).toContain('missingFields: string[]');
     expect(analyze).toContain('Requested missing fields only:');
   });
 
-  it('creates only a controlled Product Add Request and lets exact GTIN reuse win', () => {
-    expect(finalize).toContain("'gellatti_submit_product_request_v1'");
-    expect(finalize).toContain("requestResult.kind !== 'product_request'");
-    expect(finalize).toContain("requestResult.kind !== 'existing_product'");
-    expect(finalize).toContain('usableProductCreated: false');
+  it('creates one customer-added product through shared profile authority and lets exact GTIN reuse win', () => {
+    expect(finalize).toContain("'gellatti_upsert_customer_added_product_v1'");
+    expect(finalize).toContain('normalizeValidatedBarcode');
+    expect(finalize).toContain('usableProductCreated: true');
     expect(finalize).not.toContain("service.rpc('ingest_product_v1'");
-    expect(finalize).not.toContain('validateIntimportProductProfileProposal');
-    expect(finalize).not.toContain('productProfileAuthority');
+    expect(finalize).toContain('validateIntimportProductProfileProposal');
+    expect(finalize).toContain('validateProductBehaviorAuthority');
     expect(service).not.toContain('validateIntimportProductProfileProposal');
   });
 
   it('shows the required privacy message before cloud analysis', () => {
     expect(ui).toContain('Zdjęcia etykiety mogą zostać przesłane do analizy produktu.');
     expect(ui).toContain('Ceny, dostawcy, notatki i stan magazynowy nie są publikowane.');
-    expect(ui.indexOf('if (!current.privacyAccepted)')).toBeLessThan(
+    expect(ui.indexOf('if (!privacyAccepted)')).toBeLessThan(
       ui.indexOf('const response = await analyzeProductImages'),
     );
     // Live capture uploads on its own, so consent is taken BEFORE the camera opens —
     // not after the frames the owner never chose to send already exist.
-    expect(ui).toContain('if (!session.current.privacyAccepted)');
-    expect(ui).toContain('disabled={!state.privacyAccepted}');
+    expect(ui).toContain('disabled={!privacyAccepted}');
   });
 });

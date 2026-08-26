@@ -55,6 +55,18 @@ export interface ProductScanNutrition {
   fibre: number | null;
 }
 
+export interface ProductScanProductionDeclarations {
+  alcoholAbv: number | null;
+  cocoaButterPercent: number | null;
+  cocoaSolidsPercent: number | null;
+  fruitContentPercent: number | null;
+  brix: number | null;
+  concentrationText: string | null;
+  dosageText: string | null;
+  technicalParametersText: string | null;
+  formDeclaration: string | null;
+}
+
 export interface ProductScanResult {
   schemaVersion: typeof PRODUCT_SCAN_SCHEMA_VERSION;
   identity: {
@@ -74,6 +86,9 @@ export interface ProductScanResult {
   };
   barcodes: Array<{ value: string; format: 'EAN_8' | 'EAN_13' | 'UPC_A' | 'UPC_E' }>;
   nutrition: ProductScanNutrition;
+  /** Added by the final customer flow. Optional only for historical/test
+   * snapshots created before the strict Scanner response schema included it. */
+  productionDeclarations?: ProductScanProductionDeclarations;
   ingredientsText: string | null;
   allergensText: string | null;
   mayContainAllergens: string[];
@@ -117,6 +132,7 @@ export const PRODUCT_SCAN_JSON_SCHEMA = {
     'package',
     'barcodes',
     'nutrition',
+    'productionDeclarations',
     'ingredientsText',
     'allergensText',
     'mayContainAllergens',
@@ -205,6 +221,32 @@ export const PRODUCT_SCAN_JSON_SCHEMA = {
           'fibre',
         ].map((key) => [key, { type: ['number', 'null'] }]),
       ) as Record<string, unknown>,
+    },
+    productionDeclarations: {
+      type: 'object',
+      additionalProperties: false,
+      required: [
+        'alcoholAbv',
+        'cocoaButterPercent',
+        'cocoaSolidsPercent',
+        'fruitContentPercent',
+        'brix',
+        'concentrationText',
+        'dosageText',
+        'technicalParametersText',
+        'formDeclaration',
+      ],
+      properties: {
+        alcoholAbv: { type: ['number', 'null'] },
+        cocoaButterPercent: { type: ['number', 'null'] },
+        cocoaSolidsPercent: { type: ['number', 'null'] },
+        fruitContentPercent: { type: ['number', 'null'] },
+        brix: { type: ['number', 'null'] },
+        concentrationText: { type: ['string', 'null'] },
+        dosageText: { type: ['string', 'null'] },
+        technicalParametersText: { type: ['string', 'null'] },
+        formDeclaration: { type: ['string', 'null'] },
+      },
     },
     ingredientsText: { type: ['string', 'null'] },
     allergensText: { type: ['string', 'null'] },

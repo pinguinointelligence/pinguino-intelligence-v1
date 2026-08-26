@@ -59,10 +59,21 @@ export type ProductSemanticFamily =
   | 'unknown';
 
 export type ProductPhysicalForm =
-  'SOLID' | 'DRY' | 'POWDER' | 'PASTE' | 'PUREE' | 'LIQUID' | 'SAUCE' | 'COATING' | 'UNKNOWN';
+  | 'SOLID'
+  | 'DRY'
+  | 'POWDER'
+  | 'PASTE'
+  | 'PUREE'
+  | 'LIQUID'
+  | 'SAUCE'
+  | 'COATING'
+  | 'UNKNOWN';
 
 export type ProductIntendedUsageRole =
-  'BASE_ONLY' | 'TOPPING_ONLY' | 'BASE_AND_TOPPING' | 'NEITHER_REVIEW';
+  | 'BASE_ONLY'
+  | 'TOPPING_ONLY'
+  | 'BASE_AND_TOPPING'
+  | 'NEITHER_REVIEW';
 
 export type ProductFlavorDomain =
   | 'CHOCOLATE_WHITE'
@@ -80,13 +91,27 @@ export type ProductFlavorDomain =
   | 'UNKNOWN';
 
 export type ProductDosageBasis =
-  'WATER' | 'MILK' | 'LIQUID_MIX' | 'FINISHED_MIX' | 'PRODUCT' | 'UNKNOWN';
+  | 'WATER'
+  | 'MILK'
+  | 'LIQUID_MIX'
+  | 'FINISHED_MIX'
+  | 'PRODUCT'
+  | 'UNKNOWN';
 
 export type ProductDosageUnit =
-  'G_PER_L' | 'G_PER_KG' | 'G_PER_10_KG' | 'ML_PER_L' | 'PERCENT' | 'AS_DESIRED' | 'UNKNOWN';
+  | 'G_PER_L'
+  | 'G_PER_KG'
+  | 'G_PER_10_KG'
+  | 'ML_PER_L'
+  | 'PERCENT'
+  | 'AS_DESIRED'
+  | 'UNKNOWN';
 
 export type ProductDosageNormalizationBasis =
-  'GELLATTI_BASE_1000G' | 'SOURCE_G_PER_KG_1000G' | 'SOURCE_G_PER_10_KG_10000G' | 'SOURCE_PERCENT';
+  | 'GELLATTI_BASE_1000G'
+  | 'SOURCE_G_PER_KG_1000G'
+  | 'SOURCE_G_PER_10_KG_10000G'
+  | 'SOURCE_PERCENT';
 
 export interface ProductDosageInterpretation {
   semantics: 'FIXED' | 'AS_DESIRED' | 'NONE' | 'UNKNOWN';
@@ -160,7 +185,7 @@ export function canonicalizeProductSemanticEvidence(
 
 export interface ProductSemanticClassification {
   authority: typeof PRODUCT_RECOGNITION_VERSION;
-  classificationSource: 'DETERMINISTIC' | 'SERVER_MODEL' | 'REVIEW_REQUIRED';
+  classificationSource: 'DETERMINISTIC' | 'SERVER_MODEL' | 'CUSTOMER_CONFIRMED' | 'REVIEW_REQUIRED';
   productArchetype: ProductArchetype;
   ingredientFamily: ProductSemanticFamily;
   physicalForm: ProductPhysicalForm;

@@ -171,7 +171,7 @@ describe('La Chocolatera two-photo rounding and semantic handoff regression', ()
     expect(semantic.nutrition).toContain('"protein":25.5');
   });
 
-  it('creates a product-owned PM profile and proves the tiny residual sugar uncertainty non-material', () => {
+  it('creates a product-owned customer profile and proves the tiny residual sugar uncertainty non-material', () => {
     const semantic = productSemanticEvidenceFromScanResult(merged);
     const { rows } = loadMapperKnowledgeRows();
     const declared = {
@@ -184,7 +184,7 @@ describe('La Chocolatera two-photo rounding and semantic handoff regression', ()
       kcal_per_100g: 375,
     } as const;
     const authority = validateIntimportProductProfileProposal({
-      origin: 'PM',
+      origin: 'CUSTOMER_ADDED',
       proposedMapperIngredientId: null,
       recognitionEvidence: semantic,
       matchInput: {
@@ -308,7 +308,7 @@ describe('La Chocolatera two-photo rounding and semantic handoff regression', ()
     expect(authority?.productAccuracyAssessment.criticalCapApplied).toBe(false);
 
     const withoutAllergenScore = validateIntimportProductProfileProposal({
-      origin: 'PM',
+      origin: 'CUSTOMER_ADDED',
       proposedMapperIngredientId: null,
       recognitionEvidence: semantic,
       matchInput: {

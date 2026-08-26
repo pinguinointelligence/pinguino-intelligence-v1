@@ -78,6 +78,43 @@ export interface AdminProductRequest {
   evidence: Array<Record<string, unknown>>;
 }
 
+export interface AdminCustomerAddedProduct {
+  id: string;
+  ean: string;
+  productId: string;
+  productCode: string;
+  name: string;
+  brand: string | null;
+  status: 'PENDING' | 'CANONICALIZED' | 'ARCHIVED';
+  distinctCustomerCount: number;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  productAccuracy: number;
+  profile: Record<string, unknown>;
+  behavior: Record<string, unknown>;
+}
+
+export async function listAdminCustomerAddedProducts(): Promise<AdminCustomerAddedProduct[]> {
+  if (!supabase) return unavailable();
+  const { data, error } = await supabase.rpc('gellatti_admin_customer_added_products_v1', {
+    p_status: 'PENDING',
+    p_limit: 500,
+  });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as unknown as AdminCustomerAddedProduct[];
+}
+
+export async function canonicalizeAdminCustomerAddedProduct(
+  pendingId: string,
+): Promise<Record<string, unknown>> {
+  if (!supabase) return unavailable();
+  const { data, error } = await supabase.rpc('gellatti_admin_canonicalize_customer_added_v1', {
+    p_customer_added_product_id: pendingId,
+  });
+  if (error) throw new Error(error.message);
+  return record(data);
+}
+
 export async function getAdminOverview(): Promise<AdminOverview> {
   if (!supabase) return unavailable();
   const { data, error } = await supabase.rpc('gellatti_admin_overview_v1');
@@ -99,7 +136,13 @@ export async function listAdminProductRequests(
 
 export async function adminProductRequestAction(
   requestId: string,
-  action: 'ADMIN_EVIDENCE_PATCH' | 'START_REVIEW' | 'REQUEST_INFO' | 'REJECT' | 'DUPLICATE' | 'APPROVE_LINK',
+  action:
+    | 'ADMIN_EVIDENCE_PATCH'
+    | 'START_REVIEW'
+    | 'REQUEST_INFO'
+    | 'REJECT'
+    | 'DUPLICATE'
+    | 'APPROVE_LINK',
   payload: Record<string, unknown> = {},
 ): Promise<void> {
   if (!supabase) return unavailable();
@@ -113,7 +156,7 @@ export async function adminProductRequestAction(
 
 const record = (value: unknown): Record<string, unknown> =>
   value && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, unknown>
+    ? (value as Record<string, unknown>)
     : {};
 const value = (primary: unknown, fallback: unknown): unknown =>
   primary === undefined || primary === null || primary === '' ? fallback : primary;
@@ -130,12 +173,32 @@ export async function approveProductRequest(
   const extracted = record(request.extractedData);
   const corrected = record(request.userCorrections);
   const verified = record(request.adminVerifiedData);
-  const identity = { ...record(extracted.identity), ...record(corrected.identity), ...record(verified.identity) };
-  const packageFacts = { ...record(extracted.package), ...record(corrected.package), ...record(verified.package) };
-  const nutrition = { ...record(extracted.nutrition), ...record(corrected.nutrition), ...record(verified.nutrition) };
-  const ean = String(value(verified.ean, value(corrected.ean, request.ean)) ?? '').replace(/\D/g, '') || null;
-  const displayName = String(value(verified.productName, value(corrected.productName, value(identity.displayName, request.name))) ?? '').trim();
-  const brand = String(value(verified.brand, value(corrected.brand, value(identity.brand, request.brand))) ?? '').trim();
+  const identity = {
+    ...record(extracted.identity),
+    ...record(corrected.identity),
+    ...record(verified.identity),
+  };
+  const packageFacts = {
+    ...record(extracted.package),
+    ...record(corrected.package),
+    ...record(verified.package),
+  };
+  const nutrition = {
+    ...record(extracted.nutrition),
+    ...record(corrected.nutrition),
+    ...record(verified.nutrition),
+  };
+  const ean =
+    String(value(verified.ean, value(corrected.ean, request.ean)) ?? '').replace(/\D/g, '') || null;
+  const displayName = String(
+    value(
+      verified.productName,
+      value(corrected.productName, value(identity.displayName, request.name)),
+    ) ?? '',
+  ).trim();
+  const brand = String(
+    value(verified.brand, value(corrected.brand, value(identity.brand, request.brand))) ?? '',
+  ).trim();
   const input = {
     productKind: 'commercial_product',
     displayName,
@@ -145,15 +208,27 @@ export async function approveProductRequest(
     explicitlyUnbranded: identity.explicitlyUnbranded === true,
     canonicalFamily: null,
     category: value(verified.category, value(corrected.category, identity.category)),
-    countryOfOrigin: value(verified.countryOfOrigin, value(corrected.countryOfOrigin, request.countryOfOrigin)),
+    countryOfOrigin: value(
+      verified.countryOfOrigin,
+      value(corrected.countryOfOrigin, request.countryOfOrigin),
+    ),
     ean,
     barcode: ean,
     provenance: 'product_add_request_admin_v1',
     facts: {
       productAddRequestId: request.id,
-      packageSize: value(verified.netQuantity, value(corrected.netQuantity, value(packageFacts.netQuantityText, request.netQuantity))),
-      ingredientsText: value(verified.ingredientsText, value(corrected.ingredientsText, extracted.ingredientsText)),
-      allergensText: value(verified.allergensText, value(corrected.allergensText, extracted.allergensText)),
+      packageSize: value(
+        verified.netQuantity,
+        value(corrected.netQuantity, value(packageFacts.netQuantityText, request.netQuantity)),
+      ),
+      ingredientsText: value(
+        verified.ingredientsText,
+        value(corrected.ingredientsText, extracted.ingredientsText),
+      ),
+      allergensText: value(
+        verified.allergensText,
+        value(corrected.allergensText, extracted.allergensText),
+      ),
       mayContainAllergens: extracted.mayContainAllergens ?? [],
       labelLanguages: identity.labelLanguages ?? [],
       nutrition: {

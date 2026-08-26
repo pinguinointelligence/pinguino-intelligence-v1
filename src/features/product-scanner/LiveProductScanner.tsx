@@ -1,99 +1,57 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { validateBarcode, type ValidBarcode } from '@/features/product-scanner/barcode';
+import {
+  getSharedBarcodeDecoder,
+  type BarcodeDecoder,
+} from '@/features/product-scanner/barcodeDecoder';
 import {
   PRODUCT_SCAN_ACCEPT,
   prepareProductScanImage,
 } from '@/features/product-scanner/imagePreparation';
-import { scoreRgbaFrame } from '@/features/product-scanner/frameQuality';
-import { browserPerceptualHash } from '@/features/ocr-intake/imagePerceptualHash';
-import type { ValidBarcode } from '@/features/product-scanner/barcode';
 import {
-  getSharedBarcodeDecoder,
-  type BarcodeDecoder,
-  type BarcodeDecoderKind,
-} from '@/features/product-scanner/barcodeDecoder';
-import {
-  createLiveFrameSource,
-  type LiveFrameSource,
-  type LiveFrameSourceKind,
-} from '@/features/product-scanner/liveFrameSource';
-import { RollingBestFrameWindow } from '@/features/product-scanner/rollingBestFrame';
-import {
-  DUPLICATE_HAMMING_DISTANCE,
-  frameHash,
-  hammingDistance,
-  liveCaptureDecision,
-  textDensity,
-  type CapturedFrame,
-  type CaptureView,
-} from '@/features/product-scanner/liveCapture';
-import {
-  EVIDENCE_LABEL,
-  SCAN_EVIDENCE_KINDS,
-  evidenceKindForMissingField,
-  scanEvidenceState,
-  type ScanEvidenceKind,
-} from '@/features/product-scanner/evidenceState';
-import {
-  LIVE_FIELD_LABEL,
-  LIVE_FIELD_ORDER,
-  applyExactProduct,
-  applyLocalBarcode,
-  applyProductScanResult,
-  clearNotOnLabel,
-  confirmNotOnLabel,
-  createLiveFieldState,
-  liveScanCompletion,
-  markLiveFieldsSearching,
-  missingFieldsForAnalysis,
-  nextLiveHint,
-  type LiveFieldState,
-  type LiveScanFieldKey,
-} from '@/features/product-scanner/liveFieldState';
-import { routeScan, scanShowsResult } from '@/features/product-scanner/scanRouting';
+  CUSTOMER_PRODUCT_FAMILY_CHOICES,
+  type CustomerProductFamilyChoice,
+} from '@/features/product-scanner/customerProductFamily';
+import type {
+  PreparedProductScanAsset,
+  ProductScanNutrition,
+  ProductScanResult,
+} from '@/features/product-scanner/contracts';
 import {
   analyzeProductImages,
   finalizeProductScan,
   lookupExactBarcode,
   lookupExactBarcodeFacts,
-  ProductScannerServiceError,
-  submitRawProductRequest,
   type ScanAnalysisResponse,
   type ScanExactProduct,
-  uploadProductRequestEvidence,
 } from '@/services/productScanner';
-import { getCatalogMarketPreferences } from '@/services/globalCatalog';
-import { SCANNER_ERROR_COPY, type ScannerStage } from '@/features/product-scanner/scannerErrors';
 import { assertUserSafeScannerMessage } from '@/services/scannerErrorGuard';
-import {
-  packageDisplay,
-  productCompletionFields,
-  productCompletionPayload,
-  productCompletionReady,
-  scanBlockerExplanation,
-  scanCompletenessLabel,
-} from '@/features/product-scanner/resultPresentation';
-import type { PreparedProductScanAsset } from '@/features/product-scanner/contracts';
 
 export const MAX_IMAGES = 4;
-const CAMERA_SCAN_INTERVAL_MS = 180;
-/** Enough pixels for small retail bars while bounding work to roughly 5–6 attempts/s. */
-const ANALYSIS_WIDTH = 960;
-const FULL_FRAME_BARCODE_EVERY = 4;
-const BEST_FRAME_WINDOW_MS = 700;
-
-interface BestFrameCandidate {
-  canvas: HTMLCanvasElement;
-  hash: bigint;
-  qualityScore: number;
-  quality: ReturnType<typeof scoreRgbaFrame>;
-  textDensity: number;
-}
-
-const card = 'rounded-xl border border-stone-200 bg-white shadow-[0_12px_32px_rgba(28,25,23,0.06)]';
+const card = 'border border-stone-200 bg-white';
 const quietButton =
-  'pro-focus-ring inline-flex min-h-11 items-center justify-center rounded-xl border border-stone-300 bg-white px-4 text-sm font-semibold text-ink transition hover:border-stone-500 disabled:cursor-not-allowed disabled:opacity-45';
+  'pro-focus-ring inline-flex min-h-11 items-center justify-center border border-stone-300 bg-white px-4 text-sm font-semibold text-ink transition hover:border-stone-500 disabled:cursor-not-allowed disabled:opacity-45';
 const primaryButton =
-  'pro-focus-ring inline-flex min-h-11 items-center justify-center rounded-xl bg-ink px-5 text-sm font-semibold text-white transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:bg-stone-400';
+  'pro-focus-ring inline-flex min-h-11 items-center justify-center bg-ink px-5 text-sm font-semibold text-white transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:bg-stone-400';
+const fieldClass =
+  'pro-focus-ring min-h-11 w-full border border-stone-300 bg-white px-3 text-sm text-ink';
+
+const INITIAL_MISSING_FIELDS = [
+  'product_identity',
+  'brand_or_unbranded',
+  'net_quantity',
+  'nutrition_basis',
+  'nutrition_energyKcal',
+  'nutrition_fat',
+  'nutrition_carbohydrate',
+  'nutrition_sugars',
+  'nutrition_protein',
+  'nutrition_salt',
+  'ingredientsText',
+  'allergen_confirmation',
+  'barcode',
+  'production_declarations',
+] as const;
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -107,45 +65,6 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
-function snapshotVideoFrame(video: HTMLVideoElement): HTMLCanvasElement | null {
-  if (video.videoWidth < 1 || video.videoHeight < 1) return null;
-  const canvas = document.createElement('canvas');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  const context = canvas.getContext('2d');
-  if (!context) return null;
-  context.drawImage(video, 0, 0, canvas.width, canvas.height);
-  return canvas;
-}
-
-function centralBarcodeRoi(source: HTMLCanvasElement): HTMLCanvasElement {
-  const roi = document.createElement('canvas');
-  roi.width = Math.max(1, Math.round(source.width * 0.88));
-  roi.height = Math.max(1, Math.round(source.height * 0.62));
-  const context = roi.getContext('2d');
-  if (context) {
-    context.drawImage(
-      source,
-      Math.round(source.width * 0.06),
-      Math.round(source.height * 0.19),
-      roi.width,
-      roi.height,
-      0,
-      0,
-      roi.width,
-      roi.height,
-    );
-  }
-  return roi;
-}
-
-/**
- * Read a GTIN out of a still image the owner supplied.
- *
- * An uploaded label is evidence exactly like a camera frame (§11, §12), so it gets the
- * same free routing: a code found here reaches the catalogue and the exact source before
- * any model is asked to read anything.
- */
 async function decodeBarcodeFromFile(
   file: File,
   decoder: BarcodeDecoder,
@@ -158,7 +77,7 @@ async function decodeBarcodeFromFile(
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
-    const context = canvas.getContext('2d', { willReadFrequently: true });
+    const context = canvas.getContext('2d');
     if (!context) return null;
     context.drawImage(bitmap, 0, 0, width, height);
     bitmap.close?.();
@@ -168,1036 +87,388 @@ async function decodeBarcodeFromFile(
   }
 }
 
-function productStatus(product: ScanExactProduct): string {
-  if (product.entityKind === 'pi_base') return 'Mapper Base';
-  if (product.status === 'verified') return 'Produkt zweryfikowany';
-  return 'Produkt istnieje w katalogu';
-}
+const exactProductStatus = (product: ScanExactProduct): string =>
+  product.status === 'verified' ? 'Produkt zweryfikowany' : 'Produkt istnieje w katalogu';
 
-/** Kinds the session can consider answered, given the server's own missing list. */
-function resolvedKinds(missing: readonly string[]): ScanEvidenceKind[] {
-  const missingKinds = new Set(
-    missing
-      .map(evidenceKindForMissingField)
-      .filter((kind): kind is ScanEvidenceKind => kind !== null),
-  );
-  return SCAN_EVIDENCE_KINDS.filter((kind) => !missingKinds.has(kind));
-}
+const stringValue = (value: unknown): string =>
+  typeof value === 'number' || typeof value === 'string' ? String(value) : '';
 
-/**
- * Everything one scan knows. Held in a ref because the camera loop reads it sixty
- * times a second and a stale closure there would silently re-capture, re-ask or
- * re-analyse — the exact class of defect this rewrite exists to remove.
- */
-interface ScanSession {
-  sessionId: string;
-  assets: PreparedProductScanAsset[];
-  assetHashes: Array<bigint | null>;
-  captured: CapturedFrame[];
-  barcode: ValidBarcode | null;
-  exactProduct: ScanExactProduct | null;
-  analysis: ScanAnalysisResponse | null;
-  missingCriticalFields: string[];
-  resolvedByLookup: ScanEvidenceKind[];
-  resolvedByCamera: ScanEvidenceKind[];
-  shownViews: ScanEvidenceKind[];
-  fields: LiveFieldState;
-  notOnLabelFields: LiveScanFieldKey[];
-  eanLookupDone: boolean;
-  lookupUnavailable: boolean;
-  visionCalls: number;
-  sourceLookupCount: number;
-  analyzedAssetIds: string[];
-  cameraOpen: boolean;
-  cameraFacing: 'environment' | 'user';
-  cameraCapabilities: {
-    torch: boolean;
-    zoom: { min: number; max: number; step: number; value: number } | null;
-    continuousFocus: boolean;
-  };
-  torchOn: boolean;
-  decoderKind: BarcodeDecoderKind | null;
-  decoderWarmupMs: number | null;
-  frameSourceKind: LiveFrameSourceKind | null;
-  cameraStartupMs: number | null;
-  barcodeAttempts: number;
-  timeToFirstBarcodeMs: number | null;
-  duplicateFramesSkipped: number;
-  autoCapturedViews: CaptureView[];
-  guidance: string;
-  busy: string | null;
-  error: string | null;
-  errorStage: ScannerStage;
-  saved: Record<string, unknown> | null;
-  privacyAccepted: boolean;
-  allergenConfirmed: boolean;
-  completionValues: Record<string, string>;
-  finished: boolean;
-}
+type ReviewValues = {
+  displayName: string;
+  brand: string;
+  barcode: string;
+  nutrition: Record<keyof ProductScanNutrition, string>;
+  ingredientsText: string;
+  allergensText: string;
+  productionDeclarations: Record<string, string>;
+};
 
-const freshSession = (): ScanSession => ({
-  sessionId: crypto.randomUUID(),
-  assets: [],
-  assetHashes: [],
-  captured: [],
-  barcode: null,
-  exactProduct: null,
-  analysis: null,
-  missingCriticalFields: [],
-  resolvedByLookup: [],
-  resolvedByCamera: [],
-  shownViews: [],
-  fields: createLiveFieldState(),
-  notOnLabelFields: [],
-  eanLookupDone: false,
-  lookupUnavailable: false,
-  visionCalls: 0,
-  sourceLookupCount: 0,
-  analyzedAssetIds: [],
-  cameraOpen: false,
-  cameraFacing: 'environment',
-  cameraCapabilities: { torch: false, zoom: null, continuousFocus: false },
-  torchOn: false,
-  decoderKind: null,
-  decoderWarmupMs: null,
-  frameSourceKind: null,
-  cameraStartupMs: null,
-  barcodeAttempts: 0,
-  timeToFirstBarcodeMs: null,
-  duplicateFramesSkipped: 0,
-  autoCapturedViews: [],
-  guidance: 'Obracaj produkt powoli',
-  busy: null,
-  error: null,
-  errorStage: 'analysis',
-  saved: null,
-  privacyAccepted: false,
-  allergenConfirmed: false,
-  completionValues: {},
-  finished: false,
+const reviewValues = (result: ProductScanResult, barcode: ValidBarcode | null): ReviewValues => ({
+  displayName: result.identity.displayName ?? result.identity.originalName ?? '',
+  brand: result.identity.brand ?? '',
+  barcode: barcode?.lookupValue ?? result.barcodes[0]?.value ?? '',
+  nutrition: {
+    basis: result.nutrition.basis ?? '',
+    energyKj: stringValue(result.nutrition.energyKj),
+    energyKcal: stringValue(result.nutrition.energyKcal),
+    fat: stringValue(result.nutrition.fat),
+    saturatedFat: stringValue(result.nutrition.saturatedFat),
+    carbohydrate: stringValue(result.nutrition.carbohydrate),
+    sugars: stringValue(result.nutrition.sugars),
+    protein: stringValue(result.nutrition.protein),
+    salt: stringValue(result.nutrition.salt),
+    fibre: stringValue(result.nutrition.fibre),
+  },
+  ingredientsText: result.ingredientsText ?? '',
+  allergensText: result.allergensText ?? '',
+  productionDeclarations: Object.fromEntries(
+    Object.entries(result.productionDeclarations ?? {}).map(([key, value]) => [
+      key,
+      stringValue(value),
+    ]),
+  ),
 });
 
-/** The merged evidence picture for a session snapshot. */
-function evidenceOf(current: ScanSession) {
-  return scanEvidenceState({
-    localBarcode: current.barcode?.lookupValue ?? null,
-    catalogMatch: current.exactProduct !== null,
-    resolvedByLookup: current.resolvedByLookup,
-    resolvedByCamera: current.resolvedByCamera,
-    missingCriticalFields: current.missingCriticalFields,
-    shownViews: current.shownViews,
-    analysisExhausted: current.visionCalls >= 2,
-  });
+function numericRecord(values: Record<string, string>): Record<string, number | string> {
+  const result: Record<string, number | string> = {};
+  for (const [key, value] of Object.entries(values)) {
+    if (!value.trim()) continue;
+    if (key === 'basis' || key.endsWith('Text') || key === 'formDeclaration')
+      result[key] = value.trim();
+    else {
+      const parsed = Number(value.replace(',', '.'));
+      if (Number.isFinite(parsed)) result[key] = parsed;
+    }
+  }
+  return result;
 }
 
-/** What the scanner hands back: the canonical product, and the code it was found by. */
+const targetPrompt = (missing: readonly string[], result: ProductScanResult | null): string => {
+  const values = new Set(missing);
+  if (!result?.barcodes[0] || values.has('barcode')) return 'Pokaż kod kreskowy';
+  if (values.has('product_identity') || values.has('brand_or_unbranded'))
+    return 'Pokaż przód produktu';
+  if ([...values].some((field) => field.startsWith('nutrition')))
+    return 'Pokaż tabelę wartości odżywczych';
+  if (values.has('ingredientsText') || values.has('allergen_confirmation')) return 'Pokaż skład';
+  if (values.has('production_declarations')) return 'Pokaż deklarację zawartości lub alkoholu';
+  return 'Pokaż brakującą część opakowania';
+};
+
+const truthLabel: Record<string, string> = {
+  water_percent: 'Woda',
+  total_solids_percent: 'Sucha masa',
+  fat_percent: 'Tłuszcz',
+  protein_percent: 'Białko',
+  carbohydrate_percent: 'Węglowodany',
+  total_sugars_percent: 'Cukry',
+  alcohol_percent: 'Alkohol',
+  fiber_percent: 'Błonnik',
+  salt_percent: 'Sól',
+};
+
+const productionDeclarationFields = [
+  ['alcoholAbv', 'Alkohol ABV', 'decimal'],
+  ['cocoaButterPercent', 'Masło kakaowe', 'decimal'],
+  ['cocoaSolidsPercent', 'Masa kakaowa', 'decimal'],
+  ['fruitContentPercent', 'Zawartość owoców', 'decimal'],
+  ['brix', 'Brix', 'decimal'],
+  ['concentrationText', 'Koncentracja', 'text'],
+  ['dosageText', 'Dozowanie', 'text'],
+  ['technicalParametersText', 'Parametry techniczne', 'text'],
+  ['formDeclaration', 'Postać produktu', 'text'],
+] as const;
+
+/** What the Scanner hands back to Product Picker. */
 export type ResolvedScanProduct = ScanExactProduct & { barcode: string | null };
 
 export interface LiveProductScannerProps {
-  /**
-   * Where the scan is meant to end. In the recipe flow the answer is a product the
-   * owner can put in the recipe, so the scanner hands it back instead of ending on
-   * a card and sending them to search for it again (§37).
-   */
   onResolved?: (product: ResolvedScanProduct) => void;
-  /** The label of the terminal action when a product has been resolved. */
   resolveLabel?: string;
-  /** Rendered under the header — the caller says why the scan was opened. */
   intro?: string;
 }
 
 export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProductScannerProps) {
-  // Rendered state and loop state are the same object, held twice on purpose: the
-  // camera loop runs between renders and must never read a stale snapshot, while the
-  // view must never read a ref during render.
-  const [state, setState] = useState<ScanSession>(freshSession);
-  const exposeStagingQaDiagnostics =
-    typeof window !== 'undefined' &&
-    (import.meta.env.DEV || window.location.hostname === 'staging.pinguinoai.com') &&
-    new URLSearchParams(window.location.search).has('qa');
-  const session = useRef<ScanSession>(state);
-  const patch = useCallback((changes: Partial<ScanSession>) => {
-    const next = { ...session.current, ...changes };
-    session.current = next;
-    setState(next);
-  }, []);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const decoderRef = useRef<BarcodeDecoder | null>(null);
-  const frameSourceRef = useRef<LiveFrameSource | null>(null);
-  const scanFramesRef = useRef<() => void>(() => undefined);
-  const lastFrameAtRef = useRef(0);
-  const cameraStartedAtRef = useRef<number | null>(null);
-  const barcodeAttemptRef = useRef(0);
-  const processingFrameRef = useRef(false);
-  const bestFrameRef = useRef(new RollingBestFrameWindow<BestFrameCandidate>(BEST_FRAME_WINDOW_MS));
-  const bestFrameViewRef = useRef<CaptureView | null>(null);
-  const advancingRef = useRef(false);
-  const capturingRef = useRef(false);
-  /** Set once `resolveDetectedBarcode` exists; uploads and frames share one route. */
-  const resolveBarcodeRef = useRef<(barcode: ValidBarcode) => Promise<void>>(async () => undefined);
-
-  const evidence = evidenceOf(state);
-  const route = routeScan({
-    catalogMatch: state.exactProduct !== null,
-    barcode: state.barcode?.lookupValue ?? null,
-    eanLookupDone: state.eanLookupDone,
-    frameCount: state.assets.length,
-    analyzedFrameCount: state.analyzedAssetIds.length,
-    liveBarcodeSearchActive: state.cameraOpen,
-    visionCalls: state.visionCalls,
-    maxVisionCalls: 2,
-    evidence,
-  });
-
-  const stopCamera = useCallback(() => {
-    frameSourceRef.current?.stop();
-    frameSourceRef.current = null;
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
-    if (videoRef.current) videoRef.current.srcObject = null;
-    processingFrameRef.current = false;
-    bestFrameRef.current.reset();
-    bestFrameViewRef.current = null;
-    patch({
-      cameraOpen: false,
-      torchOn: false,
-      cameraCapabilities: { torch: false, zoom: null, continuousFocus: false },
-    });
-  }, [patch]);
-
-  useEffect(
-    () => () => {
-      stopCamera();
-      for (const asset of session.current.assets) URL.revokeObjectURL(asset.previewUrl);
-    },
-    [stopCamera],
-  );
+  const [sessionId] = useState(() => crypto.randomUUID());
+  const [assets, setAssets] = useState<PreparedProductScanAsset[]>([]);
+  const [analyzedAssetIds, setAnalyzedAssetIds] = useState<string[]>([]);
+  const [barcode, setBarcode] = useState<ValidBarcode | null>(null);
+  const [barcodeInput, setBarcodeInput] = useState('');
+  const [exactProduct, setExactProduct] = useState<ScanExactProduct | null>(null);
+  const [analysis, setAnalysis] = useState<ScanAnalysisResponse | null>(null);
+  const [review, setReview] = useState<ReviewValues | null>(null);
+  const [preview, setPreview] = useState<Record<string, unknown> | null>(null);
+  const [familyChoice, setFamilyChoice] = useState<CustomerProductFamilyChoice | null>(null);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [packageEvidenceExhausted, setPackageEvidenceExhausted] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [errorStage, setErrorStage] = useState<'analysis' | 'save'>('analysis');
+  const [saved, setSaved] = useState<Record<string, unknown> | null>(null);
+  const cameraInput = useRef<HTMLInputElement>(null);
+  const galleryInput = useRef<HTMLInputElement>(null);
+  const decoder = useRef<BarcodeDecoder | null>(null);
+  const assetsRef = useRef<PreparedProductScanAsset[]>([]);
 
   useEffect(() => {
-    if (import.meta.env.MODE === 'test') return undefined;
     let active = true;
     void getSharedBarcodeDecoder()
-      .then((decoder) => {
-        if (!active) return;
-        decoderRef.current = decoder;
-        patch({ decoderKind: decoder.kind, decoderWarmupMs: Math.round(decoder.warmupMs) });
+      .then((value) => {
+        if (active) decoder.current = value;
       })
-      .catch(() => {
-        if (active) patch({ guidance: 'Obracaj produkt powoli — czytnik kodu uruchamia się.' });
-      });
+      .catch(() => undefined);
     return () => {
       active = false;
     };
-  }, [patch]);
-
-  const addFiles = useCallback(
-    async (
-      files: readonly File[],
-      source: PreparedProductScanAsset['source'],
-      qualityScore: number | null = null,
-      view: CaptureView | null = null,
-      hash: bigint | null = null,
-    ) => {
-      const remaining = Math.max(0, MAX_IMAGES - session.current.assets.length);
-      if (remaining === 0) return;
-      patch({ error: null, busy: 'Przygotowuję zdjęcia lokalnie…' });
-      let uploadedBarcode: ValidBarcode | null = null;
-      for (const file of files.slice(0, remaining)) {
-        const result = await prepareProductScanImage(file);
-        if (!result.ok) {
-          patch({ error: result.reason });
-          continue;
-        }
-        const previewHash =
-          hash ??
-          (await browserPerceptualHash(result.value.file).then((value) =>
-            value ? BigInt(`0x${value}`) : null,
-          ));
-        if (
-          previewHash !== null &&
-          session.current.assetHashes.some(
-            (existingHash) =>
-              existingHash !== null &&
-              hammingDistance(existingHash, previewHash) <= DUPLICATE_HAMMING_DISTANCE,
-          )
-        ) {
-          patch({ duplicateFramesSkipped: session.current.duplicateFramesSkipped + 1 });
-          continue;
-        }
-        // A code found in an uploaded label routes exactly like one read live: catalogue
-        // and exact source first, before any model call.
-        if (!session.current.barcode && !session.current.exactProduct) {
-          const decoder = decoderRef.current ?? (await getSharedBarcodeDecoder());
-          decoderRef.current = decoder;
-          const decoded = await decodeBarcodeFromFile(result.value.file, decoder);
-          if (decoded) uploadedBarcode = decoded;
-        }
-        const current = session.current;
-        patch({
-          assets: [
-            ...current.assets,
-            {
-              id: crypto.randomUUID(),
-              file: result.value.file,
-              previewUrl: URL.createObjectURL(result.value.file),
-              source,
-              originalMime: result.value.originalMime,
-              transformations: result.value.transformations,
-              qualityScore,
-            },
-          ].slice(0, MAX_IMAGES),
-          assetHashes: [...current.assetHashes, previewHash].slice(0, MAX_IMAGES),
-          captured: view
-            ? [...current.captured, { view, hash: previewHash ?? 0n, score: qualityScore ?? 0 }]
-            : current.captured,
-          shownViews:
-            view && !current.shownViews.includes(view)
-              ? [...current.shownViews, view]
-              : current.shownViews,
-          autoCapturedViews:
-            view && source === 'camera_auto'
-              ? [...current.autoCapturedViews, view]
-              : current.autoCapturedViews,
-        });
-      }
-      patch({ busy: null });
-      if (uploadedBarcode) await resolveBarcodeRef.current(uploadedBarcode);
-    },
-    [patch],
-  );
-
-  /** Views still worth a frame: what is missing, minus what the camera already holds. */
-  const wantedViews = useCallback((): CaptureView[] => {
-    const current = session.current;
-    if (current.exactProduct) return [];
-    const held = new Set(current.captured.map((frame) => frame.view));
-    const viewForField: Readonly<Record<LiveScanFieldKey, CaptureView>> = {
-      barcode: 'barcode',
-      product_name: 'identity',
-      brand: 'identity',
-      net_quantity: 'identity',
-      nutrition: 'nutrition',
-      ingredients: 'ingredients',
-      allergens: 'ingredients',
-    };
-    const wanted = LIVE_FIELD_ORDER.filter((key) =>
-      ['MISSING', 'SEARCHING', 'CONFLICT'].includes(current.fields[key].status),
-    ).map((key) => viewForField[key]);
-    return [...new Set(wanted)].filter((view) => !held.has(view));
   }, []);
 
-  const runEanLookup = useCallback(async () => {
-    const barcode = session.current.barcode;
-    if (!barcode) return;
-    patch({ busy: 'Sprawdzam kod produktu…' });
+  useEffect(() => {
+    assetsRef.current = assets;
+  }, [assets]);
+  useEffect(
+    () => () => {
+      for (const asset of assetsRef.current) URL.revokeObjectURL(asset.previewUrl);
+    },
+    [],
+  );
+
+  const validReviewBarcode = validateBarcode(review?.barcode ?? barcodeInput);
+  const familyRequired = preview?.kind === 'family_confirmation_required';
+  const ready = preview?.kind === 'profile_preview' && preview.ready === true;
+  const criticalGaps = Array.isArray(preview?.criticalGaps)
+    ? preview.criticalGaps.filter((item): item is string => typeof item === 'string')
+    : [];
+
+  async function resolveBarcode(value: ValidBarcode): Promise<void> {
+    setBarcode(value);
+    setBarcodeInput(value.lookupValue);
+    setError(null);
+    setBusy('Sprawdzam kod produktu…');
     try {
-      const response = await lookupExactBarcodeFacts({
-        sessionId: session.current.sessionId,
-        barcode,
-      });
+      const existing = await lookupExactBarcode(value);
+      if (existing) {
+        setExactProduct(existing);
+        return;
+      }
+      const response = await lookupExactBarcodeFacts({ sessionId, barcode: value });
       if (response.kind === 'existing_product') {
-        patch({
-          exactProduct: response.product,
-          fields: applyExactProduct(session.current.fields, {
-            displayName: response.product.displayName,
-            brand: response.product.brand,
-            barcode: session.current.barcode?.lookupValue ?? null,
-          }),
-        });
-      } else {
-        patch({
-          ...(response.result
-            ? {
-                analysis: {
-                  sessionId: response.sessionId,
-                  result: response.result,
-                  overlayState: response.overlayState ?? 'SCAN_DRAFT',
-                  missingCriticalFields: response.missingCriticalFields,
-                  usage: response.usage,
-                },
-                missingCriticalFields: response.missingCriticalFields,
-                resolvedByLookup: resolvedKinds(response.missingCriticalFields),
-                fields: applyProductScanResult(
-                  session.current.fields,
-                  response.result,
-                  response.missingCriticalFields,
-                  'ean_lookup',
-                ),
-              }
-            : {}),
-          lookupUnavailable: response.providerUnavailable === true,
-          sourceLookupCount: session.current.sourceLookupCount + 1,
-        });
+        setExactProduct(response.product);
+      } else if (response.result) {
+        const nextAnalysis: ScanAnalysisResponse = {
+          sessionId: response.sessionId,
+          result: response.result,
+          overlayState: response.overlayState ?? 'SCAN_DRAFT',
+          missingCriticalFields: response.missingCriticalFields,
+          usage: response.usage,
+        };
+        setAnalysis(nextAnalysis);
+        setReview(reviewValues(response.result, value));
       }
     } catch {
-      // §24 — an unreachable source degrades the scan, it never stops it.
-      patch({ lookupUnavailable: true });
+      // External EAN enrichment is optional. The label pipeline remains usable.
     } finally {
-      patch({ eanLookupDone: true, busy: null });
+      setBusy(null);
     }
-  }, [patch]);
+  }
 
-  const runAnalysis = useCallback(
-    async (accurateRetry: boolean) => {
-      const current = session.current;
-      if (!current.privacyAccepted) {
-        patch({ error: 'Potwierdź informację o prywatności przed analizą.' });
-        return;
+  async function addFiles(
+    files: readonly File[],
+    source: PreparedProductScanAsset['source'],
+  ): Promise<void> {
+    if (!privacyAccepted) {
+      setError('Potwierdź informację o prywatności przed dodaniem zdjęć.');
+      return;
+    }
+    const remaining = Math.max(0, MAX_IMAGES - assets.length);
+    if (!remaining) return;
+    setBusy('Przygotowuję zdjęcia lokalnie…');
+    setError(null);
+    const preparedAssets: PreparedProductScanAsset[] = [];
+    let foundBarcode: ValidBarcode | null = null;
+    for (const file of files.slice(0, remaining)) {
+      const prepared = await prepareProductScanImage(file);
+      if (!prepared.ok) {
+        setError(prepared.reason);
+        continue;
       }
-      patch({ busy: accurateRetry ? 'Czytam uzupełnione ujęcie…' : 'Czytam etykietę…' });
-      const newAssets = current.assets.filter(
-        (asset) => !current.analyzedAssetIds.includes(asset.id),
-      );
-      if (newAssets.length === 0) {
-        patch({ busy: null });
-        return;
-      }
-      const analyzedNow = [...current.analyzedAssetIds, ...newAssets.map((asset) => asset.id)];
-      try {
-        const images = await Promise.all(
-          newAssets.map(async (asset) => ({
-            assetId: asset.id,
-            mime: asset.file.type,
-            base64: await fileToBase64(asset.file),
-            source: asset.source,
-            originalMime: asset.originalMime,
-            transformations: asset.transformations,
-            qualityScore: asset.qualityScore,
-          })),
-        );
-        const response = await analyzeProductImages({
-          sessionId: current.sessionId,
-          images,
-          barcode: current.barcode,
-          accurateRetry,
-          missingFields: missingFieldsForAnalysis(current.fields),
-        });
-        if (!('result' in response)) {
-          patch({
-            analyzedAssetIds: analyzedNow,
-            exactProduct: response.product,
-            analysis: null,
-            fields: applyExactProduct(session.current.fields, {
-              displayName: response.product.displayName,
-              brand: response.product.brand,
-              barcode: current.barcode?.lookupValue ?? null,
-            }),
-          });
-          return;
+      const asset: PreparedProductScanAsset = {
+        id: crypto.randomUUID(),
+        file: prepared.value.file,
+        previewUrl: URL.createObjectURL(prepared.value.file),
+        source,
+        originalMime: prepared.value.originalMime,
+        transformations: prepared.value.transformations,
+        qualityScore: null,
+      };
+      preparedAssets.push(asset);
+      if (!barcode && !foundBarcode) {
+        const activeDecoder =
+          decoder.current ?? (await getSharedBarcodeDecoder().catch(() => null));
+        if (activeDecoder) {
+          decoder.current = activeDecoder;
+          foundBarcode = await decodeBarcodeFromFile(asset.file, activeDecoder);
         }
-        patch({
-          analyzedAssetIds: analyzedNow,
-          analysis: response,
-          missingCriticalFields: response.missingCriticalFields,
-          resolvedByCamera: resolvedKinds(response.missingCriticalFields),
-          fields: applyProductScanResult(
-            session.current.fields,
-            response.result,
-            response.missingCriticalFields,
-          ),
-          visionCalls: response.usage.visionCalls,
-          allergenConfirmed: false,
-          completionValues: {},
-        });
-      } catch (caught) {
-        // A failed analysis costs the session nothing and leaves the frames in place;
-        // the owner is not sent back to the beginning (§14, §15).
-        patch({
-          visionCalls:
-            caught instanceof ProductScannerServiceError && caught.visionCalls > 0
-              ? caught.visionCalls
-              : session.current.visionCalls,
-          errorStage: 'analysis',
-          error: caught instanceof Error ? caught.message : SCANNER_ERROR_COPY.analysis_failed,
-        });
-      } finally {
-        patch({ busy: null });
       }
-    },
-    [patch],
-  );
+    }
+    setAssets((current) => [...current, ...preparedAssets].slice(0, MAX_IMAGES));
+    setBusy(null);
+    if (foundBarcode) await resolveBarcode(foundBarcode);
+  }
 
-  /**
-   * Walk the scan forward as far as it can go on its own. Every step is either free,
-   * cheap-and-exact, or the one paid call the evidence actually justifies.
-   */
-  const advance = useCallback(async () => {
-    if (advancingRef.current) return;
-    advancingRef.current = true;
+  async function analyze(): Promise<void> {
+    if (!privacyAccepted) {
+      setError('Potwierdź informację o prywatności przed analizą.');
+      return;
+    }
+    const newAssets = assets.filter((asset) => !analyzedAssetIds.includes(asset.id));
+    if (!newAssets.length) {
+      setError('Dodaj co najmniej jedno nowe zdjęcie opakowania.');
+      return;
+    }
+    setBusy(analysis ? 'Czytam dodatkowe ujęcie…' : 'Czytam opakowanie…');
+    setErrorStage('analysis');
+    setError(null);
     try {
-      for (let step = 0; step < 6; step += 1) {
-        const current = session.current;
-        if (current.error) break;
-        const next = routeScan({
-          catalogMatch: current.exactProduct !== null,
-          barcode: current.barcode?.lookupValue ?? null,
-          eanLookupDone: current.eanLookupDone,
-          frameCount: current.assets.length,
-          analyzedFrameCount: current.analyzedAssetIds.length,
-          liveBarcodeSearchActive: current.cameraOpen,
-          visionCalls: current.visionCalls,
-          maxVisionCalls: 2,
-          evidence: evidenceOf(current),
-        });
-        if (next.kind === 'ean_lookup') {
-          await runEanLookup();
-          continue;
-        }
-        if (next.kind === 'analyze_label') {
-          if (!current.privacyAccepted) break;
-          await runAnalysis(next.accurateRetry);
-          continue;
-        }
-        if (next.kind === 'existing_product' || next.kind === 'ready' || next.kind === 'estimate') {
-          patch({ finished: true });
-          if (current.cameraOpen) stopCamera();
-        }
-        break;
-      }
-    } finally {
-      advancingRef.current = false;
-    }
-  }, [patch, runAnalysis, runEanLookup, stopCamera]);
-
-  const resolveDetectedBarcode = useCallback(
-    async (detected: ValidBarcode) => {
-      if (session.current.barcode) return;
-      const detectedAt =
-        session.current.timeToFirstBarcodeMs ??
-        (cameraStartedAtRef.current === null
-          ? null
-          : Math.max(0, performance.now() - cameraStartedAtRef.current));
-      patch({
-        barcode: detected,
-        fields: applyLocalBarcode(session.current.fields, detected.lookupValue),
-        guidance: 'Kod znaleziony. Sprawdzam katalog…',
-        timeToFirstBarcodeMs: detectedAt === null ? null : Math.round(detectedAt),
+      const images = await Promise.all(
+        newAssets.map(async (asset) => ({
+          assetId: asset.id,
+          mime: asset.file.type,
+          base64: await fileToBase64(asset.file),
+          source: asset.source,
+          originalMime: asset.originalMime,
+          transformations: asset.transformations,
+          qualityScore: asset.qualityScore,
+        })),
+      );
+      const response = await analyzeProductImages({
+        sessionId,
+        images,
+        barcode,
+        accurateRetry: Boolean(analysis),
+        missingFields: analysis?.missingCriticalFields ?? [...INITIAL_MISSING_FIELDS],
       });
-      try {
-        const existing = await lookupExactBarcode(detected);
-        if (existing) {
-          // The catalogue answered: no analysis, no source call, no allowance (§4).
-          patch({
-            exactProduct: {
-              id: existing.id,
-              displayName: existing.displayName,
-              brand: existing.brand,
-              entityKind: existing.entityKind,
-              status: existing.status,
+      setAnalyzedAssetIds((current) => [
+        ...new Set([...current, ...newAssets.map((asset) => asset.id)]),
+      ]);
+      if (!('result' in response)) {
+        setExactProduct(response.product);
+        return;
+      }
+      setAnalysis(response);
+      setReview(reviewValues(response.result, barcode));
+      const resultBarcode = validateBarcode(response.result.barcodes[0]?.value ?? '');
+      if (!barcode && resultBarcode) await resolveBarcode(resultBarcode);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Nie udało się przeanalizować zdjęć.');
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  const productFields = useMemo(
+    () =>
+      review
+        ? {
+            barcode: validReviewBarcode?.lookupValue ?? review.barcode,
+            identity: {
+              displayName: review.displayName,
+              brand: review.brand || null,
+              explicitlyUnbranded: !review.brand.trim(),
             },
-            fields: applyExactProduct(session.current.fields, {
-              displayName: existing.displayName,
-              brand: existing.brand,
-              barcode: detected.lookupValue,
-            }),
-            finished: true,
-          });
-          stopCamera();
-          return;
-        }
-      } catch {
-        // A catalogue that cannot be reached is not a "no". The server repeats the
-        // exact lookup before anything is charged.
-      }
-      await advance();
-    },
-    [advance, patch, stopCamera],
+            nutrition: numericRecord(review.nutrition),
+            ingredientsText: review.ingredientsText || undefined,
+            allergensText: review.allergensText || undefined,
+            productionDeclarations: numericRecord(review.productionDeclarations),
+          }
+        : {},
+    [review, validReviewBarcode],
   );
 
-  useEffect(() => {
-    resolveBarcodeRef.current = resolveDetectedBarcode;
-  }, [resolveDetectedBarcode]);
-
-  const captureCanvasFrame = useCallback(
-    async (
-      view: CaptureView,
-      source: 'camera_auto' | 'camera_manual',
-      hash: bigint | null,
-      full: HTMLCanvasElement,
-      qualityScore: number | null,
-    ) => {
-      if (capturingRef.current) return;
-      capturingRef.current = true;
-      try {
-        const blob = await new Promise<Blob | null>((resolve) =>
-          full.toBlob(resolve, 'image/jpeg', 0.92),
-        );
-        if (!blob) return;
-        const file = new File([blob], `produkt-${Date.now()}.jpg`, { type: 'image/jpeg' });
-        await addFiles([file], source, qualityScore, view, hash);
-        patch({
-          guidance: `Odczytuję: ${EVIDENCE_LABEL[view].toLowerCase()}.`,
-        });
-      } finally {
-        capturingRef.current = false;
-      }
-    },
-    [addFiles, patch],
-  );
-
-  const captureFullFrame = useCallback(
-    async (view: CaptureView, source: 'camera_auto' | 'camera_manual', hash: bigint | null) => {
-      const video = videoRef.current;
-      if (!video) return;
-      const full = snapshotVideoFrame(video);
-      if (!full) return;
-      await captureCanvasFrame(view, source, hash, full, null);
-    },
-    [captureCanvasFrame],
-  );
-
-  const scanFrames = useCallback(async () => {
-    if (processingFrameRef.current) return;
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas || !streamRef.current || video.readyState < 2) return;
-    const now = performance.now();
-    if (now - lastFrameAtRef.current < CAMERA_SCAN_INTERVAL_MS) return;
-    processingFrameRef.current = true;
-    lastFrameAtRef.current = now;
-    try {
-      const width = Math.min(ANALYSIS_WIDTH, video.videoWidth || ANALYSIS_WIDTH);
-      const height = Math.max(
-        2,
-        Math.round(((video.videoHeight || 240) / (video.videoWidth || 320)) * width),
-      );
-      canvas.width = width;
-      canvas.height = height;
-      const context = canvas.getContext('2d', { willReadFrequently: true });
-      if (!context) return;
-      context.drawImage(video, 0, 0, width, height);
-
-      if (!session.current.barcode && decoderRef.current) {
-        barcodeAttemptRef.current += 1;
-        const decodeSource =
-          barcodeAttemptRef.current % FULL_FRAME_BARCODE_EVERY === 0
-            ? canvas
-            : centralBarcodeRoi(canvas);
-        const decodeStartedAt = performance.now();
-        const detected = await decoderRef.current.decode(decodeSource);
-        patch({
-          barcodeAttempts: barcodeAttemptRef.current,
-          decoderKind: decoderRef.current.kind,
-          decoderWarmupMs: Math.round(decoderRef.current.warmupMs),
-        });
-        if (detected && !session.current.barcode) {
-          patch({ timeToFirstBarcodeMs: Math.round(performance.now() - decodeStartedAt) });
-          await resolveDetectedBarcode(detected);
-        }
-      }
-
-      const current = session.current;
-      if (current.exactProduct || current.busy || capturingRef.current) return;
-      const pixels = context.getImageData(0, 0, width, height).data;
-      const quality = scoreRgbaFrame(pixels, width, height);
-      const luminance = new Uint8Array(width * height);
-      for (let index = 0; index < luminance.length; index += 1) {
-        const offset = index * 4;
-        luminance[index] = Math.round(
-          (pixels[offset] ?? 0) * 0.2126 +
-            (pixels[offset + 1] ?? 0) * 0.7152 +
-            (pixels[offset + 2] ?? 0) * 0.0722,
-        );
-      }
-      const hash = frameHash(luminance, width, height);
-      const density = textDensity(luminance, width, height);
-      const wanted = wantedViews();
-      // Prefer human-readable label surfaces while the local decoder keeps running,
-      // but never dead-end when barcode is the final unresolved field. In that case
-      // one selected barcode view can still enter the existing evidence pipeline.
-      const view = wanted.find((candidate) => candidate !== 'barcode') ?? wanted[0] ?? null;
-      if (view === null) {
-        bestFrameRef.current.reset();
-        bestFrameViewRef.current = null;
-        if (!current.barcode && current.guidance !== 'Obracaj produkt powoli') {
-          patch({ guidance: 'Obracaj produkt powoli' });
-        }
-        return;
-      }
-      if (bestFrameViewRef.current !== view) {
-        bestFrameRef.current.reset();
-        bestFrameViewRef.current = view;
-      }
-
-      const duplicate = current.assetHashes.some(
-        (existingHash) =>
-          existingHash !== null &&
-          hammingDistance(existingHash, hash) <= DUPLICATE_HAMMING_DISTANCE,
-      );
-      const isTextView = view === 'nutrition' || view === 'ingredients';
-      const readable =
-        !duplicate &&
-        quality.score >= 32 &&
-        quality.exposure >= 0.2 &&
-        quality.sharpness >= 0.12 &&
-        quality.glare <= 0.55 &&
-        (!isTextView || density >= 0.035);
-      if (readable) {
-        const full = snapshotVideoFrame(video);
-        if (full) {
-          bestFrameRef.current.offer({
-            value: {
-              canvas: full,
-              hash,
-              qualityScore: quality.score,
-              quality,
-              textDensity: density,
-            },
-            score: quality.score,
-            readable: true,
-            capturedAt: now,
-          });
-        }
-      }
-      const selected = bestFrameRef.current.takeReady(now)?.value ?? null;
-      const decision = liveCaptureDecision({
-        wanted,
-        captured: current.captured,
-        bestFrameReady: selected !== null,
-        signals: {
-          quality: selected?.quality ?? quality,
-          barcode: null,
-          hash: selected?.hash ?? hash,
-          textDensity: selected?.textDensity ?? density,
-        },
-        maxFrames: MAX_IMAGES,
-      });
-      if (decision.kind === 'hold') {
-        if (current.guidance !== decision.guidance) patch({ guidance: decision.guidance });
-      } else if (decision.kind === 'duplicate') {
-        patch({ duplicateFramesSkipped: current.duplicateFramesSkipped + 1 });
-      } else if (decision.kind === 'capture' && selected) {
-        await captureCanvasFrame(
-          decision.view,
-          'camera_auto',
-          selected.hash,
-          selected.canvas,
-          selected.qualityScore,
-        );
-        await advance();
-      } else if (decision.kind === 'enough') {
-        await advance();
-      }
-    } finally {
-      processingFrameRef.current = false;
+  async function buildPreview(
+    choice: CustomerProductFamilyChoice | null = familyChoice,
+  ): Promise<void> {
+    if (!analysis || !review) return;
+    if (!validReviewBarcode) {
+      setError('Potwierdź poprawny EAN / GTIN produktu.');
+      return;
     }
-  }, [advance, captureCanvasFrame, patch, resolveDetectedBarcode, wantedViews]);
-
-  useEffect(() => {
-    scanFramesRef.current = () => void scanFrames();
-  }, [scanFrames]);
-
-  const startCamera = useCallback(
-    async (requestedFacing: 'environment' | 'user' = session.current.cameraFacing) => {
-      patch({ error: null });
-      if (!session.current.privacyAccepted) {
-        patch({ error: 'Potwierdź informację o prywatności przed analizą.' });
-        return;
-      }
-      if (!navigator.mediaDevices?.getUserMedia) {
-        patch({
-          error: 'Kamera nie jest dostępna w tej przeglądarce. Dodaj zdjęcia z urządzenia.',
-        });
-        inputRef.current?.click();
-        return;
-      }
-      stopCamera();
-      try {
-        const cameraRequestStartedAt = performance.now();
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: requestedFacing },
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
-            aspectRatio: { ideal: 4 / 3 },
-          },
-          audio: false,
-        });
-        streamRef.current = stream;
-        if (import.meta.env.MODE !== 'test') {
-          void getSharedBarcodeDecoder().then((decoder) => {
-            decoderRef.current = decoder;
-            patch({ decoderKind: decoder.kind, decoderWarmupMs: Math.round(decoder.warmupMs) });
-          });
-        }
-        const track = stream.getVideoTracks?.()[0] ?? stream.getTracks()[0];
-        const capabilities = track?.getCapabilities?.() as
-          | {
-              focusMode?: string[];
-              torch?: boolean;
-              zoom?: { min?: number; max?: number; step?: number };
-            }
-          | undefined;
-        const continuousFocus = capabilities?.focusMode?.includes('continuous') === true;
-        if (continuousFocus && track?.applyConstraints) {
-          void track
-            .applyConstraints({
-              advanced: [{ focusMode: 'continuous' } as MediaTrackConstraintSet],
-            })
-            .catch(() => undefined);
-        }
-        const zoom = capabilities?.zoom;
-        const zoomState =
-          typeof zoom?.min === 'number' && typeof zoom.max === 'number'
-            ? {
-                min: zoom.min,
-                max: zoom.max,
-                step: typeof zoom.step === 'number' && zoom.step > 0 ? zoom.step : 0.1,
-                value: zoom.min,
-              }
-            : null;
-        cameraStartedAtRef.current ??= cameraRequestStartedAt;
-        bestFrameRef.current.reset();
-        bestFrameViewRef.current = null;
-        patch({
-          cameraFacing: requestedFacing,
-          cameraOpen: true,
-          cameraStartupMs: Math.round(performance.now() - cameraRequestStartedAt),
-          finished: false,
-          fields: markLiveFieldsSearching(session.current.fields),
-          cameraCapabilities: {
-            torch: capabilities?.torch === true,
-            zoom: zoomState,
-            continuousFocus,
-          },
-          guidance: 'Obracaj produkt powoli',
-        });
-      } catch {
-        patch({
-          error: 'Nie udało się uruchomić kamery. Sprawdź uprawnienia lub dodaj zdjęcia.',
-          cameraOpen: false,
-        });
-      }
-    },
-    [patch, stopCamera],
-  );
-
-  useEffect(() => {
-    const video = videoRef.current;
-    const stream = streamRef.current;
-    if (!state.cameraOpen || !video || !stream) return;
-    video.srcObject = stream;
-    void video
-      .play()
-      .then(() => {
-        frameSourceRef.current?.stop();
-        const source = createLiveFrameSource(video, () => scanFramesRef.current());
-        frameSourceRef.current = source;
-        patch({ frameSourceKind: source.kind });
-        source.start();
-      })
-      .catch(() => patch({ error: 'Podgląd kamery nie mógł zostać uruchomiony.' }));
-  }, [patch, state.cameraOpen]);
-
-  useEffect(() => {
-    const onVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') frameSourceRef.current?.pause();
-      else if (session.current.cameraOpen) frameSourceRef.current?.resume();
-    };
-    document.addEventListener('visibilitychange', onVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
-  }, []);
-
-  /**
-   * Dropping a frame also releases the view it was evidence for, so a bad capture can
-   * simply be shown again instead of dead-ending the session.
-   */
-  const discardAsset = useCallback(
-    (assetId: string) => {
-      const current = session.current;
-      const index = current.assets.findIndex((asset) => asset.id === assetId);
-      if (index < 0) return;
-      const discarded = current.assets[index]!;
-      URL.revokeObjectURL(discarded.previewUrl);
-      const view = current.captured[index]?.view ?? null;
-      patch({
-        assets: current.assets.filter((asset) => asset.id !== assetId),
-        assetHashes: current.assetHashes.filter((_, position) => position !== index),
-        captured: current.captured.filter((_, position) => position !== index),
-        shownViews: view ? current.shownViews.filter((kind) => kind !== view) : current.shownViews,
-        analyzedAssetIds: current.analyzedAssetIds.filter((id) => id !== assetId),
-      });
-    },
-    [patch],
-  );
-
-  const save = useCallback(async () => {
-    const current = session.current;
-    if (!current.analysis || current.busy) return;
-    patch({ busy: 'Wysyłam zgłoszenie do Gellatti…' });
+    setBusy('Uzupełniam profil produktu…');
+    setErrorStage('save');
+    setError(null);
     try {
-      const preferences = await getCatalogMarketPreferences().catch(() => null);
       const result = await finalizeProductScan({
-        sessionId: current.sessionId,
-        idempotencyKey: `${current.sessionId}:request-v1`,
-        marketCountryCode: preferences?.primaryMarket ?? null,
-        confirmations: {
-          noAdditionalAllergenStatementVisible: current.allergenConfirmed,
-          notOnLabelFields: current.notOnLabelFields,
-          productFields: productCompletionPayload(current.completionValues),
-        },
+        action: 'preview',
+        sessionId,
+        idempotencyKey: `${sessionId}:customer-preview-v1`,
+        customerFamily: choice,
+        confirmations: { packageEvidenceExhausted, productFields },
         privateOverlay: {},
       });
-      const requestId = typeof result.requestId === 'string' ? result.requestId : null;
-      if (requestId) {
-        await uploadProductRequestEvidence({
-          requestId,
-          assets: current.assets,
-          views: current.assets.map((_, index) => current.captured[index]?.view ?? null),
-        });
-      }
-      patch({ saved: result });
+      setPreview(result);
+      if (choice) setFamilyChoice(choice);
     } catch (caught) {
-      patch({
-        errorStage: 'save',
-        error: caught instanceof Error ? caught.message : SCANNER_ERROR_COPY.save_failed,
-      });
+      setError(
+        caught instanceof Error ? caught.message : 'Nie udało się zbudować profilu produktu.',
+      );
     } finally {
-      patch({ busy: null });
+      setBusy(null);
     }
-  }, [patch]);
+  }
 
-  const submitRawEvidence = useCallback(async () => {
-    const current = session.current;
-    if (current.assets.length === 0 || current.busy) return;
-    patch({ busy: 'Wysyłam zdjęcia do ręcznej weryfikacji…', error: null });
+  async function save(): Promise<void> {
+    if (!ready || !review || !validReviewBarcode) return;
+    setBusy('Dodaję produkt do Twojego katalogu…');
+    setErrorStage('save');
+    setError(null);
     try {
-      const preferences = await getCatalogMarketPreferences().catch(() => null);
-      const result = await submitRawProductRequest({
-        idempotencyKey: `${current.sessionId}:raw-request-v1`,
-        marketCountryCode: preferences?.primaryMarket ?? null,
-        detectedEan: current.barcode?.lookupValue ?? null,
+      const result = await finalizeProductScan({
+        action: 'finalize',
+        sessionId,
+        idempotencyKey: `${sessionId}:customer-product-v1`,
+        customerFamily: familyChoice,
+        confirmations: { packageEvidenceExhausted, productFields },
+        privateOverlay: {},
       });
-      const requestId = typeof result.requestId === 'string' ? result.requestId : null;
-      if (!requestId) throw new Error('Zgłoszenie nie zwróciło numeru sprawy.');
-      await uploadProductRequestEvidence({
-        requestId,
-        assets: current.assets,
-        views: current.assets.map((_, index) => current.captured[index]?.view ?? null),
-      });
-      patch({ saved: { ...result, controlledCatalog: true, engineUsable: false } });
-    } catch (caught) {
-      patch({
-        errorStage: 'save',
-        error: caught instanceof Error ? caught.message : 'Nie udało się wysłać zgłoszenia.',
-      });
-    } finally {
-      patch({ busy: null });
-    }
-  }, [patch]);
-
-  const setTorch = useCallback(
-    async (enabled: boolean) => {
-      const track = streamRef.current?.getVideoTracks?.()[0];
-      if (!track?.applyConstraints) return;
-      try {
-        await track.applyConstraints({
-          advanced: [{ torch: enabled } as MediaTrackConstraintSet],
+      setSaved(result);
+      const productId = typeof result.productId === 'string' ? result.productId : null;
+      if (productId && onResolved) {
+        onResolved({
+          id: productId,
+          displayName:
+            typeof result.displayName === 'string' ? result.displayName : review.displayName,
+          brand: typeof result.brand === 'string' ? result.brand : review.brand || null,
+          entityKind: 'commercial_product',
+          status: 'manual_unverified',
+          barcode: validReviewBarcode.lookupValue,
         });
-        patch({ torchOn: enabled });
-      } catch {
-        patch({ guidance: 'Latarka nie jest dostępna dla tej kamery.' });
       }
-    },
-    [patch],
-  );
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Nie udało się dodać produktu.');
+    } finally {
+      setBusy(null);
+    }
+  }
 
-  const setZoom = useCallback(
-    async (value: number) => {
-      const track = streamRef.current?.getVideoTracks?.()[0];
-      if (!track?.applyConstraints || !Number.isFinite(value)) return;
-      try {
-        await track.applyConstraints({ advanced: [{ zoom: value } as MediaTrackConstraintSet] });
-        const zoom = session.current.cameraCapabilities.zoom;
-        if (zoom) {
-          patch({
-            cameraCapabilities: {
-              ...session.current.cameraCapabilities,
-              zoom: { ...zoom, value },
-            },
-          });
-        }
-      } catch {
-        patch({ guidance: 'Zoom nie jest dostępny dla tej kamery.' });
-      }
-    },
-    [patch],
-  );
-
-  const confirmMissingOnPackage = useCallback(
-    async (key: LiveScanFieldKey) => {
-      const current = session.current;
-      const viewForField: Readonly<Record<LiveScanFieldKey, ScanEvidenceKind>> = {
-        barcode: 'barcode',
-        product_name: 'identity',
-        brand: 'identity',
-        net_quantity: 'identity',
-        nutrition: 'nutrition',
-        ingredients: 'ingredients',
-        allergens: 'ingredients',
-      };
-      const view = viewForField[key];
-      const nextFields = confirmNotOnLabel(current.fields, key);
-      patch({
-        fields: nextFields,
-        notOnLabelFields: current.notOnLabelFields.includes(key)
-          ? current.notOnLabelFields
-          : [...current.notOnLabelFields, key],
-        shownViews: current.shownViews.includes(view)
-          ? current.shownViews
-          : [...current.shownViews, view],
-        allergenConfirmed: key === 'allergens' ? true : current.allergenConfirmed,
-        guidance: nextLiveHint(nextFields),
-      });
-      await advance();
-    },
-    [advance, patch],
-  );
-
-  const exactProduct = state.exactProduct;
-  const showResult = scanShowsResult(route) || state.finished || state.assets.length > 0;
-  const showFinalResult =
-    state.exactProduct !== null || (state.analysis !== null && scanShowsResult(route));
-  const needsAllergenConfirmation =
-    state.missingCriticalFields.includes('allergen_confirmation') === true;
-  const allergenConfirmationIsOnlyBlocker =
-    state.missingCriticalFields.length === 1 && needsAllergenConfirmation;
-  const completionFields = productCompletionFields(state.missingCriticalFields);
-  const completionReady = productCompletionReady(
-    completionFields,
-    state.completionValues,
-    state.allergenConfirmed,
-  );
-  const firstUnresolvedField = LIVE_FIELD_ORDER.find((key) =>
-    ['MISSING', 'SEARCHING', 'CONFLICT'].includes(state.fields[key].status),
-  );
-  const notOnLabelCandidate =
-    firstUnresolvedField &&
-    ['barcode', 'net_quantity', 'nutrition', 'ingredients', 'allergens'].includes(
-      firstUnresolvedField,
-    )
-      ? firstUnresolvedField
-      : null;
-  const completion = liveScanCompletion(state.fields);
+  function patchReview(key: keyof ReviewValues, value: ReviewValues[keyof ReviewValues]): void {
+    setReview((current) => (current ? ({ ...current, [key]: value } as ReviewValues) : current));
+    setPreview(null);
+  }
 
   return (
     <div
       onPaste={(event) => {
         const files = [...event.clipboardData.files];
-        if (files.length) void addFiles(files, 'paste').then(() => advance());
+        if (files.length) void addFiles(files, 'paste');
       }}
     >
-      <section className={`${card} mt-6 overflow-hidden`} aria-label="Sesja skanowania produktu">
+      <section className={`${card} mt-6`} aria-label="Sesja skanowania produktu">
         <div className="border-b border-stone-200 bg-[#fbfaf7] p-5 sm:p-7">
           {intro && <p className="mb-4 text-sm leading-6 text-stone-600">{intro}</p>}
           <label className="flex items-start gap-3 text-sm leading-6 text-stone-600">
             <input
               type="checkbox"
-              checked={state.privacyAccepted}
-              onChange={(event) => patch({ privacyAccepted: event.currentTarget.checked })}
+              checked={privacyAccepted}
+              onChange={(event) => setPrivacyAccepted(event.currentTarget.checked)}
               className="mt-1 size-4 accent-stone-900"
             />
             <span>
@@ -1209,17 +480,34 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
           <div className="mt-5 flex flex-wrap gap-3">
             <button
               type="button"
-              onClick={() => void startCamera()}
+              onClick={() => cameraInput.current?.click()}
               className={primaryButton}
-              disabled={!state.privacyAccepted}
+              disabled={!privacyAccepted}
             >
-              Skanuj kamerą
+              Zrób zdjęcie
             </button>
-            <button type="button" onClick={() => inputRef.current?.click()} className={quietButton}>
-              Dodaj zdjęcia
+            <button
+              type="button"
+              onClick={() => galleryInput.current?.click()}
+              className={quietButton}
+              disabled={!privacyAccepted}
+            >
+              Wybierz zdjęcia
             </button>
             <input
-              ref={inputRef}
+              ref={cameraInput}
+              className="sr-only"
+              type="file"
+              accept={PRODUCT_SCAN_ACCEPT}
+              capture="environment"
+              onChange={(event) => {
+                const files = [...(event.currentTarget.files ?? [])];
+                event.currentTarget.value = '';
+                void addFiles(files, 'camera_manual');
+              }}
+            />
+            <input
+              ref={galleryInput}
               className="sr-only"
               type="file"
               accept={PRODUCT_SCAN_ACCEPT}
@@ -1227,311 +515,112 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
               onChange={(event) => {
                 const files = [...(event.currentTarget.files ?? [])];
                 event.currentTarget.value = '';
-                void addFiles(files, 'gallery').then(() => advance());
+                void addFiles(files, 'gallery');
               }}
             />
           </div>
-          <p className="mt-3 text-xs leading-5 text-stone-500">
-            Kamera sama zapisuje potrzebne ujęcia. Możesz też dodać zdjęcia z urządzenia,
-            przeciągnąć je lub wkleić — trafiają do tej samej sesji.
-          </p>
         </div>
 
-        {state.cameraOpen && (
-          <div className="border-b border-stone-200 bg-ink p-4 text-white sm:p-6">
-            <div className="relative mx-auto max-w-2xl overflow-hidden rounded-xl bg-black">
-              <video
-                ref={videoRef}
-                playsInline
-                muted
-                className="aspect-[3/4] w-full object-cover sm:aspect-[4/3]"
-              />
-              <div className="pointer-events-none absolute inset-x-[6%] top-[19%] h-[62%] rounded-lg border border-white/70 shadow-[0_0_0_999px_rgba(0,0,0,0.18)]" />
+        <div
+          className="m-5 border border-dashed border-stone-300 p-4 sm:m-7"
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={(event) => {
+            event.preventDefault();
+            void addFiles([...event.dataTransfer.files], 'drop');
+          }}
+        >
+          {assets.length === 0 ? (
+            <p className="py-5 text-center text-sm text-stone-500">
+              Dodaj przód, tabelę, skład i kod. Na komputerze możesz też przeciągnąć zdjęcia tutaj.
+            </p>
+          ) : (
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+              {assets.map((asset, index) => (
+                <figure key={asset.id} className="border border-stone-200">
+                  <img
+                    src={asset.previewUrl}
+                    alt={`Ujęcie ${index + 1}`}
+                    className="aspect-square w-full object-cover"
+                  />
+                </figure>
+              ))}
             </div>
-            <p className="mx-auto mt-4 max-w-2xl text-base font-medium" aria-live="polite">
-              {state.busy ??
-                (state.guidance === 'Obracaj produkt powoli'
-                  ? nextLiveHint(state.fields)
-                  : state.guidance)}
-            </p>
-            <ul
-              className="mx-auto mt-4 grid max-w-2xl gap-px overflow-hidden rounded-lg border border-white/15 bg-white/15 text-sm"
-              aria-label="Postęp odczytu produktu"
-            >
-              {LIVE_FIELD_ORDER.map((key) => {
-                const field = state.fields[key];
-                const isFound = field.status === 'FOUND';
-                const isAbsent = field.status === 'USER_CONFIRMED_NOT_ON_LABEL';
-                const icon = isFound
-                  ? '✓'
-                  : isAbsent
-                    ? '–'
-                    : field.status === 'CONFLICT'
-                      ? '!'
-                      : '○';
-                return (
-                  <li
-                    key={key}
-                    className="flex min-h-11 items-center justify-between gap-3 bg-[#242321] px-3 py-2"
-                  >
-                    <span className={isFound || isAbsent ? 'text-white' : 'text-stone-300'}>
-                      <span aria-hidden>{icon}</span> {LIVE_FIELD_LABEL[key]}
-                    </span>
-                    <span className="text-right font-mono text-xs text-stone-300">
-                      {field.value ?? (isAbsent ? 'brak na etykiecie' : '')}
-                    </span>
-                    <span className="sr-only">
-                      {isFound
-                        ? 'znaleziono'
-                        : isAbsent
-                          ? 'potwierdzono brak na etykiecie'
-                          : field.status === 'CONFLICT'
-                            ? 'wykryto konflikt'
-                            : 'szukanie'}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-            <p className="sr-only" aria-live="polite" aria-atomic="true">
-              {LIVE_FIELD_ORDER.filter((key) => state.fields[key].status === 'FOUND')
-                .map((key) => `${LIVE_FIELD_LABEL[key]} znaleziono`)
-                .join('. ')}
-            </p>
-            {notOnLabelCandidate && (
+          )}
+          {assets.length > 0 && !exactProduct && (
+            <div className="mt-4 flex flex-wrap gap-3">
               <button
                 type="button"
-                className="pro-focus-ring mx-auto mt-3 flex min-h-11 max-w-2xl items-center text-sm text-stone-200 underline decoration-white/30 underline-offset-4"
-                onClick={() => void confirmMissingOnPackage(notOnLabelCandidate)}
+                className={primaryButton}
+                onClick={() => void analyze()}
+                disabled={Boolean(busy)}
               >
-                Nie ma tej informacji na opakowaniu
+                {analysis ? 'Analizuj nowe zdjęcie' : 'Analizuj opakowanie'}
               </button>
-            )}
-            <div className="mx-auto mt-4 flex max-w-2xl justify-end">
-              <button
-                type="button"
-                className="pro-focus-ring min-h-11 px-3 text-sm text-stone-300"
-                onClick={stopCamera}
-              >
-                Zamknij
-              </button>
-            </div>
-            <details className="mx-auto mt-2 max-w-2xl border-t border-white/15 pt-3 text-sm text-stone-300">
-              <summary className="pro-focus-ring flex min-h-11 cursor-pointer items-center">
-                Problem ze skanowaniem?
-              </summary>
-              <div className="flex flex-wrap items-center gap-2 pb-1 pt-2">
-                <button
-                  type="button"
-                  className="pro-focus-ring min-h-11 rounded-lg border border-white/30 px-3"
-                  onClick={() => {
-                    const view = (wantedViews().find((item) => item !== 'barcode') ??
-                      'identity') as CaptureView;
-                    void captureFullFrame(view, 'camera_manual', null).then(() => advance());
-                  }}
-                >
-                  Zatrzymaj jedną klatkę
-                </button>
-                <button
-                  type="button"
-                  className="pro-focus-ring min-h-11 rounded-lg border border-white/30 px-3"
-                  onClick={() =>
-                    void startCamera(state.cameraFacing === 'environment' ? 'user' : 'environment')
-                  }
-                >
-                  Zmień kamerę
-                </button>
-                {state.cameraCapabilities.torch && (
+              {analysis &&
+                !packageEvidenceExhausted &&
+                analysis.missingCriticalFields.length > 0 && (
                   <button
                     type="button"
-                    className="pro-focus-ring min-h-11 rounded-lg border border-white/30 px-3"
-                    onClick={() => void setTorch(!state.torchOn)}
+                    className={quietButton}
+                    onClick={() => cameraInput.current?.click()}
                   >
-                    {state.torchOn ? 'Wyłącz latarkę' : 'Włącz latarkę'}
+                    {targetPrompt(analysis.missingCriticalFields, analysis.result)}
                   </button>
                 )}
-                {state.cameraCapabilities.zoom && (
-                  <label className="flex min-h-11 items-center gap-2">
-                    Zoom
-                    <input
-                      type="range"
-                      min={state.cameraCapabilities.zoom.min}
-                      max={state.cameraCapabilities.zoom.max}
-                      step={state.cameraCapabilities.zoom.step}
-                      value={state.cameraCapabilities.zoom.value}
-                      onChange={(event) => void setZoom(Number(event.currentTarget.value))}
-                    />
-                  </label>
-                )}
-              </div>
-            </details>
-          </div>
-        )}
-        <canvas ref={canvasRef} className="hidden" />
-
-        {!state.cameraOpen && showResult && !showFinalResult && (
-          <div className="p-5 sm:p-7" aria-live="polite">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
-              Skanowanie produktu
-            </p>
-            <ul className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-              {LIVE_FIELD_ORDER.map((key) => (
-                <li key={key}>
-                  <span aria-hidden>{state.fields[key].status === 'FOUND' ? '✓' : '○'}</span>{' '}
-                  {LIVE_FIELD_LABEL[key]}
-                  {state.fields[key].value ? ` · ${state.fields[key].value}` : ''}
-                </li>
-              ))}
-            </ul>
-            <p className="mt-4 text-sm font-medium">{state.busy ?? nextLiveHint(state.fields)}</p>
-            {evidence.requestView && !state.cameraOpen && (
-              <button
-                type="button"
-                className={`${primaryButton} mt-4`}
-                onClick={() => void startCamera()}
-              >
-                Pokaż to ujęcie
-              </button>
-            )}
-            {notOnLabelCandidate && (
-              <button
-                type="button"
-                className={`${quietButton} mt-3`}
-                onClick={() => void confirmMissingOnPackage(notOnLabelCandidate)}
-              >
-                Nie ma tej informacji na opakowaniu
-              </button>
-            )}
-          </div>
-        )}
-
-        <details className="m-5 rounded-xl border border-stone-200 bg-white p-4 text-sm sm:m-7">
-          <summary className="pro-focus-ring flex min-h-11 cursor-pointer items-center font-semibold text-stone-700">
-            Szczegóły i dodane zdjęcia {state.assets.length > 0 ? `(${state.assets.length})` : ''}
-          </summary>
-          <div
-            className="mt-3 rounded-lg border border-dashed border-stone-300 p-4"
-            onDragOver={(event) => event.preventDefault()}
-            onDrop={(event) => {
-              event.preventDefault();
-              void addFiles([...event.dataTransfer.files], 'drop').then(() => advance());
-            }}
-          >
-            {state.assets.length === 0 ? (
-              <p className="py-3 text-center text-stone-500">
-                Przeciągnij, wklej lub dodaj zdjęcia etykiety — trafią do tej samej sesji co skan.
-              </p>
-            ) : (
-              <div className="grid grid-cols-4 gap-2">
-                {state.assets.map((asset, index) => (
-                  <figure
-                    key={asset.id}
-                    className="overflow-hidden rounded-lg border border-stone-200"
-                  >
-                    <img
-                      src={asset.previewUrl}
-                      alt={`Ujęcie ${index + 1}`}
-                      className="aspect-square w-full object-cover"
-                    />
-                    <figcaption className="p-1 text-center">
-                      <button
-                        type="button"
-                        className="pro-focus-ring min-h-11 px-1 text-[11px] font-semibold text-stone-600"
-                        onClick={() => discardAsset(asset.id)}
-                      >
-                        Usuń
-                      </button>
-                    </figcaption>
-                  </figure>
-                ))}
-              </div>
-            )}
-          </div>
-          {exposeStagingQaDiagnostics && (
-            <dl className="mt-4 grid gap-2 rounded-lg bg-stone-950 p-3 font-mono text-[11px] text-stone-200 sm:grid-cols-2">
-              <div>
-                <dt>camera</dt>
-                <dd>getUserMedia · {state.cameraFacing}</dd>
-              </div>
-              <div>
-                <dt>camera startup</dt>
-                <dd>{state.cameraStartupMs ?? '—'} ms</dd>
-              </div>
-              <div>
-                <dt>frame source</dt>
-                <dd>{state.frameSourceKind ?? 'preparing'}</dd>
-              </div>
-              <div>
-                <dt>decoder</dt>
-                <dd>{state.decoderKind ?? 'preparing'}</dd>
-              </div>
-              <div>
-                <dt>WASM warmup</dt>
-                <dd>{state.decoderWarmupMs ?? '—'} ms</dd>
-              </div>
-              <div>
-                <dt>barcode attempts</dt>
-                <dd>{state.barcodeAttempts}</dd>
-              </div>
-              <div>
-                <dt>first barcode</dt>
-                <dd>{state.timeToFirstBarcodeMs ?? '—'} ms</dd>
-              </div>
-              <div>
-                <dt>auto evidence</dt>
-                <dd>{state.autoCapturedViews.join(', ') || '—'}</dd>
-              </div>
-              <div>
-                <dt>duplicates skipped</dt>
-                <dd>{state.duplicateFramesSkipped}</dd>
-              </div>
-              <div>
-                <dt>Vision calls</dt>
-                <dd>{state.visionCalls}</dd>
-              </div>
-              <div>
-                <dt>source lookups</dt>
-                <dd>{state.sourceLookupCount}</dd>
-              </div>
-              <div>
-                <dt>missing fields</dt>
-                <dd>{missingFieldsForAnalysis(state.fields).join(', ') || '—'}</dd>
-              </div>
-              <div>
-                <dt>not on label</dt>
-                <dd>{state.notOnLabelFields.join(', ') || '—'}</dd>
-              </div>
-              <div>
-                <dt>session</dt>
-                <dd>{completion}</dd>
-              </div>
-            </dl>
+            </div>
           )}
-        </details>
+        </div>
 
-        {state.barcode && (
-          <div className="mx-5 mb-5 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm sm:mx-7">
-            <span className="font-semibold">Kod {state.barcode.format}:</span> {state.barcode.value}
+        {!exactProduct && (
+          <div className="mx-5 mb-5 border-t border-stone-200 pt-5 sm:mx-7 sm:mb-7">
+            <label className="block max-w-md text-sm font-semibold text-stone-800">
+              EAN / GTIN — wymagany
+              <span className="mt-2 flex gap-2">
+                <input
+                  className={fieldClass}
+                  inputMode="numeric"
+                  value={review?.barcode ?? barcodeInput}
+                  onChange={(event) => {
+                    const value = event.currentTarget.value;
+                    setBarcodeInput(value);
+                    if (review) patchReview('barcode', value);
+                  }}
+                  placeholder="Kod z opakowania"
+                />
+                <button
+                  type="button"
+                  className={quietButton}
+                  disabled={!validateBarcode(review?.barcode ?? barcodeInput) || Boolean(busy)}
+                  onClick={() => {
+                    const value = validateBarcode(review?.barcode ?? barcodeInput);
+                    if (value) void resolveBarcode(value);
+                  }}
+                >
+                  Sprawdź
+                </button>
+              </span>
+            </label>
+            {!validReviewBarcode && (review?.barcode || barcodeInput) && (
+              <p className="mt-2 text-sm text-terracotta">Kod nie ma poprawnej cyfry kontrolnej.</p>
+            )}
           </div>
         )}
       </section>
 
       {exactProduct && (
-        <section className={`${card} mt-6 border-sage/40 p-6`}>
+        <section className={`${card} mt-6 border-sage/50 p-6`}>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
-            Produkt znaleziony — bez analizy i bez limitu
+            Znaleziono dokładny EAN
           </p>
           <h2 className="mt-2 text-2xl font-semibold">{exactProduct.displayName}</h2>
           <p className="mt-2 text-sm text-stone-600">
-            {exactProduct.brand ?? 'Bez marki'} · {productStatus(exactProduct)}
+            {exactProduct.brand ?? 'Bez marki'} · {exactProductStatus(exactProduct)}
           </p>
           {onResolved && (
             <button
               type="button"
               className={`${primaryButton} mt-5`}
-              onClick={() =>
-                onResolved({ ...exactProduct, barcode: state.barcode?.lookupValue ?? null })
-              }
+              onClick={() => onResolved({ ...exactProduct, barcode: barcode?.lookupValue ?? null })}
             >
               {resolveLabel ?? 'Dodaj do receptury'}
             </button>
@@ -1539,242 +628,280 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
         </section>
       )}
 
-      {state.analysis && showFinalResult && (
-        <section className={`${card} mt-6 p-6 sm:p-8`}>
+      {analysis && review && !exactProduct && (
+        <section className={`${card} mt-6 p-5 sm:p-7`}>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
-                Wynik analizy
+                Dowody z opakowania
               </p>
-              <h2 className="mt-2 text-2xl font-semibold">
-                {state.fields.product_name.value ??
-                  state.analysis.result.identity.displayName ??
-                  state.analysis.result.identity.originalName ??
-                  'Nazwa wymaga potwierdzenia'}
-              </h2>
-              <p className="mt-2 text-sm text-stone-600">
-                {state.fields.brand.value ??
-                  state.analysis.result.identity.brand ??
-                  (state.analysis.result.identity.explicitlyUnbranded
-                    ? 'Produkt bez marki'
-                    : 'Marka nieznana')}
-              </p>
+              <h2 className="mt-2 text-2xl font-semibold">Sprawdź produkt</h2>
             </div>
-            <span className="rounded-full border border-stone-300 px-3 py-1 text-xs font-semibold text-stone-600">
-              {completion === 'COMPLETE' || completion === 'COMPLETE_WITH_NOT_ON_LABEL_FIELDS'
-                ? 'Produkt gotowy ✓'
-                : scanCompletenessLabel(state.analysis.overlayState, state.missingCriticalFields)}
+            <span className="border border-stone-300 px-3 py-1 text-xs font-semibold text-stone-600">
+              {analysis.usage.visionCalls} analiza / {assets.length} zdjęć
             </span>
           </div>
-          <dl className="mt-6 grid gap-4 border-y border-stone-200 py-5 sm:grid-cols-3">
-            <div>
-              <dt className="text-xs text-stone-500">Opakowanie</dt>
-              <dd className="mt-1 font-medium">
-                {state.fields.net_quantity.value ??
-                  packageDisplay(state.analysis.result.package).value}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-stone-500">Energia</dt>
-              <dd className="mt-1 font-medium">
-                {state.analysis.result.nutrition.energyKcal ?? '—'} kcal
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-stone-500">Kod</dt>
-              <dd className="mt-1 font-medium">
-                {state.analysis.result.barcodes[0]?.value ?? state.barcode?.value ?? 'Brak'}
-              </dd>
-            </div>
-          </dl>
-          {scanBlockerExplanation(state.missingCriticalFields) && (
-            <p className="mt-4 rounded-xl border border-gold/40 bg-gold/10 p-4 text-sm text-stone-700">
-              {scanBlockerExplanation(state.missingCriticalFields)}
-            </p>
-          )}
-          {completionFields.length > 0 && (
-            <section className="mt-5 rounded-2xl border border-stone-200 bg-[#fbfaf7] p-5 sm:p-6">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
-                Uzupełnij produkt
-              </p>
-              <h3 className="mt-2 text-xl font-semibold text-ink">
-                Jeszcze {completionFields.length}{' '}
-                {completionFields.length === 1 ? 'informacja' : 'informacje'}
-              </h3>
-              <p className="mt-2 max-w-xl text-sm leading-6 text-stone-600">
-                Przepisz tylko brakujące dane z opakowania. Zachowaliśmy cały dotychczasowy skan.
-              </p>
-              <div className="mt-5 grid gap-5 sm:grid-cols-2">
-                {completionFields.map((field) => (
-                  <label
-                    key={field.key}
-                    className={field.input === 'textarea' ? 'sm:col-span-2' : ''}
-                  >
-                    <span className="text-sm font-semibold text-stone-800">{field.label}</span>
-                    <span className="mt-2 flex items-center gap-2">
-                      {field.input === 'select' ? (
-                        <select
-                          value={state.completionValues[field.key] ?? ''}
-                          onChange={(event) => patch({
-                            completionValues: {
-                              ...session.current.completionValues,
-                              [field.key]: event.currentTarget.value,
-                            },
-                          })}
-                          className="pro-focus-ring min-h-11 w-full rounded-xl border border-stone-300 bg-white px-3 text-sm"
-                        >
-                          <option value="">Wybierz…</option>
-                          <option value="per_100g">na 100 g</option>
-                          <option value="per_100ml">na 100 ml</option>
-                        </select>
-                      ) : field.input === 'textarea' ? (
-                        <textarea
-                          rows={3}
-                          value={state.completionValues[field.key] ?? ''}
-                          onChange={(event) => patch({
-                            completionValues: {
-                              ...session.current.completionValues,
-                              [field.key]: event.currentTarget.value,
-                            },
-                          })}
-                          className="pro-focus-ring w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm"
-                        />
-                      ) : (
-                        <input
-                          type={field.input}
-                          inputMode={field.input === 'number' ? 'decimal' : undefined}
-                          min={field.input === 'number' ? 0 : undefined}
-                          step={field.input === 'number' ? 'any' : undefined}
-                          value={state.completionValues[field.key] ?? ''}
-                          onChange={(event) => patch({
-                            completionValues: {
-                              ...session.current.completionValues,
-                              [field.key]: event.currentTarget.value,
-                            },
-                          })}
-                          className="pro-focus-ring min-h-11 w-full rounded-xl border border-stone-300 bg-white px-3 text-sm"
-                        />
-                      )}
-                      {field.unit && (
-                        <span className="shrink-0 text-xs font-medium text-stone-500">{field.unit}</span>
-                      )}
-                    </span>
-                    <span className="mt-1 block text-xs leading-5 text-stone-500">{field.help}</span>
-                  </label>
-                ))}
-              </div>
-            </section>
-          )}
-          {evidence.packageEvidenceExhausted && (
-            <p className="mt-4 rounded-xl border border-stone-200 bg-stone-50 p-4 text-sm text-stone-600">
-              Pokazałeś już tę część opakowania. Brakujących danych nie ma na etykiecie —
-              uzupełniamy je z Product Intelligence, bez kolejnych zdjęć.
-            </p>
-          )}
-          {state.lookupUnavailable && (
-            <p className="mt-4 text-sm text-stone-600">
-              Nie udało się znaleźć dodatkowych danych online. Pracuję na tym, co widać na
-              etykiecie.
-            </p>
-          )}
-          {needsAllergenConfirmation && (
-            <label className="mt-4 flex items-start gap-3 text-sm text-stone-700">
-              <input
-                type="checkbox"
-                checked={state.allergenConfirmed}
-                onChange={(event) => {
-                  if (event.currentTarget.checked) void confirmMissingOnPackage('allergens');
-                  else
-                    patch({
-                      allergenConfirmed: false,
-                      fields: clearNotOnLabel(session.current.fields, 'allergens'),
-                      notOnLabelFields: session.current.notOnLabelFields.filter(
-                        (key) => key !== 'allergens',
-                      ),
-                    });
-                }}
-                className="mt-1 size-4 accent-stone-900"
-              />
-              <span>
-                Potwierdzam, że na dostarczonej etykiecie nie widzę dodatkowej deklaracji alergenów.
-                To nie oznacza automatycznie „braku alergenów”.
-              </span>
-            </label>
-          )}
-          {completionFields.length === 0 && notOnLabelCandidate && notOnLabelCandidate !== 'allergens' && (
-            <button
-              type="button"
-              className={`${quietButton} mt-4`}
-              onClick={() => void confirmMissingOnPackage(notOnLabelCandidate)}
-            >
-              Nie ma tej informacji na opakowaniu
-            </button>
-          )}
-          <div className="mt-6 flex flex-wrap gap-3">
-            <button
-              type="button"
-              className={primaryButton}
-              disabled={
-                Boolean(state.busy) ||
-                (state.analysis.overlayState === 'SCAN_DRAFT' &&
-                  !(
-                    (allergenConfirmationIsOnlyBlocker && state.allergenConfirmed) ||
-                    (completionFields.length > 0 && completionReady)
-                  ))
-              }
-              onClick={() => void save()}
-            >
-              Poproś o dodanie produktu
-            </button>
-          </div>
-        </section>
-      )}
 
-      {state.saved && (
-        <section className={`${card} mt-6 border-sage/40 p-6`} aria-live="polite">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
-            Zgłoszenie przyjęte
-          </p>
-          <h2 className="mt-2 text-xl font-semibold">
-            {typeof state.saved.requestNumber === 'number'
-              ? `Zgłoszenie #${state.saved.requestNumber}`
-              : 'Produkt czeka na weryfikację Admina'}
-          </h2>
-          <p className="mt-2 text-sm text-stone-600">
-            Zapisaliśmy dowody, ale nie utworzyliśmy składnika. Produkt pojawi się w katalogu
-            dopiero po zatwierdzeniu i otrzymaniu oficjalnego numeru PR-ING.
-          </p>
-        </section>
-      )}
-
-      {state.error && (
-        <div
-          role="alert"
-          className="mt-5 rounded-xl border border-terracotta/40 bg-terracotta/10 p-4 text-sm text-stone-700"
-        >
-          <p>{assertUserSafeScannerMessage(state.error, state.errorStage)}</p>
-          {state.errorStage === 'save' && state.analysis && (
-            <p className="mt-2 text-stone-600">
-              Wynik analizy jest zachowany — nic nie trzeba skanować ponownie.
-            </p>
-          )}
-          {state.errorStage === 'analysis' && state.assets.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
+          {!packageEvidenceExhausted && analysis.missingCriticalFields.length > 0 && (
+            <div className="mt-5 border border-gold/40 bg-gold/10 p-4 text-sm text-stone-700">
+              <p>{targetPrompt(analysis.missingCriticalFields, analysis.result)}</p>
               <button
                 type="button"
-                className={quietButton}
-                onClick={() => {
-                  patch({ error: null });
-                  void advance();
-                }}
+                className={`${quietButton} mt-3`}
+                onClick={() => setPackageEvidenceExhausted(true)}
               >
-                Spróbuj ponownie w tej sesji
-              </button>
-              <button type="button" className={primaryButton} onClick={() => void submitRawEvidence()}>
-                Wyślij zdjęcia do ręcznej weryfikacji
+                Nie mam więcej informacji na opakowaniu
               </button>
             </div>
           )}
+          {packageEvidenceExhausted && (
+            <p className="mt-5 border border-stone-200 bg-stone-50 p-4 text-sm text-stone-600">
+              Nie prosimy już o kolejne zdjęcia. Product Intelligence sprawdzi teraz bezpieczne
+              uzupełnienia.
+            </p>
+          )}
+
+          <div className="mt-6 grid gap-5 sm:grid-cols-2">
+            <label className="text-sm font-semibold">
+              Nazwa produktu
+              <input
+                className={`${fieldClass} mt-2`}
+                value={review.displayName}
+                onChange={(event) => patchReview('displayName', event.currentTarget.value)}
+              />
+            </label>
+            <label className="text-sm font-semibold">
+              Marka
+              <input
+                className={`${fieldClass} mt-2`}
+                value={review.brand}
+                onChange={(event) => patchReview('brand', event.currentTarget.value)}
+                placeholder="Bez marki — pozostaw puste"
+              />
+            </label>
+          </div>
+
+          <details className="mt-6 border-t border-stone-200 pt-5">
+            <summary className="pro-focus-ring min-h-11 cursor-pointer text-sm font-semibold">
+              Edytuj odczytane wartości
+            </summary>
+            <div className="mt-4 grid gap-4 sm:grid-cols-3">
+              {(
+                [
+                  ['energyKcal', 'Energia kcal'],
+                  ['fat', 'Tłuszcz'],
+                  ['carbohydrate', 'Węglowodany'],
+                  ['sugars', 'Cukry'],
+                  ['protein', 'Białko'],
+                  ['salt', 'Sól'],
+                  ['fibre', 'Błonnik'],
+                ] as const
+              ).map(([key, label]) => (
+                <label key={key} className="text-xs font-semibold text-stone-700">
+                  {label}
+                  <input
+                    className={`${fieldClass} mt-1`}
+                    inputMode="decimal"
+                    value={review.nutrition[key]}
+                    onChange={(event) =>
+                      patchReview('nutrition', {
+                        ...review.nutrition,
+                        [key]: event.currentTarget.value,
+                      })
+                    }
+                  />
+                </label>
+              ))}
+              <label className="text-xs font-semibold text-stone-700">
+                Podstawa
+                <select
+                  className={`${fieldClass} mt-1`}
+                  value={review.nutrition.basis}
+                  onChange={(event) =>
+                    patchReview('nutrition', {
+                      ...review.nutrition,
+                      basis: event.currentTarget.value,
+                    })
+                  }
+                >
+                  <option value="">Nie odczytano</option>
+                  <option value="per_100g">na 100 g</option>
+                  <option value="per_100ml">na 100 ml</option>
+                </select>
+              </label>
+              <label className="sm:col-span-3 text-xs font-semibold text-stone-700">
+                Skład
+                <textarea
+                  className={`${fieldClass} mt-1 min-h-24 py-3`}
+                  value={review.ingredientsText}
+                  onChange={(event) => patchReview('ingredientsText', event.currentTarget.value)}
+                />
+              </label>
+              <label className="sm:col-span-3 text-xs font-semibold text-stone-700">
+                Alergeny
+                <textarea
+                  className={`${fieldClass} mt-1 min-h-20 py-3`}
+                  value={review.allergensText}
+                  onChange={(event) => patchReview('allergensText', event.currentTarget.value)}
+                />
+              </label>
+              {productionDeclarationFields.map(([key, label, inputMode]) => (
+                <label key={key} className="text-xs font-semibold text-stone-700">
+                  {label}
+                  <input
+                    className={`${fieldClass} mt-1`}
+                    inputMode={inputMode}
+                    value={review.productionDeclarations[key] ?? ''}
+                    onChange={(event) =>
+                      patchReview('productionDeclarations', {
+                        ...review.productionDeclarations,
+                        [key]: event.currentTarget.value,
+                      })
+                    }
+                  />
+                </label>
+              ))}
+            </div>
+          </details>
+
+          {!preview && (
+            <button
+              type="button"
+              className={`${primaryButton} mt-6`}
+              disabled={!validReviewBarcode || !review.displayName.trim() || Boolean(busy)}
+              onClick={() => void buildPreview()}
+            >
+              Sprawdź gotowość produktu
+            </button>
+          )}
+
+          {familyRequired && (
+            <div className="mt-6 border-t border-stone-200 pt-6">
+              <h3 className="text-lg font-semibold">Jaki to rodzaj produktu?</h3>
+              <p className="mt-1 text-sm text-stone-600">
+                Wybierz prostą kategorię. Dopiero potem uruchomimy dopasowanie rodzinne.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {CUSTOMER_PRODUCT_FAMILY_CHOICES.map((choice) => (
+                  <button
+                    key={choice.id}
+                    type="button"
+                    className={familyChoice === choice.id ? primaryButton : quietButton}
+                    onClick={() => {
+                      setFamilyChoice(choice.id);
+                      void buildPreview(choice.id);
+                    }}
+                  >
+                    {choice.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {preview?.kind === 'profile_preview' && (
+            <div className="mt-7 border-t border-stone-200 pt-6">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-2xl font-semibold">
+                    {ready ? 'Produkt gotowy' : 'Produkt wymaga danych'}
+                  </h3>
+                  <p className="mt-1 text-sm text-stone-600">
+                    Pewność: {String(preview.productAccuracy ?? 0)}%
+                  </p>
+                </div>
+                {ready && (
+                  <span className="bg-sage/15 px-3 py-2 text-sm font-semibold text-[#246238]">
+                    Gotowy do Engine
+                  </span>
+                )}
+              </div>
+
+              {Object.entries(
+                (preview.fieldTruth as Record<string, Record<string, unknown>> | undefined) ?? {},
+              ).length > 0 && (
+                <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                  {Object.entries(
+                    preview.fieldTruth as Record<string, Record<string, unknown>>,
+                  ).map(([key, truth]) => {
+                    const estimated = truth.state === 'ESTIMATED';
+                    return (
+                      <div
+                        key={key}
+                        className="flex items-center justify-between border-b border-stone-100 py-2 text-sm"
+                      >
+                        <span>{truthLabel[key] ?? key}</span>
+                        <span className={estimated ? 'text-stone-500' : 'text-ink'}>
+                          {String(truth.value)}% · {estimated ? 'oszacowano' : 'potwierdzono'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {!ready && criticalGaps.length > 0 && (
+                <div className="mt-5 border border-terracotta/40 bg-terracotta/10 p-4 text-sm text-stone-800">
+                  <p className="font-semibold text-terracotta">Nierozwiązane dane produkcyjne</p>
+                  <ul className="mt-2 list-disc space-y-1 pl-5">
+                    {criticalGaps.map((gap) => (
+                      <li key={gap}>{gap}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="mt-6 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  className={primaryButton}
+                  disabled={!ready || !validReviewBarcode || Boolean(busy)}
+                  onClick={() => void save()}
+                >
+                  Dodaj produkt
+                </button>
+                {!ready && (
+                  <button
+                    type="button"
+                    className={quietButton}
+                    onClick={() => {
+                      setPreview(null);
+                    }}
+                  >
+                    Popraw dane
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
+      {saved && (
+        <section className={`${card} mt-6 border-sage/50 p-6`} aria-live="polite">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
+            Dodano do Twojego katalogu
+          </p>
+          <h2 className="mt-2 text-xl font-semibold">
+            {String(saved.displayName ?? review?.displayName ?? 'Produkt')}
+          </h2>
+          <p className="mt-2 text-sm text-stone-600">
+            Produkt jest gotowy do użycia. Kod: {String(saved.productCode ?? '')}
+          </p>
+        </section>
+      )}
+
+      {busy && (
+        <p className="mt-4 text-sm font-medium text-stone-700" role="status">
+          {busy}
+        </p>
+      )}
+      {error && (
+        <div
+          role="alert"
+          className="mt-5 border border-terracotta/40 bg-terracotta/10 p-4 text-sm text-stone-700"
+        >
+          {assertUserSafeScannerMessage(error, errorStage)}
         </div>
       )}
     </div>

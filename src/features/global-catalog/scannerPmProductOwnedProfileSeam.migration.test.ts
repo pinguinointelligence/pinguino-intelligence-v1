@@ -37,10 +37,12 @@ describe('Scanner PM canonical product-owned profile seam', () => {
     expect(migration).toContain('classificationReasonCodes');
   });
 
-  it('keeps canonical profile creation Admin-owned after Scanner evidence', () => {
-    expect(scannerFinalize).toContain("'gellatti_submit_product_request_v1'");
+  it('reuses the canonical product-owned profile authority without creating PM identity', () => {
+    expect(scannerFinalize).toContain("origin: 'CUSTOMER_ADDED'");
+    expect(scannerFinalize).toContain("'gellatti_upsert_customer_added_product_v1'");
     expect(scannerFinalize).not.toContain("service.rpc('ingest_product_v1'");
-    expect(scannerFinalize).not.toContain('productProfileAuthority');
+    expect(scannerFinalize).toContain('validateIntimportProductProfileProposal');
+    expect(scannerFinalize).toContain('validateProductBehaviorAuthority');
     expect(catalogSubmit).toContain('validateIntimportProductProfileProposal');
     expect(catalogSubmit).toContain('validateProductBehaviorAuthority');
     expect(catalogSubmit).toContain("service.rpc('ingest_product_v1'");

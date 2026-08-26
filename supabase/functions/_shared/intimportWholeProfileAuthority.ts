@@ -87,7 +87,7 @@ export interface IntimportTrustedProductProfile {
   authority: typeof PRODUCT_PROFILE_AUTHORITY;
   validationMode: 'server_recomputed_product_profile';
   articleIdentity: 'PRODUCT_OWNED';
-  origin: 'PR' | 'PM';
+  origin: 'PR' | 'PM' | 'CUSTOMER_ADDED';
   productAccuracy: number;
   /** Previous metadata-oriented score retained only for before/after audit and
    * enrichment routing. It is never the customer-facing Product Accuracy. */
@@ -133,7 +133,7 @@ export interface IntimportTrustedEvidenceProvenance {
 }
 
 export interface IntimportProductProfileProposalInput {
-  origin?: 'PR' | 'PM';
+  origin?: 'PR' | 'PM' | 'CUSTOMER_ADDED';
   /** Untrusted client hint retained only for diagnostics/backward compatibility.
    * The server always recomputes the donor and never rejects the product merely
    * because this hint differs. */

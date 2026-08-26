@@ -57,7 +57,7 @@ describe('the identity is proposed from evidence, never from a name', () => {
   it('C keeps high-risk, technical and dosage-sensitive products out of the automatic route', () => {
     expect(PROPOSE).toContain('high_risk_additive_requires_authority');
     expect(PROPOSE).toContain('technical_or_dosage_product');
-    expect(PROPOSE).toContain("coalesce(m.alcohol_percent,0) = 0");
+    expect(PROPOSE).toContain('coalesce(m.alcohol_percent,0) = 0');
     // The vocabulary is the same list the Scanner's own validator calls high-risk.
     for (const term of ['aspartame', 'acesulfame', 'karagen', 'carrageenan', 'guma tara', 'guar']) {
       expect(SQL).toContain(`'${term}'`);
@@ -140,14 +140,18 @@ describe('current ingestion paths share ProductBehavior authority, never PR→PI
     'utf8',
   );
 
-  it('D: Admin/INTIMPORT reaches the semantic helper; Scanner creates no runtime identity', () => {
-    expect(scanner).toContain("'gellatti_submit_product_request_v1'");
-    expect(scanner).not.toContain("from '../../../src/features/product-intelligence/productBehaviorAuthority.ts'");
-    expect(catalog).toContain("from '../../../src/features/product-intelligence/productBehaviorAuthority.ts'");
+  it('D: Admin/INTIMPORT/Scanner share the semantic helper and Scanner creates no runtime Mapper identity', () => {
+    expect(scanner).toContain("'gellatti_upsert_customer_added_product_v1'");
+    expect(scanner).toContain(
+      "from '../../../src/features/product-intelligence/productBehaviorAuthority.ts'",
+    );
+    expect(catalog).toContain(
+      "from '../../../src/features/product-intelligence/productBehaviorAuthority.ts'",
+    );
     expect(scanner).not.toContain('authorizeLiveOverlayIdentity');
     expect(catalog).not.toContain('authorizeLiveOverlayIdentity');
     expect(sharedBehavior).toContain('runtimeMapperIngredientId: null');
-    expect(sharedBehavior).not.toContain("technicalComposition:");
+    expect(sharedBehavior).not.toContain('technicalComposition:');
   });
 
   it('the old writer is a revoked, non-mutating tombstone', () => {
