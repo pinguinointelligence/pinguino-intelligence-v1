@@ -271,6 +271,8 @@ describe('ConstraintPreviewCard (§19.1)', () => {
     expect(customerHtml).toContain('Pokaż bez zmian');
     expect(customerHtml).not.toContain('bez zmian · zablokowane');
     expect(customerHtml).not.toContain('Mleko');
+    expect(customerHtml).toContain('data-testid="preview-from-grams"');
+    expect(customerHtml).not.toContain('line-through');
   });
 
   it('keeps the honest out-of-band delta in the admin-only technical accordion', () => {
@@ -490,7 +492,8 @@ describe('ConstraintPreviewCard (§19.1)', () => {
         showTechnicalDetails
       />,
     );
-    expect(rendered).toContain('10 / 10');
+    expect(rendered).toMatch(/data-testid="preview-score"[^>]*>10<\/div>/);
+    expect(rendered).not.toMatch(/data-testid="preview-score"[^>]*>10\s*\/\s*10<\/div>/);
     expect(rendered).toContain(
       'Kierunek osiągnięty tylko w podglądzie diagnostycznym. Receptura nadal nie jest gotowa do Apply.',
     );
