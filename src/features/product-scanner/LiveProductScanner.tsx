@@ -56,9 +56,12 @@ import {
   lookupExactBarcode,
   lookupExactBarcodeFacts,
   ProductScannerServiceError,
+  submitRawProductRequest,
   type ScanAnalysisResponse,
   type ScanExactProduct,
+  uploadProductRequestEvidence,
 } from '@/services/productScanner';
+import { getCatalogMarketPreferences } from '@/services/globalCatalog';
 import { SCANNER_ERROR_COPY, type ScannerStage } from '@/features/product-scanner/scannerErrors';
 import { assertUserSafeScannerMessage } from '@/services/scannerErrorGuard';
 import {
@@ -1024,11 +1027,13 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
   const save = useCallback(async () => {
     const current = session.current;
     if (!current.analysis || current.busy) return;
-    patch({ busy: 'Zapisuję produkt…' });
+    patch({ busy: 'Wysyłam zgłoszenie do Gellatti…' });
     try {
+      const preferences = await getCatalogMarketPreferences().catch(() => null);
       const result = await finalizeProductScan({
         sessionId: current.sessionId,
-        idempotencyKey: `${current.sessionId}:create-v1`,
+        idempotencyKey: `${current.sessionId}:request-v1`,
+        marketCountryCode: preferences?.primaryMarket ?? null,
         confirmations: {
           noAdditionalAllergenStatementVisible: current.allergenConfirmed,
           notOnLabelFields: current.notOnLabelFields,
@@ -1036,24 +1041,15 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
         },
         privateOverlay: {},
       });
-      patch({ saved: result });
-      const identity = current.analysis.result.identity;
-      const articleId = typeof result.productCode === 'string' ? result.productCode : null;
-      if (articleId && result.engineUsable === true && onResolved) {
-        onResolved({
-          id: articleId,
-          displayName: identity.displayName ?? identity.originalName ?? 'Nowy produkt',
-          brand: identity.brand ?? null,
-          entityKind: 'commercial_product',
-          status: 'manual_unverified',
-          carbonationStatus:
-            result.carbonationStatus === 'CARBONATED' ||
-            result.carbonationStatus === 'NON_CARBONATED'
-              ? result.carbonationStatus
-              : 'UNKNOWN',
-          barcode: current.barcode?.lookupValue ?? null,
+      const requestId = typeof result.requestId === 'string' ? result.requestId : null;
+      if (requestId) {
+        await uploadProductRequestEvidence({
+          requestId,
+          assets: current.assets,
+          views: current.assets.map((_, index) => current.captured[index]?.view ?? null),
         });
       }
+      patch({ saved: result });
     } catch (caught) {
       patch({
         errorStage: 'save',
@@ -1062,7 +1058,36 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
     } finally {
       patch({ busy: null });
     }
-  }, [onResolved, patch]);
+  }, [patch]);
+
+  const submitRawEvidence = useCallback(async () => {
+    const current = session.current;
+    if (current.assets.length === 0 || current.busy) return;
+    patch({ busy: 'Wysyłam zdjęcia do ręcznej weryfikacji…', error: null });
+    try {
+      const preferences = await getCatalogMarketPreferences().catch(() => null);
+      const result = await submitRawProductRequest({
+        idempotencyKey: `${current.sessionId}:raw-request-v1`,
+        marketCountryCode: preferences?.primaryMarket ?? null,
+        detectedEan: current.barcode?.lookupValue ?? null,
+      });
+      const requestId = typeof result.requestId === 'string' ? result.requestId : null;
+      if (!requestId) throw new Error('Zgłoszenie nie zwróciło numeru sprawy.');
+      await uploadProductRequestEvidence({
+        requestId,
+        assets: current.assets,
+        views: current.assets.map((_, index) => current.captured[index]?.view ?? null),
+      });
+      patch({ saved: { ...result, controlledCatalog: true, engineUsable: false } });
+    } catch (caught) {
+      patch({
+        errorStage: 'save',
+        error: caught instanceof Error ? caught.message : 'Nie udało się wysłać zgłoszenia.',
+      });
+    } finally {
+      patch({ busy: null });
+    }
+  }, [patch]);
 
   const setTorch = useCallback(
     async (enabled: boolean) => {
@@ -1699,7 +1724,7 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
               }
               onClick={() => void save()}
             >
-              Zapisz produkt
+              Poproś o dodanie produktu
             </button>
           </div>
         </section>
@@ -1708,20 +1733,17 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
       {state.saved && (
         <section className={`${card} mt-6 border-sage/40 p-6`} aria-live="polite">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
-            {state.saved.engineUsable === true ? 'Produkt gotowy' : 'Produkt wymaga weryfikacji'}
+            Zgłoszenie przyjęte
           </p>
           <h2 className="mt-2 text-xl font-semibold">
-            {typeof state.saved.productCode === 'string' ? state.saved.productCode : 'Produkt zapisany'}
+            {typeof state.saved.requestNumber === 'number'
+              ? `Zgłoszenie #${state.saved.requestNumber}`
+              : 'Produkt czeka na weryfikację Admina'}
           </h2>
           <p className="mt-2 text-sm text-stone-600">
-            Dokładność danych{' '}
-            {typeof state.saved.productAccuracy === 'number'
-              ? `${Math.round(state.saved.productAccuracy)}%`
-              : '0%'}
+            Zapisaliśmy dowody, ale nie utworzyliśmy składnika. Produkt pojawi się w katalogu
+            dopiero po zatwierdzeniu i otrzymaniu oficjalnego numeru PR-ING.
           </p>
-          {state.saved.allergenEvidenceStatus === 'NOT_CONFIRMED' && (
-            <p className="mt-2 text-sm font-medium text-terracotta">Alergeny niepotwierdzone</p>
-          )}
         </section>
       )}
 
@@ -1737,16 +1759,21 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
             </p>
           )}
           {state.errorStage === 'analysis' && state.assets.length > 0 && (
-            <button
-              type="button"
-              className={`${quietButton} mt-3`}
-              onClick={() => {
-                patch({ error: null });
-                void advance();
-              }}
-            >
-              Spróbuj ponownie w tej sesji
-            </button>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                className={quietButton}
+                onClick={() => {
+                  patch({ error: null });
+                  void advance();
+                }}
+              >
+                Spróbuj ponownie w tej sesji
+              </button>
+              <button type="button" className={primaryButton} onClick={() => void submitRawEvidence()}>
+                Wyślij zdjęcia do ręcznej weryfikacji
+              </button>
+            </div>
           )}
         </div>
       )}

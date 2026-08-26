@@ -37,14 +37,15 @@ describe('Scanner PM canonical product-owned profile seam', () => {
     expect(migration).toContain('classificationReasonCodes');
   });
 
-  it('keeps Scanner and INTIMPORT on the same canonical ingest boundary', () => {
-    for (const edge of [scannerFinalize, catalogSubmit]) {
-      expect(edge).toContain('validateIntimportProductProfileProposal');
-      expect(edge).toContain('validateProductBehaviorAuthority');
-      expect(edge).toContain("service.rpc('ingest_product_v1'");
-      expect(edge).toContain('productProfileAuthority');
-      expect(edge).toContain('productBehaviorAuthority');
-    }
+  it('keeps canonical profile creation Admin-owned after Scanner evidence', () => {
+    expect(scannerFinalize).toContain("'gellatti_submit_product_request_v1'");
+    expect(scannerFinalize).not.toContain("service.rpc('ingest_product_v1'");
+    expect(scannerFinalize).not.toContain('productProfileAuthority');
+    expect(catalogSubmit).toContain('validateIntimportProductProfileProposal');
+    expect(catalogSubmit).toContain('validateProductBehaviorAuthority');
+    expect(catalogSubmit).toContain("service.rpc('ingest_product_v1'");
+    expect(catalogSubmit).toContain('productProfileAuthority');
+    expect(catalogSubmit).toContain('productBehaviorAuthority');
   });
 
   it('keeps Mapper read-only and out of PM runtime identity', () => {

@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes, useLocation } from 'react-router';
+import { Navigate, Route, Routes, useLocation, useParams } from 'react-router';
 import { legacyDestinationRedirectTo } from './redirectState';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { MapperBatch6Page } from '@/pages/dev/MapperBatch6Page';
@@ -33,19 +33,20 @@ import { CommunityPage } from '@/pages/community/CommunityPage';
 import { CreatorHandleRoute, PublicRecipeRoute } from '@/pages/community/HandleRoute';
 import { CreatorHubPage } from '@/pages/community/CreatorHubPage';
 import { PartnerPage } from '@/pages/community/PartnerPage';
+import { PartnerPublicRoute } from '@/pages/community/PartnerPublicRoute';
+import { AdminWorkspacePage } from '@/pages/admin/AdminWorkspacePage';
+import { AdminRouteGuard } from '@/features/admin/AdminRouteGuard';
 import { SharedRecipePage } from '@/pages/community/SharedRecipePage';
 import { TopHundredPage } from '@/pages/community/TopHundredPage';
 import {
   APIPage,
   AccountSettingsPage,
-  CreateIngredientPage,
   FranchisePage,
   HowItWorksPage,
   LabelsHubPage,
   ProductImportPage,
   ProductScanPage,
   ProductScannerV1Page,
-  ManualProductPage,
   ProductsHubPage,
   ProductionHubPage,
   RecipesHubPage,
@@ -92,6 +93,13 @@ export function LegacyDestinationRedirect({
       replace
     />
   );
+}
+
+/** The existing /@creator/recipe namespace and future /partner/code format
+ * share a two-segment shape; dispatch by the reserved @ creator prefix. */
+export function PublicRecipeOrPartnerRoute() {
+  const { handle } = useParams();
+  return handle?.startsWith('@') ? <PublicRecipeRoute /> : <PartnerPublicRoute />;
 }
 
 export function AppRoutes() {
@@ -152,6 +160,9 @@ export function AppRoutes() {
       {/* Creator reach and Partner money are two pages on purpose (§36). */}
       <Route path="/creator" element={<CreatorHubPage />} />
       <Route path="/partner" element={<PartnerPage />} />
+      <Route path="/:partnerSlug/:partnerCode/l/:linkSlug" element={<PartnerPublicRoute />} />
+      <Route path="/admin" element={<AdminRouteGuard><AdminWorkspacePage /></AdminRouteGuard>} />
+      <Route path="/admin/:section" element={<AdminRouteGuard><AdminWorkspacePage /></AdminRouteGuard>} />
       {/* A React Router param owns a whole segment, so `/@:handle` matches
           nothing. The handle namespace is declared as `/:handle` and gated by
           CreatorHandleRoute, which requires the leading `@` and a valid,
@@ -160,7 +171,7 @@ export function AppRoutes() {
           application route above still wins; communityRoutes.test.tsx proves
           it by matching, not by assertion. */}
       <Route path="/:handle" element={<CreatorHandleRoute />} />
-      <Route path="/:handle/:slug" element={<PublicRecipeRoute />} />
+      <Route path="/:handle/:slug" element={<PublicRecipeOrPartnerRoute />} />
       <Route path="/share/:token" element={<SharedRecipePage />} />
       <Route path="/received/:shareLinkId" element={<SharedRecipePage />} />
 
@@ -183,15 +194,15 @@ export function AppRoutes() {
       <Route path="/api" element={<APIPage />} />
       <Route path="/work-with-us" element={<WorkWithUsPage />} />
       <Route path="/subscription" element={<SubscriptionPage />} />
-      <Route path="/create-ingredient" element={<CreateIngredientPage />} />
+      <Route path="/create-ingredient" element={<LegacyDestinationRedirect pathname="/products/scan" />} />
 
       {/* Profil → Moja maszyna (UIUX Slice B §8.6) — view/change the saved Home machine. */}
       <Route path="/profile/machine" element={<LegacyDestinationRedirect pathname="/machine" />} />
 
       {/* Product catalog intake — direct-URL / internal-first (no nav entry yet). */}
-      <Route path="/products/import" element={<ProductImportPage />} />
+      <Route path="/products/import" element={<AdminRouteGuard><ProductImportPage /></AdminRouteGuard>} />
       <Route path="/products/scan" element={<ProductScannerV1Page />} />
-      <Route path="/products/add" element={<ManualProductPage />} />
+      <Route path="/products/add" element={<LegacyDestinationRedirect pathname="/products/scan" />} />
       {import.meta.env.DEV && <Route path="/products/scan/legacy" element={<ProductScanPage />} />}
 
       {/* Legacy customer-shell preview path → the flow's new canonical /start. */}

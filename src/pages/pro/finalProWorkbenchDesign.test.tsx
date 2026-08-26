@@ -379,6 +379,9 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     const preview = read('features', 'pro-core', 'ProRecalcPanel.tsx');
     expect(preview).toContain('fixed inset-0');
     expect(preview).toContain('role="dialog"');
+    expect(preview).toContain('effectiveAccess?.canAdmin === true');
+    expect(preview).toContain('showTechnicalDetails={canViewTechnicalDetails}');
+    expect(preview).toContain("'Proponowane zmiany receptury'");
   });
 
   it('locks the desktop body and provides a mobile cockpit bottom sheet without horizontal scrolling', () => {

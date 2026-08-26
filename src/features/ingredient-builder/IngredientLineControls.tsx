@@ -10,6 +10,7 @@ import { ingredientCategorySymbolFor } from './ingredientCategorySymbols';
 import type { IngredientRowActions, IngredientRowLockView } from './IngredientRow';
 import type { IngredientRowMeta } from './ingredientTableUx';
 import { categoryLabelPl } from './ingredientPresentation';
+import { iconButtonClasses } from '@/components/ui/buttonStyles';
 
 const b = copy.studio.builder;
 const t = b.ingredientTable;
@@ -36,14 +37,18 @@ export function MainRoleBadge({
   onClick,
   ariaLabel = 'Składnik główny',
   title = t.role.mainHint,
+  variant = 'row',
 }: {
   testId: string;
   onClick?: () => void;
   ariaLabel?: string;
   title?: string;
+  variant?: 'row' | 'article';
 }) {
   const className =
-    'inline-flex h-6 w-[57px] shrink-0 items-center justify-center rounded-lg border border-gold/22 bg-education-ivory px-2 text-[11px] font-semibold text-gold';
+    variant === 'article'
+      ? 'inline-flex h-9 w-full min-w-0 shrink-0 items-center justify-center rounded-none border-0 bg-education-ivory/75 px-1.5 text-[10px] font-semibold leading-none text-gold transition-colors hover:bg-education-ivory'
+      : 'inline-flex h-6 w-[57px] shrink-0 items-center justify-center rounded-lg border border-gold/22 bg-education-ivory px-2 text-[11px] font-semibold text-gold';
   return onClick ? (
     <button
       type="button"
@@ -54,7 +59,9 @@ export function MainRoleBadge({
       data-testid={testId}
       data-main-presentation="badge"
       className={cn(
-        "pro-focus-ring relative after:absolute after:-inset-y-2.5 after:inset-x-0 after:content-['']",
+        variant === 'row' &&
+          "relative after:absolute after:-inset-y-2.5 after:inset-x-0 after:content-['']",
+        'pro-focus-ring',
         className,
       )}
     >
@@ -80,12 +87,14 @@ export function MainRoleTrigger({
   disabled = false,
   ariaLabel = 'Ustaw składnik jako Główny',
   title = 'Ustaw jako Główny',
+  variant = 'row',
 }: {
   testId: string;
   onClick: () => void;
   disabled?: boolean;
   ariaLabel?: string;
   title?: string;
+  variant?: 'row' | 'article';
 }) {
   return (
     <button
@@ -97,7 +106,12 @@ export function MainRoleTrigger({
       disabled={disabled}
       data-testid={testId}
       data-main-presentation="trigger"
-      className="pro-focus-ring relative inline-flex h-6 w-[57px] shrink-0 items-center justify-center rounded-lg border border-gold/28 bg-white text-gold transition-colors after:absolute after:-inset-y-2.5 after:inset-x-0 after:content-[''] hover:border-gold/45 hover:bg-education-ivory disabled:cursor-not-allowed disabled:border-ink/12 disabled:bg-stone-50 disabled:text-stone-400"
+      className={cn(
+        'pro-focus-ring inline-flex shrink-0 items-center justify-center text-gold transition-colors disabled:cursor-not-allowed disabled:text-stone-300',
+        variant === 'article'
+          ? 'h-9 w-full min-w-0 rounded-none border-0 bg-white hover:bg-education-ivory/70'
+          : "relative h-6 w-[57px] rounded-lg border border-gold/28 bg-white after:absolute after:-inset-y-2.5 after:inset-x-0 after:content-[''] hover:border-gold/45 hover:bg-education-ivory disabled:border-ink/12 disabled:bg-stone-50 disabled:text-stone-400",
+      )}
     >
       <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none">
         <path
@@ -268,10 +282,10 @@ export function MobileIngredientSheet({
     >
       <div className="flex flex-col">
         {/* ── Identity — the same compact header language as desktop. ──────── */}
-        <div className="sticky top-0 z-10 border-b border-ink/10 bg-white px-4 py-3">
-          <div className="flex min-w-0 items-start justify-between gap-2">
+        <div className="sticky top-0 z-10 border-b border-ink/[0.08] bg-white px-4 py-3">
+          <div className="flex min-w-0 items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-2.5">
-              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-stone-100 text-stone-600">
+              <span className="grid size-8 shrink-0 place-items-center rounded-[9px] bg-stone-100 text-stone-600">
                 <IngredientCategoryIcon
                   symbol={ingredientCategorySymbolFor({ category: item.ingredient.category })}
                 />
@@ -281,10 +295,10 @@ export function MobileIngredientSheet({
                   real Mapper names ("CREAM 30% · Mlekovita Cream · Chilled")
                   are longer than a phone line, so this header wraps instead of
                   truncating. The collapsed list row still keeps one line. */}
-                <h2 className="text-base font-semibold break-words text-ink">
+                <h2 className="text-[13px] font-semibold leading-[1.2] break-words text-ink">
                   {item.ingredient.name}
                 </h2>
-                <p className="mt-0.5 text-[11px] text-stone-500">
+                <p className="mt-1 text-[10px] leading-none font-medium text-stone-500">
                   {categoryLabelPl(item.ingredient.category)}
                 </p>
               </div>
@@ -293,9 +307,11 @@ export function MobileIngredientSheet({
               type="button"
               onClick={onClose}
               aria-label="Zamknij edycję składnika"
-              className="pro-focus-ring grid size-11 shrink-0 place-items-center rounded-full border border-ink/12 text-lg text-ink"
+              className={iconButtonClasses('sm')}
             >
-              ×
+              <span aria-hidden className="text-base leading-none">
+                ×
+              </span>
             </button>
           </div>
         </div>

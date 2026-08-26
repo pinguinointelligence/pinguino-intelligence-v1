@@ -107,13 +107,16 @@ export function useGlobalCatalogPicker(input: {
     resolvedPreferences.primaryMarket,
     ...resolvedPreferences.additionalMarkets,
   ].filter((value): value is string => Boolean(value));
-  const effectiveMarkets = input.forceGlobal
+  // Favorites are an account-owned collection, not a market projection. A
+  // Polish favorite must remain visible after Poland is disabled in Settings.
+  const favoritesIgnoreMarket = input.favoritesOnly;
+  const effectiveMarkets = input.forceGlobal || favoritesIgnoreMarket
     ? []
     : input.selectedMarkets.length > 0
       ? [...input.selectedMarkets]
       : preferredMarkets;
   const marketScope = resolveCatalogMarketScope({
-    forceGlobal: input.forceGlobal === true,
+    forceGlobal: input.forceGlobal === true || favoritesIgnoreMarket,
     hasSelectedMarkets: input.selectedMarkets.length > 0,
     defaultScope: resolvedPreferences.defaultScope,
   });

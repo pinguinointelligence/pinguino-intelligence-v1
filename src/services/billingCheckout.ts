@@ -16,6 +16,7 @@ import {
   checkoutReturnUrls,
   type ContinuationTarget,
 } from '@/features/community/domain/shareContinuation';
+import { claimReferralEvidence } from '@/services/partner';
 
 export type BillingProductId = 'home' | 'pro';
 export type BillingCycle = 'monthly' | 'yearly';
@@ -66,11 +67,16 @@ export async function startCheckout(
         successUrl: `${origin}/subscription?checkout=success`,
         cancelUrl: `${origin}/subscription?checkout=cancelled`,
       };
+  // The URL/cookie is only evidence. The authenticated claim Edge/RPC resolves
+  // it to an owned pending attribution before checkout; the checkout function
+  // revalidates that row again and never trusts an arbitrary client UUID.
+  const cookieAttributionId = await claimReferralEvidence();
   const { data, error } = await supabase.functions.invoke('create-checkout-session', {
     body: {
       offerKey,
       successUrl: redirects.successUrl,
       cancelUrl: redirects.cancelUrl,
+      cookieAttributionId,
     },
   });
 

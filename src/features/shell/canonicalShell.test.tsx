@@ -79,6 +79,12 @@ describe('canonical application shell', () => {
     expect(drawer).not.toMatch(/ReadinessBadge|W PRZYGOTOWANIU|CZĘŚCIOWO PODŁĄCZONE/);
   });
 
+  it('keeps the signed-in account block for Admin-only users without a Home/Pro audience', () => {
+    const drawer = read('features', 'shell', 'AppNavDrawer.tsx');
+    expect(drawer).toContain("const memberAccount = authStatus === 'authed' || devMemberPreview;");
+    expect(drawer).not.toContain("const memberAccount = audience !== 'guest';");
+  });
+
   it('routes the canonical logo to Guest, Home or Pro workspace instead of public Demo after login', () => {
     const shell = read('features', 'shell', 'AppShell.tsx');
     expect(shell).toContain("audience === 'pro' ? '/pro/recipe'");

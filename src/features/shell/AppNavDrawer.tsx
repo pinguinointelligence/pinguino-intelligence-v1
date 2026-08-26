@@ -14,6 +14,7 @@ import {
   visibleNavItems,
   type NavGroupId,
 } from './appNav';
+import { AccountModeSwitcher } from './AccountModeSwitcher';
 
 const s = copy.shell;
 const FOCUSABLE =
@@ -47,7 +48,10 @@ export function AppNavDrawer() {
   const loc = { pathname: location.pathname, search: location.search };
   const planLabel =
     audience === 'pro' ? s.account.planPro : audience === 'home' ? s.account.planHome : null;
-  const memberAccount = audience !== 'guest';
+  // An authenticated Admin may intentionally have no Home/Pro entitlement, so
+  // their navigation audience can be `guest` while the session is still fully
+  // authenticated. The account block must follow auth, not consumer-plan UX.
+  const memberAccount = authStatus === 'authed' || devMemberPreview;
   const close = () => setOpen(false);
 
   useEffect(() => {
@@ -165,6 +169,7 @@ export function AppNavDrawer() {
               </button>
             </div>
 
+            <AccountModeSwitcher onNavigate={close} />
             <nav className="min-h-0 flex-1 overflow-y-auto px-4 pb-4" aria-label={s.menuTitle}>
               {NAV_GROUP_ORDER.map((group: NavGroupId) => {
                 const groupItems = items.filter(

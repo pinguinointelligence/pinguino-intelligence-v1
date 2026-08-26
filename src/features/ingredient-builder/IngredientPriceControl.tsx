@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { EffectiveIngredientCost } from '@/features/pro-core/costContracts';
 import { parseCustomerPriceText } from './customerPriceInput';
 import { HoverPreview } from '@/components/ui/HoverPreview';
@@ -96,6 +96,7 @@ export function CustomerPriceEditor({
   view,
   lineId,
   variant = 'default',
+  footerAction,
 }: {
   view?: IngredientPriceView;
   /** Lets the row show „you changed something here" while a typed price is
@@ -103,6 +104,8 @@ export function CustomerPriceEditor({
    * hydrates asynchronously), so the marker composes this state instead. */
   lineId?: string;
   variant?: 'default' | 'article';
+  /** Compact article-only action anchored to the far-right footer edge. */
+  footerAction?: ReactNode;
 }) {
   const initial = view?.cost.customerOverridePerKg ?? view?.cost.pricePerKg ?? null;
   const [raw, setRaw] = useState(initial === null ? '' : String(initial).replace('.', ','));
@@ -120,6 +123,22 @@ export function CustomerPriceEditor({
   };
 
   if (!view?.canEdit || !onSave || !onReset) {
+    if (variant === 'article') {
+      return (
+        <div
+          className="rounded-[10px] border border-ink/10 bg-white p-2.5"
+          data-testid="customer-price-editor"
+          data-layout="compact-inline"
+        >
+          <div className="flex items-center gap-2">
+            <p className="min-w-0 flex-1 text-[10px] leading-snug text-stone-600">
+              Moja cena wymaga składnika z kanonicznym ID oraz aktywnego konta.
+            </p>
+            {footerAction}
+          </div>
+        </div>
+      );
+    }
     return (
       <p className="mb-1 rounded-lg border border-ink/10 px-2 py-1.5 text-xs text-stone-600">
         Moja cena wymaga składnika z kanonicznym ID oraz aktywnego konta.
@@ -166,50 +185,115 @@ export function CustomerPriceEditor({
   const activePrice = view.cost.pricePerKg;
   const article = variant === 'article';
 
+  if (article) {
+    return (
+      <div
+        className="rounded-[10px] border border-ink/10 bg-white p-2.5"
+        data-testid="customer-price-editor"
+        data-active-price-source={view.cost.source}
+        data-layout="compact-inline"
+      >
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto]">
+          <p className="min-w-0 text-[11px] font-semibold leading-none text-ink">Moja cena</p>
+          <div className="flex min-w-0 items-center justify-end gap-1.5">
+            <label className="flex h-9 w-[112px] shrink-0 items-center overflow-hidden rounded-[8px] border border-ink/12 bg-white focus-within:border-ink/35">
+              <span className="sr-only">Cena za kg</span>
+              <span className="flex h-full min-w-0 flex-1 items-center">
+                <input
+                  value={raw}
+                  inputMode="decimal"
+                  aria-label="Moja cena za kg"
+                  onChange={(event) => {
+                    setRaw(event.currentTarget.value);
+                    markDirtyFromInput(event.currentTarget.value);
+                  }}
+                  className="h-full min-w-0 flex-1 border-0 bg-transparent px-2 text-right font-mono text-xs leading-none tabular-nums text-ink focus:outline-none"
+                />
+                <span className="shrink-0 border-l border-ink/[0.08] px-2 font-mono text-[10px] text-stone-500">
+                  {view.cost.currency}
+                </span>
+              </span>
+            </label>
+            <button
+              type="button"
+              aria-label="Zapisz"
+              disabled={busy}
+              onClick={() => void save()}
+              className="pro-focus-ring h-9 shrink-0 rounded-[8px] bg-ink px-3 text-[11px] font-semibold text-white transition-colors hover:bg-charcoal disabled:opacity-40"
+            >
+              Zapisz
+            </button>
+          </div>
+          <span className="hidden sm:block" aria-hidden />
+          {footerAction ? (
+            <div className="col-span-2 justify-self-end sm:col-span-1">{footerAction}</div>
+          ) : null}
+        </div>
+        {error ? <p className="mt-1 text-xs text-status-error">{error}</p> : null}
+        <div className="mt-1.5 flex min-h-9 items-center gap-3">
+          {own ? (
+            <button
+              type="button"
+              aria-label={view.resetLabel ?? 'Przywróć cenę bazową'}
+              disabled={busy}
+              onClick={() => void reset()}
+              className="pro-focus-ring inline-flex h-9 items-center px-1 text-[10px] text-stone-600 underline decoration-stone-300 underline-offset-2 transition-colors hover:text-ink disabled:opacity-40"
+            >
+              {view.resetLabel ?? 'Przywróć cenę bazową'}
+            </button>
+          ) : null}
+          <p
+            className="truncate font-mono text-[9px] leading-none tabular-nums text-stone-500"
+            data-testid="article-panel-base-price"
+          >
+            {base !== null ? `Bazowa: ${money(base)} ${view.cost.currency}/kg` : 'Bazowa: —'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
-      className="mb-2 rounded-lg border border-ink/10 bg-stone-50/70 p-3"
+      className="mb-2 rounded-[10px] border border-ink/10 bg-stone-50/70 p-3"
       data-testid="customer-price-editor"
       data-active-price-source={view.cost.source}
+      data-layout="default"
     >
-      <div className="flex min-w-0 items-start justify-between gap-3">
+      <div className="flex min-w-0 items-baseline justify-between gap-3">
         <p className="text-xs font-semibold text-ink">
-          {article
+          {own
             ? 'Moja cena'
-            : own
-              ? 'Moja cena'
-              : view.cost.source === 'mapper_reference'
-                ? 'Cena bazowa'
-                : 'Brak ceny'}
+            : view.cost.source === 'mapper_reference'
+              ? 'Cena bazowa'
+              : 'Brak ceny'}
         </p>
-        <p className="shrink-0 font-mono text-[10px] leading-relaxed tabular-nums text-stone-500">
-          {article
-            ? base !== null
-              ? `Bazowa: ${money(base)} ${view.cost.currency}/kg`
-              : 'Bazowa: —'
-            : own && base !== null
-              ? `Bazowa: ${money(base)} ${view.cost.currency}/kg`
-              : activePrice !== null
-                ? `${money(activePrice)} ${view.cost.currency}/kg`
-                : '—'}
+        <p className="shrink-0 font-mono text-[9px] leading-none tabular-nums text-stone-500">
+          {own && base !== null
+            ? `Bazowa: ${money(base)} ${view.cost.currency}/kg`
+            : activePrice !== null
+              ? `${money(activePrice)} ${view.cost.currency}/kg`
+              : '—'}
         </p>
       </div>
-      <label className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 text-xs text-stone-600">
-        <span>Cena za kg</span>
-        <span className="flex min-w-0 items-center gap-1.5">
-          <input
-            value={raw}
-            inputMode="decimal"
-            aria-label="Moja cena za kg"
-            onChange={(event) => {
-              setRaw(event.currentTarget.value);
-              markDirtyFromInput(event.currentTarget.value);
-            }}
-            className="h-11 w-24 rounded-lg border border-ink/15 bg-white px-3 text-right font-mono text-xs leading-none tabular-nums text-ink focus:border-ink/40 focus:outline-none"
-          />
-          {view.cost.currency}
-        </span>
-      </label>
+      <div>
+        <label className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 text-xs text-stone-600">
+          <span>Cena za kg</span>
+          <span className="flex min-w-0 items-center gap-1.5">
+            <input
+              value={raw}
+              inputMode="decimal"
+              aria-label="Moja cena za kg"
+              onChange={(event) => {
+                setRaw(event.currentTarget.value);
+                markDirtyFromInput(event.currentTarget.value);
+              }}
+              className="h-11 w-24 rounded-lg border border-ink/15 bg-white px-3 text-right font-mono text-xs leading-none tabular-nums text-ink focus:border-ink/40 focus:outline-none"
+            />
+            <span className="shrink-0 font-mono text-xs text-stone-500">{view.cost.currency}</span>
+          </span>
+        </label>
+      </div>
       {error ? <p className="mt-1 text-xs text-status-error">{error}</p> : null}
       <div className="mt-3 flex min-h-11 items-center justify-end gap-3">
         {own ? (

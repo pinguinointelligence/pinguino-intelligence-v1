@@ -54,9 +54,10 @@ describe('PR/PM ProductBehavior authority restore', () => {
     expect(migration).not.toContain("'technicalComposition',v_mapper");
     expect(migration).not.toMatch(/0\.8[0-49]/);
     expect(catalogSubmit).toContain('validateProductBehaviorAuthority');
-    expect(scannerFinalize).toContain('validateProductBehaviorAuthority');
+    expect(scannerFinalize).not.toContain('validateProductBehaviorAuthority');
+    expect(scannerFinalize).toContain("'gellatti_submit_product_request_v1'");
     expect(catalogSubmit).toContain('.range(offset, offset + 999)');
-    expect(scannerFinalize).toContain('.range(offset, offset + 999)');
+    expect(scannerFinalize).not.toContain('.range(offset, offset + 999)');
   });
 
   it('keeps the product-owned PR/PM article code searchable in the normal picker', () => {

@@ -90,78 +90,39 @@ export interface IngredientRowActions {
   moveDown?: (lineId: string) => void;
 }
 
-export function MainRatioEditor({
-  item,
-  actions,
-}: {
-  item: EffectiveRecipeItem;
-  actions: IngredientRowActions;
-}) {
-  return (
-    <label className="flex items-center justify-between gap-3 rounded-lg border border-gold/16 bg-education-ivory/55 px-3 py-2 text-xs text-stone-600">
-      <span className="flex items-center gap-1.5">
-        Waga proporcji
-        <HoverPreview
-          text="Waga odzwierciedla bieżącą proporcję gramów. Możesz ją też ustawić ręcznie."
-          focusable
-          ariaLabel="Informacja o wadze proporcji"
-          maxWidthPx={260}
-          className="pro-focus-ring inline-grid size-4 place-items-center rounded-full border border-ink/15 text-[10px] font-semibold text-stone-500"
-        >
-          <span aria-hidden>?</span>
-        </HoverPreview>
-      </span>
-      <input
-        type="number"
-        min="0.1"
-        step="0.1"
-        inputMode="decimal"
-        value={item.main_ratio_weight ?? 1}
-        aria-label={`${item.ingredient.name} — waga proporcji Main`}
-        onChange={(event) => {
-          const value = Number(event.currentTarget.value);
-          if (Number.isFinite(value) && value > 0) {
-            actions.setMainRatioWeight?.(item.id, value);
-          }
-        }}
-        className="pro-focus-ring h-9 w-20 rounded-lg border border-ink/12 bg-white px-2 text-right font-mono text-sm text-ink"
-      />
-    </label>
-  );
-}
-
-type ArticleActionIconName =
-  | 'up'
-  | 'down'
-  | 'swap'
-  | 'info'
-  | 'required'
-  | 'availability'
-  | 'standard';
+type ArticleActionIconName = 'up' | 'down' | 'swap' | 'info' | 'availability' | 'standard';
 
 function ArticleActionIcon({ name }: { name: ArticleActionIconName }) {
   const paths: Record<ArticleActionIconName, React.ReactNode> = {
-    up: <path d="m4 10 4-4 4 4M8 6v7" />,
-    down: <path d="m4 6 4 4 4-4M8 3v7" />,
-    swap: <path d="M3 5h9m0 0L9.5 2.5M12 5 9.5 7.5M13 11H4m0 0 2.5-2.5M4 11l2.5 2.5" />,
+    up: <path d="M8 13V3m0 0L4.25 6.75M8 3l3.75 3.75" />,
+    down: <path d="M8 3v10m0 0 3.75-3.75M8 13 4.25 9.25" />,
+    swap: (
+      <path d="M2.75 5.25h8.5m0 0L9 3m2.25 2.25L9 7.5m4.25 3.25h-8.5m0 0L7 8.5m-2.25 2.25L7 13" />
+    ),
     info: (
       <>
         <circle cx="8" cy="8" r="5.5" />
         <path d="M8 7.25v3.25M8 5.1h.01" />
       </>
     ),
-    required: <path d="M8 2.5v7M5 4.5l6 3.5M11 4.5 5 8" />,
     availability: (
       <>
         <path d="M3 8s1.8-3 5-3 5 3 5 3-1.8 3-5 3-5-3-5-3Z" />
         <circle cx="8" cy="8" r="1.25" />
       </>
     ),
-    standard: <path d="m3.5 8 3 3 6-6" />,
+    standard: <path d="m3.5 8.25 3 3 6-6.5" />,
   };
   return (
-    <svg aria-hidden="true" width="17" height="17" viewBox="0 0 16 16" fill="none">
-      <g stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      aria-hidden="true"
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      data-icon-family="gellatti-line"
+    >
+      <g stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
         {paths[name]}
       </g>
     </svg>
@@ -182,16 +143,17 @@ function ArticleActionButton({
   selected?: boolean;
 }) {
   return (
-    <HoverPreview text={label} align="start" maxWidthPx={220} className="flex justify-center">
+    <HoverPreview text={label} align="start" maxWidthPx={220} className="flex min-w-0">
       <button
         type="button"
         aria-label={label}
         aria-pressed={selected}
         disabled={disabled}
         onClick={onClick}
+        data-article-action="true"
         className={cn(
-          'pro-focus-ring grid size-10 place-items-center rounded-lg border bg-white text-stone-600 transition-colors',
-          'border-ink/12 hover:border-ink/25 hover:bg-stone-50 hover:text-ink disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-300',
+          'pro-focus-ring grid h-9 w-full min-w-0 place-items-center rounded-[8px] border bg-white p-0 text-stone-600 transition-colors',
+          'border-ink/10 hover:border-ink/25 hover:bg-stone-50 hover:text-ink disabled:cursor-not-allowed disabled:border-ink/[0.06] disabled:bg-stone-50/70 disabled:text-stone-300',
           selected === true && '!border-gold/25 !bg-education-ivory !text-gold',
         )}
       >
@@ -429,9 +391,11 @@ export function RequiredRemovalDialog({
 function IngredientDataDialog({
   item,
   onClose,
+  navigation = 'close',
 }: {
   item: EffectiveRecipeItem;
   onClose: () => void;
+  navigation?: 'close' | 'back';
 }) {
   const estimated = !item.ingredient.is_verified || item.ingredient.confidence_score < 90;
   // Product information the manufacturer supplied. It is shown because it is
@@ -471,9 +435,11 @@ function IngredientDataDialog({
             type="button"
             onClick={onClose}
             className="pro-focus-ring grid size-10 shrink-0 place-items-center rounded-full border border-ink/12 text-lg text-ink"
-            aria-label="Zamknij dane składnika"
+            aria-label={
+              navigation === 'back' ? 'Wróć do opcji składnika' : 'Zamknij dane składnika'
+            }
           >
-            ×
+            <span aria-hidden>{navigation === 'back' ? '←' : '×'}</span>
           </button>
         </div>
         <dl
@@ -535,7 +501,7 @@ function RecipeRow({
   const [rowMenuOpen, setRowMenuOpen] = useState(false);
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   const [dialog, setDialog] = useState<
-    'substitute' | 'required' | 'required-confirm' | 'data' | null
+    'substitute' | 'required' | 'required-confirm' | 'data' | 'data-from-article' | null
   >(null);
   const closeLineMenus = () => {
     setRowMenuOpen(false);
@@ -595,99 +561,78 @@ function RecipeRow({
   // ONE presentation model. Desktop and mobile render this exact compact panel;
   // every callback below remains the existing Recipe-row authority.
   const articlePanelContent = (
-    <div data-testid="article-panel-content">
+    <div className="text-ink" data-testid="article-panel-content">
       <div
-        className="grid grid-cols-4 gap-2 rounded-lg border border-ink/10 bg-stone-50/65 p-2 sm:grid-cols-7"
+        className="grid grid-cols-[36px_36px_80px_repeat(3,minmax(0,1fr))] gap-1.5 rounded-[10px] border border-ink/10 bg-stone-50/55 p-1.5"
         data-testid="article-panel-quick-actions"
+        data-control-height="36"
       >
-        <div className="relative col-span-2 flex min-h-11 items-center justify-center gap-1.5 sm:col-span-1 sm:h-10 sm:min-h-0 sm:gap-0">
+        <ArticleActionButton
+          label="Przesuń wyżej"
+          icon="up"
+          disabled={!canMoveUp}
+          onClick={() => actions.moveUp?.(item.id)}
+        />
+        <ArticleActionButton
+          label="Przesuń niżej"
+          icon="down"
+          disabled={!canMoveDown}
+          onClick={() => actions.moveDown?.(item.id)}
+        />
+        <div
+          className="grid h-9 min-w-0 grid-cols-[minmax(0,1fr)_24px] overflow-hidden rounded-[8px] border border-gold/22 bg-white"
+          data-testid="article-panel-role-control"
+          data-control-height="36"
+        >
           <HoverPreview
             text={isMain ? 'Usuń rolę główną' : mainUnavailableReason || 'Ustaw jako główny'}
             maxWidthPx={240}
-            className="flex"
+            className="flex min-w-0"
           >
             {isMain ? (
               <MainRoleBadge
                 testId={`article-panel-main-${item.id}`}
                 ariaLabel="Usuń rolę główną"
                 title="Usuń rolę główną"
-                onClick={() => {
-                  setRole('standard');
-                  closeLineMenus();
-                }}
+                variant="article"
+                onClick={() => setRole('standard')}
               />
             ) : (
               <MainRoleTrigger
                 testId={`article-panel-main-${item.id}`}
                 ariaLabel="Ustaw jako główny"
                 title={mainUnavailableReason || 'Ustaw jako główny'}
+                variant="article"
                 disabled={Boolean(mainUnavailableReason)}
-                onClick={() => {
-                  setRole('main');
-                  closeLineMenus();
-                }}
+                onClick={() => setRole('main')}
               />
             )}
           </HoverPreview>
           <HoverPreview
             text="Rola składnika. Możesz oznaczyć składnik jako główny."
-            focusable
-            ariaLabel="Informacja o roli składnika"
             maxWidthPx={260}
-            className="pro-focus-ring grid size-11 shrink-0 place-items-center sm:hidden"
+            className="grid h-9 shrink-0 place-items-center border-l border-gold/16 bg-education-ivory/35 text-[9px] font-semibold text-stone-500 transition-colors hover:bg-education-ivory/70"
           >
-            <span
-              aria-hidden
-              className="grid size-4 place-items-center rounded-full border border-ink/15 bg-white text-[10px] font-semibold text-stone-500"
+            <button
+              type="button"
+              aria-label="Informacja o roli składnika"
+              onClick={() => setDialog('data-from-article')}
+              className="pro-focus-ring grid h-full w-full place-items-center"
             >
-              ?
-            </span>
-          </HoverPreview>
-          <HoverPreview
-            text="Rola składnika. Możesz oznaczyć składnik jako główny."
-            focusable
-            ariaLabel="Informacja o roli składnika"
-            maxWidthPx={260}
-            className="pro-focus-ring absolute -top-0.5 -right-0.5 hidden size-4 shrink-0 place-items-center rounded-full border border-ink/15 bg-white text-[10px] font-semibold text-stone-500 sm:inline-grid"
-          >
-            <span aria-hidden>?</span>
+              <span
+                aria-hidden
+                className="grid size-3.5 place-items-center rounded-full border border-ink/12 bg-white"
+              >
+                ?
+              </span>
+            </button>
           </HoverPreview>
         </div>
-        <ArticleActionButton
-          label="Przesuń wyżej"
-          icon="up"
-          disabled={!canMoveUp}
-          onClick={() => {
-            actions.moveUp?.(item.id);
-            closeLineMenus();
-          }}
-        />
-        <ArticleActionButton
-          label="Przesuń niżej"
-          icon="down"
-          disabled={!canMoveDown}
-          onClick={() => {
-            actions.moveDown?.(item.id);
-            closeLineMenus();
-          }}
-        />
-        <ArticleActionButton
-          label={required ? 'Usuń status wymagany' : 'Oznacz jako wymagany'}
-          icon="required"
-          selected={required}
-          onClick={() => {
-            actions.toggleRequired?.(item.id);
-            closeLineMenus();
-          }}
-        />
         <ArticleActionButton
           label={meta.unavailable ? 'Oznacz jako dostępny' : 'Oznacz jako niedostępny'}
           icon="availability"
           selected={meta.unavailable}
-          onClick={() => {
-            actions.setIngredientUnavailable?.(item.id, !meta.unavailable);
-            closeLineMenus();
-          }}
+          onClick={() => actions.setIngredientUnavailable?.(item.id, !meta.unavailable)}
         />
         <ArticleActionButton label="Znajdź zamiennik" icon="swap" onClick={openSubstitute} />
         <ArticleActionButton
@@ -701,41 +646,31 @@ function RecipeRow({
       </div>
 
       {role === 'addition' ? (
-        <div className="mt-2 flex justify-end">
+        <div className="mt-1.5 flex justify-end">
           <ArticleActionButton
             label="Ustaw jako Standardowy"
             icon="standard"
-            onClick={() => {
-              setRole('standard');
-              closeLineMenus();
-            }}
+            onClick={() => setRole('standard')}
           />
         </div>
       ) : null}
 
-      {mainUnavailableReason && !isMain ? (
-        <p className="mt-2 text-[11px] leading-snug text-status-error" role="status">
-          {mainUnavailableReason}
-        </p>
-      ) : null}
-      {isMain ? (
-        <div className="mt-3">
-          <MainRatioEditor item={item} actions={actions} />
-        </div>
-      ) : null}
-
-      <div className="mt-3">
-        <CustomerPriceEditor view={priceView} lineId={item.id} variant="article" />
-      </div>
-
-      <div className="mt-3 border-t border-ink/10 pt-2 text-right">
-        <button
-          type="button"
-          onClick={requestRemove}
-          className="pro-focus-ring min-h-10 rounded-lg px-2.5 text-xs font-semibold text-status-error/80 transition-colors hover:bg-status-error/[0.05] hover:text-status-error"
-        >
-          {t.remove.action}
-        </button>
+      <div className="mt-2.5">
+        <CustomerPriceEditor
+          view={priceView}
+          lineId={item.id}
+          variant="article"
+          footerAction={
+            <button
+              type="button"
+              aria-label={t.remove.action}
+              onClick={requestRemove}
+              className="pro-focus-ring h-9 shrink-0 rounded-[8px] border border-status-error/35 bg-status-error/[0.06] px-3 text-[10px] font-semibold text-status-error transition-colors hover:border-status-error/50 hover:bg-status-error/[0.1]"
+            >
+              {t.remove.action}
+            </button>
+          }
+        />
       </div>
     </div>
   );
@@ -982,13 +917,16 @@ function RecipeRow({
                 label={`Opcje składnika ${item.ingredient.name}`}
                 testId={`row-menu-${item.id}`}
                 placement="responsive"
-                panelClassName="sm:!w-[min(480px,94vw)] sm:!p-0"
+                panelClassName="sm:!w-[min(500px,calc(100vw-32px))] sm:!rounded-[14px] sm:!p-0"
                 onClose={() => closeLineMenus()}
               >
-                <div id={`row-menu-dialog-${item.id}`} className="p-4 sm:p-4">
-                  <div className="mb-3 flex items-start justify-between gap-3">
+                <div id={`row-menu-dialog-${item.id}`}>
+                  <div
+                    className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-ink/[0.08] bg-white/95 px-4 py-3 backdrop-blur-sm"
+                    data-testid="article-panel-header"
+                  >
                     <div className="flex min-w-0 items-center gap-2.5">
-                      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-stone-100 text-stone-600">
+                      <span className="grid size-8 shrink-0 place-items-center rounded-[9px] bg-stone-100 text-stone-600">
                         <IngredientCategoryIcon
                           symbol={ingredientCategorySymbolFor({
                             category: item.ingredient.category,
@@ -996,10 +934,10 @@ function RecipeRow({
                         />
                       </span>
                       <div className="min-w-0">
-                        <h2 className="text-sm font-semibold break-words text-ink">
+                        <h2 className="text-[13px] font-semibold leading-[1.2] break-words text-ink">
                           {item.ingredient.name}
                         </h2>
-                        <p className="mt-0.5 text-[11px] text-stone-500">
+                        <p className="mt-1 text-[10px] leading-none font-medium text-stone-500">
                           {categoryLabelPl(item.ingredient.category)}
                         </p>
                       </div>
@@ -1007,13 +945,15 @@ function RecipeRow({
                     <button
                       type="button"
                       onClick={() => closeLineMenus()}
-                      className="pro-focus-ring grid size-10 shrink-0 place-items-center rounded-full border border-ink/12 text-lg text-ink"
+                      className={iconButtonClasses('sm')}
                       aria-label="Zamknij opcje składnika"
                     >
-                      ×
+                      <span aria-hidden className="text-base leading-none">
+                        ×
+                      </span>
                     </button>
                   </div>
-                  {articlePanelContent}
+                  <div className="px-4 pt-3 pb-3">{articlePanelContent}</div>
                 </div>
               </DialogShell>
             ) : null}
@@ -1060,8 +1000,12 @@ function RecipeRow({
           onClose={() => setDialog(null)}
         />
       ) : null}
-      {dialog === 'data' ? (
-        <IngredientDataDialog item={item} onClose={() => setDialog(null)} />
+      {dialog === 'data' || dialog === 'data-from-article' ? (
+        <IngredientDataDialog
+          item={item}
+          navigation={dialog === 'data-from-article' ? 'back' : 'close'}
+          onClose={() => setDialog(null)}
+        />
       ) : null}
     </>
   );

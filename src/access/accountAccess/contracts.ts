@@ -98,7 +98,14 @@ export const ACTIVE_PARTNER_STATUS: PartnerStatus = 'approved';
 
 /* ── admin (separate from partner) ───────────────────────────────────────── */
 
-export type AdminRole = 'none' | 'support_admin' | 'super_admin';
+export type AdminRole =
+  | 'none'
+  | 'super_admin'
+  | 'catalog_admin'
+  | 'support_admin'
+  | 'partner_admin'
+  | 'finance_admin'
+  | 'content_moderator';
 
 /* ── effective access (the resolver output) ──────────────────────────────── */
 

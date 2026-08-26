@@ -49,7 +49,7 @@ describe('post-production Community invitation', () => {
 
   it('leads with pride and sharing, with privacy/version mechanics secondary', async () => {
     await render(true);
-    const dialog = host.querySelector('[data-testid="publish-community-dialog"]')!;
+    const dialog = document.querySelector('[data-testid="publish-community-dialog"]')!;
     expect(dialog.textContent).toContain('Pokaż swój wynik w Community');
     expect(dialog.textContent).toContain('Świetna partia? Udostępnij recepturę i pokaż ją innym.');
     expect(dialog.textContent).toContain(
@@ -62,7 +62,7 @@ describe('post-production Community invitation', () => {
   it('turns a missing Creator profile into an inline continuation instead of a dead end', async () => {
     service.claimCreatorProfile.mockResolvedValue({ handle: 'marysia' });
     await render(false);
-    const dialog = host.querySelector('[data-testid="publish-community-dialog"]')!;
+    const dialog = document.querySelector('[data-testid="publish-community-dialog"]')!;
     expect(dialog.textContent).toContain('Chcesz publikować w Community?');
     expect(dialog.textContent).toContain('Potem wrócisz tutaj i dokończysz publikację.');
 
