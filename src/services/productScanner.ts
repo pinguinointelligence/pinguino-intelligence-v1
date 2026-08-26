@@ -41,9 +41,7 @@ export class ProductScannerServiceError extends Error {
 }
 
 /** The function's own JSON body (typed `error` code + usage), when it returned one. */
-async function readFunctionFailure(
-  error: unknown,
-): Promise<{
+async function readFunctionFailure(error: unknown): Promise<{
   serverCode: string | null;
   visionCalls: number;
   networkFailure: boolean;
