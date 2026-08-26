@@ -7,6 +7,9 @@ const migration = read('supabase/migrations/20260827100000_scanner_customer_adde
 const recipeReadinessMigration = read(
   'supabase/migrations/20260827101000_customer_added_recipe_readiness.sql',
 );
+const relationRlsMigration = read(
+  'supabase/migrations/20260827102000_customer_added_relation_rls_execute.sql',
+);
 const finalize = read('supabase/functions/product-scan-finalize/index.ts');
 const analyze = read('supabase/functions/product-scan-analyze/index.ts');
 const service = read('src/services/productScanner.ts');
@@ -50,6 +53,14 @@ describe('Scanner customer-added product authority', () => {
       /public\.classify_catalog_product_behavior_v2\(\s*v_version_id,'customer-added-runtime-null-v1'\s*\)/,
     );
     expect(recipeReadinessMigration).not.toMatch(/update\s+public\.mapper_basement/i);
+  });
+
+  it('retains the established RLS helper grant required to save My Price', () => {
+    expect(relationRlsMigration).toContain(
+      'grant execute on function public.can_use_product_relation_v1(uuid,uuid)',
+    );
+    expect(relationRlsMigration).toContain('to authenticated,service_role');
+    expect(relationRlsMigration).not.toMatch(/create\s+or\s+replace\s+function/i);
   });
 
   it('uses native system capture and keeps desktop multi-upload/drop', () => {
