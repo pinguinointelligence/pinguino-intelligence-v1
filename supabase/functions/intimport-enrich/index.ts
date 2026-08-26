@@ -644,7 +644,7 @@ Deno.serve(async (request) => {
     const apiUrl = `https://world.openfoodfacts.org/api/v2/product/${exactCode}.json`;
     const sourceUrl = `https://world.openfoodfacts.org/product/${exactCode}`;
     const startedAt = Date.now();
-    let offPayload: Record<string, unknown> = {};
+    let offPayload: Record<string, unknown>;
     try {
       const response = await fetch(apiUrl, {
         signal: AbortSignal.timeout(15_000),

@@ -133,7 +133,7 @@ const edge = async (body: Record<string, unknown>): Promise<{
     },
     body: JSON.stringify(body),
   });
-  let payload: Record<string, unknown> = {};
+  let payload: Record<string, unknown>;
   try {
     payload = objectValue(await response.json());
   } catch {
