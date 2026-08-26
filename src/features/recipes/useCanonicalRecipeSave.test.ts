@@ -148,12 +148,25 @@ describe('HOME explicit-payload canonical save authority', () => {
   it('resolves every canonical starter line and freezes the server snapshots in v1 metadata', async () => {
     const recipeInput = homeStarter();
     expect(recipeInput.items.every((item) => item.id.startsWith('starter:'))).toBe(true);
+    const milkLine = recipeInput.items.find((item) => item.ingredient.id === 'milk_3_5')!;
+    const originalMilkWater = milkLine.ingredient.composition.water_percent;
 
     const resolveSnapshots = vi.fn(
-      async (input: Parameters<typeof resolveRecipeProposalBehaviorSnapshots>[0]) => ({
-        snapshots: productBehaviorTestSnapshots(input.recipe),
-        unresolvedLineIds: [],
-      }),
+      async (input: Parameters<typeof resolveRecipeProposalBehaviorSnapshots>[0]) => {
+        const snapshots = productBehaviorTestSnapshots(input.recipe);
+        snapshots[milkLine.id] = {
+          ...snapshots[milkLine.id]!,
+          sharedFacts: {
+            ...snapshots[milkLine.id]!.sharedFacts!,
+            technicalComposition: {
+              ...snapshots[milkLine.id]!.sharedFacts!.technicalComposition!,
+              water: 88.7,
+              totalSolids: 11.3,
+            },
+          },
+        };
+        return { snapshots, unresolvedLineIds: [] };
+      },
     );
     const validate = vi.fn().mockResolvedValue({
       ready: true,
@@ -162,12 +175,13 @@ describe('HOME explicit-payload canonical save authority', () => {
       staleLineIds: [],
     });
 
-    const composition = await prepareExplicitRecipeSaveComposition({
+    const prepared = await prepareExplicitRecipeSaveComposition({
       recipeInput,
       accountId: 'home-owner',
       resolveSnapshots,
       validate,
     });
+    const { productComposition: composition } = prepared;
 
     expect(resolveSnapshots).toHaveBeenCalledWith({
       recipe: recipeInput,
@@ -179,9 +193,16 @@ describe('HOME explicit-payload canonical save authority', () => {
     expect(Object.keys(composition.behaviorSnapshots ?? {}).sort()).toEqual(
       recipeInput.items.map((item) => item.id).sort(),
     );
-    expect(recipeVersionBehaviorGate(recipeInput, composition, 'RECIPE_VERSION').ready).toBe(true);
+    expect(
+      prepared.recipeInput.items.find((item) => item.id === milkLine.id)!.ingredient.composition
+        .water_percent,
+    ).toBe(88.7);
+    expect(milkLine.ingredient.composition.water_percent).toBe(originalMilkWater);
+    expect(
+      recipeVersionBehaviorGate(prepared.recipeInput, composition, 'RECIPE_VERSION').ready,
+    ).toBe(true);
     expect(validate).toHaveBeenCalledWith({
-      recipe: recipeInput,
+      recipe: prepared.recipeInput,
       toppings: [],
       snapshots: composition.behaviorSnapshots,
       module: 'RECIPE_VERSION',

@@ -45,8 +45,10 @@ import {
   type RecipeCompositionMetadata,
 } from '@/features/recipe-composition/recipeCompositionPersistence';
 import {
+  buildRecipeBehaviorAuthority,
   productBehaviorModuleGate,
   productBehaviorRequiredLineIds,
+  recipeInputFromFrozenBehavior,
   recipeVersionBehaviorGate,
 } from '@/features/product-intelligence';
 import {
@@ -178,7 +180,10 @@ export async function prepareExplicitRecipeSaveComposition(input: {
   accountId: string | null;
   resolveSnapshots?: typeof resolveRecipeProposalBehaviorSnapshots;
   validate?: typeof validateRecipeBehaviorOnServer;
-}): Promise<RecipeCompositionMetadata> {
+}): Promise<{
+  recipeInput: RecipeInput;
+  productComposition: RecipeCompositionMetadata;
+}> {
   if (!input.accountId) throw new Error(EXPLICIT_RECIPE_AUTHORITY_UNAVAILABLE);
 
   const resolved = await (input.resolveSnapshots ?? resolveRecipeProposalBehaviorSnapshots)({
@@ -191,22 +196,32 @@ export async function prepareExplicitRecipeSaveComposition(input: {
     throw new Error(EXPLICIT_RECIPE_AUTHORITY_UNAVAILABLE);
   }
 
-  const composition = recipeCompositionFromState({
+  const authority = buildRecipeBehaviorAuthority({
     items: input.recipeInput.items,
+    toppings: [],
+    snapshots: resolved.snapshots,
+  });
+  const recipeInput = recipeInputFromFrozenBehavior(input.recipeInput, authority, 'technical');
+  const productComposition = recipeCompositionFromState({
+    items: recipeInput.items,
     productBehaviorSnapshots: resolved.snapshots,
   });
-  const localGate = recipeVersionBehaviorGate(input.recipeInput, composition, 'RECIPE_VERSION');
+  const localGate = recipeVersionBehaviorGate(
+    recipeInput,
+    productComposition,
+    'RECIPE_VERSION',
+  );
   if (!localGate.ready) throw new Error(EXPLICIT_RECIPE_AUTHORITY_UNAVAILABLE);
 
   const validation = await (input.validate ?? validateRecipeBehaviorOnServer)({
-    recipe: input.recipeInput,
+    recipe: recipeInput,
     toppings: [],
-    snapshots: composition.behaviorSnapshots ?? {},
+    snapshots: productComposition.behaviorSnapshots ?? {},
     module: 'RECIPE_VERSION',
     accountId: input.accountId,
   }).catch(() => null);
   if (!validation?.ready) throw new Error(EXPLICIT_RECIPE_AUTHORITY_UNAVAILABLE);
-  return composition;
+  return { recipeInput, productComposition };
 }
 
 export interface CanonicalRecipeSave {
@@ -398,14 +413,18 @@ export function useCanonicalRecipeSave(
     practicalBlockMessage: practicalGate.message,
     createNew: (title, note) =>
       run(async () => {
-        const recipeInput = buildInput();
-        const productComposition =
+        const builtRecipeInput = buildInput();
+        const prepared =
           options.buildInput === undefined
-            ? recipeCompositionFromState(useRecipeStore.getState())
+            ? {
+                recipeInput: builtRecipeInput,
+                productComposition: recipeCompositionFromState(useRecipeStore.getState()),
+              }
             : await prepareExplicitRecipeSaveComposition({
-                recipeInput,
+                recipeInput: builtRecipeInput,
                 accountId: authUserId,
               });
+        const { recipeInput, productComposition } = prepared;
         await validateCurrentBehavior(recipeInput, productComposition);
         const { recipe, version } = await repository!.createRecipe({
           ownerUserId: ownerId,
@@ -436,14 +455,18 @@ export function useCanonicalRecipeSave(
     saveVersion: (note) =>
       run(async () => {
         if (!savedRecipeId) throw new Error('Brak powiązanej receptury.');
-        const recipeInput = buildInput();
-        const productComposition =
+        const builtRecipeInput = buildInput();
+        const prepared =
           options.buildInput === undefined
-            ? recipeCompositionFromState(useRecipeStore.getState())
+            ? {
+                recipeInput: builtRecipeInput,
+                productComposition: recipeCompositionFromState(useRecipeStore.getState()),
+              }
             : await prepareExplicitRecipeSaveComposition({
-                recipeInput,
+                recipeInput: builtRecipeInput,
                 accountId: authUserId,
               });
+        const { recipeInput, productComposition } = prepared;
         await validateCurrentBehavior(recipeInput, productComposition);
         const version = await repository!.saveNewVersion(
           savedRecipeId,
