@@ -21,8 +21,8 @@
     "productionSessionSchema": 2
   },
   "bundle": {
-    "bytes": 330277,
-    "sha256": "c56332c71eb59b2b6f56e16a464027bb9f9a163fb7f390ae24061f23001b5d45",
+    "bytes": 330519,
+    "sha256": "7f8ddb42c04cc03acc68bec78dd886742a8e42a8c6a55aa77451445dbbc77118",
     "externalImports": 0,
     "dynamicImports": 0
   },
@@ -161,7 +161,7 @@
     },
     {
       "path": "src/features/practical-recipe/practicalRecipe.ts",
-      "sha256": "5ee881fc4571f54692cbc042ba64f681ef5eb5aa75d10adfcf8e143bb9eb2ac4"
+      "sha256": "d3cc430923df4595ae884be222c4c86135eb4515f6d1c84f2e229b02cc965aa5"
     },
     {
       "path": "src/features/pro-core/recipeScaling.ts",
@@ -268,5 +268,5 @@
       "sha256": "5523e8a79f059b81594793260535fc3b4a85185fe9f5020de87c2c7782a44fdb"
     }
   ],
-  "sourceClosureSha256": "6d7329e382578130fdcb7acb120463817217d82aae0312f28d2840ec2540fdea"
+  "sourceClosureSha256": "02ef63c6843c8005d63a19081e7fca970f00525113c976dc2f3d6a84285f4cd5"
 }

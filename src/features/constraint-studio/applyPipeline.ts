@@ -1114,23 +1114,49 @@ function rescalePreservingMainGroup(
       )
       .map((item) => [item.id, item] as const),
   );
+  const candidateByLineId = new Map(
+    roleFlexibleCandidate.items.map((item) => [item.id, item] as const),
+  );
+  const identityLineIds = new Set(identityInput.items.map((item) => item.id));
+  const missingUserIntentAnchorLineIds = new Set(
+    [...userIntentAnchors.keys()].filter((lineId) => !candidateByLineId.has(lineId)),
+  );
   const presenceSafeCandidate: RecipeInput =
     userIntentAnchors.size === 0
       ? roleFlexibleCandidate
       : {
           ...roleFlexibleCandidate,
-          items: roleFlexibleCandidate.items.map((item) => {
-            const anchor = userIntentAnchors.get(item.id);
-            if (!anchor) return item;
-            return {
-              ...item,
-              user_intent_anchor_grams: anchor.user_intent_anchor_grams,
-              planned_grams: Math.max(1, item.planned_grams),
-            };
-          }),
+          items: [
+            ...identityInput.items.flatMap((identityItem) => {
+              const item = candidateByLineId.get(identityItem.id);
+              const anchor = userIntentAnchors.get(identityItem.id);
+              if (!item) {
+                // A formulation seed may omit a positive Standard line. Restore
+                // the exact user identity at the minimum executable presence;
+                // the temporary normalization hold below keeps it at 1 g while
+                // every other line absorbs the batch residual. This is not a
+                // user gram lock and is never persisted as a constraint.
+                return anchor ? [{ ...anchor, planned_grams: 1 }] : [];
+              }
+              if (!anchor) return [item];
+              return [
+                {
+                  ...item,
+                  user_intent_anchor_grams: anchor.user_intent_anchor_grams,
+                  planned_grams: Math.max(1, item.planned_grams),
+                },
+              ];
+            }),
+            ...roleFlexibleCandidate.items.filter((item) => !identityLineIds.has(item.id)),
+          ],
         };
   const constrainedCandidate = applyConstraintMassesPreservingLockTypes(presenceSafeCandidate, set);
   const byLineId = { ...set.byLineId };
+  for (const lineId of missingUserIntentAnchorLineIds) {
+    // Search-only presence authority. Existing user constraints remain
+    // stronger and are copied above without modification.
+    if (byLineId[lineId] === undefined) byLineId[lineId] = { mode: 'locked', grams: 1 };
+  }
   if (preserveCandidateMain) {
     for (const main of captureMainIngredientIntent(identityInput)) {
       const current = constrainedCandidate.items.find(
@@ -3758,11 +3784,21 @@ function maximizeMainTechnicalObjective(
     behaviorCeiling === null
       ? batchUpperBound
       : Math.floor(behaviorCeiling + MAIN_OBJECTIVE_EPSILON_G);
+  // A published ProductBehavior ceiling already supplies an independent upper
+  // authority. In that case the continuous LP is enough to tighten it: the
+  // floor of a continuous maximum is a safe whole-gram upper bound, and the
+  // candidate at min(LP, ProductBehavior) still passes the unchanged integer
+  // allocation, practicalization, Engine, lock and Main-ratio gates below.
+  // Branch-and-bound cannot accept a recipe; it could only tighten a failed
+  // starting probe. Groups WITHOUT a published ceiling retain the original
+  // single 4,096-node integer proof, so user-held Main and real locks do not
+  // pay for a redundant continuous solve or lose any certification authority.
   const linearBound = mainTechnicalLinearUpperBound({
     recipe: identityInput,
     constraints: linearConstraintSet,
     snapshots: options.productBehaviorSnapshots ?? {},
     excludedIngredientIds: options.excludedIngredientIds,
+    ...(behaviorCeiling !== null ? { certifyWholeGram: false } : {}),
   });
   const linearUpperBound =
     linearBound.status === 'certified'
@@ -7192,6 +7228,15 @@ function buildOptimizePreviewWithDirection(
     createdAt,
     options,
   );
+  if (!positiveStandardPresencePreserved(input, working)) {
+    const restoredPresence = rescalePreservingMainGroup(
+      input,
+      working,
+      set,
+      input.target_batch_grams,
+    );
+    if (restoredPresence.ok) working = restoredPresence.input;
+  }
 
   let preview = finishPreview(
     'optimize',

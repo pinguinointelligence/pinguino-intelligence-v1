@@ -196,7 +196,13 @@ describe('Apply door — Sorbet exact Direction keeps the Main group byte-exact 
       { grams: 150, ratio: 150 },
       { grams: 150, ratio: 150 },
     ]);
-    expect(runtimeMs).toBeLessThan(30_000);
+    // The browser worker is materially slower than the Node fixture. A local
+    // result near the 30 s UI watchdog still becomes the generic technical
+    // error on served staging (measured at 13.8 s locally before the bounded
+    // LP-proof repair). Keep enough headroom for the exact domain refusal to
+    // reach the UI on its first attempt; do not mask a deterministic loop by
+    // enlarging the watchdog again.
+    expect(runtimeMs).toBeLessThan(8_000);
     console.info(
       'SERVED_TWO_CROWN_SORBET ' +
         JSON.stringify({
