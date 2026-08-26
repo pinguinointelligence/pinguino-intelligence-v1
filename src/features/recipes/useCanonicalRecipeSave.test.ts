@@ -10,9 +10,20 @@
  *     append a version onto whatever recipe the Pro draft happened to be linked to.
  */
 import { readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import {
+  buildCustomerResult,
+  createCustomerFlow,
+  selectServingMode,
+  setBatchGrams,
+  setProductType,
+} from '@/features/customer-flow';
+import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
+import { recipeVersionBehaviorGate } from '@/features/product-intelligence';
+import { resolveRecipeProposalBehaviorSnapshots } from '@/services/productIntelligence';
 import {
   canonicalRecipeSaveErrorMessage,
+  prepareExplicitRecipeSaveComposition,
   productBehaviorSaveGateMessage,
   resolveSaveTarget,
 } from './useCanonicalRecipeSave';
@@ -120,5 +131,80 @@ describe('fresh-native ProductBehavior Save copy', () => {
     expect(
       canonicalRecipeSaveErrorMessage(new Error('Limit zapisanych receptur osiągnięty.')),
     ).toBe('Limit zapisanych receptur osiągnięty.');
+  });
+});
+
+describe('HOME explicit-payload canonical save authority', () => {
+  const homeStarter = () => {
+    let flow = createCustomerFlow({ text: 'lody waniliowe' });
+    flow = setProductType(flow, 'gelato');
+    flow = selectServingMode(flow, 'ninja_gelato');
+    flow = setBatchGrams(flow, 450);
+    const recipeInput = buildCustomerResult(flow).recipeInput;
+    if (!recipeInput) throw new Error('expected the real HOME starter input');
+    return recipeInput;
+  };
+
+  it('resolves every canonical starter line and freezes the server snapshots in v1 metadata', async () => {
+    const recipeInput = homeStarter();
+    expect(recipeInput.items.every((item) => item.id.startsWith('starter:'))).toBe(true);
+
+    const resolveSnapshots = vi.fn(
+      async (input: Parameters<typeof resolveRecipeProposalBehaviorSnapshots>[0]) => ({
+        snapshots: productBehaviorTestSnapshots(input.recipe),
+        unresolvedLineIds: [],
+      }),
+    );
+    const validate = vi.fn().mockResolvedValue({
+      ready: true,
+      module: 'RECIPE_VERSION',
+      lines: [],
+      staleLineIds: [],
+    });
+
+    const composition = await prepareExplicitRecipeSaveComposition({
+      recipeInput,
+      accountId: 'home-owner',
+      resolveSnapshots,
+      validate,
+    });
+
+    expect(resolveSnapshots).toHaveBeenCalledWith({
+      recipe: recipeInput,
+      snapshots: {},
+      accountId: 'home-owner',
+      module: 'RECIPE_VERSION',
+    });
+    expect(composition.baseOrder).toEqual(recipeInput.items.map((item) => item.id));
+    expect(Object.keys(composition.behaviorSnapshots ?? {}).sort()).toEqual(
+      recipeInput.items.map((item) => item.id).sort(),
+    );
+    expect(recipeVersionBehaviorGate(recipeInput, composition, 'RECIPE_VERSION').ready).toBe(true);
+    expect(validate).toHaveBeenCalledWith({
+      recipe: recipeInput,
+      toppings: [],
+      snapshots: composition.behaviorSnapshots,
+      module: 'RECIPE_VERSION',
+      accountId: 'home-owner',
+    });
+  });
+
+  it('fails closed before persistence when any HOME starter line cannot resolve', async () => {
+    const recipeInput = homeStarter();
+    const resolveSnapshots = vi.fn().mockResolvedValue({
+      snapshots: productBehaviorTestSnapshots(recipeInput),
+      unresolvedLineIds: [recipeInput.items[0]!.id],
+    });
+    const validate = vi.fn();
+
+    await expect(
+      prepareExplicitRecipeSaveComposition({
+        recipeInput,
+        accountId: 'home-owner',
+        resolveSnapshots,
+        validate,
+      }),
+    ).rejects.toThrow(/potwierdzić aktualnych danych produktów/i);
+    expect(validate).not.toHaveBeenCalled();
   });
 });

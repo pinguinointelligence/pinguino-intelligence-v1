@@ -40,12 +40,19 @@ import {
   attachRecipeProfileMetadata,
   profileSnapshotFromState,
 } from '@/features/pro-workbench/recipeProfilePersistence';
-import { recipeCompositionFromState } from '@/features/recipe-composition/recipeCompositionPersistence';
+import {
+  recipeCompositionFromState,
+  type RecipeCompositionMetadata,
+} from '@/features/recipe-composition/recipeCompositionPersistence';
 import {
   productBehaviorModuleGate,
   productBehaviorRequiredLineIds,
+  recipeVersionBehaviorGate,
 } from '@/features/product-intelligence';
-import { validateRecipeBehaviorOnServer } from '@/services/productIntelligence';
+import {
+  resolveRecipeProposalBehaviorSnapshots,
+  validateRecipeBehaviorOnServer,
+} from '@/services/productIntelligence';
 import { productionVersionFingerprint } from '@/features/production-workspace/productionReadinessState';
 
 const TRACE = {
@@ -154,6 +161,52 @@ export function resolveSaveTarget(
   return store.savedRecipeId
     ? { recipeId: store.savedRecipeId, title: store.savedRecipeName ?? '' }
     : null;
+}
+
+const EXPLICIT_RECIPE_AUTHORITY_UNAVAILABLE =
+  'Nie udało się potwierdzić aktualnych danych produktów receptury. Spróbuj ponownie.';
+
+/**
+ * HOME owns an explicit Engine payload rather than the Pro recipe-store draft.
+ * Before that payload may cross the immutable version boundary, resolve every
+ * canonical line through the same server-owned ProductBehavior authority used
+ * by Pro selections, freeze those snapshots in productComposition, and repeat
+ * the terminal server validation. No local/demo fact becomes save authority.
+ */
+export async function prepareExplicitRecipeSaveComposition(input: {
+  recipeInput: RecipeInput;
+  accountId: string | null;
+  resolveSnapshots?: typeof resolveRecipeProposalBehaviorSnapshots;
+  validate?: typeof validateRecipeBehaviorOnServer;
+}): Promise<RecipeCompositionMetadata> {
+  if (!input.accountId) throw new Error(EXPLICIT_RECIPE_AUTHORITY_UNAVAILABLE);
+
+  const resolved = await (input.resolveSnapshots ?? resolveRecipeProposalBehaviorSnapshots)({
+    recipe: input.recipeInput,
+    snapshots: {},
+    accountId: input.accountId,
+    module: 'RECIPE_VERSION',
+  }).catch(() => null);
+  if (!resolved || resolved.unresolvedLineIds.length > 0) {
+    throw new Error(EXPLICIT_RECIPE_AUTHORITY_UNAVAILABLE);
+  }
+
+  const composition = recipeCompositionFromState({
+    items: input.recipeInput.items,
+    productBehaviorSnapshots: resolved.snapshots,
+  });
+  const localGate = recipeVersionBehaviorGate(input.recipeInput, composition, 'RECIPE_VERSION');
+  if (!localGate.ready) throw new Error(EXPLICIT_RECIPE_AUTHORITY_UNAVAILABLE);
+
+  const validation = await (input.validate ?? validateRecipeBehaviorOnServer)({
+    recipe: input.recipeInput,
+    toppings: [],
+    snapshots: composition.behaviorSnapshots ?? {},
+    module: 'RECIPE_VERSION',
+    accountId: input.accountId,
+  }).catch(() => null);
+  if (!validation?.ready) throw new Error(EXPLICIT_RECIPE_AUTHORITY_UNAVAILABLE);
+  return composition;
 }
 
 export interface CanonicalRecipeSave {
@@ -349,7 +402,10 @@ export function useCanonicalRecipeSave(
         const productComposition =
           options.buildInput === undefined
             ? recipeCompositionFromState(useRecipeStore.getState())
-            : null;
+            : await prepareExplicitRecipeSaveComposition({
+                recipeInput,
+                accountId: authUserId,
+              });
         await validateCurrentBehavior(recipeInput, productComposition);
         const { recipe, version } = await repository!.createRecipe({
           ownerUserId: ownerId,
@@ -384,7 +440,10 @@ export function useCanonicalRecipeSave(
         const productComposition =
           options.buildInput === undefined
             ? recipeCompositionFromState(useRecipeStore.getState())
-            : null;
+            : await prepareExplicitRecipeSaveComposition({
+                recipeInput,
+                accountId: authUserId,
+              });
         await validateCurrentBehavior(recipeInput, productComposition);
         const version = await repository!.saveNewVersion(
           savedRecipeId,

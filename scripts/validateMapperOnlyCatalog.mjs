@@ -92,7 +92,7 @@ if (
   !boundary.includes('loadCurrentRow(articleId)') ||
   !boundary.includes("kind: 'catalog_product'") ||
   !boundary.includes('productVersionId: hit.currentVersionId!') ||
-  !boundary.includes('const canonicalProductId = /^(?:PR|PM)-ING-\\d{6}$/') ||
+  !boundary.includes('const canonicalProductId = /^(?:PR|PM|CA)-ING-\\d{6}$/') ||
   !boundary.includes(
     "return hit.entityKind === 'pi_base' ? currentCatalogArticleId(hit, context) : null",
   ) ||
@@ -107,7 +107,7 @@ console.log('Mapper-resolved catalog validation PASS');
 console.log(`2088 mapper rows inspected (SHA-256 ${mapperHash})`);
 console.log(`${selectableIds.size} current Base-selectable Mapper products covered`);
 console.log('Shared commercial catalog discovery enabled');
-console.log('Commercial selections retain canonical PR/PM identity and immutable product version');
+console.log('Commercial selections retain canonical PR/PM/CA identity and immutable product version');
 console.log('0 stale favorite products rendered');
 console.log('0 stale recent products rendered');
 console.log('0 direct non-authoritative additions accepted by the selection boundary');
