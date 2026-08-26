@@ -54,6 +54,9 @@ const SERVING_OPTIONS: readonly { id: string; label: string }[] = [
 
 const compactSelect =
   'h-11 min-w-0 rounded-[10px] border border-ink/12 bg-white px-3 text-[13px] text-ink shadow-pro-e0 transition-colors hover:border-ink/35 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#f58a07] lg:h-10 lg:text-xs';
+const compactFinalSettingsCell =
+  'relative grid min-w-0 grid-rows-[52px_auto] gap-1 p-1.5 lg:grid-rows-[40px_auto] 2xl:grid-rows-[43px_auto]';
+const compactSettingsHelper = 'px-1 text-[10px] leading-tight text-stone-600';
 
 function LabeledSelect<T extends string>({
   label,
@@ -212,6 +215,7 @@ export function WorkbenchSettingsLine({
     }
     resizeBatchGrams(target);
   };
+  const settingsHelperClass = cn(compactSettingsHelper, !compact && 'col-span-full');
 
   return (
     <section
@@ -231,7 +235,7 @@ export function WorkbenchSettingsLine({
         hardConflict ? 'conflict' : confirmed ? 'confirmed' : 'needs-confirmation'
       }
     >
-      <div className="mb-3 flex min-h-8 items-center">
+      <div className="mb-2 flex min-h-6 items-center">
         <div className="flex min-w-0 items-center gap-2">
           <h3 className="text-sm font-semibold text-ink">Ustawienia</h3>
           <span
@@ -257,7 +261,11 @@ export function WorkbenchSettingsLine({
         </div>
       </div>
 
-      <div className={cn(compact ? 'profile-settings-grid grid grid-cols-2 gap-2' : 'space-y-3')}>
+      <div
+        className={cn(
+          compact ? 'profile-settings-grid grid grid-cols-2 items-stretch gap-2' : 'space-y-3',
+        )}
+      >
         <div data-settings-cell="product-type">
           <LabeledSelect
             label={g.productTypeLabel}
@@ -368,10 +376,8 @@ export function WorkbenchSettingsLine({
 
         <div
           className={cn(
-            'grid items-center gap-2 rounded-[12px] border px-3 py-2',
-            compact
-              ? 'relative min-h-[76px] grid-cols-1 pt-5 lg:min-h-[70px] lg:py-1.5 lg:pt-4'
-              : 'grid-cols-[6.8rem_minmax(0,1fr)]',
+            'grid items-center rounded-[12px] border',
+            compact ? compactFinalSettingsCell : 'grid-cols-[6.8rem_minmax(0,1fr)] gap-2 px-3 py-2',
             batchMismatch ? 'border-gold/35 bg-education-ivory/55' : 'border-ink/10 bg-white',
           )}
           data-testid="profile-batch-combined"
@@ -380,12 +386,12 @@ export function WorkbenchSettingsLine({
           <span
             className={cn(
               'font-medium text-stone-600',
-              compact ? 'absolute left-3 top-1.5 text-[10px]' : 'text-xs',
+              compact ? 'absolute left-[18px] top-3 text-[10px]' : 'text-xs',
             )}
           >
             Partia
           </span>
-          <div className="flex min-w-0 items-center justify-end gap-1.5">
+          <div className={cn('flex min-w-0 items-center justify-end gap-1.5', compact && 'h-full')}>
             <strong className="font-mono text-xs tabular-nums text-ink">
               {actualBatchG.toLocaleString('pl-PL', { maximumFractionDigits: 1 })}
             </strong>
@@ -414,13 +420,14 @@ export function WorkbenchSettingsLine({
               ))}
             </select>
           </div>
-          <p className="col-span-full text-[10px] leading-relaxed text-stone-600">
-            Baza lodowa bez toppingu
-          </p>
+          <p className={settingsHelperClass}>Baza lodowa bez toppingu</p>
         </div>
 
         <div
-          className="rounded-[12px] border border-ink/8 bg-stone-50/70 p-1.5"
+          className={cn(
+            'rounded-[12px] border border-ink/8 bg-stone-50/70',
+            compact ? compactFinalSettingsCell : 'p-1.5',
+          )}
           data-settings-cell="strategy"
         >
           <LabeledSelect
@@ -432,7 +439,7 @@ export function WorkbenchSettingsLine({
             testid="workbench-strategy"
             stacked={compact}
           />
-          <p className="mt-1 px-1 text-[10px] leading-relaxed text-stone-600">
+          <p className={settingsHelperClass}>
             {STRATEGY_COPY[store.formulation_strategy].description}
           </p>
         </div>
