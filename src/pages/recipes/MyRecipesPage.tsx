@@ -33,6 +33,7 @@ import type {
   RecipeVersion,
   SavedRecipe as SavedRecipeAggregate,
 } from '@/features/pro-core/recipeContracts';
+import type { RecipeInput } from '@/engine';
 
 const r = copy.recipes;
 
@@ -80,6 +81,11 @@ export function MyRecipesContent() {
     {},
   );
   const [openError, setOpenError] = useState<string | null>(null);
+  const [openedHomeRecipe, setOpenedHomeRecipe] = useState<{
+    name: string;
+    versionNumber: number | null;
+    input: RecipeInput;
+  } | null>(null);
 
   const onOpen = async (row: SavedRecipe, requestedVersionNumber: number | null) => {
     setOpenError(null);
@@ -150,7 +156,15 @@ export function MyRecipesContent() {
               ),
             },
       );
-      navigate(persona === 'pro' ? '/pro/recipe' : '/home');
+      if (persona === 'home') {
+        setOpenedHomeRecipe({
+          name: row.name,
+          versionNumber: openedVersion?.versionNumber ?? aggregate?.latestVersionNumber ?? null,
+          input: openedInput,
+        });
+      } else {
+        navigate(persona === 'pro' ? '/pro/recipe' : '/home');
+      }
     } catch {
       setOpenError(r.versionSelector.openFailedGeneric);
     }
@@ -264,6 +278,45 @@ export function MyRecipesContent() {
               </li>
             ))}
           </ul>
+          {persona === 'home' && openedHomeRecipe ? (
+            <section
+              aria-label={`Otwarta receptura ${openedHomeRecipe.name}`}
+              data-testid="home-opened-recipe"
+              className="mt-8 border-y border-ink/10 bg-[#f8f4ed] px-5 py-6"
+            >
+              <div className="flex flex-wrap items-end justify-between gap-3 border-b border-ink/10 pb-4">
+                <div>
+                  <SectionLabel>Otwarta receptura</SectionLabel>
+                  <h2 className="mt-2 text-xl font-semibold tracking-[-0.025em] text-ink">
+                    {openedHomeRecipe.name}
+                  </h2>
+                </div>
+                <p className="font-mono text-xs text-stone-500">
+                  {openedHomeRecipe.versionNumber !== null
+                    ? `v${openedHomeRecipe.versionNumber} · `
+                    : ''}
+                  {openedHomeRecipe.input.target_batch_grams} g ·{' '}
+                  {openedHomeRecipe.input.target_temperature_c}°C
+                </p>
+              </div>
+              <ul className="mt-4 divide-y divide-ink/10">
+                {openedHomeRecipe.input.items.map((item) => (
+                  <li
+                    key={item.id}
+                    className="flex items-baseline justify-between gap-4 py-3 text-sm"
+                  >
+                    <span className="text-ink">{item.ingredient.name}</span>
+                    <span className="font-mono tabular-nums text-ink">
+                      {new Intl.NumberFormat('pl-PL', { maximumFractionDigits: 2 }).format(
+                        item.planned_grams,
+                      )}{' '}
+                      g
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
         </>
       )}
       {/* S2 UX: version history is NOT duplicated here. Moje receptury shows ONE list of recipe
