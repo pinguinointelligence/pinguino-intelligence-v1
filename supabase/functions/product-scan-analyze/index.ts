@@ -85,6 +85,7 @@ const mimeMatchesBytes = (mime: string, bytes: Uint8Array) => {
 async function exactProductForBarcode(
   service: ReturnType<typeof createClient>,
   barcode: string | null,
+  actorUserId: string,
 ) {
   if (!barcode) return null;
   const digits = barcode.replace(/\D/g, '');
@@ -103,7 +104,21 @@ async function exactProductForBarcode(
     .maybeSingle();
   const related = data?.products as unknown;
   const product = Array.isArray(related) ? objectValue(related[0]) : objectValue(related);
-  return product?.is_active === true && product.merged_into_product_id === null ? product : null;
+  if (product?.is_active !== true || product.merged_into_product_id !== null) return null;
+  // A pending CA is central by EAN but remains account-private. Only an
+  // already-linked customer may use the zero-cost exact path. Another customer
+  // must finish the normal evidence/finalize flow, whose one-EAN transaction
+  // adds their account relation and increments distinct_customer_count.
+  if (product.product_kind === 'customer_provisional') {
+    const { data: linked } = await service
+      .from('customer_added_product_accounts')
+      .select('product_id')
+      .eq('product_id', product.id)
+      .eq('user_id', actorUserId)
+      .maybeSingle();
+    if (!linked) return null;
+  }
+  return product;
 }
 
 Deno.serve(async (request) => {
@@ -191,7 +206,7 @@ Deno.serve(async (request) => {
     return json({ error: 'scan_session_barcode_conflict' }, 409);
   }
   const barcode = establishedBarcode ?? incomingBarcode;
-  const exact = await exactProductForBarcode(service, barcode);
+  const exact = await exactProductForBarcode(service, barcode, auth.user.id);
   if (!existingSession) {
     const { error: insertSessionError } = await service.from('product_scan_sessions').insert({
       id: sessionId,

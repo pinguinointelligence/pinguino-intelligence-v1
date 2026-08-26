@@ -63,6 +63,14 @@ describe('Scanner customer-added product authority', () => {
     expect(relationRlsMigration).not.toMatch(/create\s+or\s+replace\s+function/i);
   });
 
+  it('does not expose another account customer-added pending product as an exact match', () => {
+    expect(analyze).toContain('actorUserId: string');
+    expect(analyze).toContain(".from('customer_added_product_accounts')");
+    expect(analyze).toContain(".eq('user_id', actorUserId)");
+    expect(analyze).toContain('if (!linked) return null');
+    expect(analyze).toContain('exactProductForBarcode(service, barcode, auth.user.id)');
+  });
+
   it('uses native system capture and keeps desktop multi-upload/drop', () => {
     expect(ui).toContain('capture="environment"');
     expect(ui).toContain('accept={PRODUCT_SCAN_ACCEPT}');
