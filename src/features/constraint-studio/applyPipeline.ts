@@ -3128,6 +3128,23 @@ function maximizeMainFromStart(
   const searchStartingMainGrams = mainGroupTotal(identityInput, start);
   const baselineResult = calculateRecipe(start);
   const identityResult = calculateRecipe(identityInput);
+  const behaviorMode =
+    normalizeFormulationStrategy(
+      identityInput.goals?.formulation_strategy ?? identityInput.mode,
+    ) === 'eco'
+      ? 'eco'
+      : 'optimal';
+  const managedBehavior = Object.keys(options.productBehaviorSnapshots ?? {}).length > 0;
+  const mainEnvelopeAdmissible = (candidate: RecipeInput): boolean =>
+    !managedBehavior ||
+    verifyMainEnvelope({
+      recipe: candidate,
+      snapshots: options.productBehaviorSnapshots ?? {},
+      mode: behaviorMode,
+      technicalOnlyMainLineIds: options.technicalOnlyMainLineIds,
+    }).ok;
+  const startEnvelopeValid = mainEnvelopeAdmissible(start);
+  const identityEnvelopeValid = mainEnvelopeAdmissible(identityInput);
   // Protein v2 frontier: preserve the CLAIM and the structural QUALITY, never
   // a distance to a requested protein number.
   const startProteinRank = proteinFrontierRank(start, baselineResult);
@@ -3152,19 +3169,21 @@ function maximizeMainFromStart(
   // lower "best class" than the current draft already proves achievable.
   // Main optimisation is allowed only inside a native-hard-safe class.
   const baselineHardCount = Math.min(startHardCount, identityHardCount);
-  const baselineScore: number | null =
-    startScore === null
-      ? identityScore
-      : identityScore === null
-        ? startScore
-        : Math.max(startScore, identityScore);
-  const baselineDirectionReached = assessRecipeDirection(start, baselineResult).reachedAxisCount;
-  if (
-    !(startingMainGrams > 0) ||
-    !(searchStartingMainGrams > 0) ||
-    baselineScore === null ||
-    baselineHardCount > 0
-  ) {
+  const admissibleBaselineScores = [
+    ...(startEnvelopeValid && startScore !== null ? [startScore] : []),
+    ...(identityEnvelopeValid && identityScore !== null ? [identityScore] : []),
+  ];
+  const baselineScore =
+    admissibleBaselineScores.length > 0
+      ? Math.max(...admissibleBaselineScores)
+      : Number.NEGATIVE_INFINITY;
+  const baselineDirectionReached = Math.max(
+    startEnvelopeValid ? assessRecipeDirection(start, baselineResult).reachedAxisCount : 0,
+    identityEnvelopeValid
+      ? assessRecipeDirection(identityInput, identityResult).reachedAxisCount
+      : 0,
+  );
+  if (!(startingMainGrams > 0) || !(searchStartingMainGrams > 0) || baselineHardCount > 0) {
     return {
       input: start,
       proof: {
@@ -3207,6 +3226,7 @@ function maximizeMainFromStart(
         veganProfileConstraintIssues(executable).length === 0);
     return identity.ok &&
       constraints.ok &&
+      mainEnvelopeAdmissible(executable) &&
       hardCount <= baselineHardCount &&
       score !== null &&
       score >= baselineScore &&
@@ -3281,12 +3301,12 @@ function maximizeMainFromStart(
 
     let rejection: Extract<MainObjectiveProbe, { ok: false }>['reason'] = 'batch_or_constraints';
     let best: Extract<MainObjectiveProbe, { ok: true }> | null = null;
-    for (const settled of candidates) {
+    const assessCandidate = (settled: RecipeInput): void => {
       const identity = verifyMainIngredientIdentity(identityInput, settled);
       const constraints = verifyConstraintsPreserved(set, settled);
       if (!identity.ok || !constraints.ok) {
         rejection = 'main_identity';
-        continue;
+        return;
       }
       if (
         normalizeFormulationStrategy(
@@ -3297,7 +3317,11 @@ function maximizeMainFromStart(
         }).ok
       ) {
         rejection = 'main_identity';
-        continue;
+        return;
+      }
+      if (!mainEnvelopeAdmissible(settled)) {
+        rejection = 'hard_gate';
+        return;
       }
       if (
         settled.category === 'vegan_gelato' &&
@@ -3305,32 +3329,32 @@ function maximizeMainFromStart(
           veganProfileConstraintIssues(settled).length > 0)
       ) {
         rejection = 'hard_gate';
-        continue;
+        return;
       }
       const hardCount = classifyViolationBands(settled).hardMetrics.length;
       if (hardCount > baselineHardCount) {
         rejection = 'hard_gate';
-        continue;
+        return;
       }
       const settledResult = calculateRecipe(settled);
       const score = recipeFitForInput(settled, settledResult).score;
       const directionReached = assessRecipeDirection(settled, settledResult).reachedAxisCount;
       if (score === null || score < baselineScore) {
         rejection = 'technical_score_class';
-        continue;
+        return;
       }
       if (directionReached < baselineDirectionReached) {
         rejection = 'technical_score_class';
-        continue;
+        return;
       }
       if (!preservesProteinFrontier(settled, settledResult)) {
         rejection = 'technical_score_class';
-        continue;
+        return;
       }
       const practicalScore = practicalScoreIfAdmissible(settled);
       if (practicalScore === null) {
         rejection = 'technical_score_class';
-        continue;
+        return;
       }
       const accepted = {
         ok: true as const,
@@ -3340,6 +3364,27 @@ function maximizeMainFromStart(
       };
       if (best === null || (accepted.score ?? -Infinity) > (best.score ?? -Infinity))
         best = accepted;
+    };
+    for (const settled of candidates) assessCandidate(settled);
+    // An authority-invalid starting Main group is not an admissible score or
+    // composition baseline. If proportional/one-donor normalization cannot
+    // make the ceiling vector technical, run the existing bounded support-line
+    // settlement once on the best raw seed, then repeat every gate above.
+    if (best === null && !identityEnvelopeValid && candidates.length > 0) {
+      const seed = [...candidates]
+        .map((candidate, index) => ({
+          candidate,
+          index,
+          violations: detectViolations(calculateRecipe(candidate)).length,
+          severity: totalSeverity(candidate),
+        }))
+        .sort(
+          (left, right) =>
+            left.violations - right.violations ||
+            left.severity - right.severity ||
+            left.index - right.index,
+        )[0]?.candidate;
+      if (seed) assessCandidate(settleRemainingLines(seed));
     }
     return best ?? { ok: false, mainGrams: requestedMainGrams, reason: rejection };
   };
@@ -3405,6 +3450,7 @@ function maximizeMainFromStart(
     const practicalScore = practicalScoreIfAdmissible(settled);
     return identity.ok &&
       constraints.ok &&
+      mainEnvelopeAdmissible(settled) &&
       hardCount <= baselineHardCount &&
       score !== null &&
       score >= baselineScore &&
@@ -3432,7 +3478,68 @@ function maximizeMainFromStart(
         : 'optimal',
   });
   const upper = probe(behaviorCeiling ?? identityInput.target_batch_grams);
-  if (upper.ok && upper.mainGrams <= searchStartingMainGrams + MAIN_OBJECTIVE_EPSILON_G) {
+  // A user-entered Crown group may start ABOVE its hard ProductBehavior
+  // envelope. The ordinary maximization interval assumes the starting point
+  // is already admissible and searches upward; using that interval here would
+  // collapse `rejectedMainGrams` back to the oversized start and silently keep
+  // the invalid vector. Search downward from the approved ceiling instead.
+  // This is still the same bounded Main probe and unchanged Engine gate; only
+  // the direction of enumeration differs for an authority-invalid baseline.
+  if (
+    !upper.ok &&
+    behaviorCeiling !== null &&
+    behaviorCeiling < searchStartingMainGrams - MAIN_OBJECTIVE_EPSILON_G
+  ) {
+    let lastRejected = upper;
+    let descendingAttempts = 0;
+    for (
+      let total = Math.floor(behaviorCeiling + MAIN_OBJECTIVE_EPSILON_G) - 1;
+      total >= 1 && descendingAttempts < MAIN_TECHNICAL_PROBE_BUDGET;
+      total -= 1
+    ) {
+      descendingAttempts += 1;
+      const candidate = probe(total);
+      if (!candidate.ok) {
+        lastRejected = candidate;
+        continue;
+      }
+      const settled = settleIfAdmissible(candidate.input);
+      const acceptedMainGrams = mainGroupTotal(identityInput, settled);
+      return {
+        input: settled,
+        proof: {
+          status: 'best_achievable',
+          startingMainGrams,
+          exactAcceptedMainGrams: acceptedMainGrams,
+          executableMainGrams: acceptedMainGrams,
+          firstHigherRejectedGrams:
+            lastRejected.mainGrams > acceptedMainGrams + MAIN_OBJECTIVE_EPSILON_G
+              ? lastRejected.mainGrams
+              : null,
+          firstHigherRejectedReason:
+            lastRejected.mainGrams > acceptedMainGrams + MAIN_OBJECTIVE_EPSILON_G
+              ? lastRejected.reason
+              : null,
+          technicalScore: recipeFitForInput(settled, calculateRecipe(settled)).score,
+          attempts,
+        },
+      };
+    }
+    return {
+      input: start,
+      proof: {
+        status: 'no_admissible_increase',
+        startingMainGrams,
+        exactAcceptedMainGrams: startingMainGrams,
+        executableMainGrams: startingMainGrams,
+        firstHigherRejectedGrams: lastRejected.mainGrams,
+        firstHigherRejectedReason: lastRejected.reason,
+        technicalScore: baselineScore,
+        attempts,
+      },
+    };
+  }
+  if (upper.ok && Math.abs(upper.mainGrams - searchStartingMainGrams) <= MAIN_OBJECTIVE_EPSILON_G) {
     return {
       input: start,
       proof: {
@@ -3579,9 +3686,22 @@ function maximizeMainTechnicalObjective(
       mode: presentationInput.mode,
       goals: presentationInput.goals ? { ...presentationInput.goals } : undefined,
     };
-    const bounded = maximizeMainFromStart(
+    // Protein support refinement must establish the technically admissible
+    // search seed BEFORE the coupled Main frontier runs.  Waiting until the
+    // common `finishPreview` boundary leaves an out-of-band user draft with a
+    // zero-attempt `no_admissible_increase` proof, even when the existing
+    // Protein ladder can repair only the support lines while preserving the
+    // complete Crown group.  The refinement is fail-closed: it retains Main
+    // mass/ratio, user constraints and Direction, and is accepted only after
+    // the unchanged Engine reports a strictly better Protein frontier.
+    const refinedTechnicalPresentationInput = refineProteinFormulation(
       contractInput,
       technicalPresentationInput,
+      set,
+    );
+    const bounded = maximizeMainFromStart(
+      contractInput,
+      refinedTechnicalPresentationInput,
       set,
       options,
     );
@@ -4097,6 +4217,11 @@ function maximizeMainTechnicalObjective(
       };
     }
     const failure = rejected.get(searchStart);
+    const testedHigherCandidateCount = [...rejected.keys()].filter(
+      (mainGrams) => mainGrams > startingMainGrams + MAIN_OBJECTIVE_EPSILON_G,
+    ).length;
+    const firstHigherFailure =
+      failure && failure.mainGrams > startingMainGrams + MAIN_OBJECTIVE_EPSILON_G ? failure : null;
     return {
       input: presentationInput,
       proof: {
@@ -4104,13 +4229,20 @@ function maximizeMainTechnicalObjective(
         startingMainGrams,
         exactAcceptedMainGrams: startingMainGrams,
         executableMainGrams: startingMainGrams,
-        firstHigherRejectedGrams: failure?.mainGrams ?? null,
-        firstHigherRejectedReason: failure?.reason ?? null,
+        // A linear/Direction ceiling can sit below an already-safe current
+        // Crown group. Such a lower probe is not a "higher rejected" quantum,
+        // and the proof's explored upper range may never be lower than the
+        // unchanged executable witness that it returns.
+        firstHigherRejectedGrams: firstHigherFailure?.mainGrams ?? null,
+        firstHigherRejectedReason: firstHigherFailure?.reason ?? null,
         technicalScore: recipeFitForInput(identityInput, calculateRecipe(identityInput)).score,
         attempts,
-        searchUpperBoundGrams: searchStart,
+        searchUpperBoundGrams: Math.max(
+          searchStart,
+          Math.ceil(startingMainGrams - MAIN_OBJECTIVE_EPSILON_G),
+        ),
         provenMaximum: false,
-        testedHigherCandidateCount: rejected.size,
+        testedHigherCandidateCount,
         limitingTechnicalRules: failure?.rules ?? ['no_technically_valid_main_candidate'],
         ...(linearBound.status === 'certified' && linearBound.wholeGramUpperBound !== null
           ? {
@@ -6063,7 +6195,31 @@ export function buildOptimizePreview(
   // −12 °C, Sweetness +2 before the fix: a clean, non-diagnostic Preview that
   // could never be applied.
   nearest.preview.baseFingerprint = workingStateFingerprint(input, set);
-  nearest.preview.proposedInput = { ...nearest.preview.proposedInput, goals: input.goals };
+  const rebaseGoals = (candidate: RecipeInput): RecipeInput => ({
+    ...candidate,
+    goals: input.goals,
+  });
+  nearest.preview.proposedInput = rebaseGoals(nearest.preview.proposedInput);
+  if (nearest.preview.practicalization?.status === 'ready') {
+    const audit = nearest.preview.practicalization.audit;
+    const exactInput = rebaseGoals(audit.exactInput);
+    const executableInput = rebaseGoals(audit.executableInput);
+    nearest.preview.practicalization = {
+      status: 'ready',
+      audit: {
+        ...audit,
+        exactInput,
+        exactResult: calculateRecipe(exactInput),
+        executableInput,
+        executableResult: calculateRecipe(executableInput),
+      },
+    };
+  }
+  attachMainObjective(nearest.preview, input, nearest.preview.mainObjective ?? null);
+  nearest.preview.directionAssessment = assessRecipeDirection(
+    nearest.preview.proposedInput,
+    calculateRecipe(nearest.preview.proposedInput),
+  );
   return enforceTargetBatchInvariant(input, nearest);
 }
 
@@ -8837,7 +8993,12 @@ export class VerifiedApply {
       const rebuilt = buildOptimizePreview(current, currentConstraints, preview.createdAt, {
         ...rebuildOptions,
         excludedIngredientIds,
-        productBehaviorSnapshots: verifiedProductBehaviorSnapshots,
+        // Reproduce the same generation boundary as Preview: the CURRENT
+        // recipe authority shapes candidate search; the separately verified
+        // proposal authority authorizes the complete resulting vector. Feeding
+        // proposal snapshots back into generation can choose a different
+        // support vector and falsely reject an otherwise byte-identical proof.
+        productBehaviorSnapshots: currentProductBehaviorSnapshots,
         technicalOnlyMainLineIds,
       });
       const rebuiltMatches =
@@ -8876,7 +9037,7 @@ export class VerifiedApply {
         proof.firstHigherRejectedReason !== null &&
         (proof.limitingTechnicalRules?.length ?? 0) > 0;
       const boundedBestProof =
-        proof?.status === 'best_achievable' &&
+        (proof?.status === 'best_achievable' || proof?.status === 'no_admissible_increase') &&
         proof.provenMaximum === false &&
         (proof.proofKind === 'linear_relaxation' || proof.proofKind === 'heuristic_search') &&
         Number.isInteger(proof.searchUpperBoundGrams) &&
@@ -8914,14 +9075,14 @@ export class VerifiedApply {
             {
               ...rebuildOptions,
               excludedIngredientIds,
-              productBehaviorSnapshots: verifiedProductBehaviorSnapshots,
+              productBehaviorSnapshots: currentProductBehaviorSnapshots,
               technicalOnlyMainLineIds,
             },
           )
         : buildOptimizePreview(current, currentConstraints, preview.createdAt, {
             ...rebuildOptions,
             excludedIngredientIds,
-            productBehaviorSnapshots: verifiedProductBehaviorSnapshots,
+            productBehaviorSnapshots: currentProductBehaviorSnapshots,
             technicalOnlyMainLineIds,
           });
       const rebuiltProof = rebuilt.ok ? rebuilt.preview.mainObjective : undefined;

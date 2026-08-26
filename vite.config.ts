@@ -20,7 +20,11 @@ export default defineConfig({
     // build on any contract violation. The rule: the CAMPAIGN DISCOVERS defects,
     // the DEFAULT SUITE PREVENTS their regression, so every defect the campaign
     // finds gets a small deterministic test that stays here.
-    exclude: [...configDefaults.exclude, 'src/**/*.campaign.test.{ts,tsx}'],
+    exclude: [
+      ...configDefaults.exclude,
+      'src/**/*.campaign.test.{ts,tsx}',
+      'src/**/*.crown-campaign.test.{ts,tsx}',
+    ],
     // Full formulation/Protein proofs are CPU-bound and OCR fixtures load
     // shared language assets. Run files serially so `npm test` exercises the
     // real per-test time contracts without cross-file resource starvation.

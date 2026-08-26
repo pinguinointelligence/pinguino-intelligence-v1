@@ -18,14 +18,27 @@
  * reach the same bands, which is precisely the §22 distinction under test.
  */
 import { describe, expect, it } from 'vitest';
-import type { RecipeInput, RecipeItem } from '@/engine';
-import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
+import { calculateRecipe, type RecipeInput, type RecipeItem } from '@/engine';
+import {
+  productBehaviorSnapshotFingerprint,
+  type ProductBehaviorSnapshot,
+} from '@/features/product-intelligence';
+import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
+import { flavourHeldLineIds } from '@/features/formulation/flavourMutationAuthority';
+import { practicalizeRecipeCandidate } from '@/features/practical-recipe/practicalRecipe';
+import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
 import {
   sorbetAuthoritySnapshots,
   sorbetMapperIngredient,
 } from '@/features/recipe-constraints/__fixtures__/sorbetAuthorityFixture';
 import { buildCanonicalNewRecipeStarter } from '@/features/recipes/newRecipeStarter';
-import { buildOptimizePreview } from './applyPipeline';
+import {
+  bindProductBehaviorToPreview,
+  buildOptimizePreview,
+  commitPreview,
+  directionTargetFingerprint,
+  workingStateFingerprint,
+} from './applyPipeline';
 import { uncorrectableMultiMainAuthorityViolation } from './constraintStudioStore';
 
 const AT = '2026-08-23T12:00:00.000Z';
@@ -36,6 +49,9 @@ const MAPPER = {
   strawberry: 'PI-ING-001553',
   banana: 'PI-ING-000345',
   raspberry: 'PI-ING-000394',
+  lime: 'PI-ING-000369',
+  bananaPuree: 'PI-ING-001589',
+  cranberry: 'PI-ING-001556',
 } as const;
 
 type Main = { id: string; mapperId: string; grams: number; weight?: number };
@@ -163,7 +179,162 @@ const gramsOf = (input: RecipeInput, lineId: string): number => {
 const roleOf = (input: RecipeInput, lineId: string) =>
   input.items.find((candidate) => candidate.id === lineId)?.lock_type;
 
+const campaignGelatoSnapshots = (input: RecipeInput): Record<string, ProductBehaviorSnapshot> => {
+  const snapshots = productBehaviorTestSnapshots(input);
+  const banana = snapshots['main-banana'];
+  if (!banana) throw new Error('fixture has no Banana snapshot');
+  snapshots['main-banana'] = {
+    ...banana,
+    familyId: 'fruit',
+    subfamilyId: 'banana',
+    formId: 'fresh',
+    behaviorRole: 'MAIN_PROFILE_SPECIFIC',
+    mainClassification: 'MAIN_PROFILE_SPECIFIC',
+    mainCapability: 'MAIN_CAPABLE',
+    mainAuthority: 'CALIBRATED',
+    mainCalibrationLevel: 'EXACT_PRODUCT',
+    mainPolicyId: 'main-banana-fresh-dairy',
+    mainPolicyVersion: '2',
+    ecoFloorPercent: 10,
+    optimalCeilingPercent: 20,
+    hardLimitPercent: 30,
+    multiMainHardLimitPercent: null,
+    mainEquivalentFactor: 1,
+    mainBasis: 'FRUIT_EQUIVALENT',
+    requiresLiquidDairyCarrier: true,
+    liquidDairyCarrierFloorPercent: 30,
+    moduleEligibility: { ...banana.moduleEligibility, MAIN: 'eligible' },
+  };
+  for (const item of input.items) {
+    if (/milk|cream/.test(item.id) && snapshots[item.id]) {
+      snapshots[item.id] = { ...snapshots[item.id]!, approvedLiquidDairyCarrier: true };
+    }
+  }
+  return snapshots;
+};
+
+const campaignVeganSnapshots = (input: RecipeInput): Record<string, ProductBehaviorSnapshot> => {
+  const snapshots = productBehaviorTestSnapshots(input);
+  for (const [lineId, subfamilyId, formId] of [
+    ['main-strawberry', 'berry', 'fresh'],
+    ['main-banana-puree', 'banana', 'puree'],
+  ] as const) {
+    const current = snapshots[lineId];
+    if (!current) throw new Error(`fixture has no Vegan snapshot for ${lineId}`);
+    snapshots[lineId] = {
+      ...current,
+      familyId: 'fruit',
+      subfamilyId,
+      formId,
+      behaviorRole: 'MAIN_PROFILE_SPECIFIC',
+      mainClassification: 'MAIN_PROFILE_SPECIFIC',
+      mainCapability: 'MAIN_CAPABLE',
+      mainAuthority: 'CALIBRATED',
+      mainCalibrationLevel: 'EXACT_PRODUCT',
+      mainPolicyId: 'main-vegan-fruit-combination-v2',
+      mainPolicyVersion: '2',
+      ecoFloorPercent: 30,
+      optimalCeilingPercent: 87.6,
+      hardLimitPercent: 87.6,
+      multiMainHardLimitPercent: 82.5,
+      mainEquivalentFactor: 1,
+      mainBasis: 'FRUIT_EQUIVALENT',
+      moduleEligibility: { ...current.moduleEligibility, MAIN: 'eligible' },
+    };
+  }
+  const cranberry = snapshots['main-cranberry'];
+  if (!cranberry) throw new Error('fixture has no Cranberry snapshot');
+  snapshots['main-cranberry'] = {
+    ...cranberry,
+    ...USER_HELD,
+    familyId: 'fruit',
+    subfamilyId: 'berry',
+    formId: 'fresh',
+    mainClassification: 'MAIN_CAPABLE_UNCALIBRATED',
+    moduleEligibility: { ...cranberry.moduleEligibility, MAIN: 'eligible' },
+  } as ProductBehaviorSnapshot;
+  return snapshots;
+};
+
 describe('single Crown is a safe Main priority, not a gram lock (§6, §16, §34)', () => {
+  it('Apply rebuilds the bound Gelato proposal from current authority, not proposal authority', () => {
+    const starter = buildCanonicalNewRecipeStarter({
+      visibleProductType: 'gelato',
+      servingModeId: 'temp_minus_12',
+      formulationStrategy: 'eco',
+      targetBatchGrams: 500,
+    });
+    const input: RecipeInput = {
+      mode: 'classic',
+      category: 'milk_gelato',
+      target_temperature_c: starter.targetTemperatureC,
+      target_batch_grams: 500,
+      machine_capacity_grams: null,
+      items: [
+        ...starter.items,
+        {
+          id: 'main-banana',
+          ingredient: sorbetMapperIngredient(MAPPER.banana),
+          planned_grams: 1,
+          actual_grams: null,
+          lock_type: 'main',
+          main_ratio_weight: 1,
+          user_intent_anchor_grams: 1,
+        },
+      ],
+      goals: {
+        formulation_strategy: 'eco',
+        direction_targets_active: true,
+        direction_targets: { sweetness: -2, softness: -2, creaminess: 0, flavor: 0 },
+      },
+    };
+    const baseSnapshots = campaignGelatoSnapshots(input);
+    const raw = buildOptimizePreview(input, NONE, AT, {
+      productBehaviorSnapshots: baseSnapshots,
+      technicalOnlyMainLineIds: [],
+      requirePracticalPreview: true,
+    });
+    expect(raw.ok, JSON.stringify(raw).slice(0, 1_200)).toBe(true);
+    if (!raw.ok) return;
+    const proposalSnapshots = campaignGelatoSnapshots(raw.preview.proposedInput);
+    const built = bindProductBehaviorToPreview(raw, proposalSnapshots, baseSnapshots, []);
+    expect(built.ok, JSON.stringify(built).slice(0, 1_200)).toBe(true);
+    if (!built.ok) return;
+    const proposedFingerprint = workingStateFingerprint(
+      built.preview.proposedInput,
+      built.preview.nextConstraints,
+    );
+    const committed = commitPreview(
+      input,
+      NONE,
+      built.preview,
+      '2026-08-23T12:00:01.000Z',
+      'gelato-current-authority-rebuild',
+      [],
+      undefined,
+      null,
+      null,
+      {
+        baseFingerprint: built.preview.baseFingerprint,
+        targetFingerprint: directionTargetFingerprint(input),
+        candidateFingerprint: proposedFingerprint,
+      },
+      null,
+      baseSnapshots,
+      [],
+      {
+        baseFingerprint: built.preview.baseFingerprint,
+        proposedFingerprint,
+        baseProductBehaviorFingerprint: productBehaviorSnapshotFingerprint(baseSnapshots),
+        proposedProductBehaviorFingerprint: productBehaviorSnapshotFingerprint(proposalSnapshots),
+        snapshots: structuredClone(proposalSnapshots),
+      },
+      null,
+      { requirePracticalPreview: true },
+    );
+    expect(committed, JSON.stringify(committed)).toMatchObject({ ok: true });
+  });
+
   it('OWNER REPRODUCER: an uncalibrated Banana Crown may move while its Main role survives', () => {
     const input = ownerSorbet([{ id: 'main-banana', mapperId: MAPPER.banana, grams: 480 }]);
     const result = preview(input, { 'main-banana': USER_HELD });
@@ -212,6 +383,203 @@ describe('single Crown is a safe Main priority, not a gram lock (§6, §16, §34
 });
 
 describe('Multi-Main protects the group ratio, not absolute grams (§19, §20, §21)', () => {
+  it('trustlessly Applies a no-increase proof whose technical ceiling is below the current Vegan group', () => {
+    const starter = buildCanonicalNewRecipeStarter({
+      visibleProductType: 'vegan',
+      servingModeId: 'temp_minus_11',
+      formulationStrategy: 'optimal',
+      targetBatchGrams: 1_000,
+    });
+    let current: RecipeInput = {
+      mode: 'classic',
+      category: 'vegan_gelato',
+      target_temperature_c: starter.targetTemperatureC,
+      target_batch_grams: 1_000,
+      machine_capacity_grams: null,
+      items: [
+        ...starter.items,
+        {
+          id: 'main-strawberry',
+          ingredient: sorbetMapperIngredient(MAPPER.strawberry),
+          planned_grams: 100,
+          actual_grams: null,
+          lock_type: 'main',
+          main_ratio_weight: 100,
+          user_intent_anchor_grams: 100,
+        },
+        {
+          id: 'main-banana-puree',
+          ingredient: sorbetMapperIngredient(MAPPER.bananaPuree),
+          planned_grams: 200,
+          actual_grams: null,
+          lock_type: 'main',
+          main_ratio_weight: 200,
+          user_intent_anchor_grams: 200,
+        },
+        {
+          id: 'main-cranberry',
+          ingredient: sorbetMapperIngredient(MAPPER.cranberry),
+          planned_grams: 300,
+          actual_grams: null,
+          lock_type: 'main',
+          main_ratio_weight: 300,
+          user_intent_anchor_grams: 300,
+        },
+      ],
+      goals: { formulation_strategy: 'optimal' },
+    };
+    const support = current.items.find((item) => item.lock_type !== 'main')!;
+    const constraints = {
+      byLineId: { [support.id]: { mode: 'locked' as const, grams: support.planned_grams } },
+    };
+    let finalBuilt: ReturnType<typeof buildOptimizePreview> | null = null;
+    let finalBaseSnapshots: Record<string, ProductBehaviorSnapshot> | null = null;
+    let finalProposalSnapshots: Record<string, ProductBehaviorSnapshot> | null = null;
+    for (const [sweetness, softness] of [
+      [0, 0],
+      [2, 0],
+      [2, -2],
+    ] as const) {
+      current = {
+        ...current,
+        goals: {
+          formulation_strategy: 'optimal',
+          direction_targets_active: true,
+          direction_targets: { sweetness, softness, creaminess: 0, flavor: 0 },
+        },
+      };
+      const baseSnapshots = campaignVeganSnapshots(current);
+      const raw = buildOptimizePreview(current, constraints, AT, {
+        productBehaviorSnapshots: baseSnapshots,
+        technicalOnlyMainLineIds: [],
+        requirePracticalPreview: true,
+      });
+      expect(raw.ok, JSON.stringify(raw).slice(0, 1_200)).toBe(true);
+      if (!raw.ok) return;
+      const proposalSnapshots = campaignVeganSnapshots(raw.preview.proposedInput);
+      const built = bindProductBehaviorToPreview(raw, proposalSnapshots, baseSnapshots, []);
+      expect(built.ok, JSON.stringify(built).slice(0, 1_200)).toBe(true);
+      if (!built.ok) return;
+      finalBuilt = built;
+      finalBaseSnapshots = baseSnapshots;
+      finalProposalSnapshots = proposalSnapshots;
+      if (softness !== -2) current = built.preview.proposedInput;
+    }
+    expect(finalBuilt?.ok).toBe(true);
+    if (!finalBuilt?.ok || !finalBaseSnapshots || !finalProposalSnapshots) return;
+    const proof = finalBuilt.preview.mainObjective!;
+    expect(proof.status).toBe('no_admissible_increase');
+    expect(proof.searchUpperBoundGrams).toBeGreaterThanOrEqual(proof.executableMainGrams);
+    expect(proof.firstHigherRejectedGrams).toBeNull();
+    const proposedFingerprint = workingStateFingerprint(
+      finalBuilt.preview.proposedInput,
+      finalBuilt.preview.nextConstraints,
+    );
+    const committed = commitPreview(
+      current,
+      constraints,
+      finalBuilt.preview,
+      '2026-08-23T12:00:01.000Z',
+      'vegan-no-increase-proof-above-ceiling',
+      [],
+      undefined,
+      null,
+      null,
+      {
+        baseFingerprint: finalBuilt.preview.baseFingerprint,
+        targetFingerprint: directionTargetFingerprint(current),
+        candidateFingerprint: proposedFingerprint,
+      },
+      null,
+      finalBaseSnapshots,
+      [],
+      {
+        baseFingerprint: finalBuilt.preview.baseFingerprint,
+        proposedFingerprint,
+        baseProductBehaviorFingerprint: productBehaviorSnapshotFingerprint(finalBaseSnapshots),
+        proposedProductBehaviorFingerprint:
+          productBehaviorSnapshotFingerprint(finalProposalSnapshots),
+        snapshots: structuredClone(finalProposalSnapshots),
+      },
+      null,
+      { requirePracticalPreview: true },
+    );
+    expect(committed, JSON.stringify(committed)).toMatchObject({ ok: true });
+  });
+
+  it('applies the hard-safe Sorbet 1:1 candidate reproduced by the stress campaign', () => {
+    const source = ownerSorbet([
+      { id: 'main-strawberry', mapperId: MAPPER.strawberry, grams: 150, weight: 150 },
+      { id: 'main-lime', mapperId: MAPPER.lime, grams: 150, weight: 150 },
+    ]);
+    const input: RecipeInput = {
+      ...source,
+      goals: {
+        formulation_strategy: 'optimal',
+        direction_targets_active: true,
+        direction_targets: { sweetness: -2, softness: -2, creaminess: 0, flavor: 0 },
+      },
+    };
+    const snapshots = snapshotsWith(input, {
+      'main-strawberry': CALIBRATED,
+      'main-lime': CALIBRATED,
+    });
+    const built = buildOptimizePreview(input, NONE, AT, {
+      productBehaviorSnapshots: snapshots,
+      technicalOnlyMainLineIds: [],
+      requirePracticalPreview: true,
+    });
+    expect(built.ok, JSON.stringify(built).slice(0, 800)).toBe(true);
+    if (!built.ok) return;
+    expect([
+      gramsOf(built.preview.proposedInput, 'main-strawberry'),
+      gramsOf(built.preview.proposedInput, 'main-lime'),
+    ]).toEqual([300, 300]);
+    expect(built.preview.practicalization?.status).toBe('ready');
+    if (built.preview.practicalization?.status !== 'ready') return;
+    const audit = built.preview.practicalization.audit;
+    const roundTrip = practicalizeRecipeCandidate(
+      audit.exactInput,
+      built.preview.nextConstraints,
+      flavourHeldLineIds(audit.exactInput),
+    );
+    expect(roundTrip.ok, JSON.stringify(roundTrip)).toBe(true);
+    if (!roundTrip.ok) return;
+    expect(roundTrip.audit.executableInput).toEqual(built.preview.proposedInput);
+    const exactScore = recipeFitForInput(audit.exactInput, calculateRecipe(audit.exactInput)).score;
+    expect(
+      built.preview.mainObjective?.technicalScore,
+      JSON.stringify({ proof: built.preview.mainObjective, exactScore }),
+    ).toBe(exactScore);
+
+    const committed = commitPreview(
+      input,
+      NONE,
+      built.preview,
+      '2026-08-23T12:00:01.000Z',
+      'sorbet-stress-1-to-1',
+      [],
+      undefined,
+      null,
+      null,
+      {
+        baseFingerprint: built.preview.baseFingerprint,
+        targetFingerprint: directionTargetFingerprint(input),
+        candidateFingerprint: workingStateFingerprint(
+          built.preview.proposedInput,
+          built.preview.nextConstraints,
+        ),
+      },
+      null,
+      snapshots,
+      [],
+      null,
+      null,
+      { requirePracticalPreview: true },
+    );
+    expect(committed, JSON.stringify(committed)).toMatchObject({ ok: true });
+  }, 120_000);
+
   it('two Crowns at 1:1 move together and preserve the owner ratio', () => {
     const input = ownerSorbet([
       { id: 'main-strawberry', mapperId: MAPPER.strawberry, grams: 240, weight: 1 },
