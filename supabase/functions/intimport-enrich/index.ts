@@ -73,6 +73,8 @@ const RESEARCHABLE = new Set([
   'protein',
   'salt',
   'barcode',
+  'productCategory',
+  'productDescription',
   'manufacturer',
   'netQuantity',
   'countryOfOrigin',

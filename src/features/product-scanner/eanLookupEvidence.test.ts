@@ -81,6 +81,8 @@ describe('the exact GTIN source fills gaps and never overwrites a label', () => 
   it('asks only for fields a scan can use, and never for the product name', () => {
     expect([...EAN_LOOKUP_FIELDS]).toContain('ingredients');
     expect([...EAN_LOOKUP_FIELDS]).toContain('nutritionBasis');
+    expect([...EAN_LOOKUP_FIELDS]).toContain('productCategory');
+    expect([...EAN_LOOKUP_FIELDS]).toContain('productDescription');
     // Identity is read from the package the owner is holding, never guessed from a page.
     expect([...EAN_LOOKUP_FIELDS]).not.toContain('name');
     expect([...EAN_LOOKUP_FIELDS]).not.toContain('brand');
@@ -89,12 +91,18 @@ describe('the exact GTIN source fills gaps and never overwrites a label', () => 
   it('turns verbatim facts into scan fields with their source attached', () => {
     const result = scanResultFromLookupFacts([
       fact('ingredients', 'Woda, barwnik: karmel E150d, kwas fosforowy'),
+      fact('productCategory', 'Napoje gazowane bez cukru'),
+      fact('productDescription', 'Napój gazowany o smaku coli bez cukru.'),
       fact('nutritionBasis', 'na 100 ml'),
       fact('energyKcal', '0,2 kcal'),
       fact('salt', '0,01 g'),
       fact('netQuantity', '330 ml'),
     ])!;
     expect(result.ingredientsText).toBe('Woda, barwnik: karmel E150d, kwas fosforowy');
+    expect((result.identity as Record<string, unknown>).category).toBe(
+      'Napoje gazowane bez cukru',
+    );
+    expect(result.claims).toEqual(['Napój gazowany o smaku coli bez cukru.']);
     expect((result.nutrition as Record<string, unknown>).basis).toBe('per_100ml');
     expect((result.nutrition as Record<string, unknown>).energyKcal).toBe(0.2);
     expect((result.package as Record<string, unknown>).netQuantity).toBe(330);

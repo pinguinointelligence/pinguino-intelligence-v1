@@ -597,6 +597,7 @@ const archetypeOf = (
   category: string,
   subcategory: string,
   description: string,
+  ingredients: string,
   inferredFamily: ProductFamilyId | null,
 ): ProductArchetype => {
   const taxonomy = `${category} ${subcategory}`;
@@ -663,13 +664,26 @@ const archetypeOf = (
     /\b(?:bakery|sweets|slodycz\w*|biezac\w*|katalog\w*|online)\b/g,
     ' ',
   );
+  // Some retail names are opaque brand variants (for example a coined flavour
+  // name) even though the exact label makes the article type unambiguous. A
+  // glucose-syrup + sugar + gelatine declaration is a high-specificity gummy/
+  // marshmallow confectionery signature. It is safe semantic evidence, not a
+  // chemistry inference: no ingredient amount or Engine value is fabricated.
+  // Broad single ingredient mentions remain deliberately insufficient.
+  const gummyConfectioneryIngredients =
+    /\b(glucose syrup|glukosesirup|syrop glukozowy|jarabe de glucosa|sciroppo di glucosio)\b/.test(
+      ingredients,
+    ) &&
+    /\b(sugar|zucker|cukier|azucar|zucchero)\b/.test(ingredients) &&
+    /\b(gelatin|gelatine|gelatina|zelatyn\w*)\b/.test(ingredients);
   if (
     /\b(baton\w*|wafer\w*|wafel\w*|cookie\w*|biscuit\w*|herbatnik\w*|ciastk\w*|praline bar|gumm(?:y|i)\w*|fruit gum\w*|candy\w*|candies\w*|zelk\w*)\b/.test(
       confectioneryIdentity,
     ) ||
     /\b(baton\w*|wafer\w*|wafel\w*|cookie\w*|biscuit\w*|herbatnik\w*|ciastk\w*|praline|gumm(?:y|i)\w*|fruit gum\w*|candy\w*|candies\w*|zelk\w*)\b/.test(
       specificConfectionerySubcategory,
-    )
+    ) ||
+    gummyConfectioneryIngredients
   ) {
     return 'CONFECTIONERY';
   }
@@ -862,6 +876,7 @@ export function classifyProductSemantics(
   const category = normalized(input.category);
   const subcategory = normalized(input.subcategory);
   const description = normalized(`${input.description ?? ''} ${input.technicalParameters ?? ''}`);
+  const ingredients = normalized(input.ingredients);
   const identity = `${name} ${variant}`.trim();
   const all = `${identity} ${category} ${subcategory} ${description}`.trim();
   const familyMatch = inferMapperFamily({
@@ -877,6 +892,7 @@ export function classifyProductSemantics(
     category,
     subcategory,
     description,
+    ingredients,
     inferredFamily,
   );
   const ingredientFamily = semanticFamilyOf(productArchetype, inferredFamily);

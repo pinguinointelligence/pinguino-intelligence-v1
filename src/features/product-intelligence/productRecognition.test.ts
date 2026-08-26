@@ -606,6 +606,29 @@ describe('Product Recognition V2 — Mapper semantic hard contradictions', () =>
     expect(gum.reasonCodes).not.toContain('ARCHETYPE_CONFECTIONERY');
   });
 
+  it('resolves an opaque retail variant from a high-specificity gummy label signature', () => {
+    const gummy = classifyProductSemantics(
+      evidence({
+        name: 'Quaxi',
+        brand: 'HARIBO',
+        gtin: '4001686322536',
+        ingredients:
+          'Glukosesirup; Zucker; Dextrose; Gelatine; Säuerungsmittel: Citronensäure, Äpfelsäure',
+      }),
+    );
+
+    expect(gummy).toMatchObject({
+      productArchetype: 'CONFECTIONERY',
+      ingredientFamily: 'confectionery',
+      physicalForm: 'SOLID',
+      intendedUsageRole: 'TOPPING_ONLY',
+      isTechnicalProduct: false,
+      classificationSource: 'DETERMINISTIC',
+      modelRequired: false,
+    });
+    expect(gummy.evidenceRefs).toContain('ingredients');
+  });
+
   it('white chocolate rejects a dark-chocolate donor absent explicit equivalence', () => {
     const product = classifyProductSemantics(
       evidence({

@@ -1078,6 +1078,8 @@ export function productSemanticEvidenceFromScanResult(value: unknown): ProductSe
  * product name: a new product's identity is read from its own front label.
  */
 export const EAN_LOOKUP_FIELDS = [
+  'productCategory',
+  'productDescription',
   'ingredients',
   'allergens',
   'nutritionBasis',
@@ -1162,6 +1164,7 @@ export function scanResultFromLookupFacts(
   let ingredientsText: string | null = null;
   let allergensText: string | null = null;
   let manufacturer: string | null = null;
+  let productDescription: string | null = null;
   let dosageText: string | null = null;
   let technicalParametersText: string | null = null;
 
@@ -1194,6 +1197,12 @@ export function scanResultFromLookupFacts(
     } else if (field === 'manufacturer' && !manufacturer) {
       manufacturer = raw;
       remember(fact, 'manufacturer');
+    } else if (field === 'productCategory' && !identity.category) {
+      identity.category = raw;
+      remember(fact, 'identity.category');
+    } else if (field === 'productDescription' && !productDescription) {
+      productDescription = raw;
+      remember(fact, 'claims');
     } else if (field === 'countryOfOrigin' && !identity.countryOfOrigin) {
       identity.countryOfOrigin = raw;
       remember(fact, 'identity.countryOfOrigin');
@@ -1303,7 +1312,7 @@ export function scanResultFromLookupFacts(
     allergensText,
     manufacturer,
     mayContainAllergens: [],
-    claims: [],
+    claims: productDescription ? [productDescription] : [],
     barcodes: [],
     storageInstructions: null,
     evidence: [],
