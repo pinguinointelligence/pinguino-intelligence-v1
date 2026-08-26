@@ -300,7 +300,7 @@ describe('multi-main role is a set in the canonical recipe draft', () => {
     ]);
   });
 
-  it('captures the current Crown gram relationship and refreshes it after direct Main gram edits', () => {
+  it('keeps the equal Crown seed after direct Main gram edits', () => {
     const draft = offBatchOwnerInput(548, 152, undefined, 'optimal');
     useRecipeStore.setState({
       items: draft.items.map((item) => ({ ...item, lock_type: 'unlocked' })),
@@ -327,7 +327,7 @@ describe('multi-main role is a set in the canonical recipe draft', () => {
     assertMainRatio(input, result.preview.proposedInput, 1);
   });
 
-  it('derives a 2:1 Crown contract from the user-entered Main grams', () => {
+  it('seeds two Crowns equally instead of deriving a ratio from entered grams', () => {
     const draft = ownerInput(200, 100);
     useRecipeStore.setState({
       items: draft.items.map((item) => ({ ...item, lock_type: 'unlocked' })),
@@ -345,11 +345,64 @@ describe('multi-main role is a set in the canonical recipe draft', () => {
 
     const input = buildRecipeInput(useRecipeStore.getState());
     const mains = input.items.filter((item) => item.lock_type === 'main');
-    expect(mains.map((item) => item.main_ratio_weight)).toEqual([2, 1]);
+    expect(mains.map((item) => item.main_ratio_weight)).toEqual([1, 1]);
     const result = buildOptimizePreview(input, NO, '2026-08-25T00:00:00.000Z');
     expect(result.ok, JSON.stringify(result)).toBe(true);
     if (!result.ok) return;
-    assertMainRatio(input, result.preview.proposedInput, 2);
+    assertMainRatio(input, result.preview.proposedInput, 1);
+  });
+
+  it('seeds three Crowns equally and leaves a non-Crown 136 g line untouched', () => {
+    const items = [
+      { ...line('line-banana', BANANA, 1, 'unlocked'), user_intent_anchor_grams: 1 },
+      { ...line('line-strawberry', STRAWBERRIES, 200, 'unlocked'), user_intent_anchor_grams: 200 },
+      { ...line('line-cranberry', CRANBERRY, 400, 'unlocked'), user_intent_anchor_grams: 400 },
+      { ...line('line-standard-136', PISTACHIO, 136, 'unlocked'), user_intent_anchor_grams: 136 },
+    ];
+    useRecipeStore.setState({
+      items,
+      productBehaviorSnapshots: {
+        'line-banana': mainSnapshot('line-banana', BANANA.id),
+        'line-strawberry': mainSnapshot('line-strawberry', STRAWBERRIES.id),
+        'line-cranberry': mainSnapshot('line-cranberry', CRANBERRY.id),
+      },
+    });
+
+    useRecipeStore.getState().setMainIngredient('line-banana');
+    useRecipeStore.getState().setMainIngredient('line-strawberry');
+    useRecipeStore.getState().setMainIngredient('line-cranberry');
+
+    const after = useRecipeStore.getState().items;
+    expect(after.map((item) => item.planned_grams)).toEqual([1, 200, 400, 136]);
+    expect(
+      after
+        .filter((item) => item.lock_type === 'main')
+        .map((item) => item.main_ratio_weight),
+    ).toEqual([1, 1, 1]);
+    expect(after.find((item) => item.id === 'line-standard-136')).toMatchObject({
+      planned_grams: 136,
+      user_intent_anchor_grams: 136,
+      lock_type: 'unlocked',
+    });
+  });
+
+  it.each([4, 5] as const)('seeds %i Crowns with equal 1/N shares', (count) => {
+    const crownIngredients = [BANANA, STRAWBERRIES, CRANBERRY, PISTACHIO, BANANA].slice(0, count);
+    const items = crownIngredients.map((ingredient, index) =>
+      line(`line-crown-${index}`, ingredient, 1 + index * 137, 'unlocked'),
+    );
+    useRecipeStore.setState({
+      items,
+      productBehaviorSnapshots: Object.fromEntries(
+        items.map((item) => [item.id, mainSnapshot(item.id, item.ingredient.id)]),
+      ),
+    });
+
+    for (const item of items) useRecipeStore.getState().setMainIngredient(item.id);
+
+    const after = useRecipeStore.getState().items;
+    expect(after.map((item) => item.planned_grams)).toEqual(items.map((item) => item.planned_grams));
+    expect(after.map((item) => item.main_ratio_weight)).toEqual(Array(count).fill(1));
   });
 
   it('renders the existing crown for every Main line without redesigning it', () => {

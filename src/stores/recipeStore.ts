@@ -122,36 +122,51 @@ const preserveOwnerReviewGate = (
 };
 
 /**
- * The customer's positive Crown grams are the default Multi-Main relationship.
- * Persist that relationship through the existing `main_ratio_weight` contract
- * whenever the Main set is created or a Main gram value is edited. An explicit
- * ratio-editor change may still override these weights afterwards.
+ * Crown top-down seed authority.
+ *
+ * Entered Crown grams are not an initial optimisation anchor and therefore
+ * must never be converted into a Multi-Main ratio. Every positive Crown gets
+ * one equal seed share; the existing frontier then starts at its independently
+ * proved upper bound and searches downward through the unchanged Engine and
+ * guards. Standard lines are returned byte-for-byte. An explicit ratio-editor
+ * action remains a separate user instruction and may still override the equal
+ * seed after the Crown set has been created.
  */
-const mainRatioWeightsFromCurrentGrams = (items: RecipeItem[]): RecipeItem[] => {
+const equalCrownSeedWeights = (items: RecipeItem[]): RecipeItem[] => {
   const mains = items.filter((item) => item.lock_type === 'main');
-  if (mains.length < 2 || mains.some((item) => !(item.planned_grams > 0))) return items;
-  const unit = Math.min(...mains.map((item) => item.planned_grams));
+  if (mains.length === 0 || mains.some((item) => !(item.planned_grams > 0))) return items;
   return items.map((item) =>
     item.lock_type === 'main'
-      ? { ...item, main_ratio_weight: item.planned_grams / unit }
+      ? { ...item, main_ratio_weight: 1 }
       : item,
   );
 };
 
-/** Legacy saved drafts predate the explicit ratio snapshot. Their visible,
- * positive Crown grams are the only truthful user-entered relationship left,
- * so capture it once at hydration. A complete persisted ratio remains
- * authoritative and is never recalculated from post-Preview grams. */
+/** Legacy drafts without ratio metadata get the current equal top-down seed.
+ * Any valid persisted weight is an explicit, separately editable user
+ * instruction and remains authoritative across Save/Reopen; omitted weights
+ * use the ratio contract's existing unit default instead of being inferred
+ * from grams. */
 const hydrateLegacyMainRatioWeights = (items: RecipeItem[]): RecipeItem[] => {
   const mains = items.filter((item) => item.lock_type === 'main');
-  if (mains.length < 2) return items;
-  const completeRatio = mains.every(
+  if (mains.length === 0) return items;
+  const hasExplicitRatio = mains.some(
     (item) =>
       typeof item.main_ratio_weight === 'number' &&
       Number.isFinite(item.main_ratio_weight) &&
       item.main_ratio_weight > 0,
   );
-  return completeRatio ? items : mainRatioWeightsFromCurrentGrams(items);
+  if (!hasExplicitRatio) return equalCrownSeedWeights(items);
+  return items.map((item) =>
+    item.lock_type === 'main' &&
+    !(
+      typeof item.main_ratio_weight === 'number' &&
+      Number.isFinite(item.main_ratio_weight) &&
+      item.main_ratio_weight > 0
+    )
+      ? { ...item, main_ratio_weight: 1 }
+      : item,
+  );
 };
 
 type CostPriority = NonNullable<RecipeGoals['cost_priority']>;
@@ -1504,7 +1519,7 @@ export const useRecipeStore = create<RecipeState>()(
             return next;
           });
           return {
-            items: line.lock_type === 'main' ? mainRatioWeightsFromCurrentGrams(items) : items,
+            items: line.lock_type === 'main' ? equalCrownSeedWeights(items) : items,
             dirty: true,
             draftRevision: state.draftRevision + 1,
           };
@@ -1602,7 +1617,7 @@ export const useRecipeStore = create<RecipeState>()(
               : item,
           );
           return {
-            items: lockType === 'main' ? mainRatioWeightsFromCurrentGrams(items) : items,
+            items: lockType === 'main' ? equalCrownSeedWeights(items) : items,
             dirty: true,
             draftRevision: state.draftRevision + 1,
           };
@@ -1712,7 +1727,7 @@ export const useRecipeStore = create<RecipeState>()(
             item.id === lineId ? { ...item, lock_type: 'main' as const } : item,
           );
           return {
-            items: mainRatioWeightsFromCurrentGrams(items),
+            items: equalCrownSeedWeights(items),
             dirty: true,
             draftRevision: state.draftRevision + 1,
           };

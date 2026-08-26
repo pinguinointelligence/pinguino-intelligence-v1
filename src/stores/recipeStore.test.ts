@@ -644,7 +644,7 @@ describe('saved percentage lock contract', () => {
     }
   });
 
-  it('hydrates a legacy Protein Multi-Main ratio from the saved user grams', () => {
+  it('hydrates legacy Protein Crowns with an equal top-down seed, not saved grams', () => {
     const priorRecipe = useRecipeStore.getState();
     const priorConstraint = useConstraintStudioStore.getState();
     try {
@@ -695,8 +695,7 @@ describe('saved percentage lock contract', () => {
       const reopened = buildRecipeInput(useRecipeStore.getState());
       const mains = reopened.items.filter((item) => item.lock_type === 'main');
       expect(mains).toHaveLength(2);
-      expect(mains[0]?.main_ratio_weight).toBeCloseTo(352 / 136, 10);
-      expect(mains[1]?.main_ratio_weight).toBe(1);
+      expect(mains.map((item) => item.main_ratio_weight)).toEqual([1, 1]);
 
       useRecipeStore.getState().setVisibleProductType('gelato');
       useRecipeStore.getState().setVisibleProductType('protein');
