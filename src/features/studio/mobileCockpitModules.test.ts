@@ -116,7 +116,9 @@ describe('mobile module selection', () => {
     expect(focusEffect).toContain('mobileCockpitOpen');
     expect(focusEffect).toContain("activeTab !== 'production'");
     expect(focusEffect).toContain('requestAnimationFrame');
+    expect(focusEffect).toContain('MutationObserver');
     expect(focusEffect).not.toContain('cancelAnimationFrame');
     expect(focusEffect).toContain('[data-production-active="true"] [role="spinbutton"]');
+    expect(surface).toContain('if (!focusProductionAfterCollapseRef.current) trigger?.focus();');
   });
 });

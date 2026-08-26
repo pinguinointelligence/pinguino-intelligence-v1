@@ -282,12 +282,35 @@ export function StudioEngineSurface({
       return;
     }
 
-    focusProductionAfterCollapseRef.current = false;
+    let observer: MutationObserver | null = null;
+    let active = true;
+    const focusActiveProductionControl = () => {
+      const control = document.querySelector<HTMLElement>(
+        '[data-production-active="true"] [role="spinbutton"]',
+      );
+      if (!control) return false;
+      control.focus();
+      if (document.activeElement !== control) return false;
+      focusProductionAfterCollapseRef.current = false;
+      observer?.disconnect();
+      return true;
+    };
+
     requestAnimationFrame(() => {
-      document
-        .querySelector<HTMLElement>('[data-production-active="true"] [role="spinbutton"]')
-        ?.focus();
+      if (!active || focusActiveProductionControl()) return;
+      observer = new MutationObserver(focusActiveProductionControl);
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['data-production-active'],
+      });
+      focusActiveProductionControl();
     });
+    return () => {
+      active = false;
+      observer?.disconnect();
+    };
   }, [
     activeTab,
     mobileCockpitOpen,
@@ -334,7 +357,7 @@ export function StudioEngineSurface({
     return () => {
       document.removeEventListener('keydown', onKey);
       body.style.overflow = previousOverflow;
-      trigger?.focus();
+      if (!focusProductionAfterCollapseRef.current) trigger?.focus();
     };
   }, [activeTab, mobileCockpitOpen, mobileViewport]);
 
