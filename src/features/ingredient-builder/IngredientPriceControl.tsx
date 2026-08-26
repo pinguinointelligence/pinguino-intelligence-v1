@@ -137,7 +137,7 @@ export function CustomerPriceEditor({
           <div className="flex items-center gap-2">
             {hasLeadingActions ? (
               <div
-                className="grid shrink-0 grid-cols-2 gap-1.5"
+                className="grid w-[78px] shrink-0 grid-cols-2 gap-1.5"
                 data-testid="article-panel-order-actions"
                 data-control-height="36"
               >
@@ -218,7 +218,7 @@ export function CustomerPriceEditor({
         >
           {hasLeadingActions ? (
             <div
-              className="grid grid-cols-2 gap-1.5"
+              className="grid w-[78px] grid-cols-2 gap-1.5"
               data-testid="article-panel-order-actions"
               data-control-height="36"
             >
