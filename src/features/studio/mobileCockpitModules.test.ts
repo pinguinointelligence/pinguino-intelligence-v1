@@ -115,7 +115,7 @@ describe('mobile module selection', () => {
     );
     expect(focusEffect).toContain('mobileCockpitOpen');
     expect(focusEffect).toContain("activeTab !== 'production'");
-    expect(focusEffect).toContain('queueMicrotask');
+    expect(focusEffect).toContain('requestAnimationFrame');
     expect(focusEffect).not.toContain('cancelAnimationFrame');
     expect(focusEffect).toContain('[data-production-active="true"] [role="spinbutton"]');
   });

@@ -283,7 +283,7 @@ export function StudioEngineSurface({
     }
 
     focusProductionAfterCollapseRef.current = false;
-    queueMicrotask(() => {
+    requestAnimationFrame(() => {
       document
         .querySelector<HTMLElement>('[data-production-active="true"] [role="spinbutton"]')
         ?.focus();
