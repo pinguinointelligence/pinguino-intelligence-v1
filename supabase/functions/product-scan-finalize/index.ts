@@ -486,17 +486,14 @@ Deno.serve(async (request) => {
     return json({ error: 'customer_product_profile_unavailable' }, 503);
   }
 
-  const roleReady =
-    behavior.classificationOutcome === 'classified' &&
-    (behavior.baseRecipeEligible || behavior.toppingEligible);
+  // One readiness authority for every surface. Product Accuracy already
+  // evaluates the accepted role, ProductBehavior and role-sensitive physics;
+  // reassembling raw missing fields here made a TOPPING_READY article look
+  // simultaneously blocked by BASE-only water/freezing requirements.
+  const roleReadiness = profile.productAccuracyAssessment.roleReadiness;
+  const roleReady = roleReadiness === 'BASE_READY' || roleReadiness === 'TOPPING_READY';
   const ready = profile.productAccuracy >= 85 && roleReady;
-  const criticalGaps = [
-    ...new Set([
-      ...profile.missingEngineFields,
-      ...profile.criticalPhysicsBlockers,
-      ...behavior.classificationReasonCodes,
-    ]),
-  ];
+  const criticalGaps = [...profile.productAccuracyAssessment.criticalBlockers];
   const preview = {
     kind: 'profile_preview',
     barcode: corrections.barcode,

@@ -32,7 +32,10 @@ describe('customer product finalization contract', () => {
 
   it('fails closed below shared readiness without creating a PM or request', () => {
     expect(FINALIZE).toContain('profile.productAccuracy >= 85');
-    expect(FINALIZE).toContain("behavior.classificationOutcome === 'classified'");
+    expect(FINALIZE).toContain('profile.productAccuracyAssessment.roleReadiness');
+    expect(FINALIZE).toContain("roleReadiness === 'BASE_READY'");
+    expect(FINALIZE).toContain("roleReadiness === 'TOPPING_READY'");
+    expect(FINALIZE).toContain('profile.productAccuracyAssessment.criticalBlockers');
     expect(FINALIZE).toContain('customer_product_not_ready');
     expect(FINALIZE).not.toContain('gellatti_submit_product_request_v1');
     expect(MIGRATION).not.toContain("'PM-ING-'");
