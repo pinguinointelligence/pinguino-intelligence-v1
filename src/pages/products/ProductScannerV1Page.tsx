@@ -55,8 +55,8 @@ export function ProductScannerV1Page() {
           Skanuj produkt
         </h1>
         <p className="mt-3 text-sm leading-6 text-stone-600 sm:text-base">
-          Pokaż produkt kamerze i powoli go obróć. Kod, nazwa, wartości odżywcze i skład zapisują
-          się same — pytamy tylko o to, czego naprawdę brakuje.
+          Dodaj jedno dobre zdjęcie opakowania. Gellatti sam odczyta etykietę, sprawdzi produkt i
+          przygotuje go do użycia — bez formularza technicznego.
         </p>
       </header>
       <LiveProductScanner />

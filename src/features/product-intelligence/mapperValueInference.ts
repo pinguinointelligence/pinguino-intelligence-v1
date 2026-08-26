@@ -392,8 +392,7 @@ export function similarCohort(
   if (scores.size === 0) return { rows: [], tokens };
 
   const ranked = [...scores.values()].sort(
-    (a, b) =>
-      b.score - a.score || a.row.ingredient_id.localeCompare(b.row.ingredient_id),
+    (a, b) => b.score - a.score || a.row.ingredient_id.localeCompare(b.row.ingredient_id),
   );
   const best = ranked[0]?.score ?? 0;
   // Every candidate scoring zero means the query shared only tokens that appear
@@ -547,9 +546,7 @@ export function inferMapperValues(
   /* 1. exact GTIN identity — verified, because it identifies the product */
   const code = canonicalCode(input.barcode);
   const exactCandidate = code ? (knowledge.byCode.get(code) ?? null) : null;
-  const exactDecision = exactCandidate
-    ? semanticDecisionFor(input.semantic, exactCandidate)
-    : null;
+  const exactDecision = exactCandidate ? semanticDecisionFor(input.semantic, exactCandidate) : null;
   const exactRow = exactCandidate && exactDecision?.compatible !== false ? exactCandidate : null;
   if (exactCandidate && exactDecision?.compatible === false) {
     trace.push(
@@ -586,7 +583,9 @@ export function inferMapperValues(
   const nameFiltered = semanticFilterRows(input.semantic, nameCohortUnfiltered ?? []);
   const nameCohort = nameFiltered.rows;
   if (nameFiltered.rejected.length > 0) {
-    trace.push(`mapper_simple_profile: ${nameFiltered.rejected.length} kandydatow odrzuconych semantycznie`);
+    trace.push(
+      `mapper_simple_profile: ${nameFiltered.rejected.length} kandydatow odrzuconych semantycznie`,
+    );
   }
   if (nameCohort && nameCohort.length > 0) {
     const claimed = applyCohort(
@@ -611,7 +610,9 @@ export function inferMapperValues(
   const similarFiltered = semanticFilterRows(input.semantic, similarConditionedUnfiltered);
   const similarConditioned = similarFiltered.rows;
   if (similarFiltered.rejected.length > 0) {
-    trace.push(`mapper_similar_profile: ${similarFiltered.rejected.length} kandydatow odrzuconych semantycznie`);
+    trace.push(
+      `mapper_similar_profile: ${similarFiltered.rejected.length} kandydatow odrzuconych semantycznie`,
+    );
   }
   if (similarConditioned.length >= MIN_SIMILAR_COHORT) {
     const claimed = applyCohort(
@@ -641,7 +642,9 @@ export function inferMapperValues(
   const siblingFiltered = semanticFilterRows(input.semantic, siblingCohortUnfiltered ?? []);
   const siblingCohort = siblingFiltered.rows;
   if (siblingFiltered.rejected.length > 0) {
-    trace.push(`mapper_brand_sibling: ${siblingFiltered.rejected.length} kandydatow odrzuconych semantycznie`);
+    trace.push(
+      `mapper_brand_sibling: ${siblingFiltered.rejected.length} kandydatow odrzuconych semantycznie`,
+    );
   }
   if (siblingCohort && siblingCohort.length >= MIN_SIBLING_COHORT) {
     const claimed = applyCohort(
@@ -673,7 +676,9 @@ export function inferMapperValues(
     const familyFiltered = semanticFilterRows(input.semantic, cohortUnfiltered);
     const cohort = familyFiltered.rows;
     if (familyFiltered.rejected.length > 0) {
-      trace.push(`mapper_family_consensus: ${familyFiltered.rejected.length} kandydatow odrzuconych semantycznie`);
+      trace.push(
+        `mapper_family_consensus: ${familyFiltered.rejected.length} kandydatow odrzuconych semantycznie`,
+      );
     }
     if (cohort.length >= MIN_FAMILY_COHORT) {
       const claimed = applyCohort(
@@ -854,7 +859,6 @@ function applyCohort(
   return claimed;
 }
 
-
 /* ── moisture cohort profiling (evidence, not inference) ───────────────────── */
 
 /**
@@ -906,15 +910,25 @@ export function moistureCohortProfile(
   cohort: readonly MapperKnowledgeRow[],
 ): MoistureCohortProfile {
   const values = cohort
-    .map((row) => (typeof row.water_percent === 'number' && Number.isFinite(row.water_percent)
-      ? row.water_percent
-      : null))
+    .map((row) =>
+      typeof row.water_percent === 'number' && Number.isFinite(row.water_percent)
+        ? row.water_percent
+        : null,
+    )
     .filter((value): value is number => value !== null)
     .sort((a, b) => a - b);
   if (values.length === 0) {
     return {
-      n: 0, median: 0, mad: 0, iqr: 0, p10: 0, p90: 0, min: 0, max: 0,
-      narrow: false, reason: 'brak danych o wodzie',
+      n: 0,
+      median: 0,
+      mad: 0,
+      iqr: 0,
+      p10: 0,
+      p90: 0,
+      min: 0,
+      max: 0,
+      narrow: false,
+      reason: 'brak danych o wodzie',
     };
   }
   const mid = median(values);
@@ -949,7 +963,6 @@ export function moistureCohortProfile(
   };
 }
 
-
 /* ── product → profile match ───────────────────────────────────────────────── */
 
 /**
@@ -976,8 +989,17 @@ export interface ProfileMatchInput {
   subcategory?: string | null;
   barcode?: string | null;
   /** Macros already established for this product, from label or source card. */
-  knownMacros?: Partial<Record<'fat_percent' | 'protein_percent' | 'carbohydrate_percent' |
-    'total_sugars_percent' | 'fiber_percent' | 'salt_percent', number>>;
+  knownMacros?: Partial<
+    Record<
+      | 'fat_percent'
+      | 'protein_percent'
+      | 'carbohydrate_percent'
+      | 'total_sugars_percent'
+      | 'fiber_percent'
+      | 'salt_percent',
+      number
+    >
+  >;
   /** True for professional/technical products. */
   technical?: boolean;
   /** Server-recomputable semantic constraints applied before similarity. */
@@ -1111,8 +1133,12 @@ function macroSimilarity(
 /** How complete a candidate's own profile is — a sparse row is a poor proxy. */
 function profileCompleteness(row: MapperKnowledgeRow): number {
   const wanted: (keyof MapperKnowledgeRow)[] = [
-    'water_percent', 'total_solids_percent', 'fat_percent', 'protein_percent',
-    'carbohydrate_percent', 'total_sugars_percent',
+    'water_percent',
+    'total_solids_percent',
+    'fat_percent',
+    'protein_percent',
+    'carbohydrate_percent',
+    'total_sugars_percent',
   ];
   const present = wanted.filter((field) => numeric(row[field] as number | null) !== null).length;
   return present / wanted.length;
@@ -1131,16 +1157,17 @@ const familyOf = (row: MapperKnowledgeRow): ProductFamilyId | null => {
 const semanticDecisionFor = (
   semantic: ProductSemanticClassification | null | undefined,
   row: MapperKnowledgeRow,
-) => semantic
-  ? evaluateMapperSemanticCompatibility(semantic, {
-      ingredientId: row.ingredient_id,
-      name: row.ingredient_name_display ?? row.ingredient_name_internal,
-      category: row.ingredient_category ?? null,
-      subcategory: row.ingredient_subcategory ?? null,
-      brand: row.brand ?? null,
-      gtin: row.ean_code ?? null,
-    })
-  : { compatible: true as const, reasonCodes: [] as string[] };
+) =>
+  semantic
+    ? evaluateMapperSemanticCompatibility(semantic, {
+        ingredientId: row.ingredient_id,
+        name: row.ingredient_name_display ?? row.ingredient_name_internal,
+        category: row.ingredient_category ?? null,
+        subcategory: row.ingredient_subcategory ?? null,
+        brand: row.brand ?? null,
+        gtin: row.ean_code ?? null,
+      })
+    : { compatible: true as const, reasonCodes: [] as string[] };
 
 function semanticFilterRows(
   semantic: ProductSemanticClassification | null | undefined,
@@ -1172,9 +1199,16 @@ export function findProfileMatch(
   knowledge: MapperKnowledge,
 ): ProfileMatch {
   const none: ProfileMatch = {
-    confidence: 0, basis: 'none', rows: [], references: [], family: null,
-    reasons: ['brak zgodnego profilu'], rejected: null,
-    candidatesBeforeFilter: [], candidatesAfterFilter: [], rejectedCandidates: [],
+    confidence: 0,
+    basis: 'none',
+    rows: [],
+    references: [],
+    family: null,
+    reasons: ['brak zgodnego profilu'],
+    rejected: null,
+    candidatesBeforeFilter: [],
+    candidatesAfterFilter: [],
+    rejectedCandidates: [],
   };
   const rejectedById = new Map<string, Set<string>>();
   const reject = (row: MapperKnowledgeRow, reasonCodes: readonly string[]) => {
@@ -1182,9 +1216,11 @@ export function findProfileMatch(
     for (const reason of reasonCodes) reasons.add(reason);
     rejectedById.set(row.ingredient_id, reasons);
   };
-  const rejectedCandidates = () => [...rejectedById.entries()].map(
-    ([ingredientId, reasons]) => ({ ingredientId, reasonCodes: [...reasons] }),
-  );
+  const rejectedCandidates = () =>
+    [...rejectedById.entries()].map(([ingredientId, reasons]) => ({
+      ingredientId,
+      reasonCodes: [...reasons],
+    }));
 
   const productFamilyMatch = inferMapperFamily({
     name: input.name,
@@ -1215,9 +1251,13 @@ export function findProfileMatch(
       };
     }
     return {
-      confidence: 0.97, basis: 'gtin_identity', rows: [exact],
-      references: [exact.ingredient_id], family: familyOf(exact),
-      reasons: [`GTIN ${code} to wiersz Mappera ${exact.ingredient_id}`], rejected: null,
+      confidence: 0.97,
+      basis: 'gtin_identity',
+      rows: [exact],
+      references: [exact.ingredient_id],
+      family: familyOf(exact),
+      reasons: [`GTIN ${code} to wiersz Mappera ${exact.ingredient_id}`],
+      rejected: null,
       candidatesBeforeFilter: [exact.ingredient_id],
       candidatesAfterFilter: [exact.ingredient_id],
       rejectedCandidates: [],
@@ -1245,8 +1285,11 @@ export function findProfileMatch(
     });
     if (compatible.length > 0) {
       return {
-        confidence: 0.93, basis: 'commodity_name', rows: compatible,
-        references: compatible.map((row) => row.ingredient_id), family: productFamily,
+        confidence: 0.93,
+        basis: 'commodity_name',
+        rows: compatible,
+        references: compatible.map((row) => row.ingredient_id),
+        family: productFamily,
         reasons: [`nazwa produktu jest surowcem znanym Mapperowi ("${normalized}")`],
         rejected: null,
         candidatesBeforeFilter: commodity.map((row) => row.ingredient_id),
@@ -1258,13 +1301,37 @@ export function findProfileMatch(
 
   /* 3. nearest compatible neighbours, validated against known macros */
   const similar = similarCohort(
-    { name: input.name, variant: input.variant, brand: input.brand,
-      category: input.category, subcategory: input.subcategory },
+    {
+      name: input.name,
+      variant: input.variant,
+      brand: input.brand,
+      category: input.category,
+      subcategory: input.subcategory,
+    },
     knowledge,
   );
-  const pool = similar.rows.length > 0
-    ? similar.rows
-    : (productFamily ? (knowledge.byFamily.get(productFamily) ?? []) : []);
+  // Brand by itself is intentionally absent from `similarCohort`: a company
+  // name can contain a food word and must not pull unrelated substances into a
+  // cohort. It becomes useful again when the source taxonomy and Mapper
+  // taxonomy share a concrete token (for example `gummy candy` ↔
+  // `gummy_candy_inclusion`). Semantic/form/role gates below still apply.
+  const productTaxonomyTokens = new Set(identityTokens(input.category, input.subcategory));
+  const brandTaxonomyRows =
+    similar.rows.length === 0 && normalizeName(input.brand) && productTaxonomyTokens.size > 0
+      ? knowledge.rows.filter((row) => {
+          if (normalizeName(row.brand) !== normalizeName(input.brand)) return false;
+          const rowTokens = identityTokens(row.ingredient_category, row.ingredient_subcategory);
+          return rowTokens.some((token) => productTaxonomyTokens.has(token));
+        })
+      : [];
+  const pool =
+    similar.rows.length > 0
+      ? similar.rows
+      : brandTaxonomyRows.length > 0
+        ? brandTaxonomyRows
+        : productFamily
+          ? (knowledge.byFamily.get(productFamily) ?? [])
+          : [];
   const candidatesBeforeFilter = pool.map((row) => row.ingredient_id);
 
   const scored = pool

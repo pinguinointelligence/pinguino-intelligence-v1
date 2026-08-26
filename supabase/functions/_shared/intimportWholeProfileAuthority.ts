@@ -296,7 +296,30 @@ export function validateIntimportProductProfileProposal(
     resolved.profileMatch.basis !== 'none'
       ? resolved.profileMatch
       : null;
-  const acceptedProfileReference = acceptedMatch ? profileDonor(acceptedMatch) : null;
+  // TOPPING_ONLY consumes governed ProductBehavior, not the donor's physical
+  // composition. If the verified completion set has no match, an active Mapper
+  // row may still serve as semantic/role evidence; its numeric values never
+  // enter `fieldTruth` or `technicalComposition`. BASE products deliberately
+  // retain the Verified-only completion rule above.
+  const toppingBehaviorMatch =
+    !acceptedMatch && recognition?.intendedUsageRole === 'TOPPING_ONLY'
+      ? findProfileMatch(
+          { ...input.matchInput, semantic: recognition },
+          buildMapperKnowledge(
+            input.rows.filter((row) => row.is_active !== false),
+            mapperFingerprint,
+          ),
+        )
+      : null;
+  const acceptedBehaviorMatch =
+    toppingBehaviorMatch &&
+    toppingBehaviorMatch.confidence >= PROFILE_MATCH_FLOOR &&
+    toppingBehaviorMatch.rejected === null &&
+    toppingBehaviorMatch.basis !== 'none'
+      ? toppingBehaviorMatch
+      : null;
+  const referenceMatch = acceptedMatch ?? acceptedBehaviorMatch;
+  const acceptedProfileReference = referenceMatch ? profileDonor(referenceMatch) : null;
 
   const technicalComposition: Record<string, number> = {};
   const fieldTruth: Partial<Record<WorkingNumericField, IntimportTrustedFieldTruth>> = {};
@@ -318,7 +341,7 @@ export function validateIntimportProductProfileProposal(
   const prospectiveBehavior = classifyProspectiveProductBehavior({
     kind: input.evidence.kind,
     engineUsable: resolved.engineReady,
-    profileMatch: resolved.profileMatch,
+    profileMatch: referenceMatch ?? resolved.profileMatch,
     recognition,
     criticalPhysicsBlockers,
   });
@@ -326,7 +349,7 @@ export function validateIntimportProductProfileProposal(
     evidence: input.evidence,
     evidenceProvenance: input.evidenceProvenance,
     fieldTruth,
-    mapperWholeProfileSimilarity: acceptedMatch?.confidence ?? null,
+    mapperWholeProfileSimilarity: referenceMatch?.confidence ?? null,
     recognition,
     engineUsable: resolved.engineReady,
     criticalPhysicsBlockers,
@@ -375,17 +398,27 @@ export function validateIntimportProductProfileProposal(
     fieldTruth,
     estimatedFromMapperIds: [...resolved.mapperReferences],
     profileReferenceMapperIngredientId: acceptedProfileReference?.ingredient_id ?? null,
-    mapperSimilarity: acceptedMatch?.confidence ?? null,
+    mapperSimilarity: referenceMatch?.confidence ?? null,
     mapperProfileBasis:
-      acceptedMatch && acceptedMatch.basis !== 'none' ? acceptedMatch.basis : null,
-    mapperCandidatesBeforeFilter: [...(resolved.profileMatch?.candidatesBeforeFilter ?? [])],
-    mapperCandidatesAfterFilter: [...(resolved.profileMatch?.candidatesAfterFilter ?? [])],
-    mapperRejectedCandidates: (resolved.profileMatch?.rejectedCandidates ?? []).map(
-      (candidate) => ({
-        ingredientId: candidate.ingredientId,
-        reasonCodes: [...candidate.reasonCodes],
-      }),
-    ),
+      referenceMatch && referenceMatch.basis !== 'none' ? referenceMatch.basis : null,
+    mapperCandidatesBeforeFilter: [
+      ...(referenceMatch?.candidatesBeforeFilter ??
+        resolved.profileMatch?.candidatesBeforeFilter ??
+        []),
+    ],
+    mapperCandidatesAfterFilter: [
+      ...(referenceMatch?.candidatesAfterFilter ??
+        resolved.profileMatch?.candidatesAfterFilter ??
+        []),
+    ],
+    mapperRejectedCandidates: (
+      referenceMatch?.rejectedCandidates ??
+      resolved.profileMatch?.rejectedCandidates ??
+      []
+    ).map((candidate) => ({
+      ingredientId: candidate.ingredientId,
+      reasonCodes: [...candidate.reasonCodes],
+    })),
     mapperFingerprint,
     recognition,
   };

@@ -24,7 +24,7 @@ describe('Product Scanner server/client/security boundary', () => {
     expect(ui).toContain("void addFiles([...event.dataTransfer.files], 'drop')");
     expect(ui).toContain('getSharedBarcodeDecoder');
     expect(ui).toContain('Zrób zdjęcie');
-    expect(ui).toContain('Wybierz zdjęcia');
+    expect(ui).toContain('Dodaj zdjęcie');
     expect(ui).not.toContain('navigator.mediaDevices.getUserMedia');
     expect(ui).not.toContain('<video');
     expect(ui).not.toMatch(/MediaRecorder|RTCPeerConnection|webrtc/i);
@@ -56,6 +56,14 @@ describe('Product Scanner server/client/security boundary', () => {
     );
     expect(analyze).not.toMatch(/console\.(?:log|info|debug|error)/);
     expect(finalize).not.toMatch(/console\.(?:log|info|debug|error)/);
+  });
+
+  it('treats a governed TOPPING_ONLY role as usable on every future exact-EAN scan', () => {
+    expect(analyze).toContain('const roleReady =');
+    expect(analyze).toContain("behavior.classificationOutcome === 'classified'");
+    expect(analyze).toContain('behavior.toppingEligible === true');
+    expect(analyze).toContain('intelligence.engineUsable === true ||');
+    expect(analyze).toContain('roleReady');
   });
 
   it('makes scanner data server-owned and cross-account reads RLS-bound', () => {
@@ -117,7 +125,8 @@ describe('Product Scanner server/client/security boundary', () => {
   });
 
   it('never converts exhausted package evidence into a synthetic allergen fact', () => {
-    expect(ui).toContain('Nie mam więcej informacji');
+    expect(ui).toContain('packageEvidenceExhausted: true');
+    expect(ui).toContain('retryablePackageFields');
     expect(finalize).toContain('packageEvidenceExhausted');
     expect(finalize).not.toContain('no allergens');
     expect(finalize).not.toContain('brak alergenów');
@@ -168,9 +177,11 @@ describe('Product Scanner server/client/security boundary', () => {
     expect(ui.match(/finalizeProductScan\(/g)?.length).toBe(2);
   });
 
-  it('sends only new evidence and the canonical list of unresolved fields', () => {
-    expect(ui).toContain('analyzedAssetIds');
+  it('sends the canonical unresolved fields and permits one targeted re-read of the same good photo', () => {
+    expect(ui).toContain('retryablePackageFields');
     expect(ui).toContain('INITIAL_MISSING_FIELDS');
+    expect(ui).toContain('nextAutonomousScanAction');
+    expect(ui).toContain('visionCalls: activeAnalysis?.usage.visionCalls ?? 0');
     expect(service).toContain('missingFields: string[]');
     expect(analyze).toContain('Requested missing fields only:');
   });
@@ -185,14 +196,10 @@ describe('Product Scanner server/client/security boundary', () => {
     expect(service).not.toContain('validateIntimportProductProfileProposal');
   });
 
-  it('shows the required privacy message before cloud analysis', () => {
-    expect(ui).toContain('Zdjęcia etykiety mogą zostać przesłane do analizy produktu.');
-    expect(ui).toContain('Ceny, dostawcy, notatki i stan magazynowy nie są publikowane.');
-    expect(ui.indexOf('if (!privacyAccepted)')).toBeLessThan(
-      ui.indexOf('const response = await analyzeProductImages'),
-    );
-    // Live capture uploads on its own, so consent is taken BEFORE the camera opens —
-    // not after the frames the owner never chose to send already exist.
-    expect(ui).toContain('disabled={!privacyAccepted}');
+  it('shows the upload privacy contract before the one-photo actions', () => {
+    expect(ui).toContain('Zdjęcie zostanie przesłane do analizy etykiety');
+    expect(ui).toContain('ceny, dostawcy, notatki i stan magazynowy pozostają prywatne');
+    expect(ui.indexOf('Zdjęcie zostanie przesłane')).toBeLessThan(ui.indexOf('Zrób zdjęcie'));
+    expect(ui).not.toContain('privacyAccepted');
   });
 });

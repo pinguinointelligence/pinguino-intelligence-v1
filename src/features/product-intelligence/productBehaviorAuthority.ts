@@ -195,7 +195,10 @@ export function classifyProspectiveProductBehavior(input: {
     reference.is_active === false ||
     (baseRequested && reference.approved_for_base !== true) ||
     (baseRequested && reference.approved_for_engines !== true) ||
-    !verifiedPrefix(reference.verification_status)
+    // A post-process-only product borrows the Mapper row's governed role, not
+    // its composition. Estimated/label-review rows may therefore prove the
+    // TOPPING contract, while BASE remains restricted to Verified physics.
+    (baseRequested && !verifiedPrefix(reference.verification_status))
   ) {
     return {
       classificationOutcome: 'unknown_requires_review',

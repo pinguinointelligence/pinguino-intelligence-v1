@@ -94,7 +94,7 @@ function reportScannerDiagnostic(scannerError: ScannerError): void {
   console.warn(`[PINGÜINO] product scanner failure — ${scannerError.diagnostic}`);
 }
 
-export async function lookupExactBarcode(barcode: ValidBarcode) {
+export async function lookupExactBarcode(barcode: ValidBarcode): Promise<ScanExactProduct | null> {
   const lookups = barcodeLookupCandidates(barcode);
   const rows = (
     await Promise.all(
@@ -103,7 +103,28 @@ export async function lookupExactBarcode(barcode: ValidBarcode) {
       ),
     )
   ).flat();
-  return rows.find((row) => row.eans.some((ean) => lookups.includes(ean))) ?? null;
+  const hit = rows.find((row) => row.eans.some((ean) => lookups.includes(ean)));
+  if (!hit) return null;
+  const intelligence =
+    hit.publicData.productIntelligence && typeof hit.publicData.productIntelligence === 'object'
+      ? (hit.publicData.productIntelligence as Record<string, unknown>)
+      : {};
+  const productAccuracy = Number(hit.publicData.productAccuracy);
+  return {
+    id: hit.id,
+    productCode: hit.productCode ?? null,
+    displayName: hit.displayName,
+    brand: hit.brand,
+    entityKind: hit.entityKind,
+    status: hit.status,
+    productAccuracy: Number.isFinite(productAccuracy) ? productAccuracy : null,
+    engineReady:
+      hit.entityKind === 'pi_base' ||
+      intelligence.engineUsable === true ||
+      hit.usableInBase ||
+      hit.usableAsTopping,
+    carbonationStatus: hit.carbonationStatus,
+  };
 }
 
 export interface ScanAnalysisResponse {
@@ -137,10 +158,13 @@ export interface ScanExactMatchResponse {
 
 export interface ScanExactProduct {
   id: string;
+  productCode?: string | null;
   displayName: string;
   brand: string | null;
   entityKind: 'pi_base' | 'commercial_product';
   status: 'pi_base' | 'verified' | 'manual_unverified' | 'blocked';
+  productAccuracy?: number | null;
+  engineReady?: boolean;
   carbonationStatus?: CarbonationStatus;
 }
 

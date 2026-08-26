@@ -1081,13 +1081,21 @@ export const EAN_LOOKUP_FIELDS = [
   'ingredients',
   'allergens',
   'nutritionBasis',
+  'energyKj',
   'energyKcal',
   'fat',
+  'saturatedFat',
   'carbohydrate',
+  'sugars',
+  'fiber',
   'protein',
   'salt',
   'netQuantity',
   'manufacturer',
+  'countryOfOrigin',
+  'dosage',
+  'technicalParameters',
+  'technicalSource',
 ] as const;
 
 /** „0,3 g" / „330 ml" → 0.3 / 330. A value that is not a plain number is refused. */
@@ -1154,6 +1162,8 @@ export function scanResultFromLookupFacts(
   let ingredientsText: string | null = null;
   let allergensText: string | null = null;
   let manufacturer: string | null = null;
+  let dosageText: string | null = null;
+  let technicalParametersText: string | null = null;
 
   const remember = (fact: Record<string, unknown>, field: string) => {
     const url = typeof fact.sourceUrl === 'string' ? fact.sourceUrl : null;
@@ -1184,6 +1194,18 @@ export function scanResultFromLookupFacts(
     } else if (field === 'manufacturer' && !manufacturer) {
       manufacturer = raw;
       remember(fact, 'manufacturer');
+    } else if (field === 'countryOfOrigin' && !identity.countryOfOrigin) {
+      identity.countryOfOrigin = raw;
+      remember(fact, 'identity.countryOfOrigin');
+    } else if (field === 'dosage' && !dosageText) {
+      dosageText = raw;
+      remember(fact, 'productionDeclarations.dosageText');
+    } else if (
+      (field === 'technicalParameters' || field === 'technicalSource') &&
+      !technicalParametersText
+    ) {
+      technicalParametersText = raw;
+      remember(fact, 'productionDeclarations.technicalParametersText');
     } else if (field === 'nutritionBasis' && !nutrition.basis) {
       const basis = nutritionBasisFact(raw);
       if (basis) {
@@ -1198,12 +1220,25 @@ export function scanResultFromLookupFacts(
         packageValue.netQuantityText = raw;
         remember(fact, 'package.netQuantity');
       }
-    } else if (['energyKcal', 'fat', 'carbohydrate', 'protein', 'salt'].includes(field)) {
+    } else if (
+      [
+        'energyKj',
+        'energyKcal',
+        'fat',
+        'saturatedFat',
+        'carbohydrate',
+        'sugars',
+        'fiber',
+        'protein',
+        'salt',
+      ].includes(field)
+    ) {
       if (nutrition[field] === undefined) {
         const parsed = numericFact(raw);
         if (parsed !== null) {
-          nutrition[field] = parsed;
-          remember(fact, `nutrition.${field}`);
+          const scanField = field === 'fiber' ? 'fibre' : field;
+          nutrition[scanField] = parsed;
+          remember(fact, `nutrition.${scanField}`);
         }
       }
     }
@@ -1213,7 +1248,17 @@ export function scanResultFromLookupFacts(
   // Numbers without a declared basis are not a measurement. INTIMPORT drops them for
   // the same reason; the Mapper fills the gap honestly instead.
   if (!nutrition.basis) {
-    for (const field of ['energyKcal', 'fat', 'carbohydrate', 'protein', 'salt'])
+    for (const field of [
+      'energyKj',
+      'energyKcal',
+      'fat',
+      'saturatedFat',
+      'carbohydrate',
+      'sugars',
+      'fibre',
+      'protein',
+      'salt',
+    ])
       delete nutrition[field];
   }
   return {
@@ -1250,8 +1295,8 @@ export function scanResultFromLookupFacts(
       fruitContentPercent: null,
       brix: null,
       concentrationText: null,
-      dosageText: null,
-      technicalParametersText: null,
+      dosageText,
+      technicalParametersText,
       formDeclaration: null,
     },
     ingredientsText,

@@ -96,7 +96,7 @@ async function exactProductForBarcode(
   const { data } = await service
     .from('product_variants')
     .select(
-      'product_id,ean,products!inner(id,is_active,merged_into_product_id,product_name_display,brand,product_kind,canonical_verification_status,product_code)',
+      'product_id,ean,products!inner(id,is_active,merged_into_product_id,product_name_display,brand,product_kind,canonical_verification_status,product_code,current_version_id)',
     )
     .in('ean', [...candidates])
     .eq('is_current', true)
@@ -118,7 +118,29 @@ async function exactProductForBarcode(
       .maybeSingle();
     if (!linked) return null;
   }
-  return product;
+  const { data: currentVersion } = await service
+    .from('product_versions')
+    .select('facts')
+    .eq('id', product.current_version_id)
+    .maybeSingle();
+  const facts = objectValue(currentVersion?.facts);
+  const intelligence = objectValue(facts.productIntelligence);
+  const behavior = objectValue(intelligence.productBehaviorAuthority);
+  const accuracy = Number(facts.productAccuracy);
+  const roleReady =
+    behavior.classificationOutcome === 'classified' &&
+    (behavior.baseRecipeEligible === true || behavior.toppingEligible === true);
+  return {
+    ...product,
+    product_accuracy: Number.isFinite(accuracy) ? accuracy : null,
+    // Historical response name: this is canonical role usability, not only
+    // BASE physics. A TOPPING_ONLY article is ready when ProductBehavior grants
+    // that role, even though its composition need not enter the base Engine.
+    engine_ready:
+      product.product_kind === 'mapper_reference' ||
+      intelligence.engineUsable === true ||
+      roleReady,
+  };
 }
 
 Deno.serve(async (request) => {
@@ -252,6 +274,9 @@ Deno.serve(async (request) => {
             exact.product_kind === 'mapper_reference'
               ? 'pi_base'
               : exact.canonical_verification_status,
+          productCode: exact.product_code ?? null,
+          productAccuracy: exact.product_accuracy,
+          engineReady: exact.engine_ready,
         },
         usage: { visionCalls: 0, webCalls: 0, estimatedCostUsd: 0 },
       });
@@ -454,6 +479,9 @@ Deno.serve(async (request) => {
           exact.product_kind === 'mapper_reference'
             ? 'pi_base'
             : exact.canonical_verification_status,
+        productCode: exact.product_code ?? null,
+        productAccuracy: exact.product_accuracy,
+        engineReady: exact.engine_ready,
       },
       usage: { visionCalls: 0, webCalls: 0, estimatedCostUsd: 0 },
     });

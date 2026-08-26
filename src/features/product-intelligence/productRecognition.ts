@@ -626,7 +626,10 @@ const archetypeOf = (
   if (/\b(variegat|rippl|layering|przeklad|marmoriz)\w*/.test(all)) return 'VARIEGATO';
   if (/\b(topping|polew[a-z]* do dekor|sos do dekor)\b/.test(all)) return 'TOPPING';
   if (/\b(coating|shell|copertura|stracciatell|polewa|otulina)\b/.test(all)) return 'COATING';
-  if (/\b(inclusion|inclusioni|wkladk|croccante|crunch|crisp inclusion)\b/.test(all))
+  if (
+    /\b(inclusion|inclusioni|wkladk|croccante|crunch|crisp inclusion)\b/.test(all) &&
+    !/\b(gumm(?:y|i)\w*|fruit gum\w*|candy\w*|candies\w*|zelk\w*)\b/.test(all)
+  )
     return 'INCLUSION';
   if (
     /\b(stabiliz|stabilizz|neutro|hydrocolloid)\w*/.test(all) ||
@@ -661,10 +664,10 @@ const archetypeOf = (
     ' ',
   );
   if (
-    /\b(baton\w*|wafer\w*|wafel\w*|cookie\w*|biscuit\w*|herbatnik\w*|ciastk\w*|praline bar)\b/.test(
+    /\b(baton\w*|wafer\w*|wafel\w*|cookie\w*|biscuit\w*|herbatnik\w*|ciastk\w*|praline bar|gumm(?:y|i)\w*|fruit gum\w*|candy\w*|candies\w*|zelk\w*)\b/.test(
       confectioneryIdentity,
     ) ||
-    /\b(baton\w*|wafer\w*|wafel\w*|cookie\w*|biscuit\w*|herbatnik\w*|ciastk\w*|praline)\b/.test(
+    /\b(baton\w*|wafer\w*|wafel\w*|cookie\w*|biscuit\w*|herbatnik\w*|ciastk\w*|praline|gumm(?:y|i)\w*|fruit gum\w*|candy\w*|candies\w*|zelk\w*)\b/.test(
       specificConfectionerySubcategory,
     )
   ) {

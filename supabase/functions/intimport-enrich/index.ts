@@ -63,8 +63,10 @@ const RESEARCHABLE = new Set([
   // The Scanner's exact-GTIN lookup asks for the basis explicitly: nutrition numbers
   // without one are not a measurement, and per-100 ml never silently becomes per-100 g.
   'nutritionBasis',
+  'energyKj',
   'energyKcal',
   'fat',
+  'saturatedFat',
   'carbohydrate',
   'sugars',
   'fiber',

@@ -12,10 +12,7 @@ vi.mock('./useGlobalCatalogPicker', () => ({
 
 import { GlobalCatalogSearchPanel } from './GlobalCatalogSearchPanel';
 
-const hit = (
-  id: string,
-  overrides: Partial<CatalogProductSearchHit>,
-): CatalogProductSearchHit => ({
+const hit = (id: string, overrides: Partial<CatalogProductSearchHit>): CatalogProductSearchHit => ({
   id,
   currentVersionId: `version-${id}`,
   entityKind: 'pi_base',
@@ -50,8 +47,9 @@ describe('GlobalCatalogSearchPanel status projection', () => {
   let root: ReturnType<typeof createRoot>;
 
   beforeEach(() => {
-    (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean })
-      .IS_REACT_ACT_ENVIRONMENT = true;
+    (
+      globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
     host = document.createElement('div');
     root = createRoot(host);
     const hits = [
@@ -60,15 +58,22 @@ describe('GlobalCatalogSearchPanel status projection', () => {
       hit('PI-LABEL', { verificationMethod: 'mapper_needs_label_review' }),
       hit('PI-BLOCKED', { usableAsTopping: false, blockedReason: 'Brak zatwierdzenia Topping.' }),
       hit('customer-product', {
-        entityKind: 'commercial_product', status: 'manual_unverified',
-        provenance: 'manual', mappedIngredientId: 'PI-ING-000405',
-        verificationMethod: 'manual_unverified', brand: 'Customer',
+        entityKind: 'commercial_product',
+        status: 'manual_unverified',
+        provenance: 'manual',
+        mappedIngredientId: 'PI-ING-000405',
+        verificationMethod: 'manual_unverified',
+        brand: 'Customer',
       }),
       hit('customer-mapped-label-gap', {
-        entityKind: 'commercial_product', status: 'blocked',
-        provenance: 'manual', mappedIngredientId: 'PI-ING-000405',
-        verificationMethod: 'manual_unverified', brand: 'Customer',
-        usableAsTopping: true, missingFields: ['allergens_text'],
+        entityKind: 'commercial_product',
+        status: 'blocked',
+        provenance: 'manual',
+        mappedIngredientId: 'PI-ING-000405',
+        verificationMethod: 'manual_unverified',
+        brand: 'Customer',
+        usableAsTopping: true,
+        missingFields: ['allergens_text'],
       }),
     ];
     mocks.usePicker.mockReturnValue({
@@ -76,7 +81,10 @@ describe('GlobalCatalogSearchPanel status projection', () => {
       favorites: new Set<string>(),
       recent: new Set<string>(),
       preferences: {
-        primaryMarket: null, additionalMarkets: [], preferredRetailers: [], defaultScope: 'global',
+        primaryMarket: null,
+        additionalMarkets: [],
+        preferredRetailers: [],
+        defaultScope: 'global',
       },
       isSettled: true,
       isFetching: false,
@@ -92,30 +100,34 @@ describe('GlobalCatalogSearchPanel status projection', () => {
     mocks.usePicker.mockReset();
   });
 
-  it('renders truthful TOPPING-context status for Mapper and customer rows without hiding Favorites', async () => {
+  it('renders module-neutral catalogue truth without projecting every product through TOPPING', async () => {
     await act(async () => {
-      root.render(<MemoryRouter><GlobalCatalogSearchPanel /></MemoryRouter>);
+      root.render(
+        <MemoryRouter>
+          <GlobalCatalogSearchPanel />
+        </MemoryRouter>,
+      );
     });
 
-    const statuses = [...host.querySelectorAll('[data-catalog-verification-status]')]
-      .map((element) => element.getAttribute('data-catalog-verification-status'));
-    expect(statuses).toEqual(expect.arrayContaining([
-      'PINGÜINO — SPRAWDZONY',
-      'Dane szacowane',
-      'WYMAGA SPRAWDZENIA ETYKIETY',
-      'PRODUCT DATA INCOMPLETE',
-      'DODANY PRZEZ UŻYTKOWNIKA',
-    ]));
-    expect(host.querySelector('[data-catalog-verification-status="PRODUCT DATA INCOMPLETE"]')
-      ?.className).toContain('bg-red-100');
-    expect(host.querySelector('[data-catalog-verification-status="WYMAGA SPRAWDZENIA ETYKIETY"]')
-      ?.className).toContain('bg-amber-100');
-    const exactBlock = host.querySelector('[data-catalog-block-reason]');
-    expect(exactBlock?.textContent).toContain('PI-BLOCKED');
-    expect(exactBlock?.textContent).toContain('version-PI-BLOCKED');
-    expect(exactBlock?.textContent).toContain('Mapper PI-BLOCKED');
-    expect(exactBlock?.textContent).toContain('moduł TOPPING');
-    expect(exactBlock?.textContent).toContain('Brak zatwierdzenia Topping');
+    const statuses = [...host.querySelectorAll('[data-catalog-verification-status]')].map(
+      (element) => element.getAttribute('data-catalog-verification-status'),
+    );
+    expect(statuses).toEqual(
+      expect.arrayContaining([
+        'PINGÜINO — SPRAWDZONY',
+        'Dane szacowane',
+        'WYMAGA SPRAWDZENIA ETYKIETY',
+        'DODANY PRZEZ UŻYTKOWNIKA',
+      ]),
+    );
+    expect(
+      host.querySelector('[data-catalog-verification-status="PRODUCT DATA INCOMPLETE"]'),
+    ).toBeNull();
+    expect(
+      host.querySelector('[data-catalog-verification-status="WYMAGA SPRAWDZENIA ETYKIETY"]')
+        ?.className,
+    ).toContain('bg-amber-100');
+    expect(statuses.filter((status) => status === 'PINGÜINO — SPRAWDZONY')).toHaveLength(2);
     expect(host.querySelectorAll('button[aria-label*="do Ulubionych"]')).toHaveLength(6);
   });
 });

@@ -80,10 +80,11 @@ describe('Scanner customer-added product authority', () => {
     expect(ui).not.toContain('<video');
   });
 
-  it('lets the customer review package production declarations before completion', () => {
-    expect(ui).toContain("['alcoholAbv', 'Alkohol ABV', 'decimal']");
-    expect(ui).toContain("['cocoaSolidsPercent', 'Masa kakaowa', 'decimal']");
-    expect(ui).toContain("patchReview('productionDeclarations'");
+  it('keeps technical declarations in autonomous evidence instead of a customer form', () => {
+    expect(ui).toContain('productFieldsFromScanResult');
+    expect(ui).not.toContain('Alkohol ABV');
+    expect(ui).not.toContain('Masa kakaowa');
+    expect(ui).not.toContain('patchReview');
   });
 
   it('accepts every granular first-pass evidence field sent by the customer UI', () => {

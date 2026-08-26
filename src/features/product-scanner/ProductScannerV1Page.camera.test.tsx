@@ -34,13 +34,12 @@ describe('Product Scanner native camera boundary', () => {
       (item) => item.textContent === label,
     ) as HTMLButtonElement;
 
-  it('requires privacy consent before native capture or gallery access', async () => {
-    expect(button('Zrób zdjęcie').disabled).toBe(true);
-    expect(button('Wybierz zdjęcia').disabled).toBe(true);
-    const checkbox = host.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
-    await act(async () => checkbox.click());
+  it('starts with one photo action and presents upload privacy without an extra form gate', () => {
     expect(button('Zrób zdjęcie').disabled).toBe(false);
-    expect(button('Wybierz zdjęcia').disabled).toBe(false);
+    expect(button('Dodaj zdjęcie').disabled).toBe(false);
+    expect(host.textContent).toContain('Zdjęcie zostanie przesłane do analizy etykiety');
+    expect(host.textContent).toContain('pozostają prywatne');
+    expect(host.querySelector('input[type="checkbox"]')).toBeNull();
   });
 
   it('uses the system rear-camera file contract and never embeds a video viewport', () => {

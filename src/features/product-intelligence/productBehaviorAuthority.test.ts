@@ -221,6 +221,42 @@ describe('prospective ProductBehavior authority', () => {
     });
   });
 
+  it('may use an estimated Mapper row as TOPPING role evidence without granting BASE physics', () => {
+    const estimatedReference = profileMatch({
+      rows: [
+        {
+          ...profileMatch().rows[0]!,
+          verification_status: 'Estimated / Needs Label Review',
+        },
+      ],
+    });
+
+    expect(
+      classifyProspectiveProductBehavior({
+        kind: 'normal_food',
+        engineUsable: false,
+        profileMatch: estimatedReference,
+        recognition: variegatoRecognition,
+      }),
+    ).toMatchObject({
+      classificationOutcome: 'classified',
+      baseRecipeEligible: false,
+      toppingEligible: true,
+      referenceMapperIngredientId: 'PI-ING-000123',
+    });
+    expect(
+      classifyProspectiveProductBehavior({
+        kind: 'normal_food',
+        engineUsable: true,
+        profileMatch: estimatedReference,
+      }),
+    ).toMatchObject({
+      classificationOutcome: 'unknown_requires_review',
+      baseRecipeEligible: false,
+      classificationReasonCodes: ['module_permission_missing'],
+    });
+  });
+
   it('carries the raw and normalized manufacturer dosage into ProductBehavior authority', () => {
     const prospective = classifyProspectiveProductBehavior({
       kind: 'normal_food',

@@ -517,6 +517,50 @@ Deno.serve(async (request) => {
     ready,
     criticalGaps,
   };
+  const trace = {
+    authority: 'AUTONOMOUS_PRODUCT_SCANNER_V1',
+    scanId: sessionId,
+    exactIdentity: {
+      barcode: corrections.barcode,
+      displayName: recognitionEvidence.name,
+      brand: recognitionEvidence.brand,
+      manufacturer: recognitionEvidence.manufacturer,
+    },
+    evidence: {
+      labelFields: Array.isArray(objectValue(corrections.result).evidence)
+        ? objectValue(corrections.result).evidence
+        : [],
+      sources: Array.isArray(objectValue(corrections.result).externalSources)
+        ? objectValue(corrections.result).externalSources
+        : [],
+    },
+    classification: recognition,
+    completion: {
+      mapperDonorId: profile.profileReferenceMapperIngredientId,
+      mapperSimilarity: profile.mapperSimilarity,
+      estimatedFromMapperIds: profile.estimatedFromMapperIds,
+      fieldTruth: profile.fieldTruth,
+    },
+    confidence: profile.productAccuracyAssessment,
+    readiness: {
+      engineUsable: profile.engineUsable,
+      productAccuracy: profile.productAccuracy,
+      productBehavior: behavior,
+      roleReady,
+      ready,
+      criticalGaps,
+    },
+  };
+  const { error: traceError } = await service
+    .from('product_scan_sessions')
+    .update({
+      validation_json: { ...validation, autonomousTrace: trace },
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', sessionId)
+    .eq('user_id', auth.user.id)
+    .eq('state', 'analyzed');
+  if (traceError) return json({ error: 'scanner_trace_persistence_failed' }, 503);
   if (action === 'preview') return json(preview);
   if (!ready) return json({ ...preview, kind: 'customer_product_not_ready' }, 409);
 

@@ -542,6 +542,139 @@ describe('HARIBO Quaxi cumulative-evidence regression', () => {
 
   const merged = mergeProductScanResults(fastPass(), accurateContinuation(), '4001686322536');
 
+  it('closes the golden one-photo HARIBO path through Mapper, ProductBehavior and shared readiness', () => {
+    const onePhoto = fastPass();
+    Object.assign(identity(onePhoto), {
+      displayName: 'HARIBO Quaxi',
+      originalName: 'Quaxi',
+      category: 'Fruchtgummi / gummy candy',
+      variant: 'Quaxi',
+      countryOfOrigin: 'Deutschland',
+    });
+    onePhoto.ingredientsText =
+      'Glukosesirup; Zucker; Dextrose; Gelatine; Säuerungsmittel: Citronensäure; Aroma.';
+    onePhoto.manufacturer = 'HARIBO GmbH & Co. KG';
+    onePhoto.productionDeclarations = {
+      alcoholAbv: null,
+      cocoaButterPercent: null,
+      cocoaSolidsPercent: null,
+      fruitContentPercent: null,
+      brix: null,
+      concentrationText: null,
+      dosageText: null,
+      technicalParametersText: null,
+      formDeclaration: 'gummy candy',
+    };
+    onePhoto.evidence = labelEvidence('asset-one-good-photo', [
+      'identity.displayName',
+      'identity.originalName',
+      'identity.brand',
+      'identity.category',
+      'identity.variant',
+      'identity.countryOfOrigin',
+      'package.netQuantity',
+      'nutrition.energyKcal',
+      'nutrition.fat',
+      'nutrition.carbohydrate',
+      'nutrition.sugars',
+      'nutrition.protein',
+      'nutrition.salt',
+      'ingredientsText',
+      'allergensText',
+      'manufacturer',
+    ]);
+
+    const scanValidation = validateServerResult(onePhoto, ['asset-one-good-photo']);
+    const recognitionEvidence = productSemanticEvidenceFromScanResult(onePhoto);
+    const deterministic = classifyProductSemantics(recognitionEvidence);
+    const recognition = {
+      ...deterministic,
+      classificationSource: 'SERVER_MODEL' as const,
+      productArchetype: 'CONFECTIONERY' as const,
+      ingredientFamily: 'confectionery' as const,
+      physicalForm: 'SOLID' as const,
+      intendedUsageRole: 'TOPPING_ONLY' as const,
+      flavorDomain: 'UNKNOWN' as const,
+      compatibleMapperCategories: ['inclusion', 'bakery_inclusion', 'confectionery_inclusion'],
+      confidence: 0.96,
+      modelRequired: false,
+      modelReasonCodes: [],
+    };
+    const proposal = customerProductProfileProposal({
+      scanResult: onePhoto,
+      recognitionEvidence,
+      recognition,
+    });
+    const { rows } = loadMapperKnowledgeRows();
+    const authority = proposal
+      ? validateIntimportProductProfileProposal({
+          origin: 'CUSTOMER_ADDED',
+          proposedMapperIngredientId: null,
+          ...proposal,
+          rows: rows as unknown as IntimportMapperAuthorityRow[],
+        })
+      : null;
+    const donor = authority?.profileReferenceMapperIngredientId ?? null;
+    const behavior =
+      authority && donor
+        ? validateProductBehaviorAuthority({
+            productProfile: authority,
+            behaviorRows: [
+              {
+                id: '00000000-0000-4000-8000-000000002048',
+                mapper_ingredient_id: donor,
+                mapper_dataset_version: 'v1.0',
+                taxonomy_version_id: 'pinguino-product-taxonomy-v1',
+                family_id: 'confectionery',
+                subfamily_id: 'gummy_candy_inclusion',
+                form_id: 'solid',
+                main_eligibility: 'TOPPING_ONLY',
+                vegan_eligibility: 'false',
+                protein_behavior: 'neutral',
+                approved_liquid_dairy_carrier: false,
+                profile_permissions: {
+                  BASE_RECIPE: false,
+                  TOPPING: true,
+                  SUBSTITUTION: true,
+                  MONITOR: true,
+                  PRODUCTION: true,
+                  SAVE: true,
+                },
+                process_behavior: { decision: 'POST_PROCESS' },
+                classifier_version: 'mapper-product-classifier-v2:test',
+                behavior_role: 'TOPPING_ONLY',
+                main_policy_status: 'NOT_APPLICABLE',
+                profile_applicability: {
+                  all_existing_profiles: 'post_process_where_mapper_approved',
+                },
+                classification_reason_codes: ['post_process_product_not_base_main'],
+                is_current: true,
+              } satisfies MapperProductBehaviorAuthorityRow,
+            ],
+          })
+        : null;
+    const finalized =
+      authority && behavior ? finalizeProductProductionAccuracy(authority, behavior) : null;
+
+    expect(scanValidation).toMatchObject({ ok: true, missingCriticalFields: [] });
+    expect(recognition).toMatchObject({
+      ingredientFamily: 'confectionery',
+      physicalForm: 'SOLID',
+      intendedUsageRole: 'TOPPING_ONLY',
+    });
+    expect(donor).toMatch(/^PI-ING-/);
+    expect(authority?.mapperSimilarity).toBeGreaterThanOrEqual(0.85);
+    expect(authority?.engineUsable).toBe(false);
+    expect(authority?.estimatedFromMapperIds).toEqual([]);
+    expect(behavior).toMatchObject({
+      classificationOutcome: 'classified',
+      baseRecipeEligible: false,
+      toppingEligible: true,
+    });
+    expect(finalized?.productAccuracy).toBeGreaterThanOrEqual(85);
+    expect(finalized?.productAccuracyAssessment.criticalCapApplied).toBe(false);
+  });
+
   it('preserves the validated EAN and rejects the malformed continuation candidate', () => {
     expect(merged.barcodes).toEqual([{ value: '4001686322536', format: 'EAN_13' }]);
     expect(merged.warnings).toContain('barcode_candidate_rejected');
