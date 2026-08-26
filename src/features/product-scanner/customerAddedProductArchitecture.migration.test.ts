@@ -69,6 +69,13 @@ describe('Scanner customer-added product authority', () => {
     }
   });
 
+  it('records only bounded provider metadata when Vision rejects the request', () => {
+    expect(analyze).toContain('providerStatus: response.status');
+    expect(analyze).toContain("providerError.type.slice(0, 100)");
+    expect(analyze).toContain("providerError.param.slice(0, 200)");
+    expect(analyze).not.toContain('providerError.message');
+  });
+
   it('runs family resolution before shared profile/Mapper completion', () => {
     expect(finalize.indexOf('let familyResolution = resolveCustomerProductFamily')).toBeLessThan(
       finalize.indexOf('profile = validateIntimportProductProfileProposal'),

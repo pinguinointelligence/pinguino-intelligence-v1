@@ -597,6 +597,7 @@ Deno.serve(async (request) => {
     openAiBody.max_tool_calls = 1;
   }
   let responsePayload: Record<string, unknown>;
+  let providerDiagnostic: Record<string, unknown> = {};
   const requestStartedAt = Date.now();
   try {
     const response = await fetch('https://api.openai.com/v1/responses', {
@@ -609,7 +610,19 @@ Deno.serve(async (request) => {
       body: JSON.stringify(openAiBody),
     });
     responsePayload = objectValue(await response.json());
-    if (!response.ok) throw new Error('provider_request_failed');
+    if (!response.ok) {
+      const providerError = objectValue(responsePayload.error);
+      providerDiagnostic = {
+        providerStatus: response.status,
+        providerType:
+          typeof providerError.type === 'string' ? providerError.type.slice(0, 100) : null,
+        providerCode:
+          typeof providerError.code === 'string' ? providerError.code.slice(0, 100) : null,
+        providerParam:
+          typeof providerError.param === 'string' ? providerError.param.slice(0, 200) : null,
+      };
+      throw new Error('provider_request_failed');
+    }
   } catch {
     const latencyMs = Date.now() - requestStartedAt;
     await service.rpc('complete_product_scan_analysis_v1', {
@@ -618,7 +631,7 @@ Deno.serve(async (request) => {
       p_reservation_id: reserved.reservationId,
       p_status: 'failed',
       p_result: null,
-      p_validation: { error: 'provider_request_failed' },
+      p_validation: { error: 'provider_request_failed', ...providerDiagnostic },
       p_overlay_state: 'BLOCKED',
       p_input_tokens: 0,
       p_output_tokens: 0,
@@ -629,6 +642,7 @@ Deno.serve(async (request) => {
     return json(
       {
         error: 'scanner_provider_unavailable',
+        providerDiagnostic,
         usage: { visionCalls: accurateRetry ? 2 : 1, webCalls: 0, estimatedCostUsd: 0 },
       },
       502,
