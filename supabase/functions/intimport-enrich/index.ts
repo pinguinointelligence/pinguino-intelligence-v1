@@ -316,6 +316,7 @@ Deno.serve(async (request) => {
         cacheHit: true,
         calls: 0,
         model: semanticModel,
+        providerError: objectValue(cachedResult.providerError),
         error:
           typeof cachedResult.error === 'string'
             ? cachedResult.error

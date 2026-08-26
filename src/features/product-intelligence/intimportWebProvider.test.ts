@@ -314,6 +314,7 @@ describe('provider runs server-side only', () => {
   it('persists safe field-level provider request diagnostics for semantic failures', () => {
     expect(edgeSource).toContain("error: 'semantic_provider_unavailable'");
     expect(edgeSource).toContain('providerError.message.slice(0, 1_000)');
+    expect(edgeSource).toContain('providerError: objectValue(cachedResult.providerError)');
     expect(edgeSource).toContain('providerError,');
   });
 });
