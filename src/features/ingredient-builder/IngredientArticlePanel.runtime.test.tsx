@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
-import { act } from 'react';
+import { act, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { calculateRecipe } from '@/engine';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
 import { IngredientRow, type IngredientRowActions } from './IngredientRow';
+import type { IngredientPriceView } from './IngredientPriceControl';
 import { DEFAULT_INGREDIENT_ROW_META, type IngredientRowMeta } from './ingredientTableUx';
 
 const calculated = calculateRecipe(starterMilkBase());
@@ -28,6 +29,7 @@ const renderRow = async (
   canMoveDown = true,
   mainUnavailableReason: string | null = null,
   meta: IngredientRowMeta = DEFAULT_INGREDIENT_ROW_META,
+  priceView?: IngredientPriceView,
 ) => {
   host = document.createElement('div');
   document.body.append(host);
@@ -42,6 +44,7 @@ const renderRow = async (
         canMoveUp={canMoveUp}
         canMoveDown={canMoveDown}
         mainUnavailableReason={mainUnavailableReason}
+        priceView={priceView}
       />,
     );
   });
@@ -68,6 +71,47 @@ const click = async (element: Element | null) => {
   await act(async () => element?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
 };
 
+function ReorderHarness() {
+  const [ordered, setOrdered] = useState(calculated.items.slice(0, 3));
+  const [mainId, setMainId] = useState<string | null>(null);
+  const move = (lineId: string, delta: -1 | 1) => {
+    setOrdered((current) => {
+      const from = current.findIndex((item) => item.id === lineId);
+      const to = from + delta;
+      if (from < 0 || to < 0 || to >= current.length) return current;
+      const next = [...current];
+      const [moved] = next.splice(from, 1);
+      if (!moved) return current;
+      next.splice(to, 0, moved);
+      return next;
+    });
+  };
+  const rowActions: IngredientRowActions = {
+    ...actions(),
+    setCustomerRole: (lineId, role) => setMainId(role === 'main' ? lineId : null),
+    moveUp: (lineId) => move(lineId, -1),
+    moveDown: (lineId) => move(lineId, 1),
+  };
+  return (
+    <>
+      {ordered.map((item, index) => (
+        <IngredientRow
+          key={item.id}
+          item={{
+            ...item,
+            lock_type:
+              mainId === item.id ? 'main' : item.lock_type === 'main' ? 'unlocked' : item.lock_type,
+          }}
+          totalBatchG={calculated.total_batch_g}
+          actions={rowActions}
+          canMoveUp={index > 0}
+          canMoveDown={index < ordered.length - 1}
+        />
+      ))}
+    </>
+  );
+}
+
 describe('compact ingredient article panel', () => {
   it('renders the desktop actions as one compact icon grid and preserves disabled movement', async () => {
     const rowActions = actions();
@@ -90,12 +134,15 @@ describe('compact ingredient article panel', () => {
         ?.querySelector('[data-testid="article-panel-role-control"]')
         ?.getAttribute('data-control-height'),
     ).toBe('36');
-    const iconActions = [
-      ...(panel?.querySelectorAll<HTMLButtonElement>('[data-article-action="true"]') ?? []),
+    const topIconActions = [
+      ...(quickActions?.querySelectorAll<HTMLButtonElement>('[data-article-action="true"]') ?? []),
     ];
-    expect(iconActions).toHaveLength(6);
-    expect(iconActions.every((action) => action.className.includes('h-9'))).toBe(true);
-    expect(panel?.querySelectorAll('[data-icon-family="gellatti-line"]')).toHaveLength(6);
+    expect(topIconActions).toHaveLength(3);
+    expect(topIconActions.every((action) => action.className.includes('h-9'))).toBe(true);
+    const orderActions = panel?.querySelector('[data-testid="article-panel-order-actions"]');
+    expect(orderActions?.getAttribute('data-control-height')).toBe('36');
+    expect(orderActions?.querySelectorAll('[data-article-action="true"]')).toHaveLength(2);
+    expect(panel?.querySelectorAll('[data-icon-family="gellatti-line"]')).toHaveLength(5);
     expect(panel?.querySelector('[data-testid="article-panel-header"]')).not.toBeNull();
     expect(panel?.textContent).not.toContain('Standardowy');
     expect(panel?.textContent).not.toContain('Kolejność');
@@ -105,7 +152,6 @@ describe('compact ingredient article panel', () => {
     const down = panel?.querySelector<HTMLButtonElement>('[aria-label="Przesuń niżej"]');
     const swap = panel?.querySelector<HTMLButtonElement>('[aria-label="Znajdź zamiennik"]');
     const data = panel?.querySelector<HTMLButtonElement>('[aria-label="Dane składnika"]');
-    const required = panel?.querySelector<HTMLButtonElement>('[aria-label="Oznacz jako wymagany"]');
     const unavailable = panel?.querySelector<HTMLButtonElement>(
       '[aria-label="Oznacz jako niedostępny"]',
     );
@@ -116,11 +162,15 @@ describe('compact ingredient article panel', () => {
     expect(down?.hasAttribute('aria-pressed')).toBe(false);
     expect(swap).not.toBeNull();
     expect(data).not.toBeNull();
-    expect(required).not.toBeNull();
-    expect(required?.getAttribute('aria-pressed')).toBe('false');
+    expect(panel?.querySelector('[aria-label="Oznacz jako wymagany"]')).toBeNull();
     expect(unavailable).not.toBeNull();
+    const remove = panel?.querySelector<HTMLButtonElement>('[aria-label="Usuń z receptury"]');
+    expect(remove?.className).toContain('h-9');
+    expect(remove?.className).toContain('text-status-error');
+    expect(remove?.closest('[data-testid="customer-price-editor"]')).not.toBeNull();
     await click(down ?? null);
     expect(rowActions.moveDown).toHaveBeenCalledWith(baseItem.id);
+    expect(document.querySelector(`[data-testid="row-menu-${baseItem.id}"]`)).not.toBeNull();
   });
 
   it('uses the same compact actions on mobile and routes Main through existing authority', async () => {
@@ -139,6 +189,9 @@ describe('compact ingredient article panel', () => {
     const main = sheet?.querySelector<HTMLButtonElement>('[aria-label="Ustaw jako główny"]');
     await click(main ?? null);
     expect(rowActions.setCustomerRole).toHaveBeenCalledWith(baseItem.id, 'main');
+    expect(
+      document.querySelector(`[data-testid="ingredient-mobile-sheet-${baseItem.id}"]`),
+    ).not.toBeNull();
   });
 
   it('shows an active Main as the accepted compact badge and demotes through existing authority', async () => {
@@ -159,6 +212,7 @@ describe('compact ingredient article panel', () => {
     expect(ratio?.textContent).not.toContain('Waga proporcji');
     await click(badge ?? null);
     expect(rowActions.setCustomerRole).toHaveBeenCalledWith(baseItem.id, 'standard');
+    expect(document.querySelector(`[data-testid="row-menu-${baseItem.id}"]`)).not.toBeNull();
   });
 
   it('keeps an ineligible Main trigger visible but disabled with its authority reason', async () => {
@@ -172,7 +226,7 @@ describe('compact ingredient article panel', () => {
     const main = panel?.querySelector<HTMLButtonElement>('[aria-label="Ustaw jako główny"]');
     expect(main?.disabled).toBe(true);
     expect(main?.title).toBe(reason);
-    expect(panel?.textContent).toContain(reason);
+    expect(panel?.textContent).not.toContain(reason);
   });
 
   it('keeps a compact Standard resolution for blocked legacy Add-on ambiguity', async () => {
@@ -191,6 +245,74 @@ describe('compact ingredient article panel', () => {
     expect(standard).not.toBeNull();
     await click(standard);
     expect(rowActions.setCustomerRole).toHaveBeenCalledWith(baseItem.id, 'standard');
+    expect(document.querySelector(`[data-testid="row-menu-${baseItem.id}"]`)).not.toBeNull();
+  });
+
+  it('keeps one stable ingredient dialog open through repeated reorder and Main updates', async () => {
+    host = document.createElement('div');
+    document.body.append(host);
+    root = createRoot(host);
+    await act(async () => root?.render(<ReorderHarness />));
+
+    const target = calculated.items[2]!;
+    await click(document.querySelector(`[aria-label="Opcje składnika ${target.ingredient.name}"]`));
+    const panelId = `[data-testid="row-menu-${target.id}"]`;
+    expect(document.querySelector(panelId)).not.toBeNull();
+
+    await click(document.querySelector(`${panelId} [aria-label="Przesuń wyżej"]`));
+    expect(document.querySelector(panelId)).not.toBeNull();
+    expect(
+      [...document.querySelectorAll<HTMLElement>('[data-line-id]')].map(
+        (row) => row.dataset.lineId,
+      ),
+    ).toEqual([calculated.items[0]!.id, target.id, calculated.items[1]!.id]);
+
+    await click(document.querySelector(`${panelId} [aria-label="Przesuń wyżej"]`));
+    expect(document.querySelector(panelId)).not.toBeNull();
+    expect(
+      [...document.querySelectorAll<HTMLElement>('[data-line-id]')].map(
+        (row) => row.dataset.lineId,
+      ),
+    ).toEqual([target.id, calculated.items[0]!.id, calculated.items[1]!.id]);
+
+    await click(document.querySelector(`${panelId} [aria-label="Przesuń niżej"]`));
+    expect(document.querySelector(panelId)).not.toBeNull();
+    await click(document.querySelector(`${panelId} [aria-label="Ustaw jako główny"]`));
+    expect(document.querySelector(panelId)).not.toBeNull();
+    expect(document.querySelector(`${panelId} [aria-label="Usuń rolę główną"]`)).not.toBeNull();
+  });
+
+  it('keeps the dialog open after compact price save and base-price restore', async () => {
+    const onSave = vi.fn(async () => undefined);
+    const onReset = vi.fn(async () => undefined);
+    const priceView: IngredientPriceView = {
+      cost: {
+        canonicalIngredientId: 'PI-ING-000001',
+        pricePerKg: 4,
+        currency: 'EUR',
+        source: 'customer_override',
+        mapperPricePerKg: 3.5,
+        customerOverridePerKg: 4,
+        overrideId: 'price-1',
+      },
+      lineCost: 0.4,
+      canEdit: true,
+      onSave,
+      onReset,
+    };
+    await renderRow(actions(), baseItem, true, true, null, DEFAULT_INGREDIENT_ROW_META, priceView);
+    await click(
+      document.querySelector(`[aria-label="Opcje składnika ${baseItem.ingredient.name}"]`),
+    );
+    const panelId = `[data-testid="row-menu-${baseItem.id}"]`;
+
+    await click(document.querySelector(`${panelId} [aria-label="Zapisz"]`));
+    expect(onSave).toHaveBeenCalledWith(4);
+    expect(document.querySelector(panelId)).not.toBeNull();
+
+    await click(document.querySelector(`${panelId} [aria-label="Przywróć cenę bazową"]`));
+    expect(onReset).toHaveBeenCalledOnce();
+    expect(document.querySelector(panelId)).not.toBeNull();
   });
 
   it('opens ingredient data as a compact responsive drawer', async () => {

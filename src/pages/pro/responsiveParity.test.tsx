@@ -90,9 +90,12 @@ describe('mobile dispatches through the desktop action object', () => {
     expect(row).toContain('panelContent={articlePanelContent}');
     // The price editor is the SAME component and the SAME view object, so
     // onSave/onReset remain the existing customer-price persistence.
-    expect(row).toContain(
-      '<CustomerPriceEditor view={priceView} lineId={item.id} variant="article" />',
-    );
+    expect(row).toContain('<CustomerPriceEditor');
+    expect(row).toContain('view={priceView}');
+    expect(row).toContain('lineId={item.id}');
+    expect(row).toContain('variant="article"');
+    expect(row).toContain('leadingActions={');
+    expect(row).toContain('footerAction={');
     expect(mobile).not.toContain('<CustomerPriceEditor');
   });
 

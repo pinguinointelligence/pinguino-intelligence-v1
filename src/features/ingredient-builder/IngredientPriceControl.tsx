@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { EffectiveIngredientCost } from '@/features/pro-core/costContracts';
 import { parseCustomerPriceText } from './customerPriceInput';
 import { HoverPreview } from '@/components/ui/HoverPreview';
@@ -96,6 +96,8 @@ export function CustomerPriceEditor({
   view,
   lineId,
   variant = 'default',
+  leadingActions,
+  footerAction,
 }: {
   view?: IngredientPriceView;
   /** Lets the row show „you changed something here" while a typed price is
@@ -103,6 +105,10 @@ export function CustomerPriceEditor({
    * hydrates asynchronously), so the marker composes this state instead. */
   lineId?: string;
   variant?: 'default' | 'article';
+  /** Compact article-only operations that share the price row (for example reorder). */
+  leadingActions?: ReactNode;
+  /** Compact article-only action anchored to the far-right footer edge. */
+  footerAction?: ReactNode;
 }) {
   const initial = view?.cost.customerOverridePerKg ?? view?.cost.pricePerKg ?? null;
   const [raw, setRaw] = useState(initial === null ? '' : String(initial).replace('.', ','));
@@ -111,6 +117,7 @@ export function CustomerPriceEditor({
   const setPriceDirty = useCustomerPriceDirtyStore((state) => state.setDirty);
   const onSave = view?.onSave;
   const onReset = view?.onReset;
+  const hasLeadingActions = Boolean(leadingActions);
   /** Only a real keystroke can raise the flag — never a hydration. */
   const markDirtyFromInput = (nextRaw: string) => {
     if (!lineId) return;
@@ -120,15 +127,35 @@ export function CustomerPriceEditor({
   };
 
   if (!view?.canEdit || !onSave || !onReset) {
+    if (variant === 'article') {
+      return (
+        <div
+          className="rounded-[10px] border border-ink/10 bg-white p-2.5"
+          data-testid="customer-price-editor"
+          data-layout="compact-inline"
+        >
+          <div className="flex items-center gap-2">
+            {hasLeadingActions ? (
+              <div
+                className="grid w-[78px] shrink-0 grid-cols-2 gap-1.5"
+                data-testid="article-panel-order-actions"
+                data-control-height="36"
+              >
+                {leadingActions}
+              </div>
+            ) : null}
+            <p className="min-w-0 flex-1 text-[10px] leading-snug text-stone-600">
+              Moja cena wymaga składnika z kanonicznym ID oraz aktywnego konta.
+            </p>
+          </div>
+          {footerAction ? (
+            <div className="mt-1.5 flex min-h-9 items-center justify-end">{footerAction}</div>
+          ) : null}
+        </div>
+      );
+    }
     return (
-      <p
-        className={cn(
-          'border border-ink/10 text-stone-600',
-          variant === 'article'
-            ? 'rounded-[8px] px-2.5 py-2 text-[10px] leading-snug'
-            : 'mb-1 rounded-lg px-2 py-1.5 text-xs',
-        )}
-      >
+      <p className="mb-1 rounded-lg border border-ink/10 px-2 py-1.5 text-xs text-stone-600">
         Moja cena wymaga składnika z kanonicznym ID oraz aktywnego konta.
       </p>
     );
@@ -173,48 +200,122 @@ export function CustomerPriceEditor({
   const activePrice = view.cost.pricePerKg;
   const article = variant === 'article';
 
-  return (
-    <div
-      className={cn(
-        'rounded-[10px] border border-ink/10 bg-white',
-        article ? 'p-2.5' : 'mb-2 bg-stone-50/70 p-3',
-      )}
-      data-testid="customer-price-editor"
-      data-active-price-source={view.cost.source}
-      data-layout={article ? 'compact-inline' : 'default'}
-    >
-      <div className="flex min-w-0 items-baseline justify-between gap-3">
-        <p className={cn('font-semibold text-ink', article ? 'text-[11px]' : 'text-xs')}>
-          {article
-            ? 'Moja cena'
-            : own
-              ? 'Moja cena'
-              : view.cost.source === 'mapper_reference'
-                ? 'Cena bazowa'
-                : 'Brak ceny'}
-        </p>
-        <p className="shrink-0 font-mono text-[9px] leading-none tabular-nums text-stone-500">
-          {article
-            ? base !== null
-              ? `Bazowa: ${money(base)} ${view.cost.currency}/kg`
-              : 'Bazowa: —'
-            : own && base !== null
-              ? `Bazowa: ${money(base)} ${view.cost.currency}/kg`
-              : activePrice !== null
-                ? `${money(activePrice)} ${view.cost.currency}/kg`
-                : '—'}
-        </p>
-      </div>
-      <div className={cn(article && 'mt-2 flex min-w-0 items-center gap-2')}>
-        <label
+  if (article) {
+    return (
+      <div
+        className="rounded-[10px] border border-ink/10 bg-white p-2.5"
+        data-testid="customer-price-editor"
+        data-active-price-source={view.cost.source}
+        data-layout="compact-inline"
+      >
+        <div
           className={cn(
-            article
-              ? 'flex h-10 min-w-0 flex-1 items-center overflow-hidden rounded-[8px] border border-ink/12 bg-white focus-within:border-ink/35'
-              : 'mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 text-xs text-stone-600',
+            'grid items-center gap-2',
+            hasLeadingActions
+              ? 'grid-cols-[auto_minmax(0,1fr)] sm:grid-cols-[auto_minmax(0,1fr)_auto]'
+              : 'grid-cols-[minmax(0,1fr)_auto]',
           )}
         >
-          <span className={article ? 'sr-only' : undefined}>Cena za kg</span>
-          <span className={cn('flex min-w-0 items-center', article ? 'h-full flex-1' : 'gap-1.5')}>
+          {hasLeadingActions ? (
+            <div
+              className="grid w-[78px] grid-cols-2 gap-1.5"
+              data-testid="article-panel-order-actions"
+              data-control-height="36"
+            >
+              {leadingActions}
+            </div>
+          ) : null}
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold leading-none text-ink">Moja cena</p>
+            <p className="mt-1 truncate font-mono text-[9px] leading-none tabular-nums text-stone-500">
+              {base !== null ? `Bazowa: ${money(base)} ${view.cost.currency}/kg` : 'Bazowa: —'}
+            </p>
+          </div>
+          <div
+            className={cn(
+              'flex min-w-0 items-center justify-end gap-1.5',
+              hasLeadingActions && 'col-span-2 sm:col-span-1',
+            )}
+          >
+            <label className="flex h-9 w-[112px] shrink-0 items-center overflow-hidden rounded-[8px] border border-ink/12 bg-white focus-within:border-ink/35">
+              <span className="sr-only">Cena za kg</span>
+              <span className="flex h-full min-w-0 flex-1 items-center">
+                <input
+                  value={raw}
+                  inputMode="decimal"
+                  aria-label="Moja cena za kg"
+                  onChange={(event) => {
+                    setRaw(event.currentTarget.value);
+                    markDirtyFromInput(event.currentTarget.value);
+                  }}
+                  className="h-full min-w-0 flex-1 border-0 bg-transparent px-2 text-right font-mono text-xs leading-none tabular-nums text-ink focus:outline-none"
+                />
+                <span className="shrink-0 border-l border-ink/[0.08] px-2 font-mono text-[10px] text-stone-500">
+                  {view.cost.currency}
+                </span>
+              </span>
+            </label>
+            <button
+              type="button"
+              aria-label="Zapisz"
+              disabled={busy}
+              onClick={() => void save()}
+              className="pro-focus-ring h-9 shrink-0 rounded-[8px] bg-ink px-3 text-[11px] font-semibold text-white transition-colors hover:bg-charcoal disabled:opacity-40"
+            >
+              Zapisz
+            </button>
+          </div>
+        </div>
+        {error ? <p className="mt-1 text-xs text-status-error">{error}</p> : null}
+        {own || footerAction ? (
+          <div className="mt-1.5 flex min-h-9 items-center justify-between gap-3">
+            {own ? (
+              <button
+                type="button"
+                aria-label={view.resetLabel ?? 'Przywróć cenę bazową'}
+                disabled={busy}
+                onClick={() => void reset()}
+                className="pro-focus-ring inline-flex h-9 items-center px-1 text-[10px] text-stone-600 underline decoration-stone-300 underline-offset-2 transition-colors hover:text-ink disabled:opacity-40"
+              >
+                {view.resetLabel ?? 'Przywróć cenę bazową'}
+              </button>
+            ) : (
+              <span />
+            )}
+            {footerAction}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="mb-2 rounded-[10px] border border-ink/10 bg-stone-50/70 p-3"
+      data-testid="customer-price-editor"
+      data-active-price-source={view.cost.source}
+      data-layout="default"
+    >
+      <div className="flex min-w-0 items-baseline justify-between gap-3">
+        <p className="text-xs font-semibold text-ink">
+          {own
+            ? 'Moja cena'
+            : view.cost.source === 'mapper_reference'
+              ? 'Cena bazowa'
+              : 'Brak ceny'}
+        </p>
+        <p className="shrink-0 font-mono text-[9px] leading-none tabular-nums text-stone-500">
+          {own && base !== null
+            ? `Bazowa: ${money(base)} ${view.cost.currency}/kg`
+            : activePrice !== null
+              ? `${money(activePrice)} ${view.cost.currency}/kg`
+              : '—'}
+        </p>
+      </div>
+      <div>
+        <label className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 text-xs text-stone-600">
+          <span>Cena za kg</span>
+          <span className="flex min-w-0 items-center gap-1.5">
             <input
               value={raw}
               inputMode="decimal"
@@ -223,64 +324,32 @@ export function CustomerPriceEditor({
                 setRaw(event.currentTarget.value);
                 markDirtyFromInput(event.currentTarget.value);
               }}
-              className={cn(
-                'text-right font-mono text-xs leading-none tabular-nums text-ink focus:outline-none',
-                article
-                  ? 'h-full min-w-0 flex-1 border-0 bg-transparent px-3'
-                  : 'h-11 w-24 rounded-lg border border-ink/15 bg-white px-3 focus:border-ink/40',
-              )}
+              className="h-11 w-24 rounded-lg border border-ink/15 bg-white px-3 text-right font-mono text-xs leading-none tabular-nums text-ink focus:border-ink/40 focus:outline-none"
             />
-            <span
-              className={cn(
-                'shrink-0 font-mono text-stone-500',
-                article ? 'border-l border-ink/[0.08] px-2.5 text-[10px]' : 'text-xs',
-              )}
-            >
-              {view.cost.currency}
-            </span>
+            <span className="shrink-0 font-mono text-xs text-stone-500">{view.cost.currency}</span>
           </span>
         </label>
-        {article ? (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void save()}
-            className="pro-focus-ring h-10 shrink-0 rounded-[8px] bg-ink px-4 text-[11px] font-semibold text-white transition-colors hover:bg-charcoal disabled:opacity-40"
-          >
-            Zapisz
-          </button>
-        ) : null}
       </div>
       {error ? <p className="mt-1 text-xs text-status-error">{error}</p> : null}
-      <div
-        className={cn(
-          'flex items-center gap-3',
-          article ? 'mt-1 min-h-6 justify-start' : 'mt-3 min-h-11 justify-end',
-        )}
-      >
+      <div className="mt-3 flex min-h-11 items-center justify-end gap-3">
         {own ? (
           <button
             type="button"
             disabled={busy}
             onClick={() => void reset()}
-            className={cn(
-              'px-1 text-stone-600 underline decoration-stone-300 underline-offset-2 transition-colors hover:text-ink disabled:opacity-40',
-              article ? 'min-h-6 text-[10px]' : 'min-h-11 text-xs',
-            )}
+            className="min-h-11 px-1 text-xs text-stone-600 underline decoration-stone-300 underline-offset-2 transition-colors hover:text-ink disabled:opacity-40"
           >
             {view.resetLabel ?? 'Przywróć cenę bazową'}
           </button>
         ) : null}
-        {!article ? (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void save()}
-            className="min-h-11 rounded-lg bg-ink px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-charcoal disabled:opacity-40"
-          >
-            Zapisz
-          </button>
-        ) : null}
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => void save()}
+          className="min-h-11 rounded-lg bg-ink px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-charcoal disabled:opacity-40"
+        >
+          Zapisz
+        </button>
       </div>
     </div>
   );

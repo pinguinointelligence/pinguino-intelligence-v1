@@ -71,7 +71,7 @@ function DiffRow({ line }: { line: PreviewLineDiff }) {
           <span className="text-black/65">{formatGramsPl(line.beforeGrams ?? 0)}</span>
         ) : (
           <>
-            <span className="text-black/65 line-through decoration-stone-300">
+            <span className="text-black/65" data-testid="preview-from-grams">
               {line.beforeGrams === null ? '—' : formatGramsPl(line.beforeGrams)}
             </span>
             <span aria-hidden className="text-black/65">
@@ -240,8 +240,11 @@ export function ConstraintPreviewCard({
         data-testid="preview-summary"
       >
         {score !== null ? (
-          <div className="flex h-12 min-w-16 items-center justify-center rounded-[10px] border border-gold-soft/60 bg-white px-3 font-mono text-lg font-semibold text-black tabular-nums">
-            {score} / 10
+          <div
+            className="flex h-12 min-w-16 items-center justify-center rounded-[10px] border border-gold-soft/60 bg-white px-3 font-mono text-lg font-semibold text-black tabular-nums"
+            data-testid="preview-score"
+          >
+            {score}
           </div>
         ) : null}
         <div className="min-w-0">

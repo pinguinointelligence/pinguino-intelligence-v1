@@ -134,14 +134,7 @@ export function MainRatioEditor({
   );
 }
 
-type ArticleActionIconName =
-  | 'up'
-  | 'down'
-  | 'swap'
-  | 'info'
-  | 'required'
-  | 'availability'
-  | 'standard';
+type ArticleActionIconName = 'up' | 'down' | 'swap' | 'info' | 'availability' | 'standard';
 
 function ArticleActionIcon({ name }: { name: ArticleActionIconName }) {
   const paths: Record<ArticleActionIconName, React.ReactNode> = {
@@ -156,7 +149,6 @@ function ArticleActionIcon({ name }: { name: ArticleActionIconName }) {
         <path d="M8 7.25v3.25M8 5.1h.01" />
       </>
     ),
-    required: <path d="M8 2.75v7.5M4.75 4.625l6.5 3.75m0-3.75-6.5 3.75" />,
     availability: (
       <>
         <path d="M3 8s1.8-3 5-3 5 3 5 3-1.8 3-5 3-5-3-5-3Z" />
@@ -611,12 +603,12 @@ function RecipeRow({
   const articlePanelContent = (
     <div className="text-ink" data-testid="article-panel-content">
       <div
-        className="grid grid-cols-4 gap-1.5 rounded-[10px] border border-ink/10 bg-stone-50/55 p-1.5 sm:grid-cols-[80px_repeat(6,minmax(0,1fr))]"
+        className="grid grid-cols-[80px_repeat(3,minmax(0,1fr))] gap-1.5 rounded-[10px] border border-ink/10 bg-stone-50/55 p-1.5"
         data-testid="article-panel-quick-actions"
         data-control-height="36"
       >
         <div
-          className="col-span-2 grid h-9 min-w-0 grid-cols-[minmax(0,1fr)_24px] overflow-hidden rounded-[8px] border border-gold/22 bg-white sm:col-span-1"
+          className="grid h-9 min-w-0 grid-cols-[minmax(0,1fr)_24px] overflow-hidden rounded-[8px] border border-gold/22 bg-white"
           data-testid="article-panel-role-control"
           data-control-height="36"
         >
@@ -631,10 +623,7 @@ function RecipeRow({
                 ariaLabel="Usuń rolę główną"
                 title="Usuń rolę główną"
                 variant="article"
-                onClick={() => {
-                  setRole('standard');
-                  closeLineMenus();
-                }}
+                onClick={() => setRole('standard')}
               />
             ) : (
               <MainRoleTrigger
@@ -643,10 +632,7 @@ function RecipeRow({
                 title={mainUnavailableReason || 'Ustaw jako główny'}
                 variant="article"
                 disabled={Boolean(mainUnavailableReason)}
-                onClick={() => {
-                  setRole('main');
-                  closeLineMenus();
-                }}
+                onClick={() => setRole('main')}
               />
             )}
           </HoverPreview>
@@ -666,40 +652,10 @@ function RecipeRow({
           </HoverPreview>
         </div>
         <ArticleActionButton
-          label="Przesuń wyżej"
-          icon="up"
-          disabled={!canMoveUp}
-          onClick={() => {
-            actions.moveUp?.(item.id);
-            closeLineMenus();
-          }}
-        />
-        <ArticleActionButton
-          label="Przesuń niżej"
-          icon="down"
-          disabled={!canMoveDown}
-          onClick={() => {
-            actions.moveDown?.(item.id);
-            closeLineMenus();
-          }}
-        />
-        <ArticleActionButton
-          label={required ? 'Usuń status wymagany' : 'Oznacz jako wymagany'}
-          icon="required"
-          selected={required}
-          onClick={() => {
-            actions.toggleRequired?.(item.id);
-            closeLineMenus();
-          }}
-        />
-        <ArticleActionButton
           label={meta.unavailable ? 'Oznacz jako dostępny' : 'Oznacz jako niedostępny'}
           icon="availability"
           selected={meta.unavailable}
-          onClick={() => {
-            actions.setIngredientUnavailable?.(item.id, !meta.unavailable);
-            closeLineMenus();
-          }}
+          onClick={() => actions.setIngredientUnavailable?.(item.id, !meta.unavailable)}
         />
         <ArticleActionButton label="Znajdź zamiennik" icon="swap" onClick={openSubstitute} />
         <ArticleActionButton
@@ -717,19 +673,11 @@ function RecipeRow({
           <ArticleActionButton
             label="Ustaw jako Standardowy"
             icon="standard"
-            onClick={() => {
-              setRole('standard');
-              closeLineMenus();
-            }}
+            onClick={() => setRole('standard')}
           />
         </div>
       ) : null}
 
-      {mainUnavailableReason && !isMain ? (
-        <p className="mt-1.5 text-[10px] leading-snug text-status-error" role="status">
-          {mainUnavailableReason}
-        </p>
-      ) : null}
       {isMain ? (
         <div className="mt-1 flex justify-end border-b border-ink/[0.07] pb-1">
           <MainRatioEditor item={item} actions={actions} />
@@ -737,17 +685,37 @@ function RecipeRow({
       ) : null}
 
       <div className="mt-2.5">
-        <CustomerPriceEditor view={priceView} lineId={item.id} variant="article" />
-      </div>
-
-      <div className="mt-2 border-t border-ink/[0.08] pt-1.5 text-right">
-        <button
-          type="button"
-          onClick={requestRemove}
-          className="pro-focus-ring min-h-9 rounded-[8px] px-2.5 text-[11px] font-medium text-status-error/70 transition-colors hover:bg-status-error/[0.045] hover:text-status-error"
-        >
-          {t.remove.action}
-        </button>
+        <CustomerPriceEditor
+          view={priceView}
+          lineId={item.id}
+          variant="article"
+          leadingActions={
+            <>
+              <ArticleActionButton
+                label="Przesuń wyżej"
+                icon="up"
+                disabled={!canMoveUp}
+                onClick={() => actions.moveUp?.(item.id)}
+              />
+              <ArticleActionButton
+                label="Przesuń niżej"
+                icon="down"
+                disabled={!canMoveDown}
+                onClick={() => actions.moveDown?.(item.id)}
+              />
+            </>
+          }
+          footerAction={
+            <button
+              type="button"
+              aria-label={t.remove.action}
+              onClick={requestRemove}
+              className="pro-focus-ring h-9 shrink-0 rounded-[8px] border border-status-error/35 bg-status-error/[0.06] px-3 text-[10px] font-semibold text-status-error transition-colors hover:border-status-error/50 hover:bg-status-error/[0.1]"
+            >
+              {t.remove.action}
+            </button>
+          }
+        />
       </div>
     </div>
   );

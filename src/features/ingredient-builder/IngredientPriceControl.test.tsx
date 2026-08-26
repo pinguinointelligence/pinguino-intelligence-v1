@@ -135,6 +135,12 @@ describe('customer price input', () => {
     const html = renderToStaticMarkup(
       <CustomerPriceEditor
         variant="article"
+        leadingActions={
+          <>
+            <button type="button">Up</button>
+            <button type="button">Down</button>
+          </>
+        }
         view={{
           ...view(),
           cost: {
@@ -152,7 +158,10 @@ describe('customer price input', () => {
     expect(html).toContain('Bazowa: 1,20 EUR/kg');
     expect(html).toContain('data-layout="compact-inline"');
     expect(html).toContain('class="sr-only">Cena za kg</span>');
-    expect(html).toContain('h-10');
+    expect(html).toContain('h-9');
+    expect(html).toContain('w-[78px]');
+    expect(html).toContain('w-[112px]');
+    expect(html).not.toContain('h-10');
     expect(html).not.toContain('>Cena bazowa<');
     expect(html).not.toContain('Przywróć cenę bazową');
   });
