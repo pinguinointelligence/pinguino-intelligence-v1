@@ -673,7 +673,15 @@ function stageLockedConstraintFixPreview(args: LockedConstraintFixStageArgs): bo
 let activePiRunGeneration = 0;
 let activePiAbortController: AbortController | null = null;
 let activePiAbortGeneration = 0;
-export const PI_RECALCULATION_DEADLINE_MS = 15_000;
+/**
+ * Operational watchdog, not an Engine iteration budget. The exact served
+ * Protein four-Crown Direction vector (352/136/50/25) completes deterministically
+ * in 6.86 s / 335 MB on the idle repository host, but the production Worker
+ * exceeded 15 s twice while its authority calls completed in under 0.5 s.
+ * Thirty seconds preserves hard preemption while giving the measured browser
+ * runtime headroom; no solver limit or culinary rule is changed.
+ */
+export const PI_RECALCULATION_DEADLINE_MS = 30_000;
 
 const isCurrentPiRun = (generation: number): boolean => generation === activePiRunGeneration;
 

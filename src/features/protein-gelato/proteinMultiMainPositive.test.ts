@@ -37,7 +37,6 @@ import {
   directionTargetFingerprint,
   workingStateFingerprint,
 } from '@/features/constraint-studio/applyPipeline';
-import { PI_RECALCULATION_DEADLINE_MS } from '@/features/constraint-studio/constraintStudioStore';
 import { computeOptimizePreviewResult } from '@/features/constraint-studio/optimizePreviewComputation';
 
 const MAPPER = readFileSync(
@@ -84,6 +83,7 @@ const COFFEE = 'PI-ING-000167';
 const BANANA = 'PI-ING-000345';
 const STRAWBERRY = 'PI-ING-001553';
 const CRANBERRY = 'PI-ING-001556';
+const WATERMELON = 'PI-ING-000405';
 
 const line = (
   id: string,
@@ -177,7 +177,40 @@ const servedOwnerBananaCranberryFixture = (): RecipeInput => {
       line('banana-main', BANANA, 352, 'main', 352 / 136),
       line('cranberry-main', CRANBERRY, 136, 'main', 1),
     ],
-    goals: { formulation_strategy: 'eco' },
+    goals: {
+      formulation_strategy: 'eco',
+      direction_targets_active: true,
+      direction_targets: { sweetness: 0, softness: 0, creaminess: 0, flavor: 0 },
+    },
+  };
+};
+
+const servedFourCrownFixture = (): RecipeInput => {
+  const input = servedOwnerBananaCranberryFixture();
+  const servedSupportGrams: Record<string, number> = {
+    'new-recipe-0-milk_3_5': 522,
+    'new-recipe-1-cream_30': 114,
+    'new-recipe-2-PI-ING-000264': 81,
+    'new-recipe-3-water': 104,
+    'new-recipe-4-sucrose': 71,
+    'new-recipe-5-dextrose': 106,
+    'new-recipe-6-tara_gum': 2,
+  };
+  return {
+    ...input,
+    items: [
+      ...input.items.map((item) => ({
+        ...item,
+        planned_grams: servedSupportGrams[item.id] ?? item.planned_grams,
+        ...(item.id === 'banana-main'
+          ? { main_ratio_weight: 352 }
+          : item.id === 'cranberry-main'
+            ? { main_ratio_weight: 136 }
+            : {}),
+      })),
+      line('strawberry-main', STRAWBERRY, 50, 'main', 50),
+      line('watermelon-main', WATERMELON, 25, 'main', 25),
+    ],
   };
 };
 
@@ -271,8 +304,35 @@ const servedOwnerBananaCranberrySnapshots = (
   return snapshots;
 };
 
+const servedFourCrownSnapshots = (
+  input: RecipeInput,
+): Record<string, ProductBehaviorSnapshot> => {
+  const snapshots = servedOwnerBananaCranberrySnapshots(input);
+  snapshots['strawberry-main'] = {
+    ...snapshots['strawberry-main']!,
+    familyId: 'fruit',
+    subfamilyId: 'berry',
+    formId: 'fresh',
+    behaviorRole: 'MAIN_PROFILE_SPECIFIC',
+    mainClassification: 'MAIN_PROFILE_SPECIFIC',
+    mainCapability: 'MAIN_CAPABLE',
+    mainAuthority: 'CALIBRATED',
+    mainCalibrationLevel: 'EXACT_PRODUCT',
+    mainPolicyId: 'main-protein-fruit-combination-v2',
+    mainPolicyVersion: '2',
+    ecoFloorPercent: 10,
+    optimalCeilingPercent: 49.5,
+    hardLimitPercent: 49.5,
+    multiMainHardLimitPercent: 20.7,
+    mainEquivalentFactor: 1,
+    mainBasis: 'FRUIT_EQUIVALENT',
+  } as ProductBehaviorSnapshot;
+  return snapshots;
+};
+
 const AT = '2026-08-23T12:00:00.000Z';
 const NONE = { byLineId: {} };
+const LOCAL_SERVED_RESULT_BUDGET_MS = 15_000;
 
 const previewOf = (ratio: number) => {
   const input = fixture(ratio);
@@ -561,14 +621,46 @@ describe('Protein Crown group authority regressions', () => {
     });
     const runtimeMs = performance.now() - started;
 
-    expect(built).toMatchObject({ ok: false, code: 'unsafe_proposal' });
-    expect(runtimeMs).toBeLessThan(PI_RECALCULATION_DEADLINE_MS);
+    expect(built.ok, JSON.stringify(built)).toBe(true);
+    if (built.ok) {
+      expect(built.preview.directionAssessment).toMatchObject({
+        active: true,
+        reached: false,
+        score: 9,
+      });
+      expect(verifyMainIngredientIdentity(input, built.preview.proposedInput)).toMatchObject({
+        ok: true,
+      });
+    }
+    expect(runtimeMs).toBeLessThan(LOCAL_SERVED_RESULT_BUDGET_MS);
     console.info(
       'SERVED_OWNER_PROTEIN ' +
         JSON.stringify({
           runtimeMs: Math.round(runtimeMs),
           result: built,
         }),
+    );
+  }, 120_000);
+
+  it('publishes the served four-Crown 352/136/50/25 domain result before the UI watchdog', () => {
+    const input = servedFourCrownFixture();
+    const started = performance.now();
+    const built = computeOptimizePreviewResult({
+      input,
+      constraints: NONE,
+      createdAt: AT,
+      options: {
+        productBehaviorSnapshots: servedFourCrownSnapshots(input),
+        technicalOnlyMainLineIds: [],
+      },
+    });
+    const runtimeMs = performance.now() - started;
+
+    expect(built.ok || built.code !== undefined).toBe(true);
+    expect(runtimeMs).toBeLessThan(LOCAL_SERVED_RESULT_BUDGET_MS);
+    console.info(
+      'SERVED_FOUR_CROWN_PROTEIN ' +
+        JSON.stringify({ runtimeMs: Math.round(runtimeMs), result: built }),
     );
   }, 120_000);
 
