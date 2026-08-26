@@ -216,6 +216,7 @@ export function StudioEngineSurface({
   const cockpitTriggerRef = useRef<HTMLButtonElement | null>(null);
   const cockpitPanelRef = useRef<HTMLElement | null>(null);
   const previousProductionSessionIdRef = useRef(production.session?.sessionId ?? null);
+  const focusProductionAfterCollapseRef = useRef(false);
 
   // The public /demo entry is always a demo session that cold-opens the curated
   // default scenario; /pro (forceDemo=false) preserves persisted edits.
@@ -260,12 +261,8 @@ export function StudioEngineSurface({
     previousProductionSessionIdRef.current = currentSessionId;
     if (!reveal) return;
 
+    focusProductionAfterCollapseRef.current = true;
     setMobileCockpitState({ activeTab: 'production', open: false });
-    requestAnimationFrame(() => {
-      document
-        .querySelector<HTMLElement>('[data-production-active="true"] [role="spinbutton"]')
-        ?.focus();
-    });
   }, [
     activeTab,
     mobileCockpitOpen,
@@ -312,7 +309,16 @@ export function StudioEngineSurface({
     return () => {
       document.removeEventListener('keydown', onKey);
       body.style.overflow = previousOverflow;
-      trigger?.focus();
+      if (focusProductionAfterCollapseRef.current) {
+        focusProductionAfterCollapseRef.current = false;
+        requestAnimationFrame(() => {
+          document
+            .querySelector<HTMLElement>('[data-production-active="true"] [role="spinbutton"]')
+            ?.focus();
+        });
+      } else {
+        trigger?.focus();
+      }
     };
   }, [activeTab, mobileCockpitOpen, mobileViewport]);
 

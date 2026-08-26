@@ -10,6 +10,7 @@
  * of the four modules.
  */
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import {
   collapsedMobileCockpitRoute,
   nextMobileCockpitState,
@@ -101,5 +102,17 @@ describe('mobile module selection', () => {
         mobileViewport: false,
       }),
     ).toBe(false);
+  });
+
+  it('hands Production focus off from the sheet cleanup, after the trigger fallback', () => {
+    const surface = readFileSync(new URL('./StudioEngineSurface.tsx', import.meta.url), 'utf8');
+    const cleanup = surface.slice(
+      surface.indexOf('return () => {', surface.indexOf('const onKey')),
+    );
+    expect(cleanup).toContain('focusProductionAfterCollapseRef.current');
+    expect(cleanup).toContain('[data-production-active="true"] [role="spinbutton"]');
+    expect(cleanup.indexOf('focusProductionAfterCollapseRef.current')).toBeLessThan(
+      cleanup.indexOf('trigger?.focus()'),
+    );
   });
 });
