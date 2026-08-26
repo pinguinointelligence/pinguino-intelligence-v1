@@ -136,9 +136,7 @@ const equalCrownSeedWeights = (items: RecipeItem[]): RecipeItem[] => {
   const mains = items.filter((item) => item.lock_type === 'main');
   if (mains.length === 0) return items;
   return items.map((item) =>
-    item.lock_type === 'main'
-      ? { ...item, main_ratio_weight: 1 }
-      : item,
+    item.lock_type === 'main' ? { ...item, main_ratio_weight: 1 } : item,
   );
 };
 
@@ -561,7 +559,9 @@ const fromPreset = (preset: DemoPreset) => ({
   target_batch_grams: preset.target_batch_grams,
   machine_capacity_grams: preset.machine_capacity_grams,
   machine_capacity_source: (preset.machine_capacity_grams === null ? null : 'manual') as
-    'machine' | 'manual' | null,
+    | 'machine'
+    | 'manual'
+    | null,
   flavor_intensity: preset.flavor_intensity,
   cost_priority: preset.cost_priority,
   direction_targets: { ...DEFAULT_DIRECTION_TARGETS },
@@ -646,6 +646,26 @@ const requireProductBehaviorRevalidation = (
       },
     ]),
   );
+
+/** A Standard ↔ Crown transition changes the formulation authority requested
+ * for this exact product line. Keep the frozen facts, but force the next PI
+ * entry to resolve them in the new role context instead of accepting a
+ * pre-transition Standard/Main snapshot as current. */
+const requireProductBehaviorLineRevalidation = (
+  snapshots: Readonly<Record<string, ProductBehaviorSnapshot>>,
+  lineId: string,
+): Record<string, ProductBehaviorSnapshot> => {
+  const snapshot = snapshots[lineId];
+  if (!snapshot) return { ...snapshots };
+  return {
+    ...snapshots,
+    [lineId]: {
+      ...snapshot,
+      resolutionState: 'REVALIDATION_REQUIRED',
+      blockReasons: [...new Set([...snapshot.blockReasons, 'recipe_context_changed'])],
+    },
+  };
+};
 
 /**
  * Persisted slice — recipe content + the preset highlight + the CANONICAL aggregate link
@@ -1698,41 +1718,69 @@ export const useRecipeStore = create<RecipeState>()(
 
       setMainIngredient: (lineId) =>
         set((state) => {
+          const current = state.items.find((item) => item.id === lineId);
+          if (!current) return {};
           const snapshotRequired = productBehaviorRequiredLineIds({ items: state.items }).includes(
             lineId,
           );
           if (mainBehaviorBlockReason(state.productBehaviorSnapshots[lineId], snapshotRequired))
             return {};
+          const roleChanged = current.lock_type !== 'main';
           const items = state.items.map((item) =>
             item.id === lineId ? { ...item, lock_type: 'main' as const } : item,
           );
           return {
             items: equalCrownSeedWeights(items),
+            ...(roleChanged
+              ? {
+                  productBehaviorSnapshots: requireProductBehaviorLineRevalidation(
+                    state.productBehaviorSnapshots,
+                    lineId,
+                  ),
+                  practicalRecipeAudit: null,
+                  savedProductionFingerprint: null,
+                }
+              : {}),
             dirty: true,
             draftRevision: state.draftRevision + 1,
           };
         }),
 
       setStandardIngredient: (lineId) =>
-        set((state) => ({
-          items: state.items.map((item) => {
-            if (item.id !== lineId || item.lock_type !== 'main') return item;
-            const next = { ...item };
-            delete next.main_ratio_weight;
-            return {
-              ...next,
-              ...(item.planned_grams > 0 ? { user_intent_anchor_grams: item.planned_grams } : {}),
-              lock_type:
-                item.range_constraint || item.grams_constraint
-                  ? ('grams' as const)
-                  : item.percent_constraint
-                    ? ('percent' as const)
-                    : ('unlocked' as const),
-            };
-          }),
-          dirty: true,
-          draftRevision: state.draftRevision + 1,
-        })),
+        set((state) => {
+          const roleChanged = state.items.some(
+            (item) => item.id === lineId && item.lock_type === 'main',
+          );
+          return {
+            items: state.items.map((item) => {
+              if (item.id !== lineId || item.lock_type !== 'main') return item;
+              const next = { ...item };
+              delete next.main_ratio_weight;
+              return {
+                ...next,
+                ...(item.planned_grams > 0 ? { user_intent_anchor_grams: item.planned_grams } : {}),
+                lock_type:
+                  item.range_constraint || item.grams_constraint
+                    ? ('grams' as const)
+                    : item.percent_constraint
+                      ? ('percent' as const)
+                      : ('unlocked' as const),
+              };
+            }),
+            ...(roleChanged
+              ? {
+                  productBehaviorSnapshots: requireProductBehaviorLineRevalidation(
+                    state.productBehaviorSnapshots,
+                    lineId,
+                  ),
+                  practicalRecipeAudit: null,
+                  savedProductionFingerprint: null,
+                }
+              : {}),
+            dirty: true,
+            draftRevision: state.draftRevision + 1,
+          };
+        }),
 
       setMainRatioWeight: (lineId, weight) => {
         if (weight !== null && (!Number.isFinite(weight) || weight <= 0)) return;
@@ -1789,11 +1837,8 @@ export const useRecipeStore = create<RecipeState>()(
         const runtimeInputCategory = canonicalInternalCategory(input.category, input.items);
         const matchesInputBase = (candidate: ProfileSettingsSnapshot | null): boolean =>
           candidate !== null &&
-          internalCategoryFor(
-            candidate.visibleProductType,
-            input.items,
-            runtimeInputCategory,
-          ) === runtimeInputCategory;
+          internalCategoryFor(candidate.visibleProductType, input.items, runtimeInputCategory) ===
+            runtimeInputCategory;
         const compatibleMetadata = matchesInputBase(metadata) ? metadata : null;
         const compatibleDefaults = matchesInputBase(defaults) ? defaults : null;
         const profile = compatibleMetadata ?? compatibleDefaults;

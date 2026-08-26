@@ -2996,17 +2996,7 @@ useRecipeStore.subscribe((state, prev) => {
     }
     // C3 step 2 — only a Base technical change invalidates Base Preview/score.
     const previewCurrent = session.preview?.baseDraftRevision === state.draftRevision;
-    const stagedPatch =
-      baseTechnicalChanged &&
-      !previewCurrent &&
-      (session.preview !== null ||
-        session.directionBestCandidate !== null ||
-        session.directionConsent !== null ||
-        session.previewIssue !== null ||
-        session.feasibility !== null ||
-        session.blocked !== null)
-        ? { ...CLEAR_STAGED }
-        : {};
+    const stagedPatch = baseTechnicalChanged && !previewCurrent ? { ...CLEAR_STAGED } : {};
     if (Object.keys(constraintsPatch).length > 0 || Object.keys(stagedPatch).length > 0) {
       useConstraintStudioStore.setState({ ...constraintsPatch, ...stagedPatch });
     }
