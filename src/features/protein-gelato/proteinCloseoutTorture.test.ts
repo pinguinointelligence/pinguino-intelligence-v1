@@ -268,7 +268,10 @@ describe('§16/§17 — realistic Protein torture across temperatures and strate
     if (mains.length === 2) {
       const a = proposed.items.find((i) => i.id === mains[0]!.id)!.planned_grams;
       const b = proposed.items.find((i) => i.id === mains[1]!.id)!.planned_grams;
-      expect(a / b).toBeCloseTo(2, 6);
+      // Executable recipes are whole-gram. For an odd 2:1 group total the
+      // deterministic largest-remainder split is necessarily within one gram
+      // of the exact ratio (for example 177/89), never floating-point 2.0.
+      expect(Math.abs(a - b * 2)).toBeLessThanOrEqual(1);
     }
 
     const committed = commitPreview(testCase.input, EMPTY, built.preview, AT, `torture-${testCase.key}`);

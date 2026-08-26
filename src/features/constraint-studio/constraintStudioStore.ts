@@ -673,7 +673,15 @@ function stageLockedConstraintFixPreview(args: LockedConstraintFixStageArgs): bo
 let activePiRunGeneration = 0;
 let activePiAbortController: AbortController | null = null;
 let activePiAbortGeneration = 0;
-export const PI_RECALCULATION_DEADLINE_MS = 15_000;
+/**
+ * Operational watchdog, not an Engine iteration budget. The exact served
+ * Protein four-Crown Direction vector (352/136/50/25) completes deterministically
+ * in 6.86 s / 335 MB on the idle repository host, but the production Worker
+ * exceeded 15 s twice while its authority calls completed in under 0.5 s.
+ * Thirty seconds preserves hard preemption while giving the measured browser
+ * runtime headroom; no solver limit or culinary rule is changed.
+ */
+export const PI_RECALCULATION_DEADLINE_MS = 30_000;
 
 const isCurrentPiRun = (generation: number): boolean => generation === activePiRunGeneration;
 
@@ -2362,6 +2370,26 @@ export async function createOptimizePreviewWithServerAuthority(
     productBehaviorSnapshots: validation.snapshots,
     technicalOnlyMainLineIds,
   };
+  let publishedResult: BuildPreviewResult | null = null;
+  let deferredRescueAdvice: RescueIngredientAdvice | null | undefined;
+  const publishDeferredRescueAdvice = (advice: RescueIngredientAdvice | null): void => {
+    if (publishedResult === null) {
+      deferredRescueAdvice = advice;
+      return;
+    }
+    if (
+      !isCurrentPiRun(ownedGeneration) ||
+      useRecipeStore.getState().draftRevision !== draft.revision
+    ) {
+      return;
+    }
+    const state = useConstraintStudioStore.getState();
+    const samePublishedResult = publishedResult.ok
+      ? state.preview?.baseFingerprint === publishedResult.preview.baseFingerprint ||
+        state.directionBestCandidate?.baseFingerprint === publishedResult.preview.baseFingerprint
+      : state.previewIssue?.code === publishedResult.code;
+    if (samePublishedResult) useConstraintStudioStore.setState({ rescueAdvice: advice });
+  };
   const computation = await runOptimizePreviewOffMainThread(
     {
       input: draft.input,
@@ -2370,6 +2398,8 @@ export async function createOptimizePreviewWithServerAuthority(
       options: optimizeOptions,
     },
     signal,
+    undefined,
+    publishDeferredRescueAdvice,
   );
   const rawProposal = computation.result;
   let proposedSnapshots: Record<string, ProductBehaviorSnapshot> | undefined;
@@ -2451,6 +2481,10 @@ export async function createOptimizePreviewWithServerAuthority(
     ...computation,
     createdAt: optimizeCreatedAt,
   });
+  publishedResult = rawProposal;
+  if (deferredRescueAdvice !== undefined) {
+    publishDeferredRescueAdvice(deferredRescueAdvice);
+  }
   if (useConstraintStudioStore.getState().recalculationTerminal?.state !== 'NO_CHANGE_NEEDED') {
     return;
   }

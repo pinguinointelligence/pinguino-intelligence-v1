@@ -21,15 +21,23 @@ import { describe, expect, it } from 'vitest';
 import { calculateRecipe, detectViolations, type RecipeInput } from '@/engine';
 import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
+import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
 import { parseCsv } from '@/lib/csv';
+import { buildCanonicalNewRecipeStarter } from '@/features/recipes/newRecipeStarter';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/contracts';
+import { productBehaviorSnapshotFingerprint } from '@/features/product-intelligence';
+import { mainEnvelopeSearchCeilingGrams } from '@/features/product-intelligence/mainEnvelope';
 import { verifyMainIngredientIdentity } from '@/features/formulation/mainIngredientContract';
 import {
+  bindProductBehaviorToPreview,
   buildBatchRescalePreview,
   buildOptimizePreview,
   commitPreview,
+  directionTargetFingerprint,
+  workingStateFingerprint,
 } from '@/features/constraint-studio/applyPipeline';
+import { computeOptimizePreviewResult } from '@/features/constraint-studio/optimizePreviewComputation';
 
 const MAPPER = readFileSync(
   resolve(process.cwd(), 'docs/ingredients/validation/mapper_basement.csv'),
@@ -55,7 +63,8 @@ const mapperRow = (id: string): IngredientRow => {
       if (['approved_for_base', 'approved_for_engines', 'is_active'].includes(field)) {
         return [field, raw.toLocaleLowerCase('en') === 'true'];
       }
-      if (field === 'verification_date' || field === 'last_reviewed_at') return [field, raw || null];
+      if (field === 'verification_date' || field === 'last_reviewed_at')
+        return [field, raw || null];
       return [field, raw];
     }),
   ) as unknown as IngredientRow;
@@ -72,7 +81,9 @@ const COCOA = 'PI-ING-001578';
 const VANILLA = 'PI-ING-000334';
 const COFFEE = 'PI-ING-000167';
 const BANANA = 'PI-ING-000345';
+const STRAWBERRY = 'PI-ING-001553';
 const CRANBERRY = 'PI-ING-001556';
+const WATERMELON = 'PI-ING-000405';
 
 const line = (
   id: string,
@@ -133,8 +144,7 @@ const ownerBananaCranberryFixture = (): RecipeInput => {
     ...item,
     planned_grams: Math.round((item.planned_grams * 1_000) / supportTotal),
   }));
-  const roundingDelta =
-    1_000 - scaledSupport.reduce((sum, item) => sum + item.planned_grams, 0);
+  const roundingDelta = 1_000 - scaledSupport.reduce((sum, item) => sum + item.planned_grams, 0);
   scaledSupport[0] = {
     ...scaledSupport[0]!,
     planned_grams: scaledSupport[0]!.planned_grams + roundingDelta,
@@ -149,11 +159,64 @@ const ownerBananaCranberryFixture = (): RecipeInput => {
   };
 };
 
+const servedOwnerBananaCranberryFixture = (): RecipeInput => {
+  const starter = buildCanonicalNewRecipeStarter({
+    visibleProductType: 'protein',
+    servingModeId: 'temp_minus_13',
+    formulationStrategy: 'eco',
+    targetBatchGrams: 1_000,
+  });
+  return {
+    mode: 'classic',
+    category: 'protein_gelato',
+    target_temperature_c: starter.targetTemperatureC,
+    target_batch_grams: 1_000,
+    machine_capacity_grams: null,
+    items: [
+      ...starter.items,
+      line('banana-main', BANANA, 352, 'main', 352 / 136),
+      line('cranberry-main', CRANBERRY, 136, 'main', 1),
+    ],
+    goals: {
+      formulation_strategy: 'eco',
+      direction_targets_active: true,
+      direction_targets: { sweetness: 0, softness: 0, creaminess: 0, flavor: 0 },
+    },
+  };
+};
+
+const servedFourCrownFixture = (): RecipeInput => {
+  const input = servedOwnerBananaCranberryFixture();
+  const servedSupportGrams: Record<string, number> = {
+    'new-recipe-0-milk_3_5': 522,
+    'new-recipe-1-cream_30': 114,
+    'new-recipe-2-PI-ING-000264': 81,
+    'new-recipe-3-water': 104,
+    'new-recipe-4-sucrose': 71,
+    'new-recipe-5-dextrose': 106,
+    'new-recipe-6-tara_gum': 2,
+  };
+  return {
+    ...input,
+    items: [
+      ...input.items.map((item) => ({
+        ...item,
+        planned_grams: servedSupportGrams[item.id] ?? item.planned_grams,
+        ...(item.id === 'banana-main'
+          ? { main_ratio_weight: 352 }
+          : item.id === 'cranberry-main'
+            ? { main_ratio_weight: 136 }
+            : {}),
+      })),
+      line('strawberry-main', STRAWBERRY, 50, 'main', 50),
+      line('watermelon-main', WATERMELON, 25, 'main', 25),
+    ],
+  };
+};
+
 const snapshotsFor = (input: RecipeInput): Record<string, ProductBehaviorSnapshot> => {
   const snaps = productBehaviorTestSnapshots(input);
-  for (const id of input.items
-    .filter((item) => item.lock_type === 'main')
-    .map((item) => item.id)) {
+  for (const id of input.items.filter((item) => item.lock_type === 'main').map((item) => item.id)) {
     if (snaps[id]) {
       snaps[id] = {
         ...snaps[id]!,
@@ -164,8 +227,112 @@ const snapshotsFor = (input: RecipeInput): Record<string, ProductBehaviorSnapsho
   return snaps;
 };
 
+const calibratedProteinFruitSnapshots = (
+  input: RecipeInput,
+): Record<string, ProductBehaviorSnapshot> => {
+  const snapshots = snapshotsFor(input);
+  for (const [lineId, subfamilyId, ceiling] of [
+    ['mainA', 'berry', 49.5],
+    ['mainB', 'banana', 17.1],
+  ] as const) {
+    snapshots[lineId] = {
+      ...snapshots[lineId]!,
+      familyId: 'fruit',
+      subfamilyId,
+      formId: 'fresh',
+      behaviorRole: 'MAIN_PROFILE_SPECIFIC',
+      mainClassification: 'MAIN_PROFILE_SPECIFIC',
+      mainCapability: 'MAIN_CAPABLE',
+      mainAuthority: 'CALIBRATED',
+      mainCalibrationLevel: 'EXACT_PRODUCT',
+      mainPolicyId: 'main-protein-fruit-combination-v2',
+      mainPolicyVersion: '2',
+      ecoFloorPercent: 10,
+      optimalCeilingPercent: ceiling,
+      hardLimitPercent: ceiling,
+      multiMainHardLimitPercent: 20.7,
+      mainEquivalentFactor: 1,
+      mainBasis: 'FRUIT_EQUIVALENT',
+      moduleEligibility: { ...snapshots[lineId]!.moduleEligibility, MAIN: 'eligible' },
+    } as ProductBehaviorSnapshot;
+  }
+  return snapshots;
+};
+
+const servedOwnerBananaCranberrySnapshots = (
+  input: RecipeInput,
+): Record<string, ProductBehaviorSnapshot> => {
+  const snapshots = snapshotsFor(input);
+  snapshots['banana-main'] = {
+    ...snapshots['banana-main']!,
+    familyId: 'fruit',
+    subfamilyId: 'banana',
+    formId: 'fresh',
+    behaviorRole: 'MAIN_PROFILE_SPECIFIC',
+    mainClassification: 'MAIN_PROFILE_SPECIFIC',
+    mainCapability: 'MAIN_CAPABLE',
+    mainAuthority: 'CALIBRATED',
+    mainCalibrationLevel: 'EXACT_PRODUCT',
+    mainPolicyId: 'main-protein-fruit-combination-v2',
+    mainPolicyVersion: '2',
+    ecoFloorPercent: 10,
+    optimalCeilingPercent: 17.1,
+    hardLimitPercent: 17.1,
+    multiMainHardLimitPercent: 20.7,
+    mainEquivalentFactor: 1,
+    mainBasis: 'FRUIT_EQUIVALENT',
+  } as ProductBehaviorSnapshot;
+  snapshots['cranberry-main'] = {
+    ...snapshots['cranberry-main']!,
+    familyId: 'fruit',
+    subfamilyId: 'berry',
+    formId: 'fresh',
+    behaviorRole: 'MAIN_PROFILE_SPECIFIC',
+    mainClassification: 'MAIN_PROFILE_SPECIFIC',
+    mainCapability: 'MAIN_CAPABLE_UNCALIBRATED',
+    mainAuthority: 'USER_HELD',
+    mainCalibrationLevel: 'NONE',
+    mainPolicyId: null,
+    mainPolicyVersion: null,
+    ecoFloorPercent: null,
+    optimalCeilingPercent: null,
+    hardLimitPercent: null,
+    multiMainHardLimitPercent: null,
+    mainEquivalentFactor: null,
+    mainBasis: null,
+  } as ProductBehaviorSnapshot;
+  return snapshots;
+};
+
+const servedFourCrownSnapshots = (
+  input: RecipeInput,
+): Record<string, ProductBehaviorSnapshot> => {
+  const snapshots = servedOwnerBananaCranberrySnapshots(input);
+  snapshots['strawberry-main'] = {
+    ...snapshots['strawberry-main']!,
+    familyId: 'fruit',
+    subfamilyId: 'berry',
+    formId: 'fresh',
+    behaviorRole: 'MAIN_PROFILE_SPECIFIC',
+    mainClassification: 'MAIN_PROFILE_SPECIFIC',
+    mainCapability: 'MAIN_CAPABLE',
+    mainAuthority: 'CALIBRATED',
+    mainCalibrationLevel: 'EXACT_PRODUCT',
+    mainPolicyId: 'main-protein-fruit-combination-v2',
+    mainPolicyVersion: '2',
+    ecoFloorPercent: 10,
+    optimalCeilingPercent: 49.5,
+    hardLimitPercent: 49.5,
+    multiMainHardLimitPercent: 20.7,
+    mainEquivalentFactor: 1,
+    mainBasis: 'FRUIT_EQUIVALENT',
+  } as ProductBehaviorSnapshot;
+  return snapshots;
+};
+
 const AT = '2026-08-23T12:00:00.000Z';
 const NONE = { byLineId: {} };
+const LOCAL_SERVED_RESULT_BUDGET_MS = 15_000;
 
 const previewOf = (ratio: number) => {
   const input = fixture(ratio);
@@ -243,6 +410,164 @@ describe.each([
 });
 
 describe('Protein Crown group authority regressions', () => {
+  it('repairs Protein support before searching the exact -13 ECO 2:1 Main envelope', () => {
+    const starter = buildCanonicalNewRecipeStarter({
+      visibleProductType: 'protein',
+      servingModeId: 'temp_minus_13',
+      formulationStrategy: 'eco',
+      targetBatchGrams: 2_000,
+    });
+    const input: RecipeInput = {
+      mode: 'classic',
+      category: 'protein_gelato',
+      target_temperature_c: starter.targetTemperatureC,
+      target_batch_grams: 2_000,
+      machine_capacity_grams: null,
+      items: [
+        ...starter.items,
+        {
+          ...line('mainA', STRAWBERRY, 300, 'main', 300),
+          user_intent_anchor_grams: 300,
+        },
+        {
+          ...line('mainB', BANANA, 150, 'main', 150),
+          user_intent_anchor_grams: 150,
+        },
+      ],
+      goals: {
+        formulation_strategy: 'eco',
+        direction_targets_active: true,
+        direction_targets: { sweetness: -2, softness: 2, creaminess: 0, flavor: 0 },
+      },
+    };
+    const snapshots = calibratedProteinFruitSnapshots(input);
+    const dairyIds = new Set(['PI-ING-000180', 'PI-ING-000203', 'PI-ING-000236', 'PI-ING-000237']);
+    for (const item of input.items) {
+      if (dairyIds.has(canonicalIngredientId(item.ingredient))) {
+        snapshots[item.id] = { ...snapshots[item.id]!, approvedLiquidDairyCarrier: true };
+      }
+    }
+
+    const raw = buildOptimizePreview(input, NONE, AT, {
+      productBehaviorSnapshots: snapshots,
+      technicalOnlyMainLineIds: [],
+    });
+    expect(raw.ok, JSON.stringify(raw)).toBe(true);
+    if (!raw.ok) return;
+    const proposalSnapshots = calibratedProteinFruitSnapshots(raw.preview.proposedInput);
+    for (const item of raw.preview.proposedInput.items) {
+      if (dairyIds.has(canonicalIngredientId(item.ingredient))) {
+        proposalSnapshots[item.id] = {
+          ...proposalSnapshots[item.id]!,
+          approvedLiquidDairyCarrier: true,
+        };
+      }
+    }
+    const built = bindProductBehaviorToPreview(raw, proposalSnapshots, snapshots, []);
+    expect(built.ok, JSON.stringify(built)).toBe(true);
+    if (!built.ok) return;
+    const mains = ['mainA', 'mainB'].map(
+      (lineId) => built.preview.proposedInput.items.find((item) => item.id === lineId)!,
+    );
+    expect(built.preview.mainObjective?.attempts).toBeGreaterThan(0);
+    expect(mains[0]!.planned_grams + mains[1]!.planned_grams).toBeLessThanOrEqual(414);
+    expect(mains[0]!.planned_grams / mains[1]!.planned_grams).toBeCloseTo(2, 6);
+    expect(verifyMainIngredientIdentity(input, built.preview.proposedInput)).toMatchObject({
+      ok: true,
+    });
+    const directionConsent = {
+      baseFingerprint: built.preview.baseFingerprint,
+      targetFingerprint: directionTargetFingerprint(input),
+      candidateFingerprint: workingStateFingerprint(
+        built.preview.proposedInput,
+        built.preview.nextConstraints,
+      ),
+    };
+    const proposalAuthorization = {
+      baseFingerprint: built.preview.baseFingerprint,
+      proposedFingerprint: workingStateFingerprint(
+        built.preview.proposedInput,
+        built.preview.nextConstraints,
+      ),
+      baseProductBehaviorFingerprint: productBehaviorSnapshotFingerprint(snapshots),
+      proposedProductBehaviorFingerprint: productBehaviorSnapshotFingerprint(proposalSnapshots),
+      snapshots: structuredClone(proposalSnapshots),
+    };
+    const committed = commitPreview(
+      input,
+      NONE,
+      built.preview,
+      '2026-08-23T12:01:00.000Z',
+      'apply-protein-stage-ordered-main-envelope',
+      [],
+      undefined,
+      null,
+      null,
+      directionConsent,
+      null,
+      snapshots,
+      [],
+      proposalAuthorization,
+    );
+    expect(committed, JSON.stringify(committed)).toMatchObject({ ok: true });
+  });
+
+  it('reduces an above-ceiling 2:1 Crown group to the safe 20.7% envelope', () => {
+    const base = fixture(2);
+    const input: RecipeInput = {
+      ...base,
+      items: base.items.map((item) =>
+        item.id === 'mainA'
+          ? { ...item, ingredient: ing(STRAWBERRY), planned_grams: 300, main_ratio_weight: 2 }
+          : item.id === 'mainB'
+            ? { ...item, ingredient: ing(BANANA), planned_grams: 150, main_ratio_weight: 1 }
+            : item.id === 'milk'
+              ? { ...item, planned_grams: item.planned_grams - 390 }
+              : item,
+      ),
+    };
+    const snapshots = calibratedProteinFruitSnapshots(input);
+    expect(mainEnvelopeSearchCeilingGrams({ recipe: input, snapshots, mode: 'optimal' })).toBe(207);
+    const raw = buildOptimizePreview(input, NONE, AT, {
+      productBehaviorSnapshots: snapshots,
+      technicalOnlyMainLineIds: [],
+    });
+    expect(raw.ok, JSON.stringify(raw)).toBe(true);
+    if (!raw.ok) return;
+    const rawMainGrams = raw.preview.proposedInput.items
+      .filter((item) => item.lock_type === 'main')
+      .reduce((sum, item) => sum + item.planned_grams, 0);
+    expect(
+      rawMainGrams,
+      JSON.stringify({ proof: raw.preview.mainObjective, rawMainGrams }),
+    ).toBeLessThanOrEqual(207);
+    const built = bindProductBehaviorToPreview(raw, snapshots);
+
+    expect(built.ok, JSON.stringify(built)).toBe(true);
+    if (!built.ok) return;
+    const strawberry = built.preview.proposedInput.items.find((item) => item.id === 'mainA')!;
+    const banana = built.preview.proposedInput.items.find((item) => item.id === 'mainB')!;
+    expect(strawberry.planned_grams + banana.planned_grams).toBeLessThanOrEqual(207);
+    expect(strawberry.planned_grams).toBeCloseTo(banana.planned_grams * 2, 0);
+    expect(strawberry.planned_grams + banana.planned_grams).toBeLessThan(450);
+    expect(
+      commitPreview(
+        input,
+        NONE,
+        built.preview,
+        '2026-08-23T12:01:00.000Z',
+        'apply-protein-above-envelope',
+        [],
+        undefined,
+        null,
+        null,
+        null,
+        null,
+        snapshots,
+      ),
+    ).toMatchObject({ ok: true });
+  });
+
   it('recalculates the exact off-batch Banana 352 g + Cranberry 136 g owner vector identically three times', () => {
     const input = ownerBananaCranberryFixture();
     const snapshots = snapshotsFor(input);
@@ -279,6 +604,66 @@ describe('Protein Crown group authority regressions', () => {
     expect(signature(successful[2]!)).toEqual(signature(successful[0]!));
   });
 
+  it('publishes the exact served -13 ECO Banana 352 g + Cranberry 136 g domain result before the UI watchdog', () => {
+    const input = servedOwnerBananaCranberryFixture();
+    const snapshots = servedOwnerBananaCranberrySnapshots(input);
+    expect(input.items.reduce((sum, item) => sum + item.planned_grams, 0)).toBe(1_488);
+
+    const started = performance.now();
+    const built = computeOptimizePreviewResult({
+      input,
+      constraints: NONE,
+      createdAt: AT,
+      options: {
+        productBehaviorSnapshots: snapshots,
+        technicalOnlyMainLineIds: [],
+      },
+    });
+    const runtimeMs = performance.now() - started;
+
+    expect(built.ok, JSON.stringify(built)).toBe(true);
+    if (built.ok) {
+      expect(built.preview.directionAssessment).toMatchObject({
+        active: true,
+        reached: false,
+        score: 9,
+      });
+      expect(verifyMainIngredientIdentity(input, built.preview.proposedInput)).toMatchObject({
+        ok: true,
+      });
+    }
+    expect(runtimeMs).toBeLessThan(LOCAL_SERVED_RESULT_BUDGET_MS);
+    console.info(
+      'SERVED_OWNER_PROTEIN ' +
+        JSON.stringify({
+          runtimeMs: Math.round(runtimeMs),
+          result: built,
+        }),
+    );
+  }, 120_000);
+
+  it('publishes the served four-Crown 352/136/50/25 domain result before the UI watchdog', () => {
+    const input = servedFourCrownFixture();
+    const started = performance.now();
+    const built = computeOptimizePreviewResult({
+      input,
+      constraints: NONE,
+      createdAt: AT,
+      options: {
+        productBehaviorSnapshots: servedFourCrownSnapshots(input),
+        technicalOnlyMainLineIds: [],
+      },
+    });
+    const runtimeMs = performance.now() - started;
+
+    expect(built.ok || built.code !== undefined).toBe(true);
+    expect(runtimeMs).toBeLessThan(LOCAL_SERVED_RESULT_BUDGET_MS);
+    console.info(
+      'SERVED_FOUR_CROWN_PROTEIN ' +
+        JSON.stringify({ runtimeMs: Math.round(runtimeMs), result: built }),
+    );
+  }, 120_000);
+
   it('runs a single Crown through the shared Main frontier instead of the Protein shortcut', () => {
     const base = fixture(1);
     const removedMain = base.items.find((item) => item.id === 'mainB')!;
@@ -299,9 +684,9 @@ describe('Protein Crown group authority regressions', () => {
 
     expect(built.ok, JSON.stringify(built)).toBe(true);
     if (!built.ok) return;
-    expect(built.preview.proposedInput.items.filter((item) => item.lock_type === 'main')).toHaveLength(
-      1,
-    );
+    expect(
+      built.preview.proposedInput.items.filter((item) => item.lock_type === 'main'),
+    ).toHaveLength(1);
     expect(built.preview.mainObjective?.attempts).toBeGreaterThan(0);
   });
 
@@ -366,9 +751,7 @@ describe('Protein Crown group authority regressions', () => {
       recipe.items
         .filter((item) => item.lock_type === 'main')
         .map((item) => [item.id, item.planned_grams, item.main_ratio_weight]);
-    expect(signature(second.preview.proposedInput)).toEqual(
-      signature(first.preview.proposedInput),
-    );
+    expect(signature(second.preview.proposedInput)).toEqual(signature(first.preview.proposedInput));
     expect(verifyMainIngredientIdentity(input, second.preview.proposedInput)).toMatchObject({
       ok: true,
     });
