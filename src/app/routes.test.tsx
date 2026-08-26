@@ -16,9 +16,8 @@ import { isValidElement, type ReactElement, type ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
-import { CustomerShellV1 } from '@/features/customer-shell/CustomerShellV1';
 import { customerShellCopy } from '@/features/customer-shell/customerShellCopy';
-import { LandingPage } from '@/pages/landing/LandingPage';
+import { RoleAwareEntryRoute } from '@/features/auth/RoleAwareEntryRoute';
 import { ProWorkspacePage } from '@/pages/pro/ProWorkspacePage';
 import { MachineProfilePage } from '@/pages/profile/MachineProfilePage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
@@ -73,14 +72,14 @@ const renderAt = (path: string) =>
 
 describe('Slice A routing contract', () => {
   it('serves the light landing page at the public root', () => {
-    expect(elementType('/')).toBe(LandingPage);
+    expect(elementType('/')).toBe(RoleAwareEntryRoute);
     const html = renderAt('/');
     expect(html).toContain(landingCopy.hero.headline);
     expect(html).toContain('href="/start"');
   });
 
   it('serves the customer flow at /start', () => {
-    expect(elementType('/start')).toBe(CustomerShellV1);
+    expect(elementType('/start')).toBe(RoleAwareEntryRoute);
     const html = renderAt('/start');
     expect(html).toContain(customerShellCopy.home.headline); // „Jakie lody dziś robimy?”
   });
@@ -126,7 +125,7 @@ describe('Slice A routing contract', () => {
   });
 
   it('registers the canonical plan hubs and keeps legacy addresses as redirects', () => {
-    expect(elementType('/home')).toBe(CustomerShellV1);
+    expect(elementType('/home')).toBe(RoleAwareEntryRoute);
     expect(elementType('/machine')).toBe(MachineProfilePage);
     for (const path of [
       '/products',

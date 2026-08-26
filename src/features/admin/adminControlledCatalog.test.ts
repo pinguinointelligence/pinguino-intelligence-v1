@@ -187,7 +187,7 @@ describe('staging Admin fixture safety', () => {
   it('requires the exact staging ref and never embeds a service-role key', () => {
     const seed = read('scripts', 'seed-staging-admin.mjs');
     expect(seed).toContain("const STAGING_REF = 'tunabqqrwabacxjcxxkz'");
-    expect(seed).toContain("const EMAIL = 'admin@admin.com'");
+    expect(seed).toContain("email: 'admin@admin.com'");
     expect(seed).toContain("required('SUPABASE_SERVICE_ROLE_KEY')");
     expect(seed).not.toMatch(/eyJ[a-zA-Z0-9_-]{20,}/);
   });

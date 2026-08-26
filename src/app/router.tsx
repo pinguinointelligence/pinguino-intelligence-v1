@@ -25,10 +25,8 @@ import { PiCalculatedActivationPreviewPage } from '@/pages/dev/PiCalculatedActiv
 import { OptimizationPreviewPage } from '@/pages/dev/OptimizationPreviewPage';
 import { BranchRecalculationPreviewPage } from '@/pages/dev/BranchRecalculationPreviewPage';
 import { PiMonitorDevPage } from '@/pages/dev/PiMonitorDevPage';
-import { LandingPage } from '@/pages/landing/LandingPage';
 import { MachineProfilePage } from '@/pages/profile/MachineProfilePage';
 import { ProWorkspacePage } from '@/pages/pro/ProWorkspacePage';
-import { CustomerShellV1 } from '@/features/customer-shell/CustomerShellV1';
 import { CommunityPage } from '@/pages/community/CommunityPage';
 import { CreatorHandleRoute, PublicRecipeRoute } from '@/pages/community/HandleRoute';
 import { CreatorHubPage } from '@/pages/community/CreatorHubPage';
@@ -36,6 +34,7 @@ import { PartnerPage } from '@/pages/community/PartnerPage';
 import { PartnerPublicRoute } from '@/pages/community/PartnerPublicRoute';
 import { AdminWorkspacePage } from '@/pages/admin/AdminWorkspacePage';
 import { AdminRouteGuard } from '@/features/admin/AdminRouteGuard';
+import { RoleAwareEntryRoute } from '@/features/auth/RoleAwareEntryRoute';
 import { SharedRecipePage } from '@/pages/community/SharedRecipePage';
 import { TopHundredPage } from '@/pages/community/TopHundredPage';
 import {
@@ -107,9 +106,9 @@ export function AppRoutes() {
     <Routes>
       {/* Slice A (owner-approved): public root is the LIGHT landing page (spec §6);
           the customer flow lives at /start behind the primary CTA. */}
-      <Route path="/" element={<LandingPage />} />
-      <Route path="/start" element={<CustomerShellV1 />} />
-      <Route path="/home" element={<CustomerShellV1 />} />
+      <Route path="/" element={<RoleAwareEntryRoute entry="root" />} />
+      <Route path="/start" element={<RoleAwareEntryRoute entry="start" />} />
+      <Route path="/home" element={<RoleAwareEntryRoute entry="home" />} />
       <Route path="/how-it-works" element={<HowItWorksPage />} />
       <Route path="/shop" element={<ShopPage />} />
       <Route path="/franchise" element={<FranchisePage />} />
