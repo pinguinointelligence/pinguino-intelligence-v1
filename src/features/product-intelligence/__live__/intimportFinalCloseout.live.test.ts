@@ -29,6 +29,7 @@ import {
   classifyProductSemantics,
   isProductSemanticResolvedForMapper,
   type ProductSemanticClassification,
+  type ProductSemanticEvidence,
   type ProductSemanticValidationError,
 } from '../productRecognition';
 import { buildMapperKnowledge } from '../mapperValueInference';
@@ -76,6 +77,8 @@ interface WebAttempt {
   cacheHit: boolean;
   calls: number;
   webCalls: number;
+  cachedOriginalCalls: number;
+  cachedOriginalWebCalls: number;
   inputTokens: number;
   outputTokens: number;
   model: string | null;
@@ -90,6 +93,7 @@ interface WebAttempt {
 
 interface SemanticAttempt {
   rowIndex: number;
+  evidence: ProductSemanticEvidence;
   httpStatus: number;
   calls: number;
   cacheHit: boolean;
@@ -98,6 +102,13 @@ interface SemanticAttempt {
   outputTokens: number;
   evidenceReceipt: string | null;
   error: string | null;
+  providerError: {
+    status: number | null;
+    type: string | null;
+    code: string | null;
+    param: string | null;
+    message: string | null;
+  } | null;
   validationErrors: ProductSemanticValidationError[];
   repairAttempted: boolean;
   repairAccepted: boolean;
@@ -259,6 +270,8 @@ describe.runIf(LIVE)(`INTIMPORT final closeout — live staging ${SCOPE}`, () =>
           };
         });
       const cacheHit = payload.cacheHit === true;
+      const reportedCalls = Number(payload.calls ?? 0);
+      const reportedWebCalls = Number(payload.webCalls ?? 0);
       const attempt: WebAttempt = {
         rowIndex: request.rowIndex,
         sourceProductId: row.sourceProductId,
@@ -267,8 +280,10 @@ describe.runIf(LIVE)(`INTIMPORT final closeout — live staging ${SCOPE}`, () =>
         requestedFields: [...request.fields],
         httpStatus: status,
         cacheHit,
-        calls: Number(payload.calls ?? 0),
-        webCalls: Number(payload.webCalls ?? 0),
+        calls: cacheHit ? 0 : reportedCalls,
+        webCalls: cacheHit ? 0 : reportedWebCalls,
+        cachedOriginalCalls: cacheHit ? reportedCalls : 0,
+        cachedOriginalWebCalls: cacheHit ? reportedWebCalls : 0,
         inputTokens: Number(payload.inputTokens ?? 0),
         outputTokens: Number(payload.outputTokens ?? 0),
         model: typeof payload.model === 'string' ? payload.model : null,
@@ -338,8 +353,22 @@ describe.runIf(LIVE)(`INTIMPORT final closeout — live staging ${SCOPE}`, () =>
       const validationErrors = (Array.isArray(payload.validationErrors)
         ? payload.validationErrors
         : []) as ProductSemanticValidationError[];
+      const providerErrorValue = objectValue(payload.providerError);
+      const providerError = Object.keys(providerErrorValue).length > 0
+        ? {
+            status: Number.isFinite(Number(providerErrorValue.status))
+              ? Number(providerErrorValue.status)
+              : null,
+            type: typeof providerErrorValue.type === 'string' ? providerErrorValue.type : null,
+            code: typeof providerErrorValue.code === 'string' ? providerErrorValue.code : null,
+            param: typeof providerErrorValue.param === 'string' ? providerErrorValue.param : null,
+            message:
+              typeof providerErrorValue.message === 'string' ? providerErrorValue.message : null,
+          }
+        : null;
       const attempt: SemanticAttempt = {
         rowIndex: request.rowIndex,
+        evidence: request.evidence,
         httpStatus: status,
         calls: Number(payload.calls ?? 0),
         cacheHit: payload.cacheHit === true,
@@ -349,6 +378,7 @@ describe.runIf(LIVE)(`INTIMPORT final closeout — live staging ${SCOPE}`, () =>
         evidenceReceipt:
           typeof payload.evidenceReceipt === 'string' ? payload.evidenceReceipt : null,
         error: typeof payload.error === 'string' ? payload.error : status >= 400 ? `HTTP_${status}` : null,
+        providerError,
         validationErrors,
         repairAttempted: payload.repairAttempted === true,
         repairAccepted: payload.repairAccepted === true,
@@ -562,6 +592,11 @@ describe.runIf(LIVE)(`INTIMPORT final closeout — live staging ${SCOPE}`, () =>
         (attempt) => attempt.error === 'semantic_output_rejected',
       ).length,
       semanticRejectionsByExactReason: validatorReasonCounts,
+      semanticProviderFailuresByExactReason: countBy(
+        semanticAttempts
+          .filter((attempt) => attempt.providerError !== null)
+          .map((attempt) => JSON.stringify(attempt.providerError)),
+      ),
       semanticRepairAttempted: semanticAttempts.filter((attempt) => attempt.repairAttempted).length,
       semanticRepairAccepted: semanticAttempts.filter((attempt) => attempt.repairAccepted).length,
       crossSkuEvidenceRejections: webAttempts.reduce(
@@ -651,6 +686,7 @@ describe.runIf(LIVE)(`INTIMPORT final closeout — live staging ${SCOPE}`, () =>
         semantic_rejection_repair_reason: semanticAttempt
           ? {
               error: semanticAttempt.error,
+              providerError: semanticAttempt.providerError,
               validationErrors: semanticAttempt.validationErrors,
               repairAttempted: semanticAttempt.repairAttempted,
               repairAccepted: semanticAttempt.repairAccepted,

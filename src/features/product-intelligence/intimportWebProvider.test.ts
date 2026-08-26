@@ -310,6 +310,12 @@ describe('provider runs server-side only', () => {
   it('degrades one product rather than failing the batch', () => {
     expect(edgeSource).toContain("error: 'provider_unavailable'");
   });
+
+  it('persists safe field-level provider request diagnostics for semantic failures', () => {
+    expect(edgeSource).toContain("error: 'semantic_provider_unavailable'");
+    expect(edgeSource).toContain('providerError.message.slice(0, 1_000)');
+    expect(edgeSource).toContain('providerError,');
+  });
 });
 
 /* ── §36 evidence merge ───────────────────────────────────────────────────── */

@@ -399,7 +399,23 @@ Deno.serve(async (request) => {
         }),
       });
       const payload = objectValue(await response.json());
-      if (!response.ok) throw new Error('provider_request_failed');
+      if (!response.ok) {
+        const providerError = objectValue(payload.error);
+        const failure = new Error('provider_request_failed') as Error & {
+          providerError: Record<string, unknown>;
+        };
+        failure.providerError = {
+          status: response.status,
+          type: typeof providerError.type === 'string' ? providerError.type : null,
+          code: typeof providerError.code === 'string' ? providerError.code : null,
+          param: typeof providerError.param === 'string' ? providerError.param : null,
+          message:
+            typeof providerError.message === 'string'
+              ? providerError.message.slice(0, 1_000)
+              : 'provider_request_failed',
+        };
+        throw failure;
+      }
       return payload;
     };
     const outputFrom = (payload: Record<string, unknown>): { text: string | null; value: unknown } => {
@@ -423,13 +439,15 @@ Deno.serve(async (request) => {
     let semanticPayload: Record<string, unknown>;
     try {
       semanticPayload = await requestSemantic(prompt);
-    } catch {
+    } catch (error) {
+      const providerError = objectValue(objectValue(error).providerError);
       const errorResult = {
         status: 'ERROR',
         calls: 1,
         model: semanticModel,
         latencyMs: Date.now() - startedAt,
         error: 'semantic_provider_unavailable',
+        providerError,
       };
       await finalizeSemanticAttempt(errorResult);
       return json({
@@ -439,6 +457,7 @@ Deno.serve(async (request) => {
         calls: 1,
         model: semanticModel,
         error: 'semantic_provider_unavailable',
+        providerError,
       });
     }
     const firstOutput = outputFrom(semanticPayload);
