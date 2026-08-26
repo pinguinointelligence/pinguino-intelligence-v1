@@ -4,6 +4,9 @@ import { describe, expect, it } from 'vitest';
 
 const read = (path: string) => readFileSync(resolve(process.cwd(), path), 'utf8');
 const migration = read('supabase/migrations/20260827100000_scanner_customer_added_products.sql');
+const recipeReadinessMigration = read(
+  'supabase/migrations/20260827101000_customer_added_recipe_readiness.sql',
+);
 const finalize = read('supabase/functions/product-scan-finalize/index.ts');
 const analyze = read('supabase/functions/product-scan-analyze/index.ts');
 const service = read('src/services/productScanner.ts');
@@ -36,6 +39,17 @@ describe('Scanner customer-added product authority', () => {
     expect(migration).toContain("product_kind='commercial_product'");
     expect(migration).toContain("visibility='shared'");
     expect(migration).not.toMatch(/update\s+public\.saved_recipes/i);
+  });
+
+  it('accepts an explicit null runtime Mapper identity and refreshes provisional readiness', () => {
+    expect(recipeReadinessMigration).toContain(
+      "coalesce(v_public_data#>'{productIntelligence,productBehaviorAuthority,runtimeMapperIngredientId}','null'::jsonb)='null'::jsonb",
+    );
+    expect(recipeReadinessMigration).toContain("product_kind='customer_provisional'");
+    expect(recipeReadinessMigration).toMatch(
+      /public\.classify_catalog_product_behavior_v2\(\s*v_version_id,'customer-added-runtime-null-v1'\s*\)/,
+    );
+    expect(recipeReadinessMigration).not.toMatch(/update\s+public\.mapper_basement/i);
   });
 
   it('uses native system capture and keeps desktop multi-upload/drop', () => {

@@ -311,6 +311,29 @@ describe('Mapper-only product catalog', () => {
     expect(load).not.toHaveBeenCalled();
   });
 
+  it('resolves an admitted customer-added CA from its own version without loading a Mapper row', async () => {
+    const load = vi.fn(async () => null);
+    const outcome = await resolveCurrentMapperCatalogSelection(
+      hit({
+        id: 'customer-added-cacao',
+        entityKind: 'commercial_product',
+        status: 'manual_unverified',
+        productCode: 'CA-ING-007141',
+        mappedIngredientId: null,
+        publicData: productProfile,
+      }),
+      'BASE',
+      load,
+    );
+    expect(outcome).toEqual({
+      ok: true,
+      kind: 'catalog_product',
+      articleId: 'CA-ING-007141',
+      productVersionId: 'mapper-version-1',
+    });
+    expect(load).not.toHaveBeenCalled();
+  });
+
   it('does not trust an arbitrary PI-shaped id without a matching current row', async () => {
     expect(currentMapperCatalogId(hit({ mappedIngredientId: 'PI-ING-999999' }), 'BASE')).toBe(
       'PI-ING-999999',

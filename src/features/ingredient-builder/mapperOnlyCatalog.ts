@@ -21,7 +21,7 @@ export type CatalogRelation = {
 };
 
 const canonicalPiId = /^PI-ING-\d{6}$/;
-const canonicalProductId = /^(?:PR|PM)-ING-\d{6}$/;
+const canonicalProductId = /^(?:PR|PM|CA)-ING-\d{6}$/;
 
 const objectAt = (value: unknown): Record<string, unknown> | null =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -74,7 +74,7 @@ export function currentCatalogArticleId(
 }
 
 /** Backwards-compatible PI helper. Commercial articles intentionally return
- * null: their recipe identity is their own PR/PM code. */
+ * null: their recipe identity is their own PR/PM/CA code. */
 export function currentMapperCatalogId(
   hit: CatalogProductSearchHit,
   context: MapperCatalogContext,
@@ -119,7 +119,7 @@ export type MapperCatalogSelection =
   | { ok: false; message: typeof MAPPER_ONLY_CATALOG_ERROR };
 
 /** Selection is fail-closed against the server search projection. PI reloads
- * its immutable Mapper row; PR/PM carry their immutable version profile and are
+ * its immutable Mapper row; PR/PM/CA carry their immutable version profile and are
  * subsequently revalidated by ProductBehavior before save/production. */
 export async function resolveCurrentMapperCatalogSelection(
   hit: CatalogProductSearchHit,
