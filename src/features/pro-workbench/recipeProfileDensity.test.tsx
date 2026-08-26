@@ -23,20 +23,27 @@ describe('Recipe profile visual density contract', () => {
     expect(axes).toContain('size-9');
   });
 
-  it('keeps Batch and Strategy in one equal-height desktop row with aligned helpers', () => {
+  it('shares the Batch and Strategy label, control, and helper grid rows', () => {
     const settings = read('WorkbenchSettingsLine.tsx');
     const theme = read('../../styles/theme-pro-light.css');
 
-    expect(settings).toContain(
-      "const compactFinalSettingsCell =\n  'relative grid min-w-0 grid-rows-[52px_auto] gap-1 p-1.5 lg:grid-rows-[40px_auto] 2xl:grid-rows-[43px_auto]'",
-    );
-    expect(settings.match(/compact\s*\?\s*compactFinalSettingsCell/g)).toHaveLength(2);
-    expect(settings.match(/className=\{settingsHelperClass\}/g)).toHaveLength(2);
+    expect(settings).toContain('profile-settings-final-row');
+    expect(settings.match(/data-settings-final-card=/g)).toHaveLength(2);
+    expect(settings.match(/data-settings-label=/g)).toHaveLength(2);
+    expect(settings.match(/data-settings-control=/g)).toHaveLength(2);
+    expect(settings.match(/data-settings-helper=/g)).toHaveLength(2);
     expect(settings).toContain('profile-settings-grid grid grid-cols-2 items-stretch gap-2');
     expect(settings).toContain('className="mb-2 flex min-h-6 items-center"');
 
     expect(theme).toMatch(
-      /@container right-pane \(max-width: 540px\)[\s\S]*?\.profile-settings-grid\s*\{\s*grid-template-columns: minmax\(0, 1fr\)/,
+      /\.profile-settings-final-row\s*\{[\s\S]*?grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);[\s\S]*?grid-template-rows: auto 3\.25rem auto;/,
+    );
+    expect(theme).toMatch(/\.profile-settings-final-card\s*\{[\s\S]*?grid-template-rows: subgrid;/);
+    expect(theme).toMatch(
+      /@container right-pane \(max-width: 540px\)[\s\S]*?\.profile-settings-final-row\s*\{[\s\S]*?grid-template-columns: minmax\(0, 1fr\);/,
+    );
+    expect(theme).toMatch(
+      /@media \(min-width: 1024px\)[\s\S]*?\.profile-settings-final-row\s*\{[\s\S]*?grid-template-rows: auto 2\.5rem auto;/,
     );
   });
 });
