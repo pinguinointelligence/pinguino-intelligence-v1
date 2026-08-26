@@ -90,50 +90,6 @@ export interface IngredientRowActions {
   moveDown?: (lineId: string) => void;
 }
 
-export function MainRatioEditor({
-  item,
-  actions,
-}: {
-  item: EffectiveRecipeItem;
-  actions: IngredientRowActions;
-}) {
-  return (
-    <label
-      className="inline-flex min-h-8 items-center gap-2 text-[10px] font-medium leading-none text-stone-500"
-      data-testid="article-panel-main-ratio"
-      data-visual-priority="quiet"
-    >
-      <span className="flex items-center gap-1">
-        Proporcja Main
-        <HoverPreview
-          text="Waga odzwierciedla bieżącą proporcję gramów. Możesz ją też ustawić ręcznie."
-          focusable
-          ariaLabel="Informacja o wadze proporcji"
-          maxWidthPx={260}
-          className="pro-focus-ring inline-grid size-3.5 place-items-center rounded-full border border-ink/12 text-[9px] font-semibold text-stone-400"
-        >
-          <span aria-hidden>?</span>
-        </HoverPreview>
-      </span>
-      <input
-        type="number"
-        min="0.1"
-        step="0.1"
-        inputMode="decimal"
-        value={item.main_ratio_weight ?? 1}
-        aria-label={`${item.ingredient.name} — waga proporcji Main`}
-        onChange={(event) => {
-          const value = Number(event.currentTarget.value);
-          if (Number.isFinite(value) && value > 0) {
-            actions.setMainRatioWeight?.(item.id, value);
-          }
-        }}
-        className="pro-focus-ring h-7 w-14 rounded-[7px] border border-ink/12 bg-white px-2 text-right font-mono text-[11px] leading-none tabular-nums text-ink"
-      />
-    </label>
-  );
-}
-
 type ArticleActionIconName = 'up' | 'down' | 'swap' | 'info' | 'availability' | 'standard';
 
 function ArticleActionIcon({ name }: { name: ArticleActionIconName }) {
@@ -435,9 +391,11 @@ export function RequiredRemovalDialog({
 function IngredientDataDialog({
   item,
   onClose,
+  navigation = 'close',
 }: {
   item: EffectiveRecipeItem;
   onClose: () => void;
+  navigation?: 'close' | 'back';
 }) {
   const estimated = !item.ingredient.is_verified || item.ingredient.confidence_score < 90;
   // Product information the manufacturer supplied. It is shown because it is
@@ -477,9 +435,11 @@ function IngredientDataDialog({
             type="button"
             onClick={onClose}
             className="pro-focus-ring grid size-10 shrink-0 place-items-center rounded-full border border-ink/12 text-lg text-ink"
-            aria-label="Zamknij dane składnika"
+            aria-label={
+              navigation === 'back' ? 'Wróć do opcji składnika' : 'Zamknij dane składnika'
+            }
           >
-            ×
+            <span aria-hidden>{navigation === 'back' ? '←' : '×'}</span>
           </button>
         </div>
         <dl
@@ -541,7 +501,7 @@ function RecipeRow({
   const [rowMenuOpen, setRowMenuOpen] = useState(false);
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   const [dialog, setDialog] = useState<
-    'substitute' | 'required' | 'required-confirm' | 'data' | null
+    'substitute' | 'required' | 'required-confirm' | 'data' | 'data-from-article' | null
   >(null);
   const closeLineMenus = () => {
     setRowMenuOpen(false);
@@ -603,10 +563,22 @@ function RecipeRow({
   const articlePanelContent = (
     <div className="text-ink" data-testid="article-panel-content">
       <div
-        className="grid grid-cols-[80px_repeat(3,minmax(0,1fr))] gap-1.5 rounded-[10px] border border-ink/10 bg-stone-50/55 p-1.5"
+        className="grid grid-cols-[36px_36px_80px_repeat(3,minmax(0,1fr))] gap-1.5 rounded-[10px] border border-ink/10 bg-stone-50/55 p-1.5"
         data-testid="article-panel-quick-actions"
         data-control-height="36"
       >
+        <ArticleActionButton
+          label="Przesuń wyżej"
+          icon="up"
+          disabled={!canMoveUp}
+          onClick={() => actions.moveUp?.(item.id)}
+        />
+        <ArticleActionButton
+          label="Przesuń niżej"
+          icon="down"
+          disabled={!canMoveDown}
+          onClick={() => actions.moveDown?.(item.id)}
+        />
         <div
           className="grid h-9 min-w-0 grid-cols-[minmax(0,1fr)_24px] overflow-hidden rounded-[8px] border border-gold/22 bg-white"
           data-testid="article-panel-role-control"
@@ -638,17 +610,22 @@ function RecipeRow({
           </HoverPreview>
           <HoverPreview
             text="Rola składnika. Możesz oznaczyć składnik jako główny."
-            focusable
-            ariaLabel="Informacja o roli składnika"
             maxWidthPx={260}
-            className="pro-focus-ring grid h-9 shrink-0 place-items-center border-l border-gold/16 bg-education-ivory/35 text-[9px] font-semibold text-stone-500 transition-colors hover:bg-education-ivory/70"
+            className="grid h-9 shrink-0 place-items-center border-l border-gold/16 bg-education-ivory/35 text-[9px] font-semibold text-stone-500 transition-colors hover:bg-education-ivory/70"
           >
-            <span
-              aria-hidden
-              className="grid size-3.5 place-items-center rounded-full border border-ink/12 bg-white"
+            <button
+              type="button"
+              aria-label="Informacja o roli składnika"
+              onClick={() => setDialog('data-from-article')}
+              className="pro-focus-ring grid h-full w-full place-items-center"
             >
-              ?
-            </span>
+              <span
+                aria-hidden
+                className="grid size-3.5 place-items-center rounded-full border border-ink/12 bg-white"
+              >
+                ?
+              </span>
+            </button>
           </HoverPreview>
         </div>
         <ArticleActionButton
@@ -678,33 +655,11 @@ function RecipeRow({
         </div>
       ) : null}
 
-      {isMain ? (
-        <div className="mt-1 flex justify-end border-b border-ink/[0.07] pb-1">
-          <MainRatioEditor item={item} actions={actions} />
-        </div>
-      ) : null}
-
       <div className="mt-2.5">
         <CustomerPriceEditor
           view={priceView}
           lineId={item.id}
           variant="article"
-          leadingActions={
-            <>
-              <ArticleActionButton
-                label="Przesuń wyżej"
-                icon="up"
-                disabled={!canMoveUp}
-                onClick={() => actions.moveUp?.(item.id)}
-              />
-              <ArticleActionButton
-                label="Przesuń niżej"
-                icon="down"
-                disabled={!canMoveDown}
-                onClick={() => actions.moveDown?.(item.id)}
-              />
-            </>
-          }
           footerAction={
             <button
               type="button"
@@ -1045,8 +1000,12 @@ function RecipeRow({
           onClose={() => setDialog(null)}
         />
       ) : null}
-      {dialog === 'data' ? (
-        <IngredientDataDialog item={item} onClose={() => setDialog(null)} />
+      {dialog === 'data' || dialog === 'data-from-article' ? (
+        <IngredientDataDialog
+          item={item}
+          navigation={dialog === 'data-from-article' ? 'back' : 'close'}
+          onClose={() => setDialog(null)}
+        />
       ) : null}
     </>
   );

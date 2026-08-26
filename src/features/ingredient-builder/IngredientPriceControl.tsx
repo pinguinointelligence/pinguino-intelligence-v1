@@ -96,7 +96,6 @@ export function CustomerPriceEditor({
   view,
   lineId,
   variant = 'default',
-  leadingActions,
   footerAction,
 }: {
   view?: IngredientPriceView;
@@ -105,8 +104,6 @@ export function CustomerPriceEditor({
    * hydrates asynchronously), so the marker composes this state instead. */
   lineId?: string;
   variant?: 'default' | 'article';
-  /** Compact article-only operations that share the price row (for example reorder). */
-  leadingActions?: ReactNode;
   /** Compact article-only action anchored to the far-right footer edge. */
   footerAction?: ReactNode;
 }) {
@@ -117,7 +114,6 @@ export function CustomerPriceEditor({
   const setPriceDirty = useCustomerPriceDirtyStore((state) => state.setDirty);
   const onSave = view?.onSave;
   const onReset = view?.onReset;
-  const hasLeadingActions = Boolean(leadingActions);
   /** Only a real keystroke can raise the flag — never a hydration. */
   const markDirtyFromInput = (nextRaw: string) => {
     if (!lineId) return;
@@ -135,22 +131,11 @@ export function CustomerPriceEditor({
           data-layout="compact-inline"
         >
           <div className="flex items-center gap-2">
-            {hasLeadingActions ? (
-              <div
-                className="grid w-[78px] shrink-0 grid-cols-2 gap-1.5"
-                data-testid="article-panel-order-actions"
-                data-control-height="36"
-              >
-                {leadingActions}
-              </div>
-            ) : null}
             <p className="min-w-0 flex-1 text-[10px] leading-snug text-stone-600">
               Moja cena wymaga składnika z kanonicznym ID oraz aktywnego konta.
             </p>
+            {footerAction}
           </div>
-          {footerAction ? (
-            <div className="mt-1.5 flex min-h-9 items-center justify-end">{footerAction}</div>
-          ) : null}
         </div>
       );
     }
@@ -208,35 +193,9 @@ export function CustomerPriceEditor({
         data-active-price-source={view.cost.source}
         data-layout="compact-inline"
       >
-        <div
-          className={cn(
-            'grid items-center gap-2',
-            hasLeadingActions
-              ? 'grid-cols-[auto_minmax(0,1fr)] sm:grid-cols-[auto_minmax(0,1fr)_auto]'
-              : 'grid-cols-[minmax(0,1fr)_auto]',
-          )}
-        >
-          {hasLeadingActions ? (
-            <div
-              className="grid w-[78px] grid-cols-2 gap-1.5"
-              data-testid="article-panel-order-actions"
-              data-control-height="36"
-            >
-              {leadingActions}
-            </div>
-          ) : null}
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold leading-none text-ink">Moja cena</p>
-            <p className="mt-1 truncate font-mono text-[9px] leading-none tabular-nums text-stone-500">
-              {base !== null ? `Bazowa: ${money(base)} ${view.cost.currency}/kg` : 'Bazowa: —'}
-            </p>
-          </div>
-          <div
-            className={cn(
-              'flex min-w-0 items-center justify-end gap-1.5',
-              hasLeadingActions && 'col-span-2 sm:col-span-1',
-            )}
-          >
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto]">
+          <p className="min-w-0 text-[11px] font-semibold leading-none text-ink">Moja cena</p>
+          <div className="flex min-w-0 items-center justify-end gap-1.5">
             <label className="flex h-9 w-[112px] shrink-0 items-center overflow-hidden rounded-[8px] border border-ink/12 bg-white focus-within:border-ink/35">
               <span className="sr-only">Cena za kg</span>
               <span className="flex h-full min-w-0 flex-1 items-center">
@@ -265,26 +224,31 @@ export function CustomerPriceEditor({
               Zapisz
             </button>
           </div>
+          <span className="hidden sm:block" aria-hidden />
+          {footerAction ? (
+            <div className="col-span-2 justify-self-end sm:col-span-1">{footerAction}</div>
+          ) : null}
         </div>
         {error ? <p className="mt-1 text-xs text-status-error">{error}</p> : null}
-        {own || footerAction ? (
-          <div className="mt-1.5 flex min-h-9 items-center justify-between gap-3">
-            {own ? (
-              <button
-                type="button"
-                aria-label={view.resetLabel ?? 'Przywróć cenę bazową'}
-                disabled={busy}
-                onClick={() => void reset()}
-                className="pro-focus-ring inline-flex h-9 items-center px-1 text-[10px] text-stone-600 underline decoration-stone-300 underline-offset-2 transition-colors hover:text-ink disabled:opacity-40"
-              >
-                {view.resetLabel ?? 'Przywróć cenę bazową'}
-              </button>
-            ) : (
-              <span />
-            )}
-            {footerAction}
-          </div>
-        ) : null}
+        <div className="mt-1.5 flex min-h-9 items-center gap-3">
+          {own ? (
+            <button
+              type="button"
+              aria-label={view.resetLabel ?? 'Przywróć cenę bazową'}
+              disabled={busy}
+              onClick={() => void reset()}
+              className="pro-focus-ring inline-flex h-9 items-center px-1 text-[10px] text-stone-600 underline decoration-stone-300 underline-offset-2 transition-colors hover:text-ink disabled:opacity-40"
+            >
+              {view.resetLabel ?? 'Przywróć cenę bazową'}
+            </button>
+          ) : null}
+          <p
+            className="truncate font-mono text-[9px] leading-none tabular-nums text-stone-500"
+            data-testid="article-panel-base-price"
+          >
+            {base !== null ? `Bazowa: ${money(base)} ${view.cost.currency}/kg` : 'Bazowa: —'}
+          </p>
+        </div>
       </div>
     );
   }

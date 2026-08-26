@@ -94,7 +94,6 @@ describe('mobile dispatches through the desktop action object', () => {
     expect(row).toContain('view={priceView}');
     expect(row).toContain('lineId={item.id}');
     expect(row).toContain('variant="article"');
-    expect(row).toContain('leadingActions={');
     expect(row).toContain('footerAction={');
     expect(mobile).not.toContain('<CustomerPriceEditor');
   });

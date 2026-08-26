@@ -128,6 +128,7 @@ describe('compact ingredient article panel', () => {
     expect(panel?.parentElement).toBe(document.body);
     const quickActions = panel?.querySelector('[data-testid="article-panel-quick-actions"]');
     expect(quickActions).not.toBeNull();
+    expect(quickActions?.className).toContain('grid-cols-[36px_36px_80px_repeat(3,minmax(0,1fr))]');
     expect(quickActions?.getAttribute('data-control-height')).toBe('36');
     expect(
       panel
@@ -137,11 +138,9 @@ describe('compact ingredient article panel', () => {
     const topIconActions = [
       ...(quickActions?.querySelectorAll<HTMLButtonElement>('[data-article-action="true"]') ?? []),
     ];
-    expect(topIconActions).toHaveLength(3);
+    expect(topIconActions).toHaveLength(5);
     expect(topIconActions.every((action) => action.className.includes('h-9'))).toBe(true);
-    const orderActions = panel?.querySelector('[data-testid="article-panel-order-actions"]');
-    expect(orderActions?.getAttribute('data-control-height')).toBe('36');
-    expect(orderActions?.querySelectorAll('[data-article-action="true"]')).toHaveLength(2);
+    expect(panel?.querySelector('[data-testid="article-panel-order-actions"]')).toBeNull();
     expect(panel?.querySelectorAll('[data-icon-family="gellatti-line"]')).toHaveLength(5);
     expect(panel?.querySelector('[data-testid="article-panel-header"]')).not.toBeNull();
     expect(panel?.textContent).not.toContain('Standardowy');
@@ -164,6 +163,19 @@ describe('compact ingredient article panel', () => {
     expect(data).not.toBeNull();
     expect(panel?.querySelector('[aria-label="Oznacz jako wymagany"]')).toBeNull();
     expect(unavailable).not.toBeNull();
+    expect(
+      [...(quickActions?.querySelectorAll<HTMLButtonElement>('button') ?? [])].map((button) =>
+        button.getAttribute('aria-label'),
+      ),
+    ).toEqual([
+      'Przesuń wyżej',
+      'Przesuń niżej',
+      'Ustaw jako główny',
+      'Informacja o roli składnika',
+      'Oznacz jako niedostępny',
+      'Znajdź zamiennik',
+      'Dane składnika',
+    ]);
     const remove = panel?.querySelector<HTMLButtonElement>('[aria-label="Usuń z receptury"]');
     expect(remove?.className).toContain('h-9');
     expect(remove?.className).toContain('text-status-error');
@@ -206,10 +218,15 @@ describe('compact ingredient article panel', () => {
     expect(badge?.textContent).toBe('Główny');
     expect(badge?.getAttribute('aria-label')).toBe('Usuń rolę główną');
     expect(badge?.className).toContain('h-9');
-    const ratio = panel?.querySelector('[data-testid="article-panel-main-ratio"]');
-    expect(ratio?.getAttribute('data-visual-priority')).toBe('quiet');
-    expect(ratio?.textContent).toContain('Proporcja Main');
-    expect(ratio?.textContent).not.toContain('Waga proporcji');
+    expect(panel?.querySelector('[data-testid="article-panel-main-ratio"]')).toBeNull();
+    expect(panel?.textContent).not.toContain('Proporcja Main');
+    expect(panel?.textContent).not.toContain('Waga odzwierciedla bieżącą proporcję gramów');
+    expect(panel?.querySelector('[aria-label*="waga proporcji Main"]')).toBeNull();
+    expect(
+      panel
+        ?.querySelector('[data-testid="article-panel-quick-actions"]')
+        ?.nextElementSibling?.querySelector('[data-testid="customer-price-editor"]'),
+    ).not.toBeNull();
     await click(badge ?? null);
     expect(rowActions.setCustomerRole).toHaveBeenCalledWith(baseItem.id, 'standard');
     expect(document.querySelector(`[data-testid="row-menu-${baseItem.id}"]`)).not.toBeNull();
@@ -305,6 +322,16 @@ describe('compact ingredient article panel', () => {
       document.querySelector(`[aria-label="Opcje składnika ${baseItem.ingredient.name}"]`),
     );
     const panelId = `[data-testid="row-menu-${baseItem.id}"]`;
+    const priceEditor = document.querySelector(`${panelId} [data-testid="customer-price-editor"]`);
+    const priceRow = priceEditor?.firstElementChild;
+    expect(
+      [...(priceRow?.querySelectorAll<HTMLButtonElement>('button') ?? [])].map((button) =>
+        button.getAttribute('aria-label'),
+      ),
+    ).toEqual(['Zapisz', 'Usuń z receptury']);
+    expect(
+      priceEditor?.querySelector('[data-testid="article-panel-base-price"]')?.textContent,
+    ).toContain('Bazowa: 3,50 EUR/kg');
 
     await click(document.querySelector(`${panelId} [aria-label="Zapisz"]`));
     expect(onSave).toHaveBeenCalledWith(4);
@@ -327,6 +354,56 @@ describe('compact ingredient article panel', () => {
     const list = data?.querySelector('[data-testid="ingredient-data-compact-list"]');
     expect(list).not.toBeNull();
     expect(list?.children).toHaveLength(6);
+    expect(data?.querySelector('[aria-label="Zamknij dane składnika"]')).not.toBeNull();
+  });
+
+  it('navigates from the Main help into data and back to the same desktop ingredient dialog', async () => {
+    await renderRow(actions());
+    await click(
+      document.querySelector(`[aria-label="Opcje składnika ${baseItem.ingredient.name}"]`),
+    );
+    const panel = document.querySelector(`[data-testid="row-menu-${baseItem.id}"]`);
+
+    await click(panel?.querySelector('[aria-label="Informacja o roli składnika"]') ?? null);
+    const data = document.querySelector('[data-testid="ingredient-data-dialog"]');
+    expect(data).not.toBeNull();
+    expect(document.querySelector(`[data-testid="row-menu-${baseItem.id}"]`)).toBe(panel);
+    expect(data?.querySelector('[aria-label="Zamknij dane składnika"]')).toBeNull();
+
+    await click(data?.querySelector('[aria-label="Wróć do opcji składnika"]') ?? null);
+    expect(document.querySelector('[data-testid="ingredient-data-dialog"]')).toBeNull();
+    expect(document.querySelector(`[data-testid="row-menu-${baseItem.id}"]`)).toBe(panel);
+
+    await click(panel?.querySelector('[aria-label="Zamknij opcje składnika"]') ?? null);
+    expect(document.querySelector(`[data-testid="row-menu-${baseItem.id}"]`)).toBeNull();
+  });
+
+  it('navigates from the Main help into data and back to the same mobile ingredient sheet', async () => {
+    await renderRow(actions());
+    await click(
+      document.querySelector(
+        `[aria-label="${baseItem.ingredient.name} — otwórz edycję składnika"]`,
+      ),
+    );
+    const sheet = document.querySelector(`[data-testid="ingredient-mobile-sheet-${baseItem.id}"]`);
+
+    await click(sheet?.querySelector('[aria-label="Informacja o roli składnika"]') ?? null);
+    const data = document.querySelector('[data-testid="ingredient-data-dialog"]');
+    expect(data).not.toBeNull();
+    expect(document.querySelector(`[data-testid="ingredient-mobile-sheet-${baseItem.id}"]`)).toBe(
+      sheet,
+    );
+
+    await click(data?.querySelector('[aria-label="Wróć do opcji składnika"]') ?? null);
+    expect(document.querySelector('[data-testid="ingredient-data-dialog"]')).toBeNull();
+    expect(document.querySelector(`[data-testid="ingredient-mobile-sheet-${baseItem.id}"]`)).toBe(
+      sheet,
+    );
+
+    await click(sheet?.querySelector('[aria-label="Zamknij edycję składnika"]') ?? null);
+    expect(
+      document.querySelector(`[data-testid="ingredient-mobile-sheet-${baseItem.id}"]`),
+    ).toBeNull();
   });
 
   it('opens the existing substitute flow as a responsive compact sheet', async () => {

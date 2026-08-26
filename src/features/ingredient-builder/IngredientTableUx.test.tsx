@@ -8,7 +8,6 @@ import { IngredientBuilder } from './IngredientBuilder';
 import { repairableCanonicalDuplicateCount } from './ingredientDuplicateRepair';
 import {
   IngredientRow,
-  MainRatioEditor,
   RequiredRemovalDialog,
   SubstituteDialog,
   type IngredientRowActions,
@@ -378,22 +377,12 @@ describe('Recipe ingredient table — locks, units and availability', () => {
     expect(html).toContain('data-control-capacity="10000g"');
   });
 
-  it('keeps the Main badge independent from the exact-gram lock and exposes an explicit ratio weight', () => {
+  it('keeps the Main badge independent from the exact-gram lock', () => {
     const html = renderRow({ ...baseItem, lock_type: 'main', main_ratio_weight: 2 });
     const gramButton =
       html.match(/<button[^>]*data-testid="row-lock-grams-[\s\S]*?<\/button>/)?.[0] ?? '';
     expect(gramButton).not.toContain('disabled');
     expect(gramButton).toContain('Zablokuj gramy');
-    const ratio = renderToStaticMarkup(
-      <MainRatioEditor
-        item={{ ...baseItem, lock_type: 'main', main_ratio_weight: 2 }}
-        actions={actions()}
-      />,
-    );
-    expect(ratio).toContain('waga proporcji Main');
-    expect(ratio).toContain('value="2"');
-    expect(ratio).toContain('aria-label="Informacja o wadze proporcji"');
-    expect(text(ratio)).not.toContain('Waga odzwierciedla bieżącą proporcję gramów');
 
     const lockedStandard = renderRow(baseItem, DEFAULT_INGREDIENT_ROW_META, true);
     expect(lockedStandard).toContain(`data-testid="row-main-slot-${baseItem.id}"`);
