@@ -54,6 +54,10 @@ const SERVING_OPTIONS: readonly { id: string; label: string }[] = [
 
 const compactSelect =
   'h-11 min-w-0 rounded-[10px] border border-ink/12 bg-white px-3 text-[13px] text-ink shadow-pro-e0 transition-colors hover:border-ink/35 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#f58a07] lg:h-10 lg:text-xs';
+const compactFinalSettingsCard = 'profile-settings-final-card min-w-0 rounded-[12px] border p-1.5';
+const compactFinalSettingsLabel = 'px-1 text-[10px] font-medium leading-tight text-stone-600';
+const compactSettingsHelper = 'px-1 text-[10px] leading-tight text-stone-600';
+const compactFinalSettingsControl = 'h-[52px] lg:h-10 2xl:h-[43px]';
 
 function LabeledSelect<T extends string>({
   label,
@@ -212,7 +216,6 @@ export function WorkbenchSettingsLine({
     }
     resizeBatchGrams(target);
   };
-
   return (
     <section
       className={cn(
@@ -231,7 +234,7 @@ export function WorkbenchSettingsLine({
         hardConflict ? 'conflict' : confirmed ? 'confirmed' : 'needs-confirmation'
       }
     >
-      <div className="mb-3 flex min-h-8 items-center">
+      <div className="mb-2 flex min-h-6 items-center">
         <div className="flex min-w-0 items-center gap-2">
           <h3 className="text-sm font-semibold text-ink">Ustawienia</h3>
           <span
@@ -257,7 +260,11 @@ export function WorkbenchSettingsLine({
         </div>
       </div>
 
-      <div className={cn(compact ? 'profile-settings-grid grid grid-cols-2 gap-2' : 'space-y-3')}>
+      <div
+        className={cn(
+          compact ? 'profile-settings-grid grid grid-cols-2 items-stretch gap-2' : 'space-y-3',
+        )}
+      >
         <div data-settings-cell="product-type">
           <LabeledSelect
             label={g.productTypeLabel}
@@ -366,76 +373,159 @@ export function WorkbenchSettingsLine({
           )}
         </div>
 
-        <div
-          className={cn(
-            'grid items-center gap-2 rounded-[12px] border px-3 py-2',
-            compact
-              ? 'relative min-h-[76px] grid-cols-1 pt-5 lg:min-h-[70px] lg:py-1.5 lg:pt-4'
-              : 'grid-cols-[6.8rem_minmax(0,1fr)]',
-            batchMismatch ? 'border-gold/35 bg-education-ivory/55' : 'border-ink/10 bg-white',
-          )}
-          data-testid="profile-batch-combined"
-          data-settings-cell="batch"
-        >
-          <span
-            className={cn(
-              'font-medium text-stone-600',
-              compact ? 'absolute left-3 top-1.5 text-[10px]' : 'text-xs',
-            )}
-          >
-            Partia
-          </span>
-          <div className="flex min-w-0 items-center justify-end gap-1.5">
-            <strong className="font-mono text-xs tabular-nums text-ink">
-              {actualBatchG.toLocaleString('pl-PL', { maximumFractionDigits: 1 })}
-            </strong>
-            <span className="text-[10px] text-stone-400">/</span>
-            <DeferredNumberInput
-              className={cn(compactSelect, 'w-20 text-right font-mono tabular-nums')}
-              value={
-                Number.isFinite(batchDisplay)
-                  ? Number(batchDisplay.toFixed(unit === 'g' ? 0 : 3))
-                  : 0
-              }
-              min={fromGrams(1, unit, store.category)}
-              decimals={unit === 'g' ? 0 : 3}
-              data-testid="workbench-batch"
-              aria-label="Docelowa partia"
-              onCommit={(next) => changeBatch(toGrams(next, unit, store.category))}
-            />
-            <select
-              className={cn(compactSelect, 'w-16')}
-              value={unit}
-              aria-label="Jednostka partii"
-              onChange={(event) => setUnit(event.currentTarget.value as BatchUnit)}
+        {compact ? (
+          <div className="profile-settings-final-row col-span-full">
+            <div
+              className={cn(
+                compactFinalSettingsCard,
+                batchMismatch ? 'border-gold/35 bg-education-ivory/55' : 'border-ink/10 bg-white',
+              )}
+              data-testid="profile-batch-combined"
+              data-settings-cell="batch"
+              data-settings-final-card="batch"
             >
-              {BATCH_UNITS.map((batchUnit) => (
-                <option key={batchUnit}>{batchUnit}</option>
-              ))}
-            </select>
-          </div>
-          <p className="col-span-full text-[10px] leading-relaxed text-stone-600">
-            Baza lodowa bez toppingu
-          </p>
-        </div>
+              <span className={compactFinalSettingsLabel} data-settings-label="batch">
+                Partia
+              </span>
+              <div
+                className={cn(
+                  compactFinalSettingsControl,
+                  'flex min-w-0 items-center justify-end gap-1.5',
+                )}
+                data-settings-control="batch"
+              >
+                <strong className="font-mono text-xs tabular-nums text-ink">
+                  {actualBatchG.toLocaleString('pl-PL', { maximumFractionDigits: 1 })}
+                </strong>
+                <span className="text-[10px] text-stone-400">/</span>
+                <DeferredNumberInput
+                  className={cn(
+                    compactSelect,
+                    compactFinalSettingsControl,
+                    'w-20 text-right font-mono tabular-nums',
+                  )}
+                  value={
+                    Number.isFinite(batchDisplay)
+                      ? Number(batchDisplay.toFixed(unit === 'g' ? 0 : 3))
+                      : 0
+                  }
+                  min={fromGrams(1, unit, store.category)}
+                  decimals={unit === 'g' ? 0 : 3}
+                  data-testid="workbench-batch"
+                  aria-label="Docelowa partia"
+                  onCommit={(next) => changeBatch(toGrams(next, unit, store.category))}
+                />
+                <select
+                  className={cn(compactSelect, compactFinalSettingsControl, 'w-16')}
+                  value={unit}
+                  aria-label="Jednostka partii"
+                  onChange={(event) => setUnit(event.currentTarget.value as BatchUnit)}
+                >
+                  {BATCH_UNITS.map((batchUnit) => (
+                    <option key={batchUnit}>{batchUnit}</option>
+                  ))}
+                </select>
+              </div>
+              <p className={compactSettingsHelper} data-settings-helper="batch">
+                Baza lodowa bez toppingu
+              </p>
+            </div>
 
-        <div
-          className="rounded-[12px] border border-ink/8 bg-stone-50/70 p-1.5"
-          data-settings-cell="strategy"
-        >
-          <LabeledSelect
-            label="Tryb"
-            value={store.formulation_strategy}
-            options={FORMULATION_STRATEGIES}
-            labelOf={(strategy) => STRATEGY_COPY[strategy].label}
-            onChange={changeStrategy}
-            testid="workbench-strategy"
-            stacked={compact}
-          />
-          <p className="mt-1 px-1 text-[10px] leading-relaxed text-stone-600">
-            {STRATEGY_COPY[store.formulation_strategy].description}
-          </p>
-        </div>
+            <div
+              className={cn(compactFinalSettingsCard, 'border-ink/8 bg-stone-50/70')}
+              data-settings-cell="strategy"
+              data-settings-final-card="strategy"
+            >
+              <label
+                className={compactFinalSettingsLabel}
+                htmlFor="workbench-strategy"
+                data-settings-label="strategy"
+              >
+                Tryb
+              </label>
+              <select
+                id="workbench-strategy"
+                className={cn(compactSelect, compactFinalSettingsControl, 'w-full')}
+                value={store.formulation_strategy}
+                aria-label="Tryb"
+                data-testid="workbench-strategy"
+                data-settings-control="strategy"
+                onChange={(event) =>
+                  changeStrategy(event.currentTarget.value as FormulationStrategy)
+                }
+              >
+                {FORMULATION_STRATEGIES.map((strategy) => (
+                  <option key={strategy} value={strategy}>
+                    {STRATEGY_COPY[strategy].label}
+                  </option>
+                ))}
+              </select>
+              <p className={compactSettingsHelper} data-settings-helper="strategy">
+                {STRATEGY_COPY[store.formulation_strategy].description}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div
+              className={cn(
+                'grid grid-cols-[6.8rem_minmax(0,1fr)] items-center gap-2 rounded-[12px] border px-3 py-2',
+                batchMismatch ? 'border-gold/35 bg-education-ivory/55' : 'border-ink/10 bg-white',
+              )}
+              data-testid="profile-batch-combined"
+              data-settings-cell="batch"
+            >
+              <span className="text-xs font-medium text-stone-600">Partia</span>
+              <div className="flex min-w-0 items-center justify-end gap-1.5">
+                <strong className="font-mono text-xs tabular-nums text-ink">
+                  {actualBatchG.toLocaleString('pl-PL', { maximumFractionDigits: 1 })}
+                </strong>
+                <span className="text-[10px] text-stone-400">/</span>
+                <DeferredNumberInput
+                  className={cn(compactSelect, 'w-20 text-right font-mono tabular-nums')}
+                  value={
+                    Number.isFinite(batchDisplay)
+                      ? Number(batchDisplay.toFixed(unit === 'g' ? 0 : 3))
+                      : 0
+                  }
+                  min={fromGrams(1, unit, store.category)}
+                  decimals={unit === 'g' ? 0 : 3}
+                  data-testid="workbench-batch"
+                  aria-label="Docelowa partia"
+                  onCommit={(next) => changeBatch(toGrams(next, unit, store.category))}
+                />
+                <select
+                  className={cn(compactSelect, 'w-16')}
+                  value={unit}
+                  aria-label="Jednostka partii"
+                  onChange={(event) => setUnit(event.currentTarget.value as BatchUnit)}
+                >
+                  {BATCH_UNITS.map((batchUnit) => (
+                    <option key={batchUnit}>{batchUnit}</option>
+                  ))}
+                </select>
+              </div>
+              <p className="col-span-full text-xs text-stone-600">Baza lodowa bez toppingu</p>
+            </div>
+
+            <div
+              className="rounded-[12px] border border-ink/8 bg-stone-50/70 p-1.5"
+              data-settings-cell="strategy"
+            >
+              <LabeledSelect
+                label="Tryb"
+                value={store.formulation_strategy}
+                options={FORMULATION_STRATEGIES}
+                labelOf={(strategy) => STRATEGY_COPY[strategy].label}
+                onChange={changeStrategy}
+                testid="workbench-strategy"
+              />
+              <p className="col-span-full text-xs text-stone-600">
+                {STRATEGY_COPY[store.formulation_strategy].description}
+              </p>
+            </div>
+          </>
+        )}
       </div>
       <NewRecipeConfirmationDialog
         open={pendingBaseProfile !== null}

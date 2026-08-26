@@ -27,7 +27,7 @@ function RegulatorRow({
 }) {
   return (
     <article
-      className="rounded-[16px] border border-ink/8 bg-white px-3 py-3 shadow-pro-e0"
+      className="rounded-[16px] border border-ink/8 bg-white px-3 py-2 shadow-pro-e0"
       data-testid={`profile-regulator-${id}`}
       data-regulator-state={disabled ? 'unavailable' : 'interactive'}
     >
@@ -52,9 +52,11 @@ function RegulatorRow({
             onSet(2);
           }
         }}
-        className="mt-2 grid grid-cols-[minmax(68px,1fr)_repeat(5,36px)_minmax(68px,1fr)] items-center gap-2"
+        className="mt-1 grid grid-cols-5 items-center justify-items-center gap-x-2 gap-y-1 min-[520px]:grid-cols-[minmax(68px,1fr)_repeat(5,36px)_minmax(68px,1fr)] min-[520px]:gap-2"
       >
-        <span className="text-[10px] leading-tight text-stone-600">{leftLabel}</span>
+        <span className="col-span-2 row-start-2 justify-self-start text-[10px] leading-tight text-stone-600 min-[520px]:col-span-1 min-[520px]:row-auto">
+          {leftLabel}
+        </span>
         {DETENTS.map((detent) => (
           <button
             key={detent}
@@ -65,7 +67,7 @@ function RegulatorRow({
             disabled={disabled}
             onClick={() => onSet(detent)}
             className={cn(
-              'pro-focus-ring grid size-9 place-items-center rounded-full border font-mono text-xs font-semibold tabular-nums transition-colors disabled:opacity-35',
+              'pro-focus-ring row-start-1 grid size-9 place-items-center rounded-full border font-mono text-xs font-semibold tabular-nums transition-colors disabled:opacity-35 min-[520px]:row-auto',
               position === detent
                 ? 'border-[#f58a07] bg-[#f58a07] text-white shadow-pro-e1'
                 : 'border-ink/12 bg-white text-ink hover:border-[#f58a07]/60',
@@ -74,7 +76,9 @@ function RegulatorRow({
             {detent > 0 ? `+${detent}` : detent}
           </button>
         ))}
-        <span className="text-right text-[10px] leading-tight text-stone-600">{rightLabel}</span>
+        <span className="col-span-2 col-start-4 row-start-2 justify-self-end text-right text-[10px] leading-tight text-stone-600 min-[520px]:col-span-1 min-[520px]:col-start-auto min-[520px]:row-auto">
+          {rightLabel}
+        </span>
       </div>
     </article>
   );
@@ -103,10 +107,13 @@ export function ProfileDirectionAxes({
 
   return (
     <section
-      className={cn('rounded-[18px] border border-ink/10 bg-white p-3 shadow-pro-e1', className)}
+      className={cn(
+        'rounded-[18px] border border-ink/10 bg-white px-3 py-2.5 shadow-pro-e1',
+        className,
+      )}
       data-testid="profile-direction-axes"
     >
-      <h3 className="mb-3 text-sm font-semibold text-ink">Dostosuj recepturę</h3>
+      <h3 className="mb-2 text-sm font-semibold text-ink">Dostosuj recepturę</h3>
       <div className="space-y-2">
         {(
           [
