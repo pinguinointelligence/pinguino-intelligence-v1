@@ -272,6 +272,32 @@ export function StudioEngineSurface({
   ]);
 
   useEffect(() => {
+    if (
+      !focusProductionAfterCollapseRef.current ||
+      !mobileViewport ||
+      mobileCockpitOpen ||
+      activeTab !== 'production' ||
+      production.session?.status !== 'in_progress'
+    ) {
+      return;
+    }
+
+    focusProductionAfterCollapseRef.current = false;
+    const frame = requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLElement>('[data-production-active="true"] [role="spinbutton"]')
+        ?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [
+    activeTab,
+    mobileCockpitOpen,
+    mobileViewport,
+    production.session?.sessionId,
+    production.session?.status,
+  ]);
+
+  useEffect(() => {
     if (!shouldActivateMobileCockpitModal(mobileCockpitOpen, mobileViewport)) return;
     const body = document.body;
     const previousOverflow = body.style.overflow;
@@ -309,16 +335,7 @@ export function StudioEngineSurface({
     return () => {
       document.removeEventListener('keydown', onKey);
       body.style.overflow = previousOverflow;
-      if (focusProductionAfterCollapseRef.current) {
-        focusProductionAfterCollapseRef.current = false;
-        requestAnimationFrame(() => {
-          document
-            .querySelector<HTMLElement>('[data-production-active="true"] [role="spinbutton"]')
-            ?.focus();
-        });
-      } else {
-        trigger?.focus();
-      }
+      trigger?.focus();
     };
   }, [activeTab, mobileCockpitOpen, mobileViewport]);
 

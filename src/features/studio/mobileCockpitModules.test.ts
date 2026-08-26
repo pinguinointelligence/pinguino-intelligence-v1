@@ -104,15 +104,17 @@ describe('mobile module selection', () => {
     ).toBe(false);
   });
 
-  it('hands Production focus off from the sheet cleanup, after the trigger fallback', () => {
+  it('hands Production focus off only after the sheet is closed and the active row exists', () => {
     const surface = readFileSync(new URL('./StudioEngineSurface.tsx', import.meta.url), 'utf8');
-    const cleanup = surface.slice(
-      surface.indexOf('return () => {', surface.indexOf('const onKey')),
+    const focusEffect = surface.slice(
+      surface.indexOf('!focusProductionAfterCollapseRef.current'),
+      surface.indexOf(
+        'useEffect(() => {',
+        surface.indexOf('!focusProductionAfterCollapseRef.current'),
+      ),
     );
-    expect(cleanup).toContain('focusProductionAfterCollapseRef.current');
-    expect(cleanup).toContain('[data-production-active="true"] [role="spinbutton"]');
-    expect(cleanup.indexOf('focusProductionAfterCollapseRef.current')).toBeLessThan(
-      cleanup.indexOf('trigger?.focus()'),
-    );
+    expect(focusEffect).toContain('mobileCockpitOpen');
+    expect(focusEffect).toContain("activeTab !== 'production'");
+    expect(focusEffect).toContain('[data-production-active="true"] [role="spinbutton"]');
   });
 });

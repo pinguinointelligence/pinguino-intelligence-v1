@@ -108,7 +108,7 @@ describe('responsive invariant', () => {
     const uses = surface.split('\n').filter((line) => line.includes('mobileViewport'));
     for (const line of uses) {
       expect(
-        /useState|setMobileViewport|shouldActivateMobileCockpitModal|mobileCockpitOpen && mobileViewport|shouldRevealProductionWeighingOnNarrowViewport|\[activeTab, mobileCockpitOpen, mobileViewport\]/.test(
+        /useState|setMobileViewport|shouldActivateMobileCockpitModal|mobileCockpitOpen && mobileViewport|!mobileViewport|shouldRevealProductionWeighingOnNarrowViewport|\[activeTab, mobileCockpitOpen, mobileViewport\]/.test(
           line,
         ) || line.trim() === 'mobileViewport,',
         line.trim(),
