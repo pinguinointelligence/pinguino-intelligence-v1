@@ -85,19 +85,21 @@ describe('mobile dispatches through the desktop action object', () => {
   it('the Main badge and the price write through the existing flows', () => {
     // The badge/actions route to the row's own `setRole`, which owns the canonical
     // main/standard authority (setCustomerRole → setMainIngredient / …).
-    expect(mobile).toContain("onSetRole('standard')");
-    expect(mobile).toContain("onSetRole('main')");
-    expect(row).toContain('onSetRole={setRole}');
+    expect(row).toContain("setRole('standard')");
+    expect(row).toContain("setRole('main')");
+    expect(row).toContain('panelContent={articlePanelContent}');
     // The price editor is the SAME component and the SAME view object, so
     // onSave/onReset remain the existing customer-price persistence.
-    expect(mobile).toContain('<CustomerPriceEditor view={priceView} lineId={item.id} />');
-    expect(row).toContain('priceView={resolvedPriceView}');
+    expect(row).toContain(
+      '<CustomerPriceEditor view={priceView} lineId={item.id} variant="article" />',
+    );
+    expect(mobile).not.toContain('<CustomerPriceEditor');
   });
 
-  it('the options list is one model rendered in two placements', () => {
-    expect(row.match(/const optionsList = \(/g)).toHaveLength(1);
-    expect(row).toContain('menu={optionsList}');
-    expect(mobile).toContain('menu: ReactNode');
+  it('the compact article panel is one model rendered in two placements', () => {
+    expect(row.match(/const articlePanelContent = \(/g)).toHaveLength(1);
+    expect(row).toContain('panelContent={articlePanelContent}');
+    expect(mobile).toContain('panelContent: ReactNode');
   });
 
   it('module navigation only chooses which existing surface is visible', () => {

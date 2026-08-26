@@ -1122,6 +1122,8 @@ export const copy = {
           open: 'Dane składnika',
           myPrice: 'Moja cena · W PRZYGOTOWANIU',
           estimatedHint: 'Część danych składnika jest szacowana.',
+          missingAmountHint:
+            'Brak zweryfikowanej ilości. Ustaw ilość odpowiednią dla swojej receptury.',
           source: 'Źródło',
           status: 'Status',
           confidence: 'Pewność',

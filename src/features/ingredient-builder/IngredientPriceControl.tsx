@@ -95,12 +95,14 @@ export function IngredientPriceCell({ view }: { view: IngredientPriceView }) {
 export function CustomerPriceEditor({
   view,
   lineId,
+  variant = 'default',
 }: {
   view?: IngredientPriceView;
   /** Lets the row show „you changed something here" while a typed price is
    * unsaved. Price is excluded from the §8 recipe signature on purpose (it
    * hydrates asynchronously), so the marker composes this state instead. */
   lineId?: string;
+  variant?: 'default' | 'article';
 }) {
   const initial = view?.cost.customerOverridePerKg ?? view?.cost.pricePerKg ?? null;
   const [raw, setRaw] = useState(initial === null ? '' : String(initial).replace('.', ','));
@@ -162,6 +164,7 @@ export function CustomerPriceEditor({
   const own = view.cost.source === 'customer_override';
   const base = view.cost.mapperPricePerKg;
   const activePrice = view.cost.pricePerKg;
+  const article = variant === 'article';
 
   return (
     <div
@@ -171,18 +174,24 @@ export function CustomerPriceEditor({
     >
       <div className="flex min-w-0 items-start justify-between gap-3">
         <p className="text-xs font-semibold text-ink">
-          {own
+          {article
             ? 'Moja cena'
-            : view.cost.source === 'mapper_reference'
-              ? 'Cena bazowa'
-              : 'Brak ceny'}
+            : own
+              ? 'Moja cena'
+              : view.cost.source === 'mapper_reference'
+                ? 'Cena bazowa'
+                : 'Brak ceny'}
         </p>
         <p className="shrink-0 font-mono text-[10px] leading-relaxed tabular-nums text-stone-500">
-          {own && base !== null
-            ? `Bazowa: ${money(base)} ${view.cost.currency}/kg`
-            : activePrice !== null
-              ? `${money(activePrice)} ${view.cost.currency}/kg`
-              : '—'}
+          {article
+            ? base !== null
+              ? `Bazowa: ${money(base)} ${view.cost.currency}/kg`
+              : 'Bazowa: —'
+            : own && base !== null
+              ? `Bazowa: ${money(base)} ${view.cost.currency}/kg`
+              : activePrice !== null
+                ? `${money(activePrice)} ${view.cost.currency}/kg`
+                : '—'}
         </p>
       </div>
       <label className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 text-xs text-stone-600">

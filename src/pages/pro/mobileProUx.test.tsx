@@ -185,33 +185,33 @@ describe('mobile ingredient editing sheet', () => {
     expect(header).not.toContain('truncate');
   });
 
-  it('keeps identity, help, price, Crown trigger and unified Main badge reachable', () => {
-    expect(controls).toContain('data-testid={`row-mobile-help-${item.id}`}');
-    expect(controls).toContain('data-testid={`row-mobile-price-${item.id}`}');
-    expect(controls).toContain('data-testid={`row-mobile-main-toggle-${item.id}`}');
-    expect(controls).toContain('testId={`row-mobile-main-trigger-${item.id}`}');
-    expect(controls).toContain('<MainRoleTrigger');
-    expect(controls).toContain('<MainRoleBadge');
-    // „Zmień/Zapisz" reuses the existing customer-price editor, not a new one.
-    expect(controls).toContain('<CustomerPriceEditor view={priceView} lineId={item.id} />');
+  it('keeps identity and category visible above the shared compact panel', () => {
+    expect(controls).toContain('categoryLabelPl(item.ingredient.category)');
+    expect(controls).toContain('{panelContent}');
+    expect(controls).not.toContain('row-mobile-main-toggle');
+    expect(controls).not.toContain('row-mobile-price');
+    expect(controls).not.toContain('row-mobile-help');
+    expect(controls).toContain('after:-inset-y-2.5');
   });
 
   it('puts the % and g steppers in the thumb zone, using the desktop control', () => {
     const thumb = controls.slice(controls.indexOf('THUMB ZONE'));
+    expect(thumb.match(/softDanger=\{missingAmount\}/g)).toHaveLength(2);
     expect(thumb).toContain('<DirectNumberControl');
     expect(thumb).toContain('widthPreset="fluid"');
     expect(thumb).toContain('lockSegment');
     expect(controls).toContain('sticky bottom-0');
   });
 
-  it('renders the SAME options list as the desktop ••• dialog', () => {
-    expect(controls).toContain('menu: ReactNode');
+  it('renders the SAME compact action model as the desktop ••• dialog', () => {
+    expect(controls).toContain('panelContent: ReactNode');
     const row = read('features', 'ingredient-builder', 'IngredientRow.tsx');
-    expect(row).toContain('const optionsList = (');
-    expect(row).toContain('menu={optionsList}');
+    expect(row).toContain('const articlePanelContent = (');
+    expect(row).toContain('panelContent={articlePanelContent}');
     // ONE definition, two consumers — never a second, divergent menu.
-    expect(row.match(/const optionsList = \(/g)).toHaveLength(1);
-    expect(row.match(/\{optionsList\}/g)).toHaveLength(2);
+    expect(row.match(/const articlePanelContent = \(/g)).toHaveLength(1);
+    expect(row.match(/\{articlePanelContent\}/g)).toHaveLength(2);
+    expect(controls).not.toContain('Więcej opcji składnika');
   });
 });
 

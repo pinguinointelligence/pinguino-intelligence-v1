@@ -79,3 +79,37 @@
   border-bottom-left-radius: var(--radius-pro-studio) !important;
   border-bottom-right-radius: var(--radius-pro-studio) !important;
 }
+
+/* Missing product amount — a calm, presentation-only nudge around the existing
+   numeric housing. The class disappears on the first positive amount, so no
+   animation state can outlive the canonical recipe value. */
+@keyframes ingredient-missing-amount-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--color-status-error) 8%, transparent),
+      0 2px 7px color-mix(in srgb, var(--color-status-error) 7%, transparent);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 2px color-mix(in srgb, var(--color-status-error) 15%, transparent),
+      0 4px 12px color-mix(in srgb, var(--color-status-error) 10%, transparent);
+  }
+}
+
+.ingredient-control-soft-danger {
+  border-color: color-mix(in srgb, var(--color-status-error) 38%, transparent);
+  background-color: color-mix(in srgb, var(--color-status-error) 4%, white);
+  animation: ingredient-missing-amount-pulse 4.2s ease-in-out infinite;
+}
+
+.ingredient-control-soft-danger:focus-within {
+  border-color: color-mix(in srgb, var(--color-status-error) 55%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ingredient-control-soft-danger {
+    animation: none;
+  }
+}

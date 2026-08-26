@@ -131,6 +131,29 @@ describe('customer price input', () => {
     expect(html).not.toContain('Przywróć cenę bazową');
   });
 
+  it('uses Moja cena as the stable article heading and keeps base price as quiet meta', () => {
+    const html = renderToStaticMarkup(
+      <CustomerPriceEditor
+        variant="article"
+        view={{
+          ...view(),
+          cost: {
+            ...view().cost,
+            pricePerKg: 1.2,
+            source: 'mapper_reference',
+            mapperPricePerKg: 1.2,
+            customerOverridePerKg: null,
+            overrideId: null,
+          },
+        }}
+      />,
+    );
+    expect(html).toContain('Moja cena');
+    expect(html).toContain('Bazowa: 1,20 EUR/kg');
+    expect(html).not.toContain('>Cena bazowa<');
+    expect(html).not.toContain('Przywróć cenę bazową');
+  });
+
   it('names catalog-price reset as deletion when no shared base price exists', () => {
     const html = renderToStaticMarkup(
       <CustomerPriceEditor view={{ ...view(), resetLabel: 'Usuń moją cenę' }} />,

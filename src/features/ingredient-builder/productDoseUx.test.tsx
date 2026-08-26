@@ -1,3 +1,6 @@
+// @vitest-environment jsdom
+import { act } from 'react';
+import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
@@ -49,38 +52,94 @@ const priceView: IngredientPriceView = {
 };
 
 describe('missing product-dose copy', () => {
-  it('shows the exact unknown-dose instruction only while the tracked Base product is below 1 g', () => {
-    const meta = {
-      ...DEFAULT_INGREDIENT_ROW_META,
-      dose: {
-        provenance: 'UNKNOWN' as const,
-        groupId: null,
-        suggestedPercent: null,
-        suggestedTotalGrams: null,
-      },
-    };
+  const missingDoseMeta = {
+    ...DEFAULT_INGREDIENT_ROW_META,
+    dose: {
+      provenance: 'UNKNOWN' as const,
+      groupId: null,
+      suggestedPercent: null,
+      suggestedTotalGrams: null,
+    },
+  };
+
+  it('replaces the inline notice with one compact hint and soft-danger controls only at zero', () => {
     const zero = renderToStaticMarkup(
       <IngredientRow
-        item={{ ...baseItem, planned_grams: 0 }}
+        item={{ ...baseItem, planned_grams: 0, effective_grams: 0 }}
         totalBatchG={calculated.total_batch_g}
         actions={actions}
-        meta={meta}
+        meta={missingDoseMeta}
       />,
     );
-    expect(zero).toContain('Brak zweryfikowanej ilości.');
-    expect(zero).toContain('Ustaw ilość odpowiednią dla swojej receptury.');
+    const visibleText = zero.replace(/<[^>]+>/g, '');
+    expect(visibleText).not.toContain('Brak zweryfikowanej ilości.');
+    expect(visibleText).not.toContain('Ustaw ilość odpowiednią dla swojej receptury.');
+    expect(zero).not.toContain(`data-testid="row-dose-missing-${baseItem.id}"`);
+    expect(zero).toContain(`data-testid="row-dose-missing-hint-${baseItem.id}"`);
+    expect(zero).toContain(`data-testid="row-mobile-dose-missing-hint-${baseItem.id}"`);
+    expect(zero).toContain('after:-inset-[14px]');
+    expect(zero.match(/data-soft-danger="true"/g)).toHaveLength(2);
     expect(zero).not.toContain('Brak zweryfikowanej dawki.');
     expect(zero).not.toContain('Podaj ilość zgodnie z zaleceniem producenta lub własną recepturą.');
 
     const entered = renderToStaticMarkup(
       <IngredientRow
-        item={{ ...baseItem, planned_grams: 1 }}
+        item={{ ...baseItem, planned_grams: 0.1, effective_grams: 0.1 }}
         totalBatchG={calculated.total_batch_g}
         actions={actions}
-        meta={meta}
+        meta={missingDoseMeta}
       />,
     );
-    expect(entered).not.toContain('Brak zweryfikowanej ilości.');
+    expect(entered).not.toContain(`data-testid="row-dose-missing-hint-${baseItem.id}"`);
+    expect(entered).not.toContain(`data-testid="row-mobile-dose-missing-hint-${baseItem.id}"`);
+    expect(entered).not.toContain('data-soft-danger="true"');
+  });
+
+  it('opens the exact premium tooltip on hover, keyboard focus and mobile-style tap', async () => {
+    (
+      globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
+    const host = document.createElement('div');
+    document.body.append(host);
+    const root = createRoot(host);
+    await act(async () => {
+      root.render(
+        <IngredientRow
+          item={{ ...baseItem, planned_grams: 0, effective_grams: 0 }}
+          totalBatchG={calculated.total_batch_g}
+          actions={actions}
+          meta={missingDoseMeta}
+        />,
+      );
+    });
+
+    const hint = host.querySelector<HTMLElement>(
+      `[data-testid="row-dose-missing-hint-${baseItem.id}"]`,
+    )!;
+    hint.getBoundingClientRect = () =>
+      ({ left: 120, right: 136, top: 40, bottom: 56, width: 16, height: 16 }) as DOMRect;
+    const exactCopy = 'Brak zweryfikowanej ilości. Ustaw ilość odpowiednią dla swojej receptury.';
+
+    await act(async () => hint.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })));
+    expect(document.querySelector('[role="tooltip"]')?.textContent).toBe(exactCopy);
+    await act(async () => hint.dispatchEvent(new MouseEvent('mouseout', { bubbles: true })));
+
+    await act(async () => hint.focus());
+    expect(document.querySelector('[role="tooltip"]')?.textContent).toBe(exactCopy);
+    await act(async () => hint.blur());
+
+    const mobileHint = host.querySelector<HTMLElement>(
+      `[data-testid="row-mobile-dose-missing-hint-${baseItem.id}"]`,
+    )!;
+    mobileHint.getBoundingClientRect = () =>
+      ({ left: 24, right: 40, top: 72, bottom: 88, width: 16, height: 16 }) as DOMRect;
+    await act(async () => mobileHint.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    const tappedTooltip = document.querySelector<HTMLElement>('[role="tooltip"]');
+    expect(tappedTooltip?.textContent).toBe(exactCopy);
+    expect(tappedTooltip?.className).toContain('bg-charcoal');
+
+    await act(async () => root.unmount());
+    host.remove();
   });
 });
 

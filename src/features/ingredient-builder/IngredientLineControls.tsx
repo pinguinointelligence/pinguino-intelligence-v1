@@ -1,20 +1,34 @@
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { copy } from '@/copy/en';
 import type { EffectiveRecipeItem } from '@/engine';
 import { cn } from '@/lib/cn';
 import { DialogShell } from '@/components/ui/DialogShell';
+import { HoverPreview } from '@/components/ui/HoverPreview';
 import { DirectNumberControl } from './DirectNumberControl';
 import { IngredientCategoryIcon } from './IngredientCategoryIcon';
 import { ingredientCategorySymbolFor } from './ingredientCategorySymbols';
-import { CustomerPriceEditor, type IngredientPriceView } from './IngredientPriceControl';
 import type { IngredientRowActions, IngredientRowLockView } from './IngredientRow';
-import type { IngredientCustomerRole, IngredientRowMeta } from './ingredientTableUx';
+import type { IngredientRowMeta } from './ingredientTableUx';
+import { categoryLabelPl } from './ingredientPresentation';
 
 const b = copy.studio.builder;
 const t = b.ingredientTable;
 
-const money = (value: number): string =>
-  value.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+/** Compact replacement for the former multi-line missing-amount notice. */
+export function MissingAmountHint({ testId }: { testId: string }) {
+  return (
+    <HoverPreview
+      text={t.data.missingAmountHint}
+      focusable
+      maxWidthPx={288}
+      ariaLabel={t.data.missingAmountHint}
+      testId={testId}
+      className="pointer-events-auto relative inline-grid size-4 shrink-0 place-items-center rounded-full border border-status-error/30 bg-status-error/[0.045] text-[10px] leading-none font-bold text-status-error transition-colors after:absolute after:-inset-[14px] after:content-[''] hover:bg-status-error/[0.08]"
+    >
+      <span aria-hidden>?</span>
+    </HoverPreview>
+  );
+}
 
 /** The one customer-facing Main presentation shared by every ingredient row. */
 export function MainRoleBadge({
@@ -39,7 +53,10 @@ export function MainRoleBadge({
       onClick={onClick}
       data-testid={testId}
       data-main-presentation="badge"
-      className={cn('pro-focus-ring', className)}
+      className={cn(
+        "pro-focus-ring relative after:absolute after:-inset-y-2.5 after:inset-x-0 after:content-['']",
+        className,
+      )}
     >
       Główny
     </button>
@@ -57,17 +74,30 @@ export function MainRoleBadge({
 }
 
 /** The inactive Main action; it occupies the same fixed row slot as MainRoleBadge. */
-export function MainRoleTrigger({ testId, onClick }: { testId: string; onClick: () => void }) {
+export function MainRoleTrigger({
+  testId,
+  onClick,
+  disabled = false,
+  ariaLabel = 'Ustaw składnik jako Główny',
+  title = 'Ustaw jako Główny',
+}: {
+  testId: string;
+  onClick: () => void;
+  disabled?: boolean;
+  ariaLabel?: string;
+  title?: string;
+}) {
   return (
     <button
       type="button"
-      aria-label="Ustaw składnik jako Główny"
+      aria-label={ariaLabel}
       aria-pressed="false"
-      title="Ustaw jako Główny"
+      title={title}
       onClick={onClick}
+      disabled={disabled}
       data-testid={testId}
       data-main-presentation="trigger"
-      className="pro-focus-ring inline-flex h-6 w-[57px] shrink-0 items-center justify-center rounded-lg border border-gold/28 bg-white text-gold transition-colors hover:border-gold/45 hover:bg-education-ivory"
+      className="pro-focus-ring relative inline-flex h-6 w-[57px] shrink-0 items-center justify-center rounded-lg border border-gold/28 bg-white text-gold transition-colors after:absolute after:-inset-y-2.5 after:inset-x-0 after:content-[''] hover:border-gold/45 hover:bg-education-ivory disabled:cursor-not-allowed disabled:border-ink/12 disabled:bg-stone-50 disabled:text-stone-400"
     >
       <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none">
         <path
@@ -99,6 +129,7 @@ export function MobileIngredientLine({
   unavailable,
   estimated,
   changed,
+  missingAmount,
   mainUnavailableReason,
   onSetMain,
   onOpen,
@@ -110,6 +141,7 @@ export function MobileIngredientLine({
   unavailable: boolean;
   estimated: boolean;
   changed: boolean;
+  missingAmount: boolean;
   mainUnavailableReason?: string | null;
   onSetMain: () => void;
   onOpen: () => void;
@@ -143,6 +175,9 @@ export function MobileIngredientLine({
           ) : null}
         </span>
         <span className="truncate text-[13px] font-semibold text-ink">{item.ingredient.name}</span>
+        {missingAmount ? (
+          <MissingAmountHint testId={`row-mobile-dose-missing-hint-${item.id}`} />
+        ) : null}
         {required ? (
           <span
             aria-label="Składnik wymagany"
@@ -196,11 +231,10 @@ function SheetSectionLabel({ children }: { children: ReactNode }) {
 /**
  * The mobile ingredient editing view (owner mobile UX §9/§10).
  *
- * Hierarchy is deliberate: identity, help and the rarely-changed metadata
- * (price, Main role, „Zmień/Zapisz") sit at the TOP; the frequently used
- * `%` / `g` steppers sit at the BOTTOM, inside the thumb zone, using exactly
- * the desktop control (`DirectNumberControl`) so the meaning of −, +, the
- * value and the lock never changes between form factors.
+ * Hierarchy is deliberate: identity sits at the top, the shared compact
+ * article actions occupy the middle, and the frequently used `%` / `g`
+ * steppers stay at the bottom inside the thumb zone. They reuse the desktop
+ * `DirectNumberControl`, so the meaning of −, +, value and lock never changes.
  */
 export function MobileIngredientSheet({
   item,
@@ -208,36 +242,22 @@ export function MobileIngredientSheet({
   actions,
   lock,
   meta,
-  isMain,
   gramsLocked,
-  mainUnavailableReason,
-  mainUserHeld,
-  priceView,
-  onSetRole,
-  onOpenData,
   onClose,
-  menu,
+  panelContent,
 }: {
   item: EffectiveRecipeItem;
   percent: number | null;
   actions: IngredientRowActions;
   lock?: IngredientRowLockView;
   meta: IngredientRowMeta;
-  isMain: boolean;
   gramsLocked: boolean;
-  mainUnavailableReason?: string | null;
-  mainUserHeld: boolean;
-  priceView?: IngredientPriceView;
-  onSetRole: (role: 'main' | IngredientCustomerRole) => void;
-  onOpenData: () => void;
   onClose: () => void;
-  /** The SAME options list the desktop ••• menu renders — never a second model. */
-  menu: ReactNode;
+  /** The SAME compact article panel the desktop ••• dialog renders. */
+  panelContent: ReactNode;
 }) {
-  const [priceOpen, setPriceOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
-  const cost = priceView?.cost;
   const rangeLocked = lock?.state === 'range';
+  const missingAmount = meta.dose.provenance === 'UNKNOWN' && item.planned_grams <= 0;
 
   return (
     <DialogShell
@@ -247,29 +267,27 @@ export function MobileIngredientSheet({
       onClose={onClose}
     >
       <div className="flex flex-col">
-        {/* ── Identity + low-frequency controls (top) ───────────────────────── */}
+        {/* ── Identity — the same compact header language as desktop. ──────── */}
         <div className="sticky top-0 z-10 border-b border-ink/10 bg-white px-4 py-3">
           <div className="flex min-w-0 items-start justify-between gap-2">
-            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-              {/* The DETAIL view must be able to show the whole catalog name —
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-stone-100 text-stone-600">
+                <IngredientCategoryIcon
+                  symbol={ingredientCategorySymbolFor({ category: item.ingredient.category })}
+                />
+              </span>
+              <div className="min-w-0">
+                {/* The DETAIL view must be able to show the whole catalog name —
                   real Mapper names ("CREAM 30% · Mlekovita Cream · Chilled")
                   are longer than a phone line, so this header wraps instead of
                   truncating. The collapsed list row still keeps one line. */}
-              <h2 className="text-base font-semibold break-words text-ink">
-                {item.ingredient.name}
-              </h2>
-              <button
-                type="button"
-                onClick={onOpenData}
-                aria-label={`${t.data.open}: ${item.ingredient.name}`}
-                title={t.data.open}
-                data-testid={`row-mobile-help-${item.id}`}
-                // 28 px ring, 44 px touch target — the compact mark must not
-                // shrink the tap area below the app's minimum.
-                className="pro-focus-ring relative grid size-7 shrink-0 place-items-center rounded-full border border-ink/15 text-xs font-semibold text-stone-600 after:absolute after:-inset-2 after:content-['']"
-              >
-                ?
-              </button>
+                <h2 className="text-base font-semibold break-words text-ink">
+                  {item.ingredient.name}
+                </h2>
+                <p className="mt-0.5 text-[11px] text-stone-500">
+                  {categoryLabelPl(item.ingredient.category)}
+                </p>
+              </div>
             </div>
             <button
               type="button"
@@ -280,100 +298,9 @@ export function MobileIngredientSheet({
               ×
             </button>
           </div>
-
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            {/* Main product — one badge presentation; role authority is unchanged. */}
-            {isMain ? (
-              <MainRoleBadge
-                testId={`row-mobile-main-toggle-${item.id}`}
-                ariaLabel="Składnik Główny"
-                title={
-                  mainUserHeld
-                    ? 'Główny (Twoja decyzja) — PI nie zmienia jego gramatury samo z siebie.'
-                    : 'Główny'
-                }
-                onClick={() => onSetRole('standard')}
-              />
-            ) : !mainUnavailableReason ? (
-              <button
-                type="button"
-                aria-label="Ustaw składnik jako Główny"
-                aria-pressed="false"
-                onClick={() => onSetRole('main')}
-                data-testid={`row-mobile-main-toggle-${item.id}`}
-                title="Ustaw jako Główny"
-                className="pro-focus-ring inline-flex min-h-11 shrink-0 items-center rounded-xl border border-ink/12 bg-white px-3 text-xs font-semibold text-ink"
-              >
-                Ustaw Główny
-              </button>
-            ) : null}
-
-            {/* Price — compact, and only expands into the existing editor on demand. */}
-            <button
-              type="button"
-              onClick={() => setPriceOpen((open) => !open)}
-              aria-expanded={priceOpen}
-              data-testid={`row-mobile-price-${item.id}`}
-              className="pro-focus-ring inline-flex min-h-11 min-w-0 items-center gap-1.5 rounded-xl border border-ink/12 bg-white px-3 text-xs font-semibold text-ink"
-            >
-              <span className="font-mono tabular-nums">
-                {cost?.pricePerKg == null ? '—' : `${money(cost.pricePerKg)} ${cost.currency}/kg`}
-              </span>
-              {cost?.source === 'customer_override' ? (
-                <span className="rounded-md bg-stone-200 px-1.5 py-px text-[10px] text-stone-700">
-                  Moja
-                </span>
-              ) : null}
-              <span aria-hidden className="text-stone-500">
-                {priceOpen ? 'Zamknij' : 'Zmień'}
-              </span>
-            </button>
-          </div>
-
-          {mainUnavailableReason && !isMain ? (
-            <p className="mt-2 text-xs leading-relaxed text-status-error" role="status">
-              {mainUnavailableReason}
-            </p>
-          ) : null}
-
-          {priceOpen ? (
-            <div className="mt-2">
-              <CustomerPriceEditor view={priceView} lineId={item.id} />
-            </div>
-          ) : null}
         </div>
 
-        {/* ── Context that must not be hidden, but is not a control ──────────── */}
-        <div className="px-4 py-3">
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-ink/10 bg-stone-50 px-3 py-2">
-            <SheetSectionLabel>Koszt linii</SheetSectionLabel>
-            <span className="font-mono text-xs font-semibold tabular-nums text-ink">
-              {priceView?.lineCost == null
-                ? 'Koszt niepełny'
-                : `${money(priceView.lineCost)} ${priceView.cost.currency}`}
-            </span>
-          </div>
-          {meta.dose.provenance === 'UNKNOWN' && item.planned_grams < 1 ? (
-            <p className="mt-2 text-xs leading-relaxed text-attention">
-              <strong className="block font-semibold">Brak zweryfikowanej ilości.</strong>
-              Ustaw ilość odpowiednią dla swojej receptury.
-            </p>
-          ) : null}
-
-          <details
-            className="mt-3 rounded-xl border border-ink/10"
-            open={moreOpen}
-            onToggle={(event) => setMoreOpen(event.currentTarget.open)}
-          >
-            <summary className="pro-focus-ring flex min-h-11 cursor-pointer items-center justify-between px-3 text-xs font-semibold text-ink">
-              Więcej opcji składnika
-              <span aria-hidden className="text-stone-500">
-                {moreOpen ? '−' : '+'}
-              </span>
-            </summary>
-            <div className="px-2 pb-2">{menu}</div>
-          </details>
-        </div>
+        <div className="px-4 py-3">{panelContent}</div>
 
         {/* ── THUMB ZONE — the most frequent action sits lowest ──────────────── */}
         <div className="sticky bottom-0 border-t border-ink/10 bg-white px-4 pt-3 pb-4">
@@ -398,6 +325,7 @@ export function MobileIngredientSheet({
                 onChange={(next) => actions.setPlannedPercent?.(item.id, next)}
                 testId={`row-mobile-percent-control-${item.id}`}
                 widthPreset="fluid"
+                softDanger={missingAmount}
                 lockSegment={{
                   pressed: lock?.percentLocked ?? false,
                   disabled: lock?.percentToggleDisabled ?? true,
@@ -427,6 +355,7 @@ export function MobileIngredientSheet({
                 onChange={(next) => actions.setPlannedGrams(item.id, Math.max(0, next))}
                 testId={`row-mobile-grams-control-${item.id}`}
                 widthPreset="fluid"
+                softDanger={missingAmount}
                 lockSegment={{
                   pressed: gramsLocked,
                   disabled: lock?.toggleDisabled,

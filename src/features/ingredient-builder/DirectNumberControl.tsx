@@ -21,6 +21,8 @@ interface DirectNumberControlProps {
   preservePrecision?: boolean;
   /** Publish valid typed drafts while focused; toppings use this to keep sibling views live. */
   publishValidDraft?: boolean;
+  /** Presentation-only missing-value emphasis; never changes numeric behavior. */
+  softDanger?: boolean;
   /** Fixed recipe-table capacity. `percent` fits 100.0%; `grams` fits 10000 g. */
   widthPreset?: 'fluid' | 'percent' | 'grams';
   /**
@@ -79,6 +81,7 @@ export function DirectNumberControl({
   ariaDescribedBy,
   preservePrecision = false,
   publishValidDraft = false,
+  softDanger = false,
   widthPreset = 'fluid',
   density = 'comfortable',
   lockSegment,
@@ -217,6 +220,7 @@ export function DirectNumberControl({
                 ? 'w-full grid-cols-[44px_minmax(80px,1fr)_44px_44px]'
                 : 'w-full grid-cols-[44px_minmax(80px,1fr)_44px]'),
         compact ? 'rounded-xl shadow-none' : null,
+        softDanger && 'ingredient-control-soft-danger',
         lockSegment?.pressed
           ? 'border-stone-400/70 bg-stone-100 shadow-[inset_0_1px_2px_rgb(16_17_19_/_0.06)]'
           : disabled && 'bg-stone-50',
@@ -229,6 +233,7 @@ export function DirectNumberControl({
         widthPreset === 'percent' ? '100.0%' : widthPreset === 'grams' ? '10000g' : 'fluid'
       }
       data-control-locked={lockSegment?.pressed ? 'true' : 'false'}
+      data-soft-danger={softDanger ? 'true' : undefined}
       data-value-padding="roomy"
     >
       <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">

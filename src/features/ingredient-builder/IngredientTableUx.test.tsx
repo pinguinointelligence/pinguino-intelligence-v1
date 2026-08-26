@@ -258,7 +258,7 @@ describe('Recipe ingredient table — quiet primary surface', () => {
     expect(html).not.toContain('data-crown-state');
   });
 
-  it('removes a blocked Main crown from the mobile sheet accessibility tree', () => {
+  it('renders the shared compact article content once inside the mobile sheet', () => {
     const sheet = renderToStaticMarkup(
       <MobileIngredientSheet
         item={baseItem}
@@ -266,49 +266,15 @@ describe('Recipe ingredient table — quiet primary surface', () => {
         actions={actions()}
         lock={lock(false)}
         meta={DEFAULT_INGREDIENT_ROW_META}
-        isMain={false}
         gramsLocked={false}
-        mainUnavailableReason="Ten składnik nie może być Główny."
-        mainUserHeld={false}
-        onSetRole={vi.fn()}
-        onOpenData={vi.fn()}
         onClose={vi.fn()}
-        menu={null}
+        panelContent={<div data-testid="shared-article-panel">Panel</div>}
       />,
     );
 
-    expect(sheet).not.toContain(`data-testid="row-mobile-main-toggle-${baseItem.id}"`);
-    expect(sheet).not.toContain('aria-label="Ustaw składnik jako Główny"');
-    expect(text(sheet)).toContain('Ten składnik nie może być Główny.');
-  });
-
-  it('keeps the mobile Main action keyboard-accessible without a Crown glyph', () => {
-    const sheet = renderToStaticMarkup(
-      <MobileIngredientSheet
-        item={baseItem}
-        percent={67}
-        actions={actions()}
-        lock={lock(false)}
-        meta={DEFAULT_INGREDIENT_ROW_META}
-        isMain={false}
-        gramsLocked={false}
-        mainUnavailableReason={null}
-        mainUserHeld={false}
-        onSetRole={vi.fn()}
-        onOpenData={vi.fn()}
-        onClose={vi.fn()}
-        menu={null}
-      />,
-    );
-    const action =
-      sheet.match(/<button[^>]*data-testid="row-mobile-main-toggle-[\s\S]*?<\/button>/)?.[0] ?? '';
-
-    expect(action).toContain('aria-label="Ustaw składnik jako Główny"');
-    expect(action).toContain('aria-pressed="false"');
-    expect(action).not.toContain('disabled');
-    expect(text(action)).toBe('Ustaw Główny');
-    expect(action).not.toContain('<svg');
-    expect(action).not.toContain('data-crown-state');
+    expect(sheet.match(/data-testid="shared-article-panel"/g)).toHaveLength(1);
+    expect(sheet).not.toContain('Więcej opcji składnika');
+    expect(sheet).toContain('data-placement="bottom"');
   });
 
   it('keeps a legacy Add-on line visible as an ambiguity, never as a new Base role', () => {
@@ -426,7 +392,8 @@ describe('Recipe ingredient table — locks, units and availability', () => {
     );
     expect(ratio).toContain('waga proporcji Main');
     expect(ratio).toContain('value="2"');
-    expect(text(ratio)).toContain('Waga odzwierciedla bieżącą proporcję gramów');
+    expect(ratio).toContain('aria-label="Informacja o wadze proporcji"');
+    expect(text(ratio)).not.toContain('Waga odzwierciedla bieżącą proporcję gramów');
 
     const lockedStandard = renderRow(baseItem, DEFAULT_INGREDIENT_ROW_META, true);
     expect(lockedStandard).toContain(`data-testid="row-main-slot-${baseItem.id}"`);

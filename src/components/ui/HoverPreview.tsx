@@ -26,6 +26,8 @@ export function HoverPreview({
   focusable = false,
   align = 'start',
   maxWidthPx,
+  ariaLabel,
+  testId,
 }: {
   text: string;
   children: ReactNode;
@@ -40,20 +42,28 @@ export function HoverPreview({
   align?: 'start' | 'end';
   /** A tighter content-specific cap than the default long-name preview. */
   maxWidthPx?: number;
+  /** Accessible name for compact informational marks whose visible copy is symbolic. */
+  ariaLabel?: string;
+  testId?: string;
 }) {
   const [anchor, setAnchor] = useState<{
     left?: number;
     right?: number;
-    top: number;
+    top?: number;
+    bottom?: number;
   } | null>(null);
   const id = useId();
 
   const show = (element: HTMLElement) => {
     const rect = element.getBoundingClientRect();
+    const placeAbove = window.innerHeight - rect.bottom < 120 && rect.top > 120;
+    const vertical = placeAbove
+      ? { bottom: Math.max(8, window.innerHeight - rect.top + 6) }
+      : { top: rect.bottom + 6 };
     setAnchor(
       align === 'end'
-        ? { right: Math.max(8, window.innerWidth - rect.right), top: rect.bottom + 6 }
-        : { left: Math.max(8, rect.left), top: rect.bottom + 6 },
+        ? { right: Math.max(8, window.innerWidth - rect.right), ...vertical }
+        : { left: Math.max(8, rect.left), ...vertical },
     );
   };
 
@@ -67,8 +77,20 @@ export function HoverPreview({
         onMouseLeave={() => setAnchor(null)}
         onFocus={(event) => show(event.currentTarget)}
         onBlur={() => setAnchor(null)}
+        onClick={focusable ? (event) => show(event.currentTarget) : undefined}
+        onKeyDown={
+          focusable
+            ? (event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                show(event.currentTarget);
+              }
+            : undefined
+        }
+        aria-label={ariaLabel}
         aria-describedby={anchor ? id : undefined}
         data-hover-preview="true"
+        data-testid={testId}
       >
         {children}
       </span>
@@ -81,6 +103,7 @@ export function HoverPreview({
                 left: anchor.left,
                 right: anchor.right,
                 top: anchor.top,
+                bottom: anchor.bottom,
                 maxWidth: maxWidthPx
                   ? `min(${maxWidthPx}px, calc(100vw - 16px))`
                   : 'min(30rem, calc(100vw - 16px))',
