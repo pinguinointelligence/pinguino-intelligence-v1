@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 const read = (path: string) => readFileSync(resolve(process.cwd(), path), 'utf8');
 const migration = read('supabase/migrations/20260827100000_scanner_customer_added_products.sql');
 const finalize = read('supabase/functions/product-scan-finalize/index.ts');
+const analyze = read('supabase/functions/product-scan-analyze/index.ts');
 const ui = read('src/features/product-scanner/LiveProductScanner.tsx');
 
 describe('Scanner customer-added product authority', () => {
@@ -49,6 +50,23 @@ describe('Scanner customer-added product authority', () => {
     expect(ui).toContain("['alcoholAbv', 'Alkohol ABV', 'decimal']");
     expect(ui).toContain("['cocoaSolidsPercent', 'Masa kakaowa', 'decimal']");
     expect(ui).toContain("patchReview('productionDeclarations'");
+  });
+
+  it('accepts every granular first-pass evidence field sent by the customer UI', () => {
+    for (const field of [
+      'nutrition_basis',
+      'nutrition_energyKcal',
+      'nutrition_fat',
+      'nutrition_carbohydrate',
+      'nutrition_sugars',
+      'nutrition_protein',
+      'nutrition_salt',
+      'allergen_confirmation',
+      'production_declarations',
+    ]) {
+      expect(ui).toContain(`'${field}'`);
+      expect(analyze).toContain(`'${field}'`);
+    }
   });
 
   it('runs family resolution before shared profile/Mapper completion', () => {

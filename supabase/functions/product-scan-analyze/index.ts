@@ -47,8 +47,16 @@ const SCANNER_MISSING_FIELDS = new Set([
   'brand_or_unbranded',
   'net_quantity',
   'nutrition',
+  'nutrition_basis',
+  'nutrition_energyKcal',
+  'nutrition_fat',
+  'nutrition_carbohydrate',
+  'nutrition_sugars',
+  'nutrition_protein',
+  'nutrition_salt',
   'ingredientsText',
   'allergensText',
+  'allergen_confirmation',
   'production_declarations',
 ]);
 const objectValue = (value: unknown): Record<string, unknown> =>
