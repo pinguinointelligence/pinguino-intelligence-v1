@@ -49,6 +49,7 @@ import {
   productBehaviorIssuesSupportWorkingCopyRefresh,
   refreshCurrentRecipeBehaviorWorkingCopy,
 } from '@/features/product-intelligence/refreshRecipeBehaviorWorkingCopy';
+import { useProCoreAccessStore } from '@/features/pro-core/proCoreAccessStore';
 
 const r = copy.proWorkbar.recalcPanel;
 const d = constraintStudioCopy.diagnosis;
@@ -658,6 +659,9 @@ export function ProRecalcPanel({
   const history = useConstraintStudioStore((s) => s.history);
   const recalculationTerminal = useConstraintStudioStore((s) => s.recalculationTerminal);
   const constraints = useConstraintStudioStore((s) => s.constraints);
+  const canViewTechnicalDetails = useProCoreAccessStore(
+    (s) => s.effectiveAccess?.canAdmin === true,
+  );
   // Actions are stable references — reading them once via getState is safe.
   const store = useConstraintStudioStore.getState();
 
@@ -785,6 +789,8 @@ export function ProRecalcPanel({
   };
 
   if (!open) return null;
+  const customerPreviewOpen = preview !== null && recalculationTerminal?.state === 'PREVIEW_READY';
+  const dialogLabel = customerPreviewOpen ? 'Proponowane zmiany receptury' : r.title;
 
   // One-screen workbench (owner 2026-07-24): the recalculation is a COMPACT OVERLAY
   // (520–720 px), never a giant page section. Zastosuj closes the overlay — the
@@ -806,24 +812,32 @@ export function ProRecalcPanel({
         tabIndex={-1}
         role="dialog"
         aria-modal="true"
-        aria-label={r.title}
+        aria-label={dialogLabel}
         data-testid="pro-recalc-panel"
         data-terminal-state={recalculationTerminal?.state ?? 'IDLE'}
-        className="absolute left-1/2 top-1/2 max-h-[88vh] w-[min(680px,calc(100vw-1.5rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-white/10 bg-shell px-4 py-4 text-ivory shadow-pro-md [--color-charcoal:#191a1d] [--color-ivory:#efe9dc] [--color-shell:#191a1d] [color-scheme:dark] sm:px-5 sm:py-5"
+        className={
+          customerPreviewOpen
+            ? 'absolute top-1/2 left-1/2 max-h-[92dvh] w-[min(680px,calc(100vw-1rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[18px] border border-black/10 bg-white px-3 py-3 text-ivory shadow-pro-md [--color-charcoal:#191a1d] [--color-ivory:#202124] [--color-shell:#f5f3ee] [color-scheme:light] sm:max-h-[88vh] sm:w-[min(680px,calc(100vw-1.5rem))] sm:px-4 sm:py-4'
+            : 'absolute top-1/2 left-1/2 max-h-[88vh] w-[min(680px,calc(100vw-1.5rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-white/10 bg-shell px-4 py-4 text-ivory shadow-pro-md [--color-charcoal:#191a1d] [--color-ivory:#efe9dc] [--color-shell:#191a1d] [color-scheme:dark] sm:px-5 sm:py-5'
+        }
       >
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs font-medium tracking-label text-ivory/60 uppercase">{r.title}</p>
-          <button
-            type="button"
-            onClick={closeOrCancel}
-            data-testid="pro-recalc-close"
-            className="min-h-11 rounded-lg border border-ivory/20 px-3 py-1.5 text-xs font-medium text-ivory transition-colors hover:border-ivory/40 disabled:cursor-wait disabled:opacity-50"
-          >
-            {recalculationTerminal?.state === 'WORKING' ? 'Anuluj' : r.close}
-          </button>
-        </div>
+        {!customerPreviewOpen ? (
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-medium tracking-label text-ivory/60 uppercase">
+              {dialogLabel}
+            </p>
+            <button
+              type="button"
+              onClick={closeOrCancel}
+              data-testid="pro-recalc-close"
+              className="min-h-11 rounded-lg border border-ivory/20 px-3 py-1.5 text-xs font-medium text-ivory transition-colors hover:border-ivory/40 disabled:cursor-wait disabled:opacity-50"
+            >
+              {recalculationTerminal?.state === 'WORKING' ? 'Anuluj' : r.close}
+            </button>
+          </div>
+        ) : null}
 
-        <div className="mt-3 space-y-3">
+        <div className={customerPreviewOpen ? 'space-y-3' : 'mt-3 space-y-3'}>
           {recalculationTerminal?.state === 'WORKING' ? (
             <p
               className="text-sm leading-relaxed text-ivory/80"
@@ -954,6 +968,8 @@ export function ProRecalcPanel({
           {preview && recalculationTerminal?.state === 'PREVIEW_READY' ? (
             <ConstraintPreviewCard
               preview={preview}
+              showCloseControl
+              showTechnicalDetails={canViewTechnicalDetails}
               onApply={() => {
                 void (async () => {
                   await applyPreviewWithServerAuthority();

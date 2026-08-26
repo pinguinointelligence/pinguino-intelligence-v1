@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/cn';
 
 /**
@@ -72,18 +73,19 @@ export function DialogShell({
     };
   }, []);
 
-  return (
+  const overlay = (
     <div
       className={cn(
         'fixed inset-0 z-[70] bg-black/45',
         placement === 'bottom'
           ? 'flex flex-col justify-end p-0'
           : placement === 'responsive'
-            ? 'flex flex-col justify-end p-0 sm:grid sm:place-items-center sm:p-4'
+            ? 'flex flex-col justify-end p-0 sm:flex-row sm:items-center sm:justify-center sm:p-4'
             : 'grid place-items-center p-[var(--pro-dialog-gutter)] sm:p-4',
       )}
       data-testid={testId}
       data-placement={placement}
+      data-overlay-scope="viewport"
     >
       <section
         ref={dialogRef}
@@ -104,4 +106,11 @@ export function DialogShell({
       </section>
     </div>
   );
+
+  // A dialog mounted inside a transformed/contained workspace column can make
+  // `position: fixed` relative to that column instead of the browser viewport.
+  // Portalling the one shared shell to <body> keeps every overlay uniformly
+  // dimmed and centered above the complete two-column application. SSR keeps
+  // the same markup inline until a document exists.
+  return typeof document === 'undefined' ? overlay : createPortal(overlay, document.body);
 }

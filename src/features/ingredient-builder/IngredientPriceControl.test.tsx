@@ -150,6 +150,9 @@ describe('customer price input', () => {
     );
     expect(html).toContain('Moja cena');
     expect(html).toContain('Bazowa: 1,20 EUR/kg');
+    expect(html).toContain('data-layout="compact-inline"');
+    expect(html).toContain('class="sr-only">Cena za kg</span>');
+    expect(html).toContain('h-10');
     expect(html).not.toContain('>Cena bazowa<');
     expect(html).not.toContain('Przywróć cenę bazową');
   });
