@@ -702,6 +702,19 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
           >
             Dodaj potrzebne zdjęcie
           </button>
+          <details className="mt-6 border-t border-stone-200 pt-5">
+            <summary className="pro-focus-ring min-h-11 cursor-pointer text-sm font-semibold">
+              Pokaż szczegóły diagnostyczne
+            </summary>
+            <div className="mt-3 grid gap-2 text-xs text-stone-500">
+              <p>Dokładność: {confidence(preview?.productAccuracy)}%</p>
+              <p>Engine: {preview?.engineUsable === true ? 'profil gotowy' : 'profil niegotowy'}</p>
+              <p>
+                Kody decyzji:{' '}
+                {criticalGaps.length > 0 ? criticalGaps.join(', ') : 'brak wystarczającego dowodu'}
+              </p>
+            </div>
+          </details>
         </section>
       )}
 
