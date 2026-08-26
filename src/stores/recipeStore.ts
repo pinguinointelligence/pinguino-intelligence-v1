@@ -134,7 +134,7 @@ const preserveOwnerReviewGate = (
  */
 const equalCrownSeedWeights = (items: RecipeItem[]): RecipeItem[] => {
   const mains = items.filter((item) => item.lock_type === 'main');
-  if (mains.length === 0 || mains.some((item) => !(item.planned_grams > 0))) return items;
+  if (mains.length === 0) return items;
   return items.map((item) =>
     item.lock_type === 'main'
       ? { ...item, main_ratio_weight: 1 }
@@ -142,31 +142,11 @@ const equalCrownSeedWeights = (items: RecipeItem[]): RecipeItem[] => {
   );
 };
 
-/** Legacy drafts without ratio metadata get the current equal top-down seed.
- * Any valid persisted weight is an explicit, separately editable user
- * instruction and remains authoritative across Save/Reopen; omitted weights
- * use the ratio contract's existing unit default instead of being inferred
- * from grams. */
+/** Every hydrated Crown group gets the current equal top-down seed. Legacy
+ * saved weights belonged to the retired manual-ratio semantic and must not
+ * create an alternative Crown authority after Save/Reopen. */
 const hydrateLegacyMainRatioWeights = (items: RecipeItem[]): RecipeItem[] => {
-  const mains = items.filter((item) => item.lock_type === 'main');
-  if (mains.length === 0) return items;
-  const hasExplicitRatio = mains.some(
-    (item) =>
-      typeof item.main_ratio_weight === 'number' &&
-      Number.isFinite(item.main_ratio_weight) &&
-      item.main_ratio_weight > 0,
-  );
-  if (!hasExplicitRatio) return equalCrownSeedWeights(items);
-  return items.map((item) =>
-    item.lock_type === 'main' &&
-    !(
-      typeof item.main_ratio_weight === 'number' &&
-      Number.isFinite(item.main_ratio_weight) &&
-      item.main_ratio_weight > 0
-    )
-      ? { ...item, main_ratio_weight: 1 }
-      : item,
-  );
+  return equalCrownSeedWeights(items);
 };
 
 type CostPriority = NonNullable<RecipeGoals['cost_priority']>;

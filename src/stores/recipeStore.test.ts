@@ -592,7 +592,7 @@ describe('saved percentage lock contract', () => {
     },
   );
 
-  it('persists an explicit Multi-Main ratio independently from grams and exact locks', () => {
+  it('normalizes a persisted manual Main ratio without weakening an exact lock', () => {
     const priorRecipe = useRecipeStore.getState();
     const priorConstraint = useConstraintStudioStore.getState();
     try {
@@ -616,7 +616,7 @@ describe('saved percentage lock contract', () => {
       useRecipeStore.getState().loadRecipeInput(saved);
       expect(useRecipeStore.getState().items[0]).toMatchObject({
         lock_type: 'main',
-        main_ratio_weight: 2,
+        main_ratio_weight: 1,
         grams_constraint: { grams: 200 },
       });
       expect(selectCanonicalDraft().constraints.byLineId[line.id]).toEqual({
@@ -644,7 +644,7 @@ describe('saved percentage lock contract', () => {
     }
   });
 
-  it('hydrates legacy Protein Crowns with an equal top-down seed, not saved grams', () => {
+  it('hydrates a saved legacy Protein 2:1 ratio with an equal Crown seed', () => {
     const priorRecipe = useRecipeStore.getState();
     const priorConstraint = useConstraintStudioStore.getState();
     try {
@@ -675,6 +675,7 @@ describe('saved percentage lock contract', () => {
               planned_grams: 352,
               actual_grams: null,
               lock_type: 'main',
+              main_ratio_weight: 2,
             },
             {
               id: 'legacy-cranberry-main',
@@ -682,6 +683,7 @@ describe('saved percentage lock contract', () => {
               planned_grams: 136,
               actual_grams: null,
               lock_type: 'main',
+              main_ratio_weight: 1,
             },
           ],
         },

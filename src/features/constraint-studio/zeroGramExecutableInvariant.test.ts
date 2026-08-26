@@ -549,10 +549,10 @@ describe('Zero-gram executable recipe invariant', () => {
     void zeroAudit;
   });
 
-  it('10. OPTIMAL path: Sorbet 2:1 Multi-Main and an over-sweet Gelato starter apply without 0 g rows', () => {
+  it('10. OPTIMAL path: equal Sorbet Crowns and an over-sweet Gelato starter apply without 0 g rows', () => {
     const optimal = servedSorbet(-11, 'optimal', [
-      { key: 'strawberry', grams: 400, weight: 2 },
-      { key: 'lime', grams: 200 },
+      { key: 'strawberry', grams: 300 },
+      { key: 'lime', grams: 300 },
     ]);
     loadServed(optimal, {});
     useConstraintStudioStore.getState().createOptimizePreview();
@@ -563,7 +563,7 @@ describe('Zero-gram executable recipe invariant', () => {
         sorbet.proposedInput.items
           .filter((item) => item.lock_type === 'main')
           .map((item) => item.planned_grams),
-      ).toEqual([400, 200]);
+      ).toEqual([300, 300]);
     } else {
       // A clean draft is a truthful "already clean" — and it carries no 0 g row.
       expect(clean.previewIssue?.code).toBe('already_clean');
@@ -694,14 +694,14 @@ describe('Zero-gram executable recipe invariant', () => {
 
   it('13./14. Sorbet and Gelato regressions: Main lines are never omitted and every applied recipe is positive', () => {
     const sorbet = servedSorbet(-11, 'eco', [
-      { key: 'strawberry', grams: 400, weight: 2 },
-      { key: 'lime', grams: 200 },
+      { key: 'strawberry', grams: 300 },
+      { key: 'lime', grams: 300 },
     ]);
     for (const item of sorbet.items.filter((line) => line.lock_type === 'main')) {
       expect(isOmittableUnusedLine({ ...sorbet, items: sorbet.items }, NONE, item)).toBe(false);
     }
     loadServed(sorbet);
-    stageAndApply('Sorbet 2:1');
+    stageAndApply('Sorbet equal Crowns');
     const gelato = starterMilkBase();
     const built = buildOptimizePreview(gelato, NONE, '2026-08-22T10:00:00.000Z');
     if (built.ok) noZeroGramRows(built.preview.proposedInput, 'Gelato preview');

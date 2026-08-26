@@ -42,7 +42,7 @@ const OWNER_PRICES = {
   'PI-ING-001553': price('PI-ING-001553', 10),
 };
 
-/** Served Sorbet: canonical −11 °C scaffold + strawberry 400 g / lime 200 g Multi-Main (weights 2:1). */
+/** Served Sorbet: canonical −11 °C scaffold + equal 300 g / 300 g Crown group. */
 const servedSorbet = (strategy: 'eco' | 'optimal'): RecipeInput => {
   const scaffold = buildCanonicalNewRecipeStarter({
     visibleProductType: 'sorbet',
@@ -66,20 +66,21 @@ const servedSorbet = (strategy: 'eco' | 'optimal'): RecipeInput => {
       {
         id: 'line-strawberry',
         ingredient: { ...sorbetMapperIngredient(SORBET_MAIN_IDS.strawberry), cost_per_kg: null },
-        planned_grams: 400,
+        planned_grams: 300,
         actual_grams: null,
         lock_type: 'main',
-        main_ratio_weight: 2,
-        user_intent_anchor_grams: 400,
+        main_ratio_weight: 1,
+        user_intent_anchor_grams: 300,
       } as RecipeItem,
       {
         id: 'line-lime',
         ingredient: { ...sorbetMapperIngredient(SORBET_MAIN_IDS.lime), cost_per_kg: 3.5 },
-        planned_grams: 200,
+        planned_grams: 300,
         actual_grams: null,
         lock_type: 'main',
-        user_target_grams: 200,
-        user_intent_anchor_grams: 200,
+        main_ratio_weight: 1,
+        user_target_grams: 300,
+        user_intent_anchor_grams: 300,
       } as RecipeItem,
     ],
     goals: {
@@ -147,14 +148,14 @@ describe('Apply door — ECO cost-swept preview with owner prices (served Sorbet
     useConstraintStudioStore.getState().createOptimizePreview();
     const staged = useConstraintStudioStore.getState().preview;
     expect(staged, JSON.stringify(useConstraintStudioStore.getState().previewIssue)).not.toBeNull();
-    // The fully priced clean ECO draft takes the verified cost sweep (no solver rounds)…
-    expect(staged?.autoBalance).toEqual({ batchRescaled: false, solverRounds: 0 });
+    // The equal-Crown draft takes the existing verified correction route…
+    expect(staged?.autoBalance).toEqual({ batchRescaled: true, solverRounds: 1 });
     // …the Mains stay exactly at the owner 60 % identity…
     expect(
       staged!.proposedInput.items
         .filter((item) => item.lock_type === 'main')
         .map((item) => item.planned_grams),
-    ).toEqual([400, 200]);
+    ).toEqual([300, 300]);
     // …and the Main frontier proof rides with the swept proposal.
     expect(staged?.mainObjective).toMatchObject({
       status: 'maximized',
@@ -168,8 +169,8 @@ describe('Apply door — ECO cost-swept preview with owner prices (served Sorbet
     expect(after.blocked, after.blocked?.messagePl).toBeNull();
     expect(after.history).toHaveLength(1);
     expect(mainGrams()).toEqual([
-      ['line-strawberry', 400],
-      ['line-lime', 200],
+      ['line-strawberry', 300],
+      ['line-lime', 300],
     ]);
     expect(useRecipeStore.getState().items.reduce((sum, item) => sum + item.planned_grams, 0)).toBe(
       1_000,
