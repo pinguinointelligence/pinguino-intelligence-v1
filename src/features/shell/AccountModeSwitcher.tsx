@@ -10,6 +10,12 @@ const MODE_META: Readonly<Record<AppMode, { label: string; to: string }>> = {
   admin: { label: 'Admin', to: '/admin' },
 };
 
+// Zustand selectors used through useSyncExternalStore must return a stable
+// snapshot while the access projection is still loading. An inline `?? []`
+// creates a new array on every read and React 19 correctly rejects that as an
+// update loop when the drawer mounts before effectiveAccess is available.
+const NO_ALLOWED_MODES: readonly AppMode[] = [];
+
 const activeMode = (pathname: string): AppMode | null => {
   if (pathname === '/admin' || pathname.startsWith('/admin/')) return 'admin';
   if (pathname === '/partner' || pathname.startsWith('/partner/')) return 'partner';
@@ -20,7 +26,9 @@ const activeMode = (pathname: string): AppMode | null => {
 
 /** Navigation between server-authorized account modes; never an authorization check. */
 export function AccountModeSwitcher({ onNavigate }: { onNavigate?: () => void }) {
-  const allowed = useProCoreAccessStore((state) => state.effectiveAccess?.allowedModes ?? []);
+  const allowed = useProCoreAccessStore(
+    (state) => state.effectiveAccess?.allowedModes ?? NO_ALLOWED_MODES,
+  );
   const { pathname } = useLocation();
   if (allowed.length === 0) return null;
   const active = activeMode(pathname);
