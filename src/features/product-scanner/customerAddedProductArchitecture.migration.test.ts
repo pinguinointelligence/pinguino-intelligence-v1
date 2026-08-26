@@ -6,6 +6,7 @@ const read = (path: string) => readFileSync(resolve(process.cwd(), path), 'utf8'
 const migration = read('supabase/migrations/20260827100000_scanner_customer_added_products.sql');
 const finalize = read('supabase/functions/product-scan-finalize/index.ts');
 const analyze = read('supabase/functions/product-scan-analyze/index.ts');
+const service = read('src/services/productScanner.ts');
 const ui = read('src/features/product-scanner/LiveProductScanner.tsx');
 
 describe('Scanner customer-added product authority', () => {
@@ -74,6 +75,7 @@ describe('Scanner customer-added product authority', () => {
     expect(analyze).toContain("providerError.type.slice(0, 100)");
     expect(analyze).toContain("providerError.param.slice(0, 200)");
     expect(analyze).not.toContain('providerError.message');
+    expect(service).toContain('failure.providerDiagnostic');
   });
 
   it('runs family resolution before shared profile/Mapper completion', () => {

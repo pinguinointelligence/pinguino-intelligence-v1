@@ -43,7 +43,12 @@ export class ProductScannerServiceError extends Error {
 /** The function's own JSON body (typed `error` code + usage), when it returned one. */
 async function readFunctionFailure(
   error: unknown,
-): Promise<{ serverCode: string | null; visionCalls: number; networkFailure: boolean }> {
+): Promise<{
+  serverCode: string | null;
+  visionCalls: number;
+  networkFailure: boolean;
+  providerDiagnostic: string | null;
+}> {
   const context = (error as { context?: unknown }).context;
   if (!(context instanceof Response)) {
     // No HTTP response at all → fetch/relay failure, not a server verdict.
@@ -52,18 +57,37 @@ async function readFunctionFailure(
       serverCode: null,
       visionCalls: 0,
       networkFailure: name === 'FunctionsFetchError' || name === 'FunctionsRelayError',
+      providerDiagnostic: null,
     };
   }
   try {
     const payload = (await context.clone().json()) as Record<string, unknown>;
     const usage = payload.usage as { visionCalls?: unknown } | undefined;
+    const diagnostic = payload.providerDiagnostic as Record<string, unknown> | undefined;
+    const providerDiagnostic = diagnostic
+      ? [
+          diagnostic.providerStatus,
+          diagnostic.providerType,
+          diagnostic.providerCode,
+          diagnostic.providerParam,
+        ]
+          .filter((value) => typeof value === 'number' || typeof value === 'string')
+          .join(':')
+          .slice(0, 500)
+      : null;
     return {
       serverCode: typeof payload.error === 'string' ? payload.error : null,
       visionCalls: typeof usage?.visionCalls === 'number' ? usage.visionCalls : 0,
       networkFailure: false,
+      providerDiagnostic: providerDiagnostic || null,
     };
   } catch {
-    return { serverCode: null, visionCalls: 0, networkFailure: false };
+    return {
+      serverCode: null,
+      visionCalls: 0,
+      networkFailure: false,
+      providerDiagnostic: null,
+    };
   }
 }
 
@@ -141,7 +165,12 @@ export async function lookupExactBarcodeFacts(input: {
   if (error || !data || typeof data !== 'object' || data.error) {
     const failure = error
       ? await readFunctionFailure(error)
-      : { serverCode: null, visionCalls: 0, networkFailure: false };
+      : {
+          serverCode: null,
+          visionCalls: 0,
+          networkFailure: false,
+          providerDiagnostic: null,
+        };
     const scannerError = classifyScannerError({
       stage: 'analysis',
       serverCode: failure.serverCode ?? (typeof data?.error === 'string' ? data.error : null),
@@ -177,7 +206,7 @@ export async function analyzeProductImages(input: {
     const scannerError = classifyScannerError({
       stage: 'analysis',
       serverCode: failure.serverCode,
-      rawMessage: error.message,
+      rawMessage: [error.message, failure.providerDiagnostic].filter(Boolean).join(' · '),
       networkFailure: failure.networkFailure,
     });
     reportScannerDiagnostic(scannerError);
