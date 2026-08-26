@@ -98,6 +98,7 @@ import {
   buildSuggestedFixPreview,
   commitPreview,
   directionTargetFingerprint,
+  optimizePreviewApplyRequiresCanonicalRebuild,
   workingStateFingerprint,
   type AppliedChangeRecord,
   type AppliedPresentationSnapshot,
@@ -121,6 +122,14 @@ import { runOptimizePreviewOffMainThread } from './optimizePreviewRuntime';
 import type { OptimizePreviewComputation } from './optimizePreviewComputation';
 
 export type RecalculationTerminalState = PipelineRecalculationTerminalState;
+
+export interface ApplyPreviewRuntime {
+  runOptimizePreview: typeof runOptimizePreviewOffMainThread;
+}
+
+const DEFAULT_APPLY_PREVIEW_RUNTIME: ApplyPreviewRuntime = {
+  runOptimizePreview: runOptimizePreviewOffMainThread,
+};
 
 interface PrebuiltOptimizePreview extends OptimizePreviewComputation {
   createdAt: string;
@@ -487,6 +496,8 @@ export interface ConstraintStudioState {
   rescueAdvice: RescueIngredientAdvice | null;
   directionConsent: DirectionBestAchievableConsent | null;
   blocked: BlockedApply | null;
+  /** Terminal Apply lifecycle state; true only while server/Worker validation runs. */
+  applyPending: boolean;
   feasibility: ConstraintFeasibilityAnalysis | null;
   history: AppliedChangeRecord[];
   /** One honest terminal state for the most recent PI recalculation run. */
@@ -548,7 +559,7 @@ export interface ConstraintStudioState {
   ) => void;
   cancelPreview: () => void;
   /** THE apply — the only recipe write; goes through `commitPreview`. */
-  applyPreview: () => void;
+  applyPreview: (prebuiltOptimizeRebuild?: BuildPreviewResult) => void;
   undoLastApply: () => void;
 
   runFeasibility: () => void;
@@ -573,6 +584,7 @@ const INITIAL = {
   rescueAdvice: null as RescueIngredientAdvice | null,
   directionConsent: null,
   blocked: null,
+  applyPending: false,
   feasibility: null,
   history: [] as AppliedChangeRecord[],
   recalculationTerminal: null as RecalculationTerminalState | null,
@@ -595,6 +607,7 @@ const CLEAR_STAGED = {
   directionConsent: null,
   feasibility: null,
   blocked: null,
+  applyPending: false,
   recalculationTerminal: null,
 };
 
@@ -1532,10 +1545,11 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           explicitStandardRemovalConsent: null,
           suggestedFixAuthorization: null,
           blocked: null,
+          applyPending: false,
           recalculationTerminal: null,
         }),
 
-      applyPreview: () => {
+      applyPreview: (prebuiltOptimizeRebuild) => {
         const {
           preview,
           constraints,
@@ -1547,7 +1561,10 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           directionConsent,
           suggestedFixAuthorization,
         } = get();
-        if (!preview) return;
+        if (!preview) {
+          set({ applyPending: false });
+          return;
+        }
         const terminalBeforeApply = get().recalculationTerminal;
         const awaitingBeforeApply = useRecipeProfileStore.getState().awaitingRecalculation;
         const practicalAuditBeforeApply = useRecipeStore.getState().practicalRecipeAudit;
@@ -1576,6 +1593,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
             effectivePriceOverrides: useCustomerPriceStore.getState().overridesByCanonicalId,
             unavailableMainIngredientIds: draft.unavailableMainIngredientIds,
             requirePracticalPreview: true,
+            prebuiltOptimizeRebuild,
           },
         );
         if (!outcome.ok) {
@@ -1583,6 +1601,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           set({
             blocked: outcome,
             preview: outcome.code === 'stale_preview' ? null : preview,
+            applyPending: false,
           });
           return;
         }
@@ -1612,6 +1631,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
               violationsAfter: 0,
             },
             preview, // retry stays possible
+            applyPending: false,
           });
           return;
         }
@@ -2825,11 +2845,17 @@ export async function createSubstitutionPreviewWithServerAuthority(input: {
 }
 
 /** Terminal Apply wrapper. Stale product authority clears the Preview before
- * the guarded recipe-store write is reached. */
-export async function applyPreviewWithServerAuthority(): Promise<void> {
+ * the guarded recipe-store write is reached. An Optimize frontier rebuild is
+ * still mandatory, but runs through the same Worker boundary as Preview so a
+ * multi-second proof cannot freeze the modal or strand its pending state. */
+export async function applyPreviewWithServerAuthority(
+  runtime: ApplyPreviewRuntime = DEFAULT_APPLY_PREVIEW_RUNTIME,
+): Promise<void> {
   const session = useConstraintStudioStore.getState();
   const preview = session.preview;
   if (!preview) return;
+  const draft = selectCanonicalDraft();
+  const recipeAtStart = useRecipeStore.getState();
   const currentSnapshots = useRecipeStore.getState().productBehaviorSnapshots;
   const snapshots = session.proposalProductBehaviorAuthorization
     ? session.proposalProductBehaviorAuthorization.snapshots
@@ -2841,48 +2867,96 @@ export async function applyPreviewWithServerAuthority(): Promise<void> {
             session.substitutionAuthorization.productBehaviorSnapshot,
         }
       : currentSnapshots;
-  const revision = useRecipeStore.getState().draftRevision;
-  const validation = await currentRecipeAuthorityReady({
-    recipe: preview.proposedInput,
-    toppings: useRecipeStore.getState().toppings,
-    snapshots,
-    technicalOnlyMainLineIds: useRecipeStore.getState().ownerReviewGate?.technicalOnlyMainLineIds,
-  });
-  if (
-    !validation.ready ||
-    useRecipeStore.getState().draftRevision !== revision ||
-    useConstraintStudioStore.getState().preview !== preview
-  ) {
+  const revision = draft.revision;
+  const technicalOnlyMainLineIds = recipeAtStart.ownerReviewGate?.technicalOnlyMainLineIds ?? [];
+  useConstraintStudioStore.setState({ applyPending: true, blocked: null });
+
+  const publishStale = (): void => {
     useConstraintStudioStore.setState({
       preview: null,
+      applyPending: false,
       blocked: {
         code: 'stale_preview',
         messagePl:
           'Apply zablokowany: klasyfikacja produktu zmieniła się. Uruchom ponowne Preview.',
       },
     });
-    return;
-  }
-  if (session.proposalProductBehaviorAuthorization) {
-    const refreshedFingerprint = productBehaviorSnapshotFingerprint(validation.snapshots);
-    if (
-      refreshedFingerprint !==
-      session.proposalProductBehaviorAuthorization.proposedProductBehaviorFingerprint
-    ) {
-      useConstraintStudioStore.setState({
-        preview: null,
-        blocked: {
-          code: 'stale_preview',
-          messagePl:
-            'Apply zablokowany: klasyfikacja produktu zmieniła się. Uruchom ponowne Preview.',
-        },
-      });
+  };
+
+  try {
+    const validation = await currentRecipeAuthorityReady({
+      recipe: preview.proposedInput,
+      toppings: recipeAtStart.toppings,
+      snapshots,
+      technicalOnlyMainLineIds,
+    });
+    if (useConstraintStudioStore.getState().preview !== preview) return;
+    if (!validation.ready || useRecipeStore.getState().draftRevision !== revision) {
+      publishStale();
       return;
     }
-  } else {
-    useRecipeStore.getState().syncProductBehaviorSnapshots(validation.snapshots);
+    if (session.proposalProductBehaviorAuthorization) {
+      const refreshedFingerprint = productBehaviorSnapshotFingerprint(validation.snapshots);
+      if (
+        refreshedFingerprint !==
+        session.proposalProductBehaviorAuthorization.proposedProductBehaviorFingerprint
+      ) {
+        publishStale();
+        return;
+      }
+    }
+
+    let prebuiltOptimizeRebuild: BuildPreviewResult | undefined;
+    if (
+      session.explicitStandardRemovalConsent === null &&
+      optimizePreviewApplyRequiresCanonicalRebuild(draft.input, draft.constraints, preview)
+    ) {
+      const computation = await runtime.runOptimizePreview({
+        input: draft.input,
+        constraints: draft.constraints,
+        createdAt: preview.createdAt,
+        options: {
+          excludedIngredientIds: draft.excludedIngredientIds,
+          unavailableMainIngredientIds: draft.unavailableMainIngredientIds,
+          effectivePriceOverrides: useCustomerPriceStore.getState().overridesByCanonicalId,
+          requirePracticalPreview: true,
+          productBehaviorSnapshots: currentSnapshots,
+          technicalOnlyMainLineIds,
+        },
+      });
+      if (useConstraintStudioStore.getState().preview !== preview) return;
+      if (useRecipeStore.getState().draftRevision !== revision) {
+        publishStale();
+        return;
+      }
+      prebuiltOptimizeRebuild = computation.result;
+    }
+
+    if (session.proposalProductBehaviorAuthorization === null) {
+      useRecipeStore.getState().syncProductBehaviorSnapshots(validation.snapshots);
+    }
+    if (useConstraintStudioStore.getState().preview !== preview) return;
+    if (useRecipeStore.getState().draftRevision !== revision) {
+      publishStale();
+      return;
+    }
+    useConstraintStudioStore.getState().applyPreview(prebuiltOptimizeRebuild);
+  } catch {
+    if (useConstraintStudioStore.getState().preview !== preview) return;
+    useConstraintStudioStore.setState({
+      applyPending: false,
+      blocked: {
+        code: 'apply_validation_failed',
+        messagePl:
+          'Apply zablokowany: nie udało się zakończyć ponownej walidacji Preview. Uruchom ponowne Preview.',
+      },
+    });
+  } finally {
+    const current = useConstraintStudioStore.getState();
+    if (current.preview === preview && current.applyPending) {
+      useConstraintStudioStore.setState({ applyPending: false });
+    }
   }
-  useConstraintStudioStore.getState().applyPreview();
 }
 
 useRecipeStore.subscribe((state, prev) => {

@@ -115,6 +115,7 @@ export function ConstraintPreviewCard({
   onCancel,
   showTechnicalDetails = false,
   showCloseControl = false,
+  applyPending = false,
 }: {
   preview: ConstraintPreview;
   onApply: () => void;
@@ -123,6 +124,8 @@ export function ConstraintPreviewCard({
   showTechnicalDetails?: boolean;
   /** Modal chrome; the embedded Constraint Studio card keeps its surrounding controls. */
   showCloseControl?: boolean;
+  /** Canonical Apply revalidation is running outside the UI event loop. */
+  applyPending?: boolean;
 }) {
   const [showUnchanged, setShowUnchanged] = useState(false);
   const beforeBatch = preview.lines.reduce((sum, line) => sum + (line.beforeGrams ?? 0), 0);
@@ -787,10 +790,12 @@ export function ConstraintPreviewCard({
           <button
             type="button"
             onClick={onApply}
+            disabled={applyPending}
+            aria-busy={applyPending}
             data-testid="preview-apply"
-            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-[10px] bg-black px-4 py-2.5 text-sm font-semibold text-white shadow-pro-sm transition-transform hover:-translate-y-px hover:bg-charcoal focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-soft"
+            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-[10px] bg-black px-4 py-2.5 text-sm font-semibold text-white shadow-pro-sm transition-transform hover:-translate-y-px hover:bg-charcoal focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-soft disabled:cursor-wait disabled:opacity-70 disabled:hover:translate-y-0"
           >
-            Zastosuj zmiany
+            {applyPending ? 'Zastosowywanie…' : 'Zastosuj zmiany'}
           </button>
         )}
         <button

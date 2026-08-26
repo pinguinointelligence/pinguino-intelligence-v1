@@ -652,6 +652,7 @@ export function ProRecalcPanel({
   }, [open]);
 
   const preview = useConstraintStudioStore((s) => s.preview);
+  const applyPending = useConstraintStudioStore((s) => s.applyPending);
   const directionBestCandidate = useConstraintStudioStore((s) => s.directionBestCandidate);
   const rescueAdvice = useConstraintStudioStore((s) => s.rescueAdvice);
   const previewIssue = useConstraintStudioStore((s) => s.previewIssue);
@@ -968,6 +969,7 @@ export function ProRecalcPanel({
           {preview && recalculationTerminal?.state === 'PREVIEW_READY' ? (
             <ConstraintPreviewCard
               preview={preview}
+              applyPending={applyPending}
               showCloseControl
               showTechnicalDetails={canViewTechnicalDetails}
               onApply={() => {

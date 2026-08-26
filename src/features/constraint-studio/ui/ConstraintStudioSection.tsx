@@ -87,6 +87,7 @@ export function ConstraintStudioSection() {
 
   const constraints = useConstraintStudioStore((state) => state.constraints);
   const preview = useConstraintStudioStore((state) => state.preview);
+  const applyPending = useConstraintStudioStore((state) => state.applyPending);
   const previewIssue = useConstraintStudioStore((state) => state.previewIssue);
   const blocked = useConstraintStudioStore((state) => state.blocked);
   const feasibility = useConstraintStudioStore((state) => state.feasibility);
@@ -192,6 +193,7 @@ export function ConstraintStudioSection() {
         {preview ? (
           <ConstraintPreviewCard
             preview={preview}
+            applyPending={applyPending}
             onApply={() => { void applyPreviewWithServerAuthority(); }}
             onCancel={store.cancelPreview}
           />

@@ -120,4 +120,34 @@ describe('compact PI preview presentation', () => {
     expect(details?.textContent).toContain('Suma przed:');
     expect(host.textContent).toContain('Proponowane zmiany receptury');
   });
+
+  it('maps Apply pending to a visible terminal-progress control while Back stays available', async () => {
+    const { preview } = previewFixture();
+    const onApply = vi.fn();
+    const onCancel = vi.fn();
+    await act(async () => {
+      root.render(
+        <ConstraintPreviewCard
+          preview={preview}
+          onApply={onApply}
+          onCancel={onCancel}
+          applyPending
+        />,
+      );
+    });
+
+    const apply = host.querySelector<HTMLButtonElement>('[data-testid="preview-apply"]');
+    const back = host.querySelector<HTMLButtonElement>('[data-testid="preview-cancel"]');
+    expect(apply?.disabled).toBe(true);
+    expect(apply?.getAttribute('aria-busy')).toBe('true');
+    expect(apply?.textContent).toContain('Zastosowywanie…');
+    expect(back?.disabled).toBe(false);
+
+    await act(async () => {
+      apply?.click();
+      back?.click();
+    });
+    expect(onApply).not.toHaveBeenCalled();
+    expect(onCancel).toHaveBeenCalledOnce();
+  });
 });

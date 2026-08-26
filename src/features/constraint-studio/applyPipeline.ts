@@ -2615,6 +2615,17 @@ const hasAdjustablePositiveMainIntent = (input: RecipeInput, set: ConstraintSet)
     );
   });
 
+/**
+ * Apply must reproduce an Optimize candidate whenever the trusted draft has an
+ * adjustable positive Main. The reproduction is still mandatory; this helper
+ * only lets the runtime move that canonical work outside the browser UI loop.
+ */
+export const optimizePreviewApplyRequiresCanonicalRebuild = (
+  current: RecipeInput,
+  set: ConstraintSet,
+  preview: ConstraintPreview,
+): boolean => preview.kind === 'optimize' && hasAdjustablePositiveMainIntent(current, set);
+
 /** Every Main line of the trusted draft is present in the proposal with byte-identical grams. */
 const mainGroupLinesByteIdentical = (base: RecipeInput, proposed: RecipeInput): boolean => {
   const proposedByLineId = new Map(proposed.items.map((item) => [item.id, item] as const));
@@ -8023,6 +8034,7 @@ export interface AppliedChangeRecord {
 
 export type BlockedApply =
   | { code: 'stale_preview'; messagePl: string }
+  | { code: 'apply_validation_failed'; messagePl: string }
   | { code: 'invalid_lines'; messagePl: string; lineNames: string[] }
   | { code: 'ingredient_identity_violated'; messagePl: string; lineNames: string[] }
   | { code: 'physical_actual_violated'; messagePl: string; lineNames: string[] }
@@ -8372,8 +8384,13 @@ export class VerifiedApply {
     rebuildOptions: Pick<
       OptimizePreviewOptions,
       'effectivePriceOverrides' | 'unavailableMainIngredientIds' | 'requirePracticalPreview'
-    > = {},
+    > & {
+      /** Canonical Worker result. The door still verifies exact candidate and
+       * proof equality and then runs every independent hard guard below. */
+      prebuiltOptimizeRebuild?: BuildPreviewResult;
+    } = {},
   ): CommitPreviewResult {
+    const { prebuiltOptimizeRebuild, ...canonicalRebuildOptions } = rebuildOptions;
     // Phase 3 monotonic guard: a preview built for an earlier draft revision
     // never applies, whatever the fingerprint says.
     if (
@@ -9140,17 +9157,19 @@ export class VerifiedApply {
     const requiresMainProof =
       preview.kind === 'optimize' && adjustableMainIntent && !mainHeldByExactDirection;
     if (mainHeldByExactDirection && adjustableMainIntent) {
-      const rebuilt = buildOptimizePreview(current, currentConstraints, preview.createdAt, {
-        ...rebuildOptions,
-        excludedIngredientIds,
-        // Reproduce the same generation boundary as Preview: the CURRENT
-        // recipe authority shapes candidate search; the separately verified
-        // proposal authority authorizes the complete resulting vector. Feeding
-        // proposal snapshots back into generation can choose a different
-        // support vector and falsely reject an otherwise byte-identical proof.
-        productBehaviorSnapshots: currentProductBehaviorSnapshots,
-        technicalOnlyMainLineIds,
-      });
+      const rebuilt =
+        prebuiltOptimizeRebuild ??
+        buildOptimizePreview(current, currentConstraints, preview.createdAt, {
+          ...canonicalRebuildOptions,
+          excludedIngredientIds,
+          // Reproduce the same generation boundary as Preview: the CURRENT
+          // recipe authority shapes candidate search; the separately verified
+          // proposal authority authorizes the complete resulting vector. Feeding
+          // proposal snapshots back into generation can choose a different
+          // support vector and falsely reject an otherwise byte-identical proof.
+          productBehaviorSnapshots: currentProductBehaviorSnapshots,
+          technicalOnlyMainLineIds,
+        });
       const rebuiltMatches =
         rebuilt.ok &&
         rebuilt.preview.mainHeldByExactDirection === true &&
@@ -9223,18 +9242,19 @@ export class VerifiedApply {
             authorizedRemovalLineId,
             preview.createdAt,
             {
-              ...rebuildOptions,
+              ...canonicalRebuildOptions,
               excludedIngredientIds,
               productBehaviorSnapshots: currentProductBehaviorSnapshots,
               technicalOnlyMainLineIds,
             },
           )
-        : buildOptimizePreview(current, currentConstraints, preview.createdAt, {
-            ...rebuildOptions,
+        : (prebuiltOptimizeRebuild ??
+          buildOptimizePreview(current, currentConstraints, preview.createdAt, {
+            ...canonicalRebuildOptions,
             excludedIngredientIds,
             productBehaviorSnapshots: currentProductBehaviorSnapshots,
             technicalOnlyMainLineIds,
-          });
+          }));
       const rebuiltProof = rebuilt.ok ? rebuilt.preview.mainObjective : undefined;
       const recomputedExecutableMainGrams = rebuilt.ok
         ? mainGroupTotal(mainIdentityBase, rebuilt.preview.proposedInput)
