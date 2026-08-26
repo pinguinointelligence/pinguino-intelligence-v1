@@ -193,11 +193,29 @@ describe('Recipe ingredient table — quiet primary surface', () => {
     expect(blocked).toContain('aria-hidden="true"');
   });
 
-  it('keeps the fixed Main slot empty for an eligible inactive ingredient', () => {
+  it('shows one clickable Crown trigger in the fixed Main slot for an eligible inactive ingredient', () => {
     const eligible = renderRow();
     expect(eligible).toContain(`data-testid="row-main-slot-${baseItem.id}"`);
+    expect(eligible).toContain(`data-testid="row-main-trigger-${baseItem.id}"`);
+    expect(eligible).toContain(`data-testid="row-mobile-main-trigger-${baseItem.id}"`);
+    expect(eligible).toContain('aria-label="Ustaw składnik jako Główny"');
+    expect(eligible).toContain('data-main-presentation="trigger"');
     expect(eligible).not.toContain(`data-testid="row-main-badge-${baseItem.id}"`);
-    expect(eligible).not.toContain('data-crown-state');
+  });
+
+  it('keeps the estimated-data dot and eligible Crown trigger independently visible', () => {
+    const estimated = renderRow({
+      ...baseItem,
+      ingredient: {
+        ...baseItem.ingredient,
+        is_verified: false,
+        confidence_score: 40,
+      },
+    });
+
+    expect(estimated).toContain(`data-testid="row-estimated-${baseItem.id}"`);
+    expect(estimated).toContain(`data-testid="row-main-trigger-${baseItem.id}"`);
+    expect(estimated).toContain(`data-testid="row-mobile-main-trigger-${baseItem.id}"`);
   });
 
   it('keeps one fixed-slot Główny badge for every active Main state', () => {
@@ -211,7 +229,8 @@ describe('Recipe ingredient table — quiet primary surface', () => {
     expect(text(badge)).toBe('Główny');
     expect(badge).toContain('text-gold');
     expect(badge).not.toContain('<svg');
-    expect(active).not.toContain('data-crown-state');
+    expect(active).not.toContain(`data-testid="row-main-trigger-${baseItem.id}"`);
+    expect(active).not.toContain(`data-testid="row-mobile-main-trigger-${baseItem.id}"`);
   });
 
   it.each([

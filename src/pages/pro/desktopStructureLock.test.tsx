@@ -114,11 +114,13 @@ describe('responsive Pro workbench structure', () => {
     expect(profile).toContain('NutritionCostProfileGrid');
   });
 
-  it('offers the Main badge in one fixed slot while preserving the existing role authority', () => {
+  it('offers the Crown trigger and Main badge in one fixed slot while preserving role authority', () => {
     const row = read('features', 'ingredient-builder', 'IngredientRow.tsx');
     expect(row).toContain('data-testid={`row-main-slot-${item.id}`}');
+    expect(row).toContain('testId={`row-main-trigger-${item.id}`}');
     expect(row).toContain('testId={`row-main-badge-${item.id}`}');
+    expect(row).toContain("onClick={() => setRole('main')}");
     expect(row).toContain("onClick={() => setRole('standard')}");
-    expect(row).not.toContain('MainRoleGlyph');
+    expect(row).toContain('MainRoleTrigger');
   });
 });

@@ -29,7 +29,7 @@ export function MainRoleBadge({
   title?: string;
 }) {
   const className =
-    'inline-flex h-6 shrink-0 items-center justify-center rounded-lg border border-gold/22 bg-education-ivory px-2 text-[11px] font-semibold text-gold';
+    'inline-flex h-6 w-[57px] shrink-0 items-center justify-center rounded-lg border border-gold/22 bg-education-ivory px-2 text-[11px] font-semibold text-gold';
   return onClick ? (
     <button
       type="button"
@@ -56,6 +56,32 @@ export function MainRoleBadge({
   );
 }
 
+/** The inactive Main action; it occupies the same fixed row slot as MainRoleBadge. */
+export function MainRoleTrigger({ testId, onClick }: { testId: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-label="Ustaw składnik jako Główny"
+      aria-pressed="false"
+      title="Ustaw jako Główny"
+      onClick={onClick}
+      data-testid={testId}
+      data-main-presentation="trigger"
+      className="pro-focus-ring inline-flex h-6 w-[57px] shrink-0 items-center justify-center rounded-lg border border-gold/28 bg-white text-gold transition-colors hover:border-gold/45 hover:bg-education-ivory"
+    >
+      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none">
+        <path
+          d="M2 5.5 5.3 8 8 3l2.7 5L14 5.5l-1 6H3l-1-6Z"
+          stroke="currentColor"
+          strokeWidth="1.25"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </button>
+  );
+}
+
 /**
  * The COLLAPSED mobile recipe line (owner mobile UX §7).
  *
@@ -73,6 +99,8 @@ export function MobileIngredientLine({
   unavailable,
   estimated,
   changed,
+  mainUnavailableReason,
+  onSetMain,
   onOpen,
 }: {
   item: EffectiveRecipeItem;
@@ -82,21 +110,25 @@ export function MobileIngredientLine({
   unavailable: boolean;
   estimated: boolean;
   changed: boolean;
+  mainUnavailableReason?: string | null;
+  onSetMain: () => void;
   onOpen: () => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onOpen}
+    <div
       data-testid={`row-mobile-line-${item.id}`}
       data-changed={changed ? 'true' : undefined}
-      aria-label={`${item.ingredient.name} — otwórz edycję składnika`}
       className={cn(
-        'pro-focus-ring grid min-h-14 w-full grid-cols-[minmax(0,1fr)_62px_62px_64px] items-center gap-x-2 text-left transition-colors',
-        'active:bg-stone-50',
+        'relative grid min-h-14 w-full grid-cols-[minmax(0,1fr)_62px_62px_64px] items-center gap-x-2 text-left',
       )}
     >
-      <span className="flex min-w-0 items-center gap-2">
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label={`${item.ingredient.name} — otwórz edycję składnika`}
+        className="pro-focus-ring absolute inset-0 z-0 rounded-lg transition-colors active:bg-stone-50"
+      />
+      <span className="pointer-events-none relative z-10 flex min-w-0 items-center gap-2">
         <span className="relative grid size-7 shrink-0 place-items-center rounded-full bg-stone-100 text-stone-600">
           <IngredientCategoryIcon
             symbol={ingredientCategorySymbolFor({ category: item.ingredient.category })}
@@ -127,25 +159,29 @@ export function MobileIngredientLine({
         ) : null}
       </span>
       <span
-        aria-hidden={isMain ? undefined : true}
-        className="flex w-[62px] shrink-0 justify-end"
+        aria-hidden={!isMain && mainUnavailableReason ? true : undefined}
+        className="relative z-20 flex w-[62px] shrink-0 justify-end"
         data-testid={`row-mobile-main-slot-${item.id}`}
       >
-        {isMain ? <MainRoleBadge testId={`row-mobile-main-badge-${item.id}`} /> : null}
+        {isMain ? (
+          <MainRoleBadge testId={`row-mobile-main-badge-${item.id}`} />
+        ) : !mainUnavailableReason ? (
+          <MainRoleTrigger testId={`row-mobile-main-trigger-${item.id}`} onClick={onSetMain} />
+        ) : null}
       </span>
       <span
-        className="w-[62px] shrink-0 text-right font-mono text-[13px] font-semibold tabular-nums text-ink"
+        className="pointer-events-none relative z-10 w-[62px] shrink-0 text-right font-mono text-[13px] font-semibold tabular-nums text-ink"
         data-testid={`row-mobile-percent-${item.id}`}
       >
         {percent === null ? '—' : `${percent.toFixed(1)} %`}
       </span>
       <span
-        className="w-[64px] shrink-0 text-right font-mono text-[13px] font-semibold tabular-nums text-ink"
+        className="pointer-events-none relative z-10 w-[64px] shrink-0 text-right font-mono text-[13px] font-semibold tabular-nums text-ink"
         data-testid={`row-mobile-grams-${item.id}`}
       >
         {item.planned_grams.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} g
       </span>
-    </button>
+    </div>
   );
 }
 
