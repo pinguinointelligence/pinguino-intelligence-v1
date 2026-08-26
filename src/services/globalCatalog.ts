@@ -427,6 +427,62 @@ export const DEFAULT_CATALOG_MARKET_PREFERENCES: CatalogMarketPreferences = {
   defaultScope: 'my_markets_and_global',
 };
 
+export interface CatalogMarketCountry {
+  code: string;
+  namePl: string;
+  nameEn: string;
+}
+
+export async function listCatalogMarketCountries(): Promise<CatalogMarketCountry[]> {
+  if (!supabase) return emptyUnconfiguredRead('globalCatalog.marketCountries', []);
+  const { data, error } = await supabase
+    .from('catalog_market_countries')
+    .select('code,name_pl,name_en')
+    .eq('is_active', true)
+    .order('sort_order');
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => ({ code: row.code, namePl: row.name_pl, nameEn: row.name_en }));
+}
+
+const COUNTRY_NAME_TO_CODE: Readonly<Record<string, string>> = {
+  polska: 'PL', poland: 'PL', hiszpania: 'ES', spain: 'ES', españa: 'ES',
+  niemcy: 'DE', germany: 'DE', deutschland: 'DE', francja: 'FR', france: 'FR',
+  włochy: 'IT', italy: 'IT', italia: 'IT', portugalia: 'PT', portugal: 'PT',
+  austria: 'AT', belgia: 'BE', belgium: 'BE', holandia: 'NL', netherlands: 'NL',
+  czechy: 'CZ', czechia: 'CZ', słowacja: 'SK', slovakia: 'SK', dania: 'DK',
+  denmark: 'DK', szwecja: 'SE', sweden: 'SE', finlandia: 'FI', finland: 'FI',
+  irlandia: 'IE', ireland: 'IE', 'wielka brytania': 'GB', 'united kingdom': 'GB',
+  filipiny: 'PH', philippines: 'PH',
+};
+
+export function normalizeMarketCountry(value: string | null | undefined): string | null {
+  const normalized = value?.trim();
+  if (!normalized) return null;
+  if (/^[a-z]{2}$/i.test(normalized)) return normalized.toUpperCase();
+  return COUNTRY_NAME_TO_CODE[normalized.toLocaleLowerCase('pl-PL')] ?? null;
+}
+
+/** Proposed once; never persisted until the user explicitly confirms Save. */
+export async function detectCatalogMarketCountry(): Promise<string | null> {
+  if (!supabase) return null;
+  const user = await getCurrentUser();
+  if (!user) return null;
+  const { data } = await supabase
+    .from('account_profiles')
+    .select('country')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  const accountCountry = normalizeMarketCountry(data?.country);
+  if (accountCountry) return accountCountry;
+  if (typeof navigator === 'undefined') return null;
+  for (const locale of navigator.languages ?? [navigator.language]) {
+    const region = locale.split(/[-_]/)[1];
+    const code = normalizeMarketCountry(region);
+    if (code) return code;
+  }
+  return null;
+}
+
 export async function getCatalogMarketPreferences(): Promise<CatalogMarketPreferences> {
   if (!supabase) return emptyUnconfiguredRead('globalCatalog.marketPreferences', DEFAULT_CATALOG_MARKET_PREFERENCES);
   const user = await getCurrentUser();
@@ -439,8 +495,10 @@ export async function getCatalogMarketPreferences(): Promise<CatalogMarketPrefer
   if (error) throw new Error(error.message);
   if (!data) return DEFAULT_CATALOG_MARKET_PREFERENCES;
   return {
-    primaryMarket: data.primary_market ?? null,
-    additionalMarkets: data.additional_markets ?? [],
+    primaryMarket: normalizeMarketCountry(data.primary_market),
+    additionalMarkets: ((data.additional_markets ?? []) as string[])
+      .map(normalizeMarketCountry)
+      .filter((market: string | null): market is string => market !== null),
     preferredRetailers: data.preferred_retailers ?? [],
     defaultScope: data.default_scope,
   } as CatalogMarketPreferences;
@@ -450,10 +508,13 @@ export async function saveCatalogMarketPreferences(preferences: CatalogMarketPre
   if (!supabase) throw new Error(UNAVAILABLE);
   const user = await getCurrentUser();
   if (!user) throw new Error('Musisz być zalogowany, aby zapisać rynki produktów.');
-  const additional = [...new Set(preferences.additionalMarkets.filter((value) => value && value !== preferences.primaryMarket))];
+  const primary = normalizeMarketCountry(preferences.primaryMarket);
+  const additional = [...new Set(preferences.additionalMarkets
+    .map(normalizeMarketCountry)
+    .filter((value): value is string => Boolean(value) && value !== primary))];
   const { error } = await supabase.from('account_product_market_preferences').upsert({
     user_id: user.id,
-    primary_market: preferences.primaryMarket,
+    primary_market: primary,
     additional_markets: additional,
     preferred_retailers: [...new Set(preferences.preferredRetailers.filter(Boolean))],
     default_scope: preferences.defaultScope,

@@ -24,6 +24,7 @@
     "products:audit": "node scripts/auditUnifiedProductIntelligence.mjs",
     "mapper:runtime-audit": "node scripts/auditMapperRuntimeUsability.mjs",
     "catalog:mapper-only:validate": "node scripts/validateMapperOnlyCatalog.mjs",
+    "staging:seed-admin": "node scripts/seed-staging-admin.mjs --project-ref=tunabqqrwabacxjcxxkz",
     "production-rescue:bundle": "node scripts/buildProductionRescueEdgeBundle.mjs",
     "production-rescue:bundle-check": "node scripts/buildProductionRescueEdgeBundle.mjs --check",
     "protein:corpus": "node scripts/buildInternetProteinRecipeCorpus.mjs",

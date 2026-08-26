@@ -1378,6 +1378,20 @@ Deno.serve(async (request) => {
   if (!source || !INGEST_SOURCES.has(source) || !idempotencyKey) {
     return json({ error: 'missing_or_invalid_required_fields' }, 400);
   }
+  // Controlled Catalog: this endpoint is a canonical product write boundary,
+  // therefore every browser caller must be an unrevoked Admin. Ordinary
+  // Scanner/OCR/manual evidence goes through Product Add Requests and never
+  // reaches ingest_product_v1. INTIMPORT remains an Admin/Owner back-office
+  // operation; the database repeats the same authorization check.
+  const { data: adminAuthority, error: adminAuthorityError } = await authClient
+    .from('admin_users')
+    .select('role,revoked_at')
+    .eq('user_id', auth.user.id)
+    .is('revoked_at', null)
+    .maybeSingle();
+  if (adminAuthorityError || !adminAuthority) {
+    return json({ error: 'controlled_catalog_admin_required' }, 403);
+  }
   if (source === 'ocr' && !ocrSessionId) return json({ error: 'ocr_session_required' }, 400);
   if (idempotencyKey.length > 160) return json({ error: 'invalid_idempotency_key' }, 400);
   const importRunId = typeof body.importRunId === 'string' ? body.importRunId : null;
@@ -1637,14 +1651,18 @@ Deno.serve(async (request) => {
     }
   }
   if (Object.keys(manualProductProfileProposal).length > 0) {
-    if (source !== 'manual' && source !== 'barcode') {
+    if (source !== 'manual' && source !== 'barcode' && source !== 'admin') {
       return json({ error: 'manual_product_profile_requires_interactive_source' }, 403);
     }
     const proposal = serverManualProductProfileProposal(canonicalInput);
     if (!proposal) return json({ error: 'manual_product_profile_input_invalid' }, 409);
     try {
       const authority = validateIntimportProductProfileProposal({
-        origin: 'PM',
+        // Controlled Catalog: all callers of catalog-submit are now Admin.
+        // The Admin approval route creates the official PR product-owned
+        // profile; legacy interactive source values remain accepted only for
+        // compatibility with existing back-office evidence payloads.
+        origin: 'PR',
         proposedMapperIngredientId: null,
         matchInput: proposal.matchInput,
         declared: proposal.declared,
@@ -1673,6 +1691,31 @@ Deno.serve(async (request) => {
       );
     } catch {
       return json({ error: 'product_behavior_authority_unavailable' }, 503);
+    }
+  }
+
+  // Product Request approval is fail-closed BEFORE any product/version row is
+  // written. This prevents an Admin preview of incomplete evidence from
+  // leaving an orphan PR merely because the final request-link step refused
+  // it. No threshold or ProductBehavior rule is changed here; the existing
+  // shared authorities above provide the verdict.
+  if (source === 'admin' && body.requireApprovalReady === true) {
+    const accuracy = serverProductProfileAuthority?.productAccuracy ?? 0;
+    const roleReady = serverProductBehaviorAuthority !== null &&
+      (serverProductBehaviorAuthority.baseRecipeEligible || serverProductBehaviorAuthority.toppingEligible);
+    if (!serverProductProfileAuthority || !serverProductBehaviorAuthority || accuracy < 85 || !roleReady) {
+      return json({
+        kind: 'approval_not_ready',
+        productCreated: false,
+        productAccuracy: accuracy,
+        rawProductAccuracy:
+          serverProductProfileAuthority?.productAccuracyAssessment.rawProductAccuracy ?? 0,
+        readiness: serverProductProfileAuthority?.readiness ?? 'BLOCKED',
+        engineUsable: serverProductProfileAuthority?.engineUsable ?? false,
+        missingEngineFields: serverProductProfileAuthority?.missingEngineFields ?? [],
+        criticalPhysicsBlockers: serverProductProfileAuthority?.criticalPhysicsBlockers ?? [],
+        productBehaviorAuthority: serverProductBehaviorAuthority,
+      });
     }
   }
 

@@ -39,6 +39,9 @@ const ALLOWED_ENV = new Set([
   'VITE_DESIGN_REVIEW',
   // Public Cloudflare widget site key. The secret remains Edge-only.
   'VITE_TURNSTILE_SITE_KEY',
+  // Public build identity shown in the staging operations workspace.
+  'VITE_VERCEL_GIT_COMMIT_SHA',
+  'VITE_GIT_COMMIT_SHA',
 ]);
 
 describe('Phase 2A security guards', () => {

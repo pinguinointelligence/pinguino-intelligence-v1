@@ -56,11 +56,10 @@ describe('Product Recognition V2 server boundary', () => {
     );
     expect(catalogSubmit).toContain('recognitionEvidence: trustedEvidence.recognitionEvidence');
     expect(catalogSubmit).toContain('mergeRecognitionFact(field, fact.value, factSourceUrl)');
-    expect(catalogSubmit).toContain("origin: 'PM'");
+    expect(catalogSubmit).toContain("origin: 'PR'");
     expect(catalogSubmit).toContain('recognitionEvidence: proposal.recognitionEvidence');
-    expect(productScanFinalize).toContain(
-      'recognitionEvidence: productSemanticEvidenceFromScanResult(input.result)',
-    );
+    expect(productScanFinalize).toContain("'gellatti_submit_product_request_v1'");
+    expect(productScanFinalize).not.toContain('productSemanticEvidenceFromScanResult');
   });
 
   it('stores no secret and gives clients no write permission', () => {

@@ -14,6 +14,7 @@ import {
   visibleNavItems,
   type NavGroupId,
 } from './appNav';
+import { AccountModeSwitcher } from './AccountModeSwitcher';
 
 const s = copy.shell;
 const FOCUSABLE =
@@ -165,6 +166,7 @@ export function AppNavDrawer() {
               </button>
             </div>
 
+            <AccountModeSwitcher onNavigate={close} />
             <nav className="min-h-0 flex-1 overflow-y-auto px-4 pb-4" aria-label={s.menuTitle}>
               {NAV_GROUP_ORDER.map((group: NavGroupId) => {
                 const groupItems = items.filter(

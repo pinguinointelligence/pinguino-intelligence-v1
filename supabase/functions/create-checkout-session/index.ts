@@ -112,14 +112,31 @@ Deno.serve(async (req) => {
     return json(409, { error: 'conflicting_active_subscription' });
   }
 
-  // 5. Attribution resolution input (track E resolver decides authority;
-  //    the resulting attribution id rides in metadata for correlation).
+  // 5. Attribution resolution. A client UUID is only a pointer: it receives
+  //    credit solely when the accepted DB ledger says it belongs to THIS user,
+  //    remains pending/active inside its window, belongs to an ACTIVE Partner,
+  //    and is not a self-referral. A locked active owner is never replaced.
   const attribution = buildAttributionResolutionInput({
     userId,
     explicitCode: body.explicitCode ?? null,
     cookieAttributionId: body.cookieAttributionId ?? null,
   });
-  const attributionId = attribution.cookieAttributionId; // resolver integration point
+  let attributionId: string | null = null;
+  if (attribution.cookieAttributionId) {
+    const { data: row } = await admin
+      .from('referral_attributions')
+      .select('id,user_id,partner_id,status,window_expires_at,partners!inner(user_id,status)')
+      .eq('id', attribution.cookieAttributionId)
+      .eq('user_id', userId)
+      .in('status', ['pending', 'active'])
+      .maybeSingle();
+    const partner = row?.partners as unknown as { user_id?: string; status?: string } | null;
+    const insideWindow = row?.status === 'active'
+      || (typeof row?.window_expires_at === 'string' && Date.parse(row.window_expires_at) > Date.now());
+    if (row && partner?.status === 'active' && partner.user_id !== userId && insideWindow) {
+      attributionId = row.id;
+    }
+  }
 
   // 6. Create the session — deterministic idempotency key, closed metadata.
   const apiVersion = Deno.env.get('STRIPE_API_VERSION') ?? '2025-06-30.basil';

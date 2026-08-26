@@ -45,57 +45,43 @@ describe('allergen confirmation — absence of a statement is NOT "no allergens"
   });
 });
 
-describe('save contract — one product per accepted scan, retries included', () => {
+describe('save contract — one request per accepted scan, retries included', () => {
   it('an already-finalized session returns the SAME overlay instead of creating a second product', () => {
     expect(FINALIZE).toContain("if (session.state === 'finalized')");
     expect(FINALIZE).toContain("return json({ kind: 'idempotent', ...overlay })");
   });
 
-  it('a consumed quota reservation also short-circuits to the existing product', () => {
-    expect(FINALIZE).toContain('quotaResult.consumed === true');
+  it('uses the request authority to return either an idempotent request or exact product', () => {
+    expect(FINALIZE).toContain("'gellatti_submit_product_request_v1'");
+    expect(FINALIZE).toContain("requestResult.kind !== 'product_request'");
+    expect(FINALIZE).toContain("requestResult.kind !== 'existing_product'");
   });
 
-  it('routes the caller-supplied idempotency key through both preflight and ingest', () => {
+  it('routes the caller-supplied idempotency key through the request transaction', () => {
     expect(FINALIZE).toContain('p_idempotency_key: idempotencyKey');
-    expect(FINALIZE.match(/p_idempotency_key: idempotencyKey/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(FINALIZE.match(/p_idempotency_key: idempotencyKey/g)?.length).toBe(1);
   });
 });
 
-describe('save contract — a failed save does not consume the scan', () => {
-  it('releases the creation slot on every failure path after it was reserved', () => {
-    const afterReservation = FINALIZE.slice(FINALIZE.indexOf('const releaseCreationSlot'));
-    // profile, behavior, preflight, rate-limit, ingest and invalid-result failures all release.
-    expect(afterReservation.match(/await releaseCreationSlot\(\);/g)?.length).toBe(6);
-    for (const failure of [
-      'pm_product_profile_unavailable',
-      'pm_product_behavior_unavailable',
-      'product_ingest_preflight_failed',
-      'product_ingest_rate_limited',
-      'product_ingest_failed',
-      'product_ingest_result_invalid',
-    ]) {
-      const at = afterReservation.indexOf(failure);
-      expect(at).toBeGreaterThan(-1);
-      // the release precedes the error response it belongs to
-      expect(afterReservation.lastIndexOf('await releaseCreationSlot();', at)).toBeGreaterThan(-1);
-    }
+describe('save contract — a failed request never consumes product creation quota', () => {
+  it('does not reserve or consume the retired PM creation slot', () => {
+    expect(FINALIZE).not.toContain('reserve_product_scan_creation_v1');
+    expect(FINALIZE).not.toContain('finalize_product_scan_creation_v1');
+    expect(FINALIZE).not.toContain("service.rpc('ingest_product_v1'");
   });
 });
 
-describe('save contract — public facts and private overlay stay separated', () => {
-  it('never sends raw image bytes or the private overlay into the public evidence block', () => {
-    expect(FINALIZE).toContain('Raw image bytes and private overlay are deliberately absent.');
-    const evidence = FINALIZE.slice(
-      FINALIZE.indexOf('p_evidence: {'),
-      FINALIZE.indexOf('p_private_overlay:'),
-    );
-    expect(evidence).not.toContain('privatePrice');
-    expect(evidence).not.toContain('base64');
+describe('save contract — evidence request and private commerce stay separated', () => {
+  it('never sends raw image bytes or private commerce into the request payload', () => {
+    const requestPayload = FINALIZE.slice(FINALIZE.indexOf('p_payload: {'), FINALIZE.indexOf('},\n    },\n  );'));
+    expect(requestPayload).not.toContain('privateOverlay');
+    expect(requestPayload).not.toContain('privatePrice');
+    expect(requestPayload).not.toContain('base64');
   });
 
-  it('normalizes the package quantity for storage and keeps the raw label separately', () => {
-    expect(FINALIZE).toContain('packageSize:');
-    expect(FINALIZE).toContain('netQuantityText: text(packageValue.netQuantityText)');
-    expect(FINALIZE).toContain('`${packageValue.netQuantity} ${text(packageValue.unit) ?? \'\'}`');
+  it('preserves the complete scanner result as review evidence without creating an article', () => {
+    expect(FINALIZE).toContain('result: scanResult');
+    expect(FINALIZE).toContain('controlledCatalog: true');
+    expect(FINALIZE).toContain('usableProductCreated: false');
   });
 });

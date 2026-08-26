@@ -81,7 +81,8 @@ describe('Product Scanner server/client/security boundary', () => {
     expect(migration).not.toMatch(
       /(?:insert|update|delete|truncate)\s+(?:table\s+)?public\.mapper_basement/i,
     );
-    expect(finalize).toContain('p_private_overlay: privateOverlay');
+    expect(finalize).not.toContain('p_private_overlay: privateOverlay');
+    expect(finalize).toContain("'gellatti_submit_product_request_v1'");
   });
 
   it('pins the exact Basic/Pro product quota and excludes failures/duplicates', () => {
@@ -89,7 +90,8 @@ describe('Product Scanner server/client/security boundary', () => {
     expect(migration).toContain("v_plan='basic' and v_month>=10");
     expect(migration).toContain("v_plan='basic' and v_lifetime>=5 and v_day>=1");
     expect(migration).toContain("status=case when p_created then 'consumed' else 'released' end");
-    expect(finalize).toContain("const created = result.kind === 'created'");
+    expect(finalize).not.toContain('reserve_product_scan_creation_v1');
+    expect(finalize).toContain('usableProductCreated: false');
     expect(migration).toContain('from public.account_profiles where user_id=p_actor_user_id');
     expect(migration).toContain("v_timezone:='UTC'");
   });
@@ -180,14 +182,14 @@ describe('Product Scanner server/client/security boundary', () => {
     expect(analyze).toContain('Requested missing fields only:');
   });
 
-  it('creates products through the shared canonical ingest, deduplicating on the GTIN', () => {
-    expect(finalize).toContain("await service.rpc('ingest_product_v1'");
-    expect(finalize).toContain("const source = text(input.ean) ? 'barcode' : 'manual'");
-    expect(finalize).toContain("provenance: 'product_scanner_v1'");
-    // Product Intelligence now recomputes the PM-owned profile server-side;
-    // Scanner still carries no separate client-side estimator.
-    expect(finalize).toContain('validateIntimportProductProfileProposal');
-    expect(finalize).toContain('productProfileAuthority');
+  it('creates only a controlled Product Add Request and lets exact GTIN reuse win', () => {
+    expect(finalize).toContain("'gellatti_submit_product_request_v1'");
+    expect(finalize).toContain("requestResult.kind !== 'product_request'");
+    expect(finalize).toContain("requestResult.kind !== 'existing_product'");
+    expect(finalize).toContain('usableProductCreated: false');
+    expect(finalize).not.toContain("service.rpc('ingest_product_v1'");
+    expect(finalize).not.toContain('validateIntimportProductProfileProposal');
+    expect(finalize).not.toContain('productProfileAuthority');
     expect(service).not.toContain('validateIntimportProductProfileProposal');
   });
 

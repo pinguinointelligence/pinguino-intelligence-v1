@@ -12,6 +12,9 @@ import { resolveLabelRepository, type RunLabelSnapshot } from '@/services/labels
 import { AccountRecipeDefaults } from '@/features/pro-workbench/AccountRecipeDefaults';
 import { AccountProductMarkets } from '@/features/global-catalog/AccountProductMarkets';
 import { GlobalCatalogSearchPanel } from '@/features/global-catalog/GlobalCatalogSearchPanel';
+import { useProCoreAccessStore } from '@/features/pro-core/proCoreAccessStore';
+import { ProductRequestAccountSections } from '@/features/product-requests/ProductRequestAccountSections';
+import { HomeInviteRedemption } from '@/features/account/HomeInviteRedemption';
 
 const quietLink =
   'flex min-h-14 items-center justify-between border-b border-ink/10 py-3 text-sm text-ink transition-opacity hover:opacity-55';
@@ -90,6 +93,7 @@ export function FranchisePage() {
 export function ProductsHubPage() {
   const persona = useProCorePersona();
   const capabilities = proCoreCapabilitiesFor(persona);
+  const canAdmin = useProCoreAccessStore((state) => state.effectiveAccess?.canAdmin === true);
   return (
     <DestinationSurface
       eyebrow="Katalog PINGÜINO"
@@ -108,7 +112,7 @@ export function ProductsHubPage() {
                 Katalog produktów
               </h2>
               <p className="mt-1 text-sm text-stone-500">
-                Jedna biblioteka; wszystkie metody dodawania trafiają do tego samego procesu intake.
+                Zatwierdzony katalog Gellatti. Nieznany produkt możesz przesłać do weryfikacji Admina.
               </p>
             </div>
             <Link
@@ -128,24 +132,17 @@ export function ProductsHubPage() {
               </span>
               <span aria-hidden>→</span>
             </Link>
-            <Link to="/products/add" className={quietLink}>
-              <span>
-                <strong className="block font-medium">Dodaj produkt ręcznie</strong>
-                <span className="mt-1 block text-xs text-stone-500">
-                  Fakty z opakowania, Product Intelligence i własny artykuł PM
+            {canAdmin ? (
+              <Link to="/products/import" className={quietLink}>
+                <span>
+                  <strong className="block font-medium">Import administracyjny</strong>
+                  <span className="mt-1 block text-xs text-stone-500">
+                    Kontrolowana ścieżka back-office dostępna tylko w trybie Admin
+                  </span>
                 </span>
-              </span>
-              <span aria-hidden>→</span>
-            </Link>
-            <Link to="/products/import" className={quietLink}>
-              <span>
-                <strong className="block font-medium">Importuj tabelę lub plik</strong>
-                <span className="mt-1 block text-xs text-stone-500">
-                  Istniejąca walidowana ścieżka importu
-                </span>
-              </span>
-              <span aria-hidden>→</span>
-            </Link>
+                <span aria-hidden>→</span>
+              </Link>
+            ) : null}
           </div>
           <GlobalCatalogSearchPanel />
           <p className="mt-8 max-w-xl text-xs leading-relaxed text-stone-500">
@@ -466,6 +463,8 @@ export function AccountSettingsPage() {
             <span className="text-sm text-stone-600">Ustawienia konta</span>
           </div>
           <AccountProductMarkets />
+          <HomeInviteRedemption />
+          <ProductRequestAccountSections />
           <AccountRecipeDefaults />
         </div>
       )}

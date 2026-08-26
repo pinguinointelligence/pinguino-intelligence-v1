@@ -140,8 +140,9 @@ describe('current ingestion paths share ProductBehavior authority, never PR→PI
     'utf8',
   );
 
-  it('D: the Scanner and INTIMPORT reach one semantic-only helper', () => {
-    expect(scanner).toContain("from '../../../src/features/product-intelligence/productBehaviorAuthority.ts'");
+  it('D: Admin/INTIMPORT reaches the semantic helper; Scanner creates no runtime identity', () => {
+    expect(scanner).toContain("'gellatti_submit_product_request_v1'");
+    expect(scanner).not.toContain("from '../../../src/features/product-intelligence/productBehaviorAuthority.ts'");
     expect(catalog).toContain("from '../../../src/features/product-intelligence/productBehaviorAuthority.ts'");
     expect(scanner).not.toContain('authorizeLiveOverlayIdentity');
     expect(catalog).not.toContain('authorizeLiveOverlayIdentity');

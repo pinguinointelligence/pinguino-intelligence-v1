@@ -12,6 +12,8 @@ import type {
   ProductScanResult,
 } from '@/features/product-scanner/contracts';
 import type { CarbonationStatus } from '@/data/products/carbonation';
+import type { PreparedProductScanAsset } from '@/features/product-scanner/contracts';
+import type { ScanEvidenceKind } from '@/features/product-scanner/evidenceState';
 
 const UNAVAILABLE = 'Skaner produktu nie jest dostępny w tej konfiguracji.';
 
@@ -200,6 +202,7 @@ export async function analyzeProductImages(input: {
 export async function finalizeProductScan(input: {
   sessionId: string;
   idempotencyKey: string;
+  marketCountryCode?: string | null;
   confirmations?: {
     noAdditionalAllergenStatementVisible?: boolean;
     notOnLabelFields?: string[];
@@ -240,6 +243,97 @@ export async function finalizeProductScan(input: {
     });
     reportScannerDiagnostic(scannerError);
     throw new ProductScannerServiceError(scannerError, 'save');
+  }
+  return data as Record<string, unknown>;
+}
+
+export type ProductRequestEvidenceKind =
+  | 'FRONT_PHOTO'
+  | 'BARCODE_PHOTO'
+  | 'INGREDIENTS_PHOTO'
+  | 'NUTRITION_PHOTO'
+  | 'OTHER';
+
+const requestEvidenceKind = (view: ScanEvidenceKind | null): ProductRequestEvidenceKind => {
+  if (view === 'identity') return 'FRONT_PHOTO';
+  if (view === 'barcode') return 'BARCODE_PHOTO';
+  if (view === 'ingredients') return 'INGREDIENTS_PHOTO';
+  if (view === 'nutrition') return 'NUTRITION_PHOTO';
+  return 'OTHER';
+};
+
+async function sha256File(file: File): Promise<string> {
+  const bytes = await file.arrayBuffer();
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Explicit request submission is the retention consent boundary. Scanner analysis
+ * itself still stores metadata only; after the user chooses „Poproś o dodanie” the
+ * normalized, metadata-stripped evidence files are copied to the private request
+ * bucket and registered in the immutable request history.
+ */
+export async function uploadProductRequestEvidence(input: {
+  requestId: string;
+  assets: readonly PreparedProductScanAsset[];
+  views: readonly (ScanEvidenceKind | null)[];
+}): Promise<void> {
+  if (!supabase) throw new Error(UNAVAILABLE);
+  const { data: auth, error: authError } = await supabase.auth.getUser();
+  if (authError || !auth.user) throw new Error('Zaloguj się, aby przesłać dowody produktu.');
+  for (const [index, asset] of input.assets.entries()) {
+    const checksum = await sha256File(asset.file);
+    const extension = asset.file.type === 'image/png' ? 'png' : asset.file.type === 'image/webp' ? 'webp' : 'jpg';
+    const path = `${auth.user.id}/${input.requestId}/${asset.id}.${extension}`;
+    const { error: uploadError } = await supabase.storage
+      .from('product-request-evidence')
+      .upload(path, asset.file, { contentType: asset.file.type, upsert: false });
+    if (uploadError && !/already exists/i.test(uploadError.message)) throw new Error(uploadError.message);
+    const { error: registerError } = await supabase.rpc(
+      'gellatti_register_product_request_evidence_v1',
+      {
+        p_request_id: input.requestId,
+        p_kind: requestEvidenceKind(input.views[index] ?? null),
+        p_storage_path: path,
+        p_mime_type: asset.file.type,
+        p_byte_size: asset.file.size,
+        p_checksum_sha256: checksum,
+        p_payload: {
+          assetId: asset.id,
+          source: asset.source,
+          originalMime: asset.originalMime,
+          transformations: asset.transformations,
+          qualityScore: asset.qualityScore,
+        },
+      },
+    );
+    if (registerError && !/duplicate/i.test(registerError.message)) throw new Error(registerError.message);
+  }
+}
+
+/** OpenAI-independent fallback: raw normalized evidence can enter Admin review. */
+export async function submitRawProductRequest(input: {
+  idempotencyKey: string;
+  marketCountryCode?: string | null;
+  detectedEan?: string | null;
+}): Promise<Record<string, unknown>> {
+  if (!supabase) throw new Error(UNAVAILABLE);
+  const { data, error } = await supabase.rpc('gellatti_submit_product_request_v1', {
+    p_scan_session_id: null,
+    p_market_country_code: input.marketCountryCode ?? null,
+    p_idempotency_key: input.idempotencyKey,
+    p_payload: {
+      result: {
+        identity: {},
+        package: {},
+        barcodes: input.detectedEan ? [{ value: input.detectedEan }] : [],
+      },
+      provenance: { scannerSchema: 'gellatti_product_scan_v1', automatedExtraction: 'unavailable' },
+    },
+  });
+  if (error || !data || typeof data !== 'object') {
+    throw new Error(error?.message ?? 'Nie udało się wysłać zgłoszenia produktu.');
   }
   return data as Record<string, unknown>;
 }
