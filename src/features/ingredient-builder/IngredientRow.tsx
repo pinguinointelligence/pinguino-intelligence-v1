@@ -388,22 +388,13 @@ export function RequiredRemovalDialog({
   );
 }
 
-function IngredientDataDialog({
-  item,
-  onClose,
-  navigation = 'close',
-}: {
-  item: EffectiveRecipeItem;
-  onClose: () => void;
-  navigation?: 'close' | 'back';
-}) {
+function IngredientDataDialog({ item, onBack }: { item: EffectiveRecipeItem; onBack: () => void }) {
   const estimated = !item.ingredient.is_verified || item.ingredient.confidence_score < 90;
   // Product information the manufacturer supplied. It is shown because it is
   // useful to know, and for no other reason: neither line decides anything
   // about this recipe (owner decision, 2026-08-23).
   const behavior = useRecipeStore((state) => state.productBehaviorSnapshots[item.id]);
   const rows = [
-    [t.data.source, item.ingredient.source_type || 'Baza PINGÜINO'],
     [t.data.status, estimated ? t.data.estimated : t.data.verified],
     [t.data.confidence, `${item.ingredient.confidence_score}%`],
     [t.data.process, productProcessPl(behavior)],
@@ -416,7 +407,7 @@ function IngredientDataDialog({
       testId="ingredient-data-dialog"
       placement="responsive"
       panelClassName="sm:!w-[min(420px,94vw)] sm:!p-0"
-      onClose={onClose}
+      onClose={onBack}
     >
       <div className="p-4 sm:p-4">
         <div className="flex items-start justify-between gap-3">
@@ -433,13 +424,11 @@ function IngredientDataDialog({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={onBack}
             className="pro-focus-ring grid size-10 shrink-0 place-items-center rounded-full border border-ink/12 text-lg text-ink"
-            aria-label={
-              navigation === 'back' ? 'Wróć do opcji składnika' : 'Zamknij dane składnika'
-            }
+            aria-label="Wróć do opcji składnika"
           >
-            <span aria-hidden>{navigation === 'back' ? '←' : '×'}</span>
+            <span aria-hidden>←</span>
           </button>
         </div>
         <dl
@@ -501,7 +490,7 @@ function RecipeRow({
   const [rowMenuOpen, setRowMenuOpen] = useState(false);
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   const [dialog, setDialog] = useState<
-    'substitute' | 'required' | 'required-confirm' | 'data' | 'data-from-article' | null
+    'substitute' | 'required' | 'required-confirm' | 'data-from-article' | null
   >(null);
   const closeLineMenus = () => {
     setRowMenuOpen(false);
@@ -638,10 +627,7 @@ function RecipeRow({
         <ArticleActionButton
           label="Dane składnika"
           icon="info"
-          onClick={() => {
-            closeLineMenus();
-            setDialog('data');
-          }}
+          onClick={() => setDialog('data-from-article')}
         />
       </div>
 
@@ -1000,12 +986,8 @@ function RecipeRow({
           onClose={() => setDialog(null)}
         />
       ) : null}
-      {dialog === 'data' || dialog === 'data-from-article' ? (
-        <IngredientDataDialog
-          item={item}
-          navigation={dialog === 'data-from-article' ? 'back' : 'close'}
-          onClose={() => setDialog(null)}
-        />
+      {dialog === 'data-from-article' ? (
+        <IngredientDataDialog item={item} onBack={() => setDialog(null)} />
       ) : null}
     </>
   );

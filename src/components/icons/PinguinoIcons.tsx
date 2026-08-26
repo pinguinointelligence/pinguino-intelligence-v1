@@ -190,14 +190,25 @@ export function ChocolateIcon(props: PinguinoIconProps) {
   );
 }
 
-/** Fruits — strawberry outline with seeds and leaf. */
+/** Fruits — one compact category mark combining apple, grapes and citrus. */
 export function FruitsIcon(props: PinguinoIconProps) {
   return (
-    <Icon {...props} defaultTone="redPink">
-      <path d="M12 7.6c-2.1-2.1-7-1.3-7.4 3.3-.4 5.1 4.1 10 7.4 10s7.8-4.9 7.4-10c-.4-4.6-5.3-5.4-7.4-3.3Z" />
-      <path d="M12 7.6V3.2" />
-      <path d="M12 4.9c1.4-1.6 3.3-1.9 4.7-1.3-.4 1.7-2 2.8-4.7 2.6M12 4.9C10.6 3.3 8.7 3 7.3 3.6c.4 1.7 2 2.8 4.7 2.6" />
-      <path d="M9.4 11.9h.01M12 11h.01M14.6 11.9h.01M10.6 14.6h.01M13.4 14.6h.01M12 17.4h.01" />
+    <Icon {...props} defaultTone="redPink" data-fruit-category-symbol="apple-grapes-citrus">
+      {/* Apple: the larger anchor shape keeps the mark readable in a 16 px row slot. */}
+      <path d="M8.7 7.4C6.8 6.2 4 7.3 3.8 10.2c-.2 3.7 2.6 8.2 5.1 8.2 1.1 0 1.7-.7 2.7-.7.5 0 .9.1 1.3.3" />
+      <path d="M8.7 7.3c-.1-1.8.8-3.2 2.4-4.1M8.7 5.7C7 5.5 6 4.7 5.8 3.3c1.7-.1 3 .5 3.5 1.8" />
+
+      {/* Small grape cluster: five precise outline nodes, never a single-fruit avatar. */}
+      <path d="M15.8 3.8c.8-.9 1.9-1.2 3.1-.7" />
+      <circle cx="15.7" cy="5.3" r="1.15" />
+      <circle cx="18.5" cy="5.7" r="1.15" />
+      <circle cx="15" cy="8" r="1.15" />
+      <circle cx="17.8" cy="8.5" r="1.15" />
+      <circle cx="16.4" cy="10.7" r="1.15" />
+
+      {/* Citrus slice: clean segmented outline, tucked into the lower-right corner. */}
+      <circle cx="17.4" cy="16.6" r="4.1" />
+      <path d="M17.4 12.5v4.1l3.5-2M17.4 16.6l2.8 3M17.4 16.6l-3.7 1.8" />
     </Icon>
   );
 }

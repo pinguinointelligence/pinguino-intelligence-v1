@@ -36,6 +36,33 @@ describe('shared ingredient category symbols', () => {
     expect(html).not.toContain('<title');
   });
 
+  it('uses one apple-grapes-citrus category mark for every Fresh Fruit product', () => {
+    const freshFruits = ['Banana', 'Cranberry', 'Watermelon', 'Strawberry', 'Mango'].map(
+      (name) => ({ name, category: 'fruit', form: 'Fresh Fruit' }),
+    );
+    const symbols = freshFruits.map(({ category, form }) =>
+      ingredientCategorySymbolFor({ category, form }),
+    );
+
+    expect(new Set(symbols)).toEqual(new Set(['fruit']));
+
+    const renderedMarks = symbols.map((symbol) =>
+      renderToStaticMarkup(<IngredientCategoryIcon symbol={symbol} />),
+    );
+    expect(new Set(renderedMarks).size).toBe(1);
+    expect(renderedMarks[0]).toContain('data-fruit-category-symbol="apple-grapes-citrus"');
+
+    const iconSource = readFileSync(
+      new URL('../../components/icons/PinguinoIcons.tsx', import.meta.url),
+      'utf8',
+    );
+    const fruitIconSource = iconSource.slice(
+      iconSource.indexOf('export function FruitsIcon'),
+      iconSource.indexOf('/** Nuts'),
+    );
+    expect(fruitIconSource).not.toMatch(/strawberry/i);
+  });
+
   it('drives both picker chips and product result marks without letter avatars', () => {
     const picker = readFileSync(new URL('./ProductPickerPopover.tsx', import.meta.url), 'utf8');
     expect(picker).toContain('<IngredientCategoryIcon symbol={filter.id} />');

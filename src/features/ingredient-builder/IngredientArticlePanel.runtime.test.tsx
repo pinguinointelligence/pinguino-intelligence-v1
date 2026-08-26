@@ -342,19 +342,27 @@ describe('compact ingredient article panel', () => {
     expect(document.querySelector(panelId)).not.toBeNull();
   });
 
-  it('opens ingredient data as a compact responsive drawer', async () => {
+  it('opens ingredient data as an internal child view, omits source, and returns to the same dialog', async () => {
     await renderRow(actions());
     await click(
       document.querySelector(`[aria-label="Opcje składnika ${baseItem.ingredient.name}"]`),
     );
-    await click(document.querySelector('[aria-label="Dane składnika"]'));
+    const panel = document.querySelector(`[data-testid="row-menu-${baseItem.id}"]`);
+    await click(panel?.querySelector('[aria-label="Dane składnika"]') ?? null);
 
     const data = document.querySelector('[data-testid="ingredient-data-dialog"]');
     expect(data?.getAttribute('data-placement')).toBe('responsive');
     const list = data?.querySelector('[data-testid="ingredient-data-compact-list"]');
     expect(list).not.toBeNull();
-    expect(list?.children).toHaveLength(6);
-    expect(data?.querySelector('[aria-label="Zamknij dane składnika"]')).not.toBeNull();
+    expect(list?.children).toHaveLength(5);
+    expect(list?.textContent).not.toContain('Źródło');
+    expect(list?.textContent).not.toContain(baseItem.ingredient.source_type);
+    expect(document.querySelector(`[data-testid="row-menu-${baseItem.id}"]`)).toBe(panel);
+    expect(data?.querySelector('[aria-label="Zamknij dane składnika"]')).toBeNull();
+
+    await click(data?.querySelector('[aria-label="Wróć do opcji składnika"]') ?? null);
+    expect(document.querySelector('[data-testid="ingredient-data-dialog"]')).toBeNull();
+    expect(document.querySelector(`[data-testid="row-menu-${baseItem.id}"]`)).toBe(panel);
   });
 
   it('navigates from the Main help into data and back to the same desktop ingredient dialog', async () => {
