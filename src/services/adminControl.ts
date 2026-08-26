@@ -50,6 +50,7 @@ export interface AdminProductRequest {
   id: string;
   requestNumber: number;
   status: ProductRequestStatus;
+  source: 'SCANNER' | 'MANUAL_EVIDENCE' | 'ADMIN';
   requesterUserId: string;
   requesterEmail: string;
   marketCountryCode: string | null;
@@ -71,6 +72,7 @@ export interface AdminProductRequest {
   userCorrections: Record<string, unknown>;
   adminVerifiedData: Record<string, unknown>;
   scannerProvenance: Record<string, unknown>;
+  exactMatchCandidate: boolean;
   missingFields: Array<Record<string, unknown>>;
   events: Array<Record<string, unknown>>;
   evidence: Array<Record<string, unknown>>;

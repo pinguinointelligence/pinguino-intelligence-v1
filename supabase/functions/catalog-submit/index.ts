@@ -1451,6 +1451,37 @@ Deno.serve(async (request) => {
   const service = createClient(url, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  if (source === 'admin' && body.requireApprovalReady === true) {
+    const approvalFacts = objectValue(canonicalInput.facts);
+    const requestIdFromFacts =
+      typeof approvalFacts.productAddRequestId === 'string'
+        ? approvalFacts.productAddRequestId
+        : null;
+    const requestIdFromEvidence =
+      typeof suppliedEvidence.productAddRequestId === 'string'
+        ? suppliedEvidence.productAddRequestId
+        : null;
+    if (
+      canonicalInput.provenance !== 'product_add_request_admin_v1' ||
+      suppliedEvidence.approvedByAdmin !== true ||
+      !requestIdFromFacts ||
+      requestIdFromFacts !== requestIdFromEvidence ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        requestIdFromFacts,
+      )
+    ) {
+      return json({ error: 'product_request_approval_binding_required' }, 409);
+    }
+    const { data: requestAuthority, error: requestAuthorityError } = await service
+      .from('product_add_requests')
+      .select('id,status')
+      .eq('id', requestIdFromFacts)
+      .in('status', ['SUBMITTED', 'ADMIN_REVIEW', 'NEEDS_INFO', 'RESUBMITTED'])
+      .maybeSingle();
+    if (requestAuthorityError || !requestAuthority) {
+      return json({ error: 'product_request_approval_binding_required' }, 409);
+    }
+  }
   const riskSecret = Deno.env.get('CATALOG_RISK_HMAC_SECRET');
   if (!riskSecret) return json({ error: 'catalog_risk_control_unavailable' }, 503);
   const riskChallengePassed = await verifyRiskChallenge({
