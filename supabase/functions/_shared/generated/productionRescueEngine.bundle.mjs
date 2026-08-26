@@ -7147,6 +7147,7 @@ function reconcileResidual(exactInput, roundedInput, set, nonIncreasableLineIds)
 		if (isTemplateControlledStabilizer(item.ingredient)) return false;
 		if (unavailable.has(canonicalIngredientId(item.ingredient))) return false;
 		if (direction < 0 && practical.planned_grams <= 0) return false;
+		if (direction < 0 && (item.user_intent_anchor_grams ?? 0) > 0 && practical.planned_grams <= 1) return false;
 		return true;
 	}).map(({ item, index, practical }) => ({
 		item,
@@ -7207,6 +7208,7 @@ function repairIntroducedHardGate(exactInput, initial, set, exactHardMetrics) {
 		let best = null;
 		for (const donorIndex of eligibleIndexes) {
 			if (working.items[donorIndex].planned_grams < 1) continue;
+			if ((exactInput.items[donorIndex].user_intent_anchor_grams ?? 0) > 0 && working.items[donorIndex].planned_grams <= 1) continue;
 			for (const receiverIndex of eligibleIndexes) {
 				if (receiverIndex === donorIndex) continue;
 				const candidate = cloneInput(working);
