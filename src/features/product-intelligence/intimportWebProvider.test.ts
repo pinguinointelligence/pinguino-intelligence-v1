@@ -304,6 +304,7 @@ describe('provider runs server-side only', () => {
   it('bounds tool calls per product', () => {
     expect(edgeSource).toContain('max_tool_calls: maxPerProduct');
     expect(edgeSource).toContain("Math.min(3, numberEnv('INTIMPORT_MAX_CALLS_PER_SOURCE_STEP', 2))");
+    expect(edgeSource).toContain('signal: AbortSignal.timeout(90_000)');
   });
 
   it('degrades one product rather than failing the batch', () => {

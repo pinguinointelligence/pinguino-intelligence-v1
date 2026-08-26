@@ -777,6 +777,7 @@ Deno.serve(async (request) => {
   try {
     const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
+      signal: AbortSignal.timeout(90_000),
       headers: {
         Authorization: `Bearer ${openAiKey}`,
         'Content-Type': 'application/json',
