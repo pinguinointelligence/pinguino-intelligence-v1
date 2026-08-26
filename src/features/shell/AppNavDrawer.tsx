@@ -48,7 +48,10 @@ export function AppNavDrawer() {
   const loc = { pathname: location.pathname, search: location.search };
   const planLabel =
     audience === 'pro' ? s.account.planPro : audience === 'home' ? s.account.planHome : null;
-  const memberAccount = audience !== 'guest';
+  // An authenticated Admin may intentionally have no Home/Pro entitlement, so
+  // their navigation audience can be `guest` while the session is still fully
+  // authenticated. The account block must follow auth, not consumer-plan UX.
+  const memberAccount = authStatus === 'authed' || devMemberPreview;
   const close = () => setOpen(false);
 
   useEffect(() => {
