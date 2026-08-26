@@ -160,10 +160,30 @@ const FAMILY_RULES: readonly FamilyRule[] = [
     pattern: /\b(milk|cream|smietan|smietan|mleko)\b/i,
     categories: ['dairy'],
   },
-  { family: 'chocolate', technical: false, pattern: /\b(chocolate|czekolad|cocoa|kakao)\b/i, categories: ['chocolate'] },
-  { family: 'fruit', technical: false, pattern: /\b(puree|pulp|przecier)\b/i, categories: ['fruit'] },
-  { family: 'alcohol', technical: false, pattern: /\b(liqueur|rum|vodka|whisky|brandy|likier|wodka|wodka)\b/i, categories: ['alcohol'] },
-  { family: 'flavor_paste', technical: false, pattern: /\bpaste\b|\bpasta\b/i, categories: ['flavor_paste'] },
+  {
+    family: 'chocolate',
+    technical: false,
+    pattern: /\b(chocolate|czekolad|cocoa|cacao|kakao)\b/i,
+    categories: ['chocolate', 'cocoa', 'cacao'],
+  },
+  {
+    family: 'fruit',
+    technical: false,
+    pattern: /\b(puree|pulp|przecier)\b/i,
+    categories: ['fruit'],
+  },
+  {
+    family: 'alcohol',
+    technical: false,
+    pattern: /\b(liqueur|rum|vodka|whisky|brandy|likier|wodka|wodka)\b/i,
+    categories: ['alcohol'],
+  },
+  {
+    family: 'flavor_paste',
+    technical: false,
+    pattern: /\bpaste\b|\bpasta\b/i,
+    categories: ['flavor_paste'],
+  },
 ];
 
 /**
@@ -186,7 +206,7 @@ const CATEGORY_RULES: readonly CategoryRule[] = [
   { family: 'stabilizer_hydrocolloid', technical: true, category: /stabiliz|emulsifier/ },
   { family: 'flavor_paste', technical: false, subcategory: /\bpast[ay]\b|variegat|toppingi/ },
   { family: 'base_mix', technical: false, subcategory: /\bspeedy\b|\bbaz[ay]\b|\bbase\b|\bmix\b/ },
-  { family: 'chocolate', technical: false, category: /chocolate|cocoa/ },
+  { family: 'chocolate', technical: false, category: /chocolate|cocoa|cacao/ },
   { family: 'nut_paste', technical: false, category: /\bnut/ },
   { family: 'fruit', technical: false, category: /\bfruit\b/ },
   { family: 'plant_beverage', technical: false, category: /beverage/ },
@@ -263,9 +283,7 @@ export function inferMapperFamily(input: FamilyInferenceInput): ProductFamilyMat
       strength += 0.2;
       evidence.push('dodatkowy sygnał w nazwie (postać/stężenie)');
     }
-    if (
-      rule.categories?.some((known) => category.includes(known) || subcategory.includes(known))
-    ) {
+    if (rule.categories?.some((known) => category.includes(known) || subcategory.includes(known))) {
       strength += 0.2;
       evidence.push('kategoria źródłowa zgodna z rodziną');
     }

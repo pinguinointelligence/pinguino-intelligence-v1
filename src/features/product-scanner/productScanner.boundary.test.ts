@@ -117,7 +117,7 @@ describe('Product Scanner server/client/security boundary', () => {
   });
 
   it('never converts exhausted package evidence into a synthetic allergen fact', () => {
-    expect(ui).toContain('Nie mam więcej informacji na opakowaniu');
+    expect(ui).toContain('Nie mam więcej informacji');
     expect(finalize).toContain('packageEvidenceExhausted');
     expect(finalize).not.toContain('no allergens');
     expect(finalize).not.toContain('brak alergenów');

@@ -1135,7 +1135,10 @@ const compatibleFamilyGroups: readonly (readonly ProductSemanticFamily[])[] = [
   ['coconut_fat', 'liquid_vegetable_oil'],
   ['sugar_sucrose', 'other_sugar'],
   ['glucose_dextrose', 'other_sugar'],
-  ['chocolate', 'cocoa_butter'],
+  // Cocoa powder is the dry cocoa member of the chocolate family. Form and
+  // role gates below still prevent a solid chocolate bar or wet coating from
+  // borrowing a powder profile; this only removes the false family-level veto.
+  ['chocolate', 'cocoa', 'cocoa_butter'],
 ];
 const familyCompatible = (a: ProductSemanticFamily, b: ProductSemanticFamily): boolean =>
   a === 'unknown' ||

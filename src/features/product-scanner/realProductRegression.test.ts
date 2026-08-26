@@ -4,9 +4,18 @@ import {
   productSemanticEvidenceFromScanResult,
   validateServerResult,
 } from '../../../supabase/functions/_shared/productScanner';
-import { validateIntimportProductProfileProposal } from '../../../supabase/functions/_shared/intimportWholeProfileAuthority';
+import {
+  finalizeProductProductionAccuracy,
+  validateIntimportProductProfileProposal,
+} from '../../../supabase/functions/_shared/intimportWholeProfileAuthority';
 import type { IntimportMapperAuthorityRow } from '../../../supabase/functions/_shared/intimportWholeProfileAuthority';
+import { customerProductProfileProposal } from '../../../supabase/functions/_shared/customerProductProfile';
 import { loadMapperKnowledgeRows } from '../product-intelligence/__dryrun__/mapperFixture';
+import {
+  validateProductBehaviorAuthority,
+  type MapperProductBehaviorAuthorityRow,
+} from '../product-intelligence/productBehaviorAuthority';
+import { classifyProductSemantics } from '../product-intelligence/productRecognition';
 import type { ProductScanResult } from './contracts';
 
 /**
@@ -366,6 +375,108 @@ describe('La Chocolatera two-photo rounding and semantic handoff regression', ()
         })}`,
       );
     }
+  });
+
+  it('completes the exact served chocolate + POWDER recognition without asking for water or solids', () => {
+    const served = structuredClone(merged);
+    Object.assign(identity(served), {
+      category: 'Cacao desgrasado en polvo',
+      variant: 'Puro',
+    });
+    served.barcodes = [{ value: '8410109121551', format: 'EAN_13' }];
+    const semanticEvidence = productSemanticEvidenceFromScanResult(served);
+    const deterministic = classifyProductSemantics(semanticEvidence);
+    const servedRecognition = {
+      ...deterministic,
+      classificationSource: 'SERVER_MODEL' as const,
+      productArchetype: 'CHOCOLATE' as const,
+      ingredientFamily: 'chocolate' as const,
+      physicalForm: 'POWDER' as const,
+      intendedUsageRole: 'BASE_ONLY' as const,
+      flavorDomain: 'CHOCOLATE_GENERAL' as const,
+      compatibleMapperCategories: ['chocolate', 'cocoa'],
+      confidence: 0.94,
+      modelRequired: false,
+      modelReasonCodes: [],
+    };
+    const proposal = customerProductProfileProposal({
+      scanResult: served,
+      recognitionEvidence: semanticEvidence,
+      recognition: servedRecognition,
+    });
+    const { rows } = loadMapperKnowledgeRows();
+    const authority = proposal
+      ? validateIntimportProductProfileProposal({
+          origin: 'CUSTOMER_ADDED',
+          proposedMapperIngredientId: null,
+          ...proposal,
+          rows: rows as unknown as IntimportMapperAuthorityRow[],
+        })
+      : null;
+    const behavior = authority
+      ? validateProductBehaviorAuthority({
+          productProfile: authority,
+          behaviorRows: [
+            {
+              id: '00000000-0000-4000-8000-000000001313',
+              mapper_ingredient_id: 'PI-ING-001313',
+              mapper_dataset_version: 'v1.0',
+              taxonomy_version_id: 'pinguino-product-taxonomy-v1',
+              family_id: 'chocolate',
+              subfamily_id: 'cocoa_powder',
+              form_id: 'powder',
+              main_eligibility: 'STANDARD_ONLY',
+              vegan_eligibility: 'true',
+              protein_behavior: 'neutral',
+              approved_liquid_dairy_carrier: false,
+              profile_permissions: {
+                BASE_RECIPE: true,
+                SUBSTITUTION: true,
+                MONITOR: true,
+                PRODUCTION: true,
+                SAVE: true,
+              },
+              process_behavior: { decision: 'COLD_OR_HEAT' },
+              classifier_version: 'mapper-product-classifier-v2:test',
+              behavior_role: 'STANDARD_ONLY',
+              main_policy_status: 'NOT_APPLICABLE',
+              profile_applicability: { all_existing_profiles: 'standard_where_mapper_approved' },
+              classification_reason_codes: ['standard_product_not_flavour_main'],
+              is_current: true,
+            } satisfies MapperProductBehaviorAuthorityRow,
+          ],
+        })
+      : null;
+    const finalized =
+      authority && behavior ? finalizeProductProductionAccuracy(authority, behavior) : null;
+
+    expect(proposal).not.toBeNull();
+    expect(authority?.profileReferenceMapperIngredientId).toBe('PI-ING-001313');
+    expect(authority?.mapperSimilarity).toBeGreaterThanOrEqual(0.85);
+    expect(authority?.fieldTruth.water_percent).toMatchObject({
+      state: 'ESTIMATED',
+      basis: 'mapper_similar_profile',
+    });
+    expect(authority?.fieldTruth.total_solids_percent).toMatchObject({
+      state: 'ESTIMATED',
+      basis: 'derived',
+    });
+    expect(
+      (authority?.fieldTruth.water_percent?.value ?? 0) +
+        (authority?.fieldTruth.total_solids_percent?.value ?? 0),
+    ).toBe(100);
+    expect(authority?.fieldTruth.fat_percent?.value).toBe(16);
+    expect(authority?.fieldTruth.protein_percent?.value).toBe(25.5);
+    expect(authority?.fieldTruth.carbohydrate_percent?.value).toBe(16.3);
+    expect(authority?.missingEngineFields).toEqual([]);
+    expect(authority?.criticalPhysicsBlockers).toEqual([]);
+    expect(authority?.engineUsable).toBe(true);
+    expect(behavior).toMatchObject({
+      classificationOutcome: 'classified',
+      baseRecipeEligible: true,
+    });
+    expect(finalized?.productAccuracy).toBeGreaterThanOrEqual(85);
+    expect(finalized?.productAccuracyAssessment.criticalCapApplied).toBe(false);
   });
 });
 

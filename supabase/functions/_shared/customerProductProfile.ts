@@ -191,7 +191,6 @@ export function customerProductProfileProposal(input: {
     'total_sugars_percent',
     'fiber_percent',
     'salt_percent',
-    'alcohol_percent',
   ] as const) {
     if (typeof declared[field] === 'number') knownMacros[field] = declared[field];
   }

@@ -422,6 +422,12 @@ export function resolveProductWorkingValues(
     trace.push(`source_card: ${cardFields} pol`, ...input.sourceCard.reasons);
   }
 
+  /* 2b. deterministic closure precedes every estimate */
+  // Water and total solids are one formulation property. If exact evidence
+  // establishes either side, derive its complement now so no Mapper donor can
+  // independently supply a second, potentially inconsistent estimate.
+  fields = closeArithmetic(fields, trace);
+
   /* 3. Mapper knowledge fills the gaps — conditioned on what is already known */
   // Macros established by the label or an exact source card are the strongest
   // filter available on which neighbours can speak for this product at all. A
@@ -437,7 +443,15 @@ export function resolveProductWorkingValues(
   const inference = inferMapperValues({ ...input.identity, knownMacros }, knowledge);
   for (const field of WORKING_NUMERIC_FIELDS) {
     const candidate = inference.fields[field];
-    if (candidate) fields = applyFieldTruth(fields, field, candidate);
+    if (!candidate) continue;
+    if (
+      !input.technical &&
+      ((field === 'water_percent' && fields.total_solids_percent.value !== null) ||
+        (field === 'total_solids_percent' && fields.water_percent.value !== null))
+    ) {
+      continue;
+    }
+    fields = applyFieldTruth(fields, field, candidate);
   }
   trace.push(...inference.trace);
 
@@ -471,6 +485,13 @@ export function resolveProductWorkingValues(
       // the consistency gate, leaving an accepted proxy supplying nothing.
       // Anything the product itself states is untouchable.
       if (fields[field].provenance.state === 'VERIFIED') continue;
+      if (
+        !input.technical &&
+        ((field === 'water_percent' && fields.total_solids_percent.value !== null) ||
+          (field === 'total_solids_percent' && fields.water_percent.value !== null))
+      ) {
+        continue;
+      }
       const supplied = profileFieldValue(profileMatch, field);
       if (!supplied) continue;
       fields = {

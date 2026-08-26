@@ -12,6 +12,7 @@ import {
   CUSTOMER_PRODUCT_FAMILY_CHOICES,
   type CustomerProductFamilyChoice,
 } from '@/features/product-scanner/customerProductFamily';
+import { customerProductGapGuidance } from '@/features/product-scanner/customerProductGapGuidance';
 import type {
   PreparedProductScanAsset,
   ProductScanNutrition,
@@ -238,6 +239,7 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
   const criticalGaps = Array.isArray(preview?.criticalGaps)
     ? preview.criticalGaps.filter((item): item is string => typeof item === 'string')
     : [];
+  const gapGuidance = customerProductGapGuidance(criticalGaps);
 
   async function resolveBarcode(value: ValidBarcode): Promise<void> {
     setBarcode(value);
@@ -386,6 +388,7 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
 
   async function buildPreview(
     choice: CustomerProductFamilyChoice | null = familyChoice,
+    evidenceExhausted: boolean = packageEvidenceExhausted,
   ): Promise<void> {
     if (!analysis || !review) return;
     if (!validReviewBarcode) {
@@ -401,7 +404,7 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
         sessionId,
         idempotencyKey: `${sessionId}:customer-preview-v1`,
         customerFamily: choice,
-        confirmations: { packageEvidenceExhausted, productFields },
+        confirmations: { packageEvidenceExhausted: evidenceExhausted, productFields },
         privateOverlay: {},
       });
       setPreview(result);
@@ -650,7 +653,7 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
                 className={`${quietButton} mt-3`}
                 onClick={() => setPackageEvidenceExhausted(true)}
               >
-                Nie mam więcej informacji na opakowaniu
+                Nie mam więcej informacji
               </button>
             </div>
           )}
@@ -807,7 +810,8 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
                     {ready ? 'Produkt gotowy' : 'Produkt wymaga danych'}
                   </h3>
                   <p className="mt-1 text-sm text-stone-600">
-                    Pewność: {String(preview.productAccuracy ?? 0)}%
+                    Pewność:{' '}
+                    <span className="font-mono">{String(preview.productAccuracy ?? 0)}%</span>
                   </p>
                 </div>
                 {ready && (
@@ -842,12 +846,30 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
 
               {!ready && criticalGaps.length > 0 && (
                 <div className="mt-5 border border-terracotta/40 bg-terracotta/10 p-4 text-sm text-stone-800">
-                  <p className="font-semibold text-terracotta">Nierozwiązane dane produkcyjne</p>
-                  <ul className="mt-2 list-disc space-y-1 pl-5">
-                    {criticalGaps.map((gap) => (
-                      <li key={gap}>{gap}</li>
-                    ))}
-                  </ul>
+                  <p className="font-semibold text-terracotta">Profil wymaga dalszych dowodów</p>
+                  <p className="mt-2">{gapGuidance.question ?? gapGuidance.explanation}</p>
+                  {gapGuidance.question && (
+                    <p className="mt-1 text-stone-600">{gapGuidance.explanation}</p>
+                  )}
+                  {gapGuidance.question && !packageEvidenceExhausted && (
+                    <button
+                      type="button"
+                      className={`${quietButton} mt-3`}
+                      disabled={Boolean(busy)}
+                      onClick={() => {
+                        setPackageEvidenceExhausted(true);
+                        void buildPreview(familyChoice, true);
+                      }}
+                    >
+                      Nie mam więcej informacji
+                    </button>
+                  )}
+                  {gapGuidance.question && packageEvidenceExhausted && (
+                    <p className="mt-3 text-stone-600">
+                      Nie prosimy o dane, których nie ma na opakowaniu. Produkt pozostaje niegotowy,
+                      dopóki nie pojawi się bezpieczne źródło.
+                    </p>
+                  )}
                 </div>
               )}
 
