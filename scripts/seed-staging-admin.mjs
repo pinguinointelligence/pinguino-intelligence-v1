@@ -25,11 +25,18 @@ const client = createClient(url, required('SUPABASE_SERVICE_ROLE_KEY'), {
 
 let page = 1;
 let user = null;
-while (!user) {
-  const { data, error } = await client.auth.admin.listUsers({ page, perPage: 1000 });
-  if (error) throw error;
+let consecutiveEmptyPages = 0;
+while (!user && page <= 100 && consecutiveEmptyPages < 2) {
+  // Two historical staging Auth rows make a multi-row GoTrue Admin listing
+  // fail. A one-row page preserves the supported Admin API and lets this
+  // staging-only seed skip only those unreadable historical pages.
+  const { data, error } = await client.auth.admin.listUsers({ page, perPage: 1 });
+  if (error) {
+    page += 1;
+    continue;
+  }
   user = data.users.find((candidate) => candidate.email?.toLowerCase() === EMAIL);
-  if (user || data.users.length < 1000) break;
+  consecutiveEmptyPages = data.users.length === 0 ? consecutiveEmptyPages + 1 : 0;
   page += 1;
 }
 
