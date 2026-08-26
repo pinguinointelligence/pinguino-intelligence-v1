@@ -283,12 +283,11 @@ export function StudioEngineSurface({
     }
 
     focusProductionAfterCollapseRef.current = false;
-    const frame = requestAnimationFrame(() => {
+    queueMicrotask(() => {
       document
         .querySelector<HTMLElement>('[data-production-active="true"] [role="spinbutton"]')
         ?.focus();
     });
-    return () => cancelAnimationFrame(frame);
   }, [
     activeTab,
     mobileCockpitOpen,
