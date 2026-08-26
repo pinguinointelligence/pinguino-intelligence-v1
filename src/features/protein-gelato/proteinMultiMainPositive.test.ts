@@ -185,6 +185,32 @@ const servedOwnerBananaCranberryFixture = (): RecipeInput => {
   };
 };
 
+const servedDefaultOwnerBananaCranberryFixture = (): RecipeInput => {
+  const starter = buildCanonicalNewRecipeStarter({
+    visibleProductType: 'protein',
+    servingModeId: 'temp_minus_12',
+    formulationStrategy: 'optimal',
+    targetBatchGrams: 1_000,
+  });
+  return {
+    mode: 'classic',
+    category: 'protein_gelato',
+    target_temperature_c: starter.targetTemperatureC,
+    target_batch_grams: 1_000,
+    machine_capacity_grams: null,
+    items: [
+      ...starter.items,
+      line('banana-main', BANANA, 352, 'main', 352 / 136),
+      line('cranberry-main', CRANBERRY, 136, 'main', 1),
+    ],
+    goals: {
+      formulation_strategy: 'optimal',
+      direction_targets_active: true,
+      direction_targets: { sweetness: 0, softness: 0, creaminess: 0, flavor: 0 },
+    },
+  };
+};
+
 const servedFourCrownFixture = (): RecipeInput => {
   const input = servedOwnerBananaCranberryFixture();
   const servedSupportGrams: Record<string, number> = {
@@ -640,6 +666,43 @@ describe('Protein Crown group authority regressions', () => {
           result: built,
         }),
     );
+  }, 120_000);
+
+  it('publishes the default served -12 OPTIMAL Banana 352 g + Cranberry 136 g result without a worker exception', () => {
+    const input = servedDefaultOwnerBananaCranberryFixture();
+    const snapshots = servedOwnerBananaCranberrySnapshots(input);
+    expect(input.items.reduce((sum, item) => sum + item.planned_grams, 0)).toBe(1_488);
+
+    const started = performance.now();
+    const built = computeOptimizePreviewResult({
+      input,
+      constraints: NONE,
+      createdAt: AT,
+      options: {
+        productBehaviorSnapshots: snapshots,
+        technicalOnlyMainLineIds: [],
+      },
+    });
+    const runtimeMs = performance.now() - started;
+
+    expect(built.ok, JSON.stringify(built)).toBe(true);
+    if (!built.ok) return;
+    expect(
+      built.preview.proposedInput.items
+        .filter((item) => item.lock_type === 'main')
+        .map((item) => [item.id, item.planned_grams, item.main_ratio_weight]),
+    ).toEqual([
+      ['banana-main', 359, 352 / 136],
+      ['cranberry-main', 139, 1],
+    ]);
+    expect(built.preview.mainObjective).toMatchObject({
+      status: 'best_achievable',
+      executableMainGrams: 498,
+      provenMaximum: false,
+    });
+    expect(built.preview.directionAssessment).toMatchObject({ active: true, score: 10 });
+    expect(() => structuredClone(built)).not.toThrow();
+    expect(runtimeMs).toBeLessThan(LOCAL_SERVED_RESULT_BUDGET_MS);
   }, 120_000);
 
   it('publishes the served four-Crown 352/136/50/25 domain result before the UI watchdog', () => {
