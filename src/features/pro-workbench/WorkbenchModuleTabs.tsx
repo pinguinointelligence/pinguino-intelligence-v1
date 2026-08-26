@@ -31,6 +31,7 @@ export function WorkbenchModuleTabs({
   expanded = false,
   onCollapse,
   triggerRef,
+  attentionTab = null,
 }: {
   activeTab: WorkbenchModuleTab;
   onTabChange: (tab: WorkbenchModuleTab) => void;
@@ -43,6 +44,8 @@ export function WorkbenchModuleTabs({
   onCollapse?: () => void;
   /** Bottom variant only: focus returns here when the panel closes. */
   triggerRef?: RefObject<HTMLButtonElement | null>;
+  /** Bottom variant only: the single unresolved next action, if any. */
+  attentionTab?: WorkbenchModuleTab | null;
 }) {
   const bottom = variant === 'bottom';
   const select = (tab: WorkbenchModuleTab) => {
@@ -89,6 +92,7 @@ export function WorkbenchModuleTabs({
       {WORKBENCH_MODULE_TABS.map((tab) => {
         const active = activeTab === tab.id;
         const open = bottom && expanded && active;
+        const attention = bottom && attentionTab === tab.id && !open;
         return (
           <button
             key={tab.id}
@@ -100,9 +104,11 @@ export function WorkbenchModuleTabs({
             aria-controls={`${idPrefix}-${tab.id}-tabpanel`}
             aria-haspopup={bottom && tab.id !== 'profile' ? 'dialog' : undefined}
             aria-expanded={bottom && tab.id !== 'profile' ? open : undefined}
+            aria-label={attention ? `${tab.label} — wymaga działania` : undefined}
             tabIndex={active ? 0 : -1}
             data-testid={`${idPrefix}-${tab.id}-tab`}
             data-open={open ? 'true' : undefined}
+            data-attention={attention ? 'required' : undefined}
             onClick={() => select(tab.id)}
             className={cn(
               'pro-focus-ring min-w-0 px-2 text-[11px] font-semibold transition-colors',
@@ -112,6 +118,7 @@ export function WorkbenchModuleTabs({
               active
                 ? 'border-[#f58a07] bg-stone-50/70 text-ink'
                 : 'border-transparent text-stone-600 hover:bg-stone-50 hover:text-ink',
+              attention && 'gellatti-next-action-attention text-attention',
             )}
           >
             <span className="truncate">{tab.label}</span>

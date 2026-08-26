@@ -1242,6 +1242,7 @@ export function IngredientRow({
   priceView,
   productionLine,
   productionActions,
+  productionActive = false,
   canMoveUp = false,
   canMoveDown = false,
   onDragStart,
@@ -1262,6 +1263,8 @@ export function IngredientRow({
   priceView?: IngredientPriceView;
   productionLine?: ProductionLineState;
   productionActions?: ProductionRowActions;
+  /** Presentation-only marker for the one next physical weighing action. */
+  productionActive?: boolean;
   canMoveUp?: boolean;
   canMoveDown?: boolean;
   onDragStart?: (lineId: string) => void;
@@ -1292,9 +1295,11 @@ export function IngredientRow({
           meta.unavailable &&
           'border-status-error/20 bg-status-error/[0.045] hover:bg-status-error/[0.06]',
         mode === 'recipe' && changed && 'ingredient-line-changed',
+        mode === 'production' && productionActive && 'production-line-active',
       )}
       data-ingredient-mode={mode}
       data-production-row-family={mode === 'production' ? 'recipe-table' : undefined}
+      data-production-active={mode === 'production' && productionActive ? 'true' : undefined}
       data-changed={mode === 'recipe' && changed ? 'true' : undefined}
       data-unavailable={mode === 'recipe' && meta.unavailable ? 'true' : undefined}
       data-line-id={item.id}

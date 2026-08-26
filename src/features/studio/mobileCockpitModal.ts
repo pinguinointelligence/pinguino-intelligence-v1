@@ -45,3 +45,33 @@ export function collapsedMobileCockpitRoute<Tab extends string>(
 ): Tab {
   return keepActiveModule ? activeTab : defaultTab;
 }
+
+/**
+ * A freshly created mobile Production run must reveal the existing operational
+ * weighing workspace. Existing/reloaded runs stay where the operator put them,
+ * and desktop never adopts mobile sheet state.
+ */
+export function shouldRevealProductionWeighingOnNarrowViewport({
+  previousSessionId,
+  currentSessionId,
+  currentStatus,
+  activeTab,
+  cockpitOpen,
+  mobileViewport,
+}: {
+  previousSessionId: string | null;
+  currentSessionId: string | null;
+  currentStatus: string | null;
+  activeTab: string;
+  cockpitOpen: boolean;
+  mobileViewport: boolean;
+}): boolean {
+  return (
+    mobileViewport &&
+    cockpitOpen &&
+    activeTab === 'production' &&
+    currentStatus === 'in_progress' &&
+    currentSessionId !== null &&
+    currentSessionId !== previousSessionId
+  );
+}

@@ -10,7 +10,11 @@
  * of the four modules.
  */
 import { describe, expect, it } from 'vitest';
-import { collapsedMobileCockpitRoute, nextMobileCockpitState } from './mobileCockpitModal';
+import {
+  collapsedMobileCockpitRoute,
+  nextMobileCockpitState,
+  shouldRevealProductionWeighingOnNarrowViewport,
+} from './mobileCockpitModal';
 
 type Tab = 'profile' | 'monitor' | 'production' | 'summary';
 const MODULES: readonly Tab[] = ['profile', 'monitor', 'production', 'summary'];
@@ -62,5 +66,40 @@ describe('mobile module selection', () => {
     expect(collapsedMobileCockpitRoute<Tab>('production', 'profile', true)).toBe('production');
     expect(collapsedMobileCockpitRoute<Tab>('production', 'profile', false)).toBe('profile');
     expect(collapsedMobileCockpitRoute<Tab>('monitor', 'profile', false)).toBe('profile');
+  });
+
+  it('reveals weighing only for a newly started mobile Production session', () => {
+    expect(
+      shouldRevealProductionWeighingOnNarrowViewport({
+        previousSessionId: null,
+        currentSessionId: 'run-1',
+        currentStatus: 'in_progress',
+        activeTab: 'production',
+        cockpitOpen: true,
+        mobileViewport: true,
+      }),
+    ).toBe(true);
+
+    expect(
+      shouldRevealProductionWeighingOnNarrowViewport({
+        previousSessionId: 'run-1',
+        currentSessionId: 'run-1',
+        currentStatus: 'in_progress',
+        activeTab: 'production',
+        cockpitOpen: true,
+        mobileViewport: true,
+      }),
+    ).toBe(false);
+
+    expect(
+      shouldRevealProductionWeighingOnNarrowViewport({
+        previousSessionId: null,
+        currentSessionId: 'run-desktop',
+        currentStatus: 'in_progress',
+        activeTab: 'production',
+        cockpitOpen: true,
+        mobileViewport: false,
+      }),
+    ).toBe(false);
   });
 });

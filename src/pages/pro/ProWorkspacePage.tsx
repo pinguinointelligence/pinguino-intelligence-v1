@@ -188,6 +188,7 @@ function RecipeWorkbench({
   labelViewRequestKey: string;
 }) {
   const draftContextSeq = useRecipeStore((state) => state.draftContextSeq);
+  const [recipeSaveAttention, setRecipeSaveAttention] = useState(false);
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="pro-viewport-region">
       <SurfaceToneContext.Provider value="paper">
@@ -196,7 +197,10 @@ function RecipeWorkbench({
             key={draftContextSeq}
             activeTab={activeTab}
             onTabChange={onTabChange}
-            recipeBar={<ProWorkbar variant="panel" />}
+            recipeBar={
+              <ProWorkbar variant="panel" onSaveAttentionChange={setRecipeSaveAttention} />
+            }
+            recipeSaveAttention={recipeSaveAttention}
             recalcSlot={<ProRecalcPanel open={recalcOpen} onClose={onCloseRecalc} />}
             onRecalculate={onRecalculate}
             onOpenExistingPreview={onOpenExistingPreview}

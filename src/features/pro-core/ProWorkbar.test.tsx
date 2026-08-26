@@ -55,6 +55,8 @@ const mockSave = {
   saveVersion: async () => true,
   rename: async () => true,
   archive: async () => true,
+  practicalBlocked: false,
+  practicalBlockMessage: null,
 };
 
 vi.mock('@/stores/recipeStore', () => ({
@@ -152,6 +154,8 @@ describe('ProWorkbar (sticky top workbar)', () => {
     expect(dirty).toContain('Niezapisane');
     expect(dirty).toContain('text-status-risky');
     expect(dirty).toContain('data-testid="pro-workbar-applied-unsaved"');
+    expect(dirty).toContain('data-attention="required"');
+    expect(dirty).toContain('gellatti-next-action-attention');
     expect(dirty).toContain(copy.proWorkbar.recalcPanel.applied);
     expect(dirty).toContain('bg-pro-amber');
 
@@ -159,7 +163,16 @@ describe('ProWorkbar (sticky top workbar)', () => {
     expect(saved).toContain('Zapisane');
     expect(saved).toContain('text-stone-500');
     expect(saved).not.toContain('data-testid="pro-workbar-applied-unsaved"');
+    expect(saved).not.toContain('data-attention="required"');
     mockHistoryLength = 0;
+  });
+
+  it('does not animate Save while the canonical practical-recipe guard blocks it', () => {
+    mockSave.practicalBlocked = true;
+    const html = render({ savedRecipeId: 'r1', savedRecipeName: 'X', dirty: true });
+    expect(html).not.toContain('data-attention="required"');
+    expect(html).not.toContain('gellatti-next-action-attention');
+    mockSave.practicalBlocked = false;
   });
 
   it('returns to Niezapisane after another edit and reuses the ingredient warning-dot token', () => {
@@ -245,7 +258,9 @@ describe('ProWorkbar wiring (no duplicate save; workbar mounted in /pro Receptur
   it('the /pro recipe workbench mounts the ProWorkbar inside the editor area', () => {
     const pro = read('pages', 'pro', 'ProWorkspacePage.tsx');
     expect(pro).toContain('ProWorkbar');
-    expect(pro).toContain('recipeBar={<ProWorkbar variant="panel" />}');
+    expect(pro).toContain('<ProWorkbar variant="panel"');
+    expect(pro).toContain('onSaveAttentionChange={setRecipeSaveAttention}');
+    expect(pro).toContain('recipeSaveAttention={recipeSaveAttention}');
   });
 
   it('the workbar delegates to the ONE canonical save handler (no second handler)', () => {

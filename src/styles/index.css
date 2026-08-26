@@ -98,6 +98,36 @@
   }
 }
 
+/* One unresolved workflow action at a time. The glow reuses the existing
+   attention token and never changes control geometry. */
+@keyframes gellatti-next-action-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--color-attention) 18%, transparent),
+      0 2px 8px color-mix(in srgb, var(--color-attention) 10%, transparent);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 2px color-mix(in srgb, var(--color-attention) 34%, transparent),
+      0 4px 14px color-mix(in srgb, var(--color-attention) 18%, transparent);
+  }
+}
+
+.gellatti-next-action-attention {
+  animation: gellatti-next-action-pulse 4.2s ease-in-out infinite;
+}
+
+.production-line-active {
+  background-color: color-mix(in srgb, var(--color-attention) 5%, white);
+  box-shadow: inset 2px 0 0 var(--color-attention);
+}
+
+.production-line-active:focus-within {
+  background-color: color-mix(in srgb, var(--color-attention) 8%, white);
+}
+
 .ingredient-control-soft-danger {
   border-color: color-mix(in srgb, var(--color-status-error) 38%, transparent);
   background-color: color-mix(in srgb, var(--color-status-error) 4%, white);
@@ -109,7 +139,12 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ingredient-control-soft-danger {
+  .ingredient-control-soft-danger,
+  .gellatti-next-action-attention {
     animation: none;
+  }
+
+  .gellatti-next-action-attention {
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-attention) 28%, transparent);
   }
 }

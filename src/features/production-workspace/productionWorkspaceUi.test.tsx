@@ -95,6 +95,35 @@ describe('Production workspace touch-first UI', () => {
     expect(html).not.toContain('grid-cols-[minmax(0,1fr)_48px]');
   });
 
+  it('makes only the current Production ingredient the calm next action', () => {
+    const active = renderToStaticMarkup(
+      <IngredientRow
+        item={result.items[0]!}
+        totalBatchG={result.total_batch_g}
+        actions={recipeActions}
+        mode="production"
+        productionLine={session.lines[0]!}
+        productionActions={{ setDraftActual: vi.fn(), confirmLine: vi.fn(), reopenRecord: vi.fn() }}
+        productionActive
+      />,
+    );
+    const passive = renderToStaticMarkup(
+      <IngredientRow
+        item={result.items[1]!}
+        totalBatchG={result.total_batch_g}
+        actions={recipeActions}
+        mode="production"
+        productionLine={session.lines[1]!}
+        productionActions={{ setDraftActual: vi.fn(), confirmLine: vi.fn(), reopenRecord: vi.fn() }}
+      />,
+    );
+
+    expect(active).toContain('data-production-active="true"');
+    expect(active).toContain('production-line-active');
+    expect(passive).not.toContain('data-production-active="true"');
+    expect(passive).not.toContain('production-line-active');
+  });
+
   it('turns completed rows into settled records without a reopen affordance', () => {
     const line = {
       ...session.lines[0]!,

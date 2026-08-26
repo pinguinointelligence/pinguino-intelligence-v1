@@ -34,6 +34,7 @@ import {
   MOBILE_COCKPIT_QUERY,
   nextMobileCockpitState,
   shouldActivateMobileCockpitModal,
+  shouldRevealProductionWeighingOnNarrowViewport,
 } from '@/features/studio/mobileCockpitModal';
 
 const { studio } = copy;
@@ -128,6 +129,7 @@ export function StudioEngineSurface({
   recipeBar,
   onRecalculate,
   onOpenExistingPreview,
+  recipeSaveAttention = false,
   initialLabelView = 'label',
   labelViewRequestKey,
 }: {
@@ -141,6 +143,8 @@ export function StudioEngineSurface({
   recipeBar?: ReactNode;
   onRecalculate?: () => void;
   onOpenExistingPreview?: () => void;
+  /** Exact canonical-save readiness published by the existing ProWorkbar. */
+  recipeSaveAttention?: boolean;
   initialLabelView?: LabelWorkspaceView;
   labelViewRequestKey?: string;
 }) {
@@ -211,6 +215,7 @@ export function StudioEngineSurface({
   const [mobileViewport, setMobileViewport] = useState(false);
   const cockpitTriggerRef = useRef<HTMLButtonElement | null>(null);
   const cockpitPanelRef = useRef<HTMLElement | null>(null);
+  const previousProductionSessionIdRef = useRef(production.session?.sessionId ?? null);
 
   // The public /demo entry is always a demo session that cold-opens the curated
   // default scenario; /pro (forceDemo=false) preserves persisted edits.
@@ -241,6 +246,33 @@ export function StudioEngineSurface({
     query.addEventListener('change', sync);
     return () => query.removeEventListener('change', sync);
   }, []);
+
+  useEffect(() => {
+    const currentSessionId = production.session?.sessionId ?? null;
+    const reveal = shouldRevealProductionWeighingOnNarrowViewport({
+      previousSessionId: previousProductionSessionIdRef.current,
+      currentSessionId,
+      currentStatus: production.session?.status ?? null,
+      activeTab,
+      cockpitOpen: mobileCockpitOpen,
+      mobileViewport,
+    });
+    previousProductionSessionIdRef.current = currentSessionId;
+    if (!reveal) return;
+
+    setMobileCockpitState({ activeTab: 'production', open: false });
+    requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLElement>('[data-production-active="true"] [role="spinbutton"]')
+        ?.focus();
+    });
+  }, [
+    activeTab,
+    mobileCockpitOpen,
+    mobileViewport,
+    production.session?.sessionId,
+    production.session?.status,
+  ]);
 
   useEffect(() => {
     if (!shouldActivateMobileCockpitModal(mobileCockpitOpen, mobileViewport)) return;
@@ -311,6 +343,19 @@ export function StudioEngineSurface({
         onOpenLearning={openLearning}
       />
     ) : null;
+  const productionNeedsAttention =
+    production.deviationDecisionUnresolved && !(activeTab === 'production' && mobileCockpitOpen);
+  const labelNeedsAttention =
+    production.session?.status === 'completed' && !(activeTab === 'summary' && mobileCockpitOpen);
+  const recipeNeedsAttention =
+    recipeSaveAttention && !(activeTab === 'profile' && mobileCockpitOpen);
+  const mobileAttentionTab: CockpitTab | null = productionNeedsAttention
+    ? 'production'
+    : labelNeedsAttention
+      ? 'summary'
+      : recipeNeedsAttention
+        ? 'profile'
+        : null;
 
   return (
     <>
@@ -412,6 +457,7 @@ export function StudioEngineSurface({
             triggerRef={cockpitTriggerRef}
             idPrefix="mobile-preview"
             variant="bottom"
+            attentionTab={mobileAttentionTab}
           />
         </div>
         {mobileCockpitOpen && mobileViewport ? (

@@ -53,6 +53,7 @@ import { useChangedIngredientLines } from './ingredientChangeStore';
 import { useCustomerPriceDirtyStore } from './customerPriceDirtyStore';
 import type { IngredientPriceView } from './IngredientPriceControl';
 import type { ProductionWorkspaceView } from '@/features/production-workspace/useProductionWorkspace';
+import { nextProductionLineId } from '@/features/production-workspace/productionNextAction';
 import { ProductionTopUpSection } from '@/features/production-workspace/ProductionTopUpSection';
 import { pendingProductionTopUpTasks } from '@/features/production-workspace/productionSession';
 import { repairableCanonicalDuplicateCount } from './ingredientDuplicateRepair';
@@ -478,6 +479,13 @@ export function IngredientBuilder({
     const rightIndex = orderIndex.get(right.id) ?? Number.MAX_SAFE_INTEGER;
     return leftIndex === rightIndex ? 0 : leftIndex - rightIndex;
   });
+  const activeProductionLineId =
+    mode === 'production'
+      ? nextProductionLineId(
+          production?.session ?? null,
+          production?.deviationDecisionUnresolved ?? false,
+        )
+      : null;
 
   const rows = orderedItems.map((item, rowIndex) => {
     const rawIngredient =
@@ -590,6 +598,7 @@ export function IngredientBuilder({
         priceView={mode === 'recipe' ? priceView : undefined}
         productionLine={productionLine}
         productionActions={productionActions}
+        productionActive={item.id === activeProductionLineId}
         canMoveUp={rowIndex > 0}
         canMoveDown={rowIndex < orderedItems.length - 1}
         changed={isLineChanged(item.id)}

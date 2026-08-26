@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { copy } from '@/copy/en';
 import { cn } from '@/lib/cn';
 import { useRecipeStore } from '@/stores/recipeStore';
@@ -27,7 +27,13 @@ const SERVING_LABEL: Record<string, string> = {
 
 /** One persistent recipe bar. It combines recipe identity, save, working context,
  * preview/undo state and owner-review entry without introducing a second workflow. */
-export function ProWorkbar({ variant = 'bar' }: { variant?: 'bar' | 'panel' }) {
+export function ProWorkbar({
+  variant = 'bar',
+  onSaveAttentionChange,
+}: {
+  variant?: 'bar' | 'panel';
+  onSaveAttentionChange?: (required: boolean) => void;
+}) {
   const savedRecipeId = useRecipeStore((s) => s.savedRecipeId);
   const savedRecipeName = useRecipeStore((s) => s.savedRecipeName);
   const currentVersionNumber = useRecipeStore((s) => s.currentVersionNumber);
@@ -88,6 +94,15 @@ export function ProWorkbar({ variant = 'bar' }: { variant?: 'bar' | 'panel' }) {
   };
 
   const blockedMsg = save.blocked ? w.blocked[save.blocked] : null;
+  const saveAttention =
+    (statusKey === 'dirty' || statusKey === 'newUnsaved') &&
+    !save.busy &&
+    save.blocked === null &&
+    !save.practicalBlocked;
+
+  useEffect(() => {
+    onSaveAttentionChange?.(saveAttention);
+  }, [onSaveAttentionChange, saveAttention]);
 
   const createNewDraft = () => {
     startNewProRecipe(visibleProductType);
@@ -149,12 +164,14 @@ export function ProWorkbar({ variant = 'bar' }: { variant?: 'bar' | 'panel' }) {
             type="button"
             onClick={() => void doSave()}
             disabled={save.busy || save.blocked !== null || save.practicalBlocked}
+            data-attention={saveAttention ? 'required' : undefined}
             data-testid="pro-workbar-save"
             data-workbar-action-size="primary"
             data-workbar-action-width={variant === 'panel' ? 'equal' : 'content'}
             className={cn(
               'shrink-0 rounded-[14px] bg-ink px-3 text-xs font-semibold text-white shadow-pro-sm transition-all hover:-translate-y-px hover:bg-ink-soft disabled:cursor-not-allowed disabled:opacity-45',
               variant === 'panel' ? 'h-9 w-[136px]' : 'h-11',
+              saveAttention && 'gellatti-next-action-attention',
             )}
           >
             {save.busy
