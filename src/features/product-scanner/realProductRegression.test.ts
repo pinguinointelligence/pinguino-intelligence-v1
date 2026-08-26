@@ -547,7 +547,9 @@ describe('HARIBO Quaxi cumulative-evidence regression', () => {
     Object.assign(identity(onePhoto), {
       displayName: 'HARIBO Quaxi',
       originalName: 'Quaxi',
-      category: 'Fruchtgummi / gummy candy',
+      // Exact official German wording: no lexical token overlaps the Mapper's
+      // `confectionery_inclusion` / `gummy_candy_inclusion` taxonomy.
+      category: 'Fruchtgummi mit Schaumzucker',
       variant: 'Quaxi',
       countryOfOrigin: 'Deutschland',
     });
@@ -586,20 +588,7 @@ describe('HARIBO Quaxi cumulative-evidence regression', () => {
 
     const scanValidation = validateServerResult(onePhoto, ['asset-one-good-photo']);
     const recognitionEvidence = productSemanticEvidenceFromScanResult(onePhoto);
-    const deterministic = classifyProductSemantics(recognitionEvidence);
-    const recognition = {
-      ...deterministic,
-      classificationSource: 'SERVER_MODEL' as const,
-      productArchetype: 'CONFECTIONERY' as const,
-      ingredientFamily: 'confectionery' as const,
-      physicalForm: 'SOLID' as const,
-      intendedUsageRole: 'TOPPING_ONLY' as const,
-      flavorDomain: 'UNKNOWN' as const,
-      compatibleMapperCategories: ['inclusion', 'bakery_inclusion', 'confectionery_inclusion'],
-      confidence: 0.96,
-      modelRequired: false,
-      modelReasonCodes: [],
-    };
+    const recognition = classifyProductSemantics(recognitionEvidence);
     const proposal = customerProductProfileProposal({
       scanResult: onePhoto,
       recognitionEvidence,

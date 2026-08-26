@@ -1324,14 +1324,44 @@ export function findProfileMatch(
           return rowTokens.some((token) => productTaxonomyTokens.has(token));
         })
       : [];
+  // Product Recognition is the semantic authority when a public product page
+  // uses market-specific wording that has no literal token overlap with the
+  // Mapper taxonomy (for example German "Fruchtgummi" versus
+  // `confectionery_inclusion`). This opens only the categories explicitly
+  // authorized by Recognition; every candidate still passes the independent
+  // family/form/role contradiction gate and macro similarity below.
+  const semanticCategories = new Set(
+    (input.semantic?.compatibleMapperCategories ?? []).map((entry) =>
+      normalizeName(entry).replace(/\s+/g, '_'),
+    ),
+  );
+  const semanticCategoryRows =
+    similar.rows.length === 0 && semanticCategories.size > 0
+      ? knowledge.rows.filter((row) => {
+          const category = normalizeName(row.ingredient_category).replace(/\s+/g, '_');
+          return [...semanticCategories].some(
+            (allowed) => category === allowed || category.startsWith(`${allowed}_`),
+          );
+        })
+      : [];
+  const brandSemanticRows =
+    normalizeName(input.brand) && semanticCategoryRows.length > 0
+      ? semanticCategoryRows.filter(
+          (row) => normalizeName(row.brand) === normalizeName(input.brand),
+        )
+      : [];
   const pool =
     similar.rows.length > 0
       ? similar.rows
       : brandTaxonomyRows.length > 0
         ? brandTaxonomyRows
-        : productFamily
-          ? (knowledge.byFamily.get(productFamily) ?? [])
-          : [];
+        : brandSemanticRows.length > 0
+          ? brandSemanticRows
+          : semanticCategoryRows.length > 0
+            ? semanticCategoryRows
+            : productFamily
+              ? (knowledge.byFamily.get(productFamily) ?? [])
+              : [];
   const candidatesBeforeFilter = pool.map((row) => row.ingredient_id);
 
   const scored = pool
