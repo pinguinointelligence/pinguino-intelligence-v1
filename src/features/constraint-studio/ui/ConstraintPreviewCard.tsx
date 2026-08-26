@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import { cn } from '@/lib/cn';
 import { NonProductionBadge } from '@/features/design-review/NonProductionMarker';
+import { ScoreRing } from '@/features/pro-workbench/ScoreRing';
 import {
   constraintStudioCopy as copy,
   formatGramsDeltaPl,
@@ -242,14 +243,7 @@ export function ConstraintPreviewCard({
         )}
         data-testid="preview-summary"
       >
-        {score !== null ? (
-          <div
-            className="flex h-12 min-w-16 items-center justify-center rounded-[10px] border border-gold-soft/60 bg-white px-3 font-mono text-lg font-semibold text-black tabular-nums"
-            data-testid="preview-score"
-          >
-            {score}
-          </div>
-        ) : null}
+        {score !== null ? <ScoreRing score={score} testId="preview-score" /> : null}
         <div className="min-w-0">
           <p className="text-sm font-medium leading-snug text-black">{summaryMessage}</p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">

@@ -21,6 +21,7 @@ import {
 } from '@/features/recipe-constraints/constraintFixtures';
 import type { ConstraintFeasibilityAnalysis } from '@/features/recipe-constraints';
 import { IngredientRow } from '@/features/ingredient-builder/IngredientRow';
+import { ScoreRing } from '@/features/pro-workbench/ScoreRing';
 import { useRecipeStore } from '@/stores/recipeStore';
 import type { AppliedChangeRecord, ConstraintPreview } from './applyPipeline';
 import { workingStateFingerprint } from './applyPipeline';
@@ -263,6 +264,30 @@ describe('ConstraintPreviewCard (§19.1)', () => {
     expect(customerHtml).not.toContain('Parametry poza optymalnym zakresem');
   });
 
+  it.each([10, 9, 8] as const)(
+    'reuses the standard current-score ring for preview score %i',
+    (score) => {
+      const preview = syntheticPreview();
+      preview.directionAssessment = {
+        active: true,
+        reached: score === 10,
+        supportedAxisCount: 1,
+        reachedAxisCount: score === 10 ? 1 : 0,
+        score,
+        residuals: [],
+        blockedAxes: [],
+      };
+
+      const rendered = render(
+        <ConstraintPreviewCard preview={preview} onApply={noop} onCancel={noop} />,
+      );
+      const standardScoreRing = render(<ScoreRing score={score} testId="preview-score" />);
+
+      expect(rendered).toContain(standardScoreRing);
+      expect(rendered).not.toContain('min-w-16');
+    },
+  );
+
   it('shows changed old→new grams by default and keeps unchanged rows behind the toggle', () => {
     expect(customerHtml).toContain('82 g');
     expect(customerHtml).toContain('74 g');
@@ -492,8 +517,10 @@ describe('ConstraintPreviewCard (§19.1)', () => {
         showTechnicalDetails
       />,
     );
-    expect(rendered).toMatch(/data-testid="preview-score"[^>]*>10<\/div>/);
-    expect(rendered).not.toMatch(/data-testid="preview-score"[^>]*>10\s*\/\s*10<\/div>/);
+    expect(rendered).toContain('data-testid="preview-score"');
+    expect(rendered).toContain('data-score="10"');
+    expect(rendered).toContain('data-testid="preview-score-arc"');
+    expect(rendered).toContain(render(<ScoreRing score={10} testId="preview-score" />));
     expect(rendered).toContain(
       'Kierunek osiągnięty tylko w podglądzie diagnostycznym. Receptura nadal nie jest gotowa do Apply.',
     );
