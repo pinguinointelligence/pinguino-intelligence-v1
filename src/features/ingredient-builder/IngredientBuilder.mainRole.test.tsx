@@ -89,7 +89,7 @@ describe('IngredientBuilder Main role integration', () => {
     container.remove();
   });
 
-  it('transitions fixed empty slot → badge → fixed empty slot through the existing role actions', () => {
+  it('shows a clickable Crown trigger and transitions trigger → badge → trigger through existing role actions', () => {
     const state = useRecipeStore.getState();
     const calculated = calculateRecipe({
       mode: state.mode,
@@ -130,17 +130,14 @@ describe('IngredientBuilder Main role integration', () => {
 
     expect(container.querySelector(`[data-testid="row-main-slot-${main.id}"]`)).not.toBeNull();
     expect(container.querySelector(`[data-testid="row-main-badge-${main.id}"]`)).toBeNull();
-
-    const menu = container.querySelector<HTMLButtonElement>(
-      `[aria-label="Opcje składnika ${main.ingredient.name}"]`,
+    const trigger = container.querySelector<HTMLButtonElement>(
+      `[data-testid="row-main-trigger-${main.id}"]`,
     );
-    expect(menu).not.toBeNull();
-    act(() => menu!.dispatchEvent(new MouseEvent('click', { bubbles: true })));
-    const mainAction = [...document.querySelectorAll<HTMLButtonElement>('button')].find(
-      (button) => button.textContent?.trim() === 'Główny',
-    );
-    expect(mainAction).not.toBeUndefined();
-    act(() => mainAction!.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(trigger?.getAttribute('aria-label')).toBe('Ustaw składnik jako Główny');
+    expect(trigger?.getAttribute('aria-pressed')).toBe('false');
+    expect(trigger?.getAttribute('data-main-presentation')).toBe('trigger');
+    expect(trigger?.querySelector('svg')).not.toBeNull();
+    act(() => trigger!.dispatchEvent(new MouseEvent('click', { bubbles: true })));
 
     const badge = container.querySelector<HTMLButtonElement>(
       `[data-testid="row-main-badge-${main.id}"]`,
@@ -152,7 +149,7 @@ describe('IngredientBuilder Main role integration', () => {
     act(() => badge!.dispatchEvent(new MouseEvent('click', { bubbles: true })));
 
     expect(container.querySelector(`[data-testid="row-main-badge-${main.id}"]`)).toBeNull();
-    expect(container.querySelector('[data-crown-state]')).toBeNull();
+    expect(container.querySelector(`[data-testid="row-main-trigger-${main.id}"]`)).not.toBeNull();
     act(() => root.unmount());
     container.remove();
   });

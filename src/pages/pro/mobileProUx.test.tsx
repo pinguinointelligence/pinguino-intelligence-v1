@@ -185,13 +185,13 @@ describe('mobile ingredient editing sheet', () => {
     expect(header).not.toContain('truncate');
   });
 
-  it('keeps identity, help, price and the unified Main badge at the top', () => {
+  it('keeps identity, help, price, Crown trigger and unified Main badge reachable', () => {
     expect(controls).toContain('data-testid={`row-mobile-help-${item.id}`}');
     expect(controls).toContain('data-testid={`row-mobile-price-${item.id}`}');
     expect(controls).toContain('data-testid={`row-mobile-main-toggle-${item.id}`}');
+    expect(controls).toContain('testId={`row-mobile-main-trigger-${item.id}`}');
+    expect(controls).toContain('<MainRoleTrigger');
     expect(controls).toContain('<MainRoleBadge');
-    expect(controls).not.toContain('MainRoleGlyph');
-    expect(controls).not.toContain('data-crown-state');
     // „Zmień/Zapisz" reuses the existing customer-price editor, not a new one.
     expect(controls).toContain('<CustomerPriceEditor view={priceView} lineId={item.id} />');
   });

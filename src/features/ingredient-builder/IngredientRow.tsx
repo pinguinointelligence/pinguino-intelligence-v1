@@ -28,6 +28,7 @@ import { HoverPreview } from '@/components/ui/HoverPreview';
 import { DirectNumberControl } from './DirectNumberControl';
 import {
   MainRoleBadge,
+  MainRoleTrigger,
   MobileIngredientLine,
   MobileIngredientSheet,
 } from './IngredientLineControls';
@@ -608,6 +609,8 @@ function RecipeRow({
           unavailable={meta.unavailable}
           estimated={estimated}
           changed={changed}
+          mainUnavailableReason={mainUnavailableReason}
+          onSetMain={() => setRole('main')}
           onOpen={() => setMobileSheetOpen(true)}
         />
       </div>
@@ -676,7 +679,7 @@ function RecipeRow({
                 </span>
               ) : null}
               <span
-                aria-hidden={isMain ? undefined : true}
+                aria-hidden={!isMain && mainUnavailableReason ? true : undefined}
                 data-testid={`row-main-slot-${item.id}`}
                 className="flex w-[62px] shrink-0 justify-end"
               >
@@ -691,6 +694,11 @@ function RecipeRow({
                         : 'Główny'
                     }
                     onClick={() => setRole('standard')}
+                  />
+                ) : !mainUnavailableReason ? (
+                  <MainRoleTrigger
+                    testId={`row-main-trigger-${item.id}`}
+                    onClick={() => setRole('main')}
                   />
                 ) : null}
               </span>
