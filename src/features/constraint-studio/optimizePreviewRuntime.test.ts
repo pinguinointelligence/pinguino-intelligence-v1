@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { RecipeInput } from '@/engine';
 import type { BuildPreviewResult } from './applyPipeline';
 import {
@@ -34,6 +36,16 @@ const fakeWorker = () => {
 };
 
 describe('off-main-thread Optimize runtime', () => {
+  it('embeds the Worker so an open tab survives a newer staging deployment', () => {
+    const runtimeSource = readFileSync(
+      join(process.cwd(), 'src/features/constraint-studio/optimizePreviewRuntime.ts'),
+      'utf8',
+    );
+
+    expect(runtimeSource).toContain("from './optimizePreview.worker?worker&inline'");
+    expect(runtimeSource).not.toContain("new URL('./optimizePreview.worker.ts', import.meta.url)");
+  });
+
   it('returns the canonical worker result and always terminates the worker', async () => {
     const { worker, listeners } = fakeWorker();
     const pending = runOptimizePreviewOffMainThread(request, undefined, () => worker);

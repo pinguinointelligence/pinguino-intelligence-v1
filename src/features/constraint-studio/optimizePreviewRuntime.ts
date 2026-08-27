@@ -3,6 +3,7 @@ import {
   type OptimizePreviewComputation,
   type OptimizePreviewComputationRequest,
 } from './optimizePreviewComputation';
+import OptimizePreviewWorker from './optimizePreview.worker?worker&inline';
 
 interface LegacyWorkerSuccess {
   id: string;
@@ -58,8 +59,7 @@ const abortError = (): DOMException =>
   new DOMException('Optimize preview was cancelled.', 'AbortError');
 
 const defaultWorker = (): OptimizePreviewWorkerLike =>
-  new Worker(new URL('./optimizePreview.worker.ts', import.meta.url), {
-    type: 'module',
+  new OptimizePreviewWorker({
     name: 'pinguino-optimize-preview',
   });
 
