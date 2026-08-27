@@ -208,12 +208,15 @@ describe('local intelligence runs before any web call', () => {
   });
 
   it('treats an exact canonical GTIN match as EXISTING with zero research', () => {
+    const unmatched = analyse([completeRow()]).rows[0]!;
     const { rows, summary } = analyse([completeRow()], {
       byBarcode: () => 'product-existing-1',
     });
     expect(rows[0]!.route).toBe('EXISTING');
     expect(rows[0]!.existingProductId).toBe('product-existing-1');
     expect(rows[0]!.enrichmentTargets).toEqual([]);
+    expect(rows[0]!.exactCanonicalMatch).toBe(true);
+    expect(rows[0]!.evidence.fields).toEqual(unmatched.evidence.fields);
     expect(summary.existingExact).toBe(1);
   });
 

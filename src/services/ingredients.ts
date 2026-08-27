@@ -49,6 +49,41 @@ export async function listActiveIngredients(): Promise<IngredientRow[]> {
   return rows;
 }
 
+/**
+ * Read-only Mapper knowledge for Product Intelligence.
+ *
+ * Paid customer accounts can read the complete base table through its existing
+ * RLS policy. Catalog administrators intentionally do not inherit that billing
+ * entitlement, so their query is an honest empty result rather than an error.
+ * In that one case use the existing authenticated technical read model. The
+ * view is already filtered to active, approved Mapper rows and exposes no
+ * administrative/source fields; this function never writes Mapper data.
+ */
+export async function listProductIntelligenceMapperIngredients(): Promise<IngredientRow[]> {
+  const direct = await listActiveIngredients();
+  if (direct.length > 0 || !supabase) return direct;
+
+  const rows: IngredientRow[] = [];
+  for (let offset = 0; ; offset += SEARCH_DB_PAGE_ROWS) {
+    const { data, error } = await supabase
+      .from(AUTHENTICATED_SELECTION_VIEW)
+      .select('*')
+      .order('ingredient_name_display', { ascending: true })
+      .order('ingredient_id', { ascending: true })
+      .range(offset, offset + SEARCH_DB_PAGE_ROWS - 1);
+    if (error) throw new Error(error.message);
+    const page = ((data ?? []) as IngredientRow[]).map((row) => ({
+      ...row,
+      // The view predicate is `where is_active and approved_for_base`; retain
+      // that proven fact in the shared in-memory Mapper contract.
+      is_active: true,
+    }));
+    rows.push(...page);
+    if (page.length < SEARCH_DB_PAGE_ROWS) break;
+  }
+  return rows;
+}
+
 /** Active ingredients approved for the PI recipe engines. */
 export async function listEngineApprovedIngredients(): Promise<IngredientRow[]> {
   if (!supabase) return emptyUnconfiguredRead('ingredients.listEngineApprovedIngredients', []);

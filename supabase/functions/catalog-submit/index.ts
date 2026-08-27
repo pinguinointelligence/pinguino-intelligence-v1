@@ -47,6 +47,11 @@ import {
   parseOwnerProductClassification,
   type OwnerProductClassification,
 } from '../../../src/features/product-intelligence/ownerProductClassification.ts';
+import { intimportReceiptBarcodeIdentityMatches } from '../../../src/features/product-intelligence/intimportReceiptIdentity.ts';
+import {
+  barcodeLookupCandidates,
+  validateBarcode,
+} from '../../../src/features/product-scanner/barcode.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -566,6 +571,77 @@ const clippedText = (value: unknown, limit: number): string | null =>
   typeof value === 'string' ? value.slice(0, limit) : null;
 
 /**
+ * Re-establish the same exact-barcode identity fact that Scanner/INTIMPORT saw,
+ * but from canonical server tables. The browser boolean is only a claimed
+ * transport value; it never creates the credit. Visibility deliberately mirrors
+ * search_products_v1 so an unrelated private product cannot be used as an
+ * exact-canonical authority for this actor.
+ */
+async function trustedCanonicalExactBarcodeMatch(input: {
+  service: ServiceClient;
+  actorUserId: string;
+  barcode: string | null;
+}): Promise<boolean> {
+  const barcode = input.barcode ? validateBarcode(input.barcode) : null;
+  if (!barcode) return false;
+  const candidates = barcodeLookupCandidates(barcode);
+  const [{ data: directRows, error: directError }, { data: variantRows, error: variantError }] =
+    await Promise.all([
+      input.service
+        .from('products')
+        .select('id,visibility,canonical_verification_status,owning_account_id,created_by')
+        .in('ean_code_normalized', candidates)
+        .neq('product_kind', 'mapper_reference')
+        .eq('is_active', true)
+        .is('merged_into_product_id', null),
+      input.service
+        .from('product_variants')
+        .select('product_id')
+        .in('ean', candidates)
+        .eq('is_current', true),
+    ]);
+  if (directError || variantError) return false;
+
+  const productIds = new Set<string>(
+    (directRows ?? []).flatMap((row) => (typeof row.id === 'string' ? [row.id] : [])),
+  );
+  for (const row of variantRows ?? []) {
+    if (typeof row.product_id === 'string') productIds.add(row.product_id);
+  }
+  if (productIds.size === 0) return false;
+
+  const { data: products, error: productsError } = await input.service
+    .from('products')
+    .select('id,visibility,canonical_verification_status,owning_account_id,created_by')
+    .in('id', [...productIds])
+    .neq('product_kind', 'mapper_reference')
+    .eq('is_active', true)
+    .is('merged_into_product_id', null);
+  if (productsError || !products || products.length === 0) return false;
+
+  const privateProductIds = products
+    .filter(
+      (product) =>
+        !(product.visibility === 'shared' && product.canonical_verification_status !== 'blocked') &&
+        product.owning_account_id !== input.actorUserId &&
+        product.created_by !== input.actorUserId,
+    )
+    .map((product) => product.id)
+    .filter((id): id is string => typeof id === 'string');
+  if (privateProductIds.length === 0) return true;
+
+  const directlyVisible = products.length - privateProductIds.length;
+  if (directlyVisible > 0) return true;
+  const { data: ingestEvents, error: ingestEventsError } = await input.service
+    .from('product_ingest_events')
+    .select('product_id')
+    .eq('actor_user_id', input.actorUserId)
+    .in('product_id', privateProductIds)
+    .limit(1);
+  return !ingestEventsError && (ingestEvents?.length ?? 0) > 0;
+}
+
+/**
  * Rebuild the evidence the server is willing to score.
  *
  * Direct facts are derived from the canonical INTIMPORT envelope. Web facts are
@@ -769,6 +845,18 @@ async function trustedIntimportEvidence(input: {
     const byReceipt = new Map(
       data.map((row) => [String(row.idempotency_key), row as Record<string, unknown>]),
     );
+    const discoveredBarcodesAcrossReceipts = new Set(
+      data.flatMap((row) => {
+        const result = objectValue((row as Record<string, unknown>).result_json);
+        const resultFacts = Array.isArray(result.facts) ? result.facts : [];
+        return resultFacts.flatMap((rawFact) => {
+          const fact = objectValue(rawFact);
+          if (fact.field !== 'barcode' || !evidenceValuePresent(fact.value)) return [];
+          const value = String(fact.value).replace(/\D/g, '');
+          return isValidGtin(value) ? [value] : [];
+        });
+      }),
+    );
     for (const receipt of receipts) {
       const usage = byReceipt.get(receipt);
       if (!usage) return null;
@@ -801,22 +889,11 @@ async function trustedIntimportEvidence(input: {
       ) {
         return null;
       }
-      const normalizedReceiptBarcode = (receiptIdentity.barcode ?? '').replace(/\D/g, '');
-      const normalizedCurrentBarcode = (researchIdentity.barcode ?? '').replace(/\D/g, '');
-      const discoveredBarcodes = new Set(
-        resultFacts.flatMap((rawFact) => {
-          const fact = objectValue(rawFact);
-          if (fact.field !== 'barcode' || !evidenceValuePresent(fact.value)) return [];
-          const value = String(fact.value).replace(/\D/g, '');
-          return isValidGtin(value) ? [value] : [];
-        }),
-      );
-      const barcodeIdentityMatches =
-        normalizedReceiptBarcode === normalizedCurrentBarcode ||
-        (normalizedReceiptBarcode === '' &&
-          normalizedCurrentBarcode !== '' &&
-          discoveredBarcodes.size === 1 &&
-          discoveredBarcodes.has(normalizedCurrentBarcode));
+      const barcodeIdentityMatches = intimportReceiptBarcodeIdentityMatches({
+        receiptBarcode: receiptIdentity.barcode,
+        currentBarcode: researchIdentity.barcode,
+        discoveredBarcodes: discoveredBarcodesAcrossReceipts,
+      });
       if (!barcodeIdentityMatches) return null;
       const expectedV2Receipt = await sha256Text(
         stableJson({
@@ -981,13 +1058,19 @@ async function trustedIntimportEvidence(input: {
         }
       : null;
 
+  const exactCanonicalMatch = input.proposal.evidence.exactCanonicalMatch
+    ? await trustedCanonicalExactBarcodeMatch({
+        service: input.service,
+        actorUserId: input.actorUserId,
+        barcode: match.barcode ?? null,
+      })
+    : false;
+
   const evidence: ProductEvidenceInput = {
     kind: input.proposal.evidence.kind,
     fields,
     validatedBarcode,
-    // A clean catalog-import proposal never gets to self-assert existing
-    // canonical identity. Duplicate resolution is owned elsewhere by the server.
-    exactCanonicalMatch: false,
+    exactCanonicalMatch,
     mapperFamilyMatch,
     // Conflicts can only reduce authority. They are retained verbatim and never
     // converted into a positive signal.
@@ -2025,6 +2108,37 @@ Deno.serve(async (request) => {
       return json({ error: 'idempotency_payload_mismatch' }, 409);
     if (/import cancellation requested/i.test(error.message))
       return json({ error: 'import_cancellation_requested' }, 409);
+    if (source === 'catalog_import') {
+      // The endpoint is already Admin-only. Preserve the database reason for
+      // the durable import ledger so a refused row is actionable instead of
+      // twenty indistinguishable `HTTP 400` records.
+      const importIdentity = objectValue(objectValue(canonicalInput.facts).catalogImportIdentity);
+      const authorityChecks = serverProductProfileAuthority
+        ? {
+            authority: serverProductProfileAuthority.authority,
+            validationMode: serverProductProfileAuthority.validationMode,
+            articleIdentity: serverProductProfileAuthority.articleIdentity,
+            origin: serverProductProfileAuthority.origin,
+            productAccuracyFinite: Number.isFinite(serverProductProfileAuthority.productAccuracy),
+            engineUsableType: typeof serverProductProfileAuthority.engineUsable,
+            fieldTruthIsObject:
+              typeof serverProductProfileAuthority.fieldTruth === 'object' &&
+              serverProductProfileAuthority.fieldTruth !== null,
+            catalogSystem: importIdentity.system ?? null,
+            sourceProductIdMatch:
+              (serverProductProfileAuthority.sourceProductId ?? null) ===
+              (importIdentity.sourceProductId ?? null),
+          }
+        : { authority: null };
+      return json(
+        {
+          error: 'product_ingest_failed',
+          detail: `${error.message}; authorityChecks=${JSON.stringify(authorityChecks)}`,
+          databaseCode: error.code,
+        },
+        400,
+      );
+    }
     return json({ error: 'product_ingest_failed' }, 400);
   }
   const ingested = data && typeof data === 'object' ? (data as Record<string, unknown>) : {};

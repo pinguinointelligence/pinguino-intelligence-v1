@@ -431,14 +431,21 @@ export async function functionErrorDetail(error: unknown): Promise<string> {
   if (!context || typeof (context as Response).clone !== 'function') return fallback;
   try {
     const body = await (context as Response).clone().json();
-    const reason =
+    const errorCode =
       typeof body === 'object' && body !== null
-        ? ((body as Record<string, unknown>).error ??
+        ? ((body as Record<string, unknown>).error ?? null)
+        : null;
+    const detail =
+      typeof body === 'object' && body !== null
+        ? ((body as Record<string, unknown>).detail ??
           (body as Record<string, unknown>).message ??
           null)
         : null;
     const status = (context as Response).status;
-    if (typeof reason === 'string' && reason !== '') return `${reason} (HTTP ${status})`;
+    if (typeof errorCode === 'string' && errorCode !== '') {
+      return `${errorCode}${typeof detail === 'string' && detail !== '' ? `: ${detail}` : ''} (HTTP ${status})`;
+    }
+    if (typeof detail === 'string' && detail !== '') return `${detail} (HTTP ${status})`;
     return fallback;
   } catch {
     return fallback;

@@ -8,7 +8,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const h = vi.hoisted(() => ({ from: vi.fn() }));
 vi.mock('@/lib/supabase/client', () => ({ supabase: { from: h.from } }));
 
-import { listActiveIngredients, SEARCH_DB_PAGE_ROWS } from './ingredients';
+import {
+  listActiveIngredients,
+  listProductIntelligenceMapperIngredients,
+  SEARCH_DB_PAGE_ROWS,
+} from './ingredients';
 
 /** A query builder that records each requested range and answers from `rows`. */
 function tableWith(rows: { ingredient_id: string }[], ranges: [number, number][]) {
@@ -46,5 +50,37 @@ describe('listActiveIngredients paging', () => {
 
     await expect(listActiveIngredients()).resolves.toHaveLength(10);
     expect(ranges).toHaveLength(1);
+  });
+});
+
+describe('Product Intelligence Mapper read authority', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('keeps the full base-table rows when RLS exposes them', async () => {
+    const baseRows = [{ ingredient_id: 'PI-1', is_active: true }];
+    h.from.mockImplementation((table: string) => {
+      expect(table).toBe('mapper_basement');
+      return tableWith(baseRows, []);
+    });
+
+    await expect(listProductIntelligenceMapperIngredients()).resolves.toEqual(baseRows);
+    expect(h.from).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses the existing authenticated read model when admin RLS returns no base rows', async () => {
+    const viewRows = Array.from({ length: 3 }, (_, index) => ({
+      ingredient_id: `PI-${index + 1}`,
+    }));
+    h.from.mockImplementation((table: string) =>
+      tableWith(table === 'mapper_basement' ? [] : viewRows, []),
+    );
+
+    const loaded = await listProductIntelligenceMapperIngredients();
+
+    expect(h.from.mock.calls.map(([table]) => table)).toEqual([
+      'mapper_basement',
+      'mapper_basement_search',
+    ]);
+    expect(loaded).toEqual(viewRows.map((row) => ({ ...row, is_active: true })));
   });
 });

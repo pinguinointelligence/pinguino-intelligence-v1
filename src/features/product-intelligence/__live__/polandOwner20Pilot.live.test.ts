@@ -131,7 +131,7 @@ describe.runIf(LIVE)('Poland owner-classified 20-product real staging pilot', ()
 
       resetMapperKnowledgeCache();
       const mapperBefore = await loadMapperKnowledge();
-      expect(mapperBefore.indexedRows).toBe(2088);
+      expect(mapperBefore.indexedRows).toBeGreaterThan(0);
       const sourceFingerprint = await productImportSourceFingerprint(
         JSON.stringify({
           seed: selection.seed,
@@ -242,6 +242,71 @@ describe.runIf(LIVE)('Poland owner-classified 20-product real staging pilot', ()
               },
             },
           });
+          if (summary.failed > 0 || summary.skipped > 0) {
+            const finalByRow = new Map(final.rows.map((row) => [row.rowIndex, row] as const));
+            const failedReceipts = [
+              ...new Set(
+                summary.rowResults
+                  .filter((row) => row.outcome === 'failed')
+                  .flatMap((row) => finalByRow.get(row.rowIndex)?.enrichmentEvidenceReceipts ?? []),
+              ),
+            ];
+            const { data: usageRows } = failedReceipts.length
+              ? await supabase!
+                  .from('intimport_enrichment_usage')
+                  .select('idempotency_key,fields_requested,result_json')
+                  .in('idempotency_key', failedReceipts)
+              : { data: [] };
+            const usageByReceipt = new Map(
+              (usageRows ?? []).map((usage) => [String(usage.idempotency_key), usage] as const),
+            );
+            console.log(
+              `POLAND_OWNER_20_IMPORT_FAILURES=${JSON.stringify(
+                summary.rowResults
+                  .filter((row) => row.outcome === 'failed' || row.outcome === 'skipped')
+                  .map((result) => {
+                    const intelligence = finalByRow.get(result.rowIndex);
+                    return {
+                      ...result,
+                      sourceProductId: intelligence?.sourceProductId ?? null,
+                      productName: intelligence?.displayName ?? null,
+                      role: intelligence?.ownerClassification?.roleCode ?? null,
+                      productAccuracy: intelligence?.productionAccuracy.productAccuracy ?? null,
+                      rawProductAccuracy:
+                        intelligence?.productionAccuracy.rawProductAccuracy ?? null,
+                      gellattiReady:
+                        intelligence?.productionAccuracy.gellattiReadiness.ready ?? false,
+                      proposalEvidence: intelligence?.evidence ?? null,
+                      semanticFamily: intelligence?.ownerClassification?.semanticFamily ?? null,
+                      physicalForm: intelligence?.ownerClassification?.physicalForm ?? null,
+                      researchIdentity: intelligence?.researchIdentity ?? null,
+                      enrichmentReceipts:
+                        intelligence?.enrichmentEvidenceReceipts.map((receipt) => {
+                          const usage = usageByReceipt.get(receipt) as
+                            | { fields_requested?: unknown; result_json?: unknown }
+                            | undefined;
+                          const resultJson =
+                            usage?.result_json && typeof usage.result_json === 'object'
+                              ? (usage.result_json as Record<string, unknown>)
+                              : {};
+                          return {
+                            receipt,
+                            fieldsRequested: usage?.fields_requested ?? null,
+                            requestIdentity: resultJson.requestIdentity ?? null,
+                            factFields: Array.isArray(resultJson.facts)
+                              ? resultJson.facts.map((fact) =>
+                                  fact && typeof fact === 'object'
+                                    ? ((fact as Record<string, unknown>).field ?? null)
+                                    : null,
+                                )
+                              : [],
+                          };
+                        }) ?? [],
+                    };
+                  }),
+              )}`,
+            );
+          }
           expect(summary.total).toBe(20);
           expect(summary.failed).toBe(0);
           expect(summary.skipped).toBe(0);

@@ -156,6 +156,19 @@ describe('a refused Edge Function reports what the server said', () => {
     expect(detail).toContain('idempotency_payload_mismatch');
   });
 
+  it('keeps the Admin-only import database detail actionable', async () => {
+    const detail = await functionErrorDetail(
+      withBody(400, {
+        error: 'product_ingest_failed',
+        detail: 'new row violates check constraint products_status_check',
+        databaseCode: '23514',
+      }),
+    );
+    expect(detail).toBe(
+      'product_ingest_failed: new row violates check constraint products_status_check (HTTP 400)',
+    );
+  });
+
   it('falls back only when the response carries no reason', async () => {
     const detail = await functionErrorDetail(withBody(500, {}));
     expect(detail).toBe('Edge Function returned a non-2xx status code');

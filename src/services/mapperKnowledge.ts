@@ -11,7 +11,7 @@
  * only part that touches the database: everything downstream stays pure and
  * takes the knowledge as an argument.
  */
-import { listActiveIngredients } from './ingredients';
+import { listProductIntelligenceMapperIngredients } from './ingredients';
 import {
   buildMapperKnowledge,
   fingerprintMapperRows,
@@ -81,7 +81,7 @@ let cached: Promise<MapperKnowledge> | null = null;
  */
 export function loadMapperKnowledge(): Promise<MapperKnowledge> {
   if (!cached) {
-    cached = listActiveIngredients()
+    cached = listProductIntelligenceMapperIngredients()
       .then(mapperKnowledgeFrom)
       .catch((error: unknown) => {
         cached = null;

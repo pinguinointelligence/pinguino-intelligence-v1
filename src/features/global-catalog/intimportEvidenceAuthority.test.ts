@@ -28,7 +28,9 @@ describe('INTIMPORT evidence stays server-authoritative', () => {
     expect(edge).toContain('const expectedV2Receipt = await sha256Text(');
     expect(edge).toContain('const expectedLegacyReceipt = await sha256Text(');
     expect(edge).toContain('const storedRequestIdentity = objectValue(result.requestIdentity);');
-    expect(edge).toContain('discoveredBarcodes.has(normalizedCurrentBarcode)');
+    expect(edge).toContain('const discoveredBarcodesAcrossReceipts = new Set(');
+    expect(edge).toContain('intimportReceiptBarcodeIdentityMatches({');
+    expect(edge).toContain('discoveredBarcodes: discoveredBarcodesAcrossReceipts');
     expect(edge).toMatch(
       /receipt\s*!==\s*\(Object\.keys\(researchStep\)\.length\s*>\s*0\s*\?\s*expectedV2Receipt\s*:\s*expectedLegacyReceipt\)/,
     );
@@ -42,5 +44,17 @@ describe('INTIMPORT evidence stays server-authoritative', () => {
       'if (stableJson(evidence) !== stableJson(input.proposal.evidence)) return null;',
     );
     expect(edge).toContain('evidence: trustedEvidence.evidence');
+  });
+
+  it('re-verifies an idempotent exact EAN match from canonical server tables', () => {
+    expect(edge).toContain('async function trustedCanonicalExactBarcodeMatch(');
+    expect(edge).toContain(".from('products')");
+    expect(edge).toContain(".from('product_variants')");
+    expect(edge).toContain(".from('product_ingest_events')");
+    expect(edge).toContain('barcodeLookupCandidates(barcode)');
+    expect(edge).toContain('exactCanonicalMatch = input.proposal.evidence.exactCanonicalMatch');
+    expect(edge).toContain('await trustedCanonicalExactBarcodeMatch({');
+    expect(edge).toContain('barcode: match.barcode ?? null');
+    expect(edge).not.toContain('barcode: match.gtin');
   });
 });

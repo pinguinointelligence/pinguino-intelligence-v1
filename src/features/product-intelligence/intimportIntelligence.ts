@@ -255,15 +255,15 @@ function evidenceFields(
   candidate: IntimportCandidate,
   family: ProductFamilyMatch | null,
   familyApplied: boolean,
-  exactCanonicalMatch: boolean,
   sourceAuthority: SourceAuthorityAssessment,
 ): Partial<Record<ProductEvidenceField, EvidenceSource>> {
   // The row's own cells are only as strong as the source they were curated from.
   // A `Primary Source URL` plus a `Checked At` proves the owner looked something
   // up — never that the page was the manufacturer's (§9).
-  const file: EvidenceSource = exactCanonicalMatch
-    ? 'mapper_exact'
-    : sourceAuthority.evidenceSource;
+  // Exact canonical identity is a separate evidence dimension. It must never
+  // rewrite the provenance of row facts: an EAN match proves which product this
+  // is, not where its nutrition, ingredients or package facts came from.
+  const file: EvidenceSource = sourceAuthority.evidenceSource;
   const s = candidate.source;
   const fields: Partial<Record<ProductEvidenceField, EvidenceSource>> = {};
   const put = (field: ProductEvidenceField, present: unknown, source: EvidenceSource = file) => {
@@ -508,13 +508,7 @@ export function assessIntimportProduct(
     manufacturer: candidate.source.Manufacturer,
     ownerProvided: true,
   });
-  const baseFields = evidenceFields(
-    candidate,
-    family,
-    familyApplied,
-    exactCanonicalMatch,
-    sourceAuthority,
-  );
+  const baseFields = evidenceFields(candidate, family, familyApplied, sourceAuthority);
 
   const conflicts =
     candidate.state === 'REVIEW_REQUIRED' && candidate.duplicateOfRow !== null
