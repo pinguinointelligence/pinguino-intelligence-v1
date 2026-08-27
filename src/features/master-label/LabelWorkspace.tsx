@@ -48,9 +48,24 @@ import {
 import { assessCanadaFop } from './regulatoryNutrition';
 import { downloadMasterLabelPdf } from './masterLabelPdf';
 import { customerErrorMessage } from '@/copy/customerError';
+import { responsibleBusinessDetails } from './businessAuthority';
 
 const MARKET_CODES: readonly MarketProfileCode[] = MARKET_PROFILE_ORDER;
-export type LabelWorkspaceView = 'label' | 'settings';
+export type LabelWorkspaceView = 'data' | 'settings' | 'label';
+
+const LABEL_DATA_FIELDS = new Set([
+  'product_name',
+  'operator',
+  'net_quantity',
+  'jurisdiction_context',
+]);
+
+const missingLabelDataFields = (label: MasterLabelData): Set<string> =>
+  new Set(
+    buildLabelPreflight(label)
+      .items.filter((item) => item.status === 'missing' && LABEL_DATA_FIELDS.has(item.field))
+      .map((item) => item.field),
+  );
 
 const primaryText = (value: Record<string, string>, languages: readonly string[]): string =>
   languages.map((language) => value[language]).find((text) => text?.trim()) ?? '';
@@ -119,7 +134,7 @@ export function LabelWorkspace({
   profileOnly = false,
   repository: suppliedRepository,
   onSaved,
-  initialView = 'label',
+  initialView = 'data',
 }: {
   snapshot?: ProductionCompletionSnapshot | null;
   runId?: string | null;
@@ -143,7 +158,7 @@ export function LabelWorkspace({
   const [saveAsDefault, setSaveAsDefault] = useState(true);
   const [activeView, setActiveView] = useState<LabelWorkspaceView>(initialView);
   const [transitionDirection, setTransitionDirection] = useState<'forward' | 'back'>(
-    initialView === 'settings' ? 'forward' : 'back',
+    initialView === 'data' ? 'back' : 'forward',
   );
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
   const [busy, setBusy] = useState(true);
@@ -155,10 +170,14 @@ export function LabelWorkspace({
   } | null>(null);
   const requestedRunId = suppliedSnapshot?.sessionId ?? runId;
   const visibleView: LabelWorkspaceView = saved ? 'label' : activeView;
+  const labelDataReady = label ? missingLabelDataFields(label).size === 0 : false;
+  const preflight = useMemo(() => (label ? buildLabelPreflight(label) : null), [label]);
 
   const openView = (next: LabelWorkspaceView) => {
     if (next === visibleView || (next === 'settings' && saved)) return;
-    setTransitionDirection(next === 'settings' ? 'forward' : 'back');
+    if (next === 'label' && !saved && (preflight?.missingCount ?? 0) > 0) return;
+    const order: readonly LabelWorkspaceView[] = ['data', 'settings', 'label'];
+    setTransitionDirection(order.indexOf(next) > order.indexOf(visibleView) ? 'forward' : 'back');
     setActiveView(next);
   };
 
@@ -227,7 +246,6 @@ export function LabelWorkspace({
     };
   }, [activeLogoPath, repository]);
 
-  const preflight = useMemo(() => (label ? buildLabelPreflight(label) : null), [label]);
   const profileMarket = profile ? marketProfile(profile.market) : null;
 
   const persistProfile = async (next: AccountLabelProfile) => {
@@ -264,8 +282,8 @@ export function LabelWorkspace({
       setSaved(null);
       setLabel(labelFromProfile(snapshot, latestProfile));
       setSaveAsDefault(true);
-      setTransitionDirection('forward');
-      setActiveView('settings');
+      setTransitionDirection('back');
+      setActiveView('data');
     } catch (caught) {
       setError(customerErrorMessage(caught, 'labels', 'LABEL_READ_FAILED'));
     } finally {
@@ -307,8 +325,10 @@ export function LabelWorkspace({
     const deltaX = touch.clientX - start.x;
     const deltaY = touch.clientY - start.y;
     if (Math.abs(deltaX) < 56 || Math.abs(deltaX) <= Math.abs(deltaY) * 1.25) return;
-    if (deltaX < 0) openView('settings');
-    else openView('label');
+    const order: readonly LabelWorkspaceView[] = ['data', 'settings', 'label'];
+    const currentIndex = order.indexOf(visibleView);
+    const next = order[currentIndex + (deltaX < 0 ? 1 : -1)];
+    if (next) openView(next);
   };
 
   if (busy && !profile) {
@@ -447,7 +467,11 @@ export function LabelWorkspace({
                       Nowa wersja
                     </Button>
                   ) : (
-                    <Button variant="ghost" size="sm" onClick={() => openView('settings')}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openView(labelDataReady ? 'settings' : 'data')}
+                    >
                       Ustawienia
                     </Button>
                   )}
@@ -503,7 +527,7 @@ export function LabelWorkspace({
                     <button
                       type="button"
                       className="font-semibold underline underline-offset-4"
-                      onClick={() => openView('settings')}
+                      onClick={() => openView(labelDataReady ? 'settings' : 'data')}
                       disabled={Boolean(saved)}
                     >
                       {printBlockedReason}
@@ -577,6 +601,15 @@ export function LabelWorkspace({
               )}
             </div>
           </>
+        ) : visibleView === 'data' ? (
+          <LabelDataIntake
+            label={label}
+            onContinue={(next) => {
+              setLabel(next);
+              setTransitionDirection('forward');
+              setActiveView('settings');
+            }}
+          />
         ) : (
           <RunLabelEditor
             label={label}
@@ -584,14 +617,15 @@ export function LabelWorkspace({
             repository={repository}
             saveAsDefault={saveAsDefault}
             onSaveAsDefaultChange={setSaveAsDefault}
-            onClose={() => openView('label')}
+            onClose={() => openView('data')}
             onSave={async (next) => {
               setBusy(true);
               setError(null);
               try {
                 if (saveAsDefault) await persistProfile(profileFromLabel(profile, next));
                 setLabel(next);
-                openView('label');
+                setTransitionDirection('forward');
+                setActiveView('label');
               } catch (caught) {
                 setError(customerErrorMessage(caught, 'labels', 'LABEL_SAVE_FAILED'));
               } finally {
@@ -612,13 +646,26 @@ export function LabelWorkspace({
         className="sticky bottom-[var(--label-workspace-bottom-inset,0px)] z-20 flex min-h-11 items-center justify-center gap-2 border-t border-ink/8 bg-white/95 px-4 backdrop-blur"
         data-testid="label-workspace-dots"
       >
-        {(['label', 'settings'] as const).map((view) => (
+        {(
+          [
+            ['data', 'Dane do etykiety'],
+            ['settings', 'Ustawienia etykiety'],
+            ['label', 'Etykieta'],
+          ] as const
+        ).map(([view, label]) => (
           <button
             key={view}
             type="button"
-            aria-label={view === 'label' ? 'Pokaż etykietę' : 'Pokaż ustawienia etykiety'}
+            aria-label={label}
             aria-current={visibleView === view ? 'step' : undefined}
-            disabled={view === 'settings' && Boolean(saved)}
+            disabled={
+              Boolean(saved) && view !== 'label'
+                ? true
+                : (visibleView === 'data' && !labelDataReady && view !== 'data') ||
+                  (view === 'label' &&
+                    visibleView !== 'label' &&
+                    (preflight?.missingCount ?? 0) > 0)
+            }
             onClick={() => openView(view)}
             className={cn(
               'pro-focus-ring grid size-8 place-items-center rounded-full disabled:cursor-not-allowed disabled:opacity-35',
@@ -669,6 +716,330 @@ function OverviewMetric({
       </dd>
     </div>
   );
+}
+
+function LabelDataIntake({
+  label,
+  onContinue,
+}: {
+  label: MasterLabelData;
+  onContinue: (label: MasterLabelData) => void;
+}) {
+  const [draft, setDraft] = useState(label);
+  const [initialMissing] = useState(() => missingLabelDataFields(label));
+  const [responsibleRole] = useState(() => responsibleBusinessDetails(label).role);
+  const currentMissing = missingLabelDataFields(draft);
+  const ready = currentMissing.size === 0;
+  const party =
+    responsibleRole === 'importer'
+      ? {
+          name: draft.operator.importerName ?? '',
+          address: draft.operator.importerAddress ?? '',
+          countryCode: draft.operator.importerCountryCode ?? '',
+        }
+      : responsibleRole === 'distributor'
+        ? {
+            name: draft.operator.distributorName ?? '',
+            address: draft.operator.distributorAddress ?? '',
+            countryCode: draft.operator.distributorCountryCode ?? '',
+          }
+        : {
+            name: draft.operator.operatorName,
+            address: draft.operator.address,
+            countryCode: draft.operator.countryCode,
+          };
+  const partyLabel =
+    responsibleRole === 'importer'
+      ? 'Importer'
+      : responsibleRole === 'distributor'
+        ? 'Dystrybutor'
+        : 'Producent / operator';
+  const updateParty = (field: 'name' | 'address' | 'countryCode', value: string) => {
+    if (responsibleRole === 'importer') {
+      const key =
+        field === 'name'
+          ? 'importerName'
+          : field === 'address'
+            ? 'importerAddress'
+            : 'importerCountryCode';
+      setDraft({ ...draft, operator: { ...draft.operator, [key]: value } });
+      return;
+    }
+    if (responsibleRole === 'distributor') {
+      const key =
+        field === 'name'
+          ? 'distributorName'
+          : field === 'address'
+            ? 'distributorAddress'
+            : 'distributorCountryCode';
+      setDraft({ ...draft, operator: { ...draft.operator, [key]: value } });
+      return;
+    }
+    const key = field === 'name' ? 'operatorName' : field;
+    setDraft({ ...draft, operator: { ...draft.operator, [key]: value } });
+  };
+  const updatePackageQuantity = (raw: string) => {
+    const amount = Number(raw) || null;
+    const canada = draft.market === 'CA';
+    const grams = amount
+      ? canada
+        ? draft.regulatoryNutrition.productDensityGPerMl
+          ? amount * draft.regulatoryNutrition.productDensityGPerMl
+          : null
+        : amount
+      : null;
+    setDraft({
+      ...draft,
+      netQuantityG: grams,
+      packageQuantity: amount
+        ? {
+            value: amount,
+            unit: canada ? 'ml' : 'g',
+            netWeightG: grams,
+            netVolumeMl: canada ? amount : null,
+            source: 'selected_fill',
+            confirmedAt: new Date().toISOString(),
+          }
+        : null,
+    });
+  };
+
+  return (
+    <Card
+      padding="none"
+      className="mx-auto w-full max-w-xl overflow-hidden rounded-[18px] border-ink/10 shadow-pro-e0"
+      data-testid="label-data-intake"
+      data-label-market={draft.market}
+    >
+      <header className="border-b border-ink/10 bg-[#fffdf8] px-4 py-5 sm:px-5">
+        <SectionLabel>Dane do etykiety</SectionLabel>
+        <h2 className="mt-1 text-xl font-semibold tracking-[-0.02em] text-ink">
+          Uzupełnij dane do etykiety
+        </h2>
+        <p className="mt-1 text-sm leading-relaxed text-stone-600">
+          Pokazujemy tylko informacje potrzebne przed otwarciem ustawień.
+        </p>
+      </header>
+
+      <div className="grid gap-4 px-4 py-5 sm:px-5">
+        {initialMissing.has('product_name')
+          ? draft.labelLanguages.map((language) =>
+              (label.productName[language] ?? '').trim() ? null : (
+                <label key={language} className="text-xs font-medium text-stone-600">
+                  Nazwa produktu · {language.toUpperCase()}
+                  <input
+                    value={draft.productName[language] ?? ''}
+                    onChange={(event) =>
+                      setDraft({
+                        ...draft,
+                        productName: {
+                          ...draft.productName,
+                          [language]: event.currentTarget.value,
+                        },
+                      })
+                    }
+                    className={SETTINGS_INPUT_CLASS}
+                    data-label-intake-field="product-name"
+                  />
+                </label>
+              ),
+            )
+          : null}
+
+        {initialMissing.has('operator') ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {!party.name.trim() ? (
+              <label className="text-xs font-medium text-stone-600">
+                {partyLabel}
+                <input
+                  value={party.name}
+                  onChange={(event) => updateParty('name', event.currentTarget.value)}
+                  className={SETTINGS_INPUT_CLASS}
+                  data-label-intake-field="operator-name"
+                />
+              </label>
+            ) : null}
+            {!party.address.trim() ? (
+              <label className="text-xs font-medium text-stone-600">
+                Adres
+                <input
+                  value={party.address}
+                  onChange={(event) => updateParty('address', event.currentTarget.value)}
+                  className={SETTINGS_INPUT_CLASS}
+                  data-label-intake-field="operator-address"
+                />
+              </label>
+            ) : null}
+            {!party.countryCode.trim() ? (
+              <label className="text-xs font-medium text-stone-600">
+                Kraj · kod ISO
+                <input
+                  maxLength={2}
+                  value={party.countryCode}
+                  onChange={(event) =>
+                    updateParty('countryCode', event.currentTarget.value.toUpperCase())
+                  }
+                  className={SETTINGS_INPUT_CLASS}
+                  data-label-intake-field="operator-country"
+                />
+              </label>
+            ) : null}
+          </div>
+        ) : null}
+
+        {initialMissing.has('jurisdiction_context') ? (
+          <LabelMarketContextField value={draft} onChange={setDraft} />
+        ) : null}
+
+        {initialMissing.has('net_quantity') ? (
+          <label className="text-xs font-medium text-stone-600">
+            {draft.market === 'CA' ? 'Objętość opakowania · mL' : 'Masa opakowania · g'}
+            <input
+              type="number"
+              min={0.1}
+              step="any"
+              value={
+                draft.market === 'CA'
+                  ? (draft.packageQuantity?.netVolumeMl ?? '')
+                  : (draft.packageQuantity?.netWeightG ?? '')
+              }
+              onChange={(event) => updatePackageQuantity(event.currentTarget.value)}
+              className={cn(SETTINGS_INPUT_CLASS, 'font-mono tabular-nums')}
+              data-label-intake-field="package-quantity"
+            />
+          </label>
+        ) : null}
+
+        {initialMissing.size === 0 ? (
+          <p className="rounded-[12px] border border-status-ideal/25 bg-status-ideal/[0.06] p-3 text-sm text-stone-700">
+            Wszystkie podstawowe dane są już uzupełnione.
+          </p>
+        ) : null}
+      </div>
+
+      <footer className="border-t border-ink/10 bg-white p-4 sm:px-5">
+        <Button className="w-full" disabled={!ready} onClick={() => onContinue(draft)}>
+          Przejdź do ustawień etykiety
+        </Button>
+      </footer>
+    </Card>
+  );
+}
+
+function LabelMarketContextField({
+  value,
+  onChange,
+}: {
+  value: MasterLabelData;
+  onChange: (value: MasterLabelData) => void;
+}) {
+  const context = value.jurisdictionContext ?? {
+    euDestinationCountryCode: '',
+    ukRegion: 'unresolved' as const,
+    auNzCountry: 'unresolved' as const,
+    usSaleContext: 'unresolved' as const,
+  };
+  if (value.market === 'EU') {
+    return (
+      <label className="text-xs font-medium text-stone-600">
+        Kraj / rynek docelowy · kod ISO
+        <input
+          maxLength={2}
+          value={context.euDestinationCountryCode}
+          onChange={(event) =>
+            onChange({
+              ...value,
+              jurisdictionContext: {
+                ...context,
+                euDestinationCountryCode: event.currentTarget.value.toUpperCase(),
+              },
+            })
+          }
+          className={SETTINGS_INPUT_CLASS}
+          data-label-intake-field="market-context"
+        />
+      </label>
+    );
+  }
+  if (value.market === 'UK') {
+    return (
+      <label className="text-xs font-medium text-stone-600">
+        Rynek docelowy
+        <select
+          value={context.ukRegion}
+          onChange={(event) =>
+            onChange({
+              ...value,
+              jurisdictionContext: {
+                ...context,
+                ukRegion: event.currentTarget.value as 'GB' | 'NI' | 'unresolved',
+              },
+            })
+          }
+          className={SETTINGS_INPUT_CLASS}
+          data-label-intake-field="market-context"
+        >
+          <option value="unresolved">Wybierz rynek</option>
+          <option value="GB">Great Britain</option>
+          <option value="NI">Northern Ireland</option>
+        </select>
+      </label>
+    );
+  }
+  if (value.market === 'AU_NZ') {
+    return (
+      <label className="text-xs font-medium text-stone-600">
+        Kraj / rynek docelowy
+        <select
+          value={context.auNzCountry}
+          onChange={(event) =>
+            onChange({
+              ...value,
+              jurisdictionContext: {
+                ...context,
+                auNzCountry: event.currentTarget.value as 'AU' | 'NZ' | 'unresolved',
+              },
+            })
+          }
+          className={SETTINGS_INPUT_CLASS}
+          data-label-intake-field="market-context"
+        >
+          <option value="unresolved">Wybierz kraj</option>
+          <option value="AU">Australia</option>
+          <option value="NZ">New Zealand</option>
+        </select>
+      </label>
+    );
+  }
+  if (value.market === 'US') {
+    return (
+      <label className="text-xs font-medium text-stone-600">
+        Rynek docelowy
+        <select
+          value={context.usSaleContext}
+          onChange={(event) =>
+            onChange({
+              ...value,
+              jurisdictionContext: {
+                ...context,
+                usSaleContext: event.currentTarget.value as
+                  | 'interstate_retail'
+                  | 'food_service'
+                  | 'unresolved',
+              },
+            })
+          }
+          className={SETTINGS_INPUT_CLASS}
+          data-label-intake-field="market-context"
+        >
+          <option value="unresolved">Wybierz kontekst</option>
+          <option value="interstate_retail">Packaged retail</option>
+          <option value="food_service">Food service</option>
+        </select>
+      </label>
+    );
+  }
+  return null;
 }
 
 function ProfileEditor({
@@ -1043,7 +1414,7 @@ function RunLabelEditor({
           onClick={onClose}
           className="pro-focus-ring -ml-1 min-h-11 px-1 text-xs font-semibold text-stone-600 transition-colors hover:text-ink"
         >
-          ← Etykieta
+          ← Dane do etykiety
         </button>
         <div className="mt-1 flex flex-wrap items-end justify-between gap-3">
           <div>
@@ -1070,12 +1441,12 @@ function RunLabelEditor({
           <div>
             <strong className="block text-sm text-ink">
               {draftPreflight.missingCount > 0
-                ? `Brakuje ${draftPreflight.missingCount} wymaganych informacji`
+                ? 'Uzupełnij wymagane pola'
                 : 'Wszystkie wymagane informacje są uzupełnione'}
             </strong>
             <span className="mt-0.5 block text-xs text-stone-600">
               {draftPreflight.missingCount > 0
-                ? 'Uzupełnij oznaczone pola, aby odblokować druk.'
+                ? `Brakuje ${draftPreflight.missingCount} informacji. Wszystkie są oznaczone poniżej.`
                 : 'Pozostają istniejące kontrole profilu prawnego i przeglądu.'}
             </span>
           </div>
@@ -2020,7 +2391,9 @@ function RunLabelEditor({
         <Button variant="ghost" onClick={onClose}>
           Anuluj
         </Button>
-        <Button onClick={() => void onSave(draft)}>Zastosuj</Button>
+        <Button disabled={draftPreflight.missingCount > 0} onClick={() => void onSave(draft)}>
+          Zastosuj
+        </Button>
       </footer>
     </Card>
   );

@@ -21,7 +21,6 @@ import {
 } from '@/features/recipe-constraints/constraintFixtures';
 import type { ConstraintFeasibilityAnalysis } from '@/features/recipe-constraints';
 import { IngredientRow } from '@/features/ingredient-builder/IngredientRow';
-import { ScoreRing } from '@/features/pro-workbench/ScoreRing';
 import { useRecipeStore } from '@/stores/recipeStore';
 import type { AppliedChangeRecord, ConstraintPreview } from './applyPipeline';
 import { workingStateFingerprint } from './applyPipeline';
@@ -265,7 +264,7 @@ describe('ConstraintPreviewCard (§19.1)', () => {
   });
 
   it.each([10, 9, 8] as const)(
-    'reuses the standard current-score ring for preview score %i',
+    'restores the dynamic %i/10 Preview score in the historical summary slot',
     (score) => {
       const preview = syntheticPreview();
       preview.directionAssessment = {
@@ -281,10 +280,12 @@ describe('ConstraintPreviewCard (§19.1)', () => {
       const rendered = render(
         <ConstraintPreviewCard preview={preview} onApply={noop} onCancel={noop} />,
       );
-      const standardScoreRing = render(<ScoreRing score={score} testId="preview-score" />);
 
-      expect(rendered).toContain(standardScoreRing);
-      expect(rendered).not.toContain('min-w-16');
+      expect(rendered).toContain('data-testid="preview-score"');
+      expect(rendered).toMatch(new RegExp(`${score}(?:<!-- -->)? / 10`));
+      expect(rendered).toContain('min-w-16');
+      expect(rendered).not.toContain('data-score-progress');
+      expect(rendered).toContain('2 zmiany');
     },
   );
 
@@ -518,9 +519,8 @@ describe('ConstraintPreviewCard (§19.1)', () => {
       />,
     );
     expect(rendered).toContain('data-testid="preview-score"');
-    expect(rendered).toContain('data-score="10"');
-    expect(rendered).toContain('data-testid="preview-score-arc"');
-    expect(rendered).toContain(render(<ScoreRing score={10} testId="preview-score" />));
+    expect(rendered).toMatch(/10(?:<!-- -->)? \/ 10/);
+    expect(rendered).not.toContain('data-score-progress');
     expect(rendered).toContain(
       'Kierunek osiągnięty tylko w podglądzie diagnostycznym. Receptura nadal nie jest gotowa do zastosowania.',
     );

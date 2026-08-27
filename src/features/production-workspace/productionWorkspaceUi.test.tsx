@@ -1100,7 +1100,7 @@ describe('Production workspace touch-first UI', () => {
     expect(html).toContain('Nowy plan · Cream');
     expect(html).toContain('→ 350 g');
     expect(html).toContain('data-testid="apply-selected-production-decision"');
-    expect(html).toContain('Zastosuj nową partię');
+    expect(html).toContain('Zastosuj minimalną korektę');
     expect(html).not.toContain('Pokaż preview');
     expect(html).not.toContain('Odśwież propozycję Rescue');
     expect(html).not.toContain('Engine');

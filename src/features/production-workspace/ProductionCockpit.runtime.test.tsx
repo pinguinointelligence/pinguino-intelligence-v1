@@ -113,6 +113,165 @@ describe('Production correction decision accessibility', () => {
     expect(document.activeElement).toBe(decisionPanel);
   });
 
+  it('renders correction choices as separate whole-card controls with one shared action', async () => {
+    const plannedInput = {
+      ...DEFAULT_PRESET,
+      items: DEFAULT_PRESET.items.map((item) => ({ ...item, actual_grams: null })),
+      machine_capacity_grams: null,
+    };
+    const session = createProductionSession({
+      sessionId: 'run-decision-cards-1',
+      ownerUserId: 'owner-focus',
+      source: {
+        recipeId: 'recipe-focus',
+        recipeVersionId: 'version-focus',
+        recipeVersionNumber: 1,
+        recipeName: 'Decision cards QA',
+      },
+      plannedInput,
+      startedAt: '2026-08-27T10:00:00.000Z',
+    });
+    const selectRescueOption = vi.fn();
+    const applySelectedRescueOption = vi.fn();
+    const authorization = {
+      authorizationId: 'authorization-cards-1',
+      candidateFingerprint: 'd'.repeat(64),
+      runId: session.sessionId,
+      expectedActualRevision: 0,
+      expectedRescueRevision: 0,
+      authorizedAt: '2026-08-27T10:01:00.000Z',
+      expiresAt: '2099-08-27T10:06:00.000Z',
+      preview: {
+        title: 'Autoryzowana korekta',
+        explanation: 'Serwer zweryfikował plan.',
+        finalMassG: 1_100,
+        scoreDisplay: '10/10',
+        instructions: [],
+      },
+    };
+    const unavailable = { status: 'unavailable' as const, reason: 'Niedostępne.' };
+    const production = {
+      session,
+      progress: productionProgress(session),
+      toppingProgress: null,
+      rescue: { state: 'options', options: [] },
+      score: { score: 9, label: 'Świetnie dopasowana' },
+      plannedScore: { score: 10, label: 'Wyjątkowo dobrze dopasowana' },
+      prerequisite: null,
+      persistenceBusy: false,
+      persistenceError: null,
+      rescueOptionsCalculating: false,
+      selectedRescueOptionId: null,
+      recommendedRescueOptionId: 'enlarge_batch',
+      rescueOptionStates: {
+        keep_original_batch: unavailable,
+        enlarge_batch: {
+          status: 'available' as const,
+          authorization: {
+            ...authorization,
+            stableOptionId: 'enlarge_batch' as const,
+          },
+          consumeIdempotencyKey: 'consume-enlarge-1',
+        },
+        restore_original_recipe: {
+          status: 'available' as const,
+          authorization: {
+            ...authorization,
+            authorizationId: 'authorization-cards-2',
+            stableOptionId: 'restore_original_recipe' as const,
+          },
+          consumeIdempotencyKey: 'consume-restore-1',
+        },
+        leave_as_is: unavailable,
+      },
+      selectRescueOption,
+      applySelectedRescueOption,
+    } as unknown as ProductionWorkspaceView;
+
+    await act(async () =>
+      root.render(
+        <ProductionCockpit
+          production={production}
+          onOpenPreview={vi.fn()}
+          onRecalculate={vi.fn()}
+          onReturnToRecipe={vi.fn()}
+        />,
+      ),
+    );
+
+    const decisionList = host.querySelector<HTMLElement>(
+      '[data-testid="production-decision-list"]',
+    );
+    const enlarge = host.querySelector<HTMLButtonElement>(
+      '[data-testid="production-decision-enlarge_batch"]',
+    );
+    const restore = host.querySelector<HTMLButtonElement>(
+      '[data-testid="production-decision-restore_original_recipe"]',
+    );
+    const apply = host.querySelector<HTMLButtonElement>(
+      '[data-testid="apply-selected-production-decision"]',
+    );
+    expect(decisionList?.className).toContain('gap-3');
+    expect(decisionList?.className).not.toContain('divide-y');
+    expect(enlarge?.className).toContain('border');
+    expect(restore?.className).toContain('border');
+    expect(enlarge?.className).toContain('hover:border-ink/25');
+    expect(enlarge?.className).toContain('active:translate-y-px');
+    expect(enlarge?.className).toContain('pro-focus-ring');
+    expect(enlarge?.tagName).toBe('BUTTON');
+    expect(restore?.tagName).toBe('BUTTON');
+    expect(apply?.disabled).toBe(true);
+    expect(apply?.textContent).toContain('Wybierz sposób korekty');
+    expect(host.querySelector('[data-testid="complete-production"]')).toBeNull();
+
+    await act(async () => enlarge?.click());
+    expect(selectRescueOption).toHaveBeenCalledWith('enlarge_batch');
+
+    await act(async () =>
+      root.render(
+        <ProductionCockpit
+          production={{ ...production, selectedRescueOptionId: 'enlarge_batch' }}
+          onOpenPreview={vi.fn()}
+          onRecalculate={vi.fn()}
+          onReturnToRecipe={vi.fn()}
+        />,
+      ),
+    );
+
+    const selected = host.querySelector<HTMLElement>(
+      '[data-testid="production-decision-enlarge_batch"]',
+    );
+    const neutral = host.querySelector<HTMLElement>(
+      '[data-testid="production-decision-restore_original_recipe"]',
+    );
+    const selectedApply = host.querySelector<HTMLButtonElement>(
+      '[data-testid="apply-selected-production-decision"]',
+    );
+    expect(selected?.getAttribute('data-decision-state')).toBe('selected');
+    expect(selected?.textContent).toContain('✓ Wybrano');
+    expect(neutral?.getAttribute('data-decision-state')).toBe('available');
+    expect(neutral?.textContent).not.toContain('✓ Wybrano');
+    expect(selectedApply?.disabled).toBe(false);
+    expect(selectedApply?.textContent).toContain('Zastosuj minimalną korektę');
+
+    await act(async () => selectedApply?.click());
+    expect(applySelectedRescueOption).toHaveBeenCalledTimes(1);
+
+    await act(async () =>
+      root.render(
+        <ProductionCockpit
+          production={{ ...production, selectedRescueOptionId: 'restore_original_recipe' }}
+          onOpenPreview={vi.fn()}
+          onRecalculate={vi.fn()}
+          onReturnToRecipe={vi.fn()}
+        />,
+      ),
+    );
+    expect(
+      host.querySelector('[data-testid="apply-selected-production-decision"]')?.textContent,
+    ).toContain('Przywróć proporcje');
+  });
+
   it('offers an explicit safe recovery when every trusted decision is unavailable', async () => {
     const plannedInput = {
       ...DEFAULT_PRESET,

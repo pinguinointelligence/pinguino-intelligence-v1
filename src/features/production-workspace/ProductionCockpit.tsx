@@ -668,7 +668,7 @@ export function ProductionCockpit({
             Potwierdzonych ilości nie odejmiemy. Możesz wybrać tylko wynik bezpiecznie obliczony dla
             obecnej zawartości naczynia.
           </p>
-          <div className="mt-3 divide-y divide-ink/8 rounded-[10px] bg-white/55 p-1">
+          <div className="mt-3 grid gap-3" data-testid="production-decision-list">
             {visibleDecisionOptions.map((option) => {
               const evaluation = production.rescueOptionStates?.[option.id];
               const selected = production.selectedRescueOptionId === option.id;
@@ -686,8 +686,10 @@ export function ProductionCockpit({
                   disabled={!available || production.persistenceBusy}
                   aria-pressed={selected}
                   className={cn(
-                    'pro-focus-ring w-full rounded-[9px] px-3 py-2.5 text-left transition-colors',
-                    selected ? 'bg-white ring-1 ring-ink/35' : 'hover:bg-white/70',
+                    'pro-focus-ring w-full rounded-[10px] border border-ink/12 bg-white px-3 py-3 text-left shadow-pro-e0 transition-[border-color,background-color,box-shadow,transform] duration-150',
+                    selected
+                      ? 'border-ink/35 bg-[#fffdf9] shadow-pro-sm ring-1 ring-inset ring-ink/10'
+                      : 'hover:border-ink/25 hover:bg-white hover:shadow-pro-sm active:translate-y-px active:bg-stone-50',
                     option.id === 'leave_as_is' &&
                       previewScore &&
                       production.plannedScore?.score &&
@@ -723,7 +725,9 @@ export function ProductionCockpit({
                           </span>
                         ) : null}
                         {selected ? (
-                          <span className="text-[10px] font-semibold text-ink">✓ Wybrano</span>
+                          <span className="rounded-md border border-status-ideal/25 bg-status-ideal/[0.06] px-1.5 py-0.5 text-[10px] font-semibold text-[#2f6f3c]">
+                            ✓ Wybrano
+                          </span>
                         ) : null}
                       </span>
                       <span className="mt-1 block text-[11px] leading-relaxed text-stone-600">
@@ -842,10 +846,10 @@ export function ProductionCockpit({
               : production.selectedRescueOptionId === 'leave_as_is'
                 ? 'Akceptuję wynik i kontynuuję'
                 : production.selectedRescueOptionId === 'enlarge_batch'
-                  ? 'Zastosuj nową partię'
+                  ? 'Zastosuj minimalną korektę'
                   : production.selectedRescueOptionId === 'restore_original_recipe'
                     ? 'Przywróć proporcje'
-                    : 'Zastosuj korektę'}
+                    : 'Wybierz sposób korekty'}
           </button>
         </section>
       ) : session.lastDeviationDecision ? (
@@ -998,21 +1002,23 @@ export function ProductionCockpit({
         </section>
       ) : null}
 
-      <button
-        type="button"
-        disabled={production.persistenceBusy || !completionReady}
-        onClick={() => {
-          if (lowerScoreAccepted) {
-            setFinishDialogOpen(true);
-            return;
-          }
-          void production.complete();
-        }}
-        className="pro-focus-ring h-11 w-full rounded-xl bg-ink px-3 text-xs font-semibold text-white shadow-pro-sm transition-transform enabled:hover:-translate-y-px disabled:cursor-not-allowed disabled:bg-stone-300"
-        data-testid="complete-production"
-      >
-        {completionLabel}
-      </button>
+      {!decisionUnresolved ? (
+        <button
+          type="button"
+          disabled={production.persistenceBusy || !completionReady}
+          onClick={() => {
+            if (lowerScoreAccepted) {
+              setFinishDialogOpen(true);
+              return;
+            }
+            void production.complete();
+          }}
+          className="pro-focus-ring h-11 w-full rounded-xl bg-ink px-3 text-xs font-semibold text-white shadow-pro-sm transition-transform enabled:hover:-translate-y-px disabled:cursor-not-allowed disabled:bg-stone-300"
+          data-testid="complete-production"
+        >
+          {completionLabel}
+        </button>
+      ) : null}
       {finishDialogOpen && lowerScoreAccepted ? (
         <DialogShell
           label="Zakończyć ważenie bazy?"
