@@ -33,18 +33,15 @@ describe('D1 — no dead strip above the first ingredient', () => {
     // Recipe mode: the heading is sr-only, so the wrapper must contribute
     // neither padding nor a divider unless a notice is actually present.
     expect(builder).toContain('hasRecipeNotice');
+    expect(builder).toContain("mode === 'recipe' &&");
     expect(builder).toContain(
-      "mode === 'production' && production?.session?.status === 'in_progress'",
-    );
-    expect(builder).toContain("? 'border-b border-ink/8 px-3 py-1.5'");
-    expect(builder).toContain(
-      "? 'px-[var(--pro-mobile-gutter)] pt-2 pb-1 lg:px-3'\n                : null",
+      "hasRecipeNotice ? 'px-[var(--pro-mobile-gutter)] pt-2 pb-1 lg:px-3' : null",
     );
   });
 
-  it('production mode keeps compact reminder spacing only while a run is active', () => {
-    expect(builder).toContain('data-testid="production-execution-reminder"');
-    expect(builder).toContain("'border-b border-ink/8 px-3 py-1.5'");
+  it('production mode does not reserve a permanent reminder strip above the first row', () => {
+    expect(builder).not.toContain('data-testid="production-execution-reminder"');
+    expect(builder).not.toContain("'border-b border-ink/8 px-3 py-1.5'");
   });
 });
 
@@ -140,7 +137,7 @@ describe('D11 — the complete left Recipe workspace follows the row system', ()
   });
 
   it('aligns every summary and toolbar to the ingredient-row gutter', () => {
-    expect(builder.match(/px-\[var\(--pro-mobile-gutter\)\]/g)).toHaveLength(6);
+    expect(builder.match(/px-\[var\(--pro-mobile-gutter\)\]/g)).toHaveLength(5);
     expect(builder.match(/lg:px-3/g)?.length).toBeGreaterThanOrEqual(5);
     expect(builder).toContain('data-testid="base-mass-total"');
     expect(builder).toContain('data-testid="ingredient-action-toolbar"');

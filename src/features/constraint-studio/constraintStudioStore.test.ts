@@ -26,6 +26,7 @@ import { optimizePreviewRequiresApply, useConstraintStudioStore } from './constr
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
 import type { ConstraintPreview } from './applyPipeline';
 import { ownerSameInputRecipe } from '@/features/formulation/__fixtures__/ownerSameInputFixture';
+import { useIngredientChangeStore } from '@/features/ingredient-builder/ingredientChangeStore';
 
 const SUCROSE = starterLine('sucrose');
 const DEXTROSE = starterLine('dextrose');
@@ -151,6 +152,7 @@ const directionInput = (): RecipeInput => {
 beforeEach(() => {
   useRecipeStore.getState().resetToDemo();
   useConstraintStudioStore.getState().resetForTests();
+  useIngredientChangeStore.getState().clearRecalculation();
 });
 
 describe('Pro executable validation', () => {
@@ -190,6 +192,7 @@ describe('Pro executable validation', () => {
   it('returns one NO_CHANGE_NEEDED terminal when a clean recipe needs zero gram changes', () => {
     loadRecipe(starterMilkBase());
     const before = buildRecipeInput(useRecipeStore.getState());
+    useIngredientChangeStore.getState().captureRecalculation(['stale-apple', 'stale-tara']);
 
     useConstraintStudioStore.getState().createOptimizePreview();
     expect(useConstraintStudioStore.getState().preview).toBeNull();
@@ -203,6 +206,7 @@ describe('Pro executable validation', () => {
     expect(useConstraintStudioStore.getState().history).toEqual([]);
     expect(useConstraintStudioStore.getState().blocked).toBeNull();
     expect(buildRecipeInput(useRecipeStore.getState())).toEqual(before);
+    expect([...useIngredientChangeStore.getState().changedByLastRecalculation]).toEqual([]);
   });
 
   it('has one blocked terminal state with exact missing-price evidence in ECO', () => {
@@ -535,6 +539,29 @@ describe('§17.1/§17.2 padlock', () => {
 });
 
 describe('§19 apply through the store', () => {
+  it('Cancel clears Preview markers; save keeps applied evidence; reopen clears the session', () => {
+    loadAddFixScenario();
+    useConstraintStudioStore.getState().createOptimizePreview();
+    expect(useIngredientChangeStore.getState().changedByLastRecalculation.length).toBeGreaterThan(0);
+
+    useConstraintStudioStore.getState().cancelPreview();
+    expect([...useIngredientChangeStore.getState().changedByLastRecalculation]).toEqual([]);
+
+    useConstraintStudioStore.getState().createOptimizePreview();
+    useConstraintStudioStore.getState().applyPreview();
+    const applied = [...useIngredientChangeStore.getState().changedByLastRecalculation];
+    expect(applied.length).toBeGreaterThan(0);
+
+    // The save boundary changes dirty/version state, not the already accepted
+    // Recalculate before/after evidence displayed in this open session.
+    useRecipeStore.setState({ dirty: false });
+    expect([...useIngredientChangeStore.getState().changedByLastRecalculation]).toEqual(applied);
+
+    // Reopen starts a new draft context with no Recalculate result in-session.
+    loadRecipe(buildRecipeInput(useRecipeStore.getState()));
+    expect([...useIngredientChangeStore.getState().changedByLastRecalculation]).toEqual([]);
+  });
+
   it('requires the explicit best-achievable decision before normal Preview, Apply and Undo', () => {
     loadRecipe(directionInput());
     const before = JSON.stringify(recipeItems().map((item) => [item.id, item.planned_grams]));
@@ -574,13 +601,29 @@ describe('§19 apply through the store', () => {
   it('applies a verified optimize preview: recipe updated, locks byte-stable, history recorded', () => {
     loadAddFixScenario();
     useConstraintStudioStore.getState().createOptimizePreview();
-    expect(useConstraintStudioStore.getState().preview).not.toBeNull();
+    const preview = useConstraintStudioStore.getState().preview;
+    expect(preview).not.toBeNull();
+    const expectedChanged = preview!.lines
+      .filter(
+        (line) =>
+          line.beforeGrams !== null &&
+          line.afterGrams !== null &&
+          Math.abs(line.afterGrams - line.beforeGrams) > 1e-6,
+      )
+      .map((line) => line.lineId);
+    expect([...useIngredientChangeStore.getState().changedByLastRecalculation]).toEqual(
+      expectedChanged,
+    );
 
     useConstraintStudioStore.getState().applyPreview();
 
     expect(useConstraintStudioStore.getState().blocked).toBeNull();
     expect(useConstraintStudioStore.getState().preview).toBeNull();
     expect(useConstraintStudioStore.getState().history.length).toBe(1);
+    // Apply preserves the marker set from the exact accepted Preview.
+    expect([...useIngredientChangeStore.getState().changedByLastRecalculation]).toEqual(
+      expectedChanged,
+    );
     // The LOCKED line is byte-stable through the apply…
     expect(Object.is(lineGrams(DEXTROSE), 40)).toBe(true);
     // …while the free over-sweet sucrose was genuinely moved by the solver.
@@ -627,6 +670,7 @@ describe('§19 apply through the store', () => {
     // Owner P0 NIGHTLY (Phase 3): the MATERIAL EDIT ITSELF invalidates the
     // staged preview — instantly, not only at the Apply attempt.
     expect(useConstraintStudioStore.getState().preview).toBeNull();
+    expect([...useIngredientChangeStore.getState().changedByLastRecalculation]).toEqual([]);
 
     const before = JSON.stringify(recipeItems());
     useConstraintStudioStore.getState().applyPreview(); // no-op without a preview
@@ -682,6 +726,7 @@ describe('§20.3 Undo', () => {
       constraintsBefore,
     );
     expect(useConstraintStudioStore.getState().history.length).toBe(0);
+    expect([...useIngredientChangeStore.getState().changedByLastRecalculation]).toEqual([]);
   });
 
   it('refuses to undo after an unrelated manual edit (never destroys newer work)', () => {

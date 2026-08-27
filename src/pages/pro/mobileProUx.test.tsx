@@ -115,39 +115,25 @@ describe('collapsed mobile recipe line', () => {
     expect(row).toContain('<MobileIngredientLine');
   });
 
-  it('reads the change signature from the CANONICAL recipe vector, not the rendered one', () => {
-    // Produkcja renders the production forecast instead of the planning result.
-    // Reading the rendered `items` made every Receptura↔Produkcja switch look
-    // like an edit and falsely marked lines (found in served staging QA).
+  it('reads the marker from explicit latest-Recalculate session evidence', () => {
     const builder = read('features', 'ingredient-builder', 'IngredientBuilder.tsx');
-    const block = builder.slice(
-      builder.indexOf('const changeSignatures = Object.fromEntries('),
-      builder.indexOf('const changedLineIds = useChangedIngredientLines('),
-    );
-    expect(block).toContain('storeItems.map((line) => [');
-    expect(block).toContain('plannedGrams: line.planned_grams');
-    // Never the `items` prop — that vector changes with the active module.
-    expect(block).not.toContain('item.planned_grams');
-    expect(block).not.toContain('items.map(');
+    expect(builder).toContain('useRecalculatedIngredientLines()');
+    expect(builder).not.toContain('useChangedIngredientLines(');
+    expect(builder).not.toContain('priceDirtyByLineId');
   });
 
-  it('keeps the baseline on the CLEAN draft, so async hydration cannot fake a change', () => {
-    // Served staging QA: the owner's „MOJA CENA" overrides are fetched after
-    // first paint, so a baseline frozen at first render marked every own-priced
-    // line as changed (5 of 8 on a real recipe). The baseline therefore tracks
-    // the signatures for as long as the draft is clean.
+  it('keeps marker evidence session-only, so reopen and hydration cannot fake a change', () => {
     const store = read('features', 'ingredient-builder', 'ingredientChangeStore.ts');
-    expect(store).toContain('if (!dirty || !known) captureBaseline(parsed);');
-    expect(store).toContain('state.dirty');
+    expect(store).toContain('changedByLastRecalculation');
+    expect(store).toContain('clearRecalculation');
+    expect(store).not.toContain('persist(');
+    expect(store).not.toContain('useRecipeStore');
   });
 
-  it('discards a persisted baseline written by an older signature format', () => {
-    // Served staging QA: changing the gram precision inside the signature made
-    // every stored line differ, so all 8 rows of a real recipe lit up on the
-    // first load after the deploy. A version bump now resets to a cold start.
-    const store = read('features', 'ingredient-builder', 'ingredientChangeStore.ts');
-    expect(store).toContain('version: SIGNATURE_FORMAT_VERSION');
-    expect(store).toContain('migrate: () => ({ baselineByLineId: {} })');
+  it('compares exact Recalculate before/after vectors with a visible-row epsilon', () => {
+    const model = read('features', 'ingredient-builder', 'ingredientChangeHighlight.ts');
+    expect(model).toContain('recalculatedIngredientLineIds');
+    expect(model).toContain('RECALCULATION_MARKER_EPSILON_GRAMS = 0.05');
   });
 
   it('marks a changed line with the existing attention accent, never a new colour', () => {

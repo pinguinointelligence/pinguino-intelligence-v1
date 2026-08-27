@@ -1,0 +1,626 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GELLATTI Communication Owner Gate v1.7</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #171717;
+        --muted: #6f6b63;
+        --line: #ded9d0;
+        --paper: #fffefb;
+        --canvas: #f1eee7;
+        --warm: #fbf5e9;
+        --warm-line: #d9c49a;
+        --orange: #ef8708;
+        --green: #277a4d;
+        --green-soft: #edf6f0;
+        --red-soft: #fff3f0;
+        --red: #9f3d2d;
+        font-family:
+          Manrope, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--canvas);
+        color: var(--ink);
+      }
+
+      button {
+        min-height: 44px;
+        border: 0;
+        border-radius: 12px;
+        padding: 0 16px;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 720;
+      }
+
+      .page {
+        width: min(1400px, calc(100% - 40px));
+        margin: 28px auto 64px;
+      }
+
+      .masthead {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 24px;
+        align-items: end;
+        padding: 24px 28px;
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        background: var(--paper);
+        box-shadow: 0 14px 36px rgb(44 36 22 / 7%);
+      }
+
+      .eyebrow,
+      .sample-index,
+      .side-label {
+        margin: 0;
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 760;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        max-width: 880px;
+        margin: 9px 0 0;
+        font-size: clamp(29px, 4vw, 52px);
+        line-height: 1;
+        letter-spacing: -0.045em;
+      }
+
+      .masthead p:last-child {
+        max-width: 760px;
+        margin: 14px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.55;
+      }
+
+      .gate {
+        align-self: start;
+        border: 1px solid var(--warm-line);
+        border-radius: 999px;
+        background: var(--warm);
+        padding: 9px 13px;
+        color: #6b491f;
+        font-size: 11px;
+        font-weight: 760;
+        letter-spacing: 0.06em;
+        white-space: nowrap;
+      }
+
+      .samples {
+        display: grid;
+        gap: 18px;
+        margin-top: 18px;
+      }
+
+      .sample {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        background: var(--paper);
+        box-shadow: 0 12px 30px rgb(44 36 22 / 5%);
+      }
+
+      .sample-header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 20px;
+        border-bottom: 1px solid var(--line);
+        padding: 18px 22px;
+      }
+
+      .sample-title {
+        margin: 5px 0 0;
+        font-size: 19px;
+        letter-spacing: -0.025em;
+      }
+
+      .sample-meta {
+        color: var(--muted);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 10px;
+        text-align: right;
+      }
+
+      .comparison {
+        display: grid;
+        grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+      }
+
+      .side {
+        min-width: 0;
+        padding: 22px;
+      }
+
+      .side.before {
+        border-right: 1px solid var(--line);
+        background: #f7f5f1;
+      }
+
+      .side.after {
+        background: var(--paper);
+      }
+
+      .side-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .side-label::before {
+        width: 7px;
+        height: 7px;
+        border-radius: 99px;
+        background: #a09b92;
+        content: "";
+      }
+
+      .after .side-label::before {
+        background: var(--green);
+      }
+
+      .mock {
+        margin-top: 16px;
+        border: 1px solid var(--line);
+        border-radius: 17px;
+        background: #fff;
+        padding: 18px;
+      }
+
+      .mock.dark {
+        border-color: #2c2d30;
+        background: #1b1c1f;
+        color: #f4efe5;
+      }
+
+      .mock.warm {
+        border-color: var(--warm-line);
+        background: var(--warm);
+      }
+
+      .mock h3 {
+        margin: 0;
+        font-size: 16px;
+        line-height: 1.25;
+        letter-spacing: -0.015em;
+      }
+
+      .mock p {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .mock.dark p {
+        color: #c5bfb4;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 17px;
+      }
+
+      .primary {
+        background: var(--ink);
+        color: #fff;
+      }
+
+      .dark .primary {
+        background: #f1ecdf;
+        color: #171717;
+      }
+
+      .secondary {
+        border: 1px solid #d1ccc4;
+        background: #fff;
+        color: var(--ink);
+      }
+
+      .dark .secondary {
+        border-color: #53545a;
+        background: transparent;
+        color: #f1ecdf;
+      }
+
+      .dimensions {
+        margin: 13px 0 0;
+        color: var(--muted);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 10px;
+        line-height: 1.5;
+      }
+
+      .heat-list {
+        margin: 10px 0 0;
+        padding: 0;
+        list-style: none;
+        font-size: 12px;
+        line-height: 1.55;
+      }
+
+      .complete-note {
+        margin-top: 12px;
+        border-top: 1px solid var(--line);
+        padding-top: 10px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .production-row {
+        display: grid;
+        grid-template-columns: minmax(260px, 1fr) minmax(226px, 300px);
+        align-items: center;
+        gap: 18px;
+      }
+
+      .ingredient {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        min-width: 0;
+      }
+
+      .ingredient-mark {
+        display: grid;
+        width: 34px;
+        height: 34px;
+        flex: 0 0 auto;
+        place-items: center;
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        background: #f6f3ed;
+        font-size: 16px;
+      }
+
+      .ingredient strong {
+        display: block;
+        overflow: hidden;
+        font-size: 13px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .ingredient small {
+        display: block;
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .actual-control {
+        display: grid;
+        grid-template-columns: 44px minmax(92px, 1fr) 44px 44px;
+        overflow: hidden;
+        border: 1px solid #cfcac1;
+        border-radius: 13px;
+        background: #fff;
+      }
+
+      .actual-control span {
+        display: grid;
+        min-height: 44px;
+        place-items: center;
+        border-right: 1px solid #e3ded5;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .actual-control span:last-child {
+        border-right: 0;
+        background: var(--ink);
+        color: #fff;
+      }
+
+      .legacy-row {
+        display: grid;
+        grid-template-columns: 1fr 72px 90px 110px 100px;
+        gap: 8px;
+        align-items: center;
+        font-size: 11px;
+      }
+
+      .legacy-row > * {
+        border-right: 1px solid var(--line);
+        padding-right: 7px;
+      }
+
+      .legacy-row > *:last-child {
+        border-right: 0;
+      }
+
+      .old-badge {
+        display: inline-block;
+        border: 1px solid var(--warm-line);
+        background: var(--warm);
+        padding: 4px 6px;
+        color: #795628;
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+      }
+
+      .implemented {
+        color: var(--green);
+        font-weight: 780;
+      }
+
+      footer {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        margin-top: 18px;
+        border-top: 1px solid #cfc9bf;
+        padding-top: 15px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      @media (max-width: 760px) {
+        .page {
+          width: min(100% - 20px, 560px);
+          margin-top: 10px;
+        }
+
+        .masthead {
+          grid-template-columns: 1fr;
+          padding: 20px;
+        }
+
+        .gate {
+          justify-self: start;
+        }
+
+        .sample-header {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .sample-meta {
+          text-align: left;
+        }
+
+        .comparison {
+          grid-template-columns: 1fr;
+        }
+
+        .side.before {
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+
+        .production-row {
+          grid-template-columns: 1fr;
+        }
+
+        .legacy-row {
+          grid-template-columns: 1fr 80px;
+        }
+
+        .legacy-row .hide-mobile {
+          display: none;
+        }
+
+        footer {
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="masthead">
+        <div>
+          <p class="eyebrow">Gellatti · communication system · v1.7</p>
+          <h1>Five decisions before the global rollout</h1>
+          <p>
+            Review-only visual sheet. The right side shows the proposed communication hierarchy;
+            nothing on this page is wired into the product.
+          </p>
+        </div>
+        <span class="gate">OWNER APPROVAL GATE</span>
+      </header>
+
+      <div class="samples">
+        <section class="sample" data-sample="1">
+          <header class="sample-header">
+            <div>
+              <p class="sample-index">01 · prerequisite</p>
+              <h2 class="sample-title">Recalculate needs confirmed settings</h2>
+            </div>
+            <span class="sample-meta">desktop 560×230 · mobile ~358×250</span>
+          </header>
+          <div class="comparison">
+            <div class="side before">
+              <p class="side-label">Current</p>
+              <div class="mock dark">
+                <h3>Najpierw potwierdź ustawienia receptury.</h3>
+                <div class="actions">
+                  <button class="secondary">Przejdź do ustawień</button>
+                </div>
+              </div>
+              <p class="dimensions">Dark diagnostic shell · small status label · separate close</p>
+            </div>
+            <div class="side after">
+              <p class="side-label">Proposed</p>
+              <div class="mock">
+                <h3>Uzupełnij ustawienia receptury</h3>
+                <p>Potwierdź typ produktu, temperaturę i wielkość partii, aby przeliczyć recepturę.</p>
+                <div class="actions">
+                  <button class="primary">Przejdź do ustawień</button>
+                  <button class="secondary">Anuluj</button>
+                </div>
+              </div>
+              <p class="dimensions">Title → one reason → direct recovery · no public “PI”</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="sample" data-sample="2">
+          <header class="sample-header">
+            <div>
+              <p class="sample-index">02 · prerequisite</p>
+              <h2 class="sample-title">Production needs a saved recipe</h2>
+            </div>
+            <span class="sample-meta">panel card 480×178 · 20 px padding</span>
+          </header>
+          <div class="comparison">
+            <div class="side before">
+              <p class="side-label">Current</p>
+              <div class="mock warm">
+                <h3>Zapisz wersję wykonawczą</h3>
+                <p>
+                  Produkcja wymaga dokładnej, niezmiennej wersji receptury. Zapisz zastosowaną
+                  recepturę przed rozpoczęciem partii.
+                </p>
+                <div class="actions"><button class="primary">Wróć i zapisz recepturę</button></div>
+              </div>
+            </div>
+            <div class="side after">
+              <p class="side-label">Proposed</p>
+              <div class="mock warm">
+                <h3>Zapisz recepturę przed produkcją</h3>
+                <p>
+                  Produkcja korzysta z zapisanej wersji, aby skład i gramatury nie zmieniły się w
+                  trakcie partii.
+                </p>
+                <div class="actions"><button class="primary">Wróć do receptury</button></div>
+              </div>
+              <p class="dimensions">Truthful navigation action · no promise of an automatic save</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="sample" data-sample="3">
+          <header class="sample-header">
+            <div>
+              <p class="sample-index">03 · unavailable state</p>
+              <h2 class="sample-title">Label waits for the completed batch</h2>
+            </div>
+            <span class="sample-meta">inline state 560×176 · one action</span>
+          </header>
+          <div class="comparison">
+            <div class="side before">
+              <p class="side-label">Current</p>
+              <div class="mock">
+                <h3>Najpierw zakończ Produkcję</h3>
+                <p>
+                  Po zakończeniu runu pojawią się tutaj składniki ACTUAL, wartości odżywcze, koszt,
+                  baza techniczna i automatyczny LOT.
+                </p>
+                <div class="actions"><button class="primary">Otwórz Produkcję</button></div>
+              </div>
+            </div>
+            <div class="side after">
+              <p class="side-label">Proposed</p>
+              <div class="mock">
+                <h3>Etykieta będzie dostępna po zakończeniu partii</h3>
+                <p>Zakończ ważenie składników, aby utworzyć etykietę z faktycznie użytych ilości.</p>
+                <div class="actions"><button class="primary">Otwórz Produkcję</button></div>
+              </div>
+              <p class="dimensions">Future availability → dependency → recovery · no ACTUAL/run</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="sample" data-sample="4">
+          <header class="sample-header">
+            <div>
+              <p class="sample-index">04 · safety timing</p>
+              <h2 class="sample-title">TARA/process appears once, at the useful moment</h2>
+            </div>
+            <span class="sample-meta implemented">PHASE A IMPLEMENTED</span>
+          </header>
+          <div class="comparison">
+            <div class="side before">
+              <p class="side-label">Previous</p>
+              <div class="mock warm">
+                <h3>Informacja potwierdzona</h3>
+                <p>Dla poniższych składników wskazana jest obróbka na ciepło:</p>
+                <ul class="heat-list"><li>TARA GUM · Stabilizer</li></ul>
+              </div>
+              <p class="dimensions">Confirmation card persisted and returned during weighing</p>
+            </div>
+            <div class="side after">
+              <p class="side-label">Implemented</p>
+              <div class="mock warm">
+                <h3>Pamiętaj o obróbce</h3>
+                <p>Dla poniższych składników wskazana jest obróbka na ciepło:</p>
+                <ul class="heat-list"><li>TARA GUM · Stabilizer</li></ul>
+                <div class="actions"><button class="primary">OK</button></div>
+                <div class="complete-note"><strong>Po partii:</strong> Obróbka na ciepło: TARA GUM</div>
+              </div>
+              <p class="dimensions">Pre-start acknowledgment → silence while weighing → one-line record</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="sample" data-sample="5">
+          <header class="sample-header">
+            <div>
+              <p class="sample-index">05 · material difference</p>
+              <h2 class="sample-title">Production row shows the deviation, not table noise</h2>
+            </div>
+            <span class="sample-meta implemented">PHASE A IMPLEMENTED</span>
+          </header>
+          <div class="comparison">
+            <div class="side before">
+              <p class="side-label">Previous</p>
+              <div class="mock">
+                <div class="legacy-row">
+                  <strong>Milk 3.5%</strong>
+                  <span class="hide-mobile">705 g</span>
+                  <span class="hide-mobile">Faktycznie</span>
+                  <span>+95 g ponad plan</span>
+                  <span class="old-badge">DO DODANIA</span>
+                </div>
+              </div>
+              <p class="dimensions">Five visual columns · repeated labels · separate status/action</p>
+            </div>
+            <div class="side after">
+              <p class="side-label">Implemented</p>
+              <div class="mock">
+                <div class="production-row">
+                  <div class="ingredient">
+                    <span class="ingredient-mark">◔</span>
+                    <span>
+                      <strong>Milk 3.5%</strong>
+                      <small>Planowo: 705 g · 95 g więcej</small>
+                    </span>
+                  </div>
+                  <div class="actual-control" aria-label="Actual production control">
+                    <span>−</span><span>800 g</span><span>+</span><span>✓</span>
+                  </div>
+                </div>
+              </div>
+              <p class="dimensions">Two tracks · 44 px touch targets · deviation only when non-zero</p>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <footer>
+        <span>Review artifact only · no application import · no global rollout</span>
+        <span>GELLATTI PRO FINAL v1.7 · 2026-08-27</span>
+      </footer>
+    </main>
+  </body>
+</html>

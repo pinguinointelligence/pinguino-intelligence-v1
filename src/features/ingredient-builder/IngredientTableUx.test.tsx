@@ -308,7 +308,7 @@ describe('Recipe ingredient table — quiet primary surface', () => {
     expect(html).toContain('Część danych składnika jest szacowana.');
   });
 
-  it('does not expose Already added in Recipe mode while Production actuals remain intact', () => {
+  it('keeps Production actuals accessible without restoring the old visual status noise', () => {
     expect(text(renderRow())).not.toContain('Oznacz jako już dodany');
     const productionLine = {
       lineId: baseItem.id,
@@ -338,8 +338,10 @@ describe('Recipe ingredient table — quiet primary surface', () => {
         }}
       />,
     );
-    expect(text(production)).toContain('Faktycznie');
-    expect(text(production)).toContain('DO DODANIA');
+    expect(text(production)).toContain('faktycznie 670 gramów');
+    expect(text(production)).not.toContain('DO DODANIA');
+    expect(text(production)).not.toContain('Faktycznie');
+    expect(production).toContain('faktyczna gramatura: 670 g');
     expect(production).toContain('potwierdź dodanie');
     expect(production).toContain(`data-testid="production-stepper-${baseItem.id}"`);
   });

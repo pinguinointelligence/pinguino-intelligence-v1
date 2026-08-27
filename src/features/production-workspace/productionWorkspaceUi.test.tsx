@@ -86,10 +86,10 @@ describe('Production workspace touch-first UI', () => {
     expect(html).toContain('data-control-density="responsive"');
     expect(html).toContain('data-control-capacity="10000g"');
     expect(html).toContain('lg:min-h-7');
-    expect(html).toContain('data-production-cell="action"');
+    expect(html).toContain('potwierdź dodanie');
     expect(html).toContain('data-category-symbol=');
-    expect(html).toContain('text-[10px] leading-tight');
-    expect(html).toContain('md:grid-cols-[minmax(300px,1fr)_142px_150px_96px_28px]');
+    expect(html).not.toContain('DO DODANIA');
+    expect(html).toContain('md:grid-cols-[minmax(260px,1fr)_minmax(226px,300px)]');
     expect(html).not.toContain('text-[9px] leading-none');
     expect(html).not.toContain('mx-2 mb-2 rounded-[20px]');
     expect(html).not.toContain('grid-cols-[minmax(0,1fr)_48px]');
@@ -198,7 +198,9 @@ describe('Production workspace touch-first UI', () => {
         productionActions={{ setDraftActual: vi.fn(), confirmLine: vi.fn(), reopenRecord: vi.fn() }}
       />,
     );
-    expect(html).toContain('+2 g ponad plan');
+    expect(html).toContain(`Planowo: ${line.plannedGrams} g`);
+    expect(html).toContain('2 g więcej');
+    expect(html).not.toContain('ponad plan');
     expect(html).toContain('DODANO');
     expect(html).not.toContain('>RÓŻNICA<');
     expect(html).toContain('popraw zapis');
@@ -216,7 +218,7 @@ describe('Production workspace touch-first UI', () => {
     expect(source).toContain('Popraw błędny wpis');
   });
 
-  it('keeps the Production table and physical workflow explicitly separated', () => {
+  it('removes the visual table legend and permanent procedure while retaining SR semantics', () => {
     const builderSource = readFileSync(
       resolve(import.meta.dirname, '..', 'ingredient-builder', 'IngredientBuilder.tsx'),
       'utf8',
@@ -225,13 +227,14 @@ describe('Production workspace touch-first UI', () => {
       resolve(import.meta.dirname, 'ProductionWorkspaceHeader.tsx'),
       'utf8',
     );
-    for (const heading of ['Składnik / status', 'Plan', 'Faktycznie', 'Odchylenie']) {
-      expect(builderSource).toContain(`'${heading}'`);
+    expect(builderSource).toContain('className="sr-only"');
+    for (const heading of ['Składnik', 'Plan', 'Faktycznie', 'Odchylenie']) {
+      expect(builderSource).toContain(heading);
     }
-    expect(headerSource).toContain('Odważ');
-    expect(headerSource).toContain('Wpisz faktyczną ilość');
-    expect(headerSource).toContain('Potwierdź');
-    expect(builderSource).toContain('Potwierdzonej ilości nie można odjąć od naczynia.');
+    expect(headerSource).not.toContain('Odważ');
+    expect(headerSource).not.toContain('Wpisz faktyczną ilość');
+    expect(headerSource).not.toContain('Potwierdź');
+    expect(builderSource).not.toContain('Potwierdzonej ilości nie można odjąć od naczynia.');
     expect(builderSource).not.toContain('production.progress.confirmedCount');
     expect(builderSource).not.toContain('Faktycznie · status / potwierdź');
   });
@@ -254,22 +257,22 @@ describe('Production workspace touch-first UI', () => {
       />,
     );
 
-    expect(html).toContain('>705 g</strong>');
+    expect(html).toContain('Planowo: 705 g');
     expect(html).toContain('value="800"');
-    expect(html).toContain('>+95 g ponad plan</strong>');
-    expect(html).toContain('powyżej planu');
-    expect(html).toContain('aria-label="Różnica względem planu: plus 95 gramów, powyżej planu"');
+    expect(html).toContain('>95 g więcej</strong>');
+    expect(html).not.toContain('ponad plan');
+    expect(html).toContain('aria-label="Planowo 705 gramów; 95 gramów więcej"');
     expect(html).toContain('data-production-control-state="addition"');
     expect(html).toContain('rounded-2xl');
     expect(html).toContain('shadow-pro-sm');
   });
 
   it.each([
-    [705, 'exact', '0 g', 'zgodnie z planem'],
-    [690, 'under', '-15 g', 'poniżej planu'],
+    [705, 'exact', null],
+    [690, 'under', '15 g mniej'],
   ] as const)(
     'keeps %s g visually and semantically distinct as the %s deviation state',
-    (actual, state, visibleDifference, label) => {
+    (actual, state, visibleDifference) => {
       const line = {
         ...session.lines[0]!,
         plannedGrams: 705,
@@ -291,10 +294,14 @@ describe('Production workspace touch-first UI', () => {
         />,
       );
       expect(html).toContain(`data-production-difference="${state}"`);
-      expect(html).toContain(
-        `>${visibleDifference}${state === 'under' ? ' poniżej planu' : ''}</strong>`,
-      );
-      expect(html).toContain(label);
+      if (visibleDifference) {
+        expect(html).toContain(`>${visibleDifference}</strong>`);
+        expect(html).toContain('Planowo: 705 g');
+      } else {
+        expect(html).not.toContain('Planowo:');
+        expect(html).not.toContain('0 g');
+        expect(html).not.toContain('zgodnie z planem');
+      }
     },
   );
 
@@ -689,7 +696,8 @@ describe('Production workspace touch-first UI', () => {
       /<button(?=[^>]*data-testid="start-production-session")(?=[^>]*\sdisabled="")/,
     );
     const confirmed = render(true);
-    expect(confirmed).toContain('Informacja potwierdzona');
+    expect(confirmed).not.toContain('data-testid="production-heat-information"');
+    expect(confirmed).not.toContain('Informacja potwierdzona');
     expect(confirmed).toContain('Rozpocznij partię');
     expect(confirmed).not.toMatch(
       /<button(?=[^>]*data-testid="start-production-session")(?=[^>]*\sdisabled="")/,
@@ -743,7 +751,7 @@ describe('Production workspace touch-first UI', () => {
     expect(startTag).not.toContain(' disabled=');
   });
 
-  it('reminds the operator about verified heat treatment and takes one OK', () => {
+  it('does not repeat acknowledged heat information during active weighing or Rescue', () => {
     const forecast = assessProductionRescue(session);
     const acknowledge = vi.fn();
     const view = (acknowledged: boolean) =>
@@ -786,11 +794,10 @@ describe('Production workspace touch-first UI', () => {
         onReturnToRecipe={vi.fn()}
       />,
     );
-    expect(pending).toContain('Pamiętaj o obróbce');
-    expect(pending).toContain('DARK CHOCOLATE 55%');
-    expect(pending).toContain('data-testid="acknowledge-production-heat-information"');
-    expect(pending).toContain('data-acknowledged="false"');
-    // It is awareness only: once a run is active it never becomes a science gate.
+    expect(pending).not.toContain('Pamiętaj o obróbce');
+    expect(pending).not.toContain('DARK CHOCOLATE 55%');
+    expect(pending).not.toContain('data-testid="production-heat-information"');
+    // Once a run is active, the pre-start acknowledgement never becomes a new gate.
     expect(pending).not.toContain('data-testid="production-process-blocked"');
 
     const confirmed = renderToStaticMarkup(
@@ -801,8 +808,8 @@ describe('Production workspace touch-first UI', () => {
         onReturnToRecipe={vi.fn()}
       />,
     );
-    expect(confirmed).toContain('Informacja potwierdzona');
-    expect(confirmed).toContain('data-acknowledged="true"');
+    expect(confirmed).not.toContain('Informacja potwierdzona');
+    expect(confirmed).not.toContain('data-testid="production-heat-information"');
     expect(confirmed).not.toContain('data-testid="acknowledge-production-heat-information"');
   });
 
@@ -915,7 +922,6 @@ describe('Production workspace touch-first UI', () => {
     expect(html.match(/data-testid="production-score-ring"/g) ?? []).toHaveLength(1);
     expect(html).toContain('0 / 6 składników');
     expect(html.match(/0 \/ 6 składników/g) ?? []).toHaveLength(1);
-    expect(html).toContain('data-testid="production-workspace-header"');
     expect(html).toContain('data-testid="production-workspace-progress"');
     expect(html).toContain('data-testid="production-batch-state"');
     // §22 LIVE MONITOR — vessel, current plan and what is still to be added.
@@ -928,7 +934,7 @@ describe('Production workspace touch-first UI', () => {
     expect(html).toContain('disabled=""');
   });
 
-  it('replaces active instructions and numeric progress with one quiet completed state', () => {
+  it('keeps the shared header quiet in the completed state', () => {
     const completedSession = {
       ...session,
       status: 'completed',
@@ -946,7 +952,7 @@ describe('Production workspace touch-first UI', () => {
 
     const html = renderToStaticMarkup(<ProductionWorkspaceHeader production={view} />);
     expect(html).toContain('data-production-state="completed"');
-    expect(html).toContain('✓ Partia gotowa');
+    expect(html).toContain('Partia gotowa');
     expect(html).not.toContain('production-workspace-instructions');
     expect(html).not.toContain('production-workspace-progress');
     expect(html).not.toContain('składników');
@@ -979,10 +985,10 @@ describe('Production workspace touch-first UI', () => {
       />,
     );
 
-    expect(html).toContain('350 g');
-    expect(html).not.toContain('>400 g</strong>');
+    expect(html).toContain('value="350"');
+    expect(html).not.toContain('Planowo:');
     expect(html).toContain('data-production-difference="exact"');
-    expect(html).toContain('Różnica względem planu: 0 gramów, zgodnie z planem');
+    expect(html).toContain('Planowo 350 gramów; faktycznie 350 gramów');
     expect(html).not.toContain('-50 g');
   });
 
@@ -1163,6 +1169,13 @@ describe('Production workspace touch-first UI', () => {
     const view = {
       session: completed,
       progress: productionProgress(completed),
+      heatInformation: [
+        {
+          code: 'HEAT_TREATMENT_INDICATED',
+          productName: 'TARA GUM · Stabilizer',
+        },
+      ],
+      heatInformationAcknowledged: true,
       startNewSession: vi.fn(),
     } as unknown as ProductionWorkspaceView;
 
@@ -1181,6 +1194,9 @@ describe('Production workspace touch-first UI', () => {
     expect(html).toContain('Koszt partii');
     expect(html).toContain('Przejdź do etykiety');
     expect(html).toContain('data-testid="production-go-to-label"');
+    expect(html).toContain('data-testid="production-completed-process-reminder"');
+    expect(html).toContain('Obróbka na ciepło');
+    expect(html).toContain('TARA GUM · Stabilizer');
     expect(html).not.toContain('/labels?run=ui-run');
     expect(html).not.toContain('class="p-3 text-xs text-stone-500"');
     const staleCompletedHtml = renderToStaticMarkup(

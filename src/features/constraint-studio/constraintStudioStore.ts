@@ -87,8 +87,30 @@ import {
   readPracticalRecipeAudit,
 } from '@/features/practical-recipe/practicalRecipe';
 import { constraintStudioCopy } from './constraintStudioCopy';
+import {
+  recalculatedIngredientLineIds,
+  type RecalculationMarkerLine,
+} from '@/features/ingredient-builder/ingredientChangeHighlight';
+import { useIngredientChangeStore } from '@/features/ingredient-builder/ingredientChangeStore';
 
 const applyGuardCopy = constraintStudioCopy.applyGuard;
+
+const markerLines = (input: RecipeInput): RecalculationMarkerLine[] =>
+  input.items.map((item) => ({
+    id: item.id,
+    ingredientId: canonicalIngredientId(item.ingredient) ?? item.ingredient.id,
+    plannedGrams: item.planned_grams,
+    lockType: item.lock_type,
+  }));
+
+const publishRecalculationMarker = (before: RecipeInput, after: RecipeInput): void => {
+  useIngredientChangeStore
+    .getState()
+    .captureRecalculation(recalculatedIngredientLineIds(markerLines(before), markerLines(after)));
+};
+
+const clearRecalculationMarker = (): void =>
+  useIngredientChangeStore.getState().clearRecalculation();
 import {
   buildBatchRescalePreview,
   bindProductBehaviorToPreview,
@@ -940,7 +962,8 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         if (reconciled !== get().constraints) set({ constraints: reconciled });
       },
 
-      resetDraftSession: () =>
+      resetDraftSession: () => {
+        clearRecalculationMarker();
         set({
           constraints: reconcileConstraints(
             useRecipeStore.getState().items,
@@ -949,10 +972,12 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           ),
           history: [],
           ...CLEAR_STAGED,
-        }),
+        });
+      },
 
       createOptimizePreview: (proposalSnapshots, prebuilt) => {
         get().reconcile();
+        clearRecalculationMarker();
         // A new run owns one terminal result. Old Preview/issue/Undo evidence
         // cannot coexist with it or be mistaken for this run's outcome.
         set({ history: [], ...CLEAR_STAGED });
@@ -1173,6 +1198,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           });
         } else if (result.ok) {
           result.preview.baseDraftRevision = draft.revision;
+          publishRecalculationMarker(draft.input, result.preview.proposedInput);
           const direction = result.preview.directionAssessment;
           const needsConsent =
             result.preview.diagnosticOnly !== true &&
@@ -1533,7 +1559,8 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         }
       },
 
-      cancelPreview: () =>
+      cancelPreview: () => {
+        clearRecalculationMarker();
         set({
           preview: null,
           directionBestCandidate: null,
@@ -1547,7 +1574,8 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           blocked: null,
           applyPending: false,
           recalculationTerminal: null,
-        }),
+        });
+      },
 
       applyPreview: (prebuiltOptimizeRebuild) => {
         const {
@@ -1635,6 +1663,13 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           });
           return;
         }
+        // The recipe write increments its revision and therefore clears any
+        // staged marker through the global invalidation subscriber. Re-publish
+        // the exact accepted Preview diff only after the guarded write succeeds.
+        publishRecalculationMarker(
+          outcome.verified.record.before.input,
+          outcome.verified.record.after.input,
+        );
         const presentation: AppliedPresentationSnapshot | undefined =
           terminalBeforeApply?.state === 'PREVIEW_READY'
             ? {
@@ -1725,6 +1760,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           // Phase 3: the undo restore is itself a material edit (monotonic).
           draftRevision: state.draftRevision + 1,
         }));
+        clearRecalculationMarker();
         abortActivePiWorker();
         const generation = (activePiRunGeneration += 1);
         set({
@@ -1752,7 +1788,10 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
       markProCoreRecipe: (recipeId, versionNumber) =>
         set({ proCoreRecipeId: recipeId, lastSavedVersion: versionNumber }),
 
-      resetForTests: () => set({ ...INITIAL, constraints: { byLineId: {} }, history: [] }),
+      resetForTests: () => {
+        clearRecalculationMarker();
+        set({ ...INITIAL, constraints: { byLineId: {} }, history: [] });
+      },
     }),
     {
       name: 'pinguino-constraints',
@@ -2965,6 +3004,10 @@ useRecipeStore.subscribe((state, prev) => {
     return;
   }
   if (state.draftRevision !== prev.draftRevision) {
+    // Any material edit invalidates the visual evidence from the prior
+    // Recalculate. A successful guarded Apply republishes its exact accepted
+    // before/after set after this synchronous invalidation runs.
+    clearRecalculationMarker();
     const session = useConstraintStudioStore.getState();
     // C3 step 1 — synchronous constraint reconciliation (write-time, not only
     // read-time): a removed line's §17 entry never survives the transaction.

@@ -11,6 +11,7 @@ interface ProductionActualControlProps {
   confirmed: boolean;
   correctionMode: boolean;
   topUpMode?: boolean;
+  settled?: boolean;
   disabled?: boolean;
   onChange: (value: number) => void;
   onConfirm: () => void;
@@ -97,6 +98,7 @@ export function ProductionActualControl({
   confirmed,
   correctionMode,
   topUpMode = false,
+  settled = false,
   disabled = false,
   onChange,
   onConfirm,
@@ -138,6 +140,7 @@ export function ProductionActualControl({
           confirmed={confirmed}
           correctionMode={correctionMode}
           topUpMode={topUpMode}
+          settled={settled}
           disabled={disabled}
           onConfirm={onConfirm}
           describedBy={describedBy}

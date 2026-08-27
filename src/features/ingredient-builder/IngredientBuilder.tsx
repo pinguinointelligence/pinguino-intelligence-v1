@@ -33,7 +33,6 @@ import {
 import { effectiveLineCost } from '@/features/pro-core/costing';
 import {
   IngredientRow,
-  PRODUCTION_ROW_GRID,
   ROW_GRID,
   type IngredientRowActions,
   type IngredientTableMode,
@@ -52,9 +51,7 @@ import {
 } from './ingredientTableUxStore';
 import { cn } from '@/lib/cn';
 import { useIngredientLibrary } from './useIngredientLibrary';
-import { ingredientChangeSignature } from './ingredientChangeHighlight';
-import { useChangedIngredientLines } from './ingredientChangeStore';
-import { useCustomerPriceDirtyStore } from './customerPriceDirtyStore';
+import { useRecalculatedIngredientLines } from './ingredientChangeStore';
 import type { IngredientPriceView } from './IngredientPriceControl';
 import type { ProductionWorkspaceView } from '@/features/production-workspace/useProductionWorkspace';
 import { nextProductionLineId } from '@/features/production-workspace/productionNextAction';
@@ -422,18 +419,12 @@ export function IngredientBuilder({
   const header =
     mode === 'production' ? (
       <div
-        className={`${PRODUCTION_ROW_GRID} px-[var(--pro-mobile-gutter)] py-2 lg:px-3`}
+        className="sr-only"
         data-testid="production-table-header"
         data-table-family="recipe"
       >
-        {['Składnik / status', 'Plan', 'Faktycznie', 'Odchylenie', ''].map((label, index) => (
-          <span
-            key={label}
-            className={`${headCell} ${index === 1 || index >= 3 ? 'text-right' : ''}`}
-          >
-            {label || '\u00a0'}
-          </span>
-        ))}
+        Składnik. Plan i Odchylenie są podawane tylko wtedy, gdy faktyczna ilość różni się od
+        planu. Kontrolka Faktycznie zawiera zmniejszanie, gramy, zwiększanie i potwierdzenie.
       </div>
     ) : (
       <div className={`${ROW_GRID} px-3 py-2`} data-testid="recipe-table-header">
@@ -448,31 +439,11 @@ export function IngredientBuilder({
       </div>
     );
 
-  // §8 change marker — a PURE comparison against the last clean state. It never
-  // participates in Engine math, pricing, Apply or persistence.
-  //
-  // The signatures are read from the CANONICAL recipe vector (`storeItems`),
-  // never from the `items` the surface happens to be rendering: Produkcja hands
-  // this component the production forecast instead of the planning result, so
-  // reading the rendered vector made every tab switch look like an edit.
-  const changeSignatures = Object.fromEntries(
-    storeItems.map((line) => [
-      line.id,
-      ingredientChangeSignature({
-        lineId: line.id,
-        ingredientId: canonicalIngredientId(line.ingredient) ?? line.ingredient.id,
-        plannedGrams: line.planned_grams,
-        lockType: line.lock_type,
-      }),
-    ]),
-  );
-  const changedLineIds = useChangedIngredientLines(changeSignatures);
-  // §8 composed from the two canonical dirty states. Price is excluded from the
-  // recipe signature because it hydrates asynchronously, but a MANUAL „MOJA
-  // CENA" edit must still show until the existing price save succeeds.
-  const priceDirtyByLineId = useCustomerPriceDirtyStore((state) => state.dirtyByLineId);
-  const isLineChanged = (lineId: string) =>
-    changedLineIds.has(lineId) || priceDirtyByLineId[lineId] === true;
+  // One unambiguous meaning: this row was genuinely changed by the latest
+  // Recalculate before/after pair. It is session-only and never participates in
+  // Engine math, pricing, Apply or recipe persistence.
+  const changedLineIds = useRecalculatedIngredientLines();
+  const isLineChanged = (lineId: string) => changedLineIds.has(lineId);
 
   // Does the recipe-mode header band have anything to render at all?
   const hasRecipeNotice =
@@ -896,16 +867,11 @@ export function IngredientBuilder({
   if (layout === 'workbench') {
     return (
       <div className="flex h-full min-h-0 flex-col" data-testid="ingredient-editor-pane">
-        {/* The shared Production header owns workflow state. This local wrapper
-            takes space only for an actionable execution reminder or recipe notice. */}
+        {/* Recipe-only notices. Production rows carry their own contextual state. */}
         <div
           className={cn(
             'shrink-0',
-            mode === 'production' && production?.session?.status === 'in_progress'
-              ? 'border-b border-ink/8 px-3 py-1.5'
-              : hasRecipeNotice
-                ? 'px-[var(--pro-mobile-gutter)] pt-2 pb-1 lg:px-3'
-                : null,
+            hasRecipeNotice ? 'px-[var(--pro-mobile-gutter)] pt-2 pb-1 lg:px-3' : null,
           )}
         >
           <div className="sr-only">
@@ -914,17 +880,6 @@ export function IngredientBuilder({
               <NonProductionBadge itemId="pro-demo-library" />
             ) : null}
           </div>
-          {mode === 'production' && production?.session?.status === 'in_progress' ? (
-            <div
-              className="flex min-w-0 items-center gap-2 text-[11px] leading-relaxed text-stone-500"
-              data-testid="production-execution-reminder"
-            >
-              <span aria-hidden className="font-mono text-stone-400">
-                i
-              </span>
-              <p>Potwierdzonej ilości nie można odjąć od naczynia.</p>
-            </div>
-          ) : null}
           {mode === 'recipe' && pickerNotice ? (
             <WorkflowNotice
               className="mt-2"
@@ -983,7 +938,7 @@ export function IngredientBuilder({
                 className={
                   mode === 'recipe'
                     ? 'sr-only'
-                    : 'hidden shrink-0 border-b border-ink/[0.075] md:block'
+                    : 'shrink-0'
                 }
               >
                 {header}

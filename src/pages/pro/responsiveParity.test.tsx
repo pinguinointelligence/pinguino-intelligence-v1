@@ -129,18 +129,18 @@ describe('the change marker is derived UI state only', () => {
       expect(markerStore, forbidden).not.toContain(forbidden);
       expect(markerModel, forbidden).not.toContain(forbidden);
     }
-    // It reads the canonical dirty flag; it does not replace it.
-    expect(markerStore).toContain('useRecipeStore((state) => state.dirty)');
-    expect(markerStore).not.toContain('useRecipeStore.setState');
+    // It is session-only presentation evidence and never reaches recipe state.
+    expect(markerStore).toContain('changedByLastRecalculation');
+    expect(markerStore).not.toContain('useRecipeStore');
   });
 
-  it('is versioned so a format change can never light every row up', () => {
-    expect(markerStore).toContain('version: SIGNATURE_FORMAT_VERSION');
-    expect(markerStore).toContain('migrate: () => ({ baselineByLineId: {} })');
+  it('cannot survive a reopen as stale evidence', () => {
+    expect(markerStore).not.toContain('persist(');
+    expect(markerStore).toContain('clearRecalculation');
   });
 
-  it('compares at the precision the row shows', () => {
-    expect(markerModel).toContain('markerGramsToken(input.plannedGrams)');
-    expect(markerModel).toContain('maximumFractionDigits: 1');
+  it('compares before/after vectors with the displayed-row epsilon', () => {
+    expect(markerModel).toContain('recalculatedIngredientLineIds');
+    expect(markerModel).toContain('RECALCULATION_MARKER_EPSILON_GRAMS = 0.05');
   });
 });
