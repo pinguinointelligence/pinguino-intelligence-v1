@@ -118,8 +118,12 @@ describe('image mapping by FL id prefix', () => {
   });
 
   it('no duplicate image files or hashes among present entries', () => {
-    const files = FLAVOR_CATALOGUE_SOURCE.filter((r) => r.image.status === 'present').map((r) => r.image.file);
-    const hashes = FLAVOR_CATALOGUE_SOURCE.filter((r) => r.image.status === 'present').map((r) => r.image.sha256);
+    const files = FLAVOR_CATALOGUE_SOURCE.filter((r) => r.image.status === 'present').map(
+      (r) => r.image.file,
+    );
+    const hashes = FLAVOR_CATALOGUE_SOURCE.filter((r) => r.image.status === 'present').map(
+      (r) => r.image.sha256,
+    );
     expect(new Set(files).size).toBe(files.length);
     expect(new Set(hashes).size).toBe(hashes.length);
   });
@@ -137,7 +141,11 @@ describe('honest status — inspirations, not recipes', () => {
     const draftable = FLAVOR_CATALOGUE.filter((e) => e.formulaStatus === 'draftable');
     expect(metadataOnly).toHaveLength(554);
     expect(draftable).toHaveLength(1946);
-    expect(FLAVOR_CATALOGUE.filter((e) => e.engineSupport === 'protein_unsupported').every((e) => e.formulaStatus === 'metadata_only' || e.formulaStatus === 'draftable')).toBe(true);
+    expect(
+      FLAVOR_CATALOGUE.filter((e) => e.engineSupport === 'protein_unsupported').every(
+        (e) => e.formulaStatus === 'metadata_only' || e.formulaStatus === 'draftable',
+      ),
+    ).toBe(true);
   });
 
   it('never invents grams or an engine recipe (no dose/recipe fields on any entry)', () => {
@@ -156,7 +164,7 @@ describe('honest status — inspirations, not recipes', () => {
     expect(protein.length).toBe(152);
     for (const e of protein) {
       const labels = flavorEntryStatusLabels(e);
-      expect(labels.engineNote).toBe('Profil silnika w przygotowaniu');
+      expect(labels.engineNote).toBe('Profil receptury w przygotowaniu');
       expect(labels.kind).toBe('Inspiracja smakowa');
     }
   });
@@ -164,7 +172,8 @@ describe('honest status — inspirations, not recipes', () => {
 
 describe('profile-mapping distribution across all 2500 rows', () => {
   it('matches the source profile distribution', () => {
-    const count = (pred: (e: (typeof FLAVOR_CATALOGUE)[number]) => boolean) => FLAVOR_CATALOGUE.filter(pred).length;
+    const count = (pred: (e: (typeof FLAVOR_CATALOGUE)[number]) => boolean) =>
+      FLAVOR_CATALOGUE.filter(pred).length;
     expect(count((e) => e.internalProfiles.includes('chocolate_gelato'))).toBe(432);
     expect(count((e) => e.internalProfiles.includes('sorbet'))).toBe(596);
     expect(count((e) => e.internalProfiles.includes('vegan_gelato'))).toBe(664);
@@ -199,7 +208,9 @@ describe('bridge into the existing ready-recipe matcher', () => {
   });
 
   it('Standard/Sorbet entries yield BOTH a gelato and a sorbet card (variants preserved)', () => {
-    const dual = FLAVOR_CATALOGUE.find((e) => e.sourceProductProfile === 'Standard Gelato / Sorbet')!;
+    const dual = FLAVOR_CATALOGUE.find(
+      (e) => e.sourceProductProfile === 'Standard Gelato / Sorbet',
+    )!;
     const cards = flavorEntryToCatalogueCards(dual);
     const types = cards.map((c) => c.productType).sort();
     expect(types).toEqual(['gelato', 'sorbet']);

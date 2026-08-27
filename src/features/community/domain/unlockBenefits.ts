@@ -18,7 +18,7 @@ const BENEFIT_LABELS: Partial<Record<keyof Capabilities, string>> = {
   canViewExactGrams: 'Dokładne gramatury każdego składnika',
   fullFormula: 'Pełna receptura z możliwością przeliczenia',
   exactCorrectionGrams: 'Dokładne korekty w gramach',
-  technicalView: 'Pełny widok techniczny PI',
+  technicalView: 'Pełny widok techniczny Gellatti',
   canApplyStarterToStudio: 'Wczytanie receptury do edytora',
   saveRecipes: 'Zapisywanie receptur',
   myRecipes: 'Biblioteka Moje receptury',

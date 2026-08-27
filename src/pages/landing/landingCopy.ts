@@ -11,8 +11,8 @@
 
 export const landingCopy = {
   brand: {
-    name: 'PINGÜINO',
-    sub: 'INTELLIGENCE',
+    name: 'GELLATTI',
+    sub: 'FRIENDLY LAB',
   },
 
   nav: {
@@ -24,7 +24,7 @@ export const landingCopy = {
   hero: {
     eyebrow: 'Inteligentne receptury lodów',
     headline: 'Idealna receptura. Dopasowana do Twojej maszyny lub temperatury.',
-    subline: 'Wybierz smak, urządzenie lub temperaturę i ilość. PINGÜINO zajmie się resztą.',
+    subline: 'Wybierz smak, urządzenie, temperaturę i ilość. Gellatti poprowadzi Cię dalej.',
     ctaPrimary: 'Stwórz recepturę',
     ctaSecondary: 'Zobacz, jak działa',
   },
@@ -52,8 +52,8 @@ export const landingCopy = {
         body: 'Smak, urządzenie lub temperaturę podania i ilość — własnymi słowami, bez formularzy technicznych.',
       },
       {
-        title: 'PINGÜINO dopasowuje',
-        body: 'Deterministyczny silnik oblicza recepturę i sprawdza jej balans. Te same dane zawsze dają ten sam wynik — bez zgadywania.',
+        title: 'Gellatti dopasowuje',
+        body: 'Sprawdzone obliczenia balansują recepturę. Te same dane zawsze dają ten sam wynik — bez zgadywania.',
       },
       {
         title: 'Przygotuj',
@@ -80,7 +80,7 @@ export const landingCopy = {
     bullets: [
       'Temperatury serwowania: −11°C, −12°C, −13°C oraz produkcja świeża.',
       'Pełniejsze dane receptury i propozycje korekt.',
-      'PINGÜINO Pro dla pracy nad recepturą.',
+      'Gellatti Pro do pracy nad recepturą.',
     ],
   },
 
@@ -88,7 +88,7 @@ export const landingCopy = {
   advantage: {
     label: 'Bezpieczna przewaga',
     title: 'Optymalizacja z blokadami składników',
-    body: 'Zablokuj składnik, którego ilość ma pozostać dokładnie taka, jaką ustaliłeś — PINGÜINO dopasuje pozostałe składniki w bezpiecznym zakresie.',
+    body: 'Zablokuj składnik, którego ilość ma pozostać bez zmian — Gellatti dopasuje pozostałe składniki w bezpiecznym zakresie.',
     bullets: [
       'Blokada zachowuje dokładną gramaturę składnika — bez cichych zmian.',
       'Pozostałe składniki dopasowują się tak, aby receptura trzymała balans.',
@@ -116,7 +116,7 @@ export const landingCopy = {
       bullets: [
         'Wybór temperatury serwowania',
         'Pełniejsze dane techniczne i korekty',
-        'PINGÜINO Pro — pełna przestrzeń receptur',
+        'Gellatti Pro — pełna przestrzeń receptur',
       ],
     },
     cta: 'Zobacz szczegóły planów',
@@ -134,14 +134,14 @@ export const landingCopy = {
     title: 'Home czy Pro?',
     lead: 'Ta sama wiedza technologiczna — wybierz głębokość, której potrzebujesz.',
     whatUnlocks:
-      'Bezpłatny podgląd pokazuje prawdziwe działanie silnika i Monitora, ale ukrywa dokładne gramatury. Home i Pro to plany płatne — odblokowują dokładne ilości, zapis receptur i pełniejsze dane techniczne.',
+      'Bezpłatny podgląd pokazuje prawdziwe obliczenia i Monitor receptury, ale ukrywa dokładne gramatury. Home i Pro to plany płatne — odblokowują dokładne ilości, zapis receptur i pełniejsze dane techniczne.',
     homeBadge: 'Plan Home',
     proBadge: 'Plan Pro',
     homeCta: 'Wybierz Home',
     proCta: 'Przejdź na Pro',
     orYearly: 'albo',
     demoNote:
-      'Chcesz najpierw zobaczyć, jak to działa? Bezpłatny podgląd pokazuje prawdziwe obliczenia i Monitor PI — bez dokładnych gramatur.',
+      'Chcesz najpierw zobaczyć, jak to działa? Bezpłatny podgląd pokazuje prawdziwe obliczenia i Monitor receptury — bez dokładnych gramatur.',
     demoCta: 'Wypróbuj bezpłatnie',
     billingNote: 'Bezpieczna płatność online. Anulujesz w dowolnym momencie.',
     billingUnavailable: 'Logowanie jest chwilowo niedostępne. Zajrzyj wkrótce.',
@@ -178,8 +178,8 @@ export const landingCopy = {
         a: 'Nie. Opisujesz, co chcesz przygotować, a system dobiera parametry za Ciebie. Szczegóły techniczne są dostępne dla ciekawych, ale nigdy wymagane.',
       },
       {
-        q: 'Skąd PINGÜINO wie, ile czego dodać?',
-        a: 'Receptury oblicza deterministyczny silnik — te same dane wejściowe zawsze dają ten sam wynik. Żadnych zgadywanych wartości.',
+        q: 'Skąd Gellatti wie, ile czego dodać?',
+        a: 'Receptury powstają na sprawdzonych obliczeniach: te same dane zawsze dają ten sam wynik. Żadnych zgadywanych wartości.',
       },
       {
         q: 'Czy działa z urządzeniami domowymi, np. Ninja CREAMi?',
@@ -187,7 +187,7 @@ export const landingCopy = {
       },
       {
         q: 'Czym różni się Home od Pro?',
-        a: 'Home dostaje proste decyzje i zrozumiały podgląd receptury. Pro wybiera temperaturę serwowania i widzi pełniejsze dane techniczne. Silnik jest ten sam.',
+        a: 'Home prowadzi przez proste decyzje i czytelny podgląd receptury. Pro pozwala wybrać temperaturę serwowania i pokazuje pełniejsze dane techniczne. Oba plany korzystają z tych samych sprawdzonych obliczeń.',
       },
       {
         q: 'Czy zobaczę dokładne gramatury?',
@@ -195,7 +195,7 @@ export const landingCopy = {
       },
       {
         q: 'Czy mogę zdecydować, że jakiś składnik ma zostać bez zmian?',
-        a: 'Tak — zablokuj składnik, a PINGÜINO dopasuje pozostałe. Jeżeli przy Twoich blokadach nie da się osiągnąć optymalnego balansu, usłyszysz to wprost.',
+        a: 'Tak — zablokuj składnik, a Gellatti dopasuje pozostałe. Jeśli przy Twoich blokadach nie da się osiągnąć dobrego balansu, powiemy to wprost.',
       },
     ],
   },
@@ -203,7 +203,7 @@ export const landingCopy = {
   /* ----------------------------------------------------------- Final CTA -- */
   finalCta: {
     title: 'Zacznij od pierwszej receptury',
-    body: 'Opisz swoje lody własnymi słowami — resztą zajmie się PINGÜINO.',
+    body: 'Opisz swoje lody własnymi słowami — Gellatti poprowadzi Cię dalej.',
     cta: 'Stwórz recepturę',
   },
 
@@ -213,7 +213,7 @@ export const landingCopy = {
     links: [
       { label: 'Stwórz recepturę', to: '/start' },
       { label: 'Plany', to: '/subscription' },
-      { label: 'PINGÜINO Pro', to: '/pro' },
+      { label: 'Gellatti Pro', to: '/pro' },
     ],
   },
 } as const;

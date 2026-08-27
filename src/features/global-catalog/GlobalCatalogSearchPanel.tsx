@@ -9,7 +9,7 @@ import { CarbonationBubbles } from '@/components/product/CarbonationBubbles';
 const badgeTone = (status: string, blocked: boolean, directMapper: boolean): string => {
   if (blocked) return 'bg-red-100 text-red-700';
   if (status === 'WYMAGA SPRAWDZENIA ETYKIETY') return 'bg-amber-100 text-amber-700';
-  if (status === 'PINGÜINO — SPRAWDZONY') {
+  if (status === 'GELLATTI — SPRAWDZONY') {
     return directMapper ? 'bg-gold/12 text-gold-ink' : 'bg-status-ideal/12 text-status-ideal';
   }
   return 'bg-slate-200 text-slate-700';
@@ -54,7 +54,7 @@ export function GlobalCatalogSearchPanel() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 id="global-catalog-search-title" className="text-base font-semibold text-ink">
-            Katalog PINGÜINO
+            Katalog Gellatti
           </h2>
           <p className="mt-1 text-xs text-stone-600">
             Wspólne fakty etykietowe; Twoje ceny, notatki i dostawcy pozostają prywatne.
@@ -139,7 +139,7 @@ export function GlobalCatalogSearchPanel() {
       <div className="mt-2 divide-y divide-ink/8 border-y border-ink/8">
         {baseHits.length > 0 ? (
           <p className="py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-600">
-            PINGÜINO Base
+            Baza składników Gellatti
           </p>
         ) : null}
         {baseHits.slice(0, visibleLimit).map((hit) => {
@@ -147,8 +147,8 @@ export function GlobalCatalogSearchPanel() {
           const favorite = catalog.favorites.has(`pi_base:${mapperId}`);
           const verification = productCatalogOverviewVerificationView(hit);
           const technicallyBlocked =
-            verification.status === 'PRODUCT DATA INCOMPLETE' ||
-            verification.status === 'MAPPER BINDING REQUIRED';
+            verification.status === 'DANE PRODUKTU NIEPEŁNE' ||
+            verification.status === 'WYMAGA POWIĄZANIA';
           return (
             <div key={`pi:${hit.id}`} className="flex min-h-14 items-center gap-3 py-2">
               <span
@@ -163,8 +163,8 @@ export function GlobalCatalogSearchPanel() {
                 <span aria-hidden>
                   {technicallyBlocked
                     ? '!'
-                    : verification.status === 'PINGÜINO — SPRAWDZONY'
-                      ? 'PI'
+                    : verification.status === 'GELLATTI — SPRAWDZONY'
+                      ? 'G'
                       : '✎'}
                 </span>
               </span>
@@ -185,7 +185,7 @@ export function GlobalCatalogSearchPanel() {
                 >
                   {technicallyBlocked
                     ? verification.reason
-                    : (hit.productForm ?? hit.category ?? 'Składnik PINGÜINO Base')}
+                    : (hit.productForm ?? hit.category ?? 'Składnik z bazy Gellatti')}
                 </span>
               </span>
               <button
@@ -215,8 +215,8 @@ export function GlobalCatalogSearchPanel() {
         {commercialHits.slice(0, visibleLimit).map((hit) => {
           const verification = productCatalogOverviewVerificationView(hit);
           const technicallyBlocked =
-            verification.status === 'PRODUCT DATA INCOMPLETE' ||
-            verification.status === 'MAPPER BINDING REQUIRED';
+            verification.status === 'DANE PRODUKTU NIEPEŁNE' ||
+            verification.status === 'WYMAGA POWIĄZANIA';
           return (
             <div key={hit.id} className="flex min-h-14 items-center gap-3 py-2">
               <span
@@ -231,7 +231,7 @@ export function GlobalCatalogSearchPanel() {
                 <span aria-hidden>
                   {technicallyBlocked
                     ? '!'
-                    : verification.status === 'PINGÜINO — SPRAWDZONY'
+                    : verification.status === 'GELLATTI — SPRAWDZONY'
                       ? '✓'
                       : '✎'}
                 </span>

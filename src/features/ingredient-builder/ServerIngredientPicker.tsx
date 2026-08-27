@@ -56,8 +56,11 @@ export function ServerIngredientPicker({
       : (search.hits.find((hit) => hit.baseSelectable)?.id ?? filteredProducts[0]?.id ?? '');
   const count = search.hits.length + filteredProducts.length;
   const selectedSearchHit = search.hits.find((hit) => hit.id === effectiveId);
-  const canAdd = effectiveId !== '' && !adding && (!hasQuery || search.isSettled)
-    && (selectedSearchHit?.baseSelectable ?? true);
+  const canAdd =
+    effectiveId !== '' &&
+    !adding &&
+    (!hasQuery || search.isSettled) &&
+    (selectedSearchHit?.baseSelectable ?? true);
   const selectedProvenance = library.productProvenance.get(effectiveId);
 
   const add = async () => {
@@ -101,7 +104,8 @@ export function ServerIngredientPicker({
         >
           {search.hits.map((hit) => (
             <option key={hit.id} value={hit.id} disabled={!hit.baseSelectable}>
-              {resultRowTextPl(hit)}{hit.baseSelectable ? '' : ' · approved_for_base=false'}
+              {resultRowTextPl(hit)}
+              {hit.baseSelectable ? '' : ' · approved_for_base=false'}
             </option>
           ))}
           {filteredProducts.map((product) => (
@@ -199,7 +203,8 @@ export function ServerIngredientPicker({
                 <optgroup key={group.group} label={group.headingPl}>
                   {group.hits.map((hit) => (
                     <option key={hit.id} value={hit.id} disabled={!hit.baseSelectable}>
-                      {resultRowTextPl(hit)}{hit.baseSelectable ? '' : ' · approved_for_base=false'}
+                      {resultRowTextPl(hit)}
+                      {hit.baseSelectable ? '' : ' · approved_for_base=false'}
                     </option>
                   ))}
                 </optgroup>
@@ -244,7 +249,7 @@ export function ServerIngredientPicker({
               {selectedProvenance.class_derived ? (
                 <span className="text-ivory/70">
                   {selectedProvenance.provenance_note ??
-                    'PI Calculated · class-derived · not independently measured'}
+                    'Obliczone przez Gellatti · dane szacowane'}
                 </span>
               ) : (
                 <>

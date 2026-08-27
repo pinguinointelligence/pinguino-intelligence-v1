@@ -84,7 +84,7 @@ function recipeIngredientFacts(input: RecipeInput): RecipeIngredientFact[] {
         id: item.id,
         name: ingredient.name,
         summary: 'Ten składnik jest częścią bilansu wody i części stałych receptury.',
-        detail: 'PINGÜINO ocenia jego zatwierdzone dane razem z pozostałymi składnikami.',
+        detail: 'Gellatti ocenia jego zatwierdzone dane razem z pozostałymi składnikami.',
       };
     });
 }

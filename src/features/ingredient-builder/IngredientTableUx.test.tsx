@@ -442,7 +442,7 @@ describe('Required ingredient deletion guard', () => {
   it('states that the recipe cannot be completed when no substitute exists', () => {
     const html = renderToStaticMarkup(<RequiredRemovalDialog {...baseProps} candidates={[]} />);
     expect(text(html)).toContain('Brak odpowiedniego zamiennika');
-    expect(text(html)).toContain('PINGÜINO nie może obecnie utworzyć poprawnej wersji');
+    expect(text(html)).toContain('Gellatti nie może teraz utworzyć poprawnej wersji');
     expect(text(html)).toContain('Zostaw składnik');
     expect(text(html)).toContain('Usuń i oznacz recepturę jako niewykonalną');
   });
@@ -453,6 +453,6 @@ describe('Required ingredient deletion guard', () => {
     );
     expect(text(html)).toContain('Potwierdź niewykonalność receptury');
     expect(text(html)).toContain('Tak, usuń składnik');
-    expect(text(html)).toContain('przeliczenie PI pozostanie zablokowane');
+    expect(text(html)).toContain('przeliczenie pozostanie zablokowane');
   });
 });

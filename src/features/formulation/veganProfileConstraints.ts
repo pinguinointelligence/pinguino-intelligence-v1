@@ -133,6 +133,6 @@ export function veganProfileConstraintMessagePl(
   return (
     'Receptura Wegańska przekracza zweryfikowaną kopertę formulacji: ' +
     details.join(', ') +
-    '. PI nie udostępni Apply bez zatwierdzonych danych.'
+    '. Zastosowanie zmian pozostaje zablokowane do czasu potwierdzenia danych.'
   );
 }

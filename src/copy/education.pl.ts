@@ -78,7 +78,7 @@ export const educationCopy = {
     scaleSoftening: 'Wpływ na miękkość',
     conclusion: 'Dlatego 100 g dekstrozy nie działa tak samo jak 100 g zwykłego cukru.',
     technicalCopy:
-      'POD opisuje względną słodycz, a PAC względny wpływ na zamarzanie. PINGÜINO używa danych składników w Engine, ale nie pokazuje tutaj chronionych zakresów ani reguł solvera.',
+      'POD opisuje względną słodycz, a PAC względny wpływ na zamarzanie. Gellatti ocenia potwierdzone dane składników, ale nie pokazuje tutaj chronionych zakresów ani reguł obliczeń.',
   },
   ingredient: {
     title: 'CO WNOSI TEN SKŁADNIK?',
@@ -94,7 +94,7 @@ export const educationCopy = {
               'więcej wody',
               'potencjalnie więcej lodu',
               'zmienia strukturę',
-              'PINGÜINO koryguje pozostałe składniki',
+              'Gellatti pomaga skorygować pozostałe składniki',
             ],
           },
           {
@@ -185,7 +185,7 @@ export const educationCopy = {
       'Numer E jest identyfikatorem dodatku — sam numer nie oznacza, że składnik jest syntetyczny.',
     plantOrigin: 'Stabilizator pochodzenia roślinnego',
     futureFormula: 'FORMUŁA W PRZYGOTOWANIU',
-    futureFormulaNote: 'Skład przyszłej mieszanki PINGÜINO nie jest jeszcze zatwierdzony.',
+    futureFormulaNote: 'Skład przyszłej mieszanki Gellatti nie jest jeszcze zatwierdzony.',
   },
   process: {
     entryAction: 'Zobacz sposób przygotowania',
@@ -287,7 +287,7 @@ export const educationCopy = {
     home: ['proces zależy od typu maszyny'],
     timingQuestion: 'Kiedy chcesz jeść lody?',
     timingChoices: ['Teraz / dziś', 'Za kilka godzin', 'Jutro'],
-    timingPending: 'DO PODŁĄCZENIA',
+    timingPending: 'W przygotowaniu',
     timingPendingNote: 'Rekomendacja poczeka na zweryfikowane czasy konkretnej maszyny.',
   },
 } as const;

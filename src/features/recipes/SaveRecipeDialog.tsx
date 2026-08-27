@@ -11,10 +11,15 @@ import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { resolveRecipesRepository } from '@/features/pro-core/proCoreRecipeRepo';
 import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore } from '@/stores/recipeStore';
+import { customerErrorMessage } from '@/copy/customerError';
 
 const r = copy.recipes;
 const d = copy.recipes.dialog;
-const TRACE = { engineVersion: ENGINE_VERSION, configVersion: CONFIG_VERSION, mapperDatasetVersion: null };
+const TRACE = {
+  engineVersion: ENGINE_VERSION,
+  configVersion: CONFIG_VERSION,
+  mapperDatasetVersion: null,
+};
 
 const fieldClass =
   'mt-1 w-full rounded-md border border-ink/15 bg-paper px-3 py-2 text-sm text-ink placeholder:text-stone-400 transition-colors focus:border-ink/40 focus:outline-none';
@@ -66,7 +71,13 @@ export function SaveRecipeDialog({ onClose }: { onClose: () => void }) {
     currentVersionNumber !== null &&
     latestVersionNumber !== null &&
     currentVersionNumber < latestVersionNumber;
-  const blocked = !authed ? d.signIn : unavailable || repository === null ? d.unavailable : !caps.canSaveRecipe ? d.demoCannotSave : null;
+  const blocked = !authed
+    ? d.signIn
+    : unavailable || repository === null
+      ? d.unavailable
+      : !caps.canSaveRecipe
+        ? d.demoCannotSave
+        : null;
   const canSubmit = !busy && blocked === null && (!needsName || name.trim().length > 0);
 
   const persist = async () => {
@@ -95,9 +106,15 @@ export function SaveRecipeDialog({ onClose }: { onClose: () => void }) {
           version.versionId,
         );
       } else {
-        const version = await repository.saveNewVersion(savedRecipeId, recipeInput, TRACE, ownerId, {
-          note: note.trim() || undefined,
-        });
+        const version = await repository.saveNewVersion(
+          savedRecipeId,
+          recipeInput,
+          TRACE,
+          ownerId,
+          {
+            note: note.trim() || undefined,
+          },
+        );
         markSaved(
           savedRecipeId,
           savedRecipeName ?? name.trim(),
@@ -118,8 +135,8 @@ export function SaveRecipeDialog({ onClose }: { onClose: () => void }) {
       ]);
       onClose();
     } catch (caught) {
-      // HONEST failure — keep the modal open, surface the real cause, allow a first-try retry.
-      setError(caught instanceof Error ? caught.message : d.unavailable);
+      // Keep the modal open and retain the draft; provider diagnostics never become primary copy.
+      setError(customerErrorMessage(caught, 'recipes', 'RECIPE_SAVE_FAILED'));
     } finally {
       setBusy(false);
     }
@@ -194,7 +211,11 @@ export function SaveRecipeDialog({ onClose }: { onClose: () => void }) {
 
           {blocked ? <p className="text-xs leading-relaxed text-stone-500">{blocked}</p> : null}
           {error ? (
-            <p role="alert" className="text-xs leading-relaxed text-status-risky" data-testid="save-error">
+            <p
+              role="alert"
+              className="text-xs leading-relaxed text-status-risky"
+              data-testid="save-error"
+            >
               {error}
             </p>
           ) : null}

@@ -24,8 +24,9 @@ describe('Recipes Hub executable Owner Review projection', () => {
   let root: ReturnType<typeof createRoot>;
 
   beforeEach(async () => {
-    (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean })
-      .IS_REACT_ACT_ENVIRONMENT = true;
+    (
+      globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
     host = document.createElement('div');
     document.body.append(host);
     root = createRoot(host);
@@ -47,8 +48,9 @@ describe('Recipes Hub executable Owner Review projection', () => {
   });
 
   const clickByText = async (text: string) => {
-    const target = Array.from(host.querySelectorAll('button'))
-      .find((button) => button.textContent?.includes(text));
+    const target = Array.from(host.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes(text),
+    );
     if (!target) throw new Error(`Missing button: ${text}`);
     await act(async () => target.click());
   };
@@ -63,18 +65,22 @@ describe('Recipes Hub executable Owner Review projection', () => {
     expect(host.textContent?.match(/OWNER_REVIEW_EDITABLE/g)).toHaveLength(5);
     expect(host.textContent?.match(/PRODUCTION_BLOCKED/g)).toHaveLength(5);
     expect(host.textContent?.match(/LABEL_BLOCKED/g)).toHaveLength(5);
-    expect(Array.from(host.querySelectorAll('button')).filter(
-      (button) => button.textContent?.includes('Otwórz w Pro'),
-    )).toHaveLength(5);
-    expect(host.textContent).toContain('Score techniczny');
+    expect(
+      Array.from(host.querySelectorAll('button')).filter((button) =>
+        button.textContent?.includes('Otwórz w Pro'),
+      ),
+    ).toHaveLength(5);
+    expect(host.textContent).toContain('Wynik techniczny');
     expect(host.textContent).toContain('lista finalna niepełna');
-    expect(host.textContent).toContain('Owner Review otwiera wyłącznie Base');
+    expect(host.textContent).toContain('Przegląd otwiera wyłącznie bazę');
     expect(host.textContent).not.toMatch(/Ferrero|Raffaello|Kinder|Oreo|Snickers/i);
   });
 
   it('keeps Poland blocked on exact egg-yolk-powder data with no false score or execution', async () => {
     await clickByText('Lost & Legendary');
-    const card = host.querySelector('[data-testid="executable-template-lost-pl-smietankowe-z-zoltkami-v1"]');
+    const card = host.querySelector(
+      '[data-testid="executable-template-lost-pl-smietankowe-z-zoltkami-v1"]',
+    );
     expect(card).not.toBeNull();
     expect(host.textContent).toContain('Śmietankowe na żółtkach');
     expect(card?.textContent).toContain('BLOCKED_EXACT_PRODUCT_DATA');
@@ -118,7 +124,9 @@ describe('Recipes Hub executable Owner Review projection', () => {
     await clickByText('Otwórz w Pro');
 
     expect(host.querySelector('[role="dialog"]')).not.toBeNull();
-    expect(host.textContent).toContain('Niezapisane zmiany w bieżącej recepturze zostaną usunięte.');
+    expect(host.textContent).toContain(
+      'Niezapisane zmiany w bieżącej recepturze zostaną usunięte.',
+    );
 
     await clickByText('Anuluj');
     expect(host.querySelector('[role="dialog"]')).toBeNull();

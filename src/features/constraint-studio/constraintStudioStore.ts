@@ -1873,7 +1873,7 @@ const productBehaviorReasonPl = (reason: string): string => {
   if (code === 'behavior_binding_missing')
     return `brak ProductBehavior binding dla ${exactSubject}; odśwież dane produktu`;
   if (code === 'classification_pending')
-    return `klasyfikacja trwa dla ${exactSubject}; poczekaj i kliknij PI ponownie`;
+    return `sprawdzanie produktu trwa dla ${exactSubject}; poczekaj i przelicz recepturę ponownie`;
   if (code === 'classification_failed')
     return `klasyfikacja nie powiodła się dla ${exactSubject}; ponów klasyfikację`;
   if (code === 'approved_for_base_false') {
@@ -1925,10 +1925,10 @@ const productBehaviorReasonPl = (reason: string): string => {
     return `wersja lub tożsamość produktu zmieniła się dla ${exactSubject}; wybierz aktualną wersję produktu`;
   }
   if (code === 'mapper_mapping_stale' || code === 'mapper_entity_identity_mismatch') {
-    return `mapowanie Mapper zmieniło się dla ${exactSubject}; odśwież dokładne powiązanie Mapper`;
+    return `powiązanie danych produktu zmieniło się dla ${exactSubject}; odśwież produkt`;
   }
   if (code === 'main_policy_stale') {
-    return `polityka Main zmieniła się dla ${exactSubject}; odśwież dane produktu i uruchom PI ponownie`;
+    return `zasady składnika głównego zmieniły się dla ${exactSubject}; odśwież dane produktu i przelicz recepturę ponownie`;
   }
   return (
     {
@@ -1940,7 +1940,7 @@ const productBehaviorReasonPl = (reason: string): string => {
       taxonomy_version_stale: 'klasyfikacja produktu zmieniła się od ostatniego przeliczenia',
       product_version_stale: 'wersja produktu zmieniła się od ostatniego przeliczenia',
       product_identity_stale: 'tożsamość produktu zmieniła się od ostatniego przeliczenia',
-      mapper_mapping_stale: 'mapowanie PINGÜINO Base zmieniło się od ostatniego przeliczenia',
+      mapper_mapping_stale: 'powiązanie produktu zmieniło się od ostatniego przeliczenia',
       main_policy_stale: 'polityka Main zmieniła się od ostatniego przeliczenia',
       private_price_stale: 'Twoja prywatna cena produktu zmieniła się od ostatniego przeliczenia',
       main_policy_unknown: 'brak zatwierdzonej polityki Main',
@@ -1955,7 +1955,7 @@ const productBehaviorReasonPl = (reason: string): string => {
       legacy_product_reference_unresolved: 'nie udało się odnaleźć aktualnej wersji produktu',
       catalog_version_identity_mismatch:
         'wersja produktu nie pasuje do aktualnej tożsamości katalogowej',
-      mapper_entity_identity_mismatch: 'produkt nie pasuje do aktualnej tożsamości PINGÜINO Base',
+      mapper_entity_identity_mismatch: 'produkt nie pasuje do aktualnego wpisu w bazie składników',
       recipe_changed_during_validation: 'receptura zmieniła się podczas sprawdzania',
     }[code] ?? reason.replaceAll('_', ' ')
   );
@@ -2683,7 +2683,8 @@ export async function runPiRecalculationWithTerminal(
       useConstraintStudioStore.setState({
         recalculationTerminal: {
           state: 'ERROR',
-          messagePl: 'PI zakończyło przeliczenie bez wyniku. Wróć do receptury i spróbuj ponownie.',
+          messagePl:
+            'Przeliczenie zakończyło się bez wyniku. Wróć do receptury i spróbuj ponownie.',
         },
       });
     }
@@ -2724,7 +2725,7 @@ export async function runPiRecalculationWithTerminal(
       blocked: null,
       recalculationTerminal: {
         state: 'ERROR',
-        messagePl: 'PI nie mogło dokończyć przeliczenia. Wróć do receptury i spróbuj ponownie.',
+        messagePl: 'Nie udało się dokończyć przeliczenia. Wróć do receptury i spróbuj ponownie.',
       },
     });
   } finally {

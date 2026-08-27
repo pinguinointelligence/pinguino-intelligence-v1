@@ -389,7 +389,7 @@ export function internalStabilizerProfileIssues(
         grams: 0,
         minGrams: null,
         maxGrams: null,
-        provenance: 'PINGUINO Spine v1.0: stabilizer required for every active profile',
+        provenance: 'GELLATTI Spine v1.0: stabilizer required for every active profile',
       },
     ];
   }

@@ -379,9 +379,7 @@ describe('A2 — complete Fruit Gelato (FAILURE A fixture)', () => {
       // explanatory terminal state has ONE canonical sentence and the mapping
       // to it is stable — is unchanged, and the message must now ALSO carry the
       // stop reason so the claim is never unqualified.
-      'PI nie znalazło dalszej bezpiecznej poprawy. To najlepszy wynik znaleziony przez ' +
-        'obecny solver dla aktualnych składników i ograniczeń — inne, lepsze rozwiązanie ' +
-        'może istnieć poza jego zasięgiem przeszukiwania.' +
+      constraintStudioCopy.previewIssue.bestSafeResult +
         ' ' +
         constraintStudioCopy.bestSafe.stopReason.template_fixed_point(3),
     );
@@ -550,9 +548,8 @@ describe('science freeze', () => {
     // OWNER ADDENDUM item 3 (2026-07-25) — SUPERSEDES the previous sentence
     // (see the mapping test above). The key itself is still never repurposed.
     expect(constraintStudioCopy.previewIssue.bestSafeResult).toBe(
-      'PI nie znalazło dalszej bezpiecznej poprawy. To najlepszy wynik znaleziony przez ' +
-        'obecny solver dla aktualnych składników i ograniczeń — inne, lepsze rozwiązanie ' +
-        'może istnieć poza jego zasięgiem przeszukiwania.',
+      'Gellatti nie znalazło dalszej bezpiecznej poprawy przy aktualnych składnikach i ograniczeniach. ' +
+        'Inne rozwiązanie może nadal istnieć poza sprawdzonym zakresem.',
     );
     // …and it may never again claim a proven best/optimum.
     expect(constraintStudioCopy.previewIssue.bestSafeResult).not.toContain(
@@ -560,7 +557,7 @@ describe('science freeze', () => {
     );
     // pre-existing keys stayed intact (never repurposed)
     expect(constraintStudioCopy.previewIssue.alreadyClean).toBe(
-      'Receptura znajduje się już w zatwierdzonym zakresie. PI nie proponuje zmian.',
+      'Receptura znajduje się już w zatwierdzonym zakresie. Nie trzeba nic zmieniać.',
     );
   });
 });

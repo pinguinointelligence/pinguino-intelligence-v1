@@ -165,7 +165,10 @@ describe('machine display names — customer-facing, never technology codes', ()
     if (named.outcome !== 'profile') throw new Error('expected profile');
     expect(machineDisplayName(named.profile)).toBe('Acme G-2000');
 
-    const anonymous = buildCustomMachineProfile({ behaviorAnswerId: 'machine_cools_itself', market: 'ES' });
+    const anonymous = buildCustomMachineProfile({
+      behaviorAnswerId: 'machine_cools_itself',
+      market: 'ES',
+    });
     if (anonymous.outcome !== 'profile') throw new Error('expected profile');
     expect(machineDisplayName(anonymous.profile)).toBe(copy.profile.customName);
   });
@@ -176,11 +179,11 @@ describe('machine display names — customer-facing, never technology codes', ()
 /* ------------------------------------------------------------------ */
 
 describe('batch presentation — owner framing, honest none', () => {
-  it('derived grams present as „Zalecany wsad PINGÜINO” — never as a capacity', () => {
+  it('derived grams present as „Zalecany wsad Gellatti” — never as a capacity', () => {
     const nc7 = presentBatchSuggestion(deriveMachineSetup(NINJA_CREAMI_SCOOP_SWIRL_NC7));
     expect(nc7).toEqual({
       kind: 'pinguino_grams',
-      label: 'Zalecany wsad PINGÜINO',
+      label: 'Zalecany wsad Gellatti',
       text: '460 g',
       note: null, // official source — not estimated
     });
@@ -198,7 +201,7 @@ describe('batch presentation — owner framing, honest none', () => {
     const presentation = presentBatchSuggestion(deriveMachineSetup(custom.profile));
     expect(presentation).toEqual({
       kind: 'pinguino_grams',
-      label: 'Zalecany wsad PINGÜINO',
+      label: 'Zalecany wsad Gellatti',
       text: '450 g',
       note: copy.batch.estimatedNote,
     });
@@ -231,7 +234,9 @@ describe('batch presentation — owner framing, honest none', () => {
 describe('container split notice — owner verbatim copy', () => {
   it('900 g @ 450 g: exact owner message + detail', () => {
     const notice = containerSplitNotice(900, 450);
-    expect(notice?.message).toBe('Ta ilość wymaga 2 pojemników. PINGÜINO podzieli recepturę automatycznie.');
+    expect(notice?.message).toBe(
+      'Ta ilość wymaga 2 pojemników. Gellatti podzieli recepturę automatycznie.',
+    );
     expect(notice?.detail).toBe('2 pojemniki po 450 g');
     expect(notice?.plan.containers).toBe(2);
   });
@@ -240,7 +245,7 @@ describe('container split notice — owner verbatim copy', () => {
     const thousand = containerSplitNotice(1000, 450);
     expect(thousand?.plan.containers).toBe(3);
     expect(thousand?.message).toBe(
-      'Ta ilość wymaga 3 pojemników. PINGÜINO podzieli recepturę automatycznie.',
+      'Ta ilość wymaga 3 pojemników. Gellatti podzieli recepturę automatycznie.',
     );
     expect(thousand?.detail).toBe('3 pojemniki po 333,3 g');
     expect(containerSplitNotice(1350, 450)?.detail).toBe('3 pojemniki po 450 g');
@@ -274,7 +279,7 @@ describe('§8.5 auto-config lines — honest amount variant', () => {
       'Rozpoznano urządzenie',
       'Ustawiono właściwą ilość',
       'Dopasowano sposób przygotowania',
-      'Przygotowano PINGÜINO Pro',
+      'Przygotowano Gellatti Pro',
     ]);
   });
 

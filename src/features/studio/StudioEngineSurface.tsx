@@ -73,14 +73,14 @@ const REVIEW_INVENTORY: readonly ReviewInventoryRow[] = [
     name: studio.secondary.reviewMarked.flowGuide,
     purpose: 'Objaśnia bieżącą sytuację przepływu pracy (tylko odczyt).',
     route: '/pro/recipe → strefa przeglądu',
-    recommendation: 'Kandydat do scalenia z Monitorem PI (sekcja komunikatów).',
+    recommendation: 'Kandydat do scalenia z Monitorem receptury (sekcja komunikatów).',
   },
   {
     id: 'optimization',
     name: studio.secondary.reviewMarked.optimization,
     purpose: studio.secondary.reviewMarked.optimizationNote,
     route: '/pro/recipe → strefa przeglądu',
-    recommendation: 'Nakłada się z „Przelicz z PI" — decyzja: jedno wejście czy dwa.',
+    recommendation: 'Nakłada się z „Przelicz recepturę” — decyzja: jedno wejście czy dwa.',
   },
   {
     id: 'branch-previews',
@@ -93,7 +93,7 @@ const REVIEW_INVENTORY: readonly ReviewInventoryRow[] = [
     id: 'owner-diagnostic',
     name: studio.secondary.reviewMarked.ownerDiagnostic,
     purpose: studio.secondary.reviewMarked.ownerDiagnosticNote,
-    route: 'Monitor PI → Zaawansowane / diagnostyka',
+    route: 'Monitor receptury → Zaawansowane / diagnostyka',
     recommendation: 'Zostaje w Monitorze (sesje właściciela/QA); klienci nie widzą.',
   },
   {

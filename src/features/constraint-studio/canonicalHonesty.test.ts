@@ -262,9 +262,9 @@ describe('addendum item 3 — honest terminology (no global-optimum claims)', ()
         provisionalProfile: true,
       },
     });
-    expect(message).toContain('najlepszy wynik znaleziony przez obecny solver');
+    expect(message).toContain('Gellatti nie znalazło dalszej bezpiecznej poprawy');
     expect(message).toContain('Powód zatrzymania');
-    expect(message).toContain('4 ×'); // the real invocation count rides along
+    expect(message).toContain('4 prób'); // the real invocation count rides along
     expect(message).not.toContain('najlepszym zweryfikowanym wynikiem');
   });
 
@@ -342,10 +342,10 @@ describe('addendum item 4 — the outcome classification is recomputed, never cl
 
   it('the MIXED case says both, batch first (the owner order of honesty)', () => {
     expect(constraintStudioCopy.preview.outcome.bothHeading).toBe(
-      'Przeskalowano partię i PI zoptymalizowało recepturę',
+      'Przeskalowano partię i poprawiono balans receptury',
     );
     const both = constraintStudioCopy.preview.outcome.bothHeading;
-    expect(both.indexOf('Przeskalowano')).toBeLessThan(both.indexOf('zoptymalizowało'));
+    expect(both.indexOf('Przeskalowano')).toBeLessThan(both.indexOf('poprawiono'));
   });
 
   it('every preview builder emits a classification (no path can skip it)', () => {

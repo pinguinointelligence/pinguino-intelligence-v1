@@ -59,6 +59,7 @@ import {
 } from '@/features/global-catalog/duplicateComparison';
 import { useAuthStore } from '@/stores/authStore';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
+import { customerErrorMessage } from '@/copy/customerError';
 
 const ROLES: readonly { value: IntakeImageRole; label: string }[] = [
   { value: 'front', label: 'Przód opakowania' },
@@ -181,8 +182,8 @@ function statusCopy(result: PersistSessionResult): { title: string; detail: stri
     return {
       title: 'Dane ręczne — niezweryfikowane',
       detail: shared.reviewEscalationLimited
-        ? `Produkt jest dostępny jako BLUE. Osiągnięto limit zgłoszeń wymagających ręcznej weryfikacji; nowa sprawa nie została utworzona.${shared.retryAt ? ` Spróbuj ponownie po ${new Date(shared.retryAt).toLocaleString('pl-PL')}.` : ''}`
-        : 'Produkt jest widoczny jako BLUE i nie otrzymuje uprawnień Engine.',
+        ? `Produkt jest dostępny z oznaczeniem „wymaga weryfikacji”. Osiągnięto limit zgłoszeń do ręcznego sprawdzenia; nowa sprawa nie została utworzona.${shared.retryAt ? ` Spróbuj ponownie po ${new Date(shared.retryAt).toLocaleString('pl-PL')}.` : ''}`
+        : 'Produkt jest widoczny jako „wymaga weryfikacji” i nie jest jeszcze gotowy do obliczeń.',
       tone: 'border-sky-300 bg-sky-50',
     };
   if (shared) {
@@ -211,7 +212,9 @@ function statusCopy(result: PersistSessionResult): { title: string; detail: stri
     return {
       title: 'Nie zapisano produktu',
       detail:
-        result.saveResult.kind === 'failed' ? result.saveResult.error : 'Rozstrzygnij duplikat.',
+        result.saveResult.kind === 'failed'
+          ? customerErrorMessage(result.saveResult.error, 'scanner', 'SCANNER_SAVE_FAILED')
+          : 'Rozstrzygnij duplikat.',
       tone: 'border-terracotta/50 bg-terracotta/10',
     };
   }
@@ -359,7 +362,7 @@ export function ProductScanPage() {
       );
       setSession(next);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Nie udało się odczytać etykiety.');
+      setError(customerErrorMessage(caught, 'scanner', 'SCANNER_ANALYSIS_FAILED'));
     } finally {
       setProgress(null);
     }
@@ -420,7 +423,7 @@ export function ProductScanPage() {
       setDuplicate(null);
       setDuplicatePreview([]);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Nie udało się zapisać produktu.');
+      setError(customerErrorMessage(caught, 'scanner', 'SCANNER_SAVE_FAILED'));
     } finally {
       setProgress(null);
     }
@@ -446,7 +449,7 @@ export function ProductScanPage() {
         globalCatalogContributionError: null,
       });
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Nie udało się ponowić zgłoszenia.');
+      setError(customerErrorMessage(caught, 'catalog', 'CATALOG_OPERATION_FAILED'));
     } finally {
       setProgress(null);
     }
@@ -468,7 +471,7 @@ export function ProductScanPage() {
         globalCatalogContributionError: null,
       });
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Nie udało się zapisać uzupełnień.');
+      setError(customerErrorMessage(caught, 'scanner', 'SCANNER_SAVE_FAILED'));
     } finally {
       setProgress(null);
     }
@@ -503,10 +506,10 @@ export function ProductScanPage() {
   return (
     <main
       className="mx-auto min-h-screen max-w-5xl bg-paper px-4 py-10 text-ink sm:px-8 lg:py-16"
-      data-qa-image-phash-count={exposeStagingQaDiagnostics ? previewImagePhashes.length : undefined}
-      data-qa-image-phashes={
-        exposeStagingQaDiagnostics ? previewImagePhashes.join(',') : undefined
+      data-qa-image-phash-count={
+        exposeStagingQaDiagnostics ? previewImagePhashes.length : undefined
       }
+      data-qa-image-phashes={exposeStagingQaDiagnostics ? previewImagePhashes.join(',') : undefined}
     >
       <Link
         to="/products"

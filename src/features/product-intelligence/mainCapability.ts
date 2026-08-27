@@ -31,10 +31,7 @@ export type MainCapabilityState =
   | 'MAIN_UNKNOWN';
 
 /** Which authority supplies the Main envelope, when one exists at all. */
-export type MainCalibrationLevel =
-  | 'EXACT_PRODUCT'
-  | 'FAMILY'
-  | 'NONE';
+export type MainCalibrationLevel = 'EXACT_PRODUCT' | 'FAMILY' | 'NONE';
 
 export type MainCapabilityReasonCode =
   | 'calibrated_main_policy'
@@ -79,7 +76,7 @@ const REASON_PL: Record<MainCapabilityReasonCode, string | null> = {
   snapshot_missing: 'Produkt wymaga ponownej walidacji przed ustawieniem jako Main.',
   revalidation_required:
     'Historyczny produkt wymaga utworzenia nowej, zweryfikowanej wersji przed ustawieniem jako Main.',
-  unknown_product: 'PINGÜINO nie rozpoznaje jeszcze tego produktu — brak danych o jego roli.',
+  unknown_product: 'Gellatti nie rozpoznaje jeszcze tego produktu — brakuje danych o jego roli.',
 };
 
 /**
@@ -91,7 +88,12 @@ const REASON_PL: Record<MainCapabilityReasonCode, string | null> = {
  * calibration gap, not a capability gap (§4).
  */
 const FLAVOUR_CARRIER_ROLES: ReadonlySet<ProductBehaviorRole | 'MAIN_CAPABLE_UNCALIBRATED'> =
-  new Set(['MAIN_ALLOWED', 'MAIN_PROFILE_SPECIFIC', 'MAIN_CAPABLE_UNCALIBRATED', 'UNKNOWN_REQUIRES_EVIDENCE']);
+  new Set([
+    'MAIN_ALLOWED',
+    'MAIN_PROFILE_SPECIFIC',
+    'MAIN_CAPABLE_UNCALIBRATED',
+    'UNKNOWN_REQUIRES_EVIDENCE',
+  ]);
 
 const TECHNICAL_ROLE_REASON: Partial<Record<string, MainCapabilityReasonCode>> = {
   STRUCTURAL_ONLY: 'structural_product',
@@ -128,12 +130,12 @@ export function hasCalibratedMainEnvelope(
 ): boolean {
   return Boolean(
     snapshot &&
-      snapshot.mainPolicyId &&
-      snapshot.mainPolicyVersion &&
-      snapshot.ecoFloorPercent !== null &&
-      snapshot.optimalCeilingPercent !== null &&
-      snapshot.hardLimitPercent !== null &&
-      snapshot.mainEquivalentFactor !== null,
+    snapshot.mainPolicyId &&
+    snapshot.mainPolicyVersion &&
+    snapshot.ecoFloorPercent !== null &&
+    snapshot.optimalCeilingPercent !== null &&
+    snapshot.hardLimitPercent !== null &&
+    snapshot.mainEquivalentFactor !== null,
   );
 }
 
@@ -143,7 +145,10 @@ export function hasCalibratedMainEnvelope(
  * provenance differs.
  */
 function calibrationLevelOf(snapshot: ProductBehaviorSnapshot): MainCalibrationLevel {
-  if (snapshot.mainCalibrationLevel === 'EXACT_PRODUCT' || snapshot.mainCalibrationLevel === 'FAMILY') {
+  if (
+    snapshot.mainCalibrationLevel === 'EXACT_PRODUCT' ||
+    snapshot.mainCalibrationLevel === 'FAMILY'
+  ) {
     return snapshot.mainCalibrationLevel;
   }
   return 'FAMILY';
@@ -231,9 +236,7 @@ export function userHeldMainLineIds(input: {
   excludeLineIds?: readonly string[];
 }): string[] {
   const excluded = new Set(input.excludeLineIds ?? []);
-  const mains = input.items.filter(
-    (item) => item.lock_type === 'main' && !excluded.has(item.id),
-  );
+  const mains = input.items.filter((item) => item.lock_type === 'main' && !excluded.has(item.id));
   if (mains.length === 0) return [];
   // A MISSING snapshot is never "user-held": the envelope contract must still
   // fail closed for a product-lineage line that lost its resolver authority.
@@ -242,7 +245,8 @@ export function userHeldMainLineIds(input: {
   const anyUserHeld = mains.some(
     (item) =>
       input.snapshots[item.id] !== undefined &&
-      resolveMainCapability({ snapshot: input.snapshots[item.id], snapshotRequired: true }).userHeld,
+      resolveMainCapability({ snapshot: input.snapshots[item.id], snapshotRequired: true })
+        .userHeld,
   );
   return anyUserHeld ? mains.map((item) => item.id) : [];
 }

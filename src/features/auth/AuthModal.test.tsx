@@ -71,12 +71,12 @@ describe('AuthModal — post-OAuth-redirect notices', () => {
     expect(html).not.toContain('User denied access');
   });
 
-  it('shows the failure message with the provider detail for oauth-failed', () => {
+  it('shows safe failure copy without raw provider detail for oauth-failed', () => {
     h.auth.available = true;
     setNotice({ kind: 'oauth-failed', detail: 'Provider unavailable' });
     const html = render();
     expect(html).toContain(a.googleFailed);
-    expect(html).toContain('Provider unavailable');
+    expect(html).not.toContain('Provider unavailable');
   });
 
   it('renders no notice at all on a plain open', () => {

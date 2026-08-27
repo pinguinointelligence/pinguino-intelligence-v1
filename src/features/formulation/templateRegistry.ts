@@ -289,7 +289,7 @@ const veganTemplate = (
     veganFlavorStrategy: seed.strategy,
     status: 'approved',
     approvalSource:
-      'owner Vegan final task: MyGelato −13 reference + canonical PINGÜINO temperature direction; Mapper v1.0 plant identities',
+      'owner Vegan final task: MyGelato −13 reference + canonical GELLATTI temperature direction; Mapper v1.0 plant identities',
     baseBatchG: 1000,
     roles: [
       ...(seed.mainRole && seed.mainGrams ? [T(seed.mainRole, seed.mainGrams, null)] : []),
@@ -377,9 +377,27 @@ const PROTEIN_SEEDS: readonly ProteinTemplateSeed[] = [
   // −11: protein 9.53 %, 21.1 % of energy, NPAC 39.0 mid-band (33-42), Score 10.
   // The −11 NPAC band is the lowest of the three, so the Engine drops milk —
   // milk lactose raises freezing depression — and carries fat on cream instead.
-  { route: 'dairy', temperatureC: -11, liquid: 0, fat: 244, protein: 112, water: 474, sucrose: 77, dextrose: 91 },
+  {
+    route: 'dairy',
+    temperatureC: -11,
+    liquid: 0,
+    fat: 244,
+    protein: 112,
+    water: 474,
+    sucrose: 77,
+    dextrose: 91,
+  },
   // −12: protein 8.47 %, 20.3 % of energy, NPAC 45.4 (42-50), Score 10.
-  { route: 'dairy', temperatureC: -12, liquid: 522, fat: 114, protein: 81, water: 104, sucrose: 71, dextrose: 106 },
+  {
+    route: 'dairy',
+    temperatureC: -12,
+    liquid: 522,
+    fat: 114,
+    protein: 81,
+    water: 104,
+    sucrose: 71,
+    dextrose: 106,
+  },
   // −13: protein 9.9 %, 20.5 % of energy, NPAC 51.6 mid-band (48-55), Score 10.
   //
   // Deliberately chosen to be legal under BOTH composition sets. The repo's own
@@ -390,15 +408,51 @@ const PROTEIN_SEEDS: readonly ProteinTemplateSeed[] = [
   // staging showed as a Score 7 starter. This seed was searched against both
   // sets simultaneously and scores 10 on each (NPAC 51.59 served / 52.36 repo),
   // with the largest available distance to the nearest band edge.
-  { route: 'dairy', temperatureC: -13, liquid: 440, fat: 195, protein: 100, water: 83, sucrose: 50, dextrose: 130 },
+  {
+    route: 'dairy',
+    temperatureC: -13,
+    liquid: 440,
+    fat: 195,
+    protein: 100,
+    water: 83,
+    sucrose: 50,
+    dextrose: 130,
+  },
   // PLANT — these three resolve PI-ING-* rows whose composition is identical in
   // every path, so they needed no re-derivation.
   // −11: protein 9.52 %, 20.4 % of energy, Score 10.
-  { route: 'plant', temperatureC: -11, liquid: 480, fat: 67, protein: 111, water: 185, sucrose: 114, dextrose: 41 },
+  {
+    route: 'plant',
+    temperatureC: -11,
+    liquid: 480,
+    fat: 67,
+    protein: 111,
+    water: 185,
+    sucrose: 114,
+    dextrose: 41,
+  },
   // −12: protein 7.98 %, 20.3 % of energy, Score 10.
-  { route: 'plant', temperatureC: -12, liquid: 403, fat: 50, protein: 93, water: 298, sucrose: 2, dextrose: 152 },
+  {
+    route: 'plant',
+    temperatureC: -12,
+    liquid: 403,
+    fat: 50,
+    protein: 93,
+    water: 298,
+    sucrose: 2,
+    dextrose: 152,
+  },
   // −13: protein 8.47 %, 20.1 % of energy, Score 10.
-  { route: 'plant', temperatureC: -13, liquid: 377, fat: 46, protein: 99, water: 288, sucrose: 46, dextrose: 142 },
+  {
+    route: 'plant',
+    temperatureC: -13,
+    liquid: 377,
+    fat: 46,
+    protein: 99,
+    water: 288,
+    sucrose: 46,
+    dextrose: 142,
+  },
 ];
 
 const proteinTemplate = (

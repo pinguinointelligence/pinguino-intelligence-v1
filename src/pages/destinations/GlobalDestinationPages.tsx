@@ -15,15 +15,20 @@ import { GlobalCatalogSearchPanel } from '@/features/global-catalog/GlobalCatalo
 import { useProCoreAccessStore } from '@/features/pro-core/proCoreAccessStore';
 import { ProductRequestAccountSections } from '@/features/product-requests/ProductRequestAccountSections';
 import { HomeInviteRedemption } from '@/features/account/HomeInviteRedemption';
+import { resolveProductionRepository } from '@/features/pro-core/proCoreProductionRepo';
+import { loadCanonicalProductionHistory } from '@/services/productionHistoryTruth';
+import type { CanonicalProductionHistoryEntry } from '@/services/productionHistoryTruth';
+import { WorkflowNotice } from '@/components/shared/WorkflowNotice';
+import { EmptyState } from '@/components/shared/EmptyState';
 
 const quietLink =
   'flex min-h-14 items-center justify-between border-b border-ink/10 py-3 text-sm text-ink transition-opacity hover:opacity-55';
 
 export function HowItWorksPage() {
-  const steps = ['Pomysł', 'Składniki', 'PINGÜINO', 'Receptura', 'Produkcja'];
+  const steps = ['Pomysł', 'Składniki', 'Gellatti', 'Receptura', 'Produkcja'];
   return (
     <DestinationSurface
-      eyebrow="PINGÜINO"
+      eyebrow="GELLATTI"
       title="Jak to działa"
       blurb="Jedna logiczna droga od pomysłu do receptury i bezpiecznej produkcji."
     >
@@ -40,7 +45,7 @@ export function HowItWorksPage() {
       </ol>
       <div className="mt-10 flex flex-wrap gap-3">
         <Link to="/start" className={buttonClasses('primary', 'md')}>
-          Wypróbuj PINGÜINO
+          Wypróbuj Gellatti
         </Link>
         <Link to="/subscription" className={buttonClasses('ghost', 'md')}>
           Porównaj Home i Pro
@@ -53,9 +58,9 @@ export function HowItWorksPage() {
 export function ShopPage() {
   return (
     <DestinationSurface
-      eyebrow="Ekosystem PINGÜINO"
+      eyebrow="Ekosystem Gellatti"
       title="Sklep"
-      blurb="Jedno miejsce na zestawy startowe, składniki i przyszłe produkty PINGÜINO."
+      blurb="Jedno miejsce na zestawy startowe, składniki i przyszłe produkty Gellatti."
     >
       <div className="border-y border-ink/10 py-8">
         <p className="max-w-xl text-sm leading-relaxed text-stone-600">
@@ -70,9 +75,9 @@ export function ShopPage() {
 export function FranchisePage() {
   return (
     <DestinationSurface
-      eyebrow="Ekosystem PINGÜINO"
+      eyebrow="Ekosystem Gellatti"
       title="Franchise"
-      blurb="Koncepty biznesowe PINGÜINO: punkt, wózek, przyczepa i lokal firmowy."
+      blurb="Koncepty biznesowe Gellatti: punkt, wózek, przyczepa i lokal firmowy."
     >
       <div className="border-y border-ink/10 py-8">
         <p className="max-w-xl text-sm leading-relaxed text-stone-600">
@@ -80,7 +85,7 @@ export function FranchisePage() {
           biznesowego i nie miesza się z programem Współpraca.
         </p>
         <a
-          href="mailto:pinguinointelligence@gmail.com?subject=Franchise%20PINGUINO"
+          href="mailto:pinguinointelligence@gmail.com?subject=Franchise%20GELLATTI"
           className={cn(buttonClasses('ghost', 'md'), 'mt-6')}
         >
           Zapytaj o Franchise
@@ -96,13 +101,13 @@ export function ProductsHubPage() {
   const canAdmin = useProCoreAccessStore((state) => state.effectiveAccess?.canAdmin === true);
   return (
     <DestinationSurface
-      eyebrow="Katalog PINGÜINO"
+      eyebrow="Katalog Gellatti"
       title="Produkty"
-      blurb="Produkty, dopasowanie Mapper, dostępność i prywatna cena — w jednym kanonicznym miejscu."
+      blurb="Produkty, ich zastosowanie, dostępność i Twoja cena — wszystko w jednym miejscu."
     >
       {!capabilities.canSaveRecipe ? (
         <p className="border-y border-ink/10 py-8 text-sm text-stone-600">
-          Katalog produktów jest dostępny w PINGÜINO Home i Pro.
+          Katalog produktów jest dostępny w Gellatti Home i Pro.
         </p>
       ) : (
         <>
@@ -112,7 +117,8 @@ export function ProductsHubPage() {
                 Katalog produktów
               </h2>
               <p className="mt-1 text-sm text-stone-500">
-                Zatwierdzony katalog Gellatti. Nieznany produkt możesz przesłać do weryfikacji Admina.
+                Zatwierdzony katalog Gellatti. Nieznany produkt możesz przesłać do weryfikacji
+                Admina.
               </p>
             </div>
             <Link
@@ -170,12 +176,62 @@ export function ProductionHubPage() {
     : 'current';
   const persona = useProCorePersona();
   const capabilities = proCoreCapabilitiesFor(persona);
+  const user = useAuthStore((state) => state.user);
   const session = useProductionSessionStore((state) => state.session);
-  const snapshot = session?.status === 'completed' ? session.completionSnapshot : null;
+  const activeSnapshot = session?.status === 'completed' ? session.completionSnapshot : null;
+  const productionRepositoryState = useMemo(() => resolveProductionRepository(), []);
+  const labelRepository = useMemo(() => resolveLabelRepository(), []);
+  const [historyLoad, setHistoryLoad] = useState<{
+    ownerUserId: string | null;
+    entries: CanonicalProductionHistoryEntry[];
+    state: 'loading' | 'ready' | 'error';
+  }>({ ownerUserId: null, entries: [], state: 'loading' });
+  const [historyRevision, setHistoryRevision] = useState(0);
+
+  useEffect(() => {
+    if (!capabilities.canUseProductionMode) return;
+    if (!user?.id || !productionRepositoryState.repository) return;
+    let cancelled = false;
+    void loadCanonicalProductionHistory({
+      productionRepository: productionRepositoryState.repository,
+      labelRepository,
+      ownerUserId: user.id,
+    })
+      .then((result) => {
+        if (cancelled) return;
+        setHistoryLoad({
+          ownerUserId: user.id,
+          entries: result.entries,
+          state: result.unresolvedRunIds.length > 0 ? 'error' : 'ready',
+        });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setHistoryLoad({ ownerUserId: user.id, entries: [], state: 'error' });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    capabilities.canUseProductionMode,
+    historyRevision,
+    labelRepository,
+    productionRepositoryState.repository,
+    user?.id,
+  ]);
+
+  const history = historyLoad.ownerUserId === user?.id ? historyLoad.entries : [];
+  const historyState =
+    !user?.id || !productionRepositoryState.repository
+      ? 'error'
+      : historyLoad.ownerUserId === user.id
+        ? historyLoad.state
+        : 'loading';
+  const labelSnapshot = activeSnapshot ?? history[0]?.snapshot ?? null;
 
   return (
     <DestinationSurface
-      eyebrow="PINGÜINO Pro"
+      eyebrow="Gellatti Pro"
       title="Produkcja"
       blurb="Bieżąca partia, zamrożona historia wykonania i etykiety z faktycznej produkcji."
     >
@@ -247,7 +303,7 @@ export function ProductionHubPage() {
                     Otwórz recepturę i przejdź do jej zakładki Produkcja, aby rozpocząć nową partię.
                   </p>
                   <Link to="/pro/recipe" className={cn(buttonClasses('primary', 'md'), 'mt-6')}>
-                    Otwórz PINGÜINO Pro
+                    Otwórz Gellatti Pro
                   </Link>
                 </>
               )}
@@ -263,8 +319,38 @@ export function ProductionHubPage() {
               data-testid="production-history"
             >
               <h2 className="text-xl font-semibold text-ink">Historia produkcji</h2>
-              {snapshot ? (
-                <div className="mt-6 border-y border-ink/10 py-5">
+              {historyState === 'loading' ? (
+                <p className="mt-5 text-sm text-stone-500" role="status">
+                  Sprawdzamy zakończone partie…
+                </p>
+              ) : null}
+              {historyState === 'error' ? (
+                <WorkflowNotice
+                  className="mt-5"
+                  variant="blocking"
+                  role="alert"
+                  title="Nie udało się odczytać pełnej historii produkcji"
+                  description="Dane partii pozostały bez zmian. Spróbuj ponownie."
+                  action={
+                    <button
+                      type="button"
+                      className={buttonClasses('ghost', 'sm')}
+                      onClick={() => {
+                        setHistoryLoad((current) => ({ ...current, state: 'loading' }));
+                        setHistoryRevision((current) => current + 1);
+                      }}
+                    >
+                      Spróbuj ponownie
+                    </button>
+                  }
+                />
+              ) : null}
+              {history.map(({ run, snapshot }) => (
+                <div
+                  key={run.runId}
+                  className="mt-6 border-y border-ink/10 py-5"
+                  data-production-run-id={run.runId}
+                >
                   <div className="flex flex-wrap items-end justify-between gap-4">
                     <div>
                       <strong className="text-base text-ink">{snapshot.source.recipeName}</strong>
@@ -278,23 +364,25 @@ export function ProductionHubPage() {
                         {snapshot.actualFinalMassG.toFixed(1)} g
                       </span>
                       <span className="text-xs text-stone-500">
-                        plan {snapshot.originalBatchTargetG.toFixed(1)} g
+                        planowano {snapshot.originalBatchTargetG.toFixed(1)} g
                       </span>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setParams({ tab: 'labels' })}
+                  <Link
+                    to={`/labels?run=${encodeURIComponent(run.runId)}`}
                     className={cn(buttonClasses('ghost', 'sm'), 'mt-5')}
                   >
-                    Otwórz finalną etykietę
-                  </button>
+                    Otwórz etykietę
+                  </Link>
                 </div>
-              ) : (
-                <p className="mt-5 text-sm text-stone-500">
-                  Brak zakończonej partii w bieżącym, lokalnym źródle danych.
-                </p>
-              )}
+              ))}
+              {historyState === 'ready' && history.length === 0 ? (
+                <EmptyState
+                  className="mt-5"
+                  title="Nie masz jeszcze zakończonych partii"
+                  body="Po zakończeniu produkcji partia pojawi się tutaj."
+                />
+              ) : null}
             </section>
           ) : null}
 
@@ -307,14 +395,14 @@ export function ProductionHubPage() {
               data-testid="production-labels"
             >
               <h2 className="text-xl font-semibold text-ink">Etykiety z zakończonych partii</h2>
-              {snapshot ? (
+              {labelSnapshot ? (
                 <div className="mt-6 border border-ink/10">
-                  <LabelWorkspace snapshot={snapshot} />
+                  <LabelWorkspace snapshot={labelSnapshot} />
                 </div>
               ) : (
                 <p className="mt-5 text-sm text-stone-500">
-                  Etykieta pojawi się dopiero po zakończeniu produkcji i zamrożeniu faktycznego
-                  snapshotu.
+                  Etykieta pojawi się dopiero po zakończeniu produkcji i zatwierdzeniu danych
+                  partii.
                 </p>
               )}
             </section>
@@ -366,7 +454,7 @@ export function LabelsHubPage() {
 
   return (
     <DestinationSurface
-      eyebrow="PINGÜINO Pro"
+      eyebrow="Gellatti Pro"
       title="Etykiety"
       blurb="Jedno miejsce dla domyślnego profilu konta i niezmiennych etykiet z faktycznie zakończonych partii."
     >
@@ -377,7 +465,7 @@ export function LabelsHubPage() {
           <div>
             <h2 className="text-xl font-semibold text-ink">Etykieta zakończonej partii</h2>
             <p className="mt-1 text-sm text-stone-500">
-              Źródłem jest wyłącznie immutable ACTUAL Production Snapshot.
+              Etykieta korzysta wyłącznie z zatwierdzonych danych zakończonej partii.
             </p>
           </div>
           {history.length > 0 ? (

@@ -115,11 +115,7 @@ describe('durable Production actual projection', () => {
       startedAt: '2026-08-19T00:00:00.000Z',
     });
     const line = started.lines[0]!;
-    const confirmed = confirmProductionLine(
-      started,
-      line.lineId,
-      '2026-08-19T00:01:00.000Z',
-    );
+    const confirmed = confirmProductionLine(started, line.lineId, '2026-08-19T00:01:00.000Z');
     const pendingTopUp = {
       ...confirmed,
       lines: confirmed.lines.map((item) =>
@@ -134,12 +130,13 @@ describe('durable Production actual projection', () => {
       ),
     };
 
-    expect(durableActual(pendingTopUp, 'owner-1').items?.find((item) => item.id === line.lineId))
-      .toMatchObject({
-        actualGrams: line.plannedGrams,
-        confirmedAt: '2026-08-19T00:01:00.000Z',
-        confirmationOrder: 1,
-      });
+    expect(
+      durableActual(pendingTopUp, 'owner-1').items?.find((item) => item.id === line.lineId),
+    ).toMatchObject({
+      actualGrams: line.plannedGrams,
+      confirmedAt: '2026-08-19T00:01:00.000Z',
+      confirmationOrder: 1,
+    });
   });
 
   it('reconciles every newer durable Rescue, including the second accepted snapshot', () => {
@@ -250,7 +247,7 @@ describe('trusted Production Rescue authorization basis', () => {
       'Niedostępne — potwierdzonych ilości nie można już dopasować do partii 1000 g.',
     );
     expect(rescueOptionUnavailableMessage('leave_as_is', 1_000, hardSafetyError)).toBe(
-      'Niedostępne — przekroczone twarde zakresy: Sandiness risk, Lactose.',
+      'Niedostępne — przekroczone twarde zakresy: Ryzyko piaszczystości, Laktoza.',
     );
   });
 

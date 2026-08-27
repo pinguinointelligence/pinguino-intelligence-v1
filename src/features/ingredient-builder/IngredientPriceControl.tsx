@@ -4,6 +4,7 @@ import { parseCustomerPriceText } from './customerPriceInput';
 import { HoverPreview } from '@/components/ui/HoverPreview';
 import { cn } from '@/lib/cn';
 import { useCustomerPriceDirtyStore } from './customerPriceDirtyStore';
+import { customerErrorMessage } from '@/copy/customerError';
 
 export interface IngredientPriceView {
   cost: EffectiveIngredientCost;
@@ -159,7 +160,7 @@ export function CustomerPriceEditor({
       // The existing save flow succeeded, so the row is no longer price-dirty.
       if (lineId) setPriceDirty(lineId, false);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(customerErrorMessage(reason, 'account'));
     } finally {
       setBusy(false);
     }
@@ -174,7 +175,7 @@ export function CustomerPriceEditor({
       setRaw(base === null ? '' : String(base).replace('.', ','));
       if (lineId) setPriceDirty(lineId, false);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(customerErrorMessage(reason, 'account'));
     } finally {
       setBusy(false);
     }

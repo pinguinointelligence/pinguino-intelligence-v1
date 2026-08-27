@@ -11,7 +11,7 @@ import { create } from 'zustand';
 export interface AuthModalNotice {
   /** `oauth-cancelled` renders as a calm note; `oauth-failed` as an error. */
   kind: 'oauth-cancelled' | 'oauth-failed';
-  /** Optional provider-supplied description, shown only for failures. */
+  /** Optional provider diagnostic retained in state, never rendered as primary UI copy. */
   detail: string | null;
 }
 

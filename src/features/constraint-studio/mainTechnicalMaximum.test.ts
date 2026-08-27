@@ -262,144 +262,770 @@ const expectExactApplyUndo = (
  */
 const SOLVER_PROOF_TIMEOUT_MS = 30_000;
 
-describe('Main technical maximum — exact Watermelon authority', { timeout: SOLVER_PROOF_TIMEOUT_MS }, () => {
-  it('certifies the exact whole-gram upper bound independently of the starting grams', () => {
-    const input = watermelonFixture(300, 'optimal');
-    const bound = mainTechnicalLinearUpperBound({
-      recipe: input,
-      constraints: { byLineId: { tara: { mode: 'locked', grams: 5 } } },
-      snapshots: snapshotsWithApprovedEnvelope(input),
-    });
-    expect(bound).toMatchObject({
-      status: 'certified',
-      wholeGramUpperBound: 639,
-      integerSolutionCertified: true,
-    });
-    expect(bound.integerSearchNodes).toBeGreaterThan(0);
-    expect(bound.integerSearchNodes).toBeLessThanOrEqual(MAIN_TECHNICAL_INTEGER_NODE_BUDGET);
-    expect(bound.certificate).not.toContain('alcohol_min');
-    expect(bound.certificate.some((rule) => /_(?:min|max)$/.test(rule))).toBe(true);
-    expect(bound.continuousUpperBoundGrams).toBeGreaterThan(639);
-    const certifiedInput: RecipeInput = {
-      ...input,
-      items: input.items.map((item, index) => ({
-        ...item,
-        planned_grams: bound.continuousSolutionGrams![index]!,
-      })),
-    };
-    expect(certifiedInput.items.reduce((sum, item) => sum + item.planned_grams, 0)).toBe(1000);
-    expect(detectViolations(calculateRecipe(certifiedInput))).toEqual([]);
-  });
-  it('converges from every required starting point to one proven whole-gram maximum', () => {
-    const outcomes = [1, 80, 300, 600, 700, 900, 1200].map((start) => {
-      const input = watermelonFixture(start);
-      const preview = build(input);
-      const watermelon = preview.proposedInput.items.find((item) => item.id === 'watermelon')!;
-      expect(preview.proposedInput.items.reduce((sum, item) => sum + item.planned_grams, 0)).toBe(
-        1000,
-      );
-      expect(Number.isInteger(watermelon.planned_grams)).toBe(true);
-      expect(watermelon.lock_type).toBe('main');
-      expect(detectViolations(calculateRecipe(preview.proposedInput))).toEqual([]);
-      expect(preview.mainObjective, JSON.stringify(preview.mainObjective)).toMatchObject({
-        status: 'maximized',
-        executableMainGrams: watermelon.planned_grams,
-        firstHigherRejectedGrams: watermelon.planned_grams + 1,
+describe(
+  'Main technical maximum — exact Watermelon authority',
+  { timeout: SOLVER_PROOF_TIMEOUT_MS },
+  () => {
+    it('certifies the exact whole-gram upper bound independently of the starting grams', () => {
+      const input = watermelonFixture(300, 'optimal');
+      const bound = mainTechnicalLinearUpperBound({
+        recipe: input,
+        constraints: { byLineId: { tara: { mode: 'locked', grams: 5 } } },
+        snapshots: snapshotsWithApprovedEnvelope(input),
       });
-      expect(
-        (preview.mainObjective?.limitingTechnicalRules ?? []).some((rule) =>
-          /_(?:min|max)$/.test(rule),
-        ),
-      ).toBe(true);
-      expect(preview.mainObjective?.limitingTechnicalRules).toEqual([
+      expect(bound).toMatchObject({
+        status: 'certified',
+        wholeGramUpperBound: 639,
+        integerSolutionCertified: true,
+      });
+      expect(bound.integerSearchNodes).toBeGreaterThan(0);
+      expect(bound.integerSearchNodes).toBeLessThanOrEqual(MAIN_TECHNICAL_INTEGER_NODE_BUDGET);
+      expect(bound.certificate).not.toContain('alcohol_min');
+      expect(bound.certificate.some((rule) => /_(?:min|max)$/.test(rule))).toBe(true);
+      expect(bound.continuousUpperBoundGrams).toBeGreaterThan(639);
+      const certifiedInput: RecipeInput = {
+        ...input,
+        items: input.items.map((item, index) => ({
+          ...item,
+          planned_grams: bound.continuousSolutionGrams![index]!,
+        })),
+      };
+      expect(certifiedInput.items.reduce((sum, item) => sum + item.planned_grams, 0)).toBe(1000);
+      expect(detectViolations(calculateRecipe(certifiedInput))).toEqual([]);
+    });
+    it('converges from every required starting point to one proven whole-gram maximum', () => {
+      const outcomes = [1, 80, 300, 600, 700, 900, 1200].map((start) => {
+        const input = watermelonFixture(start);
+        const preview = build(input);
+        const watermelon = preview.proposedInput.items.find((item) => item.id === 'watermelon')!;
+        expect(preview.proposedInput.items.reduce((sum, item) => sum + item.planned_grams, 0)).toBe(
+          1000,
+        );
+        expect(Number.isInteger(watermelon.planned_grams)).toBe(true);
+        expect(watermelon.lock_type).toBe('main');
+        expect(detectViolations(calculateRecipe(preview.proposedInput))).toEqual([]);
+        expect(preview.mainObjective, JSON.stringify(preview.mainObjective)).toMatchObject({
+          status: 'maximized',
+          executableMainGrams: watermelon.planned_grams,
+          firstHigherRejectedGrams: watermelon.planned_grams + 1,
+        });
+        expect(
+          (preview.mainObjective?.limitingTechnicalRules ?? []).some((rule) =>
+            /_(?:min|max)$/.test(rule),
+          ),
+        ).toBe(true);
+        expect(preview.mainObjective?.limitingTechnicalRules).toEqual([
+          'integer_linear_relaxation',
+          'exact_batch',
+          'exact_lock:tara',
+          'pod_max',
+          'npac_min',
+          'lactose_min',
+          'fat_min',
+          'total_solids_min',
+        ]);
+        return watermelon.planned_grams;
+      });
+      expect(new Set(outcomes).size).toBe(1);
+      expect(outcomes[0]).toBe(639);
+      expect(outcomes[0]).toBeGreaterThan(0);
+    });
+
+    it('searches down from every required Kiwi start to one deterministic result', () => {
+      const proofs = [1, 80, 300, 700, 1000, 1200, 8000].map((start) => {
+        const input = singleMainFixture(IDS.kiwi, start);
+        const preview = build(input);
+        const kiwi = preview.proposedInput.items.find((item) => item.id === 'single-main')!;
+        expect(preview.proposedInput.items.reduce((sum, item) => sum + item.planned_grams, 0)).toBe(
+          1000,
+        );
+        expect(Number.isInteger(kiwi.planned_grams)).toBe(true);
+        expect(detectViolations(calculateRecipe(preview.proposedInput))).toEqual([]);
+        expect(preview.mainObjective).toMatchObject({
+          status: 'maximized',
+          executableMainGrams: kiwi.planned_grams,
+          firstHigherRejectedGrams: kiwi.planned_grams + 1,
+          provenMaximum: true,
+        });
+        return {
+          grams: kiwi.planned_grams,
+          rules: preview.mainObjective?.limitingTechnicalRules ?? [],
+        };
+      });
+      expect(new Set(proofs.map((proof) => proof.grams)).size).toBe(1);
+      expect(proofs[0]!.grams).toBe(706);
+      expect(proofs[0]!.rules).toEqual([
         'integer_linear_relaxation',
         'exact_batch',
         'exact_lock:tara',
-        'pod_max',
-        'npac_min',
         'lactose_min',
         'fat_min',
         'total_solids_min',
       ]);
-      return watermelon.planned_grams;
     });
-    expect(new Set(outcomes).size).toBe(1);
-    expect(outcomes[0]).toBe(639);
-    expect(outcomes[0]).toBeGreaterThan(0);
-  });
 
-  it('searches down from every required Kiwi start to one deterministic result', () => {
-    const proofs = [1, 80, 300, 700, 1000, 1200, 8000].map((start) => {
-      const input = singleMainFixture(IDS.kiwi, start);
-      const preview = build(input);
-      const kiwi = preview.proposedInput.items.find((item) => item.id === 'single-main')!;
-      expect(preview.proposedInput.items.reduce((sum, item) => sum + item.planned_grams, 0)).toBe(
-        1000,
-      );
-      expect(Number.isInteger(kiwi.planned_grams)).toBe(true);
-      expect(detectViolations(calculateRecipe(preview.proposedInput))).toEqual([]);
-      expect(preview.mainObjective).toMatchObject({
+    it('certifies the practical Kiwi frontier from an 8000 g request without scanning from 8000', () => {
+      const input = singleMainFixture(IDS.kiwi, 8000);
+      const result = buildOptimizePreview(input, { byLineId: {} }, '2026-08-19T00:00:00.000Z', {
+        productBehaviorSnapshots: snapshotsWithApprovedEnvelope(input),
+        technicalOnlyMainLineIds: technicalOnlyMainLineIds(input),
+        requirePracticalPreview: true,
+      });
+      expect(result.ok, JSON.stringify(result)).toBe(true);
+      if (!result.ok) throw new Error(JSON.stringify(result));
+      const kiwi = result.preview.proposedInput.items.find((item) => item.id === 'single-main')!;
+      expect(kiwi.planned_grams).toBe(706);
+      expect(
+        result.preview.proposedInput.items.reduce((sum, item) => sum + item.planned_grams, 0),
+      ).toBe(1000);
+      expect(result.preview.mainObjective).toMatchObject({
         status: 'maximized',
-        executableMainGrams: kiwi.planned_grams,
-        firstHigherRejectedGrams: kiwi.planned_grams + 1,
+        executableMainGrams: 706,
+        firstHigherRejectedGrams: 707,
         provenMaximum: true,
       });
-      return {
-        grams: kiwi.planned_grams,
-        rules: preview.mainObjective?.limitingTechnicalRules ?? [],
+      expect(result.preview.mainObjective).toMatchObject({
+        attempts: 1,
+        searchUpperBoundGrams: 706,
+        certifiedUpperBoundGrams: 706,
+        proofKind: 'linear_relaxation',
+      });
+      expect(result.preview.mainObjective?.attempts).toBeLessThanOrEqual(
+        MAIN_TECHNICAL_PROBE_BUDGET,
+      );
+    });
+
+    it('keeps the Engine-only Owner Review frontier independent of the sensory Main envelope', () => {
+      const eco = build(watermelonFixture(300, 'eco'));
+      const optimal = build(watermelonFixture(300, 'optimal'));
+      expect(mainTotal(eco.proposedInput)).toBe(mainTotal(optimal.proposedInput));
+      expect(mainTotal(eco.proposedInput)).toBeGreaterThan(450);
+    });
+
+    it('caps normal Preview at the approved OPTIMAL ceiling and ECO hard limit', () => {
+      const evaluate = (strategy: 'eco' | 'optimal') => {
+        const input = watermelonFixture(300, strategy);
+        const snapshots = snapshotsWithApprovedEnvelope(input);
+        snapshots.watermelon = {
+          ...snapshots.watermelon!,
+          requiresLiquidDairyCarrier: true,
+          liquidDairyCarrierFloorPercent: 30,
+        };
+        snapshots.milk = {
+          ...snapshots.milk!,
+          approvedLiquidDairyCarrier: true,
+        };
+        const result = buildOptimizePreview(input, { byLineId: {} }, '2026-08-19T00:00:00.000Z', {
+          productBehaviorSnapshots: snapshots,
+        });
+        expect(result.ok, JSON.stringify(result)).toBe(true);
+        if (!result.ok) throw new Error(JSON.stringify(result));
+        return result.preview;
       };
+      const optimal = evaluate('optimal');
+      const eco = evaluate('eco');
+      expect(optimal.mainObjective).toMatchObject({
+        executableMainGrams: 350,
+        certifiedUpperBoundGrams: 350,
+        provenMaximum: true,
+        limitingTechnicalRules: ['main_policy_ceiling'],
+      });
+      expect(eco.mainObjective).toMatchObject({
+        executableMainGrams: 370,
+        certifiedUpperBoundGrams: 370,
+        provenMaximum: true,
+      });
+      expect(eco.mainObjective?.limitingTechnicalRules).toContain('liquid_dairy_carrier_min');
     });
-    expect(new Set(proofs.map((proof) => proof.grams)).size).toBe(1);
-    expect(proofs[0]!.grams).toBe(706);
-    expect(proofs[0]!.rules).toEqual([
-      'integer_linear_relaxation',
-      'exact_batch',
-      'exact_lock:tara',
-      'lactose_min',
-      'fat_min',
-      'total_solids_min',
-    ]);
-  });
 
-  it('certifies the practical Kiwi frontier from an 8000 g request without scanning from 8000', () => {
-    const input = singleMainFixture(IDS.kiwi, 8000);
-    const result = buildOptimizePreview(input, { byLineId: {} }, '2026-08-19T00:00:00.000Z', {
-      productBehaviorSnapshots: snapshotsWithApprovedEnvelope(input),
-      technicalOnlyMainLineIds: technicalOnlyMainLineIds(input),
-      requirePracticalPreview: true,
-    });
-    expect(result.ok, JSON.stringify(result)).toBe(true);
-    if (!result.ok) throw new Error(JSON.stringify(result));
-    const kiwi = result.preview.proposedInput.items.find((item) => item.id === 'single-main')!;
-    expect(kiwi.planned_grams).toBe(706);
-    expect(
-      result.preview.proposedInput.items.reduce((sum, item) => sum + item.planned_grams, 0),
-    ).toBe(1000);
-    expect(result.preview.mainObjective).toMatchObject({
-      status: 'maximized',
-      executableMainGrams: 706,
-      firstHigherRejectedGrams: 707,
-      provenMaximum: true,
-    });
-    expect(result.preview.mainObjective).toMatchObject({
-      attempts: 1,
-      searchUpperBoundGrams: 706,
-      certifiedUpperBoundGrams: 706,
-      proofKind: 'linear_relaxation',
-    });
-    expect(result.preview.mainObjective?.attempts).toBeLessThanOrEqual(MAIN_TECHNICAL_PROBE_BUDGET);
-  });
+    // Direction-driven Main-envelope searches run the full local-correction
+    // sweep, which at MAX_SOLVER_ROUNDS=18 exceeds the 5s per-test default on a
+    // loaded machine (measured worst case 8.7s). The budget below is a timeout,
+    // not a relaxed assertion — every expectation is unchanged.
+    it.each([
+      [-2, -2],
+      [-2, 2],
+      [2, -2],
+      [2, 2],
+    ] as const)(
+      'keeps a 45 percent fruit Main inside the approved envelope under Direction %i/%i',
+      (sweetness, softness) => {
+        const seedInput = watermelonFixture(300, 'eco');
+        const snapshots = snapshotsWithApprovedEnvelope(seedInput);
+        const seeded = buildOptimizePreview(
+          seedInput,
+          { byLineId: {} },
+          '2026-08-20T00:00:00.000Z',
+          {
+            productBehaviorSnapshots: snapshots,
+          },
+        );
+        expect(seeded.ok, JSON.stringify(seeded)).toBe(true);
+        if (!seeded.ok) return;
+        expect(mainTotal(seeded.preview.proposedInput)).toBe(450);
 
-  it('keeps the Engine-only Owner Review frontier independent of the sensory Main envelope', () => {
-    const eco = build(watermelonFixture(300, 'eco'));
-    const optimal = build(watermelonFixture(300, 'optimal'));
-    expect(mainTotal(eco.proposedInput)).toBe(mainTotal(optimal.proposedInput));
-    expect(mainTotal(eco.proposedInput)).toBeGreaterThan(450);
-  });
+        const input: RecipeInput = {
+          ...seeded.preview.proposedInput,
+          goals: {
+            ...seeded.preview.proposedInput.goals,
+            formulation_strategy: 'eco',
+            direction_targets_active: true,
+            direction_targets: { sweetness, softness, creaminess: 0, flavor: 0 },
+          },
+        };
+        const beforeDirection = recipeDirectionViolations(input);
+        const result = buildOptimizePreview(input, { byLineId: {} }, '2026-08-20T00:01:00.000Z', {
+          productBehaviorSnapshots: snapshots,
+        });
+        if (!result.ok) {
+          if (result.code === 'already_clean') expect(beforeDirection).toEqual([]);
+          else if (result.code === 'no_proposal' && beforeDirection.length > 0) {
+            expect(result.directionTargetUnreached).toBe(true);
+            expect(result.solverInvocations ?? 0).toBeGreaterThan(0);
+          } else {
+            throw new Error(JSON.stringify(result));
+          }
+          return;
+        }
 
-  it('caps normal Preview at the approved OPTIMAL ceiling and ECO hard limit', () => {
-    const evaluate = (strategy: 'eco' | 'optimal') => {
-      const input = watermelonFixture(300, strategy);
+        const after = result.preview.proposedInput;
+        expect(detectViolations(calculateRecipe(after))).toEqual([]);
+        expect(mainTotal(after)).toBeGreaterThanOrEqual(200);
+        expect(mainTotal(after)).toBeLessThanOrEqual(450);
+        expect(after.goals?.direction_targets).toEqual(input.goals?.direction_targets);
+      },
+      20_000,
+    );
+
+    it('trustlessly applies a sweetness target with the served Hazelnut Crown vector', () => {
+      const input: RecipeInput = {
+        mode: 'classic',
+        category: 'milk_gelato',
+        target_temperature_c: -11,
+        target_batch_grams: 1000,
+        machine_capacity_grams: null,
+        goals: {
+          formulation_strategy: 'eco',
+          direction_targets_active: true,
+          direction_targets: { sweetness: 1, softness: 0, creaminess: 0, flavor: 0 },
+        },
+        items: [
+          line('milk', IDS.milk, 480),
+          line('cream', IDS.cream, 214),
+          line('smp', IDS.smp, 48),
+          line('sucrose', IDS.sucrose, 109),
+          line('dextrose', IDS.dextrose, 46),
+          line('tara', IDS.tara, 3),
+          line('hazelnut', IDS.hazelnut, 100, 'main'),
+        ],
+      };
+      const snapshots = snapshotsWithApprovedEnvelope(input);
+      snapshots.hazelnut = {
+        ...snapshots.hazelnut!,
+        mainClassification: 'MAIN_BLOCKED_POLICY',
+        behaviorRole: 'MAIN_ALLOWED',
+        mainCapability: 'MAIN_CAPABLE_UNCALIBRATED',
+        mainAuthority: 'USER_HELD',
+        mainCalibrationLevel: 'NONE',
+        mainPolicyId: null,
+        mainPolicyVersion: null,
+        ecoFloorPercent: null,
+        optimalCeilingPercent: null,
+        hardLimitPercent: null,
+        mainEquivalentFactor: null,
+        mainBasis: null,
+        moduleEligibility: {
+          ...snapshots.hazelnut!.moduleEligibility,
+          MAIN: 'eligible',
+        },
+      };
+      const result = buildOptimizePreview(input, { byLineId: {} }, '2026-08-25T03:40:00.000Z', {
+        productBehaviorSnapshots: snapshots,
+        technicalOnlyMainLineIds: [],
+        requirePracticalPreview: true,
+      });
+      expect(result.ok, JSON.stringify(result)).toBe(true);
+      if (!result.ok) return;
+      expect(result.preview.mainObjective).toBeDefined();
+      expect(mainTotal(result.preview.proposedInput)).toBeGreaterThanOrEqual(100);
+
+      const committed = commitPreview(
+        input,
+        { byLineId: {} },
+        result.preview,
+        '2026-08-25T03:40:01.000Z',
+        'served-hazelnut-crown-direction',
+        [],
+        undefined,
+        null,
+        null,
+        null,
+        null,
+        snapshots,
+        [],
+      );
+      expect(committed.ok, JSON.stringify(committed)).toBe(true);
+    }, 30_000);
+
+    // Full Direction sweep at 18 solver rounds — timeout budget only (see above).
+    it('does not cross the 20% ECO Main floor to chase an extreme Direction target', () => {
+      // 60 s, measured not guessed: this case runs ~17 s in isolation because the
+      // shared Direction NEAREST search adds probe solves to every
+      // Direction-active Preview, and it is the heaviest such case in the suite.
+      // The work is real, not a hang; the assertions are unchanged.
+      // Budget raised deliberately: the shared Direction NEAREST search adds up
+      // to DIRECTION_NEAREST_MAX_PROBES extra solves per Direction-active
+      // Preview, and this case builds many of them. The work is real, not a
+      // hang — the assertions themselves are unchanged.
+      const seedInput = watermelonFixture(300, 'eco');
+      const snapshots = snapshotsWithApprovedEnvelope(seedInput);
+      const seeded = buildOptimizePreview(seedInput, { byLineId: {} }, '2026-08-20T00:02:00.000Z', {
+        productBehaviorSnapshots: snapshots,
+      });
+      expect(seeded.ok, JSON.stringify(seeded)).toBe(true);
+      if (!seeded.ok) return;
+      const atFloor: RecipeInput = {
+        ...seeded.preview.proposedInput,
+        items: seeded.preview.proposedInput.items.map((item) =>
+          item.id === 'watermelon'
+            ? { ...item, planned_grams: 200 }
+            : item.id === 'milk'
+              ? { ...item, planned_grams: item.planned_grams + 250 }
+              : item,
+        ),
+        goals: {
+          ...seeded.preview.proposedInput.goals,
+          formulation_strategy: 'eco',
+          direction_targets_active: true,
+          direction_targets: { sweetness: -2, softness: -2, creaminess: 0, flavor: 0 },
+        },
+      };
+      const result = buildOptimizePreview(atFloor, { byLineId: {} }, '2026-08-20T00:03:00.000Z', {
+        productBehaviorSnapshots: snapshots,
+      });
+      if (!result.ok) {
+        expect(['no_proposal', 'already_clean', 'unsafe_proposal']).toContain(result.code);
+        if (result.code === 'no_proposal') expect(result.directionTargetUnreached).toBe(true);
+        // The manually constructed floor fixture may itself be physically
+        // invalid. Safety rejection is preferable to a Direction-driven Preview.
+        if (result.code === 'unsafe_proposal') {
+          expect(detectViolations(calculateRecipe(atFloor)).length).toBeGreaterThan(0);
+        }
+        return;
+      }
+      expect(mainTotal(result.preview.proposedInput)).toBeGreaterThanOrEqual(200);
+      expect(detectViolations(calculateRecipe(result.preview.proposedInput))).toEqual([]);
+    }, 60_000);
+    it('keeps Standard unlocked as a soft anchor instead of activating Main maximization', () => {
+      const main = build(watermelonFixture(300));
+      const standard = build(watermelonFixture(300, 'optimal', 'unlocked'));
+      expect(standard.mainObjective).toBeUndefined();
+      expect(
+        standard.proposedInput.items.find((item) => item.id === 'watermelon')!.planned_grams,
+      ).toBeLessThan(mainTotal(main.proposedInput));
+    });
+
+    it.each([
+      ['Watermelon', IDS.watermelon],
+      ['Kiwi', IDS.kiwi],
+    ] as const)(
+      'never treats correction-inulin-0 as ProductBehavior identity for Standard %s 700 g',
+      (_name, mainIngredientId) => {
+        const input: RecipeInput = {
+          ...singleMainFixture(mainIngredientId, 700),
+          items: singleMainFixture(mainIngredientId, 700).items.map((item) =>
+            item.id === 'single-main'
+              ? {
+                  ...item,
+                  lock_type: 'unlocked',
+                  user_intent_anchor_grams: 700,
+                }
+              : item,
+          ),
+        };
+        const result = buildOptimizePreview(input, { byLineId: {} }, '2026-08-18T10:00:00Z', {
+          productBehaviorSnapshots: productBehaviorTestSnapshots(input),
+        });
+        expect(JSON.stringify(result)).not.toContain(
+          'Brak zatwierdzonego uprawnienia OPTIMAL dla: correction-inulin-0',
+        );
+        if (!result.ok) {
+          expect(result.code).not.toBe('product_behavior_invalid');
+          return;
+        }
+        const canonicalInulin = result.preview.proposedInput.items.filter(
+          (item) => (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) === IDS.inulin,
+        );
+        expect(canonicalInulin).toHaveLength(1);
+        expect(canonicalInulin[0]?.id).toBe('inulin');
+      },
+    );
+
+    it('does not silently add absent canonical Inulin and recommends explicit selection', () => {
+      const input: RecipeInput = {
+        ...watermelonFixture(700, 'optimal', 'unlocked'),
+        items: watermelonFixture(700, 'optimal', 'unlocked')
+          .items.filter((item) => item.id !== 'inulin')
+          .map((item) =>
+            item.id === 'watermelon' ? { ...item, user_intent_anchor_grams: 700 } : item,
+          ),
+      };
+      const result = buildOptimizePreview(input, { byLineId: {} }, '2026-08-18T10:00:00Z', {
+        productBehaviorSnapshots: productBehaviorTestSnapshots(input),
+      });
+      expect(result.ok, JSON.stringify(result)).toBe(true);
+      if (!result.ok) return;
+      expect(
+        result.preview.proposedInput.items.some(
+          (item) =>
+            (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) === 'PI-ING-000456',
+        ),
+      ).toBe(false);
+    });
+
+    it('keeps Standard locked exact without activating Main maximization', () => {
+      const standard = watermelonFixture(300, 'optimal', 'unlocked');
+      const preview = build(standard, { watermelon: { mode: 'locked', grams: 300 } });
+      expect(preview.mainObjective).toBeUndefined();
+      expect(preview.proposedInput.items.find((item) => item.id === 'watermelon')).toMatchObject({
+        planned_grams: 300,
+        lock_type: 'unlocked',
+      });
+    });
+
+    it('accepts the served Sorbet vector when composition-sensitive ice is inside its native band', () => {
+      const input: RecipeInput = {
+        mode: 'classic',
+        category: 'sorbet',
+        target_temperature_c: -11,
+        target_batch_grams: 1000,
+        machine_capacity_grams: null,
+        goals: { formulation_strategy: 'eco' },
+        items: [
+          line('water', IDS.water, 181),
+          line('sucrose', IDS.sucrose, 104),
+          line('dextrose', IDS.dextrose, 59),
+          line('inulin', IDS.inulin, 55),
+          line('tara', IDS.tara, 2),
+          {
+            ...line('watermelon', IDS.watermelon, 600),
+            user_intent_anchor_grams: 600,
+          },
+        ],
+      };
+      const result = buildOptimizePreview(input, { byLineId: {} }, '2026-08-18T10:00:00Z', {
+        productBehaviorSnapshots: snapshotsWithApprovedEnvelope(input),
+        technicalOnlyMainLineIds: technicalOnlyMainLineIds(input),
+      });
+      expect(result.ok, JSON.stringify(result)).toBe(true);
+      if (!result.ok) return;
+      expect(result.preview).toMatchObject({
+        diagnosticOnly: false,
+        violationsBefore: 0,
+        violationsAfter: 0,
+        hardResidualMetrics: [],
+      });
+      const diagnostic = result.preview.residualMetricDiagnostics?.find(
+        (metric) => metric.metric === 'ice_fraction',
+      );
+      expect(diagnostic).toBeUndefined();
+      const calculated = calculateRecipe(result.preview.proposedInput);
+      expect(calculated.ice_fraction_percent).toBeGreaterThanOrEqual(51);
+      expect(calculated.ice_fraction_percent).toBeLessThanOrEqual(59);
+    });
+
+    it('keeps a Main gram lock exact and trustlessly applies the unlocked maximum', () => {
+      const lockedInput = watermelonFixture(200, 'optimal');
+      const locked = build(lockedInput, { watermelon: { mode: 'locked', grams: 200 } });
+      expect(
+        locked.proposedInput.items.find((item) => item.id === 'watermelon')!.planned_grams,
+      ).toBe(200);
+
+      const input = watermelonFixture(300, 'optimal');
+      const preview = build(input);
+      const committed = commitPreview(
+        input,
+        { byLineId: {} },
+        preview,
+        '2026-08-16T12:01:00.000Z',
+        'watermelon-main-maximum',
+        [],
+        undefined,
+        null,
+        null,
+        null,
+        null,
+        snapshotsWithApprovedEnvelope(input),
+        technicalOnlyMainLineIds(input),
+      );
+      expect(committed.ok, JSON.stringify(committed)).toBe(true);
+    });
+
+    it('names an impossible locked Main amount and the nearest technical correction', () => {
+      const input = watermelonFixture(900, 'optimal');
+      const result = buildOptimizePreview(
+        input,
+        { byLineId: { watermelon: { mode: 'locked', grams: 900 } } },
+        '2026-08-16T12:00:00.000Z',
+        {
+          productBehaviorSnapshots: snapshotsWithApprovedEnvelope(input),
+          technicalOnlyMainLineIds: technicalOnlyMainLineIds(input),
+        },
+      );
+      expect(result.ok, JSON.stringify(result)).toBe(false);
+      if (result.ok) return;
+      expect(result).toMatchObject({
+        code: 'impossible_under_constraints',
+        conflict: {
+          lineId: 'watermelon',
+          ingredientName: expect.stringContaining('WATERMELON'),
+          grams: 900,
+        },
+      });
+      if (result.code === 'impossible_under_constraints') {
+        expect(result.nearestFeasibleGrams).toBe(639);
+        expect(
+          [...result.hardViolatedMetrics, ...result.residualViolatedMetrics].length,
+        ).toBeGreaterThan(0);
+      }
+    });
+
+    it('stages and explicitly applies the Engine-verified correction for a hard-invalid Main lock', () => {
+      const priorRecipe = useRecipeStore.getState();
+      const priorStudio = useConstraintStudioStore.getState();
+      try {
+        const input = watermelonFixture(600, 'optimal');
+        input.items = input.items
+          .filter((item) => item.id !== 'inulin')
+          .map((item) => ({
+            ...item,
+            planned_grams:
+              {
+                milk: 70,
+                cream: 130,
+                smp: 35,
+                sucrose: 130,
+                dextrose: 30,
+                tara: 5,
+                watermelon: 600,
+              }[item.id] ?? item.planned_grams,
+          }));
+        const snapshots = snapshotsWithApprovedEnvelope(input);
+        useRecipeStore.getState().loadRecipeInput(input);
+        useRecipeStore.setState({
+          productBehaviorSnapshots: structuredClone(snapshots),
+          ownerReviewGate: {
+            status: 'OWNER_REVIEW_EDITABLE',
+            productionStatus: 'PRODUCTION_BLOCKED',
+            labelStatus: 'LABEL_BLOCKED',
+            omittedToppingLineIds: [],
+            technicalOnlyMainLineIds: [],
+          },
+        });
+        useConstraintStudioStore.getState().resetForTests();
+        useConstraintStudioStore.getState().toggleLock('watermelon');
+
+        const constraints = useConstraintStudioStore.getState().constraints;
+        const impossible = buildOptimizePreview(input, constraints, '2026-08-16T12:00:00.000Z', {
+          productBehaviorSnapshots: snapshots,
+          technicalOnlyMainLineIds: [],
+        });
+        expect(impossible).toMatchObject({ ok: false, code: 'impossible_under_constraints' });
+        if (impossible.ok || impossible.code !== 'impossible_under_constraints') return;
+        expect(impossible.nearestFeasibleGrams).not.toBeNull();
+        const recovered = buildSuggestedFixPreview(
+          input,
+          constraints,
+          {
+            type: 'set_max',
+            lineId: 'watermelon',
+            grams: impossible.nearestFeasibleGrams!,
+          },
+          '2026-08-16T12:00:00.000Z',
+        );
+        expect(recovered.ok, JSON.stringify(recovered)).toBe(true);
+        if (!recovered.ok) return;
+        const proposalSnapshots = snapshotsWithApprovedEnvelope(recovered.preview.proposedInput);
+
+        useConstraintStudioStore.getState().createOptimizePreview(proposalSnapshots);
+        const staged = useConstraintStudioStore.getState();
+        expect(staged.previewIssue).toBeNull();
+        expect(staged.recalculationTerminal).toEqual({ state: 'PREVIEW_READY' });
+        expect(staged.preview?.kind).toBe('suggested_fix');
+        expect(staged.preview?.safetyLockConflict).toMatchObject({
+          lineId: 'watermelon',
+          beforeGrams: 600,
+          boundary: 'maximum',
+          reason: 'constraint_feasibility',
+        });
+        const requiredGrams = staged.preview!.safetyLockConflict!.requiredGrams;
+        expect(requiredGrams).toBeGreaterThan(0);
+        expect(requiredGrams).toBeLessThan(600);
+
+        useConstraintStudioStore.getState().applyPreview();
+        expect(useConstraintStudioStore.getState().blocked).toBeNull();
+        expect(useConstraintStudioStore.getState().history).toHaveLength(1);
+        expect(
+          useRecipeStore.getState().items.find((item) => item.id === 'watermelon')?.planned_grams,
+        ).toBe(requiredGrams);
+        expect(useConstraintStudioStore.getState().constraints.byLineId.watermelon).toEqual({
+          mode: 'locked',
+          grams: requiredGrams,
+        });
+      } finally {
+        useRecipeStore.setState(priorRecipe, true);
+        useConstraintStudioStore.setState(priorStudio, true);
+      }
+    });
+
+    it('fails closed when a locked 1200 g Main line exceeds the 1000 g batch', () => {
+      const input = watermelonFixture(1200, 'optimal');
+      const result = buildOptimizePreview(
+        input,
+        { byLineId: { watermelon: { mode: 'locked', grams: 1200 } } },
+        '2026-08-16T12:00:00.000Z',
+        {
+          productBehaviorSnapshots: snapshotsWithApprovedEnvelope(input),
+          technicalOnlyMainLineIds: technicalOnlyMainLineIds(input),
+        },
+      );
+      expect(result).toMatchObject({
+        ok: false,
+        code: 'main_ratio_conflict',
+        lineIds: ['watermelon'],
+        ingredientNames: [expect.stringContaining('WATERMELON')],
+      });
+      if (!result.ok && result.code === 'main_ratio_conflict') {
+        expect(result.messagePl).toContain('1200.0 g');
+        expect(result.messagePl).toContain('1000.0 g');
+        expect(result.messagePl).toContain('nie zmniejszyło');
+      }
+    });
+
+    it('shows exact increase and automatic-reduction copy without a flavour ceiling', () => {
+      const increased = build(watermelonFixture(80, 'optimal'));
+      const reduced = build(watermelonFixture(900, 'optimal'));
+      expect(mainObjectiveSummaryPl(increased)).toBe(
+        'Maksymalizacja składnika głównego: Gellatti zmienia grupę główną z 80 g na 639 g i ponownie bilansuje całą recepturę.',
+      );
+      expect(mainObjectiveSummaryPl(reduced)).toBe(
+        'Automatyczna korekta składnika głównego: Gellatti zmienia grupę główną z 900 g na 639 g, czyli najwyższą wykonalną ilość, i ponownie bilansuje całą recepturę.',
+      );
+      expect(`${mainObjectiveSummaryPl(increased)} ${mainObjectiveSummaryPl(reduced)}`).not.toMatch(
+        /flavour|limit procent/i,
+      );
+
+      const boundedBest = structuredClone(increased);
+      boundedBest.mainObjective = {
+        ...boundedBest.mainObjective!,
+        status: 'best_achievable',
+        provenMaximum: false,
+        executableMainGrams: 600,
+        exactAcceptedMainGrams: 600,
+        certifiedUpperBoundGrams: 639,
+      };
+      expect(mainObjectiveSummaryPl(boundedBest)).toBe(
+        'Najlepszy osiągalny wynik: Gellatti zmienia grupę główną z 80 g na 600 g i ponownie bilansuje całą recepturę. To nie jest udowodnione maksimum. Certyfikowana górna granica: 639 g.',
+      );
+    });
+
+    it('rejects a forged maximum proof and a ratio changed after Preview', () => {
+      const input = watermelonFixture(300, 'optimal');
+      const preview = build(input);
+      const forged = structuredClone(preview);
+      if (!forged.mainObjective) throw new Error('missing Main proof');
+      forged.mainObjective.provenMaximum = false;
+      const forgedResult = commitPreview(
+        input,
+        { byLineId: {} },
+        forged,
+        '2026-08-16T12:02:00.000Z',
+        'forged',
+        [],
+        undefined,
+        null,
+        null,
+        null,
+        null,
+        snapshotsWithApprovedEnvelope(input),
+        technicalOnlyMainLineIds(input),
+      );
+      expect(forgedResult).toMatchObject({ ok: false, code: 'main_identity_violated' });
+
+      const multi = fixtureForRatioChange();
+      const multiPreview = build(multi);
+      const changedRatio: RecipeInput = {
+        ...multi,
+        items: multi.items.map((item) =>
+          item.id === 'main-0' ? { ...item, main_ratio_weight: 2 } : item,
+        ),
+      };
+      const stale = commitPreview(
+        changedRatio,
+        { byLineId: {} },
+        multiPreview,
+        '2026-08-16T12:03:00.000Z',
+        'stale-ratio',
+        [],
+      );
+      expect(stale).toMatchObject({ ok: false, code: 'stale_preview' });
+    });
+
+    it('requires the rebuilt maximum proof even when Main already starts at X', () => {
+      const input = watermelonFixture(639, 'optimal');
+      const preview = build(input);
+      expect(preview.mainObjective).toMatchObject({
+        status: 'maximized',
+        executableMainGrams: 639,
+        provenMaximum: true,
+      });
+      const forged = structuredClone(preview);
+      delete forged.mainObjective;
+      const result = commitPreview(
+        input,
+        { byLineId: {} },
+        forged,
+        '2026-08-16T12:02:30.000Z',
+        'forged-proof-at-x',
+        [],
+        undefined,
+        null,
+        null,
+        null,
+        null,
+        snapshotsWithApprovedEnvelope(input),
+        technicalOnlyMainLineIds(input),
+      );
+      expect(result).toMatchObject({ ok: false, code: 'main_identity_violated' });
+    });
+
+    it('keeps every Required line exact in the bound and executable candidate', () => {
+      const input = watermelonFixture(300, 'optimal');
+      input.items = input.items.map((item) =>
+        item.id === 'inulin'
+          ? {
+              ...item,
+              lock_type: 'required' as const,
+              grams_constraint: { grams: item.planned_grams },
+            }
+          : item,
+      );
+      const bound = mainTechnicalLinearUpperBound({
+        recipe: input,
+        constraints: { byLineId: {} },
+        snapshots: snapshotsWithApprovedEnvelope(input),
+      });
+      const inulinIndex = input.items.findIndex((item) => item.id === 'inulin');
+      expect(bound.continuousSolutionGrams?.[inulinIndex]).toBe(5);
+      const preview = build(input);
+      expect(preview.proposedInput.items.find((item) => item.id === 'inulin')).toMatchObject({
+        planned_grams: 5,
+        lock_type: 'required',
+      });
+    });
+
+    it('keeps the same liquid-dairy carrier floor in every candidate and the final Preview', () => {
+      const input = watermelonFixture(300, 'optimal');
       const snapshots = snapshotsWithApprovedEnvelope(input);
       snapshots.watermelon = {
         ...snapshots.watermelon!,
@@ -410,732 +1036,117 @@ describe('Main technical maximum — exact Watermelon authority', { timeout: SOL
         ...snapshots.milk!,
         approvedLiquidDairyCarrier: true,
       };
-      const result = buildOptimizePreview(input, { byLineId: {} }, '2026-08-19T00:00:00.000Z', {
-        productBehaviorSnapshots: snapshots,
-      });
-      expect(result.ok, JSON.stringify(result)).toBe(true);
-      if (!result.ok) throw new Error(JSON.stringify(result));
-      return result.preview;
-    };
-    const optimal = evaluate('optimal');
-    const eco = evaluate('eco');
-    expect(optimal.mainObjective).toMatchObject({
-      executableMainGrams: 350,
-      certifiedUpperBoundGrams: 350,
-      provenMaximum: true,
-      limitingTechnicalRules: ['main_policy_ceiling'],
-    });
-    expect(eco.mainObjective).toMatchObject({
-      executableMainGrams: 370,
-      certifiedUpperBoundGrams: 370,
-      provenMaximum: true,
-    });
-    expect(eco.mainObjective?.limitingTechnicalRules).toContain('liquid_dairy_carrier_min');
-  });
-
-  // Direction-driven Main-envelope searches run the full local-correction
-  // sweep, which at MAX_SOLVER_ROUNDS=18 exceeds the 5s per-test default on a
-  // loaded machine (measured worst case 8.7s). The budget below is a timeout,
-  // not a relaxed assertion — every expectation is unchanged.
-  it.each([
-    [-2, -2],
-    [-2, 2],
-    [2, -2],
-    [2, 2],
-  ] as const)(
-    'keeps a 45 percent fruit Main inside the approved envelope under Direction %i/%i',
-    (sweetness, softness) => {
-      const seedInput = watermelonFixture(300, 'eco');
-      const snapshots = snapshotsWithApprovedEnvelope(seedInput);
-      const seeded = buildOptimizePreview(seedInput, { byLineId: {} }, '2026-08-20T00:00:00.000Z', {
-        productBehaviorSnapshots: snapshots,
-      });
-      expect(seeded.ok, JSON.stringify(seeded)).toBe(true);
-      if (!seeded.ok) return;
-      expect(mainTotal(seeded.preview.proposedInput)).toBe(450);
-
-      const input: RecipeInput = {
-        ...seeded.preview.proposedInput,
-        goals: {
-          ...seeded.preview.proposedInput.goals,
-          formulation_strategy: 'eco',
-          direction_targets_active: true,
-          direction_targets: { sweetness, softness, creaminess: 0, flavor: 0 },
-        },
-      };
-      const beforeDirection = recipeDirectionViolations(input);
-      const result = buildOptimizePreview(input, { byLineId: {} }, '2026-08-20T00:01:00.000Z', {
-        productBehaviorSnapshots: snapshots,
-      });
-      if (!result.ok) {
-        if (result.code === 'already_clean') expect(beforeDirection).toEqual([]);
-        else if (result.code === 'no_proposal' && beforeDirection.length > 0) {
-          expect(result.directionTargetUnreached).toBe(true);
-          expect(result.solverInvocations ?? 0).toBeGreaterThan(0);
-        } else {
-          throw new Error(JSON.stringify(result));
-        }
-        return;
-      }
-
-      const after = result.preview.proposedInput;
-      expect(detectViolations(calculateRecipe(after))).toEqual([]);
-      expect(mainTotal(after)).toBeGreaterThanOrEqual(200);
-      expect(mainTotal(after)).toBeLessThanOrEqual(450);
-      expect(after.goals?.direction_targets).toEqual(input.goals?.direction_targets);
-    },
-    20_000,
-  );
-
-  it('trustlessly applies a sweetness target with the served Hazelnut Crown vector', () => {
-    const input: RecipeInput = {
-      mode: 'classic',
-      category: 'milk_gelato',
-      target_temperature_c: -11,
-      target_batch_grams: 1000,
-      machine_capacity_grams: null,
-      goals: {
-        formulation_strategy: 'eco',
-        direction_targets_active: true,
-        direction_targets: { sweetness: 1, softness: 0, creaminess: 0, flavor: 0 },
-      },
-      items: [
-        line('milk', IDS.milk, 480),
-        line('cream', IDS.cream, 214),
-        line('smp', IDS.smp, 48),
-        line('sucrose', IDS.sucrose, 109),
-        line('dextrose', IDS.dextrose, 46),
-        line('tara', IDS.tara, 3),
-        line('hazelnut', IDS.hazelnut, 100, 'main'),
-      ],
-    };
-    const snapshots = snapshotsWithApprovedEnvelope(input);
-    snapshots.hazelnut = {
-      ...snapshots.hazelnut!,
-      mainClassification: 'MAIN_BLOCKED_POLICY',
-      behaviorRole: 'MAIN_ALLOWED',
-      mainCapability: 'MAIN_CAPABLE_UNCALIBRATED',
-      mainAuthority: 'USER_HELD',
-      mainCalibrationLevel: 'NONE',
-      mainPolicyId: null,
-      mainPolicyVersion: null,
-      ecoFloorPercent: null,
-      optimalCeilingPercent: null,
-      hardLimitPercent: null,
-      mainEquivalentFactor: null,
-      mainBasis: null,
-      moduleEligibility: {
-        ...snapshots.hazelnut!.moduleEligibility,
-        MAIN: 'eligible',
-      },
-    };
-    const result = buildOptimizePreview(input, { byLineId: {} }, '2026-08-25T03:40:00.000Z', {
-      productBehaviorSnapshots: snapshots,
-      technicalOnlyMainLineIds: [],
-      requirePracticalPreview: true,
-    });
-    expect(result.ok, JSON.stringify(result)).toBe(true);
-    if (!result.ok) return;
-    expect(result.preview.mainObjective).toBeDefined();
-    expect(mainTotal(result.preview.proposedInput)).toBeGreaterThanOrEqual(100);
-
-    const committed = commitPreview(
-      input,
-      { byLineId: {} },
-      result.preview,
-      '2026-08-25T03:40:01.000Z',
-      'served-hazelnut-crown-direction',
-      [],
-      undefined,
-      null,
-      null,
-      null,
-      null,
-      snapshots,
-      [],
-    );
-    expect(committed.ok, JSON.stringify(committed)).toBe(true);
-  }, 30_000);
-
-  // Full Direction sweep at 18 solver rounds — timeout budget only (see above).
-  it('does not cross the 20% ECO Main floor to chase an extreme Direction target', () => {
-    // 60 s, measured not guessed: this case runs ~17 s in isolation because the
-    // shared Direction NEAREST search adds probe solves to every
-    // Direction-active Preview, and it is the heaviest such case in the suite.
-    // The work is real, not a hang; the assertions are unchanged.
-    // Budget raised deliberately: the shared Direction NEAREST search adds up
-    // to DIRECTION_NEAREST_MAX_PROBES extra solves per Direction-active
-    // Preview, and this case builds many of them. The work is real, not a
-    // hang — the assertions themselves are unchanged.
-    const seedInput = watermelonFixture(300, 'eco');
-    const snapshots = snapshotsWithApprovedEnvelope(seedInput);
-    const seeded = buildOptimizePreview(seedInput, { byLineId: {} }, '2026-08-20T00:02:00.000Z', {
-      productBehaviorSnapshots: snapshots,
-    });
-    expect(seeded.ok, JSON.stringify(seeded)).toBe(true);
-    if (!seeded.ok) return;
-    const atFloor: RecipeInput = {
-      ...seeded.preview.proposedInput,
-      items: seeded.preview.proposedInput.items.map((item) =>
-        item.id === 'watermelon'
-          ? { ...item, planned_grams: 200 }
-          : item.id === 'milk'
-            ? { ...item, planned_grams: item.planned_grams + 250 }
-            : item,
-      ),
-      goals: {
-        ...seeded.preview.proposedInput.goals,
-        formulation_strategy: 'eco',
-        direction_targets_active: true,
-        direction_targets: { sweetness: -2, softness: -2, creaminess: 0, flavor: 0 },
-      },
-    };
-    const result = buildOptimizePreview(atFloor, { byLineId: {} }, '2026-08-20T00:03:00.000Z', {
-      productBehaviorSnapshots: snapshots,
-    });
-    if (!result.ok) {
-      expect(['no_proposal', 'already_clean', 'unsafe_proposal']).toContain(result.code);
-      if (result.code === 'no_proposal') expect(result.directionTargetUnreached).toBe(true);
-      // The manually constructed floor fixture may itself be physically
-      // invalid. Safety rejection is preferable to a Direction-driven Preview.
-      if (result.code === 'unsafe_proposal') {
-        expect(detectViolations(calculateRecipe(atFloor)).length).toBeGreaterThan(0);
-      }
-      return;
-    }
-    expect(mainTotal(result.preview.proposedInput)).toBeGreaterThanOrEqual(200);
-    expect(detectViolations(calculateRecipe(result.preview.proposedInput))).toEqual([]);
-  }, 60_000);
-  it('keeps Standard unlocked as a soft anchor instead of activating Main maximization', () => {
-    const main = build(watermelonFixture(300));
-    const standard = build(watermelonFixture(300, 'optimal', 'unlocked'));
-    expect(standard.mainObjective).toBeUndefined();
-    expect(
-      standard.proposedInput.items.find((item) => item.id === 'watermelon')!.planned_grams,
-    ).toBeLessThan(mainTotal(main.proposedInput));
-  });
-
-  it.each([
-    ['Watermelon', IDS.watermelon],
-    ['Kiwi', IDS.kiwi],
-  ] as const)(
-    'never treats correction-inulin-0 as ProductBehavior identity for Standard %s 700 g',
-    (_name, mainIngredientId) => {
-      const input: RecipeInput = {
-        ...singleMainFixture(mainIngredientId, 700),
-        items: singleMainFixture(mainIngredientId, 700).items.map((item) =>
-          item.id === 'single-main'
-            ? {
-                ...item,
-                lock_type: 'unlocked',
-                user_intent_anchor_grams: 700,
-              }
-            : item,
-        ),
-      };
-      const result = buildOptimizePreview(input, { byLineId: {} }, '2026-08-18T10:00:00Z', {
-        productBehaviorSnapshots: productBehaviorTestSnapshots(input),
-      });
-      expect(JSON.stringify(result)).not.toContain(
-        'Brak zatwierdzonego uprawnienia OPTIMAL dla: correction-inulin-0',
-      );
-      if (!result.ok) {
-        expect(result.code).not.toBe('product_behavior_invalid');
-        return;
-      }
-      const canonicalInulin = result.preview.proposedInput.items.filter(
-        (item) => (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) === IDS.inulin,
-      );
-      expect(canonicalInulin).toHaveLength(1);
-      expect(canonicalInulin[0]?.id).toBe('inulin');
-    },
-  );
-
-  it('does not silently add absent canonical Inulin and recommends explicit selection', () => {
-    const input: RecipeInput = {
-      ...watermelonFixture(700, 'optimal', 'unlocked'),
-      items: watermelonFixture(700, 'optimal', 'unlocked')
-        .items.filter((item) => item.id !== 'inulin')
-        .map((item) =>
-          item.id === 'watermelon' ? { ...item, user_intent_anchor_grams: 700 } : item,
-        ),
-    };
-    const result = buildOptimizePreview(input, { byLineId: {} }, '2026-08-18T10:00:00Z', {
-      productBehaviorSnapshots: productBehaviorTestSnapshots(input),
-    });
-    expect(result.ok, JSON.stringify(result)).toBe(true);
-    if (!result.ok) return;
-    expect(
-      result.preview.proposedInput.items.some(
-        (item) =>
-          (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) === 'PI-ING-000456',
-      ),
-    ).toBe(false);
-  });
-
-  it('keeps Standard locked exact without activating Main maximization', () => {
-    const standard = watermelonFixture(300, 'optimal', 'unlocked');
-    const preview = build(standard, { watermelon: { mode: 'locked', grams: 300 } });
-    expect(preview.mainObjective).toBeUndefined();
-    expect(preview.proposedInput.items.find((item) => item.id === 'watermelon')).toMatchObject({
-      planned_grams: 300,
-      lock_type: 'unlocked',
-    });
-  });
-
-  it('accepts the served Sorbet vector when composition-sensitive ice is inside its native band', () => {
-    const input: RecipeInput = {
-      mode: 'classic',
-      category: 'sorbet',
-      target_temperature_c: -11,
-      target_batch_grams: 1000,
-      machine_capacity_grams: null,
-      goals: { formulation_strategy: 'eco' },
-      items: [
-        line('water', IDS.water, 181),
-        line('sucrose', IDS.sucrose, 104),
-        line('dextrose', IDS.dextrose, 59),
-        line('inulin', IDS.inulin, 55),
-        line('tara', IDS.tara, 2),
-        {
-          ...line('watermelon', IDS.watermelon, 600),
-          user_intent_anchor_grams: 600,
-        },
-      ],
-    };
-    const result = buildOptimizePreview(input, { byLineId: {} }, '2026-08-18T10:00:00Z', {
-      productBehaviorSnapshots: snapshotsWithApprovedEnvelope(input),
-      technicalOnlyMainLineIds: technicalOnlyMainLineIds(input),
-    });
-    expect(result.ok, JSON.stringify(result)).toBe(true);
-    if (!result.ok) return;
-    expect(result.preview).toMatchObject({
-      diagnosticOnly: false,
-      violationsBefore: 0,
-      violationsAfter: 0,
-      hardResidualMetrics: [],
-    });
-    const diagnostic = result.preview.residualMetricDiagnostics?.find(
-      (metric) => metric.metric === 'ice_fraction',
-    );
-    expect(diagnostic).toBeUndefined();
-    const calculated = calculateRecipe(result.preview.proposedInput);
-    expect(calculated.ice_fraction_percent).toBeGreaterThanOrEqual(51);
-    expect(calculated.ice_fraction_percent).toBeLessThanOrEqual(59);
-  });
-
-  it('keeps a Main gram lock exact and trustlessly applies the unlocked maximum', () => {
-    const lockedInput = watermelonFixture(200, 'optimal');
-    const locked = build(lockedInput, { watermelon: { mode: 'locked', grams: 200 } });
-    expect(locked.proposedInput.items.find((item) => item.id === 'watermelon')!.planned_grams).toBe(
-      200,
-    );
-
-    const input = watermelonFixture(300, 'optimal');
-    const preview = build(input);
-    const committed = commitPreview(
-      input,
-      { byLineId: {} },
-      preview,
-      '2026-08-16T12:01:00.000Z',
-      'watermelon-main-maximum',
-      [],
-      undefined,
-      null,
-      null,
-      null,
-      null,
-      snapshotsWithApprovedEnvelope(input),
-      technicalOnlyMainLineIds(input),
-    );
-    expect(committed.ok, JSON.stringify(committed)).toBe(true);
-  });
-
-  it('names an impossible locked Main amount and the nearest technical correction', () => {
-    const input = watermelonFixture(900, 'optimal');
-    const result = buildOptimizePreview(
-      input,
-      { byLineId: { watermelon: { mode: 'locked', grams: 900 } } },
-      '2026-08-16T12:00:00.000Z',
-      {
-        productBehaviorSnapshots: snapshotsWithApprovedEnvelope(input),
-        technicalOnlyMainLineIds: technicalOnlyMainLineIds(input),
-      },
-    );
-    expect(result.ok, JSON.stringify(result)).toBe(false);
-    if (result.ok) return;
-    expect(result).toMatchObject({
-      code: 'impossible_under_constraints',
-      conflict: {
-        lineId: 'watermelon',
-        ingredientName: expect.stringContaining('WATERMELON'),
-        grams: 900,
-      },
-    });
-    if (result.code === 'impossible_under_constraints') {
-      expect(result.nearestFeasibleGrams).toBe(639);
-      expect(
-        [...result.hardViolatedMetrics, ...result.residualViolatedMetrics].length,
-      ).toBeGreaterThan(0);
-    }
-  });
-
-  it('stages and explicitly applies the Engine-verified correction for a hard-invalid Main lock', () => {
-    const priorRecipe = useRecipeStore.getState();
-    const priorStudio = useConstraintStudioStore.getState();
-    try {
-      const input = watermelonFixture(600, 'optimal');
-      input.items = input.items
-        .filter((item) => item.id !== 'inulin')
-        .map((item) => ({
-          ...item,
-          planned_grams:
-            {
-              milk: 70,
-              cream: 130,
-              smp: 35,
-              sucrose: 130,
-              dextrose: 30,
-              tara: 5,
-              watermelon: 600,
-            }[item.id] ?? item.planned_grams,
-        }));
-      const snapshots = snapshotsWithApprovedEnvelope(input);
-      useRecipeStore.getState().loadRecipeInput(input);
-      useRecipeStore.setState({
-        productBehaviorSnapshots: structuredClone(snapshots),
-        ownerReviewGate: {
-          status: 'OWNER_REVIEW_EDITABLE',
-          productionStatus: 'PRODUCTION_BLOCKED',
-          labelStatus: 'LABEL_BLOCKED',
-          omittedToppingLineIds: [],
-          technicalOnlyMainLineIds: [],
-        },
-      });
-      useConstraintStudioStore.getState().resetForTests();
-      useConstraintStudioStore.getState().toggleLock('watermelon');
-
-      const constraints = useConstraintStudioStore.getState().constraints;
-      const impossible = buildOptimizePreview(input, constraints, '2026-08-16T12:00:00.000Z', {
-        productBehaviorSnapshots: snapshots,
-        technicalOnlyMainLineIds: [],
-      });
-      expect(impossible).toMatchObject({ ok: false, code: 'impossible_under_constraints' });
-      if (impossible.ok || impossible.code !== 'impossible_under_constraints') return;
-      expect(impossible.nearestFeasibleGrams).not.toBeNull();
-      const recovered = buildSuggestedFixPreview(
-        input,
-        constraints,
-        {
-          type: 'set_max',
-          lineId: 'watermelon',
-          grams: impossible.nearestFeasibleGrams!,
-        },
-        '2026-08-16T12:00:00.000Z',
-      );
-      expect(recovered.ok, JSON.stringify(recovered)).toBe(true);
-      if (!recovered.ok) return;
-      const proposalSnapshots = snapshotsWithApprovedEnvelope(recovered.preview.proposedInput);
-
-      useConstraintStudioStore.getState().createOptimizePreview(proposalSnapshots);
-      const staged = useConstraintStudioStore.getState();
-      expect(staged.previewIssue).toBeNull();
-      expect(staged.recalculationTerminal).toEqual({ state: 'PREVIEW_READY' });
-      expect(staged.preview?.kind).toBe('suggested_fix');
-      expect(staged.preview?.safetyLockConflict).toMatchObject({
-        lineId: 'watermelon',
-        beforeGrams: 600,
-        boundary: 'maximum',
-        reason: 'constraint_feasibility',
-      });
-      const requiredGrams = staged.preview!.safetyLockConflict!.requiredGrams;
-      expect(requiredGrams).toBeGreaterThan(0);
-      expect(requiredGrams).toBeLessThan(600);
-
-      useConstraintStudioStore.getState().applyPreview();
-      expect(useConstraintStudioStore.getState().blocked).toBeNull();
-      expect(useConstraintStudioStore.getState().history).toHaveLength(1);
-      expect(
-        useRecipeStore.getState().items.find((item) => item.id === 'watermelon')?.planned_grams,
-      ).toBe(requiredGrams);
-      expect(useConstraintStudioStore.getState().constraints.byLineId.watermelon).toEqual({
-        mode: 'locked',
-        grams: requiredGrams,
-      });
-    } finally {
-      useRecipeStore.setState(priorRecipe, true);
-      useConstraintStudioStore.setState(priorStudio, true);
-    }
-  });
-
-  it('fails closed when a locked 1200 g Main line exceeds the 1000 g batch', () => {
-    const input = watermelonFixture(1200, 'optimal');
-    const result = buildOptimizePreview(
-      input,
-      { byLineId: { watermelon: { mode: 'locked', grams: 1200 } } },
-      '2026-08-16T12:00:00.000Z',
-      {
-        productBehaviorSnapshots: snapshotsWithApprovedEnvelope(input),
-        technicalOnlyMainLineIds: technicalOnlyMainLineIds(input),
-      },
-    );
-    expect(result).toMatchObject({
-      ok: false,
-      code: 'main_ratio_conflict',
-      lineIds: ['watermelon'],
-      ingredientNames: [expect.stringContaining('WATERMELON')],
-    });
-    if (!result.ok && result.code === 'main_ratio_conflict') {
-      expect(result.messagePl).toContain('1200.0 g');
-      expect(result.messagePl).toContain('1000.0 g');
-      expect(result.messagePl).toContain('nie zmniejszyło');
-    }
-  });
-
-  it('shows exact increase and automatic-reduction copy without a flavour ceiling', () => {
-    const increased = build(watermelonFixture(80, 'optimal'));
-    const reduced = build(watermelonFixture(900, 'optimal'));
-    expect(mainObjectiveSummaryPl(increased)).toBe(
-      'Maksymalizacja składnika Głównego: PI zmienia grupę Główną z 80 g na 639 g i ponownie bilansuje całą recepturę.',
-    );
-    expect(mainObjectiveSummaryPl(reduced)).toBe(
-      'Automatyczna korekta składnika Głównego: PI zmienia grupę Główną z 900 g na 639 g, czyli najwyższą technicznie wykonalną ilość, i ponownie bilansuje całą recepturę.',
-    );
-    expect(`${mainObjectiveSummaryPl(increased)} ${mainObjectiveSummaryPl(reduced)}`).not.toMatch(
-      /flavour|limit procent/i,
-    );
-
-    const boundedBest = structuredClone(increased);
-    boundedBest.mainObjective = {
-      ...boundedBest.mainObjective!,
-      status: 'best_achievable',
-      provenMaximum: false,
-      executableMainGrams: 600,
-      exactAcceptedMainGrams: 600,
-      certifiedUpperBoundGrams: 639,
-    };
-    expect(mainObjectiveSummaryPl(boundedBest)).toBe(
-      'BEST_ACHIEVABLE: PI zmienia grupę Główną z 80 g na 600 g i ponownie bilansuje całą recepturę. To nie jest udowodnione maksimum. Certyfikowana górna granica: 639 g.',
-    );
-  });
-
-  it('rejects a forged maximum proof and a ratio changed after Preview', () => {
-    const input = watermelonFixture(300, 'optimal');
-    const preview = build(input);
-    const forged = structuredClone(preview);
-    if (!forged.mainObjective) throw new Error('missing Main proof');
-    forged.mainObjective.provenMaximum = false;
-    const forgedResult = commitPreview(
-      input,
-      { byLineId: {} },
-      forged,
-      '2026-08-16T12:02:00.000Z',
-      'forged',
-      [],
-      undefined,
-      null,
-      null,
-      null,
-      null,
-      snapshotsWithApprovedEnvelope(input),
-      technicalOnlyMainLineIds(input),
-    );
-    expect(forgedResult).toMatchObject({ ok: false, code: 'main_identity_violated' });
-
-    const multi = fixtureForRatioChange();
-    const multiPreview = build(multi);
-    const changedRatio: RecipeInput = {
-      ...multi,
-      items: multi.items.map((item) =>
-        item.id === 'main-0' ? { ...item, main_ratio_weight: 2 } : item,
-      ),
-    };
-    const stale = commitPreview(
-      changedRatio,
-      { byLineId: {} },
-      multiPreview,
-      '2026-08-16T12:03:00.000Z',
-      'stale-ratio',
-      [],
-    );
-    expect(stale).toMatchObject({ ok: false, code: 'stale_preview' });
-  });
-
-  it('requires the rebuilt maximum proof even when Main already starts at X', () => {
-    const input = watermelonFixture(639, 'optimal');
-    const preview = build(input);
-    expect(preview.mainObjective).toMatchObject({
-      status: 'maximized',
-      executableMainGrams: 639,
-      provenMaximum: true,
-    });
-    const forged = structuredClone(preview);
-    delete forged.mainObjective;
-    const result = commitPreview(
-      input,
-      { byLineId: {} },
-      forged,
-      '2026-08-16T12:02:30.000Z',
-      'forged-proof-at-x',
-      [],
-      undefined,
-      null,
-      null,
-      null,
-      null,
-      snapshotsWithApprovedEnvelope(input),
-      technicalOnlyMainLineIds(input),
-    );
-    expect(result).toMatchObject({ ok: false, code: 'main_identity_violated' });
-  });
-
-  it('keeps every Required line exact in the bound and executable candidate', () => {
-    const input = watermelonFixture(300, 'optimal');
-    input.items = input.items.map((item) =>
-      item.id === 'inulin'
-        ? {
-            ...item,
-            lock_type: 'required' as const,
-            grams_constraint: { grams: item.planned_grams },
-          }
-        : item,
-    );
-    const bound = mainTechnicalLinearUpperBound({
-      recipe: input,
-      constraints: { byLineId: {} },
-      snapshots: snapshotsWithApprovedEnvelope(input),
-    });
-    const inulinIndex = input.items.findIndex((item) => item.id === 'inulin');
-    expect(bound.continuousSolutionGrams?.[inulinIndex]).toBe(5);
-    const preview = build(input);
-    expect(preview.proposedInput.items.find((item) => item.id === 'inulin')).toMatchObject({
-      planned_grams: 5,
-      lock_type: 'required',
-    });
-  });
-
-  it('keeps the same liquid-dairy carrier floor in every candidate and the final Preview', () => {
-    const input = watermelonFixture(300, 'optimal');
-    const snapshots = snapshotsWithApprovedEnvelope(input);
-    snapshots.watermelon = {
-      ...snapshots.watermelon!,
-      requiresLiquidDairyCarrier: true,
-      liquidDairyCarrierFloorPercent: 30,
-    };
-    snapshots.milk = {
-      ...snapshots.milk!,
-      approvedLiquidDairyCarrier: true,
-    };
-    const result = buildOptimizePreview(input, { byLineId: {} }, '2026-08-16T12:00:00.000Z', {
-      productBehaviorSnapshots: snapshots,
-    });
-    expect(result.ok, JSON.stringify(result)).toBe(true);
-    if (!result.ok) return;
-    expect(
-      result.preview.proposedInput.items.find((item) => item.id === 'milk')!.planned_grams,
-    ).toBeGreaterThanOrEqual(300);
-    expect(detectViolations(calculateRecipe(result.preview.proposedInput))).toEqual([]);
-    expect(result.preview.mainObjective?.executableMainGrams).toBeGreaterThan(0);
-  });
-
-  it('is deterministic within the bounded proof budget', () => {
-    expect(Number.isFinite(MAIN_TECHNICAL_PROBE_BUDGET)).toBe(true);
-    expect(MAIN_TECHNICAL_PROBE_BUDGET).toBeGreaterThanOrEqual(1200);
-    const input = watermelonFixture(300, 'optimal');
-    const first = build(input);
-    const second = build(input);
-    expect(second.proposedInput.items.map((item) => [item.id, item.planned_grams])).toEqual(
-      first.proposedInput.items.map((item) => [item.id, item.planned_grams]),
-    );
-    expect(second.mainObjective).toEqual(first.mainObjective);
-    expect(second.baseFingerprint).toBe(first.baseFingerprint);
-    expect(workingStateFingerprint(second.proposedInput, second.nextConstraints)).toBe(
-      workingStateFingerprint(first.proposedInput, first.nextConstraints),
-    );
-    expect(first.mainObjective?.attempts).toBeLessThanOrEqual(MAIN_TECHNICAL_PROBE_BUDGET);
-  });
-
-  it.each([
-    ['Banana Fresh Fruit', IDS.banana],
-    ['Kiwi Fresh Fruit', IDS.kiwi],
-    ['Coffee with complete composition', IDS.coffee],
-  ] as const)('maximizes another complete single-Main fixture: %s', (_name, ingredientId) => {
-    const input = singleMainFixture(ingredientId);
-    const preview = build(input);
-    expect(['maximized', 'best_achievable']).toContain(preview.mainObjective?.status);
-    expect(mainTotal(preview.proposedInput)).toBeGreaterThan(0);
-    expect(preview.proposedInput.items.reduce((sum, item) => sum + item.planned_grams, 0)).toBe(
-      1000,
-    );
-    expect(detectViolations(calculateRecipe(preview.proposedInput))).toEqual([]);
-  });
-
-  it('keeps Estimated, Verified and customer/manual provenance informational', () => {
-    const outcomes = ['estimated', 'verified', 'customer_added', 'manual_unverified'] as const;
-    const maxima = outcomes.map((verificationState) => {
-      const input = watermelonFixture(300, 'optimal');
-      const snapshots = snapshotsWithApprovedEnvelope(input);
-      snapshots.watermelon = { ...snapshots.watermelon!, verificationState };
       const result = buildOptimizePreview(input, { byLineId: {} }, '2026-08-16T12:00:00.000Z', {
         productBehaviorSnapshots: snapshots,
       });
-      expect(result.ok, `${verificationState}: ${JSON.stringify(result)}`).toBe(true);
-      if (!result.ok) return null;
-      return result.preview.mainObjective?.executableMainGrams ?? null;
+      expect(result.ok, JSON.stringify(result)).toBe(true);
+      if (!result.ok) return;
+      expect(
+        result.preview.proposedInput.items.find((item) => item.id === 'milk')!.planned_grams,
+      ).toBeGreaterThanOrEqual(300);
+      expect(detectViolations(calculateRecipe(result.preview.proposedInput))).toEqual([]);
+      expect(result.preview.mainObjective?.executableMainGrams).toBeGreaterThan(0);
     });
-    expect(maxima).toEqual([350, 350, 350, 350]);
-  });
 
-  it('maximizes a customer/manual product with complete technical composition', () => {
-    const productId = 'customer-watermelon-complete';
-    const input = watermelonFixture(300, 'optimal');
-    input.items = input.items.map((item) =>
-      item.id === 'watermelon'
-        ? {
-            ...item,
-            ingredient: {
-              ...item.ingredient,
-              id: 'customer-watermelon',
-              canonical_ingredient_id: undefined,
-              identity_provenance: 'private_product',
-              private_product_id: productId,
-            },
-          }
-        : item,
-    );
-    const snapshots = snapshotsWithApprovedEnvelope(input);
-    snapshots.watermelon = {
-      ...snapshots.watermelon!,
-      productId,
-      productVersionId: 'customer-watermelon-version-1',
-      source: 'manual',
-      verificationState: 'customer_added',
-      mapperIngredientId: null,
-      technicalAuthority: 'approved_pi_calculation',
-    };
-    const result = buildOptimizePreview(input, { byLineId: {} }, '2026-08-16T12:00:00.000Z', {
-      productBehaviorSnapshots: snapshots,
+    it('is deterministic within the bounded proof budget', () => {
+      expect(Number.isFinite(MAIN_TECHNICAL_PROBE_BUDGET)).toBe(true);
+      expect(MAIN_TECHNICAL_PROBE_BUDGET).toBeGreaterThanOrEqual(1200);
+      const input = watermelonFixture(300, 'optimal');
+      const first = build(input);
+      const second = build(input);
+      expect(second.proposedInput.items.map((item) => [item.id, item.planned_grams])).toEqual(
+        first.proposedInput.items.map((item) => [item.id, item.planned_grams]),
+      );
+      expect(second.mainObjective).toEqual(first.mainObjective);
+      expect(second.baseFingerprint).toBe(first.baseFingerprint);
+      expect(workingStateFingerprint(second.proposedInput, second.nextConstraints)).toBe(
+        workingStateFingerprint(first.proposedInput, first.nextConstraints),
+      );
+      expect(first.mainObjective?.attempts).toBeLessThanOrEqual(MAIN_TECHNICAL_PROBE_BUDGET);
     });
-    expect(result.ok, JSON.stringify(result)).toBe(true);
-    if (!result.ok) return;
-    expect(result.preview.mainObjective?.executableMainGrams).toBe(350);
-    expect(detectViolations(calculateRecipe(result.preview.proposedInput))).toEqual([]);
-  });
 
-  it.each([
-    ['Watermelon 300 g', 300, false],
-    ['Watermelon 500 g', 500, false],
-    ['locked Watermelon 200 g', 200, true],
-  ] as const)('Apply then Undo restores the exact %s draft', (_name, grams, locked) => {
-    expectExactApplyUndo(watermelonFixture(grams, 'optimal'), {
-      byLineId: locked ? { watermelon: { mode: 'locked', grams } } : {},
+    it.each([
+      ['Banana Fresh Fruit', IDS.banana],
+      ['Kiwi Fresh Fruit', IDS.kiwi],
+      ['Coffee with complete composition', IDS.coffee],
+    ] as const)('maximizes another complete single-Main fixture: %s', (_name, ingredientId) => {
+      const input = singleMainFixture(ingredientId);
+      const preview = build(input);
+      expect(['maximized', 'best_achievable']).toContain(preview.mainObjective?.status);
+      expect(mainTotal(preview.proposedInput)).toBeGreaterThan(0);
+      expect(preview.proposedInput.items.reduce((sum, item) => sum + item.planned_grams, 0)).toBe(
+        1000,
+      );
+      expect(detectViolations(calculateRecipe(preview.proposedInput))).toEqual([]);
     });
-  });
 
-  it('Apply then Undo restores the exact Kiwi 1200 g draft', () => {
-    expectExactApplyUndo(singleMainFixture(IDS.kiwi, 1200), { byLineId: {} });
-  });
-});
+    it('keeps Estimated, Verified and customer/manual provenance informational', () => {
+      const outcomes = ['estimated', 'verified', 'customer_added', 'manual_unverified'] as const;
+      const maxima = outcomes.map((verificationState) => {
+        const input = watermelonFixture(300, 'optimal');
+        const snapshots = snapshotsWithApprovedEnvelope(input);
+        snapshots.watermelon = { ...snapshots.watermelon!, verificationState };
+        const result = buildOptimizePreview(input, { byLineId: {} }, '2026-08-16T12:00:00.000Z', {
+          productBehaviorSnapshots: snapshots,
+        });
+        expect(result.ok, `${verificationState}: ${JSON.stringify(result)}`).toBe(true);
+        if (!result.ok) return null;
+        return result.preview.mainObjective?.executableMainGrams ?? null;
+      });
+      expect(maxima).toEqual([350, 350, 350, 350]);
+    });
+
+    it('maximizes a customer/manual product with complete technical composition', () => {
+      const productId = 'customer-watermelon-complete';
+      const input = watermelonFixture(300, 'optimal');
+      input.items = input.items.map((item) =>
+        item.id === 'watermelon'
+          ? {
+              ...item,
+              ingredient: {
+                ...item.ingredient,
+                id: 'customer-watermelon',
+                canonical_ingredient_id: undefined,
+                identity_provenance: 'private_product',
+                private_product_id: productId,
+              },
+            }
+          : item,
+      );
+      const snapshots = snapshotsWithApprovedEnvelope(input);
+      snapshots.watermelon = {
+        ...snapshots.watermelon!,
+        productId,
+        productVersionId: 'customer-watermelon-version-1',
+        source: 'manual',
+        verificationState: 'customer_added',
+        mapperIngredientId: null,
+        technicalAuthority: 'approved_pi_calculation',
+      };
+      const result = buildOptimizePreview(input, { byLineId: {} }, '2026-08-16T12:00:00.000Z', {
+        productBehaviorSnapshots: snapshots,
+      });
+      expect(result.ok, JSON.stringify(result)).toBe(true);
+      if (!result.ok) return;
+      expect(result.preview.mainObjective?.executableMainGrams).toBe(350);
+      expect(detectViolations(calculateRecipe(result.preview.proposedInput))).toEqual([]);
+    });
+
+    it.each([
+      ['Watermelon 300 g', 300, false],
+      ['Watermelon 500 g', 500, false],
+      ['locked Watermelon 200 g', 200, true],
+    ] as const)('Apply then Undo restores the exact %s draft', (_name, grams, locked) => {
+      expectExactApplyUndo(watermelonFixture(grams, 'optimal'), {
+        byLineId: locked ? { watermelon: { mode: 'locked', grams } } : {},
+      });
+    });
+
+    it('Apply then Undo restores the exact Kiwi 1200 g draft', () => {
+      expectExactApplyUndo(singleMainFixture(IDS.kiwi, 1200), { byLineId: {} });
+    });
+  },
+);
 
 describe('Multi-Main ratio contract', { timeout: SOLVER_PROOF_TIMEOUT_MS }, () => {
   const fixture = (

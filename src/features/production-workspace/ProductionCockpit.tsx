@@ -55,9 +55,7 @@ function HeatInformationCard({ production }: { production: ProductionWorkspaceVi
       data-testid="production-heat-information"
       data-acknowledged={acknowledged ? 'true' : 'false'}
     >
-      <p className="text-xs font-semibold leading-relaxed">
-        Pamiętaj o obróbce
-      </p>
+      <p className="text-xs font-semibold leading-relaxed">Pamiętaj o obróbce</p>
       <p className="mt-1 text-[11px] leading-relaxed text-stone-600">
         Dla poniższych składników wskazana jest obróbka na ciepło:
       </p>
@@ -411,7 +409,7 @@ export function ProductionCockpit({
               onClick={prerequisite ? prerequisiteAction : () => void production.startNewSession()}
               className={cn(buttonClasses('ghost', 'md'), 'w-full sm:w-auto')}
             >
-              {prerequisite ? prerequisite.actionLabel : 'Rozpocznij nową partię'}
+              {prerequisite ? prerequisite.actionLabel : 'Rozpocznij partię'}
             </button>
           </div>
           {prerequisite ? (
@@ -530,7 +528,7 @@ export function ProductionCockpit({
               : `Pozostały ${toppingRemaining} toppingi`
             : session.addonLines.length > 0
               ? 'Zakończ produkcję'
-            : 'Zakończ ważenie bazy';
+              : 'Zakończ ważenie bazy';
   const progressPercent =
     progress.totalCount > 0 ? (progress.confirmedCount / progress.totalCount) * 100 : 0;
 

@@ -369,7 +369,7 @@ describe('ConstraintPreviewCard (§19.1)', () => {
     expect(rendered).toContain('Blokada przekracza zatwierdzony zakres systemu stabilizatora');
     expect(rendered).toContain('55 g');
     expect(rendered).toContain('10 g');
-    expect(rendered).toContain('Nic nie zmieni się bez Apply');
+    expect(rendered).toContain('Nic nie zmieni się bez użycia „Zastosuj zmiany”');
   });
 
   it('discloses an Engine-verified hard-constraint lock transition without calling it dosage', () => {
@@ -392,9 +392,9 @@ describe('ConstraintPreviewCard (§19.1)', () => {
     );
     expect(rendered).toContain('data-testid="preview-safety-lock-conflict"');
     expect(rendered).toContain('Blokada wymusza twardo nieprawidłową recepturę');
-    expect(rendered).toContain('kanoniczne reguły i Engine');
+    expect(rendered).toContain('zatwierdzone reguły obliczeń');
     expect(rendered).not.toContain('zakres systemu stabilizatora');
-    expect(rendered).toContain('Nic nie zmieni się bez Apply');
+    expect(rendered).toContain('Nic nie zmieni się bez użycia „Zastosuj zmiany”');
   });
 
   it.each([
@@ -522,9 +522,9 @@ describe('ConstraintPreviewCard (§19.1)', () => {
     expect(rendered).toContain('data-testid="preview-score-arc"');
     expect(rendered).toContain(render(<ScoreRing score={10} testId="preview-score" />));
     expect(rendered).toContain(
-      'Kierunek osiągnięty tylko w podglądzie diagnostycznym. Receptura nadal nie jest gotowa do Apply.',
+      'Kierunek osiągnięty tylko w podglądzie diagnostycznym. Receptura nadal nie jest gotowa do zastosowania.',
     );
-    expect(rendered).not.toContain('PI osiągnęło wybrany profil.');
+    expect(rendered).not.toContain('Gellatti osiągnęło wybrany profil.');
     expect(rendered).toContain('data-testid="preview-apply-disabled"');
   });
 });

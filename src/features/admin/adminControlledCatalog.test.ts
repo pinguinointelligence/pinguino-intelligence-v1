@@ -115,22 +115,22 @@ describe('controlled customer product intake', () => {
     expect(requestExactCandidateColumns).toContain('candidate_variant.ean');
     const workspace = read('src', 'pages', 'admin', 'AdminWorkspacePage.tsx');
     for (const label of [
-      'User filter',
-      'Brand filter',
-      'EAN filter',
-      'Market country filter',
-      'Submitted from date filter',
-      'Submitted to date filter',
-      'Minimum age days',
-      'Assigned Admin filter',
-      'Missing field filter',
-      'Exact match candidate filter',
-      'Request source filter',
+      'Filtr użytkownika',
+      'Filtr marki',
+      'Filtr EAN',
+      'Filtr kraju rynku',
+      'Filtr daty zgłoszenia od',
+      'Filtr daty zgłoszenia do',
+      'Minimalny wiek w dniach',
+      'Filtr przypisanego administratora',
+      'Filtr brakującego pola',
+      'Filtr dokładnego dopasowania',
+      'Filtr źródła zgłoszenia',
     ])
       expect(workspace).toContain(`aria-label="${label}"`);
-    expect(workspace).toContain('aria-label="Final approval preview"');
-    expect(workspace).toContain('ProductBehavior role');
-    expect(workspace).toContain('Usage readiness');
+    expect(workspace).toContain('aria-label="Podgląd przed zatwierdzeniem"');
+    expect(workspace).toContain('Rola produktu');
+    expect(workspace).toContain('Gotowość użycia');
     expect(workspace).toContain('aria-label="Podgląd wiadomości do użytkownika"');
   });
 });

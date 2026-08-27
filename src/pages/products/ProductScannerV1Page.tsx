@@ -49,7 +49,7 @@ export function ProductScannerV1Page() {
       </Link>
       <header className="mt-5 max-w-2xl">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
-          Gellatti Product Scanner
+          Skaner produktów Gellatti
         </p>
         <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
           Skanuj produkt

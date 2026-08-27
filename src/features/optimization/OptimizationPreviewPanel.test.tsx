@@ -241,9 +241,9 @@ describe('OptimizationPreviewPanel — redaction', () => {
     expect(/dextrose/i.test(html)).toBe(false); // no lever ingredient names
     expect(html).not.toContain('46.00'); // no numeric before/after
     // shows the safe, high-level view instead
-    expect(text).toMatch(/tradeoff/);
-    expect(text).toMatch(/increase npac/); // directional goal (no numbers, no ingredient)
-    expect(text).toMatch(/available on Pro/);
+    expect(text).toMatch(/Korekta z kompromisem/);
+    expect(text).toMatch(/zwiększ NPAC/); // directional goal (no numbers, no ingredient)
+    expect(text).toMatch(/dostępne w Gellatti Pro/);
   });
 
   it('Pro shows the exact correction grams, the correction plan and before/after metrics', () => {
@@ -252,7 +252,7 @@ describe('OptimizationPreviewPanel — redaction', () => {
     expect(/dextrose/i.test(html)).toBe(true); // lever ingredient classes
     expect(html).toContain('40.00'); // before metric
     expect(html).toContain('46.00'); // after metric
-    expect(html).not.toContain('available on Pro');
+    expect(html).not.toContain('dostępne w Gellatti Pro');
   });
 
   it('DEV shows the debug trace but still respects a demo viewer’s redaction', () => {
@@ -267,46 +267,46 @@ describe('OptimizationPreviewPanel — redaction', () => {
   it('shows the temperature-aware target source in every tier (instrumentation, not a correction secret)', () => {
     for (const policy of [demoPolicy, proPolicy, devPolicy]) {
       const t = visibleText(render(view(), policy));
-      expect(t).toMatch(/solver target:/);
-      expect(t).toMatch(/not connected/); // the base view is a −12 not-connected fallback
+      expect(t).toMatch(/Zakres docelowy/);
+      expect(t).toMatch(/wymaga weryfikacji dla tej temperatury/);
     }
   });
 
   it('shows the shadow engine-vs-regulator band comparison, labelled not-live', () => {
     const t = visibleText(render(view(), demoPolicy));
-    expect(t).toMatch(/shadow bands \(not live/);
-    expect(t).toMatch(/temperature_regulator_shadow/);
-    expect(t).toMatch(/engine npac 33–42 vs regulator 42–50/);
-    expect(t).toMatch(/divergent/);
+    expect(t).toMatch(/Porównanie zakresu NPAC/);
+    expect(t).not.toMatch(/temperature_regulator_shadow/);
+    expect(t).toMatch(/bieżący 33–42 \/ dodatkowy 42–50/);
+    expect(t).toMatch(/różnica środka/);
   });
 
   it('shows the injected regulator-shadow solver target in every tier with the comparison caveat', () => {
     for (const policy of [demoPolicy, proPolicy, devPolicy]) {
       const t = visibleText(render(view(), policy));
-      expect(t).toMatch(/regulator-shadow solver target/);
-      expect(t).toMatch(/would change the correction/);
+      expect(t).toMatch(/Dodatkowe porównanie zakresu/);
+      expect(t).toMatch(/zmieniłoby korektę/);
       // CONFIG 0.6.0: the old "global engine target bands unchanged" claim is
       // retired — the live bands ARE temperature-aware now.
-      expect(t).toMatch(/Comparison only — engine target bands are temperature-aware/);
+      expect(t).toMatch(/tylko informacyjnie/);
       expect(t).not.toMatch(/global engine target bands unchanged/);
     }
   });
 
   it('Pro shows the numeric engine→regulator solver-target comparison; Demo hides it', () => {
     const proText = visibleText(render(view(), proPolicy));
-    expect(proText).toMatch(/engine-seeded → regulator-shadow/);
+    expect(proText).toMatch(/Zakres bieżący → dodatkowy/);
     expect(proText).toMatch(/33–42/); // engine band
     expect(proText).toMatch(/42–50/); // regulator band
     // Demo: no numeric band comparison block (technical view gated)
     const demoText = visibleText(render(view(), demoPolicy));
-    expect(demoText).not.toMatch(/engine-seeded → regulator-shadow/);
+    expect(demoText).not.toMatch(/Zakres bieżący → dodatkowy/);
   });
 
   it('shows the regulator-shadow gram-solve summary in every tier (no grams in the summary)', () => {
     for (const policy of [demoPolicy, proPolicy, devPolicy]) {
       const t = visibleText(render(view(), policy));
-      expect(t).toMatch(/regulator-shadow gram solve: tradeoff/);
-      expect(t).toMatch(/differs from engine-seeded/);
+      expect(t).toMatch(/Dodatkowe przeliczenie: Korekta z kompromisem/);
+      expect(t).toMatch(/inna korekta/);
     }
   });
 
@@ -316,26 +316,29 @@ describe('OptimizationPreviewPanel — redaction', () => {
     expect(demo).not.toContain('142.3'); // regulator-shadow grams hidden
     expect(/dextrose/i.test(demo)).toBe(false);
     const pro = render(view(), proPolicy);
-    expect(pro).toContain('engine-seeded solver added');
+    expect(pro).toContain('Gellatti proponuje');
     expect(pro).toContain('88.7');
-    expect(pro).toContain('regulator-shadow solver added');
+    expect(pro).toContain('Dodatkowe porównanie proponuje');
     expect(pro).toContain('142.3');
   });
 });
 
 describe('OptimizationPreviewPanel — decision states', () => {
   it.each([
-    'optimized',
-    'tradeoff',
-    'impossible',
-    'blocked',
-    'no_action_needed',
-  ] as OptimizationDecision[])('renders the %s decision with its recommendation', (decision) => {
-    const html = render(view({ finalDecision: decision }), demoPolicy);
-    const text = visibleText(html);
-    expect(text).toMatch(new RegExp(decision.replace(/_/g, ' ')));
-    expect(text.length).toBeGreaterThan(20);
-  });
+    ['optimized', 'Gotowa bezpieczna korekta'],
+    ['tradeoff', 'Korekta z kompromisem'],
+    ['impossible', 'Brak bezpiecznej korekty'],
+    ['blocked', 'Ocena zablokowana'],
+    ['no_action_needed', 'Korekta niepotrzebna'],
+  ] as const satisfies readonly (readonly [OptimizationDecision, string])[])(
+    'renders the %s decision with its recommendation',
+    (decision, label) => {
+      const html = render(view({ finalDecision: decision }), demoPolicy);
+      const text = visibleText(html);
+      expect(text).toContain(label);
+      expect(text.length).toBeGreaterThan(20);
+    },
+  );
 });
 
 describe('OptimizationPreviewPanel — boundary + Studio gating', () => {
@@ -400,10 +403,10 @@ describe('OptimizationPreviewPanel — boundary + Studio gating', () => {
     expect(note).toContain('Tylko podgląd');
     expect(note).toContain('korekty nie są stosowane automatycznie');
     // the live bands ARE temperature-aware now — the claim stays present, the old one gone
-    expect(note).toContain('Zakresy silnika uwzględniają temperaturę serwowania');
-    expect(note).toContain('porównanie z trybem regulatora pozostaje dostępne');
+    expect(note).toContain('Zakresy obliczeń uwzględniają temperaturę serwowania');
+    expect(note).toContain('dodatkowe porównanie pozostaje dostępne');
     expect(/global engine target bands unchanged/.test(studio)).toBe(false);
-    expect(copy.studio.optimization.proOnly).toContain('Dokładne gramatury dostępne');
+    expect(copy.studio.optimization.proOnly).toContain('Dokładne gramatury są dostępne');
   });
 
   it('never saves / persists / applies a correction from the Studio preview', () => {

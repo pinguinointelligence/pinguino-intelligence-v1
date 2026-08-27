@@ -7,6 +7,13 @@ import { useReviewMode } from './useReviewMode';
 
 export type ReviewMarkBadge = 'DO PRZEGLĄDU' | 'OPCJONALNE' | 'ADVANCED' | 'ADVANCED / REVIEW';
 
+const BADGE_LABEL: Readonly<Record<ReviewMarkBadge, string>> = {
+  'DO PRZEGLĄDU': 'DO PRZEGLĄDU',
+  OPCJONALNE: 'OPCJONALNE',
+  ADVANCED: 'ZAAWANSOWANE',
+  'ADVANCED / REVIEW': 'ZAAWANSOWANE / PRZEGLĄD',
+};
+
 export function ReviewMarkedModule({
   id,
   title,
@@ -45,7 +52,7 @@ export function ReviewMarkedModule({
           >
             <path d="M5 21V4m0 0h13l-3 4 3 4H5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          {badge}
+          {BADGE_LABEL[badge]}
         </span>
       </summary>
       {note ? <p className="px-4 pb-1 text-xs leading-relaxed text-stone-600">{note}</p> : null}

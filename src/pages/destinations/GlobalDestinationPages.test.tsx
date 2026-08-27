@@ -29,7 +29,7 @@ describe('canonical global destination hubs', () => {
 
   it('explains one simple public flow without exposing internal tools', () => {
     const html = render(<HowItWorksPage />);
-    for (const step of ['Pomysł', 'Składniki', 'PINGÜINO', 'Receptura', 'Produkcja']) {
+    for (const step of ['Pomysł', 'Składniki', 'Gellatti', 'Receptura', 'Produkcja']) {
       expect(html).toContain(step);
     }
     expect(html).not.toMatch(/API|Mapper|readiness/i);
@@ -48,7 +48,7 @@ describe('canonical global destination hubs', () => {
     expect(html).toContain('href="/products/scan"');
     expect(html).not.toContain('href="/products/import"');
     expect(html).toContain('Skanuj produkt');
-    expect(html).toContain('Katalog PINGÜINO');
+    expect(html).toContain('Katalog Gellatti');
     expect(html).toContain('★ Ulubione');
   });
 

@@ -62,7 +62,7 @@ describe('savedRecipeMetadata — the owner reproducer', () => {
       QA_PROTEIN_V2_COLUMNS.active_engine_label,
     );
     expect(labels).toEqual({
-      productType: 'Protein',
+      productType: 'Proteinowe',
       mode: 'ECO',
       engine: '−12°C',
       batch: '1000 g',
@@ -93,9 +93,9 @@ describe('savedRecipeMetadata — derivation rules', () => {
       ['vegan_gelato', 'vegan'],
       ['protein_gelato', 'protein'],
     ] as const) {
-      expect(
-        readSavedRecipeMetadata({ category, target_temperature_c: -11 }).productType,
-      ).toBe(expected);
+      expect(readSavedRecipeMetadata({ category, target_temperature_c: -11 }).productType).toBe(
+        expected,
+      );
     }
   });
 

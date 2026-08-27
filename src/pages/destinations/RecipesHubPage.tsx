@@ -37,10 +37,7 @@ import { useOwnerReviewAccess } from '@/features/design-review/useOwnerReviewAcc
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { cn } from '@/lib/cn';
 import { MyRecipesContent } from '@/pages/recipes/MyRecipesPage';
-import {
-  hasUnsavedProRecipeChanges,
-  startNewProRecipe,
-} from './startNewProRecipe';
+import { hasUnsavedProRecipeChanges, startNewProRecipe } from './startNewProRecipe';
 import { NewRecipeConfirmationDialog } from '@/features/recipes/NewRecipeConfirmationDialog';
 import { SharedWithMePanel } from '@/features/community/ui/SharedWithMePanel';
 import { useRecipeStore } from '@/stores/recipeStore';
@@ -56,7 +53,7 @@ type IconName = 'left' | 'right' | 'book' | 'globe' | 'leaf' | 'search' | 'spark
 const RECIPE_LIBRARY_TABS = [
   ['mine', 'MOJE'],
   ['shared', 'UDOSTĘPNIONE MI'],
-  ['pinguino', 'PINGÜINO'],
+  ['pinguino', 'GELLATTI'],
   ['inspiration', 'INSPIRACJE'],
 ] as const satisfies readonly (readonly [RecipeLibraryTab, string])[];
 
@@ -149,7 +146,7 @@ function PinkReadiness({ children }: { children: ReactNode }) {
 
 function OwnerReviewFrame({ enabled, children }: { enabled: boolean; children: ReactNode }) {
   return enabled ? (
-    <NonProductionMarker itemId="recipes-hub-tiles" title="TRYB OWNER REVIEW">
+    <NonProductionMarker itemId="recipes-hub-tiles" title="TRYB PRZEGLĄDU WŁAŚCICIELA">
       {children}
     </NonProductionMarker>
   ) : (
@@ -204,7 +201,13 @@ function BackButton({ onClick }: { onClick: () => void }) {
 
 type RecipePersona = ReturnType<typeof useProCorePersona>;
 
-function CandidateCard({ entry, persona }: { entry: CuratedRecipeCandidate; persona: RecipePersona }) {
+function CandidateCard({
+  entry,
+  persona,
+}: {
+  entry: CuratedRecipeCandidate;
+  persona: RecipePersona;
+}) {
   const intent = candidateStartIntent(entry);
   return (
     <Card
@@ -259,7 +262,7 @@ function CandidateCard({ entry, persona }: { entry: CuratedRecipeCandidate; pers
           </Link>
         ) : (
           <p className="mt-5 text-xs font-medium text-nonprod">
-            Niedostępne do czasu zamknięcia Mapper/process gate.
+            Ta receptura czeka na uzupełnienie danych produktu i procesu.
           </p>
         )}
       </div>
@@ -465,7 +468,7 @@ function ExecutableOwnerReviewView({
   return (
     <section aria-labelledby={`${library}-executable-heading`}>
       <p className="text-xs font-semibold tracking-[0.14em] text-stone-500 uppercase">
-        Owner Review · testowe / nieprodukcyjne
+        Przegląd właściciela · testowe / nieprodukcyjne
       </p>
       <h2
         id={`${library}-executable-heading`}
@@ -474,9 +477,9 @@ function ExecutableOwnerReviewView({
         {title}
       </h2>
       <p className="mt-3 max-w-2xl text-sm leading-relaxed text-stone-600">
-        Owner Review Base jest oddzielony od gotowości produkcyjnej i etykietowej. Kompletna
-        technicznie baza może być otwierana i edytowana w Pro, a brak procesu lub Toppingu nadal
-        blokuje Produkcję, Master Label i publikację.
+        Przegląd receptury bazowej jest oddzielony od gotowości produkcyjnej i etykietowej.
+        Kompletna baza może być otwierana i edytowana w Pro, a brak procesu lub dodatku po produkcji
+        nadal blokuje produkcję, etykietę i publikację.
       </p>
       <OwnerReviewFrame enabled>
         <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -488,59 +491,90 @@ function ExecutableOwnerReviewView({
                   <div className="flex flex-wrap items-center gap-2">
                     <PinkReadiness>WYMAGA TESTU SMAKOWEGO</PinkReadiness>
                     {template.trademarkReviewRequired ? (
-                      <PinkReadiness>TRADEMARK REVIEW</PinkReadiness>
+                      <PinkReadiness>WERYFIKACJA ZNAKU</PinkReadiness>
                     ) : null}
                   </div>
                   <h3 className="mt-5 text-xl font-semibold tracking-[-0.025em] text-ink">
                     {card.displayName}
                   </h3>
-                  <p className="mt-2 text-xs text-stone-500">
-                    Gelato · −11°C · v{card.version}
-                  </p>
+                  <p className="mt-2 text-xs text-stone-500">Gelato · −11°C · v{card.version}</p>
                   <dl className="mt-5 grid grid-cols-3 gap-2 text-xs">
-                    <div><dt className="text-stone-400">Base</dt><dd className="font-mono">{card.baseGrams === null ? '—' : `${card.baseGrams} g`}</dd></div>
-                    <div><dt className="text-stone-400">Topping</dt><dd className="font-mono">{card.toppingGrams} g</dd></div>
-                    <div><dt className="text-stone-400">Razem</dt><dd className="font-mono">{card.finalMassGrams === null ? '—' : `${card.finalMassGrams} g`}</dd></div>
+                    <div>
+                      <dt className="text-stone-400">Baza</dt>
+                      <dd className="font-mono">
+                        {card.baseGrams === null ? '—' : `${card.baseGrams} g`}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-stone-400">Topping</dt>
+                      <dd className="font-mono">{card.toppingGrams} g</dd>
+                    </div>
+                    <div>
+                      <dt className="text-stone-400">Razem</dt>
+                      <dd className="font-mono">
+                        {card.finalMassGrams === null ? '—' : `${card.finalMassGrams} g`}
+                      </dd>
+                    </div>
                   </dl>
                   <p className="mt-4 text-xs text-stone-500">
-                    Score techniczny:{' '}
+                    Wynik techniczny:{' '}
                     <span className="font-mono">
-                      {card.technicalScore === null ? 'oczekuje na dokładny produkt' : card.technicalScore.toFixed(2)}
+                      {card.technicalScore === null
+                        ? 'oczekuje na dokładny produkt'
+                        : card.technicalScore.toFixed(2)}
                     </span>
                     {' · '}Proces: {card.processId ?? 'brak zatwierdzonej wersji'}
                     {' · '}Znane alergeny: {card.knownAllergens.join(', ')}
                     {card.finalAllergensComplete ? '' : ' · lista finalna niepełna'}
                   </p>
                   <dl className="mt-5 space-y-2 border-y border-stone-200 py-3 text-[11px]">
-                    <div className="flex items-center justify-between gap-3" data-testid={`${template.id}-owner-review-gate`}>
-                      <dt className="tracking-[0.08em] text-stone-500 uppercase">Owner Review</dt>
+                    <div
+                      className="flex items-center justify-between gap-3"
+                      data-testid={`${template.id}-owner-review-gate`}
+                    >
+                      <dt className="tracking-[0.08em] text-stone-500 uppercase">
+                        Przegląd właściciela
+                      </dt>
                       <dd className="font-mono text-right text-ink">{card.ownerReviewStatus}</dd>
                     </div>
-                    <div className="flex items-center justify-between gap-3" data-testid={`${template.id}-production-gate`}>
-                      <dt className="tracking-[0.08em] text-stone-500 uppercase">Production</dt>
-                      <dd className="font-mono text-right text-stone-600">{card.productionStatus}</dd>
+                    <div
+                      className="flex items-center justify-between gap-3"
+                      data-testid={`${template.id}-production-gate`}
+                    >
+                      <dt className="tracking-[0.08em] text-stone-500 uppercase">Produkcja</dt>
+                      <dd className="font-mono text-right text-stone-600">
+                        {card.productionStatus}
+                      </dd>
                     </div>
-                    <div className="flex items-center justify-between gap-3" data-testid={`${template.id}-label-gate`}>
-                      <dt className="tracking-[0.08em] text-stone-500 uppercase">Label</dt>
+                    <div
+                      className="flex items-center justify-between gap-3"
+                      data-testid={`${template.id}-label-gate`}
+                    >
+                      <dt className="tracking-[0.08em] text-stone-500 uppercase">Etykieta</dt>
                       <dd className="font-mono text-right text-stone-600">{card.labelStatus}</dd>
                     </div>
                   </dl>
                   <p className="mt-5 text-xs leading-relaxed text-nonprod">
-                    {card.blockers[0] ?? card.productionBlockers[0] ?? 'Wymaga zamknięcia bieżących bramek danych.'}
+                    {card.blockers[0] ??
+                      card.productionBlockers[0] ??
+                      'Wymaga zamknięcia bieżących bramek danych.'}
                   </p>
                   {card.toppingGrams > 0 && template.status === 'OWNER_REVIEW_EDITABLE' ? (
-                    <p className="mt-3 text-[11px] leading-relaxed text-stone-500" data-testid={`${template.id}-owner-review-base-only`}>
-                      Owner Review otwiera wyłącznie Base. Toppingi ({card.toppingGrams} g) pozostają
-                      jawnie pominięte do czasu zamknięcia bramek Production i Label.
+                    <p
+                      className="mt-3 text-[11px] leading-relaxed text-stone-500"
+                      data-testid={`${template.id}-owner-review-base-only`}
+                    >
+                      Przegląd otwiera wyłącznie bazę. Dodatki ({card.toppingGrams} g) pozostają
+                      pominięte do czasu uzupełnienia danych produkcji i etykiety.
                     </p>
                   ) : null}
                   {template.status === 'OWNER_REVIEW_EDITABLE' ? (
                     <button
                       type="button"
                       className={cn(buttonClasses('primary', 'sm'), 'mt-5 w-full')}
-                      onClick={() => onOpenTemplate(
-                        executableRecipeStartHref(template.id, persona, '/recipes'),
-                      )}
+                      onClick={() =>
+                        onOpenTemplate(executableRecipeStartHref(template.id, persona, '/recipes'))
+                      }
                     >
                       Otwórz w Pro
                     </button>
@@ -741,7 +775,7 @@ export function RecipesHubPage() {
     <DestinationSurface
       eyebrow={d.eyebrow}
       title="Receptury"
-      blurb="Twoje receptury, kolekcje PINGÜINO i inspiracje smakowe — w jednej bibliotece."
+      blurb="Twoje receptury, kolekcje Gellatti i inspiracje smakowe — w jednej bibliotece."
     >
       <div className="mb-10 flex flex-wrap items-end justify-between gap-4 border-b border-ink/15">
         <div
@@ -826,7 +860,12 @@ export function RecipesHubPage() {
             {view === 'home' ? (
               <>
                 <OwnerReviewFrame enabled={ownerReviewMode}>
-                  <div className={cn('grid gap-x-8 md:grid-cols-2', ownerReviewMode && 'xl:grid-cols-3')}>
+                  <div
+                    className={cn(
+                      'grid gap-x-8 md:grid-cols-2',
+                      ownerReviewMode && 'xl:grid-cols-3',
+                    )}
+                  >
                     <ActionCard
                       icon={<Icon name="book" className="h-5 w-5" />}
                       title={d.lostTitle}
@@ -843,7 +882,7 @@ export function RecipesHubPage() {
                       <ActionCard
                         icon={<Icon name="sparkles" className="h-5 w-5" />}
                         title="Fantasy"
-                        body="Pięć wersjonowanych kierunków Batch 1 do audytu Owner Review."
+                        body="Pięć wersjonowanych kierunków pierwszej partii do przeglądu właściciela."
                         onClick={() => setView('fantasy')}
                       />
                     ) : null}

@@ -23,7 +23,7 @@ export function ProductionWorkspaceHeader({ production }: { production: Producti
         className={completed ? 'text-xs font-semibold text-[#2f6f3c]' : 'text-xs text-stone-600'}
         data-testid={completed ? 'production-workspace-complete' : undefined}
       >
-        {completed ? 'Partia gotowa' : 'Ważenie składników'}
+        {completed ? 'Perfetto. Partia gotowa.' : 'Ważenie składników'}
       </p>
     </header>
   );

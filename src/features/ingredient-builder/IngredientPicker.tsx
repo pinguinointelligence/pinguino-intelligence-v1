@@ -263,7 +263,7 @@ export function IngredientPicker({
               {selectedProvenance.class_derived ? (
                 <span className="text-ivory/70">
                   {selectedProvenance.provenance_note ??
-                    'PI Calculated · class-derived · not independently measured'}
+                    'Obliczone przez Gellatti · dane szacowane'}
                 </span>
               ) : (
                 <>

@@ -8,9 +8,15 @@ import { mapperEngineMissingFields } from '@/features/product-intelligence/mappe
 import type { SubstituteAuthorization, SubstituteCandidate } from './ingredientTableUx';
 
 const REQUIRED_COMPOSITION_FIELDS = [
-  'water_percent', 'total_solids_percent', 'fat_percent', 'protein_percent',
-  'carbohydrate_percent', 'total_sugars_percent', 'salt_percent',
-  'pod_value', 'pac_value',
+  'water_percent',
+  'total_solids_percent',
+  'fat_percent',
+  'protein_percent',
+  'carbohydrate_percent',
+  'total_sugars_percent',
+  'salt_percent',
+  'pod_value',
+  'pac_value',
 ] as const satisfies readonly (keyof IngredientRow)[];
 
 const VERIFIED_MAPPER_AUTHORITY = Symbol('verified-mapper-substitution-authority');
@@ -105,9 +111,7 @@ export function hasVerifiedMapperSubstitutionAuthorization(
 }
 
 const technicallyUsableMapperReference = (row: IngredientRow): boolean =>
-  row.is_active &&
-  row.approved_for_engines &&
-  completeComposition(row);
+  row.is_active && row.approved_for_engines && completeComposition(row);
 
 /**
  * Build the normal RECIPE substitute list from the current technical Mapper
@@ -163,7 +167,8 @@ export function verifiedRecipeSubstituteCandidates(
       ingredient,
       authorization: authorizationFor(row, ingredient),
       fit: 'direct',
-      expectedImpact: 'Ta sama rola technologiczna; PI przeliczy całą recepturę przed Apply.',
+      expectedImpact:
+        'Ta sama rola technologiczna; Gellatti przeliczy całą recepturę przed zastosowaniem.',
       compatibility:
         input.category === 'vegan_gelato'
           ? 'Potwierdzona zgodność Vegan i pełny profil Engine.'
@@ -177,7 +182,9 @@ export function isVerifiedRuntimeSubstitute(ingredient: EngineIngredient): boole
     ingredient.identity_provenance === 'mapper' &&
     typeof ingredient.canonical_ingredient_id === 'string' &&
     ingredient.canonical_ingredient_id.length > 0 &&
-    typeof ingredient.pod_value === 'number' && Number.isFinite(ingredient.pod_value) &&
-    typeof ingredient.pac_value === 'number' && Number.isFinite(ingredient.pac_value)
+    typeof ingredient.pod_value === 'number' &&
+    Number.isFinite(ingredient.pod_value) &&
+    typeof ingredient.pac_value === 'number' &&
+    Number.isFinite(ingredient.pac_value)
   );
 }

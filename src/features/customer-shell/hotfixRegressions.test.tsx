@@ -46,9 +46,9 @@ describe('§2 — the global menu is reachable from the landing', () => {
   it('keeps exactly ONE brand wordmark in the landing header (menu brand suppressed)', () => {
     const html = renderLanding();
     const header = html.slice(0, html.indexOf('</header>'));
-    // The landing's own lockup renders PINGÜINO + INTELLIGENCE; the shared menu
+    // The landing's own lockup renders the GELLATTI wordmark; the shared menu
     // must not add a second wordmark next to it.
-    expect((header.match(/PINGÜINO/g) ?? []).length).toBe(1);
+    expect((header.match(/GELLATTI/g) ?? []).length).toBe(1);
   });
 });
 
@@ -71,7 +71,7 @@ describe('§4 — the home field starts the flow on Enter', () => {
   });
 });
 
-describe('§6 — the kind step speaks the customer\'s language', () => {
+describe("§6 — the kind step speaks the customer's language", () => {
   it('asks about a KIND OF ICE CREAM and never about a „baza”', () => {
     expect(copy.productType.title).toBe('Jaki rodzaj lodów chcesz przygotować?');
     expect(copy.productType.lead).toBe('Wybierz rodzaj receptury.');
@@ -92,7 +92,10 @@ describe('§9 — Pro serving modes are temperatures only', () => {
     const proModes = SERVING_MODES.filter((m) => m.id.startsWith('temp_minus_'));
     expect(proModes.map((m) => m.id)).toEqual(['temp_minus_11', 'temp_minus_12', 'temp_minus_13']);
     for (const id of ['fresh', 'ninja_gelato', 'ninja_swirl']) {
-      expect(proModes.some((m) => m.id === id), id).toBe(false);
+      expect(
+        proModes.some((m) => m.id === id),
+        id,
+      ).toBe(false);
     }
     // …and every offered temperature is a real engine serving cell. (−14/−18
     // cannot even be expressed: `SupportedTemperatureC` excludes them, so tsc

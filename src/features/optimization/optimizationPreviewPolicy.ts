@@ -53,12 +53,12 @@ export function optimizationDisplayPolicy(
 
 /** A short, number-free, name-free recommendation per final decision (safe for redacted views). */
 export const OPTIMIZATION_RECOMMENDATION: Readonly<Record<string, string>> = {
-  optimized: 'This recipe can be auto-corrected back into range.',
-  tradeoff: 'A correction improves the recipe, but some targets stay out of range.',
-  impossible: 'No safe correction is available under the current constraints.',
-  blocked: 'This product or serving temperature can’t be evaluated here.',
-  no_action_needed: 'This recipe is already in range — no correction needed.',
+  optimized: 'Gellatti może bezpiecznie przywrócić tę recepturę do zakresu.',
+  tradeoff: 'Korekta poprawia recepturę, ale część celów pozostaje poza zakresem.',
+  impossible: 'Przy obecnych ustawieniach nie ma bezpiecznej korekty.',
+  blocked: 'Tego produktu lub temperatury nie można teraz rzetelnie ocenić.',
+  no_action_needed: 'Receptura jest już w zakresie — korekta nie jest potrzebna.',
 };
 
 export const recommendationFor = (decision: string): string =>
-  OPTIMIZATION_RECOMMENDATION[decision] ?? 'Preview computed.';
+  OPTIMIZATION_RECOMMENDATION[decision] ?? 'Podgląd jest gotowy.';

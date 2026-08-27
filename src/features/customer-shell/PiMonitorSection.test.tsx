@@ -29,14 +29,21 @@ function realRecipeInput(): RecipeInput {
   return input;
 }
 
-const RESOLVED: IngredientResolutionSummary = { allResolved: true, unresolvedCount: 0, unresolvedNames: [] };
+const RESOLVED: IngredientResolutionSummary = {
+  allResolved: true,
+  unresolvedCount: 0,
+  unresolvedNames: [],
+};
 
 const visibleText = (html: string) => html.replace(/<[^>]*>/g, ' ').replace(/&[a-z#0-9]+;/g, ' ');
 
 function renderSection(opts: {
   persona: PiMonitorPersona;
   gramsVisible: boolean;
-  machine?: { name: string; batchFit: 'recommended_active' | 'custom' | 'custom_above' | 'none' } | null;
+  machine?: {
+    name: string;
+    batchFit: 'recommended_active' | 'custom' | 'custom_above' | 'none';
+  } | null;
   recipeInput?: RecipeInput | null;
 }) {
   return renderToStaticMarkup(
@@ -108,9 +115,15 @@ describe('PiMonitorSection — §13 Monitor Home content', () => {
 
   it('§16 stepped preference controls stay (three steps, never a numeric slider)', () => {
     const text = visibleText(renderSection({ persona: 'home', gramsVisible: true }));
-    for (const step of ['Mniej słodkie', 'Bez zmian', 'Bardziej słodkie', 'Bardziej kremowe', 'Pełniejsza']) {
+    for (const step of [
+      'Mniej słodkie',
+      'Bez zmian',
+      'Bardziej słodkie',
+      'Bardziej kremowe',
+      'Pełniejsza',
+    ]) {
       expect(text).toContain(step);
     }
-    expect(text).toContain('Przelicz z PI');
+    expect(text).toContain('Przelicz recepturę');
   });
 });

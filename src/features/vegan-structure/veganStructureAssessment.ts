@@ -349,7 +349,8 @@ export function assessVeganRecipeStructure(input: RecipeInput): VeganStructureAs
   if (unclassifiedFatGrams > 0 || unclassifiedProteinGrams > 0 || !allFull) {
     reasons.push({
       code: 'structural_evidence_incomplete',
-      messagePl: 'Część danych strukturalnych jest nieznana — PI korzysta z zachowania bazowego.',
+      messagePl:
+        'Część danych strukturalnych jest nieznana — Gellatti korzysta z ustawienia bazowego.',
     });
   }
 

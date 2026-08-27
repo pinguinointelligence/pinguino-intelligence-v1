@@ -43,7 +43,7 @@ describe('one application shell', () => {
       </MemoryRouter>,
     );
     const trigger = html.indexOf('data-testid="app-nav-trigger"');
-    const brand = html.indexOf('aria-label="PINGÜINO"');
+    const brand = html.indexOf('aria-label="GELLATTI"');
     expect(trigger).toBeGreaterThanOrEqual(0);
     expect(brand).toBeGreaterThan(trigger);
     // ONE header row recipe — the workbench branch only ADDS the workbench grid.

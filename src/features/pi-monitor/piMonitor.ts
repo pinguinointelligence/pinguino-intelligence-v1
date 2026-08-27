@@ -57,7 +57,7 @@ function skladnikForm(n: number): string {
 export function evaluateRecalcGate(resolution: IngredientResolutionSummary): PiRecalcGate {
   if (resolution.allResolved) return { canRecalculate: true, blockCopy: null };
   const n = Math.max(1, resolution.unresolvedCount || resolution.unresolvedNames.length || 1);
-  const blockCopy = `Najpierw wybierz konkretny produkt dla ${n} ${skladnikForm(n)}, aby PI mogło dokładnie przeliczyć recepturę.`;
+  const blockCopy = `Najpierw wybierz konkretny produkt dla ${n} ${skladnikForm(n)}, aby dokładnie przeliczyć recepturę.`;
   return { canRecalculate: false, blockCopy };
 }
 
@@ -95,8 +95,8 @@ const OUTCOME_LABEL: Record<PiRecalcOutcome, string> = {
   poprawione: 'Poprawione',
   kompromis: 'Kompromis',
   juz_w_zakresie: 'Już w zakresie',
-  niemozliwe: 'PI nie zmieniło receptury',
-  zablokowane: 'PI nie mogło przeliczyć',
+  niemozliwe: 'Receptura nie została zmieniona',
+  zablokowane: 'Nie udało się przeliczyć',
 };
 
 /**
@@ -217,7 +217,10 @@ export function recalculateWithPi(input: RecalculateWithPiInput): PiRecalculatio
   const capability = piGramVisibilityFor(persona);
   const gramsVisible = capability.canViewExactGrams === true;
   const gate = evaluateRecalcGate(resolution);
-  const { intent, mappedAxes, advisoryWishAxes } = applyAxisIntentsToIntent(baseIntent, axisIntents);
+  const { intent, mappedAxes, advisoryWishAxes } = applyAxisIntentsToIntent(
+    baseIntent,
+    axisIntents,
+  );
 
   const blockedView = (
     outcomeLabel: string,
@@ -243,7 +246,11 @@ export function recalculateWithPi(input: RecalculateWithPiInput): PiRecalculatio
 
   // Gate blocked → do NOT run the pipeline; show only the current reading + block copy.
   if (!gate.canRecalculate) {
-    return blockedView('Wymaga wyboru produktów', gate.blockCopy ?? '', 'ingredient_not_engine_ready');
+    return blockedView(
+      'Wymaga wyboru produktów',
+      gate.blockCopy ?? '',
+      'ingredient_not_engine_ready',
+    );
   }
 
   // Tuning not approved for this serving temperature → NEVER run the pipeline:
@@ -259,7 +266,12 @@ export function recalculateWithPi(input: RecalculateWithPiInput): PiRecalculatio
   const result = runner({ intent, recipeDraft });
   const { category, servingTemperatureC } = result;
 
-  const before = mapRecipeToAxes({ metrics: result.beforeMetrics, category, servingTemperatureC, capability });
+  const before = mapRecipeToAxes({
+    metrics: result.beforeMetrics,
+    category,
+    servingTemperatureC,
+    capability,
+  });
   const after = result.afterMetrics
     ? mapRecipeToAxes({ metrics: result.afterMetrics, category, servingTemperatureC, capability })
     : null;
@@ -272,8 +284,18 @@ export function recalculateWithPi(input: RecalculateWithPiInput): PiRecalculatio
   const changedAxes: PiAxisId[] = [];
   const tradedOffAxes: PiAxisId[] = [];
   if (result.afterMetrics) {
-    const beforeFull = mapRecipeToAxes({ metrics: result.beforeMetrics, category, servingTemperatureC, capability: { canViewExactGrams: true } });
-    const afterFull = mapRecipeToAxes({ metrics: result.afterMetrics, category, servingTemperatureC, capability: { canViewExactGrams: true } });
+    const beforeFull = mapRecipeToAxes({
+      metrics: result.beforeMetrics,
+      category,
+      servingTemperatureC,
+      capability: { canViewExactGrams: true },
+    });
+    const afterFull = mapRecipeToAxes({
+      metrics: result.afterMetrics,
+      category,
+      servingTemperatureC,
+      capability: { canViewExactGrams: true },
+    });
     for (const id of PI_AXIS_ORDER) {
       const b = beforeFull.find((r) => r.id === id);
       const a = afterFull.find((r) => r.id === id);
@@ -341,15 +363,15 @@ function describeFailure(reason: PiRecalcFailureReason | null): string {
     case 'correction_targets_not_approved':
       return TUNING_NOT_APPROVED_COPY;
     case 'profile_not_supported':
-      return 'PI nie może teraz przeliczyć tej receptury — wybrany tryb lub temperatura podawania nie są jeszcze w pełni obsługiwane.';
+      return 'Nie można teraz przeliczyć tej receptury — wybrany tryb lub temperatura podawania nie są jeszcze w pełni obsługiwane.';
     case 'constraint_verification_failed':
-      return 'PI nie może teraz przeliczyć tej receptury — brakuje pełnych danych, aby zweryfikować wynik bezpiecznie.';
+      return 'Nie można teraz przeliczyć tej receptury — brakuje pełnych danych do bezpiecznej weryfikacji wyniku.';
     case 'locked_constraints_conflict':
-      return 'PI nie może teraz przeliczyć tej receptury — zablokowane składniki nie zostawiają bezpiecznego pola zmian.';
+      return 'Nie można teraz przeliczyć tej receptury — zablokowane składniki nie zostawiają bezpiecznego pola zmian.';
     case 'backend_failure':
-      return 'PI nie może teraz przeliczyć tej receptury — usługa jest chwilowo niedostępna.';
+      return 'Nie można teraz przeliczyć tej receptury — usługa jest chwilowo niedostępna.';
     default:
-      return 'PI nie może teraz przeliczyć tej receptury.';
+      return 'Nie można teraz przeliczyć tej receptury.';
   }
 }
 
@@ -363,23 +385,25 @@ function buildOutcomeDetail(
   },
 ): string {
   const tempPhrase =
-    ctx.servingTemperatureC != null ? ` przy podawaniu w temperaturze ${ctx.servingTemperatureC}°C` : '';
+    ctx.servingTemperatureC != null
+      ? ` przy podawaniu w temperaturze ${ctx.servingTemperatureC}°C`
+      : '';
   switch (outcome) {
     case 'poprawione':
       return ctx.changedAxes.length
-        ? `PI przesunęło recepturę w stronę zakresu (${axisNames(ctx.changedAxes)}).`
-        : 'PI przesunęło recepturę w stronę zakresu.';
+        ? `Gellatti przesunęło recepturę w stronę zakresu (${axisNames(ctx.changedAxes)}).`
+        : 'Gellatti przesunęło recepturę w stronę zakresu.';
     case 'kompromis':
       return ctx.tradedOffAxes.length
-        ? `PI poprawiło jedną cechę kosztem innej — zmieniło się: ${axisNames(ctx.tradedOffAxes)}. To kompromis, nie pełne dopasowanie.`
-        : 'PI poprawiło recepturę, ale część cech nadal jest poza zakresem. To kompromis, nie pełne dopasowanie.';
+        ? `Gellatti poprawiło jedną cechę kosztem innej — zmieniło się: ${axisNames(ctx.tradedOffAxes)}. To kompromis, nie pełne dopasowanie.`
+        : 'Gellatti poprawiło recepturę, ale część cech nadal jest poza zakresem. To kompromis, nie pełne dopasowanie.';
     case 'juz_w_zakresie':
       return 'Receptura jest już w zakresie — nie ma nic do zmiany.';
     case 'niemozliwe':
       // VERIFIED optimizer no-solution: the solver actually ran on this cell's own
       // approved targets and found no safe change. Honest + specific (names the
       // serving temperature) — and always states that nothing was changed.
-      return `PI nie znalazło bezpiecznej zmiany, która dopasowałaby tę recepturę${tempPhrase} bez pogorszenia innych cech. ${RECIPE_NOT_CHANGED}`;
+      return `Gellatti nie znalazło bezpiecznej zmiany, która dopasowałaby tę recepturę${tempPhrase} bez pogorszenia innych cech. ${RECIPE_NOT_CHANGED}`;
     case 'zablokowane':
       return `${describeFailure(ctx.failureReason)} ${RECIPE_NOT_CHANGED}`;
   }

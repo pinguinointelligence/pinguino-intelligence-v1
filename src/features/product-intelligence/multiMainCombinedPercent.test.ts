@@ -95,7 +95,12 @@ const CARRIER = {
   multiMainHardLimitPercent: null,
   mainEquivalentFactor: null,
   approvedLiquidDairyCarrier: true,
-  moduleEligibility: { MAIN: 'blocked', BASE_RECIPE: 'eligible', OPTIMAL: 'eligible', ECO: 'eligible' },
+  moduleEligibility: {
+    MAIN: 'blocked',
+    BASE_RECIPE: 'eligible',
+    OPTIMAL: 'eligible',
+    ECO: 'eligible',
+  },
 } as ProductBehaviorSnapshot;
 
 const SNAPS = {
@@ -114,9 +119,27 @@ const recipe = (a: number, b: number, target = 1000, fillTo = target): RecipeInp
     machine_capacity_grams: null,
     goals: { formulation_strategy: 'optimal' },
     items: [
-      { id: 'strawberry', ingredient: ing('raspberry'), planned_grams: a, actual_grams: null, lock_type: 'main' },
-      { id: 'banana', ingredient: ing('raspberry'), planned_grams: b, actual_grams: null, lock_type: 'main' },
-      { id: 'milk', ingredient: ing('milk_3_5'), planned_grams: fillTo - a - b, actual_grams: null, lock_type: 'unlocked' },
+      {
+        id: 'strawberry',
+        ingredient: ing('raspberry'),
+        planned_grams: a,
+        actual_grams: null,
+        lock_type: 'main',
+      },
+      {
+        id: 'banana',
+        ingredient: ing('raspberry'),
+        planned_grams: b,
+        actual_grams: null,
+        lock_type: 'main',
+      },
+      {
+        id: 'milk',
+        ingredient: ing('milk_3_5'),
+        planned_grams: fillTo - a - b,
+        actual_grams: null,
+        lock_type: 'unlocked',
+      },
     ],
   }) as unknown as RecipeInput;
 
@@ -181,8 +204,14 @@ describe('§4/§6 — unit and denominator contract', () => {
   });
 
   it('equivalent grams are Σ(grams × factor), and a factor of 1 makes them raw grams', () => {
-    expect(envelope(60, 100).ok && (envelope(60, 100) as { equivalentPercent: number }).equivalentPercent).toBe(16);
-    expect(envelope(120, 40).ok && (envelope(120, 40) as { equivalentPercent: number }).equivalentPercent).toBe(16);
+    expect(
+      envelope(60, 100).ok &&
+        (envelope(60, 100) as { equivalentPercent: number }).equivalentPercent,
+    ).toBe(16);
+    expect(
+      envelope(120, 40).ok &&
+        (envelope(120, 40) as { equivalentPercent: number }).equivalentPercent,
+    ).toBe(16);
   });
 });
 
@@ -224,13 +253,12 @@ describe('§15 — envelope boundaries at raw precision', () => {
 
 describe('§21 — a rejection must never misattribute a candidate’s numbers to the draft', () => {
   it('the copy names the proposal as the subject', async () => {
-    const { constraintStudioCopy } = await import(
-      '@/features/constraint-studio/constraintStudioCopy'
-    );
+    const { constraintStudioCopy } =
+      await import('@/features/constraint-studio/constraintStudioCopy');
     const rendered = constraintStudioCopy.blocked.rejectedProposalAuthority(
       'Grupa Main ma 0.2%; wymagane minimum to 10.0%.',
     );
-    expect(rendered).toContain('Propozycja PI została odrzucona');
+    expect(rendered).toContain('Propozycja Gellatti została odrzucona');
     expect(rendered).toContain('w proponowanej recepturze');
     expect(rendered).toContain('Twoja receptura nie została zmieniona.');
     // The number itself is still reported — it is true about the candidate.

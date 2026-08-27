@@ -12,6 +12,7 @@ import { classifyScannerError, SCANNER_ERROR_COPY } from './scannerErrors';
 import {
   assertUserSafeScannerMessage,
   isRawInfrastructureMessage,
+  scannerMessageFromUnknown,
 } from '@/services/scannerErrorGuard';
 
 const OWNER_LEAK = 'Edge Function returned a non-2xx status code';
@@ -45,6 +46,12 @@ describe('scannerErrors — the owner leak', () => {
       SCANNER_ERROR_COPY.analysis_failed,
     );
   });
+
+  it('sanitizes an unknown caught value before it enters component state', () => {
+    expect(scannerMessageFromUnknown(new Error(OWNER_LEAK), 'save')).toBe(
+      SCANNER_ERROR_COPY.save_failed,
+    );
+  });
 });
 
 describe('scannerErrors — no infrastructure vocabulary survives the gate', () => {
@@ -57,7 +64,7 @@ describe('scannerErrors — no infrastructure vocabulary survives the gate', () 
     'permission denied for table product_versions',
     'ERROR:  P0001: classification entity not found (kind=catalog_product_version, id=…)',
     'relation "product_scan_sessions" does not exist',
-    'TypeError: Cannot read properties of undefined (reading \'result\')',
+    "TypeError: Cannot read properties of undefined (reading 'result')",
     '    at handler (file:///deno/index.ts:120:9)',
     'Request failed with status code 400',
   ];
@@ -118,9 +125,9 @@ describe('scannerErrors — categories the user can act on', () => {
   });
 
   it('names a quota, an auth loss and a connection loss distinctly', () => {
-    expect(classifyScannerError({ stage: 'analysis', serverCode: 'session_vision_limit' }).code).toBe(
-      'quota_reached',
-    );
+    expect(
+      classifyScannerError({ stage: 'analysis', serverCode: 'session_vision_limit' }).code,
+    ).toBe('quota_reached');
     expect(
       classifyScannerError({ stage: 'save', serverCode: 'authentication_required' }).code,
     ).toBe('auth_required');

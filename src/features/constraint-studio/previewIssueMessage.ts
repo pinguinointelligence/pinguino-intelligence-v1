@@ -39,13 +39,13 @@ export function previewIssueMessagePl(issue: PreviewIssue): string {
         ? `Przy ograniczeniu „${issue.conflict.ingredientName}" = ${formatGramsPl(issue.conflict.grams)} `
         : 'Przy obecnych ograniczeniach ';
       const searchPart = issue.capReached
-        ? `PI wyczerpało deterministyczny budżet ruchów solvera (wywołania: ${issue.solverInvocations}) ` +
-          'bez osiągnięcia zatwierdzonych zakresów — taki wynik nigdy nie jest uznawany za recepturę.'
-        : `PI wykonało pełne przeszukanie dozwolonych ruchów (wywołania solvera: ${issue.solverInvocations}).`;
+        ? `Gellatti sprawdziło dostępne korekty (${issue.solverInvocations} prób) ` +
+          'bez osiągnięcia zatwierdzonych zakresów — taki wynik nie jest uznawany za gotową recepturę.'
+        : `Gellatti sprawdziło wszystkie dozwolone korekty (${issue.solverInvocations} prób).`;
       const nearestPart =
         issue.nearestFeasibleGrams !== null && issue.conflict
           ? ` Najbliższa wykonalna wartość dla „${issue.conflict.ingredientName}": ` +
-            `maksymalnie ${formatGramsPl(issue.nearestFeasibleGrams)} (zweryfikowana przez Engine) — ` +
+            `maksymalnie ${formatGramsPl(issue.nearestFeasibleGrams)} (sprawdzone ponownie) — ` +
             'zmniejsz ten składnik do tej wartości.'
           : ' Brak wykonalnej alternatywy możliwej do wyliczenia dla tej blokady.';
       const alternativePart =

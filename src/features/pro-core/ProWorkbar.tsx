@@ -122,7 +122,7 @@ export function ProWorkbar({
 
   return (
     <section
-      aria-label="PINGÜINO Pro — nazwa i zapis receptury"
+      aria-label="Gellatti Pro — nazwa i zapis receptury"
       data-testid="pro-workbar"
       data-workbar-variant={variant}
       className={cn(

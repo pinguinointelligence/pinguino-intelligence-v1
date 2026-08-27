@@ -132,20 +132,20 @@ describe('GlobalCatalogSearchPanel status projection', () => {
     );
     expect(statuses).toEqual(
       expect.arrayContaining([
-        'PINGÜINO — SPRAWDZONY',
+        'GELLATTI — SPRAWDZONY',
         'Dane szacowane',
         'WYMAGA SPRAWDZENIA ETYKIETY',
         'DODANY PRZEZ UŻYTKOWNIKA',
       ]),
     );
     expect(
-      host.querySelector('[data-catalog-verification-status="PRODUCT DATA INCOMPLETE"]'),
+      host.querySelector('[data-catalog-verification-status="DANE PRODUKTU NIEPEŁNE"]'),
     ).toBeNull();
     expect(
       host.querySelector('[data-catalog-verification-status="WYMAGA SPRAWDZENIA ETYKIETY"]')
         ?.className,
     ).toContain('bg-amber-100');
-    expect(statuses.filter((status) => status === 'PINGÜINO — SPRAWDZONY')).toHaveLength(3);
+    expect(statuses.filter((status) => status === 'GELLATTI — SPRAWDZONY')).toHaveLength(3);
     expect(host.querySelectorAll('button[aria-label*="do Ulubionych"]')).toHaveLength(7);
     expect(host.textContent).toContain('HARIBO Quaxi');
     expect(host.textContent).not.toContain('PR-ING-007144 · ID');

@@ -52,7 +52,7 @@ export async function listMine(): Promise<SavedRecipe[]> {
   // An unreadable history must never hide the recipes themselves — the rows still render, dated by
   // the aggregate, and the failure is reported rather than swallowed silently.
   if (versionsError) {
-    console.warn('[PINGÜINO] recipes.listMine: version history unavailable', versionsError.message);
+    console.warn('[GELLATTI] recipes.listMine: version history unavailable', versionsError.message);
     return rows;
   }
 

@@ -759,7 +759,7 @@ function RecipeRow({
                     ariaLabel="Składnik Główny"
                     title={
                       mainUserHeld
-                        ? 'Główny (Twoja decyzja) — PI nie zmienia jego gramatury samo z siebie. ' +
+                        ? 'Główny (Twoja decyzja) — Gellatti nie zmienia jego gramatury bez Twojej zgody. ' +
                           'Kliknij, aby ustawić Standardowy.'
                         : 'Główny'
                     }

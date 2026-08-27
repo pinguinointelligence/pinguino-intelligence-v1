@@ -71,7 +71,7 @@ describe('PI visible terminal contract', () => {
     });
     await renderPanel();
     expect(document.querySelector('[data-terminal-state="WORKING"]')).not.toBeNull();
-    expect(document.body.textContent).toContain('PI przelicza recepturę…');
+    expect(document.body.textContent).toContain('Gellatti przelicza recepturę…');
     expect(
       document.querySelector<HTMLButtonElement>('[data-testid="pro-recalc-close"]')?.disabled,
     ).toBe(false);
@@ -82,9 +82,9 @@ describe('PI visible terminal contract', () => {
     });
     expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual({
       state: 'ERROR',
-      messagePl: 'PI zakończyło przeliczenie bez wyniku. Wróć do receptury i spróbuj ponownie.',
+      messagePl: 'Przeliczenie zakończyło się bez wyniku. Wróć do receptury i spróbuj ponownie.',
     });
-    expect(document.body.textContent).toContain('PI zakończyło przeliczenie bez wyniku.');
+    expect(document.body.textContent).toContain('Przeliczenie zakończyło się bez wyniku.');
     expect(document.body.textContent).not.toContain('Stara odmowa produktu.');
     expect(document.body.textContent).not.toContain('Wybierz produkt');
   });
@@ -97,10 +97,10 @@ describe('PI visible terminal contract', () => {
 
     expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual({
       state: 'ERROR',
-      messagePl: 'PI nie mogło dokończyć przeliczenia. Wróć do receptury i spróbuj ponownie.',
+      messagePl: 'Nie udało się dokończyć przeliczenia. Wróć do receptury i spróbuj ponownie.',
     });
     await renderPanel();
-    expect(document.body.textContent).toContain('PI nie mogło dokończyć przeliczenia.');
+    expect(document.body.textContent).toContain('Nie udało się dokończyć przeliczenia.');
     expect(document.body.textContent).toContain('Wróć do receptury');
   });
 
@@ -392,7 +392,7 @@ describe('PI visible terminal contract', () => {
     await renderPanel();
 
     expect(document.body.textContent).toContain('Możliwy kolejny krok: Dekstroza');
-    expect(document.body.textContent).toContain('PI nie doda tego składnika automatycznie');
+    expect(document.body.textContent).toContain('Gellatti nie doda tego składnika automatycznie');
     expect(
       document.querySelector('[data-testid="direction-rescue-add-ingredient"]'),
     ).not.toBeNull();

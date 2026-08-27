@@ -122,7 +122,7 @@ export interface CanonicalRecipeSaveOptions {
  * cannot visually resurrect the notice that belonged to the prior recipe. */
 export function productBehaviorSaveGateMessage(isFreshNativeStarter: boolean): string {
   return isFreshNativeStarter
-    ? 'Nowa receptura wymaga pierwszego przeliczenia produktów przed zapisem. Kliknij PI.'
+    ? 'Nowa receptura wymaga pierwszego przeliczenia produktów przed zapisem. Kliknij „Przelicz recepturę”.'
     : 'Receptura zawiera produkt wymagający ponownej walidacji przed zapisem. Przelicz recepturę.';
 }
 

@@ -574,7 +574,7 @@ export function buildFormulationProposal(
       ingredientIds,
       messagePl:
         `Składnik Główny (${ingredientIds.join(', ')}) jest oznaczony jako niedostępny. ` +
-        'PI nie usunie tożsamości receptury: dodaj zatwierdzony zamiennik lub przywróć składnik.',
+        'Gellatti nie usunie składnika, który definiuje recepturę. Dodaj zatwierdzony zamiennik lub przywróć składnik.',
     };
   }
   const excluded = new Set(options.excludedIngredientIds ?? []);
@@ -938,7 +938,7 @@ export function buildFormulationProposal(
             grams: targetGrams,
             role: roleTarget.role,
             reasonPl:
-              `PI dodało ${canonical ? `„${canonical.namePl}" (${canonical.mapperId})` : 'składnik'} ` +
+              `Gellatti dodało ${canonical ? `„${canonical.namePl}" (${canonical.mapperId})` : 'składnik'} ` +
               `w roli „${ROLE_LABEL_PL[roleTarget.role]}", ponieważ ` +
               `zatwierdzona receptura ${template.templateId} wymaga tej roli.`,
           });
@@ -974,7 +974,7 @@ export function buildFormulationProposal(
         role: roleTarget.role,
         messagePl:
           `Brakuje składnika w roli: ${ROLE_LABEL_PL[roleTarget.role]}. ` +
-          `Wybierz składnik z katalogu PI, aby PI mogło ułożyć recepturę ${template.templateId}.`,
+          `Wybierz składnik z katalogu Gellatti, aby przygotować tę recepturę.`,
         roleTrace,
       };
     }
@@ -1089,8 +1089,8 @@ export function buildFormulationProposal(
       messagePl:
         `Składnik „${flavourGap.name}" (rola „${ROLE_LABEL_PL[flavourGap.role]}") ma 0 g, ` +
         `a zatwierdzona receptura bazowa ${template.templateId} nie zawiera tej roli — ` +
-        `PI nie wymyśla dawki składnika smakowego. Wpisz ilość, ` +
-        `a PI ułoży resztę receptury wokół niej.`,
+        `Gellatti nie zgaduje ilości składnika smakowego. Wpisz ilość, ` +
+        `a reszta receptury zostanie dopasowana wokół niej.`,
       roleTrace,
     };
   }
@@ -1098,9 +1098,9 @@ export function buildFormulationProposal(
     recommendations.push({
       role: unfillable.role,
       messagePl:
-        `PI nie ma zatwierdzonej dawki dla składnika „${unfillable.name}" ` +
+        `Gellatti nie ma zatwierdzonej ilości dla składnika „${unfillable.name}” ` +
         `(rola „${ROLE_LABEL_PL[unfillable.role]}") w tym profilu — wpisz ilość, ` +
-        `a PI ułoży resztę receptury wokół niej.`,
+        `a reszta receptury zostanie dopasowana wokół niej.`,
     });
   }
 
@@ -1129,7 +1129,7 @@ export function buildFormulationProposal(
         messagePl:
           `Proporcja składników Głównych (${mainScale.mains.map((main) => main.ingredientName).join(', ')}) ` +
           `wymaga ${scaledMainTotal.toFixed(1)} g, więcej niż docelowa partia ${batch.toFixed(1)} g. ` +
-          'PI nie zmieniło blokad ani tożsamości receptury.',
+          'Gellatti nie zmieniło blokad ani składników definiujących recepturę.',
       };
     }
     const originalByLineId = new Map(

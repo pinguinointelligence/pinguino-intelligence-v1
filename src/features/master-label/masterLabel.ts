@@ -702,9 +702,7 @@ function fieldReadiness(data: MasterLabelData, field: MasterLabelFieldId): Label
         ? ready('Składniki')
         : missing(
             'Składniki',
-            issues.length > 0
-              ? issues.join('. ')
-              : 'Brakuje składników z rzeczywistej partii Production.',
+            issues.length > 0 ? issues.join('. ') : 'Brakuje składników z zakończonej partii.',
           );
     }
     case 'allergens':
@@ -723,8 +721,8 @@ function fieldReadiness(data: MasterLabelData, field: MasterLabelFieldId): Label
           );
     case 'nutrition':
       return data.nutritionDeclaration
-        ? ready('Nutrition')
-        : missing('Nutrition', 'Brak obliczeń Nutrition.');
+        ? ready('Wartości odżywcze')
+        : missing('Wartości odżywcze', 'Brak obliczeń wartości odżywczych.');
     case 'net_quantity':
       return data.market === 'CA'
         ? data.packageQuantity?.source !== undefined &&
@@ -755,7 +753,7 @@ function fieldReadiness(data: MasterLabelData, field: MasterLabelFieldId): Label
     case 'production_date':
       return data.productionDate.trim() && data.productionDateReviewed
         ? ready('Data produkcji')
-        : missing('Data produkcji', 'Brak potwierdzonej daty zakończenia Production Run.');
+        : missing('Data produkcji', 'Brak potwierdzonej daty zakończenia partii.');
     case 'date_mark':
       return data.dateMark.kind !== 'unresolved' &&
         data.dateMark.date &&
@@ -769,7 +767,7 @@ function fieldReadiness(data: MasterLabelData, field: MasterLabelFieldId): Label
         ? ready('Data trwałości')
         : missing(
             'Data trwałości',
-            'WYMAGA POTWIERDZENIA — PINGÜINO nie wylicza trwałości bez podstawy.',
+            'WYMAGA POTWIERDZENIA — Gellatti nie wylicza trwałości bez podstawy.',
           );
     case 'lot':
       return data.lotCode.trim() ? ready('LOT') : missing('LOT', 'Uzupełnij identyfikator partii.');
@@ -806,16 +804,16 @@ function fieldReadiness(data: MasterLabelData, field: MasterLabelFieldId): Label
           );
     case 'website':
       return data.operator.website?.trim()
-        ? ready('Website')
-        : missing('Website', 'Uzupełnij stronę firmy w profilu.');
+        ? ready('Strona internetowa')
+        : missing('Strona internetowa', 'Uzupełnij stronę firmy w profilu.');
     case 'internal_article_id':
       return data.internalArticleId?.trim()
-        ? ready('APP / article ID')
-        : missing('APP / article ID', 'Pole opcjonalne nie jest uzupełnione.');
+        ? ready('Wewnętrzny identyfikator artykułu')
+        : missing('Wewnętrzny identyfikator artykułu', 'Pole opcjonalne nie jest uzupełnione.');
     case 'batch_id':
       return data.sourceCompletionSessionId.trim()
-        ? ready('Batch ID')
-        : missing('Batch ID', 'Brak identyfikatora Production Run.');
+        ? ready('Identyfikator partii')
+        : missing('Identyfikator partii', 'Brak identyfikatora zakończonej partii.');
   }
 }
 
@@ -1024,7 +1022,7 @@ export function buildLabelPreflight(data: MasterLabelData): LabelPreflight {
         (nutritionReadiness.ready && usServingIssues.length === 0 && canadaNftIssues.length === 0)
           ? 'ready'
           : 'missing',
-      label: `Nutrition · ${profile.nutritionFormat}`,
+      label: `Wartości odżywcze · ${profile.nutritionFormat}`,
       message:
         !retail ||
         (nutritionReadiness.ready && usServingIssues.length === 0 && canadaNftIssues.length === 0)
@@ -1058,11 +1056,11 @@ export function buildLabelPreflight(data: MasterLabelData): LabelPreflight {
         !retail || contextReady
           ? 'Wybrano wymagany kontekst profilu.'
           : data.market === 'UK'
-            ? 'Wybierz Great Britain albo Northern Ireland oraz właściwy kontekst prepacked/PPDS.'
+            ? 'Wybierz Wielką Brytanię albo Irlandię Północną oraz właściwy kontekst żywności opakowanej lub PPDS.'
             : data.market === 'EU'
               ? 'Podaj dwuliterowy kod docelowego państwa członkowskiego i potwierdź właściwe języki.'
               : data.market === 'AU_NZ'
-                ? 'Wybierz Australię albo Nową Zelandię dla country-of-origin overlay.'
+                ? 'Wybierz Australię albo Nową Zelandię dla oznaczenia kraju pochodzenia.'
                 : 'Potwierdź kontekst sprzedaży FDA.',
     },
     {

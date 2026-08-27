@@ -53,19 +53,19 @@ export function mainObjectiveSummaryPl(preview: ConstraintPreview): string | nul
     const bound = Number.isInteger(proof.certifiedUpperBoundGrams)
       ? `Certyfikowana górna granica: ${formatGramsPl(proof.certifiedUpperBoundGrams!)}.`
       : Number.isInteger(proof.searchUpperBoundGrams)
-        ? `Przeszukiwany górny pułap: ${formatGramsPl(proof.searchUpperBoundGrams!)}.`
-        : 'Górna granica nie została certyfikowana.';
-    const summary = `BEST_ACHIEVABLE: PI zmienia grupę Główną z ${before} na ${after} i ponownie bilansuje całą recepturę. To nie jest udowodnione maksimum. ${bound}`;
+        ? `Sprawdzany górny pułap: ${formatGramsPl(proof.searchUpperBoundGrams!)}.`
+        : 'Górna granica nie została potwierdzona.';
+    const summary = `Najlepszy osiągalny wynik: Gellatti zmienia grupę główną z ${before} na ${after} i ponownie bilansuje całą recepturę. To nie jest udowodnione maksimum. ${bound}`;
     const distortion = lockedMainRatioDistortionPl(preview);
     return distortion ? `${summary} ${distortion}` : summary;
   }
   if (proof.status !== 'maximized' || proof.provenMaximum !== true) return null;
   if (proof.executableMainGrams < proof.startingMainGrams) {
-    const summary = `Automatyczna korekta składnika Głównego: PI zmienia grupę Główną z ${before} na ${after}, czyli najwyższą technicznie wykonalną ilość, i ponownie bilansuje całą recepturę.`;
+    const summary = `Automatyczna korekta składnika głównego: Gellatti zmienia grupę główną z ${before} na ${after}, czyli najwyższą wykonalną ilość, i ponownie bilansuje całą recepturę.`;
     const distortion = lockedMainRatioDistortionPl(preview);
     return distortion ? `${summary} ${distortion}` : summary;
   }
-  const summary = `Maksymalizacja składnika Głównego: PI zmienia grupę Główną z ${before} na ${after} i ponownie bilansuje całą recepturę.`;
+  const summary = `Maksymalizacja składnika głównego: Gellatti zmienia grupę główną z ${before} na ${after} i ponownie bilansuje całą recepturę.`;
   const distortion = lockedMainRatioDistortionPl(preview);
   return distortion ? `${summary} ${distortion}` : summary;
 }

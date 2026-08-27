@@ -95,7 +95,7 @@ export function ProteinContentReadout({
         className={cn('mt-1.5 text-[10px] leading-snug', dark ? 'text-ivory/55' : 'text-stone-500')}
       >
         To metryka wyniku, nie sterownik gramatur. Więcej białka nie oznacza lepszej receptury —
-        bezpieczne zmiany składu wykonuje wyłącznie PI w Podglądzie.
+        bezpieczne zmiany składu wykonuje Gellatti w podglądzie.
       </p>
     </section>
   );

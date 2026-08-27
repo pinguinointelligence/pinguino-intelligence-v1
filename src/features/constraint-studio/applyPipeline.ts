@@ -1554,7 +1554,7 @@ function mainSafePreview(
         messagePl:
           'Receptura Wegańska zawiera składniki bez potwierdzonej zgodności Vegan: ' +
           issues.map((issue) => `${issue.ingredientName} [${issue.status}]`).join(', ') +
-          '. PI nie usunie ich ani nie zastąpi po cichu.' +
+          '. Gellatti nie usunie ich ani nie zastąpi bez Twojej zgody.' +
           veganSubstitutionMessagePl(substitutions),
       };
     }
@@ -3804,11 +3804,12 @@ function maximizeMainTechnicalObjective(
   const serverResolvedUserHeldMainGroup =
     (options.technicalOnlyMainLineIds?.length ?? 0) === 0 &&
     allMainSnapshotsResolved &&
-    mains.some((main) =>
-      resolveMainCapability({
-        snapshot: options.productBehaviorSnapshots?.[main.lineId],
-        snapshotRequired: true,
-      }).userHeld,
+    mains.some(
+      (main) =>
+        resolveMainCapability({
+          snapshot: options.productBehaviorSnapshots?.[main.lineId],
+          snapshotRequired: true,
+        }).userHeld,
     );
   // A published ceiling, or a fully server-resolved user-held group, already
   // supplies the authority shape needed for the continuous upper bound. The
@@ -4275,16 +4276,13 @@ function maximizeMainTechnicalObjective(
         searchStart,
         Math.max(searchFloor, Math.min(searchStart, Math.round(startingMainGrams))),
         ...seedTotals,
-        ...Array.from(
-          { length: MAIN_TECHNICAL_NO_CEILING_COARSE_PROBES },
-          (_, index) =>
-            Math.max(
-              searchFloor,
-              Math.round(
-                searchStart -
-                  (span * (index + 1)) / MAIN_TECHNICAL_NO_CEILING_COARSE_PROBES,
-              ),
+        ...Array.from({ length: MAIN_TECHNICAL_NO_CEILING_COARSE_PROBES }, (_, index) =>
+          Math.max(
+            searchFloor,
+            Math.round(
+              searchStart - (span * (index + 1)) / MAIN_TECHNICAL_NO_CEILING_COARSE_PROBES,
             ),
+          ),
         ),
         searchFloor,
       ]),
@@ -4305,8 +4303,7 @@ function maximizeMainTechnicalObjective(
       while (
         acceptedTotal + 1 < rejectedExclusive &&
         frontierAttempts <
-          MAIN_TECHNICAL_NO_CEILING_COARSE_PROBES +
-            MAIN_TECHNICAL_NO_CEILING_REFINE_PROBES
+          MAIN_TECHNICAL_NO_CEILING_COARSE_PROBES + MAIN_TECHNICAL_NO_CEILING_REFINE_PROBES
       ) {
         const total = Math.floor((acceptedTotal + rejectedExclusive) / 2);
         const outcome = recordFrontierProbe(total);
@@ -5450,7 +5447,7 @@ function buildFormulationPreviewInternal(
       messagePl:
         `Brakuje składnika w twardej roli technologicznej: ` +
         `${built.proposal.missingHardRoles.join(', ')}. ` +
-        `Dodaj zatwierdzony składnik tej roli, aby PI mogło ułożyć recepturę.`,
+        `Dodaj zatwierdzony składnik tej roli, aby Gellatti mogło ułożyć recepturę.`,
       roleTrace: built.proposal.roleTrace,
     };
   }
@@ -6406,7 +6403,7 @@ function buildOptimizePreviewWithDirection(
       ingredientIds,
       messagePl:
         `Składnik Główny (${ingredientIds.join(', ')}) jest oznaczony jako niedostępny. ` +
-        'PI nie usunie go po cichu: wybierz zatwierdzony zamiennik albo przywróć składnik.',
+        'Gellatti nie usunie go bez Twojej zgody. Wybierz zatwierdzony zamiennik albo przywróć składnik.',
     };
   }
   // OWNER P0 (full formulation) — deterministic MODE ROUTER first: a new/
@@ -6444,7 +6441,7 @@ function buildOptimizePreviewWithDirection(
       ingredientNames: mainIntent.map((line) => line.ingredientName),
       messagePl:
         `Składniki Główne ważą ${mainTotal.toFixed(1)} g, więcej niż docelowa partia ` +
-        `${input.target_batch_grams.toFixed(1)} g. PI nie zmniejszyło tożsamości receptury po cichu.`,
+        `${input.target_batch_grams.toFixed(1)} g. Gellatti nie zmniejszyło ilości składników definiujących recepturę bez Twojej zgody.`,
     };
   }
   // The exact current gram vector is the null hypothesis when the user has not
@@ -7183,7 +7180,7 @@ function buildOptimizePreviewWithDirection(
           `Blokady lub zakresy składników Głównych ` +
           `(${constrainedMain.map((line) => line.ingredientName).join(', ')}) ` +
           `nie pozwalają zbudować poprawnej receptury dla partii ` +
-          `${input.target_batch_grams.toFixed(1)} g. PI nie zmieniło receptury.`,
+          `${input.target_batch_grams.toFixed(1)} g. Gellatti nie zmieniło receptury.`,
       };
     }
     const currentHardSafe = classifyViolationBands(working).hardMetrics.length === 0;
@@ -7252,7 +7249,7 @@ function buildOptimizePreviewWithDirection(
         acceptedMax: remaining?.band?.max ?? null,
         messagePl:
           'Ten składnik trzeba usunąć albo zmienić. ' +
-          `PINGÜINO nie znalazło poprawnej receptury z zachowaniem składnika ` +
+          `Gellatti nie znalazło poprawnej receptury z zachowaniem składnika ` +
           `${anchoredStandard.ingredient.name} w ilości co najmniej 1 g.`,
       };
     }

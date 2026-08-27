@@ -55,13 +55,17 @@ describe('signInWithGoogle — provider + validated redirectTo', () => {
     expect(call.options?.redirectTo).toBeUndefined();
   });
 
-  it('surfaces a provider error as an honest { ok: false } result', async () => {
+  it('maps a provider error to a typed, customer-safe result', async () => {
     setWindowOrigin('http://localhost:5173');
     signInWithOAuth.mockResolvedValue({
       data: { provider: 'google', url: null },
       error: { message: 'Provider is not enabled' },
     });
 
-    expect(await signInWithGoogle()).toEqual({ ok: false, message: 'Provider is not enabled' });
+    expect(await signInWithGoogle()).toEqual({
+      ok: false,
+      code: 'AUTH_UNAVAILABLE',
+      message: 'Spróbuj ponownie za chwilę.',
+    });
   });
 });

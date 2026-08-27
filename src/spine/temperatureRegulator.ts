@@ -351,7 +351,7 @@ const veganGelatoMinus11: TemperatureRegulatorSettings = {
   disabledGates: VEGAN_DISABLED_GATES,
   advisoryGates: [],
   notes: [
-    'derived from PINGUINO temperature logic — locked internal v0.1, not externally confirmed',
+    'derived from GELLATTI temperature logic — locked internal v0.1, not externally confirmed',
     'never fails because lactose or dairy protein is 0',
   ],
 };
@@ -371,7 +371,7 @@ const veganGelatoMinus12: TemperatureRegulatorSettings = {
   disabledGates: VEGAN_DISABLED_GATES,
   advisoryGates: [],
   notes: [
-    'derived from PINGUINO temperature logic — locked internal v0.1, not externally confirmed',
+    'derived from GELLATTI temperature logic — locked internal v0.1, not externally confirmed',
   ],
 };
 

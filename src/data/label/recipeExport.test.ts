@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { copy } from '@/copy/en';
 import { parseCsv } from '@/lib/csv';
 import type { NutritionPer100g, RecipeCosts, RecipeResult } from '@/engine';
 import { buildCostBlock, buildPrintableLabelHtml, buildRecipeCsv } from './recipeExport';
@@ -80,7 +81,9 @@ describe('buildRecipeCsv', () => {
   });
 
   it('quotes cells containing commas or quotes and recovers them exactly', () => {
-    const csv = buildRecipeCsv(makeResult({ items: [{ name: 'Sugar, "raw"', effective_grams: 1000 }] }));
+    const csv = buildRecipeCsv(
+      makeResult({ items: [{ name: 'Sugar, "raw"', effective_grams: 1000 }] }),
+    );
     expect(csv).toContain('"Sugar, ""raw"""');
     const grid = parseCsv(csv);
     expect(grid.some((row) => row[0] === 'Sugar, "raw"')).toBe(true);
@@ -88,7 +91,7 @@ describe('buildRecipeCsv', () => {
 
   it('writes a blank (never a fabricated number) for incomplete cost cells', () => {
     const grid = parseCsv(buildRecipeCsv(makeResult({ costs: INCOMPLETE_COSTS })));
-    const perKg = grid.find((row) => row[0] === 'Per kg');
+    const perKg = grid.find((row) => row[0] === copy.studio.metrics.costPerKg);
     expect(perKg?.[1]).toBe('');
   });
 
@@ -102,18 +105,22 @@ describe('buildPrintableLabelHtml', () => {
   it('is a self-contained document with the declaration + no scripts', () => {
     const html = buildPrintableLabelHtml(makeResult({}));
     expect(html).toContain('<!DOCTYPE html>');
-    expect(html).toContain('Energy');
-    expect(html).toContain('Salt');
+    expect(html).toContain('Energia');
+    expect(html).toContain('Sól');
     expect(html).not.toContain('<script');
   });
 
-  it('shows "Not available" for a null saturated row (never a fake 0)', () => {
-    const html = buildPrintableLabelHtml(makeResult({ nutrition: { ...NUTRITION, saturated_fat_g: null } }));
-    expect(html).toContain('Not available');
+  it('shows the localized unavailable label for a null saturated row (never a fake 0)', () => {
+    const html = buildPrintableLabelHtml(
+      makeResult({ nutrition: { ...NUTRITION, saturated_fat_g: null } }),
+    );
+    expect(html).toContain(copy.nav.label.notAvailable);
   });
 
   it('escapes HTML-significant characters from ingredient names', () => {
-    const html = buildPrintableLabelHtml(makeResult({ items: [{ name: 'A & B <x>', effective_grams: 1000 }] }));
+    const html = buildPrintableLabelHtml(
+      makeResult({ items: [{ name: 'A & B <x>', effective_grams: 1000 }] }),
+    );
     expect(html).toContain('A &amp; B &lt;x&gt;');
     expect(html).not.toContain('<x>');
   });

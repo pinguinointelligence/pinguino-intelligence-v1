@@ -41,4 +41,4 @@ export function isMonitorTuningApproved(
  * itself still calculates; only the interactive tuning is unavailable.
  */
 export const TUNING_NOT_APPROVED_COPY =
-  'PI może obliczyć recepturę dla tego trybu, ale interaktywne dostrajanie Monitorem nie zostało jeszcze zatwierdzone dla tej temperatury.';
+  'Gellatti może obliczyć recepturę dla tego trybu, ale interaktywne dostrajanie nie zostało jeszcze zatwierdzone dla tej temperatury.';

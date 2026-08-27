@@ -25,8 +25,20 @@ const entry = (over: Partial<PickerCatalogueEntry>): PickerCatalogueEntry => ({
 
 describe('product-picker search', () => {
   const catalogue = [
-    entry({ productId: 'P-choc', displayName: 'Lindt Excellence 70%', brand: 'Lindt', ean: '3046920022606', category: 'czekolada' }),
-    entry({ productId: 'P-whisky', displayName: 'Jameson Irish Whiskey', brand: 'Jameson', ean: '5011007003234', category: 'whisky' }),
+    entry({
+      productId: 'P-choc',
+      displayName: 'Lindt Excellence 70%',
+      brand: 'Lindt',
+      ean: '3046920022606',
+      category: 'czekolada',
+    }),
+    entry({
+      productId: 'P-whisky',
+      displayName: 'Jameson Irish Whiskey',
+      brand: 'Jameson',
+      ean: '5011007003234',
+      category: 'whisky',
+    }),
   ];
 
   it('matches by product name (contains)', () => {
@@ -75,7 +87,13 @@ describe('product-picker readiness (honest)', () => {
     const ready = entry({
       productId: 'P-ready',
       displayName: 'Owner-measured base',
-      readiness: { pac_value: 190, pod_value: 100, mapper_status: null, matched_basement_id: null, product_name_display: 'Owner-measured base' },
+      readiness: {
+        pac_value: 190,
+        pod_value: 100,
+        mapper_status: null,
+        matched_basement_id: null,
+        product_name_display: 'Owner-measured base',
+      },
     });
     const r = evaluatePickerReadiness(ready);
     expect(r.exactReady).toBe(true);
@@ -95,8 +113,8 @@ describe('product-picker readiness (honest)', () => {
 
 describe('product-picker readable labels + category seeding', () => {
   it('maps lifecycle status to a readable Polish label (never the raw enum)', () => {
-    expect(readableStatusLabel('pi_verified')).toBe('Zweryfikowany przez PI');
-    expect(readableStatusLabel('pi_generated')).toBe('Wygenerowany przez PI');
+    expect(readableStatusLabel('pi_verified')).toBe('Zweryfikowany przez Gellatti');
+    expect(readableStatusLabel('pi_generated')).toBe('Przygotowany przez Gellatti');
     expect(readableStatusLabel('draft')).toBeNull();
   });
 

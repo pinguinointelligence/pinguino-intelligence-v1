@@ -20,11 +20,85 @@ const DECISION_TONE: Record<string, string> = {
   blocked: 'text-rose-300',
 };
 
-const humanize = (s: string): string => s.replace(/_/g, ' ');
+const FRIENDLY_LABELS: Readonly<Record<string, string>> = {
+  optimized: 'Gotowa bezpieczna korekta',
+  no_action_needed: 'Korekta niepotrzebna',
+  tradeoff: 'Korekta z kompromisem',
+  impossible: 'Brak bezpiecznej korekty',
+  blocked: 'Ocena zablokowana',
+  increase_npac: 'zwiększ NPAC',
+  decrease_npac: 'zmniejsz NPAC',
+  increase_pod: 'zwiększ POD',
+  decrease_pod: 'zmniejsz POD',
+  reduce_pod: 'zmniejsz POD',
+  increase_solids: 'zwiększ części stałe',
+  decrease_solids: 'zmniejsz części stałe',
+  increase_water: 'zwiększ wodę',
+  decrease_water: 'zmniejsz wodę',
+  increase_fat: 'zwiększ tłuszcz',
+  decrease_fat: 'zmniejsz tłuszcz',
+  increase_ice_fraction: 'zwiększ udział lodu',
+  decrease_ice_fraction: 'zmniejsz udział lodu',
+  reduce_lactose_sanding: 'ogranicz krystalizację laktozy',
+  increase_aerating_protein: 'zwiększ białko wspierające napowietrzenie',
+  adjust_fruit_ratio: 'dopasuj udział owoców',
+  adjust_plant_base_ratio: 'dopasuj bazę roślinną',
+  adjust_chocolate_ratio: 'dopasuj udział czekolady',
+  adjust_cocoa_fat_balance: 'dopasuj równowagę kakao i tłuszczu',
+  restore_stabilizer: 'przywróć stabilizator',
+  milk: 'mleko',
+  cream: 'śmietanka',
+  skimmed_milk_powder: 'odtłuszczone mleko w proszku',
+  sucrose: 'sacharoza',
+  dextrose: 'dekstroza',
+  inulin_fiber: 'inulina lub błonnik',
+  stabilizer: 'stabilizator',
+  water: 'woda',
+  fruit: 'owoce',
+  hero_flavor_ingredient: 'główny składnik smakowy',
+  oat_drink: 'napój owsiany',
+  soy_drink: 'napój sojowy',
+  almond_drink: 'napój migdałowy',
+  rice_drink: 'napój ryżowy',
+  coconut_milk_cream: 'mleczko lub śmietanka kokosowa',
+  plant_fat: 'tłuszcz roślinny',
+  plant_protein: 'białko roślinne',
+  whey_protein_concentrate: 'koncentrat białka serwatkowego',
+  milk_protein_concentrate: 'koncentrat białek mleka',
+  high_protein_dairy: 'wysokobiałkowy produkt mleczny',
+  dark_chocolate: 'ciemna czekolada',
+  milk_chocolate: 'czekolada mleczna',
+  cocoa_powder: 'kakao',
+  cocoa_mass: 'miazga kakaowa',
+  cocoa_butter: 'masło kakaowe',
+  chocolate_paste: 'pasta czekoladowa',
+  npac: 'NPAC',
+  pod: 'POD',
+  ice_fraction: 'udział lodu',
+  total_solids: 'części stałe',
+  fat: 'tłuszcz',
+  lactose: 'laktoza',
+};
+const humanize = (value: string): string => FRIENDLY_LABELS[value] ?? 'zmiana receptury';
+const PROFILE_LABEL: Readonly<Record<string, string>> = {
+  standard_gelato: 'Gelato klasyczne',
+  sorbet: 'Sorbet',
+  vegan_gelato: 'Gelato wegańskie',
+  chocolate_gelato: 'Gelato czekoladowe',
+  protein_gelato: 'Gelato proteinowe',
+};
 const fmt = (v: number | null | undefined): string =>
   typeof v === 'number' && Number.isFinite(v) ? v.toFixed(2) : '—';
 
-function MetricRow({ label, before, after }: { label: string; before: number | null | undefined; after: number | null | undefined }) {
+function MetricRow({
+  label,
+  before,
+  after,
+}: {
+  label: string;
+  before: number | null | undefined;
+  after: number | null | undefined;
+}) {
   return (
     <div className="flex justify-between gap-4 font-mono text-[11px] text-ivory/60">
       <span className="text-ivory/60">{label}</span>
@@ -47,31 +121,35 @@ export function OptimizationPreviewPanel({
   const metricRows: Array<[string, keyof BaseEngineMetrics]> = [
     ['NPAC', 'npac'],
     ['POD', 'pod'],
-    ['ice fraction', 'iceFraction'],
-    ['total solids', 'solids'],
-    ['water', 'water'],
+    ['Udział lodu', 'iceFraction'],
+    ['Części stałe', 'solids'],
+    ['Woda', 'water'],
   ];
 
   return (
     <Card padding="lg">
-      <SectionLabel>Optimization preview</SectionLabel>
+      <SectionLabel>Podgląd optymalizacji</SectionLabel>
 
       <div className="mt-4 flex items-baseline justify-between gap-3">
-        <span className={`text-sm font-medium ${DECISION_TONE[view.finalDecision] ?? 'text-ivory'}`}>
+        <span
+          className={`text-sm font-medium ${DECISION_TONE[view.finalDecision] ?? 'text-ivory'}`}
+        >
           {humanize(view.finalDecision)}
         </span>
         <span className="font-mono text-[11px] text-ivory/60">
-          {view.productProfile} · {view.servingTemperatureC}°C
+          {PROFILE_LABEL[view.productProfile] ?? 'Receptura'} · {view.servingTemperatureC}°C
         </span>
       </div>
-      <p className="mt-2 text-sm leading-relaxed text-ivory/60">{recommendationFor(view.finalDecision)}</p>
+      <p className="mt-2 text-sm leading-relaxed text-ivory/60">
+        {recommendationFor(view.finalDecision)}
+      </p>
 
       {/* Temperature-aware target instrumentation — label only, safe in every tier. */}
       <p className="mt-2 font-mono text-[11px] text-ivory/60">
-        solver target: {view.targetGuidance.solverTargetSource}
+        Zakres docelowy
         {view.targetGuidance.solverTargetAligned
-          ? ' · aligned with the regulator'
-          : ' · not connected (still the −11 seeded band)'}
+          ? ' · zgodny z wybranym profilem'
+          : ' · wymaga weryfikacji dla tej temperatury'}
       </p>
 
       {/* Shadow (non-live) engine-band-vs-regulator-band comparison — visibility only. */}
@@ -80,9 +158,9 @@ export function OptimizationPreviewPanel({
         if (!npac || !npac.engineBand || !npac.shadowBand) return null;
         return (
           <p className="mt-1 font-mono text-[11px] text-ivory/60">
-            shadow bands (not live · {view.bandComparison.shadowSource}): engine npac {npac.engineBand[0]}–
-            {npac.engineBand[1]} vs regulator {npac.shadowBand[0]}–{npac.shadowBand[1]}
-            {npac.aligned ? ' · aligned' : ` · divergent (Δ${npac.centerDelta?.toFixed(1)})`}
+            Porównanie zakresu NPAC · bieżący {npac.engineBand[0]}–{npac.engineBand[1]} / dodatkowy{' '}
+            {npac.shadowBand[0]}–{npac.shadowBand[1]}
+            {npac.aligned ? ' · zgodne' : ` · różnica środka ${npac.centerDelta?.toFixed(1)}`}
           </p>
         );
       })()}
@@ -92,12 +170,14 @@ export function OptimizationPreviewPanel({
           seeded cells this comparison is expected to read "same correction". */}
       {view.solverTargetInjection.active ? (
         <p className="mt-1 font-mono text-[11px] text-ivory/60">
-          regulator-shadow solver target:{' '}
-          {view.solverTargetInjection.correctionChanged ? 'would change the correction' : 'same correction'}
+          Dodatkowe porównanie zakresu:{' '}
+          {view.solverTargetInjection.correctionChanged
+            ? 'zmieniłoby korektę'
+            : 'bez zmiany korekty'}
           {view.solverTargetInjection.newViolationsUnderRegulator.length > 0
-            ? ` · would target: ${view.solverTargetInjection.newViolationsUnderRegulator.map(humanize).join(', ')}`
+            ? ' · wykryto dodatkowe odchylenia'
             : ''}
-          <span className="text-ivory/60"> · Comparison only — engine target bands are temperature-aware</span>
+          <span className="text-ivory/60"> · tylko informacyjnie</span>
         </p>
       ) : null}
 
@@ -105,16 +185,18 @@ export function OptimizationPreviewPanel({
           decision + whether it differs from / improves on the engine-seeded solve; no grams here. */}
       {view.regulatorShadowSolve.active ? (
         <p className="mt-1 font-mono text-[11px] text-ivory/60">
-          regulator-shadow gram solve: {humanize(view.regulatorShadowSolve.decision)}
-          {view.solveComparison.correctionDiffers ? ' · differs from engine-seeded' : ' · same as engine-seeded'}
-          {view.solveComparison.regulatorShadowImproved ? ' · improves (rerun-verified)' : ''}
+          Dodatkowe przeliczenie: {humanize(view.regulatorShadowSolve.decision)}
+          {view.solveComparison.correctionDiffers ? ' · inna korekta' : ' · ta sama korekta'}
+          {view.solveComparison.regulatorShadowImproved
+            ? ' · wynik lepszy po ponownym sprawdzeniu'
+            : ''}
         </p>
       ) : null}
 
       {/* Directional recommendation — safe in every tier (no grams, no ingredient names). */}
       {view.correctionGoals.length > 0 ? (
         <p className="mt-3 text-xs leading-relaxed text-ivory/65">
-          <span className="text-ivory/60">Direction: </span>
+          <span className="text-ivory/60">Kierunek: </span>
           {view.correctionGoals.map(humanize).join(' · ')}
         </p>
       ) : null}
@@ -122,11 +204,16 @@ export function OptimizationPreviewPanel({
       {/* Pro: the exact correction plan (target metric + lever ingredient classes). */}
       {policy.showCorrectionDetail && view.proposedCorrections.length > 0 ? (
         <div className="mt-3 space-y-1 border-t border-ivory/10 pt-3">
-          <p className="font-mono text-[11px] text-ivory/60">correction plan</p>
+          <p className="font-mono text-[11px] text-ivory/60">Plan korekty</p>
           {view.proposedCorrections.map((p) => (
-            <div key={p.goal} className="flex justify-between gap-3 font-mono text-[11px] text-ivory/70">
+            <div
+              key={p.goal}
+              className="flex justify-between gap-3 font-mono text-[11px] text-ivory/70"
+            >
               <span>{humanize(p.goal)}</span>
-              <span className="text-ivory/60">{p.affectedIngredientClasses.map(humanize).join(' / ')}</span>
+              <span className="text-ivory/60">
+                {p.affectedIngredientClasses.map(humanize).join(' / ')}
+              </span>
             </div>
           ))}
         </div>
@@ -135,14 +222,21 @@ export function OptimizationPreviewPanel({
       {/* Pro: the solver's exact added grams — engine-seeded (live target) then regulator-shadow. */}
       {policy.showExactGrams && view.proposedAdjustments.length > 0 ? (
         <p className="mt-3 font-mono text-[11px] text-sky-300/80">
-          engine-seeded solver added: {view.proposedAdjustments.map((x) => `${x.type} ${x.ingredient} ${x.grams.toFixed(1)}g`).join(', ')}
+          Gellatti proponuje:{' '}
+          {view.proposedAdjustments
+            .map((x) => `${x.ingredient} ${x.grams.toFixed(1)} g`)
+            .join(', ')}
         </p>
       ) : null}
-      {policy.showExactGrams && view.regulatorShadowSolve.active && view.regulatorShadowSolve.proposedAdjustments.length > 0 ? (
+      {policy.showExactGrams &&
+      view.regulatorShadowSolve.active &&
+      view.regulatorShadowSolve.proposedAdjustments.length > 0 ? (
         <p className="mt-1 font-mono text-[11px] text-sky-300/80">
-          regulator-shadow solver added:{' '}
-          {view.regulatorShadowSolve.proposedAdjustments.map((x) => `${x.type} ${x.ingredient} ${x.grams.toFixed(1)}g`).join(', ')}
-          <span className="text-ivory/60"> · preview only</span>
+          Dodatkowe porównanie proponuje:{' '}
+          {view.regulatorShadowSolve.proposedAdjustments
+            .map((x) => `${x.ingredient} ${x.grams.toFixed(1)} g`)
+            .join(', ')}
+          <span className="text-ivory/60"> · tylko podgląd</span>
         </p>
       ) : null}
 
@@ -159,18 +253,24 @@ export function OptimizationPreviewPanel({
       {policy.showBeforeAfterMetrics && view.solverTargetInjection.comparisons.length > 0 ? (
         <div className="mt-3 space-y-1 border-t border-ivory/10 pt-3">
           <p className="font-mono text-[11px] text-ivory/60">
-            solver target: engine-seeded → regulator-shadow (preview only)
+            Zakres bieżący → dodatkowy (tylko podgląd)
           </p>
           {view.solverTargetInjection.comparisons.map((c) => (
-            <div key={c.metric} className="flex justify-between gap-3 font-mono text-[11px] text-ivory/70">
+            <div
+              key={c.metric}
+              className="flex justify-between gap-3 font-mono text-[11px] text-ivory/70"
+            >
               <span className="text-ivory/60">
                 {humanize(c.metric)} = {fmt(c.value)}
               </span>
               <span>
                 {c.engineBand ? `${c.engineBand[0]}–${c.engineBand[1]}` : '—'}
-                <span className="text-ivory/60"> → {c.regulatorBand[0]}–{c.regulatorBand[1]}</span>
+                <span className="text-ivory/60">
+                  {' '}
+                  → {c.regulatorBand[0]}–{c.regulatorBand[1]}
+                </span>
                 {c.shadowViolation && !c.engineViolation ? (
-                  <span className="text-amber-300/80"> · now out of band</span>
+                  <span className="text-amber-300/80"> · poza dodatkowym zakresem</span>
                 ) : null}
               </span>
             </div>
@@ -181,7 +281,7 @@ export function OptimizationPreviewPanel({
       {/* Free / Demo: the redaction affordance. */}
       {!policy.showExactGrams ? (
         <p className="mt-3 text-[11px] leading-relaxed text-ivory/60">
-          Exact grams and the full correction plan are available on Pro.
+          Dokładne gramy i pełny plan korekty są dostępne w Gellatti Pro.
         </p>
       ) : null}
 
@@ -189,7 +289,8 @@ export function OptimizationPreviewPanel({
       {policy.showTrace ? (
         <div className="mt-4 space-y-0.5 rounded bg-black/30 px-2 py-1.5 font-mono text-[10px] leading-relaxed text-ivory/60">
           <div>
-            DEV trace · rerun {view.rerunState} · optimizer {view.optimizerDecision} · flow {view.flowDecision}
+            DEV trace · rerun {view.rerunState} · optimizer {view.optimizerDecision} · flow{' '}
+            {view.flowDecision}
           </div>
           {view.targetGuidance.target ? (
             <div>
@@ -205,7 +306,10 @@ export function OptimizationPreviewPanel({
               divergent shadow bands:{' '}
               {view.bandComparison.comparisons
                 .filter((c) => !c.aligned && c.shadowBand)
-                .map((c) => `${c.metric}(eng ${c.engineBand ? c.engineBand.join('–') : '—'}→reg ${c.shadowBand!.join('–')})`)
+                .map(
+                  (c) =>
+                    `${c.metric}(eng ${c.engineBand ? c.engineBand.join('–') : '—'}→reg ${c.shadowBand!.join('–')})`,
+                )
                 .join(', ')}
             </div>
           ) : null}
@@ -220,19 +324,22 @@ export function OptimizationPreviewPanel({
             <div>solver target injection: blocked ({view.solverTargetInjection.blockedReason})</div>
           )}
           <div>
-            gram solve · engine-seeded {view.engineSeededSolve.decision} ({view.engineSeededSolve.proposedAdjustments.length}g-actions)
+            gram solve · engine-seeded {view.engineSeededSolve.decision} (
+            {view.engineSeededSolve.proposedAdjustments.length}g-actions)
             {view.regulatorShadowSolve.active
               ? ` → regulator-shadow ${view.regulatorShadowSolve.decision} (${view.regulatorShadowSolve.proposedAdjustments.length}g-actions)${view.solveComparison.correctionDiffers ? ' · DIFFERS' : ' · same'}${view.solveComparison.regulatorShadowImproved ? ' · improves' : ''}`
               : ` · regulator-shadow blocked (${view.regulatorShadowSolve.blockedReason})`}
           </div>
           {view.rerun ? (
             <div>
-              regulator {view.rerun.before.status} (score {view.rerun.before.score}) → {view.rerun.after.status} (score{' '}
-              {view.rerun.after.score})
+              regulator {view.rerun.before.status} (score {view.rerun.before.score}) →{' '}
+              {view.rerun.after.status} (score {view.rerun.after.score})
             </div>
           ) : null}
           {view.rejectedCorrections.length > 0 ? (
-            <div>rejected: {view.rejectedCorrections.map((r) => `${r.goal}:${r.reason}`).join(', ')}</div>
+            <div>
+              rejected: {view.rejectedCorrections.map((r) => `${r.goal}:${r.reason}`).join(', ')}
+            </div>
           ) : null}
           {view.hardBlockers.length > 0 ? (
             <div className="text-rose-300/70">blockers: {view.hardBlockers.join(', ')}</div>

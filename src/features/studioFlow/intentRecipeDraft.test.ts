@@ -27,7 +27,9 @@ const answer = (state: AssistantFlowState, value: AssistantAnswerValue): Assista
 };
 
 /** A complete assistant intent draft, with overridable answers. */
-const intentFor = (over: Partial<Record<string, AssistantAnswerValue>> = {}): AssistantIntentDraft => {
+const intentFor = (
+  over: Partial<Record<string, AssistantAnswerValue>> = {},
+): AssistantIntentDraft => {
   let s = startAssistantFlow();
   s = answer(s, (over.opening as string) ?? '');
   s = answer(s, (over.product_type as string) ?? 'standard_gelato');
@@ -62,7 +64,9 @@ describe('starter draft — contract', () => {
   });
 
   it('a complete chocolate intent uses the locked chocolate base template', () => {
-    const draft = buildStarterRecipeDraft(intentFor({ product_type: 'chocolate_gelato', main_flavor: 'czekoladowe' }));
+    const draft = buildStarterRecipeDraft(
+      intentFor({ product_type: 'chocolate_gelato', main_flavor: 'czekoladowe' }),
+    );
     expect(draft.status).toBe('ready');
     expect(draft.category).toBe('chocolate_gelato');
     expect(draft.templateId).toBe('chocolate_base_v1');
@@ -103,7 +107,9 @@ describe('starter draft — contract', () => {
       expect(draft.status, profile).toBe('not_supported');
       expect(draft.recipeInput).toBeNull();
       expect(draft.ingredients).toEqual([]);
-      expect(draft.warnings.some((w) => w.code === 'unsupported_profile_needs_manual_start')).toBe(true);
+      expect(draft.warnings.some((w) => w.code === 'unsupported_profile_needs_manual_start')).toBe(
+        true,
+      );
     }
   });
 
@@ -122,7 +128,11 @@ describe('starter draft — contract', () => {
   });
 
   it('7. the generated recipe totals the requested batch size', () => {
-    for (const [batch, grams] of [['1000', 1000], ['5000', 5000], ['25000', 25000]] as const) {
+    for (const [batch, grams] of [
+      ['1000', 1000],
+      ['5000', 5000],
+      ['25000', 25000],
+    ] as const) {
       const draft = buildStarterRecipeDraft(intentFor({ batch_size: batch }));
       const total = draft.recipeInput!.items.reduce((s, item) => s + item.planned_grams, 0);
       expect(total, batch).toBeCloseTo(grams, 6);
@@ -206,14 +216,18 @@ describe('starter draft — purity boundary', () => {
         expect(src.includes(verb), verb).toBe(false);
       }
       expect(/saveRecipe\(|persistRecipe|localStorage|sessionStorage/.test(src)).toBe(false);
-      expect(/updateStock|writeInventory|pac_value\s*=|pod_value\s*=|pi_calculated/.test(src)).toBe(false);
+      expect(/updateStock|writeInventory|pac_value\s*=|pod_value\s*=|pi_calculated/.test(src)).toBe(
+        false,
+      );
       expect(/CONFIG_VERSION\s*=|ENGINE_VERSION\s*=|TARGET_BANDS\s*=/.test(src)).toBe(false);
     }
   });
 
   it('19–20. the shell has NO recipe-SAVE path; local apply goes only through the gated helper', () => {
     // no save / persistence wiring anywhere in the shell (apply ≠ save)
-    expect(/markSaved|createRecipe|saveRecipe\(|persistRecipe|loadPreset|setItems/.test(shellSrc)).toBe(false);
+    expect(
+      /markSaved|createRecipe|saveRecipe\(|persistRecipe|loadPreset|setItems/.test(shellSrc),
+    ).toBe(false);
     expect(/Zapisz|Użyj jako/i.test(shellSrc)).toBe(false);
     // the shell never touches the recipe store directly — only the audited
     // local-apply helper module (slice: assistant-local-apply)
@@ -239,8 +253,15 @@ describe('starter draft — purity boundary', () => {
 describe('starter PL copy — honesty', () => {
   const S = STUDIO_FLOW_COPY.pl.assistant.starter;
   const all = [
-    S.previewCta, S.readyTitle, S.readyBody, S.needsInfo, S.notSupported,
-    S.flavorManual, S.optimizationRecommended, S.inBand, S.notSavedNote,
+    S.previewCta,
+    S.readyTitle,
+    S.readyBody,
+    S.needsInfo,
+    S.notSupported,
+    S.flavorManual,
+    S.optimizationRecommended,
+    S.inBand,
+    S.notSavedNote,
   ];
 
   it('never claims saved / applied, never a fake recipe-created claim', () => {
@@ -250,7 +271,7 @@ describe('starter PL copy — honesty', () => {
     }
     // the preview is honestly a "szkic bazy", not a created recipe
     expect(S.readyTitle).toMatch(/szkic/i);
-    expect(S.readyBody).toMatch(/nie jest zapisywany ani nakładany/i);
+    expect(S.readyBody).toMatch(/nie jest jeszcze zapisany/i);
   });
 
   it('unsupported copy says start manually and does not guess', () => {

@@ -109,7 +109,7 @@ export function WorkbenchIntelligenceHeader({
                 {working ? 'Przeliczanie…' : 'Przelicz'}
               </strong>
               <span className="block text-[10px] text-white/85">
-                {working ? 'PI przygotowuje wynik' : 'Zaktualizuj wynik receptury'}
+                {working ? 'Gellatti przygotowuje wynik' : 'Zaktualizuj wynik receptury'}
               </span>
             </span>
           </button>
@@ -158,11 +158,11 @@ export function WorkbenchIntelligenceHeader({
                   ? 'Obliczenia zakończone'
                   : working
                     ? 'Przeliczanie…'
-                  : legacyInspection
-                    ? 'Podgląd historyczny'
-                    : hasRecipe
-                      ? 'Oczekuje na przeliczenie'
-                      : 'Brak danych'}
+                    : legacyInspection
+                      ? 'Podgląd historyczny'
+                      : hasRecipe
+                        ? 'Oczekuje na przeliczenie'
+                        : 'Brak danych'}
             </strong>
           </span>
           <span className="mt-0.5 block truncate text-[10px] text-stone-600">

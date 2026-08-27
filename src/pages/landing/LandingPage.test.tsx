@@ -15,10 +15,8 @@ const render = () =>
 describe('LandingPage — public landing per spec §6 (Slice A)', () => {
   it('renders the §6.1 hero verbatim: headline, subline and both CTAs', () => {
     const html = render();
-    expect(html).toContain('Idealna receptura. Dopasowana do Twojej maszyny lub temperatury.');
-    expect(html).toContain(
-      'Wybierz smak, urządzenie lub temperaturę i ilość. PINGÜINO zajmie się resztą.',
-    );
+    expect(html).toContain(copy.hero.headline);
+    expect(html).toContain(copy.hero.subline);
     expect(html).toContain(copy.hero.ctaPrimary); // „Stwórz recepturę”
     expect(html).toContain(copy.hero.ctaSecondary); // „Zobacz, jak działa”
   });

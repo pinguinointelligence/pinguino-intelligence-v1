@@ -500,9 +500,9 @@ export function RescueAdviceHint({
       </p>
       <p className="mt-1 text-xs leading-relaxed text-ivory/70">{advice.reasonPl}</p>
       <p className="mt-1 text-xs leading-relaxed text-ivory/70">
-        PI nie doda tego składnika automatycznie. Wróć do receptury, wybierz „Dodaj składnik”, dodaj
-        zweryfikowany produkt i uruchom PI ponownie — nowy Preview musi nadal potwierdzić twardość,
-        zamrożenie, ciała stałe oraz wszystkie bezpieczne zakresy.
+        Gellatti nie doda tego składnika automatycznie. Wróć do receptury, wybierz „Dodaj składnik”,
+        dodaj zweryfikowany produkt i przelicz recepturę ponownie — nowy podgląd musi nadal
+        potwierdzić twardość, zamrożenie, ciała stałe oraz wszystkie bezpieczne zakresy.
       </p>
       {onAddIngredient ? (
         <button
@@ -846,7 +846,7 @@ export function ProRecalcPanel({
               aria-live="polite"
               data-testid="pro-recalc-working"
             >
-              PI przelicza recepturę…
+              Gellatti przelicza recepturę…
             </p>
           ) : null}
 

@@ -222,7 +222,7 @@ export function ProductImportPage() {
         setMapperNotice(null);
       } catch {
         setMapperNotice(
-          'Mapper niedostępny — analiza bez wartości szacowanych. Wartości robocze pojawią się po ponownym wczytaniu.',
+          'Baza składników jest chwilowo niedostępna. Analiza trwa bez wartości szacowanych; spróbujemy wczytać je ponownie.',
         );
       }
       // Local, Mapper-first intelligence. Deterministic and free — it decides
@@ -301,7 +301,7 @@ export function ProductImportPage() {
         mapper = await loadMapperKnowledge();
       } catch {
         setMapperNotice(
-          'Mapper niedostępny po klasyfikacji — zachowano bezpieczny wynik sprzed ponownego dopasowania.',
+          'Baza składników jest chwilowo niedostępna. Zachowaliśmy ostatni bezpieczny wynik.',
         );
       }
       const finalRows = intimport
@@ -350,7 +350,9 @@ export function ProductImportPage() {
   const onImport = async (qaLimit?: number) => {
     if (!result) return;
     if (source === 'intimport' && preflight?.ready !== true) {
-      setRunError('Czysty import wymaga PI = 2088 i PR = 0.');
+      setRunError(
+        'Czysty import wymaga pełnej bazy 2088 składników i braku produktów komercyjnych.',
+      );
       return;
     }
     let candidates = result.candidates;
@@ -458,9 +460,9 @@ export function ProductImportPage() {
     const confirmed = window.confirm(
       `Cofnąć import ${importRun.id}?\n\n` +
         `Utworzone: ${importRun.created}\nPonownie użyte: ${importRun.reused}\n` +
-        `Zaktualizowane: ${importRun.updated}\nReview: ${importRun.review}\n` +
+        `Zaktualizowane: ${importRun.updated}\nDo weryfikacji: ${importRun.review}\n` +
         `Pominięte: ${importRun.skipped}\nBłędy: ${importRun.failed}\n\n` +
-        'Rollback usunie wyłącznie mutacje przypisane do tego runu. PI Mapper pozostanie bez zmian.',
+        'Wycofanie usunie wyłącznie zmiany przypisane do tego importu. Główna baza składników pozostanie bez zmian.',
     );
     if (!confirmed) return;
     setRollbackBusy(true);
@@ -618,9 +620,7 @@ export function ProductImportPage() {
                   canImport={
                     canImport({ isSignedIn, result }) &&
                     preflight?.ready === true &&
-                    !['IMPORTING', 'CANCELLING', 'ROLLING_BACK'].includes(
-                      importRun?.status ?? '',
-                    )
+                    !['IMPORTING', 'CANCELLING', 'ROLLING_BACK'].includes(importRun?.status ?? '')
                   }
                   importBusy={busy}
                   busy={enriching}
@@ -675,7 +675,10 @@ export function ProductImportPage() {
                   }
                 }
                 lastUpdateAt={lastProgressAt}
-                done={importRun?.status === 'COMPLETED' || (!importRun && !busy && importResult?.ok === true)}
+                done={
+                  importRun?.status === 'COMPLETED' ||
+                  (!importRun && !busy && importResult?.ok === true)
+                }
                 cancelled={importRun?.status === 'CANCELLED'}
                 cancelling={cancelBusy || importRun?.status === 'CANCELLING'}
                 onCancel={
@@ -717,7 +720,7 @@ export function ProductImportPage() {
           ) : null}
           {importRun?.status === 'ROLLED_BACK' ? (
             <p className="mt-6 text-sm text-status-ideal" data-testid="intimport-rolled-back">
-              IMPORT COFNIĘTY · mutacje tego runu usunięte
+              IMPORT COFNIĘTY · zmiany z tego importu zostały usunięte
             </p>
           ) : null}
           {runError ? <p className="mt-4 text-sm text-status-risky">{runError}</p> : null}
@@ -725,10 +728,9 @@ export function ProductImportPage() {
             <p className="text-xs text-[#8a7f6d]">
               Product Intelligence: przeanalizowano {importPlan.total} —{' '}
               {importPlan.productProfileReady} gotowych na poziomie profilu produktu,{' '}
-              {importPlan.review} do uzupełnienia. Finalne użycie w Engine wymaga osobnej,
-              serwerowej autoryzacji ProductBehavior.
-              Bez informacji o dawkowaniu producenta: {importPlan.dosageUnproven} (informacyjnie —
-              nie blokuje).
+              {importPlan.review} do uzupełnienia. Użycie tych produktów w recepturach wymaga
+              osobnego zatwierdzenia danych produktu. Bez informacji o dawkowaniu producenta:{' '}
+              {importPlan.dosageUnproven} (informacyjnie — nie blokuje).
             </p>
           ) : null}
           {importResult ? (

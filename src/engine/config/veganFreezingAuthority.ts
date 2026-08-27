@@ -156,13 +156,13 @@ export const VEGAN_TEMPERATURE_BAND_PROVENANCE: readonly VeganTemperatureBandPro
     temperatureC: -11,
     calibration: 'internal_unconfirmed',
     lockedReference: 'locked_pinguino_internal_v0_1',
-    note: 'Derived from PINGUINO temperature logic — locked internal v0.1, not externally confirmed. Supported and numerically unchanged; weaker external calibration than −13.',
+    note: 'Derived from GELLATTI temperature logic — locked internal v0.1, not externally confirmed. Supported and numerically unchanged; weaker external calibration than −13.',
   },
   {
     temperatureC: -12,
     calibration: 'internal_unconfirmed',
     lockedReference: 'locked_pinguino_internal_v0_1',
-    note: 'Derived from PINGUINO temperature logic — locked internal v0.1, not externally confirmed. Supported and numerically unchanged; weaker external calibration than −13.',
+    note: 'Derived from GELLATTI temperature logic — locked internal v0.1, not externally confirmed. Supported and numerically unchanged; weaker external calibration than −13.',
   },
   {
     temperatureC: -13,

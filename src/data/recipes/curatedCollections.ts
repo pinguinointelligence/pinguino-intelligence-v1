@@ -526,7 +526,7 @@ export const LOST_LEGENDARY_CANDIDATES: readonly CuratedRecipeCandidate[] = [
     collection: 'lost_legendary',
     status: 'not_suitable',
     history_short:
-      'Historyczna pozycja nie spełnia kontraktu bezpiecznego, powtarzalnego deseru PINGÜINO.',
+      'Historyczna pozycja nie spełnia zasad bezpiecznego, powtarzalnego deseru Gellatti.',
     identity_description: 'Rybo-korzenny, częściowo mrożony suflet wytrawny.',
     defining_ingredients: ['fish', 'curry', 'cream'],
     defining_process: ['savory soufflé process'],
@@ -629,7 +629,7 @@ const natural = (
     history_short: 'Współczesny kierunek premium zbudowany wokół prawdziwego składnika.',
     source_provenance: [
       source(
-        'PINGÜINO ingredient-quality brief',
+        'Gellatti · standard jakości składników',
         'https://pinguinointelligence.com/',
         'institutional',
       ),

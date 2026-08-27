@@ -294,7 +294,7 @@ export function MonitorPanelContent({
           data-testid="monitor-correction-summary"
         >
           <summary className="cursor-pointer list-none px-4 py-3 text-xs font-semibold text-ink">
-            PI ma propozycję poprawy →
+            Gellatti ma propozycję poprawy →
           </summary>
           <div className="border-t border-ink/8 p-2">
             <CorrectionPanel
@@ -318,7 +318,7 @@ export function MonitorPanelContent({
               id="monitor-owner-diagnostic"
               title="Diagnostyka właściciela"
               badge="ADVANCED"
-              note="Rzeczywisty stan Engine i solvera — poza codziennym Monitor Pro."
+              note="Rzeczywisty stan obliczeń i korekt — poza codziennym monitorem receptury."
             >
               <OwnerDiagnosticPanel result={result} input={input} corrections={corrections} />
             </ReviewMarkedModule>

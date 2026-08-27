@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import { StatusChip } from '@/components/shared/StatusChip';
+import { customerErrorMessage } from '@/copy/customerError';
 import {
   adminProductCapabilityReanalysisAction,
   listAdminProductCapabilityReanalysisRequests,
@@ -14,12 +15,30 @@ const FILTERS: ReadonlyArray<{
   status: ProductCapabilityReanalysisStatus | 'ALL';
   label: string;
 }> = [
-  { status: 'OPEN', label: 'OPEN' },
-  { status: 'IN_REVIEW', label: 'IN REVIEW' },
-  { status: 'ACCEPTED', label: 'ACCEPTED' },
-  { status: 'REJECTED', label: 'REJECTED' },
-  { status: 'ALL', label: 'ALL' },
+  { status: 'OPEN', label: 'OTWARTE' },
+  { status: 'IN_REVIEW', label: 'W WERYFIKACJI' },
+  { status: 'ACCEPTED', label: 'ZATWIERDZONE' },
+  { status: 'REJECTED', label: 'ODRZUCONE' },
+  { status: 'ALL', label: 'WSZYSTKIE' },
 ];
+
+const STATUS_LABEL: Readonly<Record<ProductCapabilityReanalysisStatus, string>> = {
+  OPEN: 'Otwarte',
+  IN_REVIEW: 'W weryfikacji',
+  ACCEPTED: 'Zatwierdzone',
+  REJECTED: 'Odrzucone',
+};
+
+const CAPABILITY_LABEL = {
+  INGREDIENT: 'składnik receptury',
+  TOPPING: 'dodatek po produkcji',
+  INGREDIENT_ONLY: 'tylko składnik receptury',
+  TOPPING_ONLY: 'tylko dodatek po produkcji',
+  BOTH: 'oba zastosowania',
+  NEITHER: 'brak zatwierdzonego zastosowania',
+  INGREDIENT_PICKER: 'wybór składnika',
+  TOPPING_PICKER: 'wybór dodatku',
+} as const;
 
 const statusTone = (
   status: ProductCapabilityReanalysisStatus,
@@ -61,16 +80,17 @@ export function AdminProductCapabilityReanalysisSection() {
       className="mt-12 border-t border-ink/12 pt-8"
       aria-labelledby="capability-review-title"
     >
-      <SectionLabel>Canonical ProductBehavior review</SectionLabel>
+      <SectionLabel>Weryfikacja zastosowania produktu</SectionLabel>
       <h2
         id="capability-review-title"
         className="mt-2 text-2xl font-semibold tracking-[-0.025em] text-ink"
       >
-        Ponowna analiza capability
+        Ponowna analiza zastosowania
       </h2>
       <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-600">
-        Wspólna kolejka dla próśb o capability składnika i toppingu. Zgłoszenie nie zmienia
-        produktu; decyzja ACCEPT potwierdza dopiero wcześniej opublikowane canonical authority.
+        Wspólna kolejka próśb o użycie produktu jako składnika receptury lub dodatku po produkcji.
+        Samo zgłoszenie nie zmienia produktu; decyzję można podjąć dopiero po publikacji
+        zatwierdzonych danych.
       </p>
 
       <div className="mt-5 flex gap-1 overflow-x-auto border-b border-ink/10 pb-3">
@@ -97,7 +117,7 @@ export function AdminProductCapabilityReanalysisSection() {
           <table className="w-full min-w-[820px] text-left text-xs">
             <thead>
               <tr className="border-y border-ink/15 bg-stone-50">
-                {['Produkt', 'Current → requested', 'Context', 'Submitted', 'Status', ''].map(
+                {['Produkt', 'Obecnie → wniosek', 'Miejsce użycia', 'Zgłoszono', 'Status', ''].map(
                   (label) => (
                     <th
                       key={label}
@@ -121,14 +141,19 @@ export function AdminProductCapabilityReanalysisSection() {
                     </span>
                   </td>
                   <td className="px-3 py-4 font-mono">
-                    {request.currentClassification} → {request.requestedCapability}
+                    {CAPABILITY_LABEL[request.currentClassification]} →{' '}
+                    {CAPABILITY_LABEL[request.requestedCapability]}
                   </td>
-                  <td className="px-3 py-4 font-mono text-[10px]">{request.attemptedContext}</td>
+                  <td className="px-3 py-4 text-[10px]">
+                    {CAPABILITY_LABEL[request.attemptedContext]}
+                  </td>
                   <td className="px-3 py-4">
                     {new Date(request.submittedAt).toLocaleString('pl-PL')}
                   </td>
                   <td className="px-3 py-4">
-                    <StatusChip status={statusTone(request.status)}>{request.status}</StatusChip>
+                    <StatusChip status={statusTone(request.status)}>
+                      {STATUS_LABEL[request.status]}
+                    </StatusChip>
                   </td>
                   <td className="px-3 py-4">
                     <button
@@ -162,7 +187,7 @@ export function AdminProductCapabilityReanalysisSection() {
         </div>
 
         <aside className="border border-ink/12 bg-[#f3ede3] p-5">
-          <SectionLabel>Capability decision</SectionLabel>
+          <SectionLabel>Decyzja o zastosowaniu</SectionLabel>
           {selected ? (
             <div className="mt-4 space-y-4">
               <div>
@@ -171,30 +196,31 @@ export function AdminProductCapabilityReanalysisSection() {
                   {selected.productCode ?? selected.canonicalProductId} · EAN {selected.ean ?? '—'}
                 </p>
                 <p className="mt-2 text-xs text-stone-600">
-                  {selected.currentClassification} → {selected.requestedCapability} ·{' '}
-                  {selected.attemptedContext}
+                  {CAPABILITY_LABEL[selected.currentClassification]} →{' '}
+                  {CAPABILITY_LABEL[selected.requestedCapability]} ·{' '}
+                  {CAPABILITY_LABEL[selected.attemptedContext]}
                 </p>
                 <p className="mt-1 font-mono text-[10px] text-stone-500">{selected.reasonCode}</p>
               </div>
 
               <dl className="grid gap-2 border-y border-ink/10 py-3 text-xs">
                 <div className="flex justify-between gap-3">
-                  <dt className="text-stone-500">Contributor</dt>
+                  <dt className="text-stone-500">Zgłaszający</dt>
                   <dd className="break-all text-right font-mono">{selected.requestingUserId}</dd>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <dt className="text-stone-500">Canonical UUID</dt>
+                  <dt className="text-stone-500">Identyfikator produktu</dt>
                   <dd className="break-all text-right font-mono">{selected.canonicalProductId}</dd>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <dt className="text-stone-500">Evidence refs</dt>
+                  <dt className="text-stone-500">Źródła dowodowe</dt>
                   <dd className="font-mono">{selected.evidenceReferences.length}</dd>
                 </div>
               </dl>
 
               <details className="border border-ink/12 bg-white p-3">
                 <summary className="cursor-pointer text-xs font-semibold text-ink">
-                  Authority, readiness i evidence references
+                  Szczegóły techniczne i źródła
                 </summary>
                 <pre className="mt-3 max-h-80 overflow-auto text-[10px] leading-5">
                   {JSON.stringify(
@@ -213,8 +239,8 @@ export function AdminProductCapabilityReanalysisSection() {
               </details>
 
               <p className="border border-ink/15 bg-white p-3 text-xs leading-5 text-stone-600">
-                Canonical authority musi zostać opublikowane przez istniejący kontrakt wersji i
-                ProductBehavior przed ACCEPT. Ta kolejka sama nie zmienia roli produktu.
+                Przed zatwierdzeniem opublikuj zweryfikowane dane produktu w jego bieżącej wersji.
+                Ta kolejka sama nie zmienia sposobu użycia produktu.
               </p>
 
               {selected.status === 'OPEN' ? (
@@ -224,7 +250,7 @@ export function AdminProductCapabilityReanalysisSection() {
                   disabled={action.isPending}
                   onClick={() => action.mutate('START_REVIEW')}
                 >
-                  Rozpocznij review
+                  Rozpocznij weryfikację
                 </Button>
               ) : null}
               {selected.status === 'OPEN' || selected.status === 'IN_REVIEW' ? (
@@ -243,7 +269,7 @@ export function AdminProductCapabilityReanalysisSection() {
                       disabled={action.isPending || reason.trim() === ''}
                       onClick={() => action.mutate('ACCEPT')}
                     >
-                      Potwierdź po canonical update
+                      Potwierdź po aktualizacji danych
                     </Button>
                     <Button
                       variant="ghost"
@@ -260,12 +286,12 @@ export function AdminProductCapabilityReanalysisSection() {
                   role="alert"
                   className="border border-red-300 bg-red-50 p-3 text-xs text-red-800"
                 >
-                  {action.error.message}
+                  {customerErrorMessage(action.error, 'admin')}
                 </p>
               ) : null}
             </div>
           ) : (
-            <p className="mt-4 text-sm text-stone-500">Wybierz request z kolejki.</p>
+            <p className="mt-4 text-sm text-stone-500">Wybierz zgłoszenie z kolejki.</p>
           )}
         </aside>
       </div>

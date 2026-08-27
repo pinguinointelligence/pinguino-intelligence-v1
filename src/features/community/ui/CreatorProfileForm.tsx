@@ -5,6 +5,7 @@ import { SectionLabel } from '@/components/shared/SectionLabel';
 import { communityCopy } from '@/copy/community';
 import { suggestHandle, validateHandle } from '@/features/community/domain/creatorHandle';
 import { claimCreatorProfile } from '@/services/community';
+import { customerErrorMessage } from '@/copy/customerError';
 
 /**
  * Creating or editing the optional Creator profile (§6).
@@ -74,7 +75,7 @@ export function CreatorProfileForm({
             ? copy.creator.handleReserved
             : message.includes('handle_invalid')
               ? copy.creator.handleInvalid
-              : message,
+              : customerErrorMessage(cause, 'community'),
       );
     } finally {
       setPending(false);

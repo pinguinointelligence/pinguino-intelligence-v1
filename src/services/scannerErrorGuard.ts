@@ -58,3 +58,10 @@ export function assertUserSafeScannerMessage(message: string, stage: ScannerStag
   }
   return message;
 }
+
+/** Convert an arbitrary caught value before it enters React state. Raw transport details never
+ * become component state, which makes the render boundary safe by construction. */
+export function scannerMessageFromUnknown(cause: unknown, stage: ScannerStage): string {
+  const message = cause instanceof Error ? cause.message : String(cause ?? '');
+  return assertUserSafeScannerMessage(message, stage);
+}

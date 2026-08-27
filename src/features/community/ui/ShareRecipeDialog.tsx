@@ -5,6 +5,7 @@ import { communityCopy } from '@/copy/community';
 import { absoluteUrl, canWebShare, sharePath } from '@/features/community/domain/shareUrls';
 import { cn } from '@/lib/cn';
 import { createShareLink, type CreatedShareLink } from '@/services/community';
+import { customerErrorMessage } from '@/copy/customerError';
 
 /**
  * „Udostępnij recepturę" (§10, §45).
@@ -56,7 +57,7 @@ export function ShareRecipeDialog({
     try {
       setLink(await createShareLink(recipeId, versionNumber, publicationId));
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setError(customerErrorMessage(cause, 'community'));
     } finally {
       setPending(false);
     }

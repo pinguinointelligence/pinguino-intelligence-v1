@@ -53,7 +53,7 @@ describe('canonical application shell', () => {
     );
     // The hamburger precedes the brand link in DOM order → it is the leftmost
     // element of the header, exactly as on the Pro workbench master.
-    const brandIdx = html.indexOf('aria-label="PINGÜINO"');
+    const brandIdx = html.indexOf('aria-label="GELLATTI"');
     const triggerIdx = html.indexOf('data-testid="app-nav-trigger"');
     expect(triggerIdx).toBeGreaterThanOrEqual(0);
     expect(brandIdx).toBeGreaterThan(triggerIdx);

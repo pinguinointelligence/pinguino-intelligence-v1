@@ -21,8 +21,8 @@
     "productionSessionSchema": 2
   },
   "bundle": {
-    "bytes": 333253,
-    "sha256": "be3472fd376c3fff2b1049aea8300870ee8d8923b2a58d6e2f2b5587fa2a8147",
+    "bytes": 333267,
+    "sha256": "ae8c938ce8565f4ff6f1b6bca9a82be3dccd2e4e7090a7ea2fe827f08502f0a2",
     "externalImports": 0,
     "dynamicImports": 0
   },
@@ -145,15 +145,15 @@
     },
     {
       "path": "src/features/formulation/mainIngredientContract.ts",
-      "sha256": "bcff5b3be4a25389ddd940be5a1aff16f2d4853faced351079a4eb2844551e3d"
+      "sha256": "fe00530e7836c1a589c4ae1d33664bccafe70d5ec383bdc9277e3390ebda9b30"
     },
     {
       "path": "src/features/formulation/stabilizerDosage.ts",
-      "sha256": "933ae99425a0ef2af0110ca801bf132f3a123f888d823f7f8d3fd81d2cf2fab6"
+      "sha256": "511728f1a7678477d3d4a634617381772d80c9f820a382fcae20e8d6290937fa"
     },
     {
       "path": "src/features/formulation/veganProfileConstraints.ts",
-      "sha256": "0fcd1d0b1ba99b95515876884b623b225c11dc67332f730f3ef749007cbf5885"
+      "sha256": "536f5a21a15b387f155f9789023d40e10a243067eb26c8eb99ce440f729b6ac6"
     },
     {
       "path": "src/features/formulation/violationBands.ts",
@@ -161,7 +161,7 @@
     },
     {
       "path": "src/features/practical-recipe/practicalRecipe.ts",
-      "sha256": "d3cc430923df4595ae884be222c4c86135eb4515f6d1c84f2e229b02cc965aa5"
+      "sha256": "926caf482f737acb407abcc7888f1c4889161fdcaec5363eaaa3e55d1c3227b0"
     },
     {
       "path": "src/features/pro-core/recipeScaling.ts",
@@ -169,7 +169,7 @@
     },
     {
       "path": "src/features/product-intelligence/mainCapability.ts",
-      "sha256": "ceaf06c6229364ce96b1f9c0cb38640810593e3c1e2b873bd51dd63c95d9562e"
+      "sha256": "cdfb7e86363eb0b0c5344ee84747f802106fc5630e2ef12be5b8f38eb03ca773"
     },
     {
       "path": "src/features/product-intelligence/mainEnvelope.ts",
@@ -253,7 +253,7 @@
     },
     {
       "path": "src/features/recipe-direction/recipeDirectionTargets.ts",
-      "sha256": "8974498b2737afdc3c0525b22e3eeab6bdfdd4ab02ed9b3ea28b6c76e42ed283"
+      "sha256": "5d694a8aadc1081bd61323e3aa3e729a312601a0345326d7802ab88845035bf7"
     },
     {
       "path": "src/features/recipe-score/recipeMatchScore.ts",
@@ -265,8 +265,8 @@
     },
     {
       "path": "src/spine/temperatureRegulator.ts",
-      "sha256": "5523e8a79f059b81594793260535fc3b4a85185fe9f5020de87c2c7782a44fdb"
+      "sha256": "a2207c9c4e9431daa728d6b03fe1b9c4a4a3ba3403a0c056f2808c0759a455c8"
     }
   ],
-  "sourceClosureSha256": "6069c9b8c0e189f0c2a753721f97ca64efb1e914bc4cd659fb46beba0258c357"
+  "sourceClosureSha256": "5f3a33a7ae1cbaedaa80fce3239af8ff1d87d4445e3cd8518110ec74e3850448"
 }

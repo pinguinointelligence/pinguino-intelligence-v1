@@ -4,6 +4,7 @@ import { buttonClasses } from '@/components/ui/buttonStyles';
 import { communityCopy } from '@/copy/community';
 import { cn } from '@/lib/cn';
 import { myRating, ratePublication, type MyRating } from '@/services/community';
+import { customerErrorMessage } from '@/copy/customerError';
 
 /**
  * Verified rating — submit and update (§42).
@@ -80,7 +81,7 @@ export function RatePublication({
       setError(
         message.includes('rating_requires_confirmed_make')
           ? 'Ocenić może tylko osoba, która wykonała tę recepturę.'
-          : message,
+          : customerErrorMessage(cause, 'community'),
       );
     } finally {
       inFlight.current = false;

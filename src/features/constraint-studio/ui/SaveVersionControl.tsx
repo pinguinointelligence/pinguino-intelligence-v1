@@ -22,6 +22,7 @@ import { useRecipeStore } from '@/stores/recipeStore';
 import { constraintStudioCopy as copy } from '../constraintStudioCopy';
 import { useConstraintStudioStore } from '../constraintStudioStore';
 import { resolveSaveGateView } from '../saveGate';
+import { customerErrorMessage } from '@/copy/customerError';
 
 export function SaveVersionControl() {
   const persona = useProCorePersona();
@@ -86,7 +87,7 @@ export function SaveVersionControl() {
         markProCoreRecipe(proCoreRecipeId, version.versionNumber);
       }
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : copy.save.error);
+      setError(customerErrorMessage(caught, 'recipes', 'RECIPE_SAVE_FAILED'));
     } finally {
       setBusy(false);
     }
@@ -94,7 +95,9 @@ export function SaveVersionControl() {
 
   return (
     <section aria-label={copy.save.title} className="border-t border-ivory/10 pt-4">
-      <p className="text-xs font-medium tracking-label text-ivory/65 uppercase">{copy.save.title}</p>
+      <p className="text-xs font-medium tracking-label text-ivory/65 uppercase">
+        {copy.save.title}
+      </p>
       <p className="mt-1 text-xs leading-relaxed text-ivory/60">{copy.save.note}</p>
 
       {gate.kind !== 'ready' ? (

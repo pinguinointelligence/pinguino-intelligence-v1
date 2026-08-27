@@ -253,8 +253,9 @@ describe('addendum1 — iteration_cap is NEVER an applicable recipe (T9)', () =>
     expect(message).toContain('zmniejsz ten składnik');
     expect(message).toContain('Możesz też zmienić typ produktu na Sorbet.');
     expect(message).toContain('Receptura nie została zmieniona.');
-    // Honest account of the search: exhausted budget, never "full search proof".
-    expect(message).toContain('wyczerpało deterministyczny budżet');
+    // Honest account of the search: bounded attempts, never "full search proof".
+    expect(message).toContain('Gellatti sprawdziło dostępne korekty (18 prób)');
+    expect(message).toContain('taki wynik nie jest uznawany za gotową recepturę');
   });
 
   it('nearest-feasible is deterministic AND engine-verified (locking there is not impossible)', () => {
@@ -298,7 +299,7 @@ describe('addendum1 — iteration_cap is NEVER an applicable recipe (T9)', () =>
     expect(outcome.ok).toBe(false);
     if (outcome.ok) return;
     expect(outcome.code).toBe('iteration_cap_diagnostic');
-    expect(outcome.messagePl).toContain('limicie iteracji');
+    expect(outcome.messagePl).toContain('limicie prób');
     expect(outcome.messagePl).toContain('Receptura nie została zmieniona.');
   });
 

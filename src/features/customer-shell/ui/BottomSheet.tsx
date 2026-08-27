@@ -19,7 +19,14 @@ interface BottomSheetProps {
  * clears the home indicator. Closes on backdrop tap and Escape. Controlled and
  * presentational (mount/unmount driven by the caller's `open`).
  */
-export function BottomSheet({ open, onClose, title, children, footer, className }: BottomSheetProps) {
+export function BottomSheet({
+  open,
+  onClose,
+  title,
+  children,
+  footer,
+  className,
+}: BottomSheetProps) {
   const titleId = useId();
 
   useEffect(() => {
@@ -37,7 +44,7 @@ export function BottomSheet({ open, onClose, title, children, footer, className 
     <div className="fixed inset-0 z-50 flex items-end justify-center">
       <button
         type="button"
-        aria-label="Close"
+        aria-label="Zamknij"
         onClick={onClose}
         className="absolute inset-0 bg-black/60 motion-safe:animate-[fadeIn_150ms_ease-out]"
       />

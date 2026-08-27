@@ -47,6 +47,7 @@ import {
 } from './printerProfiles';
 import { assessCanadaFop } from './regulatoryNutrition';
 import { downloadMasterLabelPdf } from './masterLabelPdf';
+import { customerErrorMessage } from '@/copy/customerError';
 
 const MARKET_CODES: readonly MarketProfileCode[] = MARKET_PROFILE_ORDER;
 export type LabelWorkspaceView = 'label' | 'settings';
@@ -182,7 +183,7 @@ export function LabelWorkspace({
             ? await repository.getRunLabelSnapshotById(savedSnapshotId)
             : await repository.getRunLabelSnapshot(requestedRunId);
           if (nextSaved && nextSaved.runId !== requestedRunId) {
-            throw new Error('Wybrany snapshot etykiety nie należy do wskazanej partii.');
+            throw new Error('Wybrany zapis etykiety nie należy do wskazanej partii.');
           }
           if (nextSnapshot) await repository.freezeCompletedSnapshot(nextSnapshot);
         }
@@ -196,7 +197,7 @@ export function LabelWorkspace({
         );
       } catch (caught) {
         if (!cancelled) {
-          setError(caught instanceof Error ? caught.message : 'Nie udało się odczytać etykiety.');
+          setError(customerErrorMessage(caught, 'labels', 'LABEL_READ_FAILED'));
         }
       } finally {
         if (!cancelled) setBusy(false);
@@ -247,7 +248,7 @@ export function LabelWorkspace({
       setLabel(frozen.label);
       onSaved?.(frozen);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Nie zapisano etykiety.');
+      setError(customerErrorMessage(caught, 'labels', 'LABEL_SAVE_FAILED'));
     } finally {
       setBusy(false);
     }
@@ -266,7 +267,7 @@ export function LabelWorkspace({
       setTransitionDirection('forward');
       setActiveView('settings');
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Nie rozpoczęto nowej wersji etykiety.');
+      setError(customerErrorMessage(caught, 'labels', 'LABEL_READ_FAILED'));
     } finally {
       setBusy(false);
     }
@@ -279,7 +280,7 @@ export function LabelWorkspace({
     try {
       await downloadMasterLabelPdf(label, logoUrl, { draft });
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Nie pobrano pliku PDF.');
+      setError(customerErrorMessage(caught, 'labels', 'LABEL_READ_FAILED'));
     } finally {
       setPdfBusy(false);
     }
@@ -311,7 +312,7 @@ export function LabelWorkspace({
   };
 
   if (busy && !profile) {
-    return <p className="py-8 text-sm text-stone-500">Odczytuję profil i snapshot etykiety…</p>;
+    return <p className="py-8 text-sm text-stone-500">Odczytuję profil i zapis etykiety…</p>;
   }
 
   if (!profile) {
@@ -331,7 +332,7 @@ export function LabelWorkspace({
       <div data-testid="label-workspace" data-workspace-mode="profile">
         <Card className="grid gap-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
           <div>
-            <SectionLabel>Account Label Profile</SectionLabel>
+            <SectionLabel>Profil etykiety konta</SectionLabel>
             <div className="mt-5 flex items-center gap-4">
               {logoUrl ? (
                 <img src={logoUrl} alt="Logo profilu etykiet" className="size-16 object-contain" />
@@ -366,7 +367,7 @@ export function LabelWorkspace({
                 await persistProfile(next);
                 setEditing(false);
               } catch (caught) {
-                setError(caught instanceof Error ? caught.message : 'Nie zapisano profilu.');
+                setError(customerErrorMessage(caught, 'labels', 'LABEL_SAVE_FAILED'));
               } finally {
                 setBusy(false);
               }
@@ -562,8 +563,8 @@ export function LabelWorkspace({
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-ink/10 bg-white px-4 py-3">
               <p className="text-xs text-stone-600">
                 {saved
-                  ? `Niezmienny snapshot etykiety · ${new Date(saved.createdAt).toLocaleString('pl-PL')}`
-                  : 'Finalny zapis zamraża rynek, treść, LOT i logo dla tej partii.'}
+                  ? `Zapisana etykieta partii · ${new Date(saved.createdAt).toLocaleString('pl-PL')}`
+                  : 'Finalny zapis zachowa rynek, treść, LOT i logo dla tej partii.'}
               </p>
               {saved ? null : (
                 <Button
@@ -592,7 +593,7 @@ export function LabelWorkspace({
                 setLabel(next);
                 openView('label');
               } catch (caught) {
-                setError(caught instanceof Error ? caught.message : 'Nie zapisano zmian etykiety.');
+                setError(customerErrorMessage(caught, 'labels', 'LABEL_SAVE_FAILED'));
               } finally {
                 setBusy(false);
               }
@@ -761,7 +762,7 @@ function ProfileEditor({
             />
           </label>
           <label className="text-xs text-stone-600">
-            Website
+            Strona internetowa
             <input
               value={draft.facilityDefaults.website ?? ''}
               onChange={(event) =>
@@ -841,7 +842,7 @@ function ProfileEditor({
             />
           </label>
           <label className="text-xs text-stone-600">
-            Supplier / distributor · nazwa
+            Dostawca / dystrybutor · nazwa
             <input
               value={draft.facilityDefaults.distributorName ?? ''}
               onChange={(event) =>
@@ -857,7 +858,7 @@ function ProfileEditor({
             />
           </label>
           <label className="text-xs text-stone-600">
-            Supplier / distributor · kod kraju
+            Dostawca / dystrybutor · kod kraju
             <input
               value={draft.facilityDefaults.distributorCountryCode ?? ''}
               onChange={(event) =>
@@ -873,7 +874,7 @@ function ProfileEditor({
             />
           </label>
           <label className="text-xs text-stone-600 sm:col-span-2">
-            Supplier / distributor · adres fizyczny
+            Dostawca / dystrybutor · adres fizyczny
             <input
               value={draft.facilityDefaults.distributorAddress ?? ''}
               onChange={(event) =>
@@ -905,17 +906,17 @@ function ProfileEditor({
               }
               className={SETTINGS_INPUT_CLASS}
             >
-              <option value="producer">Producer</option>
-              <option value="manufacturer">Manufacturer</option>
-              <option value="packer">Packer</option>
-              <option value="distributor">Distributor</option>
+              <option value="producer">Producent</option>
+              <option value="manufacturer">Wytwórca</option>
+              <option value="packer">Pakujący</option>
+              <option value="distributor">Dystrybutor</option>
               <option value="importer">Importer</option>
-              <option value="dealer">Dealer</option>
-              <option value="supplier">Supplier</option>
+              <option value="dealer">Sprzedawca</option>
+              <option value="supplier">Dostawca</option>
             </select>
           </label>
           <label className="text-xs text-stone-600 sm:col-span-2">
-            Źródło / authority shelf-life
+            Źródło i podstawa daty trwałości
             <input
               value={draft.shelfLifeAuthority.authority}
               onChange={(event) =>
@@ -1403,7 +1404,7 @@ function RunLabelEditor({
                   />
                 </label>
                 <label className="text-xs font-medium text-stone-600">
-                  Supplier / distributor · nazwa / kod kraju
+                  Dostawca / dystrybutor · nazwa / kod kraju
                   <div className="grid grid-cols-[1fr_5rem] gap-2">
                     <input
                       value={draft.operator.distributorName ?? ''}
@@ -1636,8 +1637,8 @@ function RunLabelEditor({
                   />
                 </label>
                 <p className="text-[11px] text-stone-500">
-                  Partia Production: {draft.actualBatchQuantityG ?? '—'} g. Etykieta używa wyłącznie
-                  wybranego fillu opakowania.
+                  Partia produkcyjna: {draft.actualBatchQuantityG ?? '—'} g. Etykieta używa
+                  wyłącznie wybranego fillu opakowania.
                 </p>
               </div>
             </RequiredSettingsField>
@@ -1805,7 +1806,7 @@ function RunLabelEditor({
             ) : null}
             {draft.enabledOptionalFields.includes('internal_article_id') ? (
               <label className="text-xs font-medium text-stone-600">
-                APP / article ID
+                Wewnętrzny identyfikator artykułu
                 <input
                   value={draft.internalArticleId ?? ''}
                   onChange={(event) =>
@@ -1817,7 +1818,7 @@ function RunLabelEditor({
             ) : null}
             {draft.enabledOptionalFields.includes('website') ? (
               <label className="text-xs font-medium text-stone-600">
-                Website
+                Strona internetowa
                 <input
                   value={draft.operator.website ?? ''}
                   onChange={(event) =>
@@ -1946,8 +1947,8 @@ function RunLabelEditor({
                 ready={!missing('ingredients')}
                 message={
                   missing('ingredients')
-                    ? 'Brakuje składników lub canonical ID w danych bieżącej partii.'
-                    : 'Dane składników pochodzą z finalnego ACTUAL snapshotu.'
+                    ? 'Brakuje składników lub ich potwierdzonych identyfikatorów w danych bieżącej partii.'
+                    : 'Dane składników pochodzą z finalnego zapisu rzeczywistej partii.'
                 }
               />
             </RequiredSettingsField>
@@ -1957,8 +1958,8 @@ function RunLabelEditor({
                 ready={!missing('nutrition')}
                 message={
                   missing('nutrition')
-                    ? 'Brakuje finalnych obliczeń Nutrition.'
-                    : 'Deklaracja korzysta z istniejącej authority Nutrition.'
+                    ? 'Brakuje finalnych obliczeń wartości odżywczych.'
+                    : 'Deklaracja korzysta z potwierdzonych danych odżywczych.'
                 }
               />
             </RequiredSettingsField>
@@ -2167,8 +2168,8 @@ function IngredientAuthorityFields({
             ))}
           </div>
           <p className="mt-2 text-[11px] leading-relaxed text-stone-500">
-            Rzeczywista masa i pozycja pochodzą z finalnego ACTUAL Production Run i nie są tutaj
-            edytowalne.
+            Rzeczywista masa i kolejność pochodzą z finalnego zapisu zakończonej partii i nie są
+            tutaj edytowalne.
           </p>
           <label className="mt-3 flex min-h-11 items-center gap-2 rounded-[10px] border border-ink/10 px-3 text-xs text-ink">
             <input
@@ -2327,9 +2328,9 @@ const LABEL_FIELD_NAMES: Readonly<Record<MasterLabelFieldId, string>> = {
   qr_code: 'QR',
   lot_barcode: 'Kod kreskowy LOT',
   gtin: 'GTIN / EAN',
-  website: 'Website',
-  internal_article_id: 'APP / article ID',
-  batch_id: 'Batch ID',
+  website: 'Strona internetowa',
+  internal_article_id: 'Wewnętrzny identyfikator artykułu',
+  batch_id: 'Identyfikator partii',
 };
 
 function OptionalFieldSettings({
@@ -2437,7 +2438,7 @@ function RegulatoryNutritionFields({
     ];
 
   return (
-    <SettingsSection title={`Nutrition · ${marketProfile(value.market).nutritionFormat}`}>
+    <SettingsSection title={`Wartości odżywcze · ${marketProfile(value.market).nutritionFormat}`}>
       <div
         className={cn(
           'rounded-[14px] border p-3',
@@ -2447,8 +2448,8 @@ function RegulatoryNutritionFields({
         data-missing-required={missing ? 'true' : undefined}
       >
         <p className="text-xs leading-relaxed text-stone-600">
-          Wartości dodatkowe muszą pochodzić z udokumentowanej authority produktu. Brak danych
-          blokuje retail print; system nie zgaduje wartości.
+          Wartości dodatkowe muszą mieć udokumentowane źródło produktu. Brak danych blokuje wydruk
+          detaliczny; Gellatti nie zgaduje wartości.
         </p>
         {(value.market === 'EU' || value.market === 'UK') &&
         (value.nutritionSource?.alcohol_g ?? 0) > 0 ? (
@@ -2470,11 +2471,9 @@ function RegulatoryNutritionFields({
               >
                 <option value="unresolved">Wymaga rozstrzygnięcia</option>
                 <option value="not_applicable_non_beverage">
-                  Non-beverage · % vol nie dotyczy
+                  Produkt niebędący napojem · % vol nie dotyczy
                 </option>
-                <option value="required_beverage_over_1_2">
-                  Beverage &gt;1,2% · % vol wymagane
-                </option>
+                <option value="required_beverage_over_1_2">Napój &gt;1,2% · % vol wymagane</option>
               </select>
             </label>
             {value.alcoholDeclarationApplicability === 'required_beverage_over_1_2' ? (
@@ -2507,7 +2506,7 @@ function RegulatoryNutritionFields({
                       })
                     }
                   />
-                  Potwierdzam authority dla % vol
+                  Potwierdzam podstawę danych dla % vol
                 </label>
               </>
             ) : null}
@@ -2515,7 +2514,7 @@ function RegulatoryNutritionFields({
         ) : null}
         {value.market === 'US' || value.market === 'CA' ? (
           <label className="mt-3 block max-w-xs text-xs font-medium text-stone-600">
-            Potwierdzona available display surface · cm²
+            Potwierdzona dostępna powierzchnia etykiety · cm²
             <input
               type="number"
               min={0.1}
@@ -2533,9 +2532,9 @@ function RegulatoryNutritionFields({
         ) : null}
         {value.market === 'EU' || value.market === 'UK' || value.market === 'AU_NZ' ? (
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            {numberField('energyKjPer100g', 'Energia z authority rynku', 'kJ / 100 g')}
+            {numberField('energyKjPer100g', 'Energia według zasad rynku', 'kJ / 100 g')}
             <label className="text-xs font-medium text-stone-600">
-              Authority energii
+              Podstawa wartości energii
               <select
                 value={facts.energyAuthority ?? 'unresolved'}
                 onChange={(event) =>
@@ -2549,7 +2548,7 @@ function RegulatoryNutritionFields({
               >
                 <option value="unresolved">Wymaga potwierdzenia</option>
                 <option value="market_factors">Współczynniki rynku</option>
-                <option value="laboratory">Laboratorium / authority produktu</option>
+                <option value="laboratory">Laboratorium / dokumentacja produktu</option>
               </select>
             </label>
           </div>
@@ -2598,7 +2597,7 @@ function RegulatoryNutritionFields({
           {nutrients.map(([key, label, unit]) => numberField(key, label, unit))}
           {value.market === 'US' ? (
             <label className="text-xs font-medium text-stone-600">
-              FDA Nutrition Facts format
+              Format tabeli FDA Nutrition Facts
               <select
                 value={facts.usFormatFamily ?? 'auto'}
                 onChange={(event) =>
@@ -2610,11 +2609,11 @@ function RegulatoryNutritionFields({
                 }
                 className={SETTINGS_INPUT_CLASS}
               >
-                <option value="auto">Auto · RACC/package logic</option>
-                <option value="standard">Standard vertical</option>
-                <option value="tabular">Tabular · qualifying small surface only</option>
-                <option value="linear">Linear · qualifying small surface only</option>
-                <option value="dual_column">Dual column</option>
+                <option value="auto">Automatyczny · według RACC i opakowania</option>
+                <option value="standard">Standardowy pionowy</option>
+                <option value="tabular">Tabelaryczny · tylko mała powierzchnia</option>
+                <option value="linear">Liniowy · tylko mała powierzchnia</option>
+                <option value="dual_column">Dwie kolumny</option>
               </select>
             </label>
           ) : null}
@@ -2953,7 +2952,7 @@ function PrinterSettingsFields({
         </div>
       </details>
       <p className="mt-3 text-[11px] leading-relaxed text-stone-500">
-        {profile.workflowNote} Software: {profile.softwareVerification}. Hardware:{' '}
+        {profile.workflowNote} Oprogramowanie: {profile.softwareVerification}. Sprzęt:{' '}
         {profile.hardwareVerification}.
       </p>
     </fieldset>
@@ -2964,7 +2963,7 @@ function EditorHeader({ title, onClose }: { title: string; onClose: () => void }
   return (
     <div className="flex items-center justify-between gap-4 border-b border-ink/10 pb-4">
       <div>
-        <SectionLabel>LabelWorkspace</SectionLabel>
+        <SectionLabel>Edycja etykiety</SectionLabel>
         <h2 className="mt-1 text-lg font-semibold text-ink">{title}</h2>
       </div>
       <button

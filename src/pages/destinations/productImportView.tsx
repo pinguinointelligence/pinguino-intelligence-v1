@@ -72,22 +72,23 @@ export function CleanImportPreflightView({
       {loading ? <p className="text-sm text-ivory/60">Sprawdzanie katalogu…</p> : null}
       {preflight ? (
         <div className="flex flex-wrap gap-x-8 gap-y-2 font-mono text-sm text-ivory/80">
-          <span>PI: {preflight.pi}</span>
-          <span>PR: {preflight.pr}</span>
+          <span>Składniki: {preflight.pi}</span>
+          <span>Produkty: {preflight.pr}</span>
         </div>
       ) : null}
       {ready ? (
-        <p className="text-sm text-status-ideal">✓ Gotowe do czystego importu</p>
+        <p className="text-sm text-status-ideal">Gotowe do importu</p>
       ) : preflight ? (
         <div className="space-y-1 text-sm text-status-risky">
           <p>Import zablokowany</p>
           <p className="text-ivory/60">
-            W katalogu znajdują się istniejące produkty PR. Ten test wymaga czystego stanu PR =
-            0.
+            Katalog zawiera już produkty. Ten import wymaga pustego katalogu produktów.
           </p>
         </div>
       ) : null}
-      {error ? <p className="text-sm text-status-risky">Nie można sprawdzić katalogu: {error}</p> : null}
+      {error ? (
+        <p className="text-sm text-status-risky">Nie można sprawdzić katalogu: {error}</p>
+      ) : null}
     </div>
   );
 }
@@ -152,9 +153,9 @@ function WarningList({ label, items, empty }: { label: string; items: string[]; 
 export function RedFlagPreview({ rows }: { rows: IntakeRedFlagRow[] }) {
   return (
     <div>
-      <SectionLabel tone="ivory">Red flags · internal review signals</SectionLabel>
+      <SectionLabel tone="ivory">Sygnały do wewnętrznego przeglądu</SectionLabel>
       {rows.length === 0 ? (
-        <p className="mt-3 text-sm text-ivory/40">No red flags — nothing blocks auto-verify.</p>
+        <p className="mt-3 text-sm text-ivory/40">Brak sygnałów wymagających przeglądu.</p>
       ) : (
         <ul className="mt-3 divide-y divide-ivory/10">
           {rows.map((row) => (
@@ -162,7 +163,7 @@ export function RedFlagPreview({ rows }: { rows: IntakeRedFlagRow[] }) {
               <span className="font-mono text-ivory/40">#{row.rowIndex}</span>{' '}
               <span className="text-status-risky">{row.codes.join(', ')}</span>
               {row.blocksAutoVerify ? (
-                <span className="text-ivory/40"> · will not auto-verify</span>
+                <span className="text-ivory/40"> · wymaga ręcznej weryfikacji</span>
               ) : null}
               <span className="block text-ivory/50">{row.reasons.join(' ')}</span>
             </li>
@@ -393,8 +394,7 @@ export function IntimportPreview({ result }: { result: IntimportResult }) {
           <CountStat label={ROW_STATE_LABEL.INVALID} value={s.invalid} />
         </div>
         <p className="text-sm leading-relaxed text-ivory/60">
-          Te liczby opisują kompletność samego pliku źródłowego — nie gotowość dla Engine, którą
-          Product Intelligence wylicza powyżej.
+          Te liczby opisują kompletność pliku źródłowego, nie gotowość produktu do obliczeń.
         </p>
         <WarningList label="Braki w danych źródłowych" items={reasonLines} empty="Brak braków." />
         <WarningList label="Ostrzeżenia" items={warningLines} empty="Brak ostrzeżeń." />
@@ -479,9 +479,7 @@ export function IntimportLocalIntelligenceView({
             value={readiness.workingProfileComplete}
           />
         ) : null}
-        {readiness ? (
-          <CountStat label="Gotowe dla Engine" value={readiness.engineReady} />
-        ) : null}
+        {readiness ? <CountStat label="Gotowe do obliczeń" value={readiness.engineReady} /> : null}
         {readiness ? <CountStat label="Do przeglądu" value={readiness.review} /> : null}
         {readiness ? <CountStat label="Zablokowane" value={readiness.blocked} /> : null}
         <CountStat
@@ -495,10 +493,9 @@ export function IntimportLocalIntelligenceView({
           className="text-sm leading-relaxed text-ivory/60"
           data-testid="intimport-value-readiness"
         >
-          Kompletna kompozycja robocza opisuje wyłącznie liczby — także oszacowane przez Mapper.
-          Gotowość dla Engine wymaga ponadto progu Product Accuracy, rozwiązanej fizyki i
-          serwerowej autoryzacji ProductBehavior. Brak tej autoryzacji jest stanem blokującym,
-          nie gotowością.
+          Kompletne liczby mogą nadal zawierać wartości oszacowane. Gotowość do obliczeń wymaga
+          także odpowiedniej dokładności produktu, rozwiązanych danych fizycznych i zatwierdzonego
+          sposobu użycia. Brak zatwierdzenia blokuje produkt.
         </p>
       ) : null}
 
@@ -518,18 +515,21 @@ export function IntimportLocalIntelligenceView({
             label="Oszacowane — kompletna kompozycja"
             value={valueReadiness?.ESTIMATED_READY ?? 0}
           />
-          <CountStat label="Product Accuracy ≥85%" value={readiness?.productAccuracyPass ?? 0} />
+          <CountStat label="Dokładność produktu ≥85%" value={readiness?.productAccuracyPass ?? 0} />
           <CountStat
             label="Krytyczna fizyka rozwiązana"
             value={readiness?.criticalPhysicsResolved ?? 0}
           />
           <CountStat label="Profil produktu gotowy" value={readiness?.productProfileReady ?? 0} />
           <CountStat
-            label="ProductBehavior zatwierdzony"
+            label="Sposób użycia zatwierdzony"
             value={readiness?.productBehaviorAuthorityPass ?? 0}
           />
-          <CountStat label="Mapper uzupełnił ≥1 pole" value={summary.mapperContributed ?? 0} />
-          <CountStat label="Dopasowania rodziny Mappera" value={summary.familyMatches} />
+          <CountStat
+            label="Uzupełniono co najmniej 1 pole"
+            value={summary.mapperContributed ?? 0}
+          />
+          <CountStat label="Dopasowania rodziny produktu" value={summary.familyMatches} />
           <CountStat label="Pewne bez internetu" value={summary.readyLocalNoWeb} />
           <CountStat label="Można wzbogacić online" value={needsWeb} />
           <CountStat label="Maks. zapytań zewnętrznych" value={summary.estimatedMaxExternalCalls} />
@@ -554,7 +554,7 @@ export function IntimportLocalIntelligenceView({
             <CountStat label="Pominięte ≥90%" value={runSummary.webSkippedHighConfidence} />
             <CountStat label="Z pamięci podręcznej" value={runSummary.cacheHits} />
             <CountStat label="Zapytania zewnętrzne" value={runSummary.callsUsed} />
-            <CountStat label="Próg evidence spełniony" value={runSummary.importEligible} />
+            <CountStat label="Wystarczające źródła" value={runSummary.importEligible} />
             <CountStat label="Do uzupełnienia" value={runSummary.finalReviewRequired} />
           </div>
           {runSummary.capReached ? (
@@ -651,9 +651,9 @@ export function ImportProgressView({
       ? 'IMPORT PRZERWANY'
       : cancelling
         ? 'ZATRZYMYWANIE IMPORTU'
-    : done
-      ? 'IMPORT ZAKOŃCZONY'
-      : 'IMPORTOWANIE PRODUKTÓW';
+        : done
+          ? 'IMPORT ZAKOŃCZONY'
+          : 'IMPORTOWANIE PRODUKTÓW';
   return (
     <div className="space-y-4" data-testid="intimport-progress">
       <SectionLabel tone="ivory">{heading}</SectionLabel>

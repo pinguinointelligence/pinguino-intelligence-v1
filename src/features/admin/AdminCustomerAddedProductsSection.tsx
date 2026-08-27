@@ -8,6 +8,7 @@ import {
   type AdminCustomerAddedProduct,
 } from '@/services/adminControl';
 import { AdminProductCapabilityReanalysisSection } from './AdminProductCapabilityReanalysisSection';
+import { customerErrorMessage } from '@/copy/customerError';
 
 export function AdminCustomerAddedProductsSection() {
   const queryClient = useQueryClient();
@@ -31,9 +32,9 @@ export function AdminCustomerAddedProductsSection() {
   return (
     <>
       <header className="border-b border-ink/10 pb-6">
-        <SectionLabel>Exact EAN demand</SectionLabel>
+        <SectionLabel>Produkty klientów z kodem EAN</SectionLabel>
         <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-ink">
-          Customer-added products
+          Produkty dodane przez klientów
         </h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-600">
           Jeden EAN to jeden produkt oczekujący. Kolejność wynika z liczby różnych kont klientów,
@@ -95,7 +96,7 @@ export function AdminCustomerAddedProductsSection() {
           )}
         </div>
         <aside className="border border-ink/12 bg-[#f3ede3] p-5">
-          <SectionLabel>Canonical verification</SectionLabel>
+          <SectionLabel>Weryfikacja produktu</SectionLabel>
           {selected ? (
             <div className="mt-4 space-y-4">
               <div>
@@ -106,12 +107,12 @@ export function AdminCustomerAddedProductsSection() {
                 </p>
               </div>
               <p className="border border-ink/15 bg-white p-3 text-xs leading-5 text-stone-600">
-                Ta akcja potwierdza dokładny EAN i awansuje ten sam UUID do jednego PR-ING. Relacje
-                klientów, My Price i receptury pozostają na tym samym produkcie.
+                Ta akcja potwierdza dokładny kod EAN i tworzy jeden główny wpis produktu. Relacje
+                klientów, ich ceny i receptury pozostaną na tym samym produkcie.
               </p>
               <details className="border-t border-ink/10 pt-4">
                 <summary className="cursor-pointer text-xs font-semibold">
-                  Profil i ProductBehavior
+                  Profil i sposób użycia
                 </summary>
                 <pre className="mt-3 max-h-80 overflow-auto bg-white p-3 text-[10px]">
                   {JSON.stringify(
@@ -126,14 +127,14 @@ export function AdminCustomerAddedProductsSection() {
                 disabled={canonicalize.isPending}
                 onClick={() => canonicalize.mutate(selected.id)}
               >
-                Zweryfikuj i utwórz PR
+                Potwierdź produkt
               </Button>
               {canonicalize.isError && (
                 <p
                   role="alert"
                   className="border border-red-300 bg-red-50 p-3 text-xs text-red-800"
                 >
-                  {canonicalize.error.message}
+                  {customerErrorMessage(canonicalize.error, 'admin')}
                 </p>
               )}
             </div>

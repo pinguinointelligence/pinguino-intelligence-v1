@@ -54,7 +54,7 @@ describe('per-row catalog → Mapper verification status', () => {
       }),
     );
     expect(result.status).toBe('Dane szacowane');
-    expect(result.reason).toContain('techniczne dane Mappera');
+    expect(result.reason).toContain('Dane produktu są oszacowane');
     expect(result.reason).not.toContain('blok');
   });
 
@@ -91,7 +91,7 @@ describe('per-row catalog → Mapper verification status', () => {
             mappedIngredientId: id,
           }),
         ),
-      ).toEqual({ status: 'PINGÜINO — SPRAWDZONY', reason: null });
+      ).toEqual({ status: 'GELLATTI — SPRAWDZONY', reason: null });
     }
   });
 
@@ -103,7 +103,7 @@ describe('per-row catalog → Mapper verification status', () => {
         blockedReason: 'Brak aktualnego mapowania PINGÜINO Base',
       }),
     );
-    expect(missingBinding.status).toBe('MAPPER BINDING REQUIRED');
+    expect(missingBinding.status).toBe('WYMAGA POWIĄZANIA');
     expect(missingBinding.reason).toContain('ID catalog-product');
     expect(missingBinding.reason).toContain('wersja product-version');
     expect(missingBinding.reason).toContain('pole product-owned profile / mappedIngredientId');
@@ -118,12 +118,12 @@ describe('per-row catalog → Mapper verification status', () => {
       }),
       'POST_PROCESS_ADDON',
     );
-    expect(incomplete.status).toBe('PRODUCT DATA INCOMPLETE');
+    expect(incomplete.status).toBe('DANE PRODUKTU NIEPEŁNE');
     expect(incomplete.reason).toContain('alergenów');
   });
 
   it('keeps verified and manual catalog states separate per row', () => {
-    expect(productPickerVerificationView(hit({})).status).toBe('PINGÜINO — SPRAWDZONY');
+    expect(productPickerVerificationView(hit({})).status).toBe('GELLATTI — SPRAWDZONY');
     expect(
       productPickerVerificationView(
         hit({
@@ -140,7 +140,7 @@ describe('per-row catalog → Mapper verification status', () => {
           verificationMethod: 'automatic',
         }),
       ),
-    ).toEqual({ status: 'SYSTEM — DOPASOWANY', reason: null });
+    ).toEqual({ status: 'DOPASOWANY', reason: null });
   });
 
   it('does not let a Topping-only label defect hide a valid Base binding', () => {
@@ -150,10 +150,10 @@ describe('per-row catalog → Mapper verification status', () => {
       usableAsTopping: false,
     });
     expect(productPickerVerificationView(densityNeeded, 'BASE_FORMULATION').status).toBe(
-      'PINGÜINO — SPRAWDZONY',
+      'GELLATTI — SPRAWDZONY',
     );
     expect(productPickerVerificationView(densityNeeded, 'POST_PROCESS_ADDON').status).toBe(
-      'PRODUCT DATA INCOMPLETE',
+      'DANE PRODUKTU NIEPEŁNE',
     );
   });
 
@@ -170,8 +170,8 @@ describe('per-row catalog → Mapper verification status', () => {
       'POST_PROCESS_ADDON',
     );
     expect(result.status).toBe('WYMAGA SPRAWDZENIA ETYKIETY');
-    expect(result.reason).toContain('nie blokuje technicznego Toppingu');
-    expect(result.reason).toContain('Label może pozostać zablokowany');
+    expect(result.reason).toContain('nie blokuje użycia produktu jako dodatku po procesie');
+    expect(result.reason).toContain('etykieta końcowa może nadal wymagać uzupełnienia');
   });
 
   it('does not group an exact mapped usable commercial row as blocked solely by catalog status', () => {
@@ -209,14 +209,14 @@ describe('per-row catalog → Mapper verification status', () => {
     });
 
     expect(productPickerVerificationView(canonical, 'POST_PROCESS_ADDON').status).toBe(
-      'PRODUCT DATA INCOMPLETE',
+      'DANE PRODUKTU NIEPEŁNE',
     );
     expect(productPickerVerificationView(canonical, 'BASE_FORMULATION')).toEqual({
-      status: 'PINGÜINO — SPRAWDZONY',
+      status: 'GELLATTI — SPRAWDZONY',
       reason: null,
     });
     expect(productCatalogOverviewVerificationView(canonical)).toEqual({
-      status: 'PINGÜINO — SPRAWDZONY',
+      status: 'GELLATTI — SPRAWDZONY',
       reason: null,
     });
   });
@@ -248,14 +248,14 @@ describe('per-row catalog → Mapper verification status', () => {
     });
 
     expect(productPickerVerificationView(canonicalTopping, 'BASE_FORMULATION').status).toBe(
-      'MAPPER BINDING REQUIRED',
+      'WYMAGA POWIĄZANIA',
     );
     expect(productPickerVerificationView(canonicalTopping, 'POST_PROCESS_ADDON')).toEqual({
-      status: 'PINGÜINO — SPRAWDZONY',
+      status: 'GELLATTI — SPRAWDZONY',
       reason: null,
     });
     expect(productCatalogOverviewVerificationView(canonicalTopping)).toEqual({
-      status: 'PINGÜINO — SPRAWDZONY',
+      status: 'GELLATTI — SPRAWDZONY',
       reason: null,
     });
   });

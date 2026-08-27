@@ -389,7 +389,7 @@ export function ProductPickerPopover({
           item.confidence_score > 0 ? normalizeDataConfidencePercent(item.confidence_score) : null,
         selectable: true,
         carbonationStatus: item.carbonation_status ?? 'UNKNOWN',
-        verification: { status: 'PINGÜINO — SPRAWDZONY' as const, reason: null },
+        verification: { status: 'GELLATTI — SPRAWDZONY' as const, reason: null },
       }))
       .filter((option) => matchesPickerFilter(option, activeFilter));
   }, [
@@ -1168,7 +1168,7 @@ export function ProductPickerPopover({
                                             !option.selectable
                                               ? 'bg-red-100 text-red-700'
                                               : option.verification.status ===
-                                                  'PINGÜINO — SPRAWDZONY'
+                                                  'GELLATTI — SPRAWDZONY'
                                                 ? 'bg-[#e8f7eb] text-[#1a9b3d]'
                                                 : option.entityKind === 'pi_base'
                                                   ? 'bg-[#fff4e2] text-[#f58a07]'

@@ -3972,7 +3972,7 @@ function internalStabilizerProfileIssues(input) {
 		grams: 0,
 		minGrams: null,
 		maxGrams: null,
-		provenance: "PINGUINO Spine v1.0: stabilizer required for every active profile"
+		provenance: "GELLATTI Spine v1.0: stabilizer required for every active profile"
 	}];
 	const assessment = gelatoStabilizerSystemApplies(input.category) ? assessGelatoStabilizerSystem(input) : input.category === "sorbet" ? assessSorbetStabilizerSystem(input) : null;
 	if (assessment === null) return [];
@@ -4085,7 +4085,7 @@ const REASON_PL = {
 	base_recipe_not_approved: "Produkt nie jest zatwierdzony do receptury bazowej.",
 	snapshot_missing: "Produkt wymaga ponownej walidacji przed ustawieniem jako Main.",
 	revalidation_required: "Historyczny produkt wymaga utworzenia nowej, zweryfikowanej wersji przed ustawieniem jako Main.",
-	unknown_product: "PINGÜINO nie rozpoznaje jeszcze tego produktu — brak danych o jego roli."
+	unknown_product: "Gellatti nie rozpoznaje jeszcze tego produktu — brakuje danych o jego roli."
 };
 /**
 * Semantic roles that carry recipe flavour identity. These come from the
@@ -4666,7 +4666,7 @@ function resolveMainRatioScale(input, byLineId, desiredMainTotal) {
 		code: "main_ratio_conflict",
 		lineIds: mains.map((main) => main.lineId),
 		ingredientNames: mains.map((main) => main.ingredientName),
-		messagePl: `Blokady lub zakresy składników Głównych (${mains.map((main) => main.ingredientName).join(", ")}) są sprzeczne z ich zapisaną proporcją. PI nie zmieniło receptury.`
+		messagePl: `Blokady lub zakresy składników Głównych (${mains.map((main) => main.ingredientName).join(", ")}) są sprzeczne z ich zapisaną proporcją. Gellatti nie zmieniło receptury.`
 	});
 	for (const main of mains) {
 		const constraint = byLineId[main.lineId];
@@ -5499,7 +5499,7 @@ const veganGelatoMinus11 = {
 	stabilizer: { required: true },
 	disabledGates: VEGAN_DISABLED_GATES,
 	advisoryGates: [],
-	notes: ["derived from PINGUINO temperature logic — locked internal v0.1, not externally confirmed", "never fails because lactose or dairy protein is 0"]
+	notes: ["derived from GELLATTI temperature logic — locked internal v0.1, not externally confirmed", "never fails because lactose or dairy protein is 0"]
 };
 const veganGelatoMinus12 = {
 	productProfile: "vegan_gelato",
@@ -5520,7 +5520,7 @@ const veganGelatoMinus12 = {
 	stabilizer: { required: true },
 	disabledGates: VEGAN_DISABLED_GATES,
 	advisoryGates: [],
-	notes: ["derived from PINGUINO temperature logic — locked internal v0.1, not externally confirmed"]
+	notes: ["derived from GELLATTI temperature logic — locked internal v0.1, not externally confirmed"]
 };
 const veganGelatoMinus13 = {
 	productProfile: "vegan_gelato",
@@ -5924,7 +5924,7 @@ function computeRecipeDirectionPlan(input) {
 		metric: "npac",
 		targetBand: null,
 		targetCenter: null,
-		reason: "Brak zweryfikowanej, profilowej kalibracji miękkości dla tej kategorii; PI nie używa zastępczej krzywej mlecznej."
+		reason: "Brakuje zweryfikowanych danych miękkości dla tej kategorii. Gellatti nie użyje danych z innego typu receptury."
 	});
 	else axes.push({
 		axis: "softness",
@@ -7305,7 +7305,7 @@ function practicalizeRecipeCandidate(exactInput, set, nonIncreasableLineIds = /*
 	if (reconciled === null) return block(exact, exactResult, exactHardMetrics, "batch_residual_unresolved", [], "Po zaokrągleniu pozostaje różnica partii, której nie można przypisać bez naruszenia blokad, Main, stabilizatora lub dostępności.", withMain);
 	let executable = reconciled.input;
 	const constraints = verifyConstraintsPreserved(set, executable);
-	if (!constraints.ok) return block(exact, exactResult, exactHardMetrics, "constraint_changed", [...new Set(constraints.violations.map((violation) => violation.lineId))], "Pełne gramy naruszyły blokadę receptury. PI nie zastosowało zaokrąglenia.", executable);
+	if (!constraints.ok) return block(exact, exactResult, exactHardMetrics, "constraint_changed", [...new Set(constraints.violations.map((violation) => violation.lineId))], "Pełne gramy naruszyły blokadę receptury. Gellatti nie zastosowało zaokrąglenia.", executable);
 	const main = verifyMainIngredientIdentity(exact, executable, set.byLineId);
 	if (!main.ok) return block(exact, exactResult, exactHardMetrics, "main_ratio_not_whole_gram_representable", [...new Set(main.violations.flatMap((violation) => violation.lineIds))], "Pełne gramy zmieniłyby tożsamość lub proporcję składników Głównych.", executable);
 	const stabilizerChanged = exact.items.filter((item, index) => {
@@ -7318,7 +7318,7 @@ function practicalizeRecipeCandidate(exactInput, set, nonIncreasableLineIds = /*
 		if (Object.is(executable.items[index].planned_grams, item.planned_grams)) return false;
 		return approvedStabilizerDosage(canonicalIngredientId(item.ingredient)) === null && approvedStabilizerDosage(item.ingredient.id) === null;
 	});
-	if (unapprovedRoundedStabilizers.length > 0) return block(exact, exactResult, exactHardMetrics, "stabilizer_contract_changed", unapprovedRoundedStabilizers.map((item) => item.id), "Ten stabilizator nie ma zatwierdzonego kontraktu dawki do praktycznego zaokrąglenia. PI zachowało dokładną wartość i zablokowało wersję wykonawczą.", executable);
+	if (unapprovedRoundedStabilizers.length > 0) return block(exact, exactResult, exactHardMetrics, "stabilizer_contract_changed", unapprovedRoundedStabilizers.map((item) => item.id), "Ten stabilizator nie ma zatwierdzonego zakresu do praktycznego zaokrąglenia. Gellatti zachowało dokładną wartość i zablokowało wersję wykonawczą.", executable);
 	let executableResult = calculateRecipe(executable);
 	let executableHardMetrics = classifyViolationBands(executable).hardMetrics;
 	let newHardMetrics = executableHardMetrics.filter((metric) => !exactHardMetrics.includes(metric));
@@ -7331,7 +7331,7 @@ function practicalizeRecipeCandidate(exactInput, set, nonIncreasableLineIds = /*
 			newHardMetrics = executableHardMetrics.filter((metric) => !exactHardMetrics.includes(metric));
 		}
 	}
-	if (newHardMetrics.length > 0) return block(exact, exactResult, exactHardMetrics, "post_rounding_hard_gate", [], `Pełne gramy wprowadzają problem technologiczny: ${newHardMetrics.join(", ")}. PI nie zastosowało tej wersji.`, executable, executableHardMetrics);
+	if (newHardMetrics.length > 0) return block(exact, exactResult, exactHardMetrics, "post_rounding_hard_gate", [], `Pełne gramy wprowadzają problem technologiczny: ${newHardMetrics.join(", ")}. Gellatti nie zastosowało tej wersji.`, executable, executableHardMetrics);
 	const executableTotalGrams = totalPlanned(executable);
 	if (Math.abs(executableTotalGrams - exact.target_batch_grams) > INTEGER_EPSILON) return block(exact, exactResult, exactHardMetrics, "batch_residual_unresolved", [], "Suma pełnych gramów nie zgadza się z docelową partią.", executable, executableHardMetrics);
 	const omittedLineIds = new Set(unusedZeroGramLineIds(executable, set));

@@ -758,7 +758,7 @@ export function practicalizeRecipeCandidate(
       exactHardMetrics,
       'constraint_changed',
       [...new Set(constraints.violations.map((violation) => violation.lineId))],
-      'Pełne gramy naruszyły blokadę receptury. PI nie zastosowało zaokrąglenia.',
+      'Pełne gramy naruszyły blokadę receptury. Gellatti nie zastosowało zaokrąglenia.',
       executable,
     );
   }
@@ -811,7 +811,7 @@ export function practicalizeRecipeCandidate(
       exactHardMetrics,
       'stabilizer_contract_changed',
       unapprovedRoundedStabilizers.map((item) => item.id),
-      'Ten stabilizator nie ma zatwierdzonego kontraktu dawki do praktycznego zaokrąglenia. PI zachowało dokładną wartość i zablokowało wersję wykonawczą.',
+      'Ten stabilizator nie ma zatwierdzonego zakresu do praktycznego zaokrąglenia. Gellatti zachowało dokładną wartość i zablokowało wersję wykonawczą.',
       executable,
     );
   }
@@ -835,7 +835,7 @@ export function practicalizeRecipeCandidate(
       exactHardMetrics,
       'post_rounding_hard_gate',
       [],
-      `Pełne gramy wprowadzają problem technologiczny: ${newHardMetrics.join(', ')}. PI nie zastosowało tej wersji.`,
+      `Pełne gramy wprowadzają problem technologiczny: ${newHardMetrics.join(', ')}. Gellatti nie zastosowało tej wersji.`,
       executable,
       executableHardMetrics,
     );

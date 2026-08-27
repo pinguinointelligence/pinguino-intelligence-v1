@@ -196,8 +196,8 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(editor?.textContent).toContain('Zapisz jako domyślne');
     expect(editor?.textContent).toContain('Kopie');
     expect(editor?.textContent).toContain('LOT · nadawany automatycznie');
-    expect(editor?.textContent).toContain('Energia z authority rynku');
-    expect(editor?.textContent).toContain('Authority energii');
+    expect(editor?.textContent).toContain('Energia według zasad rynku');
+    expect(editor?.textContent).toContain('Podstawa wartości energii');
     expect(editor?.textContent).toContain('Wymagane pola profilu European Union są zawsze aktywne');
     expect(editor?.querySelector('[data-testid="optional-label-fields"] input')).not.toBeNull();
 

@@ -53,11 +53,7 @@ import {
 } from '@/features/recipes/savedRecipeMetadata';
 import { recipeVersionBehaviorGate } from '@/features/product-intelligence';
 import { validateRecipeBehaviorOnServer } from '@/services/productIntelligence';
-import type {
-  CreateRecipeArgs,
-  RecipesRepository,
-  SaveVersionOpts,
-} from './recipesRepository';
+import type { CreateRecipeArgs, RecipesRepository, SaveVersionOpts } from './recipesRepository';
 
 const SAVED_RECIPES = 'saved_recipes';
 const SAVED_RECIPE_META = 'saved_recipe_meta';
@@ -151,7 +147,9 @@ function isUniqueViolation(error: { code?: string; message?: string } | null): b
   if (!error) return false;
   if (error.code === '23505') return true;
   const m = (error.message ?? '').toLowerCase();
-  return m.includes('duplicate key') || m.includes('unique constraint') || m.includes('already exists');
+  return (
+    m.includes('duplicate key') || m.includes('unique constraint') || m.includes('already exists')
+  );
 }
 
 /** The transactional first-save RPC (migration 0036) is not present in this database —
@@ -337,7 +335,7 @@ export class SupabaseRecipes {
       if (isFunctionMissing(error)) {
         this.rpcAppendVersionUnavailable = true;
         console.warn(
-          '[PINGÜINO] supabaseRecipes.saveNewVersion: RPC append_recipe_version_v1 is missing in ' +
+          '[GELLATTI] supabaseRecipes.saveNewVersion: RPC append_recipe_version_v1 is missing in ' +
             'this database — using the documented NON-ATOMIC append fallback for the rest of this ' +
             'session. Apply migration 20260823103000 to restore the atomic path.',
         );
@@ -449,7 +447,10 @@ export class SupabaseRecipes {
 
     const { error: metaErr } = await this.client
       .from(SAVED_RECIPE_META)
-      .update({ latest_version_number: version.versionNumber, updated_at: new Date().toISOString() })
+      .update({
+        latest_version_number: version.versionNumber,
+        updated_at: new Date().toISOString(),
+      })
       .eq('recipe_id', recipeId);
     if (metaErr) throw new Error(metaErr.message);
   }
@@ -480,7 +481,8 @@ export class SupabaseRecipes {
       p_recipe_input: args.recipeInput,
       p_product_composition: args.productComposition ?? null,
       p_batch_grams: batchFromInput(args.recipeInput),
-      p_total_batch_g: (args.recipeInput as unknown as { target_batch_grams?: number }).target_batch_grams ?? 0,
+      p_total_batch_g:
+        (args.recipeInput as unknown as { target_batch_grams?: number }).target_batch_grams ?? 0,
       p_engine_version: args.trace.engineVersion,
       p_config_version: args.trace.configVersion,
       p_mapper_dataset_version: args.trace.mapperDatasetVersion ?? null,
@@ -492,13 +494,16 @@ export class SupabaseRecipes {
       p_note: null,
       p_serving_profile: columns.serving_profile,
       p_active_engine_label: columns.active_engine_label,
-    })) as { data: CreateRecipeRpcResult | null; error: { code?: string; message?: string } | null };
+    })) as {
+      data: CreateRecipeRpcResult | null;
+      error: { code?: string; message?: string } | null;
+    };
     if (error) {
       if (isFunctionMissing(error)) {
         this.rpcFirstSaveUnavailable = true;
         // State-contract visibility (Agent 5): the weaker path must never engage silently.
         console.warn(
-          '[PINGÜINO] supabaseRecipes.createRecipe: migration-0036 RPC create_recipe_with_v1 is ' +
+          '[GELLATTI] supabaseRecipes.createRecipe: migration-0036 RPC create_recipe_with_v1 is ' +
             'missing in this database — using the documented NON-TRANSACTIONAL first-save fallback ' +
             'for the rest of this session. Apply migration 0036 to restore the atomic path.',
         );
@@ -537,7 +542,8 @@ export class SupabaseRecipes {
       args.productComposition,
       'RECIPE_VERSION',
     );
-    if (!behaviorGate.ready) throw new Error(behaviorGate.reason ?? 'Product behavior is incomplete.');
+    if (!behaviorGate.ready)
+      throw new Error(behaviorGate.reason ?? 'Product behavior is incomplete.');
 
     // Preferred: ONE real DB transaction (migration 0036). Falls through ONLY when the function
     // is not present in this database — the legacy compensating path below is the documented,
@@ -625,7 +631,8 @@ export class SupabaseRecipes {
       productComposition,
       'RECIPE_VERSION',
     );
-    if (!behaviorGate.ready) throw new Error(behaviorGate.reason ?? 'Product behavior is incomplete.');
+    if (!behaviorGate.ready)
+      throw new Error(behaviorGate.reason ?? 'Product behavior is incomplete.');
     // Preferred: ONE database transaction (version + aggregate advance together).
     const atomic = await this.tryAppendVersionRpc({
       recipeId,
@@ -743,15 +750,14 @@ export class SupabaseRecipes {
         return {
           source: target,
           recipeInput: target.recipeInput,
-          productComposition:
-            target.productComposition ?? {
-              schemaVersion: 1,
-              baseScope: 'BASE_FORMULATION',
-              baseOrder: target.recipeInput.items.map((item) => item.id),
-              toppings: [],
-              behaviorSnapshots: {},
-              migrationAmbiguities: [],
-            },
+          productComposition: target.productComposition ?? {
+            schemaVersion: 1,
+            baseScope: 'BASE_FORMULATION',
+            baseOrder: target.recipeInput.items.map((item) => item.id),
+            toppings: [],
+            behaviorSnapshots: {},
+            migrationAmbiguities: [],
+          },
           note: null,
         };
       }
@@ -810,11 +816,16 @@ export class SupabaseRecipes {
         client: this.client,
       });
       if (!refreshedServerGate.ready) {
-        const names = [...new Set(refreshedServerGate.staleLineIds.map((lineId) =>
-          refreshed.recipe.items.find((item) => item.id === lineId)?.ingredient.name ??
-          toppings.find((item) => item.id === lineId)?.ingredient.name ??
-          'produkt',
-        ))].join(', ');
+        const names = [
+          ...new Set(
+            refreshedServerGate.staleLineIds.map(
+              (lineId) =>
+                refreshed.recipe.items.find((item) => item.id === lineId)?.ingredient.name ??
+                toppings.find((item) => item.id === lineId)?.ingredient.name ??
+                'produkt',
+            ),
+          ),
+        ].join(', ');
         throw new Error(
           names
             ? `Odświeżone dane produktów nadal wymagają uwagi: ${names}.`
@@ -852,10 +863,8 @@ export class SupabaseRecipes {
 
     const version = await this.appendVersionWithRetry(recipeId, async () => {
       const history = await this.getVersions(recipeId);
-      const versionNumber = history.reduce(
-        (max, candidate) => Math.max(max, candidate.versionNumber),
-        0,
-      ) + 1;
+      const versionNumber =
+        history.reduce((max, candidate) => Math.max(max, candidate.versionNumber), 0) + 1;
       return buildRecipeVersion(
         {
           recipeId,
@@ -899,10 +908,7 @@ export class SupabaseRecipes {
     ownerUserId: string,
     opts: { includeArchived?: boolean } = {},
   ): Promise<SavedRecipe[]> {
-    let query = this.client
-      .from(SAVED_RECIPE_META)
-      .select('*')
-      .eq('owner_user_id', ownerUserId);
+    let query = this.client.from(SAVED_RECIPE_META).select('*').eq('owner_user_id', ownerUserId);
     if (!opts.includeArchived) query = query.eq('archived', false);
     const { data: metas, error } = await query;
     if (error) throw new Error(error.message);

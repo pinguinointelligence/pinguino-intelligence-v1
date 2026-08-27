@@ -22,6 +22,7 @@ import { useProCorePersona } from './useProCorePersona';
 import { resolveRecipesRepository } from './proCoreRecipeRepo';
 import { useRestoreProCoreVersion } from './useProCoreRecipes';
 import { WorkflowNotice } from '@/components/shared/WorkflowNotice';
+import { customerErrorMessage } from '@/copy/customerError';
 
 const c = copy.recipes.historicalVersion;
 
@@ -74,7 +75,7 @@ export function HistoricalVersionNotice() {
           composition: created.productComposition,
         });
       } catch (caught) {
-        setError(caught instanceof Error ? caught.message : c.restoreFailed);
+        setError(customerErrorMessage(caught, 'recipes', 'RECIPE_SAVE_FAILED'));
       }
     })();
   };

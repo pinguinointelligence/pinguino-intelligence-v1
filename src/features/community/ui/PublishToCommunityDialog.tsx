@@ -7,6 +7,7 @@ import { slugifyTitle } from '@/features/community/domain/creatorHandle';
 import { publicationPath } from '@/features/community/domain/shareUrls';
 import { publishRecipe } from '@/services/community';
 import { CreatorProfileForm } from './CreatorProfileForm';
+import { customerErrorMessage } from '@/copy/customerError';
 
 /**
  * „Opublikuj w Community" (§7).
@@ -67,7 +68,7 @@ export function PublishToCommunityDialog({
       onPublished?.(result);
       onClose();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setError(customerErrorMessage(cause, 'community'));
     } finally {
       setPending(false);
     }

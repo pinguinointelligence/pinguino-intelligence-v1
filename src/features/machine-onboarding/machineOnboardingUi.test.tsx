@@ -92,7 +92,11 @@ describe('§8.3 behavior question', () => {
 describe('§8.4 custom form', () => {
   it('renders the spec fields; the vessel-only note appears only when relevant', () => {
     const html = render(
-      <CustomMachineForm vesselOnlyNote={copy.custom.vesselOnlyBowlNote} onSubmit={noop} onBack={noop} />,
+      <CustomMachineForm
+        vesselOnlyNote={copy.custom.vesselOnlyBowlNote}
+        onSubmit={noop}
+        onBack={noop}
+      />,
     );
     expect(html).toContain(copy.custom.brandLabel);
     expect(html).toContain(copy.custom.modelLabel);
@@ -135,8 +139,8 @@ describe('§8.5 auto-config transition', () => {
     expect(html).toContain('Rozpoznano urządzenie');
     expect(html).toContain('Ustawiono właściwą ilość');
     expect(html).toContain('Dopasowano sposób przygotowania');
-    expect(html).toContain('Przygotowano PINGÜINO Pro');
-    expect(html).toContain('Zalecany wsad PINGÜINO: 460 g');
+    expect(html).toContain('Przygotowano Gellatti Pro');
+    expect(html).toContain('Zalecany wsad Gellatti: 460 g');
   });
 });
 
@@ -165,7 +169,10 @@ describe('§7.3 context bar — hard rules', () => {
 
   it('a machine without a vessel figure renders the name only', () => {
     const nameOnly = render(
-      <MachineContextBar view={{ name: 'Twoja maszyna', vesselMl: null, recommendedBatchGrams: null }} onChange={noop} />,
+      <MachineContextBar
+        view={{ name: 'Twoja maszyna', vesselMl: null, recommendedBatchGrams: null }}
+        onChange={noop}
+      />,
     );
     expect(nameOnly).not.toContain('pojemnik');
   });
@@ -192,7 +199,7 @@ describe('§8.6 profile section (settings card — owner hotfix)', () => {
     expect(html).toContain(copy.settings.manufacturerCapacityLabel);
     expect(html).toContain('480 ml');
     // PINGÜINO's proposal — never framed as the manufacturer's gram figure.
-    expect(html).toContain('Zalecany wsad PINGÜINO');
+    expect(html).toContain('Zalecany wsad Gellatti');
     expect(html).toContain('460 g');
     // The user's own editable default, the actions and the next step.
     expect(html).toContain(copy.settings.userDefaultLabel);

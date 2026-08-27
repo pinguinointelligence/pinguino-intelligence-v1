@@ -244,10 +244,10 @@ describe('clean INTIMPORT safety controls', () => {
         />,
       ),
     );
-    expect(text).toContain('PI: 2088');
-    expect(text).toContain('PR: 820');
+    expect(text).toContain('Składniki: 2088');
+    expect(text).toContain('Produkty: 820');
     expect(text).toContain('Import zablokowany');
-    expect(text).toContain('PR = 0');
+    expect(text).toContain('pustego katalogu produktów');
   });
 
   it('shows the approved clean boundary only for PI=2088 / PR=0', () => {
@@ -265,7 +265,7 @@ describe('clean INTIMPORT safety controls', () => {
         />,
       ),
     );
-    expect(text).toContain('✓ Gotowe do czystego importu');
+    expect(text).toContain('Gotowe do importu');
   });
 
   it('renders Przerwij import beside a running progress state', () => {
@@ -314,7 +314,9 @@ describe('runProductImport — service seam (runMatch stays off)', () => {
     h.importProductCatalog.mockRejectedValue(new Error('You must be signed in to add a product.'));
     const result = await runProductImport([]);
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error).toMatch(/signed in/);
+    if (!result.ok) {
+      expect(result.error).toBe('Sesja wygasła. Zaloguj się ponownie i powtórz tę czynność.');
+    }
   });
 });
 
@@ -488,8 +490,8 @@ describe('INTIMPORT direct import is never gated by web enrichment', () => {
       ),
     );
     expect(text).toMatch(/Kompletna kompozycja robocza\s+1/);
-    expect(text).toMatch(/Gotowe dla Engine\s+0/);
-    expect(text).toMatch(/Product Accuracy ≥85%\s+0/);
+    expect(text).toMatch(/Gotowe do obliczeń\s+0/);
+    expect(text).toMatch(/Dokładność produktu ≥85%\s+0/);
     expect(text).toMatch(/Konflikty \/ decyzje\s+3/);
     expect(text).not.toContain('Oszacowane ≥85% — gotowe');
   });

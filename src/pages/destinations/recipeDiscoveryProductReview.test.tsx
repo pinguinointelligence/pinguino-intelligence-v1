@@ -22,7 +22,7 @@ describe('recipe discovery product review', () => {
     expect(visibleCuratedCandidates({ visibility: 'customer' })).toEqual([]);
     const html = render();
     for (const entry of CURATED_RECIPE_CANDIDATES) expect(html).not.toContain(entry.name);
-    expect(html).not.toContain('TRYB OWNER REVIEW');
+    expect(html).not.toContain('TRYB PRZEGLĄDU WŁAŚCICIELA');
   });
 
   it('requires Pro capability plus an explicit owner/QA opt-in on staging', () => {

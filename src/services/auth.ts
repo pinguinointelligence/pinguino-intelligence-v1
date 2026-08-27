@@ -7,6 +7,11 @@
  */
 import type { Session, User } from '@supabase/supabase-js';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase/client';
+import {
+  CustomerOperationError,
+  toCustomerSafeError,
+  type CustomerErrorCode,
+} from '@/copy/customerError';
 import { allowedOAuthRedirectOrigin } from './authRedirect';
 
 export interface AuthUser {
@@ -17,12 +22,17 @@ export interface AuthUser {
 
 export type AuthResult =
   | { ok: true; needsConfirmation: boolean }
-  | { ok: false; message: string };
+  | { ok: false; code: CustomerErrorCode; message: string };
 
 /** Whether real auth is wired in this build (both public env vars present). */
 export const isAuthAvailable = isSupabaseConfigured;
 
-const UNAVAILABLE = 'Sign-in is not available in this build.';
+const authFailure = (cause: unknown): AuthResult => {
+  const error = toCustomerSafeError(cause, 'auth');
+  return { ok: false, code: error.code, message: error.message };
+};
+
+const unavailable = (): AuthResult => authFailure(new CustomerOperationError('AUTH_UNAVAILABLE'));
 
 const toUser = (user: User | null | undefined): AuthUser | null =>
   user
@@ -34,17 +44,17 @@ const toUser = (user: User | null | undefined): AuthUser | null =>
     : null;
 
 export async function signUp(email: string, password: string): Promise<AuthResult> {
-  if (!supabase) return { ok: false, message: UNAVAILABLE };
+  if (!supabase) return unavailable();
   const { data, error } = await supabase.auth.signUp({ email, password });
-  if (error) return { ok: false, message: error.message };
+  if (error) return authFailure(error);
   // No session ⇒ the project requires email confirmation before sign-in.
   return { ok: true, needsConfirmation: data.session === null };
 }
 
 export async function signIn(email: string, password: string): Promise<AuthResult> {
-  if (!supabase) return { ok: false, message: UNAVAILABLE };
+  if (!supabase) return unavailable();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return { ok: false, message: error.message };
+  if (error) return authFailure(error);
   return { ok: true, needsConfirmation: false };
 }
 
@@ -57,14 +67,14 @@ export async function signIn(email: string, password: string): Promise<AuthResul
  * falls back to its dashboard-configured Site URL.
  */
 export async function signInWithGoogle(): Promise<AuthResult> {
-  if (!supabase) return { ok: false, message: UNAVAILABLE };
+  if (!supabase) return unavailable();
   const origin = typeof window !== 'undefined' ? window.location.origin : undefined;
   const redirectTo = allowedOAuthRedirectOrigin(origin);
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: redirectTo ? { redirectTo } : undefined,
   });
-  if (error) return { ok: false, message: error.message };
+  if (error) return authFailure(error);
   return { ok: true, needsConfirmation: false };
 }
 

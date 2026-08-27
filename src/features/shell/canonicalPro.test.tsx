@@ -89,9 +89,9 @@ describe('canonical PINGÜINO Pro — routes (proofs 1–3)', () => {
   });
 });
 
-describe('canonical PINGÜINO Pro — menu (proofs 4–6, 17–18)', () => {
-  it('4. customer-visible navigation says PINGÜINO Pro — never a separate Studio item', () => {
-    expect(APP_NAV_ITEMS.some((i) => i.label === 'PINGÜINO Pro')).toBe(true);
+describe('canonical Gellatti Pro — menu (proofs 4–6, 17–18)', () => {
+  it('4. customer-visible navigation says Gellatti Pro — never a separate Studio item', () => {
+    expect(APP_NAV_ITEMS.some((i) => i.label === 'Gellatti Pro')).toBe(true);
     for (const item of APP_NAV_ITEMS) {
       expect(item.label.toLowerCase().includes('studio'), item.id).toBe(false);
       expect(item.to.includes('/studio'), item.id).toBe(false);

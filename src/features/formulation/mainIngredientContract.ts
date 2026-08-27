@@ -146,10 +146,13 @@ export function verifyMainIngredientIdentity(
       // `resolveMainRatioScale` already performs deterministic largest-
       // remainder whole-gram allocation. Apply must reproduce that exact
       // allocation; accepting ±1 g per line would allow a forged 49/51 split.
-      const ratioChanged = !expected.ok || mains.some((main, index) =>
-        Math.abs((expectedByLineId.get(main.lineId) ?? NaN) - survivingGrams[index]!) >
-          MAIN_RATIO_TOLERANCE,
-      );
+      const ratioChanged =
+        !expected.ok ||
+        mains.some(
+          (main, index) =>
+            Math.abs((expectedByLineId.get(main.lineId) ?? NaN) - survivingGrams[index]!) >
+            MAIN_RATIO_TOLERANCE,
+        );
       if (ratioChanged) {
         violations.push({
           code: 'main_ratio_changed',
@@ -227,7 +230,7 @@ export function resolveMainRatioScale(
     ingredientNames: mains.map((main) => main.ingredientName),
     messagePl:
       `Blokady lub zakresy składników Głównych (${mains.map((main) => main.ingredientName).join(', ')}) ` +
-      'są sprzeczne z ich zapisaną proporcją. PI nie zmieniło receptury.',
+      'są sprzeczne z ich zapisaną proporcją. Gellatti nie zmieniło receptury.',
   });
 
   for (const main of mains) {
@@ -281,14 +284,17 @@ export function resolveMainRatioScale(
   let boundedTarget = Math.min(variableTarget, maximumTotal);
 
   const continuous = new Map<string, number>();
-  const allExactWhole = [...exact.values()].every((grams) => Math.abs(grams - Math.round(grams)) <= MAIN_RATIO_TOLERANCE);
-  const requestedWhole = Math.abs(boundedTarget - Math.round(boundedTarget)) <= MAIN_RATIO_TOLERANCE;
+  const allExactWhole = [...exact.values()].every(
+    (grams) => Math.abs(grams - Math.round(grams)) <= MAIN_RATIO_TOLERANCE,
+  );
+  const requestedWhole =
+    Math.abs(boundedTarget - Math.round(boundedTarget)) <= MAIN_RATIO_TOLERANCE;
   let wholeRatioAllocation: Map<string, number> | null = null;
   if (allExactWhole && requestedWhole) {
     const weightTotal = variable.reduce((sum, main) => sum + main.ratioWeight, 0);
     const allocate = (target: number): Map<string, number> => {
       const floors = variable.map((main, index) => {
-        const exactShare = target * main.ratioWeight / weightTotal;
+        const exactShare = (target * main.ratioWeight) / weightTotal;
         return {
           main,
           index,
@@ -306,13 +312,18 @@ export function resolveMainRatioScale(
       return new Map(floors.map((row) => [row.main.lineId, row.grams] as const));
     };
     const lowerTarget = Math.ceil(minimumTotal - MAIN_RATIO_TOLERANCE);
-    for (let target = Math.floor(boundedTarget + MAIN_RATIO_TOLERANCE); target >= lowerTarget; target -= 1) {
+    for (
+      let target = Math.floor(boundedTarget + MAIN_RATIO_TOLERANCE);
+      target >= lowerTarget;
+      target -= 1
+    ) {
       const allocation = allocate(target);
       const fits = variable.every((main) => {
         const grams = allocation.get(main.lineId)!;
         const bound = bounds.get(main.lineId)!;
-        return grams >= bound.min - MAIN_RATIO_TOLERANCE &&
-          grams <= bound.max + MAIN_RATIO_TOLERANCE;
+        return (
+          grams >= bound.min - MAIN_RATIO_TOLERANCE && grams <= bound.max + MAIN_RATIO_TOLERANCE
+        );
       });
       if (fits) {
         boundedTarget = target;
@@ -332,7 +343,7 @@ export function resolveMainRatioScale(
     let clamped = false;
     for (const main of activeLines) {
       const bound = bounds.get(main.lineId)!;
-      const proposed = remaining * main.ratioWeight / weightTotal;
+      const proposed = (remaining * main.ratioWeight) / weightTotal;
       if (proposed < bound.min - MAIN_RATIO_TOLERANCE) {
         continuous.set(main.lineId, bound.min);
         remaining -= bound.min;
@@ -347,7 +358,7 @@ export function resolveMainRatioScale(
     }
     if (!clamped) {
       for (const main of activeLines) {
-        continuous.set(main.lineId, remaining * main.ratioWeight / weightTotal);
+        continuous.set(main.lineId, (remaining * main.ratioWeight) / weightTotal);
       }
       break;
     }
@@ -362,9 +373,12 @@ export function resolveMainRatioScale(
       fraction: (continuous.get(main.lineId) ?? 0) % 1,
     }));
     let remainder = Math.round(boundedTarget) - floors.reduce((sum, row) => sum + row.grams, 0);
-    floors.sort((left, right) => right.fraction - left.fraction ||
-      mains.findIndex((main) => main.lineId === left.main.lineId) -
-        mains.findIndex((main) => main.lineId === right.main.lineId));
+    floors.sort(
+      (left, right) =>
+        right.fraction - left.fraction ||
+        mains.findIndex((main) => main.lineId === left.main.lineId) -
+          mains.findIndex((main) => main.lineId === right.main.lineId),
+    );
     for (const row of floors) {
       if (remainder <= 0) break;
       const max = bounds.get(row.main.lineId)!.max;
@@ -402,6 +416,6 @@ export function mainIdentityViolationMessage(
   return (
     `Propozycja narusza tożsamość składników Głównych (${names.join(', ')}): ` +
     'składnik zniknął, został wyzerowany, utracił rolę Główną albo zmieniła się zapisana proporcja. ' +
-    'PI nie zmieniło receptury.'
+    'Gellatti nie zmieniło receptury.'
   );
 }

@@ -52,12 +52,12 @@ describe('SaveCorrectionControl — visibility gating', () => {
   it('signed-in Pro with a saveable solve gets the real control (both modes offered)', () => {
     const html = render();
     const text = visibleText(html);
-    expect(text).toContain('Save accepted correction');
-    expect(text).toContain('Save correction');
-    expect(text).toContain('Engine-seeded solve');
-    expect(text).toContain('Regulator-shadow solve');
+    expect(text).toContain('Zapisz zaakceptowaną korektę');
+    expect(text).toContain('Zapisz korektę');
+    expect(text).toContain('Główne przeliczenie');
+    expect(text).toContain('Dodatkowe porównanie');
     // honesty line: the recipe itself is never mutated by a save
-    expect(text).toContain('never changed');
+    expect(text).toContain('nie zostanie zmieniona');
     expect(html).toContain('<button');
   });
 
@@ -73,7 +73,7 @@ describe('SaveCorrectionControl — visibility gating', () => {
     h.auth = { status: 'anon', user: null };
     h.access = { exactCorrectionGrams: false, saveRecipes: false };
     const html = render();
-    expect(visibleText(html)).toContain('Sign in to save corrections');
+    expect(visibleText(html)).toContain('Zaloguj się, aby zapisać korektę');
     expect(html).not.toContain('<button');
     expect(html).not.toContain('radio');
   });
@@ -85,7 +85,7 @@ describe('SaveCorrectionControl — visibility gating', () => {
 
   it('signed-in Pro with nothing saveable gets one honest line — no button, no fake save', () => {
     const html = render(nothingToSaveView, readyFixture.recipe);
-    expect(visibleText(html)).toContain('nothing to save');
+    expect(visibleText(html)).toContain('nie ma potwierdzonej korekty do zapisania');
     expect(html).not.toContain('<button');
   });
 });

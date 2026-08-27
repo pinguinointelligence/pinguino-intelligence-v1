@@ -349,8 +349,8 @@ export function ConstraintPreviewCard({
                 <span className="font-semibold text-ivory">Zweryfikowana zamiana:</span>{' '}
                 {preview.substitution.fromName} → {preview.substitution.toName}.
                 {preview.substitution.changesMainIdentity
-                  ? ' Zmienia tożsamość składnika Głównego i wymaga jawnej zgody przed Apply.'
-                  : ' Rola technologiczna i reguły bezpieczeństwa pozostają sprawdzane przez Apply.'}
+                  ? ' Zmienia tożsamość składnika głównego i wymaga wyraźnej zgody przed zastosowaniem.'
+                  : ' Rola technologiczna i reguły bezpieczeństwa zostaną ponownie sprawdzone przed zastosowaniem.'}
               </div>
             ) : null}
 
@@ -365,14 +365,14 @@ export function ConstraintPreviewCard({
                     : 'Blokada wymusza twardo nieprawidłową recepturę:'}
                 </span>{' '}
                 {preview.safetyLockConflict.ingredientName} ma blokadę{' '}
-                {formatGramsPl(preview.safetyLockConflict.beforeGrams)}. Ten Preview proponuje
+                {formatGramsPl(preview.safetyLockConflict.beforeGrams)}. Ten podgląd proponuje
                 jawnie zmianę blokady na {formatGramsPl(preview.safetyLockConflict.requiredGrams)} —{' '}
                 {preview.safetyLockConflict.reason === 'constraint_feasibility'
-                  ? 'wartość potwierdzoną przez kanoniczne reguły i Engine'
+                  ? 'wartość potwierdzoną przez zatwierdzone reguły obliczeń'
                   : preview.safetyLockConflict.boundary === 'maximum'
                     ? 'zatwierdzone maksimum'
                     : 'zatwierdzone minimum'}
-                . Nic nie zmieni się bez Apply.
+                . Nic nie zmieni się bez użycia „Zastosuj zmiany”.
               </div>
             ) : null}
 
@@ -400,8 +400,8 @@ export function ConstraintPreviewCard({
                 data-testid="preview-direction-reason"
               >
                 <span className="font-semibold text-ivory">Wybrany kierunek:</span>{' '}
-                {selectedDirection}. PI zmieniło wyłącznie dozwolone składniki; blokady gramowe,
-                procentowe, role Główne i wykluczenia pozostają nienaruszalne.
+                {selectedDirection}. Gellatti zmieniło wyłącznie dozwolone składniki; blokady
+                gramowe, procentowe, role Główne i wykluczenia pozostają nienaruszalne.
               </div>
             ) : null}
 
@@ -413,16 +413,16 @@ export function ConstraintPreviewCard({
                 <div className="flex items-center justify-between gap-3">
                   <strong className="text-sm text-ivory">Receptura wykonawcza · pełne gramy</strong>
                   <span className="text-xs font-semibold text-status-ideal">
-                    ✓ Engine sprawdzony ponownie
+                    ✓ Obliczenia sprawdzone ponownie
                   </span>
                 </div>
                 <p className="mt-1 text-xs leading-relaxed text-ivory/65">
-                  Dokładny kandydat PI został przeliczony na fizyczny wektor gramowy, a POD, NPAC i
-                  wszystkie twarde bramki policzono ponownie dla liczb widocznych poniżej.
+                  Gellatti przeliczyło dokładne ilości w gramach. POD, NPAC i wszystkie wymagane
+                  warunki zostały ponownie sprawdzone dla wartości widocznych poniżej.
                 </p>
                 <dl className="mt-3 grid grid-cols-2 gap-2 text-xs text-ivory/70">
                   <div className="rounded-xl bg-black/15 px-3 py-2">
-                    <dt>Dokładny Engine</dt>
+                    <dt>Dokładne obliczenie</dt>
                     <dd className="mt-1 font-mono tabular-nums text-ivory">
                       {preview.practicalization.audit.exactTotalGrams.toFixed(3)} g
                     </dd>
@@ -454,7 +454,7 @@ export function ConstraintPreviewCard({
               data-testid="preview-protected-contracts"
             >
               <p className="text-[0.625rem] font-semibold tracking-[0.12em] text-ivory/65 uppercase">
-                Chronione przez Apply
+                Sprawdzane przed zastosowaniem
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {protectedFacts.map(([label, count]) => (
@@ -486,9 +486,9 @@ export function ConstraintPreviewCard({
                 <p className="text-xs leading-relaxed text-ivory/70">
                   {preview.directionAssessment.reached
                     ? diagnostic
-                      ? 'Kierunek osiągnięty tylko w podglądzie diagnostycznym. Receptura nadal nie jest gotowa do Apply.'
-                      : 'PI osiągnęło wybrany profil.'
-                    : 'Najbliższy bezpieczny profil — zaakceptowany świadomie przed tym Preview.'}
+                      ? 'Kierunek osiągnięty tylko w podglądzie diagnostycznym. Receptura nadal nie jest gotowa do zastosowania.'
+                      : 'Gellatti osiągnęło wybrany profil.'
+                    : 'Najbliższy bezpieczny profil — zaakceptowany świadomie przed tym podglądem.'}
                 </p>
               </div>
             ) : null}
@@ -514,7 +514,7 @@ export function ConstraintPreviewCard({
                             preview.formulation?.templateId ?? '—',
                           )
                         : diagnosticReason === 'protein_claim_residual'
-                          ? 'Kandydat jest natywnie bezpieczny, ale nie spełnia deklaracji „wysoka zawartość białka”. Apply pozostaje zablokowany.'
+                          ? 'Wynik jest bezpieczny, ale nie spełnia deklaracji „wysoka zawartość białka”. Zastosowanie pozostaje zablokowane.'
                           : hardResiduals.length > 0
                             ? copy.preview.diagnosticHardResiduals(hardResiduals)
                             : copy.preview.diagnosticIterationCap}

@@ -86,19 +86,19 @@ describe('AdminProductCapabilityReanalysisSection', () => {
 
   it('shows product identity, exact attempted context, current/requested capability, and references', async () => {
     await renderSection();
-    expect(document.body.textContent).toContain('Ponowna analiza capability');
+    expect(document.body.textContent).toContain('Ponowna analiza zastosowania');
     expect(document.body.textContent).toContain('PR-ING-007144 · HARIBO Quaxi');
     expect(document.body.textContent).toContain('EAN 4001686322536');
-    expect(document.body.textContent).toContain('TOPPING_ONLY → INGREDIENT');
+    expect(document.body.textContent).toContain('tylko dodatek po produkcji → składnik receptury');
 
     const open = Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find((button) =>
       button.textContent?.includes('Otwórz'),
     );
     await act(async () => open?.click());
-    expect(document.body.textContent).toContain('INGREDIENT_PICKER');
+    expect(document.body.textContent).toContain('wybór składnika');
     expect(document.body.textContent).toContain('contributor-user-uuid');
     expect(document.body.textContent).toContain('scan-session-uuid');
-    expect(document.body.textContent).toContain('Canonical authority musi zostać opublikowane');
+    expect(document.body.textContent).toContain('opublikuj zweryfikowane dane produktu');
   });
 
   it('starts review through the permission-checked shared admin action', async () => {
@@ -108,7 +108,7 @@ describe('AdminProductCapabilityReanalysisSection', () => {
     );
     await act(async () => open?.click());
     const start = Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(
-      (button) => button.textContent === 'Rozpocznij review',
+      (button) => button.textContent === 'Rozpocznij weryfikację',
     );
     await act(async () => start?.click());
     expect(mocks.action).toHaveBeenCalledWith('request-uuid', 'START_REVIEW', undefined);

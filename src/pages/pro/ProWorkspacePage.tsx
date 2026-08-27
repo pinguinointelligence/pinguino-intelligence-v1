@@ -444,7 +444,7 @@ export function ProWorkspacePage() {
           recalculationTerminal: {
             state: 'BLOCKED_WITH_EXACT_ACTION',
             code: 'missing_required_role',
-            messagePl: `Brakuje wymaganego składnika: ${unresolvedRequired.map((item) => item.name).join(', ')}. Wybierz produkt, aby PI mogło przeliczyć recepturę.`,
+            messagePl: `Brakuje wymaganego składnika: ${unresolvedRequired.map((item) => item.name).join(', ')}. Wybierz produkt, aby przeliczyć recepturę.`,
             action: 'choose_product',
           },
         });
@@ -457,7 +457,7 @@ export function ProWorkspacePage() {
       useConstraintStudioStore.setState({
         recalculationTerminal: {
           state: 'ERROR',
-          messagePl: 'PI nie mogło dokończyć przeliczenia. Wróć do receptury i spróbuj ponownie.',
+          messagePl: 'Nie udało się dokończyć przeliczenia. Wróć do receptury i spróbuj ponownie.',
         },
       });
     }

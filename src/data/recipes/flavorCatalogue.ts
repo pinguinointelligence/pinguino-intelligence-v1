@@ -20,10 +20,7 @@ import {
   SOURCE_SHEET,
   SOURCE_WORKBOOK,
 } from './flavorCatalogue.generated';
-import type {
-  CatalogueInternalProfile,
-  FlavorCatalogueEntry,
-} from './flavorCatalogueTypes';
+import type { CatalogueInternalProfile, FlavorCatalogueEntry } from './flavorCatalogueTypes';
 import { enrichFlavorRecord, type FlavorCatalogueMeta } from './flavorProfileMapping';
 
 const META: FlavorCatalogueMeta = {
@@ -33,8 +30,8 @@ const META: FlavorCatalogueMeta = {
 };
 
 /** All 2500 enriched catalogue entries, deterministically ordered by popularity rank. */
-export const FLAVOR_CATALOGUE: readonly FlavorCatalogueEntry[] = FLAVOR_CATALOGUE_SOURCE.map((record) =>
-  enrichFlavorRecord(record, META),
+export const FLAVOR_CATALOGUE: readonly FlavorCatalogueEntry[] = FLAVOR_CATALOGUE_SOURCE.map(
+  (record) => enrichFlavorRecord(record, META),
 );
 
 /* ------------------------------------------------------------------------ *
@@ -57,8 +54,8 @@ export function flavorEntriesMissingImage(): FlavorCatalogueEntry[] {
  * ------------------------------------------------------------------------ */
 export const FLAVOR_INSPIRATION_LABEL = 'Inspiracja smakowa';
 export const FLAVOR_USE_AS_STARTING_POINT_LABEL = 'Użyj jako punkt wyjścia';
-export const FLAVOR_CREATE_IN_PINGUINO_LABEL = 'Utwórz recepturę w PINGÜINO';
-export const FLAVOR_PROTEIN_ENGINE_IN_PREPARATION_LABEL = 'Profil silnika w przygotowaniu';
+export const FLAVOR_CREATE_IN_PINGUINO_LABEL = 'Utwórz recepturę w Gellatti';
+export const FLAVOR_PROTEIN_ENGINE_IN_PREPARATION_LABEL = 'Profil receptury w przygotowaniu';
 
 export interface FlavorEntryStatusLabels {
   /** Always an inspiration — never a ready recipe. */
@@ -74,7 +71,9 @@ export function flavorEntryStatusLabels(entry: FlavorCatalogueEntry): FlavorEntr
   const isProtein = entry.engineSupport === 'protein_unsupported';
   return {
     kind: FLAVOR_INSPIRATION_LABEL,
-    cta: isProtein ? FLAVOR_PROTEIN_ENGINE_IN_PREPARATION_LABEL : FLAVOR_USE_AS_STARTING_POINT_LABEL,
+    cta: isProtein
+      ? FLAVOR_PROTEIN_ENGINE_IN_PREPARATION_LABEL
+      : FLAVOR_USE_AS_STARTING_POINT_LABEL,
     engineNote: isProtein ? FLAVOR_PROTEIN_ENGINE_IN_PREPARATION_LABEL : null,
   };
 }

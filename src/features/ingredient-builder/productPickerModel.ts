@@ -1,13 +1,13 @@
 import type { CatalogProductSearchHit } from '@/features/global-catalog/contracts';
 
 export type ProductPickerVerificationStatus =
-  | 'PINGÜINO — SPRAWDZONY'
+  | 'GELLATTI — SPRAWDZONY'
   | 'Dane szacowane'
-  | 'SYSTEM — DOPASOWANY'
+  | 'DOPASOWANY'
   | 'DODANY PRZEZ UŻYTKOWNIKA'
   | 'WYMAGA SPRAWDZENIA ETYKIETY'
-  | 'MAPPER BINDING REQUIRED'
-  | 'PRODUCT DATA INCOMPLETE';
+  | 'WYMAGA POWIĄZANIA'
+  | 'DANE PRODUKTU NIEPEŁNE';
 
 export interface ProductPickerVerificationView {
   status: ProductPickerVerificationStatus;
@@ -53,7 +53,7 @@ const exactPickerSubject = (
   hit: CatalogProductSearchHit,
   scope: 'BASE_FORMULATION' | 'POST_PROCESS_ADDON',
 ): string =>
-  `Produkt ${hit.displayName} · ID ${hit.id} · wersja ${hit.currentVersionId ?? 'brak'} · Mapper ${hit.mappedIngredientId ?? 'brak'} · moduł ${scope === 'BASE_FORMULATION' ? 'BASE_RECIPE' : 'TOPPING'}`;
+  `Produkt ${hit.displayName} · ID ${hit.id} · wersja ${hit.currentVersionId ?? 'brak'} · powiązanie ${hit.mappedIngredientId ?? 'brak'} · użycie ${scope === 'BASE_FORMULATION' ? 'receptura bazowa' : 'dodatek po procesie'}`;
 
 export const exactProductPickerTechnicalReason = (
   hit: CatalogProductSearchHit,
@@ -76,7 +76,7 @@ export function productPickerVerificationView(
   if (hit.entityKind === 'pi_base') {
     if (hit.currentVersionId === null || hit.currentVersionId === undefined) {
       return {
-        status: 'PRODUCT DATA INCOMPLETE',
+        status: 'DANE PRODUKTU NIEPEŁNE',
         reason: exactPickerBlock(
           hit,
           scope,
@@ -87,12 +87,12 @@ export function productPickerVerificationView(
     }
     if (!hit.mappedIngredientId) {
       return {
-        status: 'MAPPER BINDING REQUIRED',
+        status: 'WYMAGA POWIĄZANIA',
         reason: exactPickerBlock(
           hit,
           scope,
           'mappedIngredientId',
-          'Wybierz dokładne powiązanie Mapper.',
+          'Wybierz dokładne powiązanie danych produktu.',
         ),
       };
     }
@@ -100,7 +100,7 @@ export function productPickerVerificationView(
     if (!usable) {
       const approvalMissing = hit.blockedReason?.includes('Brak zatwierdzenia') === true;
       return {
-        status: 'PRODUCT DATA INCOMPLETE',
+        status: 'DANE PRODUKTU NIEPEŁNE',
         reason: approvalMissing
           ? exactPickerBlock(
               hit,
@@ -122,7 +122,7 @@ export function productPickerVerificationView(
       return {
         status: 'Dane szacowane',
         reason:
-          'Produkt ma techniczne dane Mappera, ale źródło nie zostało jeszcze zweryfikowane na podstawie aktualnej etykiety.',
+          'Dane produktu są oszacowane, ale źródło nie zostało jeszcze zweryfikowane na podstawie aktualnej etykiety.',
       };
     }
     if (hit.verificationMethod === 'mapper_needs_label_review') {
@@ -134,16 +134,17 @@ export function productPickerVerificationView(
     }
     if (hit.verificationMethod === 'mapper_other') {
       return {
-        status: 'SYSTEM — DOPASOWANY',
-        reason: 'Źródło produktu pozostaje informacją; użycie techniczne wynika z danych Mappera.',
+        status: 'DOPASOWANY',
+        reason:
+          'Źródło produktu pozostaje informacją; możliwość użycia wynika z potwierdzonych danych.',
       };
     }
-    return { status: 'PINGÜINO — SPRAWDZONY', reason: null };
+    return { status: 'GELLATTI — SPRAWDZONY', reason: null };
   }
 
   if (hit.currentVersionId === null || hit.currentVersionId === undefined) {
     return {
-      status: 'PRODUCT DATA INCOMPLETE',
+      status: 'DANE PRODUKTU NIEPEŁNE',
       reason: exactPickerBlock(
         hit,
         scope,
@@ -156,7 +157,7 @@ export function productPickerVerificationView(
     if (!hit.usableAsTopping) {
       const defects = [...hit.missingFields, ...hit.invalidFields].map(defectLabel);
       return {
-        status: 'PRODUCT DATA INCOMPLETE',
+        status: 'DANE PRODUKTU NIEPEŁNE',
         reason: exactPickerBlock(
           hit,
           scope,
@@ -170,8 +171,7 @@ export function productPickerVerificationView(
     if (hit.verificationMethod === 'mapper_estimated') {
       return {
         status: 'Dane szacowane',
-        reason:
-          'Produkt ma techniczne dane Mappera, ale źródło pozostaje szacowane. Etykieta końcowa może nadal wymagać uzupełnienia.',
+        reason: 'Dane produktu są oszacowane. Etykieta końcowa może nadal wymagać uzupełnienia.',
       };
     }
     if (
@@ -183,29 +183,29 @@ export function productPickerVerificationView(
       return {
         status: 'WYMAGA SPRAWDZENIA ETYKIETY',
         reason:
-          'Stan etykiety pozostaje informacją i nie blokuje technicznego Toppingu z dokładnym Mapperem; Label może pozostać zablokowany.',
+          'Stan etykiety nie blokuje użycia produktu jako dodatku po procesie, ale etykieta końcowa może nadal wymagać uzupełnienia.',
       };
     }
     return hit.status === 'verified'
-      ? { status: 'PINGÜINO — SPRAWDZONY', reason: null }
+      ? { status: 'GELLATTI — SPRAWDZONY', reason: null }
       : hit.provenance === 'automatic_verified' || hit.verificationMethod === 'automatic'
-        ? { status: 'SYSTEM — DOPASOWANY', reason: null }
+        ? { status: 'DOPASOWANY', reason: null }
         : { status: 'DODANY PRZEZ UŻYTKOWNIKA', reason: null };
   }
   if (!hit.mappedIngredientId && !hasProductOwnedEngineProfile(hit)) {
     return {
-      status: 'MAPPER BINDING REQUIRED',
+      status: 'WYMAGA POWIĄZANIA',
       reason: exactPickerBlock(
         hit,
         scope,
         'product-owned profile / mappedIngredientId',
-        'Utwórz gotowy profil produktu albo wybierz dokładne powiązanie Mapper.',
+        'Utwórz gotowy profil produktu albo wybierz dokładne powiązanie danych.',
       ),
     };
   }
   if (!hit.usableInBase) {
     return {
-      status: 'PRODUCT DATA INCOMPLETE',
+      status: 'DANE PRODUKTU NIEPEŁNE',
       reason: exactPickerBlock(
         hit,
         scope,
@@ -216,9 +216,9 @@ export function productPickerVerificationView(
       ),
     };
   }
-  if (hit.status === 'verified') return { status: 'PINGÜINO — SPRAWDZONY', reason: null };
+  if (hit.status === 'verified') return { status: 'GELLATTI — SPRAWDZONY', reason: null };
   if (hit.provenance === 'automatic_verified' || hit.verificationMethod === 'automatic') {
-    return { status: 'SYSTEM — DOPASOWANY', reason: null };
+    return { status: 'DOPASOWANY', reason: null };
   }
   return { status: 'DODANY PRZEZ UŻYTKOWNIKA', reason: null };
 }
@@ -282,7 +282,7 @@ export function productPickerUnavailableReason(
       hit,
       scope,
       'mappedIngredientId',
-      'Wybierz dokładne mapowanie do PINGÜINO Base.',
+      'Wybierz dokładne powiązanie z bazą składników Gellatti.',
     );
   }
   if (hit.invalidFields.includes('nutrition_basis_per_100ml_requires_density_for_gram_topping')) {

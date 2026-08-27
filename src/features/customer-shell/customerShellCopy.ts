@@ -12,7 +12,7 @@
 export const customerShellCopy = {
   /* ------------------------------------------------------------------ Menu -- */
   menu: {
-    brand: 'PINGÜINO',
+    brand: 'GELLATTI',
     open: 'Otwórz menu',
     close: 'Zamknij menu',
     title: 'Menu',
@@ -279,7 +279,8 @@ export const customerShellCopy = {
     title: 'Podgląd receptury',
     fixtureNotice:
       'To podglądowa struktura składników, a nie wyliczona receptura. Nazwy są przykładowe, a dokładne ilości wyliczy silnik po odblokowaniu.',
-    draftNotice: 'Utworzono edytowalny szkic roboczy na podstawie gotowej receptury — katalog pozostaje bez zmian.',
+    draftNotice:
+      'Utworzono edytowalny szkic roboczy na podstawie gotowej receptury — katalog pozostaje bez zmian.',
     typeLabel: 'Rodzaj',
     deviceLabel: 'Urządzenie',
     servingLabel: 'Podanie',
@@ -330,8 +331,9 @@ export const customerShellCopy = {
       'coconut-oil': 'Olej kokosowy',
     } as Record<string, string>,
     /** Result-state banners — honest about whether the engine calculated the card. */
-    stateCalculated: 'Receptura wyliczona przez silnik PINGÜINO.',
-    stateOutOfBand: 'Receptura wyliczona — część parametrów jest poza złotym zakresem. Dopasuj ją w Monitorze receptury poniżej.',
+    stateCalculated: 'Receptura została przeliczona.',
+    stateOutOfBand:
+      'Receptura wyliczona — część parametrów jest poza złotym zakresem. Dopasuj ją w Monitorze receptury poniżej.',
     // Track G: at a temperature where interactive tuning awaits approval, the
     // status must not point at tuning controls that honestly cannot run.
     stateOutOfBandNoTuning:
@@ -458,11 +460,11 @@ export const customerShellCopy = {
      * OPTIONAL second tab shown only for a signed-in user with private products.
      */
     sources: {
-      pi_ingredients: 'Składniki PI',
+      pi_ingredients: 'Składniki Gellatti',
       my_products: 'Moje produkty',
     } as Record<string, string>,
     /** Honest source note for the live Mapper tab. */
-    ingredientsSourceNote: 'Katalog składników PI — wyszukiwanie na żywo w pełnej bibliotece.',
+    ingredientsSourceNote: 'Katalog składników Gellatti — wyniki pojawiają się podczas pisania.',
     /** „Moje produkty" (private products) pane — honest states (no shared sample). */
     myProductsSignInRequired:
       'Moje produkty to Twoje prywatne produkty. Zaloguj się, aby je zobaczyć — nie pokazujemy tu produktów innych osób.',
@@ -480,13 +482,14 @@ export const customerShellCopy = {
     liveUnavailable:
       'Katalog składników na żywo nie jest jeszcze dostępny w tym środowisku. To nie jest pusty wynik — spróbuj ponownie za chwilę.',
     /** Honest readiness on a Mapper row (the exact check runs po wyborze). */
-    ingredientEngineApproved: 'Zatwierdzony dla silników PI',
+    ingredientEngineApproved: 'Gotowy do obliczeń',
     ingredientNeedsVerification: 'Do weryfikacji po wyborze',
     /** Post-selection engine-values fetch states (rich data, logged-in only). */
     pickChecking: 'Sprawdzam dane silnika…',
     pickLoginRequired:
       'Dokładne wartości silnika wymagają zalogowania. Wyszukiwanie działa bez konta, ale dane do przeliczenia pobierzemy po zalogowaniu.',
-    pickUnavailable: 'Nie udało się pobrać danych silnika — środowisko na żywo nie jest jeszcze dostępne.',
+    pickUnavailable:
+      'Nie udało się pobrać danych silnika — środowisko na żywo nie jest jeszcze dostępne.',
     pickError: 'Nie udało się pobrać danych silnika. Spróbuj ponownie.',
     badgeReady: 'Gotowy do przeliczenia',
     badgeNeedsData: 'Wymaga danych',
@@ -505,7 +508,8 @@ export const customerShellCopy = {
     substitutePlaceholder: 'np. rum zamiast whisky',
     substituteConfirm: 'Zastąp',
     substituteRecorded: 'Zapisaliśmy propozycję zamiany. Silnik uwzględni ją przy przeliczeniu.',
-    dontHaveRecorded: 'Zanotowaliśmy, że nie masz tego składnika — możesz go zastąpić albo pominąć.',
+    dontHaveRecorded:
+      'Zanotowaliśmy, że nie masz tego składnika — możesz go zastąpić albo pominąć.',
     /** Scan / manual add delegation (no live persistence in this environment). */
     intakeScanTitle: 'Skanowanie etykiety',
     intakeManualTitle: 'Ręczne dodanie produktu',
@@ -522,8 +526,8 @@ export const customerShellCopy = {
     /** §13.3 header — the customer-facing Monitor name (never an internal code). */
     label: 'Monitor receptury',
     title: 'Dostrój recepturę',
-    lead: 'Wskaż kierunek — PI dopasuje recepturę w bezpiecznym, złotym zakresie. Używamy gotowych, sprawdzonych kroków, nie zgadujemy wartości.',
-    recalc: 'Przelicz z PI',
+    lead: 'Wskaż kierunek, a Gellatti dopasuje recepturę w bezpiecznym zakresie. Korzystamy ze sprawdzonych kroków i nie zgadujemy wartości.',
+    recalc: 'Przelicz recepturę',
     /** Shown when recalculation is allowed (all products resolved). */
     readyNote:
       'Kierunek zapisany. Dokładne przeliczenie z gramami uruchomisz w planie Home lub Pro — na recepturze wyliczonej przez silnik.',
@@ -553,7 +557,7 @@ export const customerShellCopy = {
     previewInternalRouting: 'Wewnętrzny profil produktu',
     userFacingType: 'Widoczny rodzaj',
     internalProfile: 'Profil wewnętrzny',
-    engineCategory: 'Kategoria silnika',
+    engineCategory: 'Typ receptury',
     chocolateRouting: 'Czekolada (wewnętrzny profil)',
     chocolateRoutingNote:
       'Wykryto czekoladę — widoczny rodzaj pozostaje Gelato, a profil prowadzimy wewnętrznie.',
@@ -584,14 +588,20 @@ export const customerShellCopy = {
     /** Structured note codes → friendly Polish (never fabricated user text). */
     notes: {
       'customer_flow.protein_unsupported': 'Baza proteinowa nie jest jeszcze wspierana.',
-      'customer_flow.chocolate_routed_internally': 'Czekolada prowadzona wewnętrznie (widoczne: Gelato).',
-      'customer_flow.chocolate_sorbet_kept_as_sorbet': 'Czekolada przy sorbecie — pozostaje sorbetem.',
+      'customer_flow.chocolate_routed_internally':
+        'Czekolada prowadzona wewnętrznie (widoczne: Gelato).',
+      'customer_flow.chocolate_sorbet_kept_as_sorbet':
+        'Czekolada przy sorbecie — pozostaje sorbetem.',
       'customer_flow.batch_recognized_from_text': 'Ilość rozpoznana z Twojego zdania.',
-      'customer_flow.batch_from_ninja_mode': 'Ilość ustawiona z zatwierdzonej masy receptury dla trybu Ninja (nie przeliczamy ml na gramy).',
-      'customer_flow.batch_volume_needs_density': 'Podano objętość — bez gęstości nie przeliczamy jej na gramy.',
-      'customer_flow.batch_from_verified_device': 'Ilość ustawiona z zatwierdzonej masy receptury dla wybranego urządzenia (nie przeliczamy ml na gramy).',
+      'customer_flow.batch_from_ninja_mode':
+        'Ilość ustawiona z zatwierdzonej masy receptury dla trybu Ninja (nie przeliczamy ml na gramy).',
+      'customer_flow.batch_volume_needs_density':
+        'Podano objętość — bez gęstości nie przeliczamy jej na gramy.',
+      'customer_flow.batch_from_verified_device':
+        'Ilość ustawiona z zatwierdzonej masy receptury dla wybranego urządzenia (nie przeliczamy ml na gramy).',
       'customer_flow.device_capacity_confirmed': 'Pojemność urządzenia potwierdzona przez Ciebie.',
-      'customer_flow.device_capacity_awaiting_confirmation': 'Pojemność urządzenia czeka na potwierdzenie.',
+      'customer_flow.device_capacity_awaiting_confirmation':
+        'Pojemność urządzenia czeka na potwierdzenie.',
       'customer_flow.ready_recipe_working_draft_created': 'Utworzono edytowalny szkic roboczy.',
     } as Record<string, string>,
   },
@@ -631,7 +641,7 @@ export const customerShellCopy = {
     water: 'Woda',
     sugar: 'Cukier',
     dextrose: 'Dekstroza',
-    stabilizer: 'PI Stabilizer',
+    stabilizer: 'Stabilizacja',
     flavorSuffix: '(smak)',
   },
 

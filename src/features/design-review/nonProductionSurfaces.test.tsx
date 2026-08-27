@@ -33,7 +33,7 @@ describe('pink markers render on marked surfaces', () => {
   it('/recipes — normal customer mode does not expose owner-review state', () => {
     const html = render(<RecipesHubPage />);
     expect(html).not.toContain('data-testid="nonprod-marked-recipes-hub-tiles"');
-    expect(html).not.toContain('TRYB OWNER REVIEW');
+    expect(html).not.toContain('TRYB PRZEGLĄDU WŁAŚCICIELA');
     // The real saved-recipe content remains inside the canonical internal MOJE tab.
     expect(html).toContain('data-testid="recipes-tab-mine"');
     expect(html).not.toContain('href="/my-recipes"');

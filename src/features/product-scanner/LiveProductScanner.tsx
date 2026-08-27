@@ -26,7 +26,10 @@ import {
   type ScanAnalysisResponse,
   type ScanExactProduct,
 } from '@/services/productScanner';
-import { assertUserSafeScannerMessage } from '@/services/scannerErrorGuard';
+import {
+  assertUserSafeScannerMessage,
+  scannerMessageFromUnknown,
+} from '@/services/scannerErrorGuard';
 
 export const MAX_IMAGES = 4;
 
@@ -114,7 +117,7 @@ const resultBarcode = (result: ProductScanResult | null): ValidBarcode | null =>
 
 const exactProductStatus = (product: ScanExactProduct): string => {
   if (product.engineReady === false) return 'Produkt wymaga weryfikacji';
-  if (product.status === 'verified') return 'Zweryfikowany produkt PINGÜINO';
+  if (product.status === 'verified') return 'Produkt zweryfikowany przez Gellatti';
   return 'Produkt gotowy w Twoim katalogu';
 };
 
@@ -370,7 +373,7 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
     } catch (caught) {
       setPhase('blocked');
       setBusy(null);
-      setError(caught instanceof Error ? caught.message : 'Nie udało się przeanalizować produktu.');
+      setError(scannerMessageFromUnknown(caught, 'analysis'));
     } finally {
       running.current = false;
     }
@@ -462,7 +465,7 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
       }
     } catch (caught) {
       setPhase('blocked');
-      setError(caught instanceof Error ? caught.message : 'Nie udało się dodać produktu.');
+      setError(scannerMessageFromUnknown(caught, 'save'));
     } finally {
       setBusy(null);
     }
@@ -592,7 +595,7 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
       {exactProduct && (
         <section className={`${card} mt-6 border-sage/50 p-6 sm:p-8`}>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#246238]">
-            Gellatti Ready
+            Gellatti · gotowe
           </p>
           <h2 className="mt-2 text-2xl font-semibold">{exactProduct.displayName}</h2>
           <p className="mt-2 text-sm text-stone-600">
@@ -662,7 +665,7 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
                 )}
               </p>
               <p>
-                Family Mapper:{' '}
+                Źródło danych:{' '}
                 {String(
                   (preview?.mapper as Record<string, unknown>)?.selectedDonorId ??
                     'nie był potrzebny',
@@ -677,7 +680,7 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
               </p>
               <p>
                 Profil techniczny:{' '}
-                {preview?.engineUsable === true ? 'gotowy do Engine' : 'zweryfikowany'}
+                {preview?.engineUsable === true ? 'gotowy do obliczeń' : 'zweryfikowany'}
               </p>
             </div>
           </details>
@@ -708,7 +711,9 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
             </summary>
             <div className="mt-3 grid gap-2 text-xs text-stone-500">
               <p>Dokładność: {confidence(preview?.productAccuracy)}%</p>
-              <p>Engine: {preview?.engineUsable === true ? 'profil gotowy' : 'profil niegotowy'}</p>
+              <p>
+                Profil obliczeń: {preview?.engineUsable === true ? 'gotowy' : 'wymaga uzupełnienia'}
+              </p>
               <p>
                 Kody decyzji:{' '}
                 {criticalGaps.length > 0 ? criticalGaps.join(', ') : 'brak wystarczającego dowodu'}
@@ -731,7 +736,7 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
             {confidence(saved.productAccuracy ?? preview?.productAccuracy)}%
           </p>
           <p className="mt-3 text-sm font-semibold text-[#246238]">
-            Produkt jest gotowy do receptury, Engine i ponownego użycia.
+            Produkt jest gotowy do użycia w recepturze i zapisany na przyszłość.
           </p>
         </section>
       )}

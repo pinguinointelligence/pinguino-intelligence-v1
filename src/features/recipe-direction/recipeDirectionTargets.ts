@@ -316,7 +316,7 @@ function computeRecipeDirectionPlan(input: RecipeInput): RecipeDirectionPlan {
       targetBand: null,
       targetCenter: null,
       reason:
-        'Brak zweryfikowanej, profilowej kalibracji miękkości dla tej kategorii; PI nie używa zastępczej krzywej mlecznej.',
+        'Brakuje zweryfikowanych danych miękkości dla tej kategorii. Gellatti nie użyje danych z innego typu receptury.',
     });
   } else {
     axes.push({

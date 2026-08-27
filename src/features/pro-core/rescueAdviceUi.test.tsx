@@ -68,7 +68,7 @@ describe('rescue ingredient advice UI (simulation-proven, never auto-add)', () =
     expect(html).toContain('Możliwy kolejny krok: Inulina');
     expect(html).toContain('8/10');
     expect(html).toContain('9/10');
-    expect(html).toContain('PI nie doda tego składnika automatycznie');
+    expect(html).toContain('Gellatti nie doda tego składnika automatycznie');
     expect(html).toContain('data-testid="direction-rescue-add-ingredient"');
     expect(html).toContain('Najbliższy poprawny wynik: 8/10');
   });

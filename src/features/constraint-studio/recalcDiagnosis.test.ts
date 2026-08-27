@@ -133,7 +133,7 @@ describe('Phase 5 — locks', () => {
     expect(diagnosis.code).toBe('locked_constraints_conflict');
     expect(isAllLocked(diagnosis)).toBe(true);
     expect(constraintStudioCopy.diagnosis.allLocked).toBe(
-      'Wszystkie składniki są zablokowane. Odblokuj przynajmniej jeden składnik, aby PI mogło przeliczyć recepturę.',
+      'Wszystkie składniki są zablokowane. Odblokuj przynajmniej jeden składnik, aby Gellatti mogło przeliczyć recepturę.',
     );
   });
 });
@@ -156,7 +156,7 @@ describe('failure classification (owner taxonomy)', () => {
     expect(diagnosis.solverInvocations).toBe(2);
     const message = constraintStudioCopy.diagnosis.optimizerNoSolution(['NPAC', 'laktoza'], 2);
     expect(message).not.toContain('blokad'); // locks explicitly exonerated
-    expect(message).toContain('solver uruchomiony 2 ×');
+    expect(message).toContain('Gellatti przeliczyło recepturę (2 prób)');
     expect(message).toContain('NPAC');
   });
 
@@ -186,7 +186,7 @@ describe('failure classification (owner taxonomy)', () => {
     });
     expect(diagnosis.code).toBe('temperature_route_mismatch');
     expect(constraintStudioCopy.diagnosis.temperatureMismatch).toBe(
-      'Nie można przeliczyć receptury, ponieważ wybrana temperatura i aktywny profil Engine są niespójne.',
+      'Nie można przeliczyć receptury, ponieważ wybrana temperatura i aktywny profil produktu są niespójne.',
     );
   });
 

@@ -58,7 +58,9 @@ const pendingFor = (state: AssistantFlowState, question: AssistantQuestion): Ass
 
 const chipCls = (active: boolean) =>
   `rounded-md border px-2.5 py-1 text-[11px] transition-colors ${
-    active ? 'border-ivory/50 bg-ivory/10 text-ivory' : 'border-ivory/15 text-ivory/60 hover:border-ivory/30'
+    active
+      ? 'border-ivory/50 bg-ivory/10 text-ivory'
+      : 'border-ivory/15 text-ivory/60 hover:border-ivory/30'
   }`;
 const buttonCls =
   'inline-flex items-center justify-center rounded-md border border-ivory/20 px-3 py-1.5 text-[11px] font-medium text-ivory transition-colors hover:border-ivory/40 disabled:cursor-not-allowed disabled:opacity-40';
@@ -118,7 +120,9 @@ export function StudioAssistantShell({ initialUi }: StudioAssistantShellProps = 
   const next = () => {
     const result = answerCurrentQuestion(flow, pending);
     if (!result.ok) {
-      setError(result.reason === 'required' ? 'To pytanie jest wymagane.' : 'Nieprawidłowa odpowiedź.');
+      setError(
+        result.reason === 'required' ? 'To pytanie jest wymagane.' : 'Nieprawidłowa odpowiedź.',
+      );
       return;
     }
     setError(null);
@@ -258,14 +262,19 @@ export function StudioAssistantShell({ initialUi }: StudioAssistantShellProps = 
               {error ? <p className="text-[11px] text-red-300/90">{error}</p> : null}
 
               <div className="flex flex-wrap gap-1.5">
-                <button type="button" onClick={back} className={buttonCls} disabled={flow.currentStepIndex === 0}>
+                <button
+                  type="button"
+                  onClick={back}
+                  className={buttonCls}
+                  disabled={flow.currentStepIndex === 0}
+                >
                   Wstecz
                 </button>
                 <button type="button" onClick={next} className={buttonCls}>
                   Dalej
                 </button>
                 <button type="button" onClick={reset} className={buttonCls}>
-                  Reset
+                  Zacznij od nowa
                 </button>
               </div>
             </div>
@@ -277,7 +286,7 @@ export function StudioAssistantShell({ initialUi }: StudioAssistantShellProps = 
                   Wstecz
                 </button>
                 <button type="button" onClick={reset} className={buttonCls}>
-                  Reset
+                  Zacznij od nowa
                 </button>
               </div>
             </div>
@@ -300,8 +309,10 @@ export function StudioAssistantShell({ initialUi }: StudioAssistantShellProps = 
                 <dd>{draft.intent.productProfile}</dd>
                 <dt className="text-ivory/60">Temperatura</dt>
                 <dd>{draft.intent.servingTemperatureC}°C</dd>
-                <dt className="text-ivory/60">Batch</dt>
-                <dd>{draft.batchSizeG !== null ? `${draft.batchSizeG} g` : 'ustawisz w recepturze'}</dd>
+                <dt className="text-ivory/60">Partia</dt>
+                <dd>
+                  {draft.batchSizeG !== null ? `${draft.batchSizeG} g` : 'ustawisz w recepturze'}
+                </dd>
                 <dt className="text-ivory/60">Smak</dt>
                 <dd>{draft.intent.flavorText ?? '—'}</dd>
                 <dt className="text-ivory/60">Tekstura</dt>

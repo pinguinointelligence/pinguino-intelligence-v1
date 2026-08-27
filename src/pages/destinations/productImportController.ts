@@ -6,6 +6,7 @@ import { intimportWorkbookToCsv, isWorkbookFile } from '@/data/products/intimpor
  * normalizes errors. Kept dependency-light so it is unit-testable without a DOM.
  */
 import { copy } from '@/copy/en';
+import { customerErrorMessage } from '@/copy/customerError';
 import { blocksAutoVerify, detectRedFlags } from '@/data/products/productRedFlags';
 import {
   parseProductTable,
@@ -161,5 +162,5 @@ export async function readCsvFile(file: File): Promise<string> {
 }
 
 export function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  return customerErrorMessage(error, 'catalog');
 }

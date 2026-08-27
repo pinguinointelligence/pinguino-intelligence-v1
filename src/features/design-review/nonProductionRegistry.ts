@@ -43,9 +43,9 @@ export const NON_PRODUCTION_ITEMS: readonly NonProductionItem[] = [
     file: 'src/features/customer-flow/__fixtures__/catalogueFixtures.ts',
     identifier: 'CATALOGUE_FIXTURES',
     reason:
-      'Karty „gotowych receptur” to fixtures testowe (same metadane, bez składu i bez zdjęć) — to nie jest prawdziwy katalog receptur PINGÜINO.',
+      'Karty „gotowych receptur” to dane testowe (same metadane, bez składu i bez zdjęć) — to nie jest prawdziwy katalog receptur Gellatti.',
     replacement:
-      'Zatwierdzony przez właściciela katalog gotowych receptur czytany z bazy PI, z realnym składem i zdjęciami.',
+      'Zatwierdzony przez właściciela katalog gotowych receptur, z realnym składem i zdjęciami.',
   },
   {
     id: 'start-ready-draft',
@@ -63,7 +63,7 @@ export const NON_PRODUCTION_ITEMS: readonly NonProductionItem[] = [
     reason:
       'Receptura startowa to preset demo, a biblioteka składników (Demo/non-Pro oraz cichy fallback Pro przy błędzie lub pustej bazie) używa wartości literaturowych i szacunkowych kosztów EUR/kg (confidence 85, niezweryfikowane).',
     replacement:
-      'Zweryfikowana biblioteka składników PI (mapper_basement / ingredients w bazie PI) bez fallbacku demo; start z pustej lub ostatniej receptury użytkownika.',
+      'Zweryfikowana biblioteka składników Gellatti bez danych demonstracyjnych; start z pustej lub ostatniej receptury użytkownika.',
   },
   {
     id: 'preview-reference-template',

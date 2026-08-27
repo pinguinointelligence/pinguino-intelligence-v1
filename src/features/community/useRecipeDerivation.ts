@@ -19,12 +19,17 @@ import {
   openShare,
   recordDerivation,
 } from '@/services/community';
+import { customerErrorMessage } from '@/copy/customerError';
 
 export type DerivationState =
   | { readonly status: 'idle' }
   | { readonly status: 'working' }
   | { readonly status: 'done'; readonly recipeId: string }
-  | { readonly status: 'failed'; readonly reason: DerivationRefusal | 'save_failed'; readonly message?: string };
+  | {
+      readonly status: 'failed';
+      readonly reason: DerivationRefusal | 'save_failed';
+      readonly message?: string;
+    };
 
 export interface DerivationTarget {
   readonly source: DerivationSource;
@@ -128,13 +133,13 @@ export function useRecipeDerivation(target: DerivationTarget) {
         // 3. Attribution. A failure here must not cost the user their recipe.
         try {
           await recordDerivation(derivationRpcArgs(target.source, relation, recipe.recipeId));
-        } catch (cause) {
+        } catch {
           setState({
             status: 'failed',
             reason: 'save_failed',
             message:
-              'Receptura została zapisana, ale nie udało się zapisać informacji o źródle. ' +
-              (cause instanceof Error ? cause.message : String(cause)),
+              'Receptura została zapisana, ale nie udało się zachować informacji o źródle. ' +
+              'Sama receptura jest bezpieczna — spróbuj ponownie później.',
           });
           return;
         }
@@ -146,7 +151,7 @@ export function useRecipeDerivation(target: DerivationTarget) {
         setState({
           status: 'failed',
           reason: 'save_failed',
-          message: cause instanceof Error ? cause.message : String(cause),
+          message: customerErrorMessage(cause, 'community'),
         });
       } finally {
         inFlight.current = false;

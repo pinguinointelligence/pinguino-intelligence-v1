@@ -381,9 +381,7 @@ const edgeFunctionError = async (error: unknown): Promise<ProductionPersistenceE
       message || 'Production Rescue option is unavailable.',
       typeof record.reason === 'string' ? record.reason : null,
       Array.isArray(record.violationMetrics)
-        ? record.violationMetrics.filter(
-            (metric): metric is string => typeof metric === 'string',
-          )
+        ? record.violationMetrics.filter((metric): metric is string => typeof metric === 'string')
         : [],
     );
   }
@@ -1005,9 +1003,9 @@ async function recordCommunityMake(client: SupabaseClient, runId: string): Promi
       p_production_run_id: runId,
     });
     if (error) {
-      console.warn('[PINGÜINO] community make not recorded for run', runId, error.message);
+      console.warn('[GELLATTI] community make not recorded for run', runId, error.message);
     }
   } catch (cause) {
-    console.warn('[PINGÜINO] community make not recorded for run', runId, cause);
+    console.warn('[GELLATTI] community make not recorded for run', runId, cause);
   }
 }

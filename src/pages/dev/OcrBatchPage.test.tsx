@@ -16,8 +16,7 @@ describe('OcrBatchPage', () => {
     const html = render(<OcrBatchPage />);
     const t = text(html);
     expect(t).toContain(ocrCopy.batch.title);
-    expect(t).toMatch(/SAMPLE session data/);
-    expect(t).toMatch(/nothing is uploaded, nothing is saved/i);
+    expect(t).toContain(ocrCopy.session.demoNote);
   });
 
   it('shows the sample queue with every outcome chip and the derived summary', () => {
@@ -57,6 +56,8 @@ describe('OcrBatchPage — boundaries (static)', () => {
   it('never runs the OCR engine and references no paid API or credential', () => {
     expect(/tesseract|createWorker|ocrEngine/i.test(PAGE)).toBe(false);
     expect(/vision\.googleapis|openai|api[_-]?key|secret|service_role/i.test(PAGE)).toBe(false);
-    expect(/importProductCatalog|createProductWithIdentity|matchAndSaveProduct/.test(PAGE)).toBe(false);
+    expect(/importProductCatalog|createProductWithIdentity|matchAndSaveProduct/.test(PAGE)).toBe(
+      false,
+    );
   });
 });

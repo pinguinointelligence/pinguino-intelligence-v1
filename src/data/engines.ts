@@ -24,14 +24,38 @@ export interface EngineProfile {
   note?: string;
 }
 
-const FUTURE_NOTE = 'Future engine — not connected yet.';
+const FUTURE_NOTE = 'W przygotowaniu — ten profil nie jest jeszcze dostępny.';
 
 export const ENGINES: readonly EngineProfile[] = [
   { id: 'engine-minus-11', label: '−11°C Engine', status: 'active', target_temperature_c: -11 },
-  { id: 'engine-minus-12', label: '−12°C Engine', status: 'future', target_temperature_c: -12, note: FUTURE_NOTE },
-  { id: 'engine-minus-13', label: '−13°C Engine', status: 'future', target_temperature_c: -13, note: FUTURE_NOTE },
-  { id: 'engine-fresh', label: 'Fresh Engine', status: 'future', target_temperature_c: null, note: 'Future / to be tested — not connected yet.' },
-  { id: 'engine-storage-18', label: 'Storage / Retail −18°C Engine', status: 'future', target_temperature_c: -18, note: 'Future / to be tested — not connected yet.' },
+  {
+    id: 'engine-minus-12',
+    label: '−12°C Engine',
+    status: 'future',
+    target_temperature_c: -12,
+    note: FUTURE_NOTE,
+  },
+  {
+    id: 'engine-minus-13',
+    label: '−13°C Engine',
+    status: 'future',
+    target_temperature_c: -13,
+    note: FUTURE_NOTE,
+  },
+  {
+    id: 'engine-fresh',
+    label: 'Fresh Engine',
+    status: 'future',
+    target_temperature_c: null,
+    note: FUTURE_NOTE,
+  },
+  {
+    id: 'engine-storage-18',
+    label: 'Storage / retail −18°C',
+    status: 'future',
+    target_temperature_c: -18,
+    note: FUTURE_NOTE,
+  },
 ];
 
 /** The only engine that runs calculations today. Every recipe is computed here. */

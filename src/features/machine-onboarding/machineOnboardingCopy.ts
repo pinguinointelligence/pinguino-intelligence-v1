@@ -14,7 +14,7 @@ export const machineOnboardingCopy = {
   /* ------------------------------------------------------- §8.1 first screen -- */
   intro: {
     title: 'Jakiej maszyny używasz?',
-    lead: 'Wybierz urządzenie, a PINGÜINO automatycznie dopasuje sposób przygotowania i właściwą ilość.',
+    lead: 'Wybierz urządzenie, a Gellatti dopasuje sposób przygotowania i właściwą ilość.',
     searchLabel: 'Szukaj maszyny',
     searchPlaceholder: 'np. Ninja, KitchenAid, NC302…',
     searchNoResults: 'Brak maszyn pasujących do wyszukiwania. Wybierz „Nie widzę mojej maszyny”.',
@@ -25,7 +25,8 @@ export const machineOnboardingCopy = {
     /** Honest short note on families that cannot be selected yet. */
     unavailableNote: 'w trakcie weryfikacji pojemności',
     /** ARIA hint for a disabled tile. */
-    unavailableAria: 'Ta maszyna jest w trakcie weryfikacji pojemności i nie można jej jeszcze wybrać.',
+    unavailableAria:
+      'Ta maszyna jest w trakcie weryfikacji pojemności i nie można jej jeszcze wybrać.',
     /** Model disambiguation sub-screen (§8.2: only when capacity/technology differs). */
     disambiguation: {
       title: 'Który model?',
@@ -46,7 +47,7 @@ export const machineOnboardingCopy = {
     title: 'Ta maszyna nie jest jeszcze wspierana w Home',
     body:
       'Maszyny, które chłodzą płynną bazę i wydają miękkie lody z dozownika, to urządzenia o innym ' +
-      'trybie pracy niż profile domowe PINGÜINO. Nie podstawimy w zamian innego profilu po cichu — ' +
+      'trybie pracy niż profile domowe Gellatti. Nie podstawimy w zamian innego profilu po cichu — ' +
       'wsparcie dla tych maszyn pojawi się osobno.',
     back: 'Wybierz inną maszynę',
   },
@@ -92,7 +93,7 @@ export const machineOnboardingCopy = {
     /** Honest variant when no trustworthy amount exists (batch stays user-set). */
     amountUserChoice: 'Przygotowano wybór ilości',
     methodMatched: 'Dopasowano sposób przygotowania',
-    studioReady: 'Przygotowano PINGÜINO Pro',
+    studioReady: 'Przygotowano Gellatti Pro',
     /** Screen-reader announcement label for the transition region. */
     ariaLabel: 'Automatyczna konfiguracja maszyny',
   },
@@ -103,7 +104,7 @@ export const machineOnboardingCopy = {
      * The ONLY allowed framing of the derived grams (owner correction): a
      * PINGÜINO recommendation — never the manufacturer's official figure.
      */
-    recommendedLabel: 'Zalecany wsad PINGÜINO',
+    recommendedLabel: 'Zalecany wsad Gellatti',
     recommendedUnit: 'g',
     /** Honest marker for user-declared capacity (rule 4). */
     estimatedNote: 'Wartość szacunkowa na podstawie zadeklarowanej pojemności — możesz ją zmienić.',
@@ -118,9 +119,9 @@ export const machineOnboardingCopy = {
     /** Subtle marker once the user diverges from the recommendation. */
     customInUse: 'Używasz własnej ilości',
     /** Restore action (full form, shown with the custom-in-use marker). */
-    restoreRecommended: 'Przywróć zalecany wsad PINGÜINO',
+    restoreRecommended: 'Przywróć zalecany wsad Gellatti',
     /** Warning shown when the amount exceeds the recommendation — never a block. */
-    aboveWarning: 'Ta ilość przekracza zalecany wsad PINGÜINO dla jednego pojemnika.',
+    aboveWarning: 'Ta ilość przekracza zalecany wsad Gellatti dla jednego pojemnika.',
     /** The three non-blocking actions under the warning (owner verbatim). */
     splitAction: 'Podziel na pojemniki',
     keepMine: 'Pozostaw moją ilość',
@@ -137,7 +138,7 @@ export const machineOnboardingCopy = {
      * „Ta ilość wymaga 2 pojemników. PINGÜINO podzieli recepturę automatycznie.”
      */
     message: (containers: number): string =>
-      `Ta ilość wymaga ${containers} pojemników. PINGÜINO podzieli recepturę automatycznie.`,
+      `Ta ilość wymaga ${containers} pojemników. Gellatti podzieli recepturę automatycznie.`,
     /** Secondary detail, e.g. „2 pojemniki po 450 g” / „3 pojemniki po 333,3 g”. */
     detail: (containers: number, gramsPerContainerText: string): string =>
       `${containers} ${pluralPojemniki(containers)} po ${gramsPerContainerText} g`,

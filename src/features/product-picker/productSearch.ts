@@ -9,7 +9,10 @@
  *
  * Pure: no IO, no engine math, no product mutation.
  */
-import { evaluateProductReadiness, NOT_ENGINE_READY_MESSAGE } from '@/features/ingredient-resolution';
+import {
+  evaluateProductReadiness,
+  NOT_ENGINE_READY_MESSAGE,
+} from '@/features/ingredient-resolution';
 import { normalizeName } from '@/data/products/productMatcher';
 import { normalizeEan } from '@/data/products/productIdentity';
 import type { ProductStatus } from '@/data/products/productRow';
@@ -25,10 +28,10 @@ import type {
 const STATUS_LABEL_PL: Record<ProductStatus, string | null> = {
   draft: null,
   rejected: null,
-  pi_calculated: 'Przeliczony przez PI',
-  pi_generated: 'Wygenerowany przez PI',
+  pi_calculated: 'Obliczony przez Gellatti',
+  pi_generated: 'Przygotowany przez Gellatti',
   manual_adjusted: 'Skorygowany ręcznie',
-  pi_verified: 'Zweryfikowany przez PI',
+  pi_verified: 'Zweryfikowany przez Gellatti',
 };
 
 /** The readable Polish lifecycle label for a status, or null when internal-only. */
@@ -59,11 +62,17 @@ const MATCH_RANK: Record<PickerMatchedOn, number> = {
 
 /** The searchable normalized names for an entry (display + internal). */
 function entryNames(entry: PickerCatalogueEntry): string[] {
-  return [normalizeName(entry.displayName), normalizeName(entry.internalName)].filter((n) => n !== '');
+  return [normalizeName(entry.displayName), normalizeName(entry.internalName)].filter(
+    (n) => n !== '',
+  );
 }
 
 /** Best (strongest) match kind for one entry against a query, or null when it does not match. */
-function matchEntry(entry: PickerCatalogueEntry, textQuery: string, eanQuery: string): PickerMatchedOn | null {
+function matchEntry(
+  entry: PickerCatalogueEntry,
+  textQuery: string,
+  eanQuery: string,
+): PickerMatchedOn | null {
   const q = normalizeName(textQuery);
   const idRaw = textQuery.trim().toLowerCase();
 
