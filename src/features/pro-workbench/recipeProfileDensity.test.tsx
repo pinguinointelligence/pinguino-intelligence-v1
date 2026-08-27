@@ -40,10 +40,21 @@ describe('Recipe profile visual density contract', () => {
     );
     expect(theme).toMatch(/\.profile-settings-final-card\s*\{[\s\S]*?grid-template-rows: subgrid;/);
     expect(theme).toMatch(
-      /@container right-pane \(max-width: 540px\)[\s\S]*?\.profile-settings-final-row\s*\{[\s\S]*?grid-template-columns: minmax\(0, 1fr\);/,
+      /@container right-pane \(max-width: 399px\)[\s\S]*?\.profile-settings-final-row\s*\{[\s\S]*?grid-template-columns: minmax\(0, 1fr\);/,
+    );
+    expect(theme.indexOf('@container right-pane (max-width: 399px)')).toBeLessThan(
+      theme.indexOf('@container right-pane (max-width: 540px)'),
     );
     expect(theme).toMatch(
       /@media \(min-width: 1024px\)[\s\S]*?\.profile-settings-final-row\s*\{[\s\S]*?grid-template-rows: auto 2\.5rem auto;/,
     );
+  });
+
+  it('keeps the same Recipe profile surface reachable from the mobile cockpit', () => {
+    const surface = read('../studio/StudioEngineSurface.tsx');
+
+    expect(surface).toContain('data-testid="mobile-cockpit-sheet"');
+    expect(surface.match(/<RecipeProfilePanel/g)).toHaveLength(2);
+    expect(surface).toContain("setMobileCockpitState({ activeTab: 'profile', open: true })");
   });
 });
