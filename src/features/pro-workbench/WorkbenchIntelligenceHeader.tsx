@@ -5,13 +5,13 @@ import { useRecipeProfileStore } from './recipeProfileStore';
 import {
   buildRecipeBehaviorAuthority,
   recipeBehaviorLegacyInspection,
-  recipeBehaviorModuleGate,
 } from '@/features/product-intelligence';
 import { monitorScoreView } from './monitorSummaryView';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { scorePresentationSource } from './scorePresentationSource';
 import { assessProteinFormulation } from '@/features/protein-gelato/proteinAuthority';
 import { WorkbenchScoreDisplay } from './WorkbenchScoreDisplay';
+import { buildCurrentRecipeResultAuthority } from './currentRecipeResultAuthority';
 
 export function WorkbenchIntelligenceHeader({
   result,
@@ -28,11 +28,14 @@ export function WorkbenchIntelligenceHeader({
 }) {
   const match = monitorScoreView(result, input).match;
   const snapshots = useRecipeStore((state) => state.productBehaviorSnapshots);
+  const toppings = useRecipeStore((state) => state.toppings);
+  const draftRevision = useRecipeStore((state) => state.draftRevision);
   const savedRecipeId = useRecipeStore((state) => state.savedRecipeId);
   const preview = useConstraintStudioStore((state) => state.preview);
   const directionBestCandidate = useConstraintStudioStore((state) => state.directionBestCandidate);
   const recalculationTerminal = useConstraintStudioStore((state) => state.recalculationTerminal);
   const appliedHistoryCount = useConstraintStudioStore((state) => state.history.length);
+  const applyPending = useConstraintStudioStore((state) => state.applyPending);
   const awaitingRecalculation = useRecipeProfileStore((state) => state.awaitingRecalculation);
   const authority = useMemo(
     // Score currentness belongs to the technical Base. Post-production
@@ -40,7 +43,26 @@ export function WorkbenchIntelligenceHeader({
     () => buildRecipeBehaviorAuthority({ items: input.items, snapshots }),
     [input.items, snapshots],
   );
-  const monitorGate = useMemo(() => recipeBehaviorModuleGate(authority, 'MONITOR'), [authority]);
+  const currentResultAuthority = useMemo(
+    () =>
+      buildCurrentRecipeResultAuthority({
+        recipe: input,
+        toppings,
+        snapshots,
+        draftRevision,
+        awaitingRecalculation,
+        loading: applyPending || recalculationTerminal?.state === 'WORKING',
+      }),
+    [
+      applyPending,
+      awaitingRecalculation,
+      draftRevision,
+      input,
+      recalculationTerminal,
+      snapshots,
+      toppings,
+    ],
+  );
   const legacyInspection = recipeBehaviorLegacyInspection(authority, savedRecipeId);
   const hasRecipe = result.total_batch_g > 0;
   const previewInput =
@@ -56,7 +78,7 @@ export function WorkbenchIntelligenceHeader({
   // the authoritative calculated score, or `Przelicz` — never both. The live
   // as-written evaluation belongs to the Monitor alone; binding this control to
   // it would duplicate the score and destroy the designed state semantics.
-  const current = hasRecipe && !awaitingRecalculation && monitorGate.ready && !legacyInspection;
+  const current = hasRecipe && currentResultAuthority.ready && !legacyInspection;
   const displayedMatch = previewMatch ?? (current ? match : null);
   // Protein v2: measured content of the SAME candidate the ring is describing,
   // so a preview that lowers protein while raising the score renders exactly
@@ -91,6 +113,8 @@ export function WorkbenchIntelligenceHeader({
         className="flex min-w-0 items-center gap-2"
         data-testid="workbench-intelligence-header"
         data-score-source={scoreSource ?? 'AWAITING_CALCULATION'}
+        data-current-result-state={currentResultAuthority.state}
+        data-current-result-revision={currentResultAuthority.draftRevision}
       >
         {pending || working ? (
           <button
@@ -136,6 +160,8 @@ export function WorkbenchIntelligenceHeader({
       }
       data-testid="workbench-intelligence-header"
       data-score-source={scoreSource ?? 'AWAITING_CALCULATION'}
+      data-current-result-state={currentResultAuthority.state}
+      data-current-result-revision={currentResultAuthority.draftRevision}
       aria-label={`Dopasowanie techniczne receptury: ${displayedMatch ? displayedMatch.display : 'oczekuje na przeliczenie'}`}
     >
       <button

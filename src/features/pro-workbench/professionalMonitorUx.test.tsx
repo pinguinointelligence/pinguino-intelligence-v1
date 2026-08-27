@@ -89,7 +89,10 @@ function renderSorbetMonitor(input: RecipeInput) {
 }
 
 function renderMonitor(input: RecipeInput = starterMilkBase()) {
-  behaviorFixtureState.snapshots = productBehaviorTestSnapshots(input);
+  behaviorFixtureState.snapshots = productBehaviorTestSnapshots(
+    input,
+    useRecipeStore.getState().toppings,
+  );
   const result = calculateRecipe(input);
   const corrections = proposeCorrections({ input, context: recipeContext(input), redact: false });
   return renderToStaticMarkup(

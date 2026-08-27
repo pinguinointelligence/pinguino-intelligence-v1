@@ -29,9 +29,11 @@ import {
   buildRecipeBehaviorAuthority,
   recipeInputFromFrozenBehavior,
   recipeBehaviorLegacyInspection,
-  recipeBehaviorModuleGate,
   recipeToppingsFromFrozenBehavior,
 } from '@/features/product-intelligence';
+import { useRecipeProfileStore } from './recipeProfileStore';
+import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
+import { buildCurrentRecipeResultAuthority } from './currentRecipeResultAuthority';
 
 export type ProContextTab = 'recipe' | 'monitor' | 'production';
 export type CockpitTab = WorkbenchModuleTab;
@@ -181,7 +183,10 @@ function ProfileContent({
 }) {
   const snapshots = useRecipeStore((state) => state.productBehaviorSnapshots);
   const toppings = useRecipeStore((state) => state.toppings);
+  const draftRevision = useRecipeStore((state) => state.draftRevision);
   const savedRecipeId = useRecipeStore((state) => state.savedRecipeId);
+  const awaitingRecalculation = useRecipeProfileStore((state) => state.awaitingRecalculation);
+  const applyPending = useConstraintStudioStore((state) => state.applyPending);
   const customerPrices = useCustomerPriceStore((state) => state.overridesByCanonicalId);
   // Recipe profile indicators describe the technical BASE. Post-production
   // toppings intentionally affect final-product Label facts, but they are not
@@ -191,45 +196,41 @@ function ProfileContent({
     [input.items, snapshots],
   );
   const legacyInspection = recipeBehaviorLegacyInspection(baseAuthority, savedRecipeId);
-  const factsReady = useMemo(
-    () =>
-      recipeBehaviorModuleGate(baseAuthority, 'NUTRITION').ready &&
-      recipeBehaviorModuleGate(baseAuthority, 'COST').ready &&
-      recipeBehaviorModuleGate(baseAuthority, 'MONITOR').ready,
-    [baseAuthority],
-  );
-  const frozenNutritionResult = useMemo(
-    () =>
-      legacyInspection
-        ? result
-        : factsReady
-          ? calculateRecipe(recipeInputFromFrozenBehavior(input, baseAuthority, 'nutrition'))
-          : result,
-    [baseAuthority, factsReady, input, legacyInspection, result],
-  );
-  const profileReadable =
-    factsReady || legacyInspection || baseAuthority.requiredLineIds.length === 0;
   const finalAuthority = useMemo(
     () => buildRecipeBehaviorAuthority({ items: input.items, toppings, snapshots }),
     [input.items, snapshots, toppings],
   );
-  const finalSummaryReady = useMemo(
+  const currentResultAuthority = useMemo(
     () =>
-      recipeBehaviorModuleGate(finalAuthority, 'SUMMARY').ready &&
-      recipeBehaviorModuleGate(finalAuthority, 'NUTRITION').ready &&
-      !recipeBehaviorLegacyInspection(finalAuthority, savedRecipeId),
-    [finalAuthority, savedRecipeId],
+      buildCurrentRecipeResultAuthority({
+        recipe: input,
+        toppings,
+        snapshots,
+        draftRevision,
+        awaitingRecalculation,
+        loading: applyPending,
+      }),
+    [applyPending, awaitingRecalculation, draftRevision, input, snapshots, toppings],
   );
-  const finalSummaryReadable =
-    finalSummaryReady ||
-    recipeBehaviorLegacyInspection(finalAuthority, savedRecipeId) ||
-    finalAuthority.requiredLineIds.length === 0;
+  const finalLegacyInspection = recipeBehaviorLegacyInspection(finalAuthority, savedRecipeId);
+  const currentResultReady = currentResultAuthority.ready && !finalLegacyInspection;
+  const frozenNutritionResult = useMemo(
+    () =>
+      legacyInspection
+        ? result
+        : currentResultReady
+          ? calculateRecipe(recipeInputFromFrozenBehavior(input, baseAuthority, 'nutrition'))
+          : result,
+    [baseAuthority, currentResultReady, input, legacyInspection, result],
+  );
+  const profileReadable = currentResultReady || legacyInspection;
+  const finalSummaryReadable = currentResultReady || finalLegacyInspection;
   const finalProduct = useMemo(() => {
     if (!finalSummaryReadable) return null;
-    const finalInput = finalSummaryReady
+    const finalInput = currentResultReady
       ? recipeInputFromFrozenBehavior(input, finalAuthority, 'nutrition')
       : input;
-    const finalToppings = finalSummaryReady
+    const finalToppings = currentResultReady
       ? recipeToppingsFromFrozenBehavior(toppings, finalAuthority, 'nutrition')
       : toppings;
     return calculateFinalProduct(
@@ -237,9 +238,14 @@ function ProfileContent({
       applyEffectiveCustomerPricesToToppings(finalToppings, customerPrices),
       'planning',
     );
-  }, [customerPrices, finalAuthority, finalSummaryReadable, finalSummaryReady, input, toppings]);
+  }, [customerPrices, currentResultReady, finalAuthority, finalSummaryReadable, input, toppings]);
   return (
-    <div className="w-full min-w-0 p-3" data-testid="pro-context-recipe">
+    <div
+      className="w-full min-w-0 p-3"
+      data-testid="pro-context-recipe"
+      data-current-result-state={currentResultAuthority.state}
+      data-current-result-revision={currentResultAuthority.draftRevision}
+    >
       {legacyInspection ? (
         <WorkflowNotice
           className="mb-2"

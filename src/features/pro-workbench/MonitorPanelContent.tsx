@@ -34,6 +34,7 @@ import {
   useMonitorRecipeBehaviorRefresh,
 } from '@/features/product-intelligence';
 import { WorkflowNotice } from '@/components/shared/WorkflowNotice';
+import { buildCurrentRecipeResultAuthority } from './currentRecipeResultAuthority';
 
 export function MonitorToppingSummary({
   toppings,
@@ -127,8 +128,10 @@ export function MonitorPanelContent({
   const recipeIncomplete = result.total_batch_g <= 0;
   const toppings = useRecipeStore((state) => state.toppings);
   const behaviorSnapshots = useRecipeStore((state) => state.productBehaviorSnapshots);
+  const draftRevision = useRecipeStore((state) => state.draftRevision);
   const savedRecipeId = useRecipeStore((state) => state.savedRecipeId);
   const awaitingRecalculation = useRecipeProfileStore((state) => state.awaitingRecalculation);
+  const applyPending = useConstraintStudioStore((state) => state.applyPending);
   const behaviorAuthority = useMemo(
     () =>
       // The professional Monitor is the technical view of the Base. A
@@ -140,6 +143,18 @@ export function MonitorPanelContent({
   const monitorGate = useMemo(
     () => recipeBehaviorModuleGate(behaviorAuthority, 'MONITOR'),
     [behaviorAuthority],
+  );
+  const currentResultAuthority = useMemo(
+    () =>
+      buildCurrentRecipeResultAuthority({
+        recipe: input,
+        toppings,
+        snapshots: behaviorSnapshots,
+        draftRevision,
+        awaitingRecalculation,
+        loading: applyPending,
+      }),
+    [applyPending, awaitingRecalculation, behaviorSnapshots, draftRevision, input, toppings],
   );
   const legacyInspection = recipeBehaviorLegacyInspection(behaviorAuthority, savedRecipeId);
   useMonitorRecipeBehaviorRefresh({
@@ -217,9 +232,7 @@ export function MonitorPanelContent({
   // A genuinely legacy version remains inspectable, with an explicit warning,
   // until it is reconstructed into a new version. A partial/stale modern
   // authority must never silently fall back to independently interpreted facts.
-  const technicalViewAllowed =
-    technicalView &&
-    (monitorGate.ready || legacyInspection || behaviorAuthority.requiredLineIds.length === 0);
+  const technicalViewAllowed = technicalView && (currentResultAuthority.ready || legacyInspection);
   const actualToppingByLineId = new Map(
     (production?.session?.addonLines ?? [])
       .filter((line) => line.confirmed || line.physicalAddedGrams > 0)
@@ -230,9 +243,12 @@ export function MonitorPanelContent({
     <div
       className="pro-scroll-safe space-y-1.5 text-ink"
       data-testid="monitor-panel-content"
-      data-behavior-authority={monitorGate.ready ? 'ready' : 'revalidation-required'}
+      data-behavior-authority={currentResultAuthority.ready ? 'ready' : 'revalidation-required'}
+      data-current-result-state={currentResultAuthority.state}
+      data-current-result-revision={currentResultAuthority.draftRevision}
     >
-      {(legacyInspection || !monitorGate.ready) && behaviorAuthority.requiredLineIds.length > 0 ? (
+      {(legacyInspection || !currentResultAuthority.ready) &&
+      behaviorAuthority.requiredLineIds.length > 0 ? (
         <WorkflowNotice
           eyebrow={legacyInspection ? 'Historia receptury' : 'Wymagane sprawdzenie'}
           title={

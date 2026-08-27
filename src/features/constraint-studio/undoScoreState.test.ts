@@ -142,6 +142,10 @@ const behaviorSnapshot = (
     MAIN: 'eligible',
     OPTIMAL: 'eligible',
     ECO: 'eligible',
+    MONITOR: 'eligible',
+    NUTRITION: 'eligible',
+    COST: 'eligible',
+    SUMMARY: 'eligible',
     SAVE: 'eligible',
     PRODUCTION: 'eligible',
   },
@@ -149,8 +153,26 @@ const behaviorSnapshot = (
   resolverVersion: 'test-v1',
   sharedFacts: {
     schemaVersion: 1,
-    technicalComposition: null,
-    nutritionPer100g: null,
+    technicalComposition: {
+      water: 0,
+      totalSolids: 0,
+      fat: 0,
+      protein: 0,
+      carbohydrate: 0,
+      sugars: 0,
+      salt: 0,
+    },
+    nutritionPer100g: {
+      basis: 'per_100g',
+      energyKcal: 0,
+      fat: 0,
+      saturatedFat: 0,
+      carbohydrate: 0,
+      sugars: 0,
+      protein: 0,
+      salt: 0,
+      fibre: 0,
+    },
     allergens: null,
     processEvidence: [],
     profileEligibility: [category],
@@ -332,14 +354,12 @@ describe('Apply → Undo score-state restoration', () => {
       'REVALIDATION_REQUIRED',
     );
     expect(
-      productBehaviorModuleGate(recipeState.productBehaviorSnapshots, 'SAVE', requiredLineIds).ready,
+      productBehaviorModuleGate(recipeState.productBehaviorSnapshots, 'SAVE', requiredLineIds)
+        .ready,
     ).toBe(true);
     expect(
-      productBehaviorModuleGate(
-        recipeState.productBehaviorSnapshots,
-        'PRODUCTION',
-        requiredLineIds,
-      ).ready,
+      productBehaviorModuleGate(recipeState.productBehaviorSnapshots, 'PRODUCTION', requiredLineIds)
+        .ready,
     ).toBe(true);
     expect(authority.resolveInputs.some((input) => input.toppingLineIds.includes(basil.id))).toBe(
       true,

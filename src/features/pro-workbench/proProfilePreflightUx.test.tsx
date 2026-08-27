@@ -19,6 +19,7 @@ import {
 import { machineDisplayName } from '@/features/machine-onboarding/machineViews';
 import { temperatureForMode } from '@/features/customer-flow/servingMode';
 import { useRecipeStore } from '@/stores/recipeStore';
+import { useSessionStore } from '@/stores/sessionStore';
 import {
   DEFAULT_DIRECTION_TARGETS,
   profileSettingsSignature,
@@ -34,6 +35,9 @@ import {
 import { WorkbenchSettingsLine } from './WorkbenchSettingsLine';
 import { ProfileDirectionAxes } from './ProfileDirectionAxes';
 import { RecipeProfilePanel } from './RecipeProfilePanel';
+import { WorkbenchIntelligenceHeader } from './WorkbenchIntelligenceHeader';
+import { monitorScoreView } from './monitorSummaryView';
+import { formatMonitorValue } from './professionalMonitorModel';
 
 const SRC = resolve(import.meta.dirname, '..', '..');
 const read = (...parts: string[]) => readFileSync(join(SRC, ...parts), 'utf8');
@@ -95,6 +99,136 @@ describe('canonical Pro header contract', () => {
 });
 
 describe('profile hierarchy and compact preflight', () => {
+  it('publishes score, inline Monitor, full Monitor, kcal and cost under one current-result gate', async () => {
+    const input = starterMilkBase();
+    const result = calculateRecipe(input);
+    const corrections = proposeCorrections({
+      input,
+      context: recipeContext(input),
+      redact: false,
+    });
+    const completeSnapshots = productBehaviorTestSnapshots(input);
+    const firstLineId = input.items[0]!.id;
+    const splitSnapshots = structuredClone(completeSnapshots);
+    splitSnapshots[firstLineId] = {
+      ...splitSnapshots[firstLineId]!,
+      moduleEligibility: {
+        ...splitSnapshots[firstLineId]!.moduleEligibility,
+        NUTRITION: 'blocked',
+      },
+    };
+    useSessionStore.setState({ plan: 'pro' });
+    useRecipeStore.setState({
+      productBehaviorSnapshots: splitSnapshots,
+      toppings: [],
+      draftRevision: 41,
+    });
+    useRecipeProfileStore.getState().acknowledgeRecalculation();
+    expect(result.total_batch_g).toBeGreaterThan(0);
+    expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(false);
+
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    const view = () => (
+      <>
+        <div data-surface="score">
+          <WorkbenchIntelligenceHeader
+            result={result}
+            input={input}
+            onRecalculate={() => undefined}
+            variant="dock"
+          />
+        </div>
+        <div data-surface="profile">
+          <RecipeProfilePanel
+            activeTab="profile"
+            onTabChange={() => undefined}
+            result={result}
+            servingTemperatureC={input.target_temperature_c}
+            corrections={corrections}
+            input={input}
+            idPrefix="current-result-profile"
+            showTabs={false}
+            onOpenPreview={() => undefined}
+            onRecalculate={() => undefined}
+          />
+        </div>
+        <div data-surface="monitor">
+          <RecipeProfilePanel
+            activeTab="monitor"
+            onTabChange={() => undefined}
+            result={result}
+            servingTemperatureC={input.target_temperature_c}
+            corrections={corrections}
+            input={input}
+            idPrefix="current-result-monitor"
+            showTabs={false}
+            onOpenPreview={() => undefined}
+            onRecalculate={() => undefined}
+          />
+        </div>
+      </>
+    );
+    const surface = (name: 'score' | 'profile' | 'monitor') =>
+      host.querySelector(`[data-surface="${name}"]`)!;
+
+    try {
+      await act(async () => root.render(view()));
+
+      // The historical split: MONITOR alone is ready, while Nutrition is not.
+      // No surface may label values from that partial authority as current.
+      expect(surface('score').textContent).not.toContain('Wynik aktualny');
+      expect(surface('score').querySelector('[data-testid="pro-workbar-recalc"]')).not.toBeNull();
+      expect(surface('profile').textContent).toContain('— kcal / 100 g');
+      expect(surface('profile').textContent).toContain('— / kg');
+      expect(surface('monitor').querySelector('[data-testid="monitor-live-summary"]')).toBeNull();
+
+      await act(async () => {
+        useRecipeStore.setState({ productBehaviorSnapshots: completeSnapshots });
+        root.render(view());
+      });
+      expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(false);
+      expect(surface('score').textContent).toContain('Wynik aktualny');
+      expect(surface('score').querySelector('[data-testid="workbench-score-ring"]')).not.toBeNull();
+      expect(
+        surface('score')
+          .querySelector('[data-testid="workbench-score-ring"]')
+          ?.getAttribute('data-score'),
+      ).toBe(String(monitorScoreView(result, input).match.score));
+      const expectedFinal = calculateFinalProduct(input);
+      expect(surface('profile').textContent).toContain(
+        `${expectedFinal.finalLabelNutritionPer100g?.kcal.toFixed(0)} kcal / 100 g`,
+      );
+      expect(surface('profile').textContent).toContain(
+        `${expectedFinal.finalCosts?.cost_per_kg?.toFixed(2)} € / kg`,
+      );
+      expect(
+        surface('monitor').querySelector('[data-testid="monitor-live-summary"]'),
+      ).not.toBeNull();
+      expect(
+        surface('monitor').querySelector('[data-testid="monitor-module-sweetness"]'),
+      ).not.toBeNull();
+      const podValue = result.indicators.find((indicator) => indicator.key === 'pod')!.value;
+      expect(podValue).toBeTypeOf('number');
+      expect(surface('monitor').textContent).toContain(formatMonitorValue(podValue!));
+
+      // A material edit invalidates the one authority even while its prior
+      // frozen snapshots remain in memory.
+      await act(async () => {
+        useRecipeProfileStore.getState().markRecalculationRequired();
+        root.render(view());
+      });
+      expect(surface('score').textContent).not.toContain('Wynik aktualny');
+      expect(surface('profile').textContent).toContain('— kcal / 100 g');
+      expect(surface('profile').textContent).toContain('— / kg');
+      expect(surface('monitor').querySelector('[data-testid="monitor-live-summary"]')).toBeNull();
+    } finally {
+      await act(async () => root.unmount());
+      host.remove();
+    }
+  });
+
   it('keeps Recipe profile indicators populated when only a post-production topping changes', async () => {
     const input = starterMilkBase();
     const result = calculateRecipe(input);

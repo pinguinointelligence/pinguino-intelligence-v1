@@ -49,10 +49,14 @@ import {
 } from '@/features/ingredient-builder/ingredientTableUxStore';
 import { missingProductDoseMessage } from '@/features/ingredient-builder/productDoseSuggestion';
 import {
+  buildRecipeBehaviorAuthority,
+  recipeInputFromFrozenBehavior,
+  recipeToppingsFromFrozenBehavior,
   productBehaviorSnapshotFingerprint,
   productBehaviorRequiredLineIds,
   verifyMainEnvelope,
   type MainEnvelopeViolation,
+  type ProductBehaviorModule,
   type ProductBehaviorSnapshot,
 } from '@/features/product-intelligence';
 import { normalizeFormulationStrategy } from '@/features/formulation-strategy/strategy';
@@ -92,6 +96,12 @@ import {
   type RecalculationMarkerLine,
 } from '@/features/ingredient-builder/ingredientChangeHighlight';
 import { useIngredientChangeStore } from '@/features/ingredient-builder/ingredientChangeStore';
+import {
+  buildCurrentRecipeResultAuthority,
+  CURRENT_RECIPE_RESULT_MODULES,
+} from '@/features/pro-workbench/currentRecipeResultAuthority';
+import { calculateFinalProduct } from '@/features/recipe-composition/finalProduct';
+import { applyEffectiveCustomerPricesToToppings } from '@/features/pro-core/effectiveRecipePricing';
 
 const applyGuardCopy = constraintStudioCopy.applyGuard;
 
@@ -581,7 +591,10 @@ export interface ConstraintStudioState {
   ) => void;
   cancelPreview: () => void;
   /** THE apply — the only recipe write; goes through `commitPreview`. */
-  applyPreview: (prebuiltOptimizeRebuild?: BuildPreviewResult) => void;
+  applyPreview: (
+    prebuiltOptimizeRebuild?: BuildPreviewResult,
+    options?: { deferCurrentResult?: boolean },
+  ) => void;
   undoLastApply: () => void;
 
   runFeasibility: () => void;
@@ -1577,7 +1590,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         });
       },
 
-      applyPreview: (prebuiltOptimizeRebuild) => {
+      applyPreview: (prebuiltOptimizeRebuild, options) => {
         const {
           preview,
           constraints,
@@ -1642,6 +1655,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           .applyVerifiedRecipeInput(
             outcome.verified.input,
             outcome.verified.productBehaviorSnapshots,
+            options?.deferCurrentResult ? { acknowledgeRecalculation: false } : undefined,
           );
         if (!written.ok) {
           set({
@@ -1728,6 +1742,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           constraints: outcome.verified.constraints,
           history: [...history, record],
           ...CLEAR_STAGED,
+          ...(options?.deferCurrentResult ? { applyPending: true } : {}),
         });
       },
 
@@ -2190,6 +2205,156 @@ async function currentRecipeAuthorityReady(input: {
   }
 }
 
+/**
+ * Terminal publication gate for the recipe revision that already crossed the
+ * guarded Apply write. Solver eligibility remains owned by
+ * `currentRecipeAuthorityReady`; this second phase resolves one exact frozen
+ * fact set and revalidates every customer-visible current-result module before
+ * any surface is allowed to call the new revision current.
+ */
+async function currentRecipeResultAuthorityReady(input: {
+  recipe: RecipeInput;
+  toppings: readonly RecipeToppingItem[];
+  snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
+  draftRevision: number;
+  technicalOnlyMainLineIds?: readonly string[];
+}): Promise<
+  | { ready: true; snapshots: Record<string, ProductBehaviorSnapshot> }
+  | { ready: false; issues: ProductBehaviorAuthorityIssue[] }
+> {
+  const required = productBehaviorRequiredLineIds({
+    items: input.recipe.items,
+    toppings: input.toppings,
+  });
+  const lineName = (lineId: string): string =>
+    input.recipe.items.find((item) => item.id === lineId)?.ingredient.name ??
+    input.toppings.find((item) => item.id === lineId)?.ingredient.name ??
+    lineId;
+  if (required.length === 0) {
+    return {
+      ready: true,
+      snapshots: Object.fromEntries(
+        Object.entries(input.snapshots)
+          .filter((entry): entry is [string, ProductBehaviorSnapshot] => entry[1] !== undefined)
+          .map(([lineId, snapshot]) => [lineId, structuredClone(snapshot)]),
+      ),
+    };
+  }
+
+  try {
+    const accountId = useAuthStore.getState().user?.id ?? null;
+    const resolved = await resolveRecipeProposalBehaviorSnapshots({
+      recipe: input.recipe,
+      toppings: input.toppings,
+      snapshots: input.snapshots,
+      accountId,
+      // SUMMARY resolution freezes the technical + nutrition fact envelope;
+      // toppings are still resolved by the service under TOPPING authority.
+      module: 'SUMMARY',
+      technicalOnlyMainLineIds: input.technicalOnlyMainLineIds,
+    });
+    if (resolved.unresolvedLineIds.length > 0) {
+      return {
+        ready: false,
+        issues: resolved.unresolvedLineIds.map((lineId) => ({
+          lineId,
+          lineName: lineName(lineId),
+          reasons: ['behavior_snapshot_missing_or_unresolved'],
+        })),
+      };
+    }
+
+    const validations = await Promise.all(
+      CURRENT_RECIPE_RESULT_MODULES.map((module: ProductBehaviorModule) =>
+        validateRecipeBehaviorOnServer({
+          recipe: input.recipe,
+          toppings: input.toppings,
+          snapshots: resolved.snapshots,
+          module,
+          accountId,
+          technicalOnlyMainLineIds: input.technicalOnlyMainLineIds,
+        }),
+      ),
+    );
+    const staleLineIds = [
+      ...new Set(validations.flatMap((validation) => validation.staleLineIds)),
+    ].sort();
+    const failedValidation = validations.find((validation) => !validation.ready);
+    if (failedValidation || staleLineIds.length > 0) {
+      const affected = staleLineIds.length > 0 ? staleLineIds : required;
+      return {
+        ready: false,
+        issues: affected.map((lineId) => ({
+          lineId,
+          lineName: lineName(lineId),
+          reasons: validations
+            .flatMap((validation) => validation.lines)
+            .find((line) => line.lineId === lineId)?.reasons ?? [
+            `current_result_module_unresolved:${failedValidation?.module ?? 'UNKNOWN'}`,
+          ],
+        })),
+      };
+    }
+
+    const localAuthority = buildCurrentRecipeResultAuthority({
+      recipe: input.recipe,
+      toppings: input.toppings,
+      snapshots: resolved.snapshots,
+      draftRevision: input.draftRevision,
+      awaitingRecalculation: false,
+      loading: false,
+    });
+    if (!localAuthority.ready) {
+      const affected =
+        localAuthority.blockedLineIds.length > 0 ? localAuthority.blockedLineIds : required;
+      return {
+        ready: false,
+        issues: affected.map((lineId) => ({
+          lineId,
+          lineName: lineName(lineId),
+          reasons: localAuthority.blockedModules.map(
+            (module) => `current_result_module_unresolved:${module}`,
+          ),
+        })),
+      };
+    }
+    return { ready: true, snapshots: resolved.snapshots };
+  } catch {
+    return {
+      ready: false,
+      issues: required.map((lineId) => ({
+        lineId,
+        lineName: lineName(lineId),
+        reasons: ['behavior_server_validation_unavailable'],
+      })),
+    };
+  }
+}
+
+function calculateCurrentRecipeConsumers(input: {
+  recipe: RecipeInput;
+  toppings: readonly RecipeToppingItem[];
+  snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
+}): void {
+  const authority = buildRecipeBehaviorAuthority({
+    items: input.recipe.items,
+    toppings: input.toppings,
+    snapshots: input.snapshots,
+  });
+  const technicalInput = recipeInputFromFrozenBehavior(input.recipe, authority, 'technical');
+  const nutritionInput = recipeInputFromFrozenBehavior(input.recipe, authority, 'nutrition');
+  const frozenToppings = recipeToppingsFromFrozenBehavior(input.toppings, authority, 'nutrition');
+  calculateRecipe(technicalInput);
+  calculateFinalProduct(
+    nutritionInput,
+    applyEffectiveCustomerPricesToToppings(
+      frozenToppings,
+      useCustomerPriceStore.getState().overridesByCanonicalId,
+    ),
+    'planning',
+  );
+}
+
 const finishUndoWithCurrentRecipeScore = (
   snapshots: Record<string, ProductBehaviorSnapshot>,
   generation: number,
@@ -2553,6 +2718,45 @@ export async function createOptimizePreviewWithServerAuthority(
   ) {
     return;
   }
+
+  // NO_CHANGE has no Apply button, but it publishes the same formal current
+  // result. Undo the deterministic store seam's early acknowledgement while
+  // the unified terminal authority is resolved for this exact draft.
+  useRecipeProfileStore.getState().markRecalculationRequired();
+  const noChangeRecipeState = useRecipeStore.getState();
+  const noChangeResult = await currentRecipeResultAuthorityReady({
+    recipe: draft.input,
+    toppings: noChangeRecipeState.toppings,
+    snapshots: noChangeRecipeState.productBehaviorSnapshots,
+    draftRevision: draft.revision,
+    technicalOnlyMainLineIds: noChangeRecipeState.ownerReviewGate?.technicalOnlyMainLineIds,
+  });
+  if (
+    !isCurrentPiRun(ownedGeneration) ||
+    useRecipeStore.getState().draftRevision !== draft.revision
+  ) {
+    return;
+  }
+  if (!noChangeResult.ready) {
+    useConstraintStudioStore.setState({
+      recalculationTerminal: productBehaviorTerminal(noChangeResult.issues),
+    });
+    return;
+  }
+  useRecipeStore.getState().syncProductBehaviorSnapshots(noChangeResult.snapshots);
+  if (
+    !isCurrentPiRun(ownedGeneration) ||
+    useRecipeStore.getState().draftRevision !== draft.revision
+  ) {
+    return;
+  }
+  const synchronizedNoChangeState = useRecipeStore.getState();
+  calculateCurrentRecipeConsumers({
+    recipe: draft.input,
+    toppings: synchronizedNoChangeState.toppings,
+    snapshots: synchronizedNoChangeState.productBehaviorSnapshots,
+  });
+  useRecipeProfileStore.getState().acknowledgeRecalculation();
 
   // A no-change result has no Apply button, so it cannot inherit the normal
   // Apply pipeline's practical-recipe audit. Recreate that authority only at
@@ -2980,9 +3184,76 @@ export async function applyPreviewWithServerAuthority(
       publishStale();
       return;
     }
-    useConstraintStudioStore.getState().applyPreview(prebuiltOptimizeRebuild);
+    const historyLengthBeforeApply = useConstraintStudioStore.getState().history.length;
+    useConstraintStudioStore
+      .getState()
+      .applyPreview(prebuiltOptimizeRebuild, { deferCurrentResult: true });
+    const afterApplySession = useConstraintStudioStore.getState();
+    if (
+      afterApplySession.preview !== null ||
+      afterApplySession.history.length !== historyLengthBeforeApply + 1
+    ) {
+      return;
+    }
+
+    const appliedDraft = selectCanonicalDraft();
+    const appliedRevision = appliedDraft.revision;
+    const appliedFingerprint = workingStateFingerprint(
+      appliedDraft.input,
+      appliedDraft.constraints,
+    );
+    const appliedRecipeState = useRecipeStore.getState();
+    const currentResult = await currentRecipeResultAuthorityReady({
+      recipe: appliedDraft.input,
+      toppings: appliedRecipeState.toppings,
+      snapshots: appliedRecipeState.productBehaviorSnapshots,
+      draftRevision: appliedRevision,
+      technicalOnlyMainLineIds: appliedRecipeState.ownerReviewGate?.technicalOnlyMainLineIds,
+    });
+    const latestDraft = selectCanonicalDraft();
+    const appliedRevisionStillCurrent =
+      latestDraft.revision === appliedRevision &&
+      workingStateFingerprint(latestDraft.input, latestDraft.constraints) === appliedFingerprint;
+    if (!appliedRevisionStillCurrent) {
+      useConstraintStudioStore.setState({ applyPending: false });
+      return;
+    }
+    if (!currentResult.ready) {
+      useConstraintStudioStore.setState({
+        applyPending: false,
+        blocked: {
+          code: 'apply_validation_failed',
+          messagePl:
+            'Zmiany zostały zastosowane, ale bieżący wynik nie przeszedł pełnej walidacji Monitor / wartości odżywcze / koszt. Uruchom Przelicz ponownie.',
+        },
+      });
+      return;
+    }
+
+    useRecipeStore.getState().syncProductBehaviorSnapshots(currentResult.snapshots);
+    const synchronizedRecipeState = useRecipeStore.getState();
+    const synchronizedDraft = selectCanonicalDraft();
+    if (
+      synchronizedDraft.revision !== appliedRevision ||
+      workingStateFingerprint(synchronizedDraft.input, synchronizedDraft.constraints) !==
+        appliedFingerprint
+    ) {
+      useConstraintStudioStore.setState({ applyPending: false });
+      return;
+    }
+    calculateCurrentRecipeConsumers({
+      recipe: synchronizedDraft.input,
+      toppings: synchronizedRecipeState.toppings,
+      snapshots: synchronizedRecipeState.productBehaviorSnapshots,
+    });
+    // Resolve every numerical consumer from this same applied revision before
+    // promotion. These calls store no duplicate numbers; the UI recomputes from
+    // the same canonical input/frozen facts through its normal selectors.
+    useRecipeProfileStore.getState().acknowledgeRecalculation();
+    useConstraintStudioStore.setState({ applyPending: false, blocked: null });
   } catch {
-    if (useConstraintStudioStore.getState().preview !== preview) return;
+    const current = useConstraintStudioStore.getState();
+    if (current.preview !== preview && !current.applyPending) return;
     useConstraintStudioStore.setState({
       applyPending: false,
       blocked: {

@@ -6,8 +6,15 @@ import {
   type RecipeInput,
 } from '@/engine';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
-import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
+import {
+  buildRecipeBehaviorAuthority,
+  recipeInputFromFrozenBehavior,
+  type ProductBehaviorSnapshot,
+} from '@/features/product-intelligence';
 import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
+import { monitorScoreView } from '@/features/pro-workbench/monitorSummaryView';
+import { buildCurrentRecipeResultAuthority } from '@/features/pro-workbench/currentRecipeResultAuthority';
+import { calculateFinalProduct } from '@/features/recipe-composition/finalProduct';
 import { useCustomerPriceStore } from '@/stores/customerPriceStore';
 import { useRecipeStore } from '@/stores/recipeStore';
 import {
@@ -29,15 +36,40 @@ vi.setConfig({ testTimeout: 60_000 });
 // This suite owns the Preview → Apply lifecycle only. ProductBehavior is kept
 // neutral so the assertions exercise the real Engine, Direction authorization,
 // candidate-rebuild equality, hard Apply door, and guarded recipe mutation.
+const currentResultResolution = vi.hoisted(() => ({
+  blocked: false,
+  release: null as null | (() => void),
+}));
+
 vi.mock('@/services/productIntelligence', () => ({
   resolveRecipeProposalBehaviorSnapshots: async (input: {
+    recipe: RecipeInput;
+    toppings?: readonly [];
     snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
-  }) => ({
-    snapshots: Object.fromEntries(
-      Object.entries(input.snapshots).filter((entry) => entry[1] !== undefined),
-    ),
-    unresolvedLineIds: [],
-  }),
+    module?: string;
+  }) => {
+    await (async () => {
+      if (input.module === 'SUMMARY' && currentResultResolution.blocked) {
+        await new Promise<void>((resolve) => {
+          currentResultResolution.release = resolve;
+        });
+      }
+    })();
+    if (input.module === 'SUMMARY') {
+      const { productBehaviorTestSnapshots } =
+        await import('@/features/product-intelligence/productBehaviorTestFixture');
+      return {
+        snapshots: productBehaviorTestSnapshots(input.recipe, input.toppings),
+        unresolvedLineIds: [],
+      };
+    }
+    return {
+      snapshots: Object.fromEntries(
+        Object.entries(input.snapshots).filter((entry) => entry[1] !== undefined),
+      ),
+      unresolvedLineIds: [],
+    };
+  },
   validateRecipeBehaviorOnServer: async (input: { module: string }) => ({
     ready: true,
     module: input.module,
@@ -58,9 +90,7 @@ const directedMilkWithHeldMain = (
     ...base,
     target_temperature_c: -11,
     items: base.items.map((item) =>
-      item.ingredient.id === 'milk_3_5'
-        ? { ...item, lock_type: 'main' as const }
-        : item,
+      item.ingredient.id === 'milk_3_5' ? { ...item, lock_type: 'main' as const } : item,
     ),
     goals: {
       ...base.goals,
@@ -78,12 +108,9 @@ const buildCase = (
   useRecipeStore.getState().loadRecipeInput(directedMilkWithHeldMain(sweetness, softness));
   useConstraintStudioStore.getState().resetForTests();
   const draft = selectCanonicalDraft();
-  const built = buildOptimizePreview(
-    draft.input,
-    draft.constraints,
-    AT,
-    { requirePracticalPreview: true },
-  );
+  const built = buildOptimizePreview(draft.input, draft.constraints, AT, {
+    requirePracticalPreview: true,
+  });
   expect(built.ok, built.ok ? undefined : JSON.stringify(built)).toBe(true);
   return built as SuccessfulBuild;
 };
@@ -104,6 +131,8 @@ beforeAll(() => {
 }, 60_000);
 
 beforeEach(() => {
+  currentResultResolution.blocked = false;
+  currentResultResolution.release = null;
   useRecipeStore.getState().resetToDemo();
   useRecipeProfileStore.getState().resetForTests();
   useConstraintStudioStore.getState().resetForTests();
@@ -116,12 +145,14 @@ const vector = (input: RecipeInput): Array<[string, number]> =>
 const workingVector = (): Array<[string, number]> => vector(selectCanonicalDraft().input);
 
 const loadCase = (built: SuccessfulBuild): void => {
-  useRecipeStore.getState().loadRecipeInput(
-    directedMilkWithHeldMain(
-      built.preview.proposedInput.goals?.direction_targets?.sweetness ?? 0,
-      built.preview.proposedInput.goals?.direction_targets?.softness ?? 0,
-    ),
-  );
+  useRecipeStore
+    .getState()
+    .loadRecipeInput(
+      directedMilkWithHeldMain(
+        built.preview.proposedInput.goals?.direction_targets?.sweetness ?? 0,
+        built.preview.proposedInput.goals?.direction_targets?.softness ?? 0,
+      ),
+    );
   useConstraintStudioStore.getState().resetForTests();
   useRecipeProfileStore.getState().markRecalculationRequired();
 };
@@ -142,7 +173,9 @@ const stagePreview = (built: SuccessfulBuild, acceptNearest: boolean): Constrain
     directionBestCandidate: acceptNearest ? preview : null,
     directionConsent: null,
     blocked: null,
-    recalculationTerminal: acceptNearest ? { state: 'BEST_ACHIEVABLE' } : { state: 'PREVIEW_READY' },
+    recalculationTerminal: acceptNearest
+      ? { state: 'BEST_ACHIEVABLE' }
+      : { state: 'PREVIEW_READY' },
   });
   if (acceptNearest) useConstraintStudioStore.getState().acceptBestDirectionCandidate();
   expect(useConstraintStudioStore.getState().preview).toBe(preview);
@@ -157,7 +190,9 @@ const immediateRuntime = (built: SuccessfulBuild): ApplyPreviewRuntime => ({
   }),
 });
 
-const deferredRuntime = (built: SuccessfulBuild): {
+const deferredRuntime = (
+  built: SuccessfulBuild,
+): {
   runtime: ApplyPreviewRuntime;
   release: () => void;
 } => {
@@ -182,6 +217,31 @@ const expectSuccessfulApply = (displayed: ConstraintPreview, expectedScore: numb
     expectedScore,
   );
   expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(false);
+  const currentInput = selectCanonicalDraft().input;
+  const recipeState = useRecipeStore.getState();
+  const currentAuthority = buildCurrentRecipeResultAuthority({
+    recipe: currentInput,
+    toppings: recipeState.toppings,
+    snapshots: recipeState.productBehaviorSnapshots,
+    draftRevision: recipeState.draftRevision,
+    awaitingRecalculation: useRecipeProfileStore.getState().awaitingRecalculation,
+    loading: state.applyPending,
+  });
+  expect(currentAuthority.ready).toBe(true);
+  const behaviorAuthority = buildRecipeBehaviorAuthority({
+    items: currentInput.items,
+    toppings: recipeState.toppings,
+    snapshots: recipeState.productBehaviorSnapshots,
+  });
+  const frozenInput = recipeInputFromFrozenBehavior(currentInput, behaviorAuthority, 'technical');
+  const currentResult = calculateRecipe(frozenInput);
+  expect(monitorScoreView(currentResult, frozenInput).match.score).toBe(expectedScore);
+  const finalProduct = calculateFinalProduct(
+    recipeInputFromFrozenBehavior(currentInput, behaviorAuthority, 'nutrition'),
+    recipeState.toppings,
+  );
+  expect(finalProduct.finalLabelNutritionPer100g?.kcal).toBeTypeOf('number');
+  expect(finalProduct.finalCosts?.cost_per_kg).toBeTypeOf('number');
   // Apply changes the working recipe only. It never creates a saved recipe.
   expect(useRecipeStore.getState().savedRecipeId).toBeNull();
 };
@@ -197,6 +257,26 @@ describe('NEAREST / BEST-POSSIBLE Preview → Apply lifecycle', () => {
     expect(workingVector()).toEqual(before);
 
     deferred.release();
+    await applying;
+    expectSuccessfulApply(displayed, 10);
+  });
+
+  it('keeps the applied revision LOADING until its unified current result resolves', async () => {
+    const displayed = stagePreview(score10, false);
+    const before = workingVector();
+    currentResultResolution.blocked = true;
+
+    const applying = applyPreviewWithServerAuthority(immediateRuntime(score10));
+    await vi.waitFor(() => expect(workingVector()).toEqual(vector(displayed.proposedInput)));
+
+    expect(workingVector()).not.toEqual(before);
+    expect(useConstraintStudioStore.getState()).toMatchObject({
+      applyPending: true,
+      preview: null,
+    });
+    expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(true);
+
+    currentResultResolution.release?.();
     await applying;
     expectSuccessfulApply(displayed, 10);
   });
@@ -235,10 +315,7 @@ describe('NEAREST / BEST-POSSIBLE Preview → Apply lifecycle', () => {
       preview: forged,
       directionConsent: {
         ...consent,
-        candidateFingerprint: workingStateFingerprint(
-          forged.proposedInput,
-          forged.nextConstraints,
-        ),
+        candidateFingerprint: workingStateFingerprint(forged.proposedInput, forged.nextConstraints),
       },
     });
     const forgedBuild: SuccessfulBuild = { ok: true, preview: forged };

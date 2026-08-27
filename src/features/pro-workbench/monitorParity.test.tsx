@@ -173,7 +173,7 @@ describe('professional Monitor acceptance contract', () => {
     expect(reconstructedHtml).not.toContain('data-testid="monitor-correction-summary"');
   });
 
-  it('keeps the technical Base Monitor current when a topping has no Base snapshot', () => {
+  it('withholds the shared current result when a positive topping has no frozen snapshot', () => {
     const input = starterMilkBase();
     renderPanel(input);
     const ingredient: CatalogLabelToppingIngredient = {
@@ -224,8 +224,8 @@ describe('professional Monitor acceptance contract', () => {
       />,
     );
 
-    expect(panel).not.toContain('data-testid="monitor-behavior-revalidation"');
-    expect(panel).toContain('data-testid="monitor-module-freezing"');
+    expect(panel).toContain('data-testid="monitor-behavior-revalidation"');
+    expect(panel).not.toContain('data-testid="monitor-module-freezing"');
     expect(visibleText(panel)).toContain('1 pozycja · 25 g');
     expect(visibleText(panel)).toContain('Nie wpływają na bilans bazy.');
   });

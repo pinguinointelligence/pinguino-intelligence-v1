@@ -31,8 +31,16 @@ describe('recipe footer keeps the formal calculation state machine', () => {
     // `pending` must still include awaitingRecalculation — that IS the formal gate.
     expect(header).toContain('const pending = !displayedMatch || awaitingRecalculation;');
     expect(header).toContain(
-      'const current = hasRecipe && !awaitingRecalculation && monitorGate.ready && !legacyInspection;',
+      'const current = hasRecipe && currentResultAuthority.ready && !legacyInspection;',
     );
+    const currentAuthority = readFileSync(
+      new URL('./currentRecipeResultAuthority.ts', import.meta.url),
+      'utf8',
+    );
+    expect(currentAuthority).toContain("'MONITOR'");
+    expect(currentAuthority).toContain("'NUTRITION'");
+    expect(currentAuthority).toContain("'COST'");
+    expect(currentAuthority).toContain("'SUMMARY'");
   });
 
   it('renders `Przelicz` OR the score — the branch is exclusive', () => {
@@ -78,7 +86,9 @@ describe('Monitor owns the live score and the proposal comparison', () => {
     const live = readFileSync(new URL('./monitorLiveScore.ts', import.meta.url), 'utf8');
     // Strip comments: the docblock deliberately explains where freshness lives.
     const code = live.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
-    expect(code).not.toMatch(/awaitingRecalculation|acknowledgeRecalculation|markRecalculationRequired/);
+    expect(code).not.toMatch(
+      /awaitingRecalculation|acknowledgeRecalculation|markRecalculationRequired/,
+    );
     expect(code).not.toMatch(/productionReadiness|savedRecipeId|dirty/);
     expect(code).not.toMatch(/recipeProfileStore|useRecipeStore|constraintStudioStore/);
   });

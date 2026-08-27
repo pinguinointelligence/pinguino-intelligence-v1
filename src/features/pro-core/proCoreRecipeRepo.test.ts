@@ -4,6 +4,7 @@ import { productBehaviorTestSnapshots } from '@/features/product-intelligence/pr
 import { recipeCompositionFromState } from '@/features/recipe-composition/recipeCompositionPersistence';
 import { buildCanonicalNewRecipeStarter } from '@/features/recipes/newRecipeStarter';
 import type { VisibleProductType } from '@/features/studio/productType';
+import { buildCurrentRecipeResultAuthority } from '@/features/pro-workbench/currentRecipeResultAuthority';
 import type { RecipeCapabilities } from './recipeContracts';
 import { __resetDevRecipesRepository, resolveRecipesRepository } from './proCoreRecipeRepo';
 
@@ -108,6 +109,26 @@ describe('resolveRecipesRepository — DEV local-mode availability', () => {
           behaviorBindingVersion: 'test-v1',
         });
       }
+      const beforeAuthority = buildCurrentRecipeResultAuthority({
+        recipe: recipeInput,
+        toppings: productComposition.toppings,
+        snapshots,
+        draftRevision: 1,
+        awaitingRecalculation: false,
+        loading: false,
+      });
+      const reopenedAuthority = buildCurrentRecipeResultAuthority({
+        recipe: reopened!.recipeInput,
+        toppings: reopened!.productComposition?.toppings ?? [],
+        snapshots: reopened!.productComposition?.behaviorSnapshots ?? {},
+        draftRevision: 1,
+        awaitingRecalculation: false,
+        loading: false,
+      });
+      expect(reopenedAuthority.ready).toBe(true);
+      expect(reopenedAuthority.recipeFingerprint).toBe(beforeAuthority.recipeFingerprint);
+      expect(reopenedAuthority.behaviorFingerprint).toBe(beforeAuthority.behaviorFingerprint);
+      expect(reopenedAuthority.resultReference).toBe(beforeAuthority.resultReference);
       if (profile === 'vegan') {
         expect(
           reopened?.productComposition?.behaviorSnapshots?.['new-recipe-2-PI-ING-000163'],
