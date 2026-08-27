@@ -111,7 +111,17 @@ Blocker groups overlap because one product may have more than one real readiness
 
 - Exact Product Accuracy V2 ingest-authority migration applied to staging and registered as migration `20260827230000`.
 - `catalog-submit` Edge deployed to staging project `tunabqqrwabacxjcxxkz`.
-- Full app deployment / served acceptance: **PENDING**.
+- App deployment `dpl_EfhcQXbacH5Ra4mXmEmp6nvnDgf9` is **READY** and promoted to `https://staging.pinguinoai.com`; served source SHA is `ec30db1fdb6e35e032586b3bb91b13d004ee44ea` on ref `staging`.
+- HTTP smoke: `https://staging.pinguinoai.com/products` returned 200 after promotion.
+
+### Served / runtime sample proof
+
+- READY base + exact canonical reuse + Mapper sample: in the authenticated served Catalog, global-market search for exact EAN `5900120025578` returned exactly one product, `PR-ING-007158` — “Masło Ekstra bez laktozy Mleczna Dolina 82% tłuszczu; bez laktozy”. Its detail showed `Gotowy`, EAN `5900120025578`, use `Receptura`, family `dairy`, market `GLOBAL`, and the recipe-picker entry point. The live two-pass runner independently returned `BASE_READY`, Product Accuracy 96, donor `PI-ING-000176` at 0.94, and exact canonical reuse on both passes.
+- TOPPING_ONLY sample: `PR-ING-007164` (Prince Polo) resolved on live staging with Product Accuracy 89, `TOPPING_READY`, donor `PI-ING-002068` at 0.872, no critical blocker, and final status `TOPPING_ONLY`; base-only physics were not required.
+- NOT READY sample: `PR-ING-007150` (LIME) resolved on live staging as `BLOCKED`, with the exact fail-closed reasons `INGREDIENTS_EVIDENCE_REQUIRED`, `TECHNICAL_DOSAGE_AUTHORITY_REQUIRED`, and `technical_or_dosage_product`.
+- For every pilot PR, the live runner verified a current product-owned version and ProductBehavior binding, no PI runtime binding, and `matched_basement_id = null`. The second pass created no product, version, or binding.
+- Catalog visibility and the READY detail were exercised in the served UI. Product picker, recipe/Engine, save/reopen, Production, and Nutrition/Label compatibility were covered by the green shared regression suite; this pilot did not create a disposable served recipe or Production run merely to duplicate those accepted flows.
+- Public production remained deployment `dpl_H141PZ7nuY6TCAxXkHdp1QEDQrgB`, ref `main`, SHA `4dfb097d14fe91c2cc7bd67e02265e6ac41123a2`, and returned HTTP 200. Neither public production nor `main` changed.
 
 ## Completion ledger
 
@@ -122,7 +132,7 @@ Blocker groups overlap because one product may have more than one real readiness
 5. Exact commands: recorded above and in the final owner report.
 6. Test results: focused, live staging pilot, isolated regression, Production Rescue parity, and full suite green.
 7. Accepted flows retested: Scanner contract tests, exact EAN reuse, Product Accuracy/readiness, Mapper immutability, ProductBehavior and Production Rescue parity.
-8. Deployment environment: staging project `tunabqqrwabacxjcxxkz`; public production is out of scope and untouched.
-9. Remaining incomplete items: staging app deployment and served runtime checks.
+8. Deployment environment: staging Supabase project `tunabqqrwabacxjcxxkz`; Vercel deployment `dpl_EfhcQXbacH5Ra4mXmEmp6nvnDgf9`, source SHA `ec30db1fdb6e35e032586b3bb91b13d004ee44ea`, promoted and served at `staging.pinguinoai.com`. Public production is unchanged.
+9. Remaining incomplete items: the remaining 711 rows were deliberately not processed. No full-731 import was started. A new disposable served recipe/Production record was not created; those downstream contracts are covered by the shared regression suite, while the served Catalog and live staging ProductBehavior/readiness paths were exercised directly.
 10. External blockers/actions: none at this revision.
-11. Git state: branch `codex/intimport-product-intelligence-pilot`; final commit/status recorded after acceptance.
+11. Git state: branch `codex/intimport-product-intelligence-pilot`; implementation/deployment SHA `ec30db1fdb6e35e032586b3bb91b13d004ee44ea`; final documentation commit and clean parity with `origin/staging` are recorded after this ledger update.
