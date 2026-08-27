@@ -1,88 +1,48 @@
 /**
- * „I changed something here" — the subtle per-line change marker (owner
- * 2026-08-23, mobile Pro UX §8).
+ * One unambiguous ingredient-row marker: the line genuinely differs between
+ * the before and after vectors of the latest Recalculate result.
  *
- * PRESENTATION ONLY. This module never touches the Engine, the recipe vector,
- * pricing, persistence or the dirty/version semantics: it compares the values
- * ALREADY on screen against a baseline captured at the last accepted state and
- * reports which line ids differ.
- *
- * WHAT IT COMPARES — and, just as importantly, what it does not.
- *
- * The signature is the RECIPE VECTOR of a line and nothing else: which product
- * is on it, how many grams (and therefore its %), and its exclusive lock, which
- * is where the Main crown lives (`lock_type === 'main'`).
- *
- * It deliberately excludes every value that does NOT belong to the recipe's
- * accepted state — the owner's „MOJA CENA", the required/unavailable UX flags.
- * That is the owner's ruling (2026-08-24: „recipe-state only"), and it is also
- * what makes the marker sound: those values arrive ASYNCHRONOUSLY. Served QA
- * caught the same class of failure three separate times through three different
- * doors — a module switch, a first paint before prices landed, and a
- * signature-format migration on a dirty draft — every one of them because a
- * server-hydrated field sat in the signature. A field that can change without
- * the user touching anything cannot be evidence that the user touched
- * something.
+ * PRESENTATION ONLY. The result never enters Engine math, recipe persistence,
+ * pricing, dirty/version semantics, Preview validation or Apply authorization.
  */
-
-export interface IngredientChangeInput {
-  lineId: string;
-  /** Identity of the product on the line; a substitution is a change too. */
+export interface RecalculationMarkerLine {
+  id: string;
   ingredientId: string;
   plannedGrams: number;
-  /** The exclusive lock — this is also where the Main crown lives. */
   lockType: string;
 }
 
 /**
- * One stable, comparable string per line, compared at THE PRECISION THE ROW
- * ACTUALLY SHOWS (one decimal for grams, matching the list row and the stepper).
- *
- * This is not a detail. A percentage edit rebalances the other lines and can
- * leave a residue far below the displayed precision — served staging QA showed
- * SUCROSE and INULIN marked as changed while both rows still displayed exactly
- * `135 g` and `121 g`. A marker the owner cannot explain from the numbers in
- * front of them is worse than no marker, so the comparison rounds the same way
- * the display does. Rounding stays display-only: nothing here re-enters the
- * Engine, the recipe vector or any saved value.
+ * Recipe rows display one decimal gram. Residue at or below half that display
+ * step is not visible to the owner and therefore cannot truthfully raise a
+ * marker. This remains display-only; no value is rounded back into the recipe.
  */
-export function ingredientChangeSignature(input: IngredientChangeInput): string {
-  return [input.ingredientId, markerGramsToken(input.plannedGrams), input.lockType].join('|');
-}
+export const RECALCULATION_MARKER_EPSILON_GRAMS = 0.05;
 
 /**
- * The gram token the signature compares — rounded by THE SAME MECHANISM the row
- * renders with (`Intl`, one fraction digit), not by `toFixed`.
+ * IDs of rows genuinely changed by ONE Recalculate result.
  *
- * That distinction is not academic. `Intl` rounds the shortest decimal
- * representation while `toFixed` rounds the exact binary value, so they
- * disagree exactly on the boundaries: 101.85 renders as `101,9 g` but
- * `toFixed(1)` yields `101.8`. A precision sweep across 400 rebalance-shaped
- * values caught it. With the two disagreeing, a line could render identically
- * and still sign differently — the very false marker this rounding exists to
- * prevent. Locale only changes the separator, never the rounding, so the token
- * is pinned to `en-US` while the row keeps `pl-PL`.
+ * The result follows AFTER order because only those rows can be rendered. An
+ * added row is a change; a removed row is absent and cannot receive a marker.
+ * Product identity and lock changes remain material even when grams are equal.
  */
-export function markerGramsToken(grams: number): string {
-  return grams.toLocaleString('en-US', { maximumFractionDigits: 1, useGrouping: false });
-}
-
-export type IngredientSignatureMap = Readonly<Record<string, string>>;
-
-/**
- * Lines whose current signature differs from the captured baseline. A line with
- * NO baseline entry counts as changed only when a baseline exists at all — on a
- * cold start there is nothing to compare against and nothing may be marked.
- */
-export function changedIngredientLineIds(
-  current: IngredientSignatureMap,
-  baseline: IngredientSignatureMap,
+export function recalculatedIngredientLineIds(
+  before: readonly RecalculationMarkerLine[],
+  after: readonly RecalculationMarkerLine[],
+  epsilonGrams = RECALCULATION_MARKER_EPSILON_GRAMS,
 ): ReadonlySet<string> {
+  const beforeById = new Map(before.map((line) => [line.id, line] as const));
   const changed = new Set<string>();
-  const baselineKnown = Object.keys(baseline).length > 0;
-  if (!baselineKnown) return changed;
-  for (const [lineId, signature] of Object.entries(current)) {
-    if (baseline[lineId] !== signature) changed.add(lineId);
+  for (const next of after) {
+    const previous = beforeById.get(next.id);
+    if (
+      previous === undefined ||
+      previous.ingredientId !== next.ingredientId ||
+      previous.lockType !== next.lockType ||
+      Math.abs(previous.plannedGrams - next.plannedGrams) > epsilonGrams
+    ) {
+      changed.add(next.id);
+    }
   }
   return changed;
 }

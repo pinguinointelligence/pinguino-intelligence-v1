@@ -47,19 +47,16 @@ function HeatInformationCard({ production }: { production: ProductionWorkspaceVi
   ];
   if (products.length === 0) return null;
   const acknowledged = production.heatInformationAcknowledged;
+  if (acknowledged) return null;
   return (
     <section
-      className={`rounded-[12px] border px-3 py-3 text-ink ${
-        acknowledged
-          ? 'border-status-ideal/30 bg-status-ideal/[0.07]'
-          : 'border-[#d9c49a] bg-[#fbf8f1]'
-      }`}
+      className="rounded-[12px] border border-[#d9c49a] bg-[#fbf8f1] px-3 py-3 text-ink"
       role="status"
       data-testid="production-heat-information"
       data-acknowledged={acknowledged ? 'true' : 'false'}
     >
       <p className="text-xs font-semibold leading-relaxed">
-        {acknowledged ? 'Informacja potwierdzona' : 'Pamiętaj o obróbce'}
+        Pamiętaj o obróbce
       </p>
       <p className="mt-1 text-[11px] leading-relaxed text-stone-600">
         Dla poniższych składników wskazana jest obróbka na ciepło:
@@ -69,17 +66,15 @@ function HeatInformationCard({ production }: { production: ProductionWorkspaceVi
           <li key={productName}>{productName}</li>
         ))}
       </ul>
-      {acknowledged ? null : (
-        <button
-          type="button"
-          onClick={() => void production.acknowledgeHeatInformation()}
-          disabled={production.persistenceBusy}
-          className="pro-focus-ring mt-3 min-h-11 rounded-[12px] bg-ink px-4 py-2 text-xs font-semibold text-white shadow-pro-sm disabled:cursor-wait disabled:opacity-60"
-          data-testid="acknowledge-production-heat-information"
-        >
-          OK
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={() => void production.acknowledgeHeatInformation()}
+        disabled={production.persistenceBusy}
+        className="pro-focus-ring mt-3 min-h-11 rounded-[12px] bg-ink px-4 py-2 text-xs font-semibold text-white shadow-pro-sm disabled:cursor-wait disabled:opacity-60"
+        data-testid="acknowledge-production-heat-information"
+      >
+        OK
+      </button>
     </section>
   );
 }
@@ -318,9 +313,6 @@ export function ProductionCockpit({
               {production.sessionStartError}
             </p>
           ) : null}
-          <p className="mt-2 text-[11px] leading-relaxed text-stone-500">
-            Start zamrozi dokładny plan, wersję produktu i pełnogramową gramaturę tej partii.
-          </p>
         </section>
       </div>
     );
@@ -369,6 +361,21 @@ export function ProductionCockpit({
               </dd>
             </div>
           </dl>
+          {(production.heatInformation?.length ?? 0) > 0 ? (
+            <p
+              className="mt-3 text-[11px] leading-relaxed text-stone-600"
+              data-testid="production-completed-process-reminder"
+            >
+              <strong className="font-semibold text-ink">Obróbka na ciepło:</strong>{' '}
+              {[
+                ...new Set(
+                  production.heatInformation
+                    .map((detail) => detail.productName?.trim())
+                    .filter((name): name is string => Boolean(name)),
+                ),
+              ].join(', ')}
+            </p>
+          ) : null}
           {snapshot.productComposition.toppings.some((item) =>
             isCatalogLabelToppingIngredient(item.ingredient),
           ) ? (
@@ -523,7 +530,9 @@ export function ProductionCockpit({
               : `Pozostały ${toppingRemaining} toppingi`
             : session.addonLines.length > 0
               ? 'Zakończ produkcję'
-              : 'Zakończ ważenie bazy';
+            : 'Zakończ ważenie bazy';
+  const progressPercent =
+    progress.totalCount > 0 ? (progress.confirmedCount / progress.totalCount) * 100 : 0;
 
   return (
     <div className="pro-scroll-safe space-y-3 p-3 text-ink" data-testid="production-cockpit">
@@ -536,8 +545,40 @@ export function ProductionCockpit({
           {production.persistenceError}
         </p>
       ) : null}
-      <section className="border-b border-ink/8 px-1 pb-3" data-testid="production-batch-state">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-stone-500">
+      <section
+        className="rounded-[14px] border border-ink/10 bg-white p-3 shadow-pro-e0"
+        data-testid="production-batch-state"
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-ink/8 pb-3">
+          <div className="min-w-0 flex-1" data-testid="production-workspace-progress">
+            <strong className="block font-mono text-sm font-semibold tabular-nums text-ink">
+              {progress.confirmedCount} / {progress.totalCount} składników
+            </strong>
+            <div
+              className="mt-1.5 h-1.5 max-w-48 overflow-hidden rounded-full bg-ink/8"
+              role="progressbar"
+              aria-label="Postęp ważenia składników"
+              aria-valuemin={0}
+              aria-valuemax={progress.totalCount}
+              aria-valuenow={progress.confirmedCount}
+            >
+              <span
+                className="block h-full rounded-full bg-status-ideal transition-[width]"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          </div>
+          <span className="flex shrink-0 items-center gap-2 text-left">
+            <ScoreRing score={score.score} testId="production-score-ring" />
+            <span className="hidden sm:block">
+              <span className="block text-[11px] font-semibold text-ink">Przewidywany wynik</span>
+              <span className="mt-0.5 block max-w-32 text-[10px] leading-snug text-stone-600">
+                {score.label}
+              </span>
+            </span>
+          </span>
+        </div>
+        <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.08em] text-stone-500">
           Bieżąca partia
         </p>
         {/* §22/§23 LIVE MONITOR — physical truth first, plan second, and the
@@ -871,7 +912,6 @@ export function ProductionCockpit({
           )
         : null}
 
-      <HeatInformationCard production={production} />
       <DegassingCard production={production} />
 
       {session.stage === 'addons' && session.addonLines.length > 0 ? (

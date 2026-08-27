@@ -182,12 +182,13 @@ describe('recipe and production table modes', () => {
     expect(html).not.toContain('Faktycznie');
   });
 
-  it('Production replaces builder controls with plan, actual, difference and status', () => {
+  it('Production replaces builder controls with one weighing control and SR labels', () => {
     const html = renderIngredients('production');
-    for (const label of ['Składnik / status', 'Plan', 'Faktycznie', 'Odchylenie'])
+    for (const label of ['Składnik', 'Plan', 'Faktycznie', 'Odchylenie'])
       expect(html).toContain(label);
     expect(html).toContain('data-testid="production-table-header"');
     expect(html).toContain('data-table-family="recipe"');
+    expect(html).not.toContain('Składnik / status');
     expect(html).not.toContain('Szukaj składników');
     expect(html).not.toContain('Cena/kg');
     expect(html).not.toContain('data-readiness="W PRZYGOTOWANIU"');
@@ -353,9 +354,10 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     expect(dock).not.toContain('production.score');
     // §51 SCORE TRUTH — Production presents the live forecast beside the
     // physical vessel state, while the mass cards name plan and vessel separately.
-    expect(productionHeader).toContain('Przewidywany wynik');
-    expect(productionHeader).toContain('ScoreRing');
-    expect(production).not.toContain('production-score-ring');
+    expect(production).toContain('Przewidywany wynik');
+    expect(production).toContain('ScoreRing');
+    expect(production).toContain('production-score-ring');
+    expect(productionHeader).not.toContain('ScoreRing');
     expect(production).toContain('W naczyniu');
     expect(production).toContain('>Cel</dt>');
     expect(production).not.toContain('Przewidywane dopasowanie partii');

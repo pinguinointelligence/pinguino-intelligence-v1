@@ -37,10 +37,7 @@ import { IngredientCategoryIcon } from './IngredientCategoryIcon';
 import { CarbonationBubbles } from '@/components/product/CarbonationBubbles';
 import { ingredientCategorySymbolFor } from './ingredientCategorySymbols';
 import { categoryLabelPl } from './ingredientPresentation';
-import {
-  ProductionActualControl,
-  ProductionConfirmationAction,
-} from '@/features/production-workspace/ProductionActualControl';
+import { ProductionActualControl } from '@/features/production-workspace/ProductionActualControl';
 import { productProcessPl, productRecommendedDosagePl } from '@/features/product-intelligence';
 import { useRecipeStore } from '@/stores/recipeStore';
 
@@ -63,7 +60,8 @@ export const ROW_GRID =
   'grid grid-cols-1 items-center gap-x-2 gap-y-3 md:grid-cols-[minmax(300px,1fr)_142px_150px_96px_28px] 2xl:grid-cols-[minmax(400px,1fr)_142px_150px_96px_28px]';
 export const COMPACT_ROW_GRID =
   'grid grid-cols-1 items-center gap-x-2 gap-y-3 md:grid-cols-[minmax(300px,1fr)_142px_150px_96px_28px]';
-export const PRODUCTION_ROW_GRID = ROW_GRID;
+export const PRODUCTION_ROW_GRID =
+  'grid grid-cols-1 items-center gap-x-4 gap-y-2 md:grid-cols-[minmax(260px,1fr)_minmax(226px,300px)]';
 
 export interface IngredientRowActions {
   setPlannedGrams: (lineId: string, grams: number) => void;
@@ -483,7 +481,7 @@ function RecipeRow({
    * envelope. The owner may select it; PINGÜINO will not resize it by itself. */
   mainUserHeld?: boolean;
   compact: boolean;
-  /** Presentation-only §8 marker: this line differs from the last clean state. */
+  /** Presentation-only §8 marker: changed by the latest Recalculate result. */
   changed: boolean;
 }) {
   const unit = 'g' as const;
@@ -1036,6 +1034,9 @@ function ProductionRow({
       : line.draftActualEdited
         ? 'DO POTWIERDZENIA'
         : 'DO DODANIA';
+  const showPhysicalStatus =
+    correctionMode || line.confirmed || line.physicalAddedGrams > 0 || line.draftActualEdited;
+  const showDeviationContext = !exact || activeTopUp;
   const confirmActual = () => {
     if (line.confirmed) {
       actions.reopenRecord(line.lineId);
@@ -1088,32 +1089,36 @@ function ProductionRow({
               ) : null}
             </span>
           ) : null}
+          {showPhysicalStatus ? (
+            <span
+              className={cn(
+                'mt-1 inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] leading-tight font-semibold tracking-[0.03em]',
+                correctionMode
+                  ? 'border-attention/30 bg-pro-amber text-attention'
+                  : physicalStatus === 'DODANO'
+                    ? 'border-status-ideal/25 bg-pro-sage text-status-ideal'
+                    : 'border-ink/10 bg-stone-50 text-stone-600',
+              )}
+              data-testid={`production-mode-${line.lineId}`}
+              role="status"
+              aria-live="polite"
+            >
+              {physicalStatus}
+            </span>
+          ) : null}
+        </div>
+        <div className="min-w-0 md:justify-self-end" data-production-cell="actual">
+          <span className="sr-only" data-production-cell="planned">
+            Planowo {formatProductionMassG(line.targetGrams)} gramów
+          </span>
           <span
-            className={cn(
-              'mt-1 inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] leading-tight font-semibold tracking-[0.03em]',
-              correctionMode
-                ? 'border-attention/30 bg-pro-amber text-attention'
-                : physicalStatus === 'DODANO'
-                  ? 'border-status-ideal/25 bg-pro-sage text-status-ideal'
-                  : 'border-ink/10 bg-stone-50 text-stone-600',
-            )}
-            data-testid={`production-mode-${line.lineId}`}
-            role="status"
-            aria-live="polite"
+            className="sr-only"
+            data-production-cell="deviation"
+            data-production-difference={exact ? 'exact' : difference > 0 ? 'over' : 'under'}
           >
-            {physicalStatus}
+            Planowo {formatProductionMassG(line.targetGrams)} gramów; faktycznie{' '}
+            {formatProductionMassG(effectiveCumulativeValue)} gramów
           </span>
-        </div>
-        <div className="min-w-0 px-1 text-left md:text-right" data-production-cell="planned">
-          <span className="block text-[10px] font-semibold text-stone-600 md:block">
-            {activeTopUp ? 'Docelowo' : 'Plan'}
-          </span>
-          <strong className="block font-mono text-sm font-semibold tabular-nums text-ink">
-            {formatProductionMassG(line.targetGrams)} g
-          </strong>
-        </div>
-        <div>
-          <FieldLabel>{activeTopUp ? 'Dodaj teraz' : 'Faktycznie'}</FieldLabel>
           <ProductionActualControl
             lineId={line.lineId}
             ingredientName={item.ingredient.name}
@@ -1123,12 +1128,43 @@ function ProductionRow({
             confirmed={line.confirmed}
             correctionMode={correctionMode}
             topUpMode={activeTopUp}
+            settled={actions.settled}
             disabled={actions.disabled}
             onChange={setValue}
             onConfirm={confirmActual}
-            describedBy={correctionMode ? `production-correction-${line.lineId}` : undefined}
-            separateAction
+            describedBy={
+              correctionMode
+                ? `production-correction-${line.lineId}`
+                : showDeviationContext
+                  ? `production-deviation-${line.lineId}`
+                  : undefined
+            }
           />
+          {showDeviationContext ? (
+            <div
+              className="mt-1.5 flex w-full items-baseline justify-between gap-3 text-[11px] leading-snug text-stone-500"
+              data-testid={`production-difference-${line.lineId}`}
+              data-production-cell="deviation"
+              id={`production-deviation-${line.lineId}`}
+              role="status"
+              aria-live="polite"
+              aria-label={
+                activeTopUp && exact
+                  ? `Docelowo ${formatProductionMassG(line.targetGrams)} gramów`
+                  : `Planowo ${formatProductionMassG(line.targetGrams)} gramów; ${formatProductionMassG(Math.abs(difference))} gramów ${difference > 0 ? 'więcej' : 'mniej'}`
+              }
+            >
+              <span>
+                {activeTopUp ? 'Docelowo' : 'Planowo'}: {formatProductionMassG(line.targetGrams)} g
+              </span>
+              {exact ? null : (
+                <strong className="font-mono font-semibold tabular-nums text-attention">
+                  {formatProductionMassG(Math.abs(difference))} g{' '}
+                  {difference > 0 ? 'więcej' : 'mniej'}
+                </strong>
+              )}
+            </div>
+          ) : null}
           {correctionMode ? (
             <p
               className="mt-1 text-xs leading-snug text-attention"
@@ -1141,34 +1177,6 @@ function ProductionRow({
               błędnie.
             </p>
           ) : null}
-        </div>
-        <div
-          className={cn('min-w-0 px-1 md:text-right', exact ? 'text-stone-600' : 'text-attention')}
-          data-testid={`production-difference-${line.lineId}`}
-          data-production-cell="deviation"
-          data-production-difference={exact ? 'exact' : difference > 0 ? 'over' : 'under'}
-          role="status"
-          aria-live="polite"
-          aria-label={`Różnica względem planu: ${difference > 0 ? 'plus ' : difference < 0 ? 'minus ' : ''}${formatProductionMassG(Math.abs(difference))} gramów${exact ? ', zgodnie z planem' : difference > 0 ? ', powyżej planu' : ', poniżej planu'}`}
-        >
-          <FieldLabel>Odchylenie</FieldLabel>
-          <strong className="block font-mono text-sm tabular-nums">
-            {difference > 0 ? '+' : ''}
-            {formatProductionMassG(difference)} g
-            {!exact ? ` ${difference > 0 ? 'ponad plan' : 'poniżej planu'}` : ''}
-          </strong>
-        </div>
-        <div className="flex justify-start md:justify-end" data-production-cell="action">
-          <ProductionConfirmationAction
-            ingredientName={item.ingredient.name}
-            confirmed={line.confirmed}
-            correctionMode={correctionMode}
-            topUpMode={activeTopUp}
-            disabled={actions.disabled}
-            settled={actions.settled}
-            onConfirm={confirmActual}
-            describedBy={correctionMode ? `production-correction-${line.lineId}` : undefined}
-          />
         </div>
       </div>
 
@@ -1273,7 +1281,7 @@ export function IngredientRow({
   /** GLOBAL MAIN AUTHORITY §5/§6: a semantically valid Main with no approved
    * envelope. The owner may select it; PINGÜINO will not resize it by itself. */
   mainUserHeld?: boolean;
-  /** §8 change marker — presentation only, computed from the clean-state baseline. */
+  /** §8 change marker — presentation only, from the latest Recalculate diff. */
   changed?: boolean;
 }) {
   return (
