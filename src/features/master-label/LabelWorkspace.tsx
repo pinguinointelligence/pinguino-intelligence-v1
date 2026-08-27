@@ -2391,8 +2391,12 @@ function RunLabelEditor({
         <Button variant="ghost" onClick={onClose}>
           Anuluj
         </Button>
-        <Button disabled={draftPreflight.missingCount > 0} onClick={() => void onSave(draft)}>
-          Zastosuj
+        <Button
+          data-testid="show-label-preview"
+          disabled={draftPreflight.missingCount > 0}
+          onClick={() => void onSave(draft)}
+        >
+          Pokaż etykietę
         </Button>
       </footer>
     </Card>

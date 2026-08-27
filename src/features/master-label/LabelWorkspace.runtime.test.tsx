@@ -19,7 +19,7 @@ import {
 } from '@/services/labels/labelRepository';
 import { useAuthStore } from '@/stores/authStore';
 import { LabelWorkspace } from './LabelWorkspace';
-import { createCompleteLabel } from './masterLabelTestFixture';
+import { COMPLETE_LABEL_NUTRITION, createCompleteLabel } from './masterLabelTestFixture';
 
 function completedSnapshot() {
   const input: RecipeInput = {
@@ -200,7 +200,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
       workspace.querySelector<HTMLButtonElement>('[data-testid="label-workspace-dot-label"]')
         ?.disabled,
     ).toBe(true);
-    expect((button('Zastosuj') as HTMLButtonElement).disabled).toBe(true);
+    expect((button('Pokaż etykietę') as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('shows one market-driven preview with ACTUAL overview outside the print boundary', async () => {
@@ -278,7 +278,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
     );
     await act(async () => uk!.click());
     const apply = [...editor!.querySelectorAll('button')].find(
-      (button) => button.textContent === 'Zastosuj',
+      (button) => button.textContent === 'Pokaż etykietę',
     );
     expect((apply as HTMLButtonElement).disabled).toBe(true);
     expect(
@@ -312,7 +312,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
     await act(async () => originToggle.click());
 
     const apply = [...editor.querySelectorAll('button')].find(
-      (button) => button.textContent === 'Zastosuj',
+      (button) => button.textContent === 'Pokaż etykietę',
     )!;
     expect((apply as HTMLButtonElement).disabled).toBe(true);
     expect((await repository.getAccountProfile())?.enabledOptionalFields).toContain('origin');
@@ -392,6 +392,107 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect([...missingFields()].map((field) => field.getAttribute('data-label-field'))).toEqual([
       'market_nutrition',
     ]);
+  });
+
+  it('opens Step 3 from the primary CTA and preserves valid settings on direct return', async () => {
+    const repository = inMemoryLabelRepository('owner-label-workspace');
+    const baseProfile = defaultAccountLabelProfile('owner-label-workspace');
+    await repository.saveAccountProfile({
+      ...baseProfile,
+      market: 'WORLD',
+      uiLanguage: 'en',
+      labelLanguages: ['en'],
+      businessName: 'Gellatti Laboratory',
+      enabledOptionalFields: [],
+      facilityDefaults: {
+        ...baseProfile.facilityDefaults,
+        operatorName: 'Gellatti Laboratory',
+        address: '1 Test Street',
+        countryCode: 'ES',
+      },
+      presentation: {
+        ...baseProfile.presentation,
+        widthMm: 102,
+        heightMm: 152,
+        printer: {
+          ...baseProfile.presentation.printer,
+          widthMm: 102,
+          heightMm: 152,
+        },
+      },
+    });
+    const snapshot = completedSnapshot();
+    const snapshotWithCompleteNutrition = {
+      ...snapshot,
+      finalProduct: {
+        ...snapshot.finalProduct,
+        labelNutritionPer100g: COMPLETE_LABEL_NUTRITION,
+      },
+    };
+    await act(async () => {
+      root.render(
+        <LabelWorkspace
+          snapshot={snapshotWithCompleteNutrition}
+          repository={repository}
+          initialView="settings"
+        />,
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    let settings = host.querySelector('[data-testid="label-settings-view"]')!;
+    const fillRequired = async (field: string, value: string) => {
+      const input = settings.querySelector<HTMLInputElement>(
+        `[data-label-field="${field}"] input`,
+      )!;
+      await act(async () => setInputValue(input, value));
+    };
+    await fillRequired('net_quantity', '500');
+    await fillRequired('storage', 'Keep frozen');
+    await act(async () =>
+      settings.querySelector<HTMLInputElement>('[data-label-field="allergens"] input')!.click(),
+    );
+    const acknowledgement = [
+      ...settings.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'),
+    ].find((input) => input.parentElement?.textContent?.includes('Sprawdziłem dane etykiety'))!;
+    await act(async () => acknowledgement.click());
+
+    const showLabel = button('Pokaż etykietę') as HTMLButtonElement;
+    expect(
+      [...settings.querySelectorAll('[data-missing-required="true"]')].map((field) =>
+        field.getAttribute('data-label-field'),
+      ),
+    ).toEqual([]);
+    expect(showLabel.disabled).toBe(false);
+    await act(async () => {
+      showLabel.click();
+      await Promise.resolve();
+    });
+
+    const workspace = host.querySelector('[data-testid="label-workspace"]')!;
+    expect(workspace.getAttribute('data-active-label-view')).toBe('label');
+    expect(workspace.querySelector('[data-testid="label-consumer-preview"]')).not.toBeNull();
+    expect(button('Pobierz PDF')).not.toBeUndefined();
+    expect((button('Drukuj') as HTMLButtonElement).disabled).toBe(false);
+
+    await act(async () => button('Ustawienia')!.click());
+    settings = host.querySelector('[data-testid="label-settings-view"]')!;
+    expect(
+      settings.querySelector<HTMLInputElement>('[data-label-field="net_quantity"] input')?.value,
+    ).toBe('500');
+    expect(
+      settings.querySelector<HTMLInputElement>('[data-label-field="storage"] input')?.value,
+    ).toBe('Keep frozen');
+    expect(
+      settings.querySelector<HTMLInputElement>('[data-label-field="allergens"] input')?.checked,
+    ).toBe(true);
+    const labelStep = workspace.querySelector<HTMLButtonElement>(
+      '[data-testid="label-workspace-dot-label"]',
+    )!;
+    expect(labelStep.disabled).toBe(false);
+    await act(async () => labelStep.click());
+    expect(workspace.getAttribute('data-active-label-view')).toBe('label');
   });
 
   it('uses accessible dots and Cancel returns without applying the draft', async () => {
