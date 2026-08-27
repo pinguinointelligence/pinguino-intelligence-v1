@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { EngineIngredient, RecipeInput } from '@/engine';
-import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
+import type {
+  ProductBehaviorSnapshot,
+  ServerResolvedProductBehavior,
+} from '@/features/product-intelligence';
 import type { RecipeToppingItem } from '@/features/recipe-composition/recipeCompositionPersistence';
 import { buildCanonicalNewRecipeStarter } from '@/features/recipes/newRecipeStarter';
 
@@ -14,6 +17,7 @@ vi.mock('@/lib/supabase/client', () => ({
 
 import {
   buildRecipeBehaviorServerValidationGroups,
+  resolveLegacyRecipeBehaviorForSelection,
   resolveRecipeProposalBehaviorSnapshots,
   resolveProductBehaviorForSelection,
   validateRecipeBehaviorOnServer,
@@ -630,6 +634,142 @@ describe('recipe behavior server validation', () => {
     });
   });
 
+  it('keeps the current BASE_READY Cacao version eligible as Standard and rechecks Crown independently', async () => {
+    const productId = '55bd0ed2-2d13-4c6b-9020-5c563188f1ef';
+    const productVersionId = '6a463055-ac6d-41d1-8fbb-01e662ba943b';
+    const behaviorBindingId = '639f48f5-9d1c-4948-86a0-02ed20205203';
+    const cacaoLineId = 'cacao-line';
+    const cacaoRecipe: RecipeInput = {
+      ...recipe,
+      items: [
+        {
+          ...recipe.items[1]!,
+          id: cacaoLineId,
+          ingredient: {
+            ...recipe.items[1]!.ingredient,
+            id: 'CA-ING-007141',
+            canonical_ingredient_id: 'CA-ING-007141',
+            private_product_id: `catalog:${productId}:version:${productVersionId}`,
+            identity_provenance: 'private_product',
+            name: 'Cacao Puro',
+          },
+          planned_grams: 30,
+          lock_type: 'unlocked',
+        },
+      ],
+    };
+    const staleCurrent: ProductBehaviorSnapshot = {
+      ...snapshot(cacaoLineId, 'PI-ING-001313'),
+      resolutionState: 'REVALIDATION_REQUIRED',
+      source: 'manual',
+      productId,
+      productVersionId,
+      behaviorBindingId,
+      behaviorBindingVersion: 'product-behavior-layered-v2-64f3abe0346d1123',
+      mapperIngredientId: null,
+      technicalAuthority: 'none',
+      mainClassification: 'MAIN_BLOCKED_POLICY',
+      mainCapability: 'MAIN_CAPABLE_UNCALIBRATED',
+      mainAuthority: 'USER_HELD',
+      mainCalibrationLevel: 'NONE',
+      resolutionContext: {
+        accountId: 'account-1',
+        productProfile: 'milk_gelato',
+        temperatureC: -12,
+        mode: 'optimal',
+        processScope: 'BASE_FORMULATION',
+        requestedRole: 'STANDARD',
+        module: 'BASE_RECIPE',
+      },
+    };
+    const resolveSelection = vi.fn(
+      async ({
+        entity,
+        context,
+      }: Parameters<
+        typeof resolveProductBehaviorForSelection
+      >[0]): Promise<ServerResolvedProductBehavior> => ({
+        ...staleCurrent,
+        schemaVersion: 1,
+        resolverVersion: 'global-main-capability-v1',
+        entityKind: entity.entityKind,
+        catalogStatus: 'verified',
+        provenance: 'customer_added_admin_canonicalization_v1',
+        mapperIngredientId: null,
+        familyId: 'chocolate_cocoa',
+        subfamilyId: null,
+        formId: 'cocoa_powder',
+        behaviorRole: 'MAIN_ALLOWED',
+        mainEligibility: 'MAIN_BLOCKED_POLICY',
+        veganEligibility: 'verified',
+        proteinBehavior: 'neutral',
+        processBehavior: {},
+        approvedLiquidDairyCarrier: false,
+        context: { ...context },
+        module: context.module,
+        state: 'eligible',
+        moduleEligibility: {
+          BASE_RECIPE: 'eligible',
+          OPTIMAL: 'eligible',
+          SAVE: 'eligible',
+          PRODUCTION: 'eligible',
+          MAIN: 'eligible',
+        },
+        mainPolicy: null,
+        warnings: [],
+        blockReasons: ['profile_main_policy_missing', 'main_user_held_no_calibration'],
+      }),
+    );
+
+    const standard = await resolveRecipeProposalBehaviorSnapshots({
+      recipe: cacaoRecipe,
+      snapshots: { [cacaoLineId]: staleCurrent },
+      accountId: 'account-1',
+      module: 'OPTIMAL',
+      resolveSelection,
+    });
+
+    expect(standard.unresolvedLineIds).toEqual([]);
+    expect(resolveSelection).toHaveBeenLastCalledWith({
+      entity: { entityKind: 'catalog_product_version', entityId: productVersionId },
+      context: expect.objectContaining({ requestedRole: 'STANDARD', module: 'OPTIMAL' }),
+    });
+    expect(standard.snapshots[cacaoLineId]).toMatchObject({
+      productId,
+      productVersionId,
+      behaviorBindingId,
+      resolutionState: 'RESOLVED',
+      resolutionContext: { requestedRole: 'STANDARD', module: 'OPTIMAL' },
+      mainCapability: 'MAIN_CAPABLE_UNCALIBRATED',
+      mainAuthority: 'USER_HELD',
+    });
+
+    const crownRecipe: RecipeInput = {
+      ...cacaoRecipe,
+      items: cacaoRecipe.items.map((item) => ({ ...item, lock_type: 'main' })),
+    };
+    const crown = await resolveRecipeProposalBehaviorSnapshots({
+      recipe: crownRecipe,
+      snapshots: standard.snapshots,
+      accountId: 'account-1',
+      module: 'OPTIMAL',
+      resolveSelection,
+    });
+
+    expect(crown.unresolvedLineIds).toEqual([]);
+    expect(resolveSelection).toHaveBeenCalledTimes(2);
+    expect(resolveSelection).toHaveBeenLastCalledWith({
+      entity: { entityKind: 'catalog_product_version', entityId: productVersionId },
+      context: expect.objectContaining({ requestedRole: 'MAIN', module: 'OPTIMAL' }),
+    });
+    expect(crown.snapshots[cacaoLineId]).toMatchObject({
+      resolutionContext: { requestedRole: 'MAIN', module: 'OPTIMAL' },
+      mainCapability: 'MAIN_CAPABLE_UNCALIBRATED',
+      mainAuthority: 'USER_HELD',
+      mainCalibrationLevel: 'NONE',
+    });
+  });
+
   it('revalidates historical identity for Recalculate without replacing frozen effective facts', async () => {
     const historicalRecipe: RecipeInput = {
       ...recipe,
@@ -682,9 +822,12 @@ describe('recipe behavior server validation', () => {
       },
     };
     const frozenFacts = structuredClone(frozen.sharedFacts);
-    const resolveLegacySelection = vi.fn().mockResolvedValue({
+    const currentSuccessor: ServerResolvedProductBehavior = {
       ...frozen,
+      resolverVersion: 'unified-product-behavior-v2',
       entityKind: 'catalog_product_version',
+      catalogStatus: 'verified',
+      provenance: 'customer_added_admin_canonicalization_v1',
       state: 'eligible',
       module: 'OPTIMAL',
       context: { ...frozen.resolutionContext, module: 'OPTIMAL' },
@@ -695,9 +838,20 @@ describe('recipe behavior server validation', () => {
         ...frozen.sharedFacts!,
         technicalComposition: { ...frozen.sharedFacts!.technicalComposition!, fat: 99 },
       },
+      mainEligibility: 'MAIN_BLOCKED_POLICY',
+      veganEligibility: 'verified',
+      proteinBehavior: 'neutral',
+      processBehavior: {},
+      mainPolicy: null,
       canonicalProductCode: 'PR-ING-007142',
       historicalResolutionKind: 'VERSION_SUCCESSOR',
-    });
+    };
+    const resolveLegacySelection = vi.fn(
+      async ({ context }: Parameters<typeof resolveLegacyRecipeBehaviorForSelection>[0]) => ({
+        ...currentSuccessor,
+        context: { ...context },
+      }),
+    );
     const resolveSelection = vi.fn();
 
     const result = await resolveRecipeProposalBehaviorSnapshots({
@@ -730,6 +884,37 @@ describe('recipe behavior server validation', () => {
       },
     });
     expect(result.snapshots['cacao-line']?.sharedFacts).toEqual(frozenFacts);
+
+    const crownResult = await resolveRecipeProposalBehaviorSnapshots({
+      recipe: {
+        ...historicalRecipe,
+        items: historicalRecipe.items.map((item) => ({ ...item, lock_type: 'main' })),
+      },
+      snapshots: { 'cacao-line': frozen },
+      accountId: 'account-1',
+      module: 'OPTIMAL',
+      resolveSelection,
+      resolveLegacySelection,
+    });
+
+    expect(crownResult.unresolvedLineIds).toEqual([]);
+    expect(resolveSelection).not.toHaveBeenCalled();
+    expect(resolveLegacySelection).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        reference: expect.objectContaining({
+          productVersionId: '2b000db4-7e18-4b74-936d-8ca991beecb9',
+        }),
+        context: expect.objectContaining({ requestedRole: 'MAIN', module: 'OPTIMAL' }),
+      }),
+    );
+    expect(crownResult.snapshots['cacao-line']).toMatchObject({
+      productVersionId: '6a463055-ac6d-41d1-8fbb-01e662ba943b',
+      behaviorBindingId: '639f48f5-9d1c-4948-86a0-02ed20205203',
+      factsFingerprint: 'new-facts-must-not-enter-history',
+      resolutionContext: { requestedRole: 'MAIN', module: 'OPTIMAL' },
+    });
+    expect(crownResult.snapshots['cacao-line']).not.toHaveProperty('historicalIdentity');
+    expect(crownResult.snapshots['cacao-line']?.sharedFacts?.technicalComposition?.fat).toBe(99);
   });
 
   it.each(['gelato', 'sorbet', 'vegan', 'protein'] as const)(

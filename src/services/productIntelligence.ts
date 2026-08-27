@@ -763,7 +763,11 @@ export async function resolveRecipeProposalBehaviorSnapshots(input: {
         frozenContext.mode === resolutionContext.mode &&
         frozenContext.processScope === resolutionContext.processScope &&
         frozenContext.requestedRole === resolutionContext.requestedRole;
-      if (historical && prior && historicalContextStillApplies) {
+      // Historical identity owns successor routing even when the recipe role
+      // changes. Preserve frozen facts only for the original context; a new
+      // role must materialize the successor's current authority instead of
+      // sending the superseded version to the current-only resolver.
+      if (historical && prior) {
         const successor = await (
           input.resolveLegacySelection ?? resolveLegacyRecipeBehaviorForSelection
         )({
@@ -780,21 +784,26 @@ export async function resolveRecipeProposalBehaviorSnapshots(input: {
           context: resolutionContext,
         }).catch(() => null);
         if (successor?.state === 'eligible') {
-          snapshots[lineId] = {
-            ...structuredClone(prior),
-            resolutionState: 'RESOLVED',
-            resolutionContext,
-            historicalIdentity: {
-              ...historical,
-              canonicalProductId: successor.productId,
-              canonicalProductVersionId: successor.productVersionId,
-              canonicalBehaviorBindingId: successor.behaviorBindingId,
-              canonicalProductCode:
-                successor.canonicalProductCode ?? historical.canonicalProductCode,
-              resolutionKind:
-                successor.historicalResolutionKind ?? historical.resolutionKind,
-            },
-          };
+          snapshots[lineId] = historicalContextStillApplies
+            ? {
+                ...structuredClone(prior),
+                resolutionState: 'RESOLVED',
+                resolutionContext,
+                historicalIdentity: {
+                  ...historical,
+                  canonicalProductId: successor.productId,
+                  canonicalProductVersionId: successor.productVersionId,
+                  canonicalBehaviorBindingId: successor.behaviorBindingId,
+                  canonicalProductCode:
+                    successor.canonicalProductCode ?? historical.canonicalProductCode,
+                  resolutionKind: successor.historicalResolutionKind ?? historical.resolutionKind,
+                },
+              }
+            : snapshotServerResolvedProductBehavior({
+                lineId,
+                processScope,
+                resolved: successor,
+              });
           return;
         }
         unresolvedLineIds.push(lineId);
