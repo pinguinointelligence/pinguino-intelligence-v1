@@ -28,11 +28,13 @@ const dockBranch = header.slice(
 
 describe('recipe footer keeps the formal calculation state machine', () => {
   it('gates the footer on calculation freshness, not on the live score', () => {
-    // `pending` must still include awaitingRecalculation — that IS the formal gate.
-    expect(header).toContain('const pending = !displayedMatch || awaitingRecalculation;');
-    expect(header).toContain(
-      'const current = hasRecipe && currentResultAuthority.ready && !legacyInspection;',
-    );
+    // Friendly Lab adds INITIAL to the presentation contract, but freshness
+    // remains a formal journey gate and never comes from the live score.
+    expect(header).toContain("journeyState !== 'CURRENT'");
+    expect(header).toContain("journeyState === 'CURRENT'");
+    const journey = readFileSync(new URL('./friendlyLabRecipeJourney.ts', import.meta.url), 'utf8');
+    expect(journey).toContain("if (input.awaitingRecalculation) return 'STALE';");
+    expect(journey).toContain("if (firstRunStillOpen) return 'INITIAL';");
     const currentAuthority = readFileSync(
       new URL('./currentRecipeResultAuthority.ts', import.meta.url),
       'utf8',
