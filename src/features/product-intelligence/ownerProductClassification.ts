@@ -6,7 +6,7 @@ import {
   type ProductSemanticClassification,
   type ProductSemanticEvidence,
   type ProductSemanticFamily,
-} from './productRecognition';
+} from './productRecognition.ts';
 
 export type OwnerProductRoleCode = 'S' | 'T' | 'O';
 
