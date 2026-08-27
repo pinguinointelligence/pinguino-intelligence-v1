@@ -254,7 +254,7 @@ describe('ConstraintPreviewCard (§19.1)', () => {
   );
 
   it('renders the compact customer header and disables Apply when the proposal misses its batch target', () => {
-    expect(customerHtml).toContain('Proponowane zmiany receptury');
+    expect(customerHtml).toContain('Gotowe. Sprawdź proponowaną korektę');
     expect(customerHtml).toContain('data-testid="preview-summary"');
     expect(customerHtml).toContain('data-testid="preview-apply-disabled"');
     expect(customerHtml).toContain(copy.preview.applyDisabledDiagnostic);

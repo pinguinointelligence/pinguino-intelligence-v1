@@ -791,7 +791,7 @@ export function ProRecalcPanel({
 
   if (!open) return null;
   const customerPreviewOpen = preview !== null && recalculationTerminal?.state === 'PREVIEW_READY';
-  const dialogLabel = customerPreviewOpen ? 'Proponowane zmiany receptury' : r.title;
+  const dialogLabel = customerPreviewOpen ? 'Gotowe. Sprawdź proponowaną korektę' : r.title;
 
   // One-screen workbench (owner 2026-07-24): the recalculation is a COMPACT OVERLAY
   // (520–720 px), never a giant page section. Zastosuj closes the overlay — the
