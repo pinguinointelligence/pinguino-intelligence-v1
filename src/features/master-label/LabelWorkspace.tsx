@@ -299,7 +299,6 @@ export function LabelWorkspace({
     try {
       await downloadMasterLabelPdf(label, logoUrl, { draft });
     } catch (caught) {
-      console.error('Master Label PDF export failed.', caught);
       setError(customerErrorMessage(caught, 'labels', 'LABEL_READ_FAILED'));
     } finally {
       setPdfBusy(false);

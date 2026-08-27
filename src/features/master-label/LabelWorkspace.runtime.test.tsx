@@ -241,6 +241,14 @@ describe('LabelWorkspace unified actual-run surface', () => {
         .querySelector('[data-testid="label-consumer-preview"]')
         ?.getAttribute('data-label-layout'),
     ).toBe('eu_declaration');
+    expect(
+      host
+        .querySelector('[data-testid="label-consumer-preview-sizer"]')
+        ?.getAttribute('class'),
+    ).toContain('max-w-full');
+    expect(
+      host.querySelector('[data-testid="label-consumer-preview"]')?.getAttribute('style'),
+    ).toContain('aspect-ratio: 90 / 60');
     const exactPreview = host.querySelector<HTMLIFrameElement>(
       '[data-testid="label-print-document-preview"]',
     );

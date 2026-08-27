@@ -15,7 +15,11 @@ export function ConsumerLabelPreview({
   const preflight = buildLabelPreflight(label);
   const previewHtml = buildMasterLabelPrintHtml(label, logoUrl, { preview: true });
   return (
-    <div className="mx-auto w-fit max-w-full">
+    <div
+      className="mx-auto max-w-full"
+      style={{ width: `${label.size.widthMm}mm` }}
+      data-testid="label-consumer-preview-sizer"
+    >
       <div className="mb-2 flex items-center justify-between gap-4 text-[11px] text-stone-500">
         <span data-testid="label-market-indicator">{profile.label}</span>
         <span>{preflight.printReadiness}</span>
@@ -26,10 +30,9 @@ export function ConsumerLabelPreview({
         </p>
       ) : null}
       <article
-        className="relative shrink-0 overflow-hidden bg-white text-ink shadow-[0_18px_60px_rgba(36,33,28,0.08)]"
+        className="relative w-full overflow-hidden bg-white text-ink shadow-[0_18px_60px_rgba(36,33,28,0.08)]"
         style={{
-          width: `${label.size.widthMm}mm`,
-          height: `${label.size.heightMm}mm`,
+          aspectRatio: `${label.size.widthMm} / ${label.size.heightMm}`,
         }}
         aria-label="Podgląd etykiety konsumenckiej"
         data-testid="label-consumer-preview"
