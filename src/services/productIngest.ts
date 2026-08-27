@@ -213,7 +213,13 @@ export function canonicalIngestFromLegacyProduct(
     typeof intimportProposal.matchInput === 'object' && intimportProposal.matchInput !== null
       ? intimportProposal.matchInput
       : null;
-  const isIntimport = input.source_type === 'catalog_import' && input.catalog_source === 'INTIMPORT';
+  const ownerClassification =
+    typeof intimportProposal.ownerClassification === 'object' &&
+    intimportProposal.ownerClassification !== null
+      ? intimportProposal.ownerClassification
+      : null;
+  const isIntimport =
+    input.source_type === 'catalog_import' && input.catalog_source === 'INTIMPORT';
   const catalogImportIdentity =
     isIntimport && intimportMatchInput
       ? {
@@ -223,6 +229,7 @@ export function canonicalIngestFromLegacyProduct(
               ? intimportProposal.sourceProductId
               : null,
           matchInput: intimportMatchInput,
+          ownerClassification,
         }
       : null;
   return {
@@ -253,11 +260,13 @@ export function canonicalIngestFromLegacyProduct(
                   ? intimportProposal.sourceProductId
                   : null,
               declared:
-                typeof intimportProposal.declared === 'object' && intimportProposal.declared !== null
+                typeof intimportProposal.declared === 'object' &&
+                intimportProposal.declared !== null
                   ? intimportProposal.declared
                   : {},
               evidence:
-                typeof intimportProposal.evidence === 'object' && intimportProposal.evidence !== null
+                typeof intimportProposal.evidence === 'object' &&
+                intimportProposal.evidence !== null
                   ? intimportProposal.evidence
                   : {},
               enrichmentEvidenceReceipts: Array.isArray(
@@ -269,6 +278,7 @@ export function canonicalIngestFromLegacyProduct(
                 typeof intimportProposal.semanticEvidenceReceipt === 'string'
                   ? intimportProposal.semanticEvidenceReceipt
                   : null,
+              ownerClassification,
             },
           }
         : {}),
@@ -324,9 +334,7 @@ export function canonicalIngestFromLegacyProduct(
                 sourceCategory: intimportFields.Category ?? input.product_category ?? null,
                 sourceSubcategory: intimportFields.Subcategory ?? null,
                 variant:
-                  intimportFields['Variant Original'] ??
-                  intimportFields['Variant English'] ??
-                  null,
+                  intimportFields['Variant Original'] ?? intimportFields['Variant English'] ?? null,
                 netQuantity:
                   [intimportFields['Net Quantity Value'], intimportFields['Net Quantity Unit']]
                     .filter((value) => typeof value === 'string' && value.trim() !== '')
@@ -353,6 +361,7 @@ export function canonicalIngestFromLegacyProduct(
                 fibre: intimportFields['Fibre g'] ?? null,
                 protein: intimportFields['Protein g'] ?? input.protein_percent ?? null,
                 salt: intimportFields['Salt g'] ?? input.salt_percent ?? null,
+                ownerClassification,
               },
             }
           : {}),

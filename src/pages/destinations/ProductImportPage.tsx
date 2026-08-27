@@ -45,7 +45,9 @@ import {
 import {
   IntimportSheetAmbiguousError,
   intimportWorkbookToCsv,
+  isWorkbookFile,
 } from '@/data/products/intimportWorkbook';
+import type { OwnerProductClassification } from '@/features/product-intelligence/ownerProductClassification';
 import {
   canImport,
   canParse,
@@ -54,7 +56,6 @@ import {
   intimportToIntakeResult,
   parseIntake,
   parseIntimport,
-  readCsvFile,
 } from './productImportController';
 import { runProductImport, type RunImportResult } from './runProductImport';
 import type { ImportProgress } from '@/services/productCatalogImport';
@@ -77,10 +78,11 @@ import {
   rememberedProductImportRun,
   requestProductImportCancellation,
   rollbackProductImportRun,
-  startCleanIntimportRun,
+  startIntimportRun,
   type ProductImportPreflight,
   type ProductImportRunState,
 } from '@/services/productImportRuns';
+import { loadIntimportCanonicalExactMatches } from '@/services/intimportCanonicalLookup';
 import { restoredImportProgress } from './productImportRunViewState';
 
 const c = copy.productsImport;
@@ -124,6 +126,9 @@ export function ProductImportPage() {
   const [sheetChoice, setSheetChoice] = useState<{ file: File; sheets: string[] } | null>(null);
   // The owner uploaded a file: show them the FILE, not its serialization.
   const [fileInfo, setFileInfo] = useState<{ name: string; sheet: string | null } | null>(null);
+  const [ownerClassifications, setOwnerClassifications] = useState<OwnerProductClassification[]>(
+    [],
+  );
   const [importPlan, setImportPlan] = useState<{
     total: number;
     productProfileReady: number;
@@ -135,6 +140,7 @@ export function ProductImportPage() {
     () => (localRows.length > 0 ? summarizeIntimportReadiness(localRows) : null),
     [localRows],
   );
+  const ownerClassifiedMode = ownerClassifications.length > 0;
 
   const reset = () => {
     setResult(null);
@@ -150,6 +156,7 @@ export function ProductImportPage() {
     setLastProgressAt(null);
     setPreflight(null);
     setPreflightError(null);
+    setOwnerClassifications([]);
   };
 
   useEffect(() => {
@@ -182,9 +189,17 @@ export function ProductImportPage() {
     if (!file) return;
     setSheetChoice(null);
     try {
-      setCsvText(await readCsvFile(file));
-      setFileInfo({ name: file.name, sheet: null });
-      reset();
+      if (isWorkbookFile(file.name, file.type)) {
+        const converted = intimportWorkbookToCsv(await file.arrayBuffer());
+        reset();
+        setCsvText(converted.csv);
+        setOwnerClassifications(converted.ownerClassifications);
+        setFileInfo({ name: file.name, sheet: converted.sheet });
+      } else {
+        reset();
+        setCsvText(await file.text());
+        setFileInfo({ name: file.name, sheet: null });
+      }
     } catch (error: unknown) {
       // Several sheets carry the INTIMPORT headers and none covers more of the
       // schema than the others. Guessing here would silently import the wrong
@@ -200,10 +215,12 @@ export function ProductImportPage() {
   const onPickSheet = async (sheet: string) => {
     if (!sheetChoice) return;
     const buffer = await sheetChoice.file.arrayBuffer();
-    setCsvText(intimportWorkbookToCsv(buffer, sheet).csv);
-    setFileInfo({ name: sheetChoice.file.name, sheet });
-    setSheetChoice(null);
+    const converted = intimportWorkbookToCsv(buffer, sheet);
     reset();
+    setCsvText(converted.csv);
+    setOwnerClassifications(converted.ownerClassifications);
+    setFileInfo({ name: sheetChoice.file.name, sheet: converted.sheet });
+    setSheetChoice(null);
   };
 
   // Parse is deterministic and free for every source: header validation, field parsing,
@@ -227,7 +244,33 @@ export function ProductImportPage() {
       }
       // Local, Mapper-first intelligence. Deterministic and free — it decides
       // which products would ever justify an external call, before spending one.
-      const analysed = runIntimportLocalIntelligence(parsed.candidates, {}, mapper);
+      const ownerBySource = new Map(
+        ownerClassifications.map((classification) => [
+          classification.sourceProductId,
+          classification,
+        ]),
+      );
+      const ownerByRow = new Map(
+        parsed.candidates.flatMap((candidate) => {
+          const owner = candidate.sourceProductId
+            ? ownerBySource.get(candidate.sourceProductId)
+            : undefined;
+          return owner ? [[candidate.rowIndex, owner] as const] : [];
+        }),
+      );
+      if (ownerClassifications.length > 0 && ownerByRow.size !== parsed.candidates.length) {
+        throw new Error('Klasyfikacja właścicielska nie pokrywa dokładnie analizowanej populacji.');
+      }
+      const canonical = await loadIntimportCanonicalExactMatches(parsed.candidates);
+      const analysed = runIntimportLocalIntelligence(
+        parsed.candidates,
+        canonical.index,
+        mapper,
+        new Map(),
+        new Map(),
+        new Map(),
+        ownerByRow,
+      );
       setLocalIntelligence(analysed.summary);
       setLocalRows(analysed.rows);
       // Who is who, before anything is written. Deterministic and free.
@@ -245,8 +288,8 @@ export function ProductImportPage() {
 
   /**
    * Explicit owner action. Research starts only here — never from Parse — and
-   * only for products the local stage could not settle. Every ≥90 % product is
-   * skipped by the pipeline without a call.
+   * only for products the shared readiness authority could not settle. A ≥90 %
+   * row is skipped only when canonical Gellatti Readiness also passes.
    */
   const onEnrich = async () => {
     if (localRows.length === 0) return;
@@ -311,6 +354,11 @@ export function ProductImportPage() {
             mapper,
             semanticClassifications: semantic.classifications,
             semanticEvidenceReceipts: semantic.evidenceReceipts,
+            ownerClassifications: new Map(
+              localRows.flatMap((row) =>
+                row.ownerClassification ? [[row.rowIndex, row.ownerClassification] as const] : [],
+              ),
+            ),
           }).rows
         : outcome.products;
       // Import must consume the enriched assessments/evidence returned by the
@@ -349,7 +397,7 @@ export function ProductImportPage() {
    */
   const onImport = async (qaLimit?: number) => {
     if (!result) return;
-    if (source === 'intimport' && preflight?.ready !== true) {
+    if (source === 'intimport' && !ownerClassifiedMode && preflight?.ready !== true) {
       setRunError(
         'Czysty import wymaga pełnej bazy 2088 składników i braku produktów komercyjnych.',
       );
@@ -365,13 +413,26 @@ export function ProductImportPage() {
           .filter((entry) => entry.forceDistinct)
           .map((entry) => entry.rowIndex),
       );
+      const intimportByRow = new Map(
+        (intimport?.candidates ?? []).map((candidate) => [candidate.rowIndex, candidate] as const),
+      );
       candidates = result.candidates
         .filter((candidate) => byRow.has(candidate.rowIndex))
-        .map((candidate) => ({
-          ...candidate,
-          insert: byRow.get(candidate.rowIndex)!,
-          forceDistinctIdentity: forceDistinct.has(candidate.rowIndex),
-        }));
+        .map((candidate) => {
+          const sourceCandidate = intimportByRow.get(candidate.rowIndex);
+          const ownerMayPersistReview =
+            ownerClassifiedMode &&
+            sourceCandidate !== undefined &&
+            !['INVALID', 'DUPLICATE'].includes(sourceCandidate.state);
+          return {
+            ...candidate,
+            status:
+              ownerMayPersistReview && candidate.status === 'skip' ? 'warning' : candidate.status,
+            skipReason: ownerMayPersistReview ? null : candidate.skipReason,
+            insert: byRow.get(candidate.rowIndex)!,
+            forceDistinctIdentity: forceDistinct.has(candidate.rowIndex),
+          };
+        });
       setImportPlan({
         total: rows.length,
         productProfileReady: rows.filter((entry) => entry.engineUsable).length,
@@ -386,8 +447,11 @@ export function ProductImportPage() {
     let startedRun: ProductImportRunState | null = null;
     if (source === 'intimport') {
       try {
-        startedRun = await startCleanIntimportRun({
-          label: 'Polska — clean owner reimport',
+        startedRun = await startIntimportRun({
+          mode: ownerClassifiedMode ? 'STANDARD' : 'CLEAN_OWNER_REIMPORT',
+          label: ownerClassifiedMode
+            ? 'Polska — owner semantic Product Intelligence'
+            : 'Polska — clean owner reimport',
           fileName: fileInfo?.name ?? null,
           sourceFingerprint: await productImportSourceFingerprint(csvText),
           totalRows: candidates.length,
@@ -565,6 +629,7 @@ export function ProductImportPage() {
               onChange={(event) => {
                 setCsvText(event.target.value);
                 setFileInfo(null);
+                setOwnerClassifications([]);
               }}
               rows={8}
               spellCheck={false}
@@ -598,15 +663,22 @@ export function ProductImportPage() {
                   <p>Konflikty tożsamości: {dedupPlan.counts.IDENTITY_CONFLICT}</p>
                 </div>
               ) : null}
-              <CleanImportPreflightView
-                preflight={preflight}
-                loading={preflightBusy}
-                error={
-                  !isSignedIn
-                    ? 'Zaloguj się, aby sprawdzić stan staging przed importem.'
-                    : preflightError
-                }
-              />
+              {ownerClassifiedMode ? (
+                <p className="text-xs text-ivory/60" data-testid="owner-semantic-import-mode">
+                  Aktywna populacja właścicielska: {ownerClassifications.length} produktów z arkusza{' '}
+                  14_SEMANTIC_CLASSIFICATION. Istniejące produkty kanoniczne zostaną ponownie użyte.
+                </p>
+              ) : (
+                <CleanImportPreflightView
+                  preflight={preflight}
+                  loading={preflightBusy}
+                  error={
+                    !isSignedIn
+                      ? 'Zaloguj się, aby sprawdzić stan staging przed importem.'
+                      : preflightError
+                  }
+                />
+              )}
               {localIntelligence ? (
                 <IntimportLocalIntelligenceView
                   summary={localIntelligence}
@@ -619,7 +691,7 @@ export function ProductImportPage() {
                   }}
                   canImport={
                     canImport({ isSignedIn, result }) &&
-                    preflight?.ready === true &&
+                    (ownerClassifiedMode || preflight?.ready === true) &&
                     !['IMPORTING', 'CANCELLING', 'ROLLING_BACK'].includes(importRun?.status ?? '')
                   }
                   importBusy={busy}

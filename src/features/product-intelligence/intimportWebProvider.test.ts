@@ -15,7 +15,9 @@ import { INTIMPORT_COLUMNS, parseINTIMPORT, type IntimportColumn } from '@/data/
 const EDGE = new URL('../../../supabase/functions/intimport-enrich/index.ts', import.meta.url);
 const edgeSource = readFileSync(EDGE, 'utf8');
 
-const assessment = (over: Partial<ProductConfidenceAssessment> = {}): ProductConfidenceAssessment => ({
+const assessment = (
+  over: Partial<ProductConfidenceAssessment> = {},
+): ProductConfidenceAssessment => ({
   confidence: 50,
   criticalReadiness: false,
   missingCritical: ['ingredients'],
@@ -76,26 +78,41 @@ describe('auto-import floor and no-web threshold are distinct', () => {
     expect(routeBeforeWeb(a)).toBe('READY_LOCAL');
   });
 
-  it.each([90, 95, 100])('preWeb %s never calls the provider', async (confidence) => {
-    const provider = vi.fn(async () => ({ facts: [], calls: 1 }));
-    const intelligence = intelligenceFor(row());
-    const rows: EnrichmentInputRow[] = [
-      {
-        intelligence: {
-          ...intelligence,
-          assessment: assessment({ confidence, criticalReadiness: true, missingCritical: [] }),
-          route: 'READY_LOCAL',
+  it.each([90, 95, 100])(
+    'preWeb %s skips the provider only when shared Gellatti Readiness is true',
+    async (confidence) => {
+      const provider = vi.fn(async () => ({ facts: [], calls: 1 }));
+      const intelligence = intelligenceFor(row());
+      const rows: EnrichmentInputRow[] = [
+        {
+          intelligence: {
+            ...intelligence,
+            assessment: assessment({ confidence, criticalReadiness: true, missingCritical: [] }),
+            productionAccuracy: {
+              ...intelligence.productionAccuracy,
+              gellattiReadiness: {
+                ...intelligence.productionAccuracy.gellattiReadiness,
+                ready: true,
+                status: 'BASE_READY',
+                blockers: [],
+              },
+            },
+            route: 'READY_LOCAL',
+          },
+          barcode: null,
         },
-        barcode: null,
-      },
-    ];
-    const { summary } = await runIntimportEnrichment(rows, provider);
-    expect(provider).not.toHaveBeenCalled();
-    expect(summary.callsUsed).toBe(0);
-  });
+      ];
+      const { summary } = await runIntimportEnrichment(rows, provider);
+      expect(provider).not.toHaveBeenCalled();
+      expect(summary.callsUsed).toBe(0);
+    },
+  );
 
   it.each([89.99, 85, 84.99])('preWeb %s does invoke targeted research', async (confidence) => {
-    const provider = vi.fn(async () => ({ facts: [], calls: 1 }));
+    const provider = vi.fn(async (request: { researchStepIndex: number }) => {
+      void request;
+      return { facts: [], calls: 1 };
+    });
     const intelligence = intelligenceFor(row());
     const rows: EnrichmentInputRow[] = [
       {
@@ -109,7 +126,8 @@ describe('auto-import floor and no-web threshold are distinct', () => {
       },
     ];
     await runIntimportEnrichment(rows, provider);
-    expect(provider).toHaveBeenCalledTimes(1);
+    expect(provider).toHaveBeenCalledTimes(3);
+    expect(provider.mock.calls.map(([request]) => request.researchStepIndex)).toEqual([0, 1, 2]);
   });
 
   it('keeps 90 as the stop-spending line, not the import minimum', () => {
@@ -145,10 +163,7 @@ describe('professional context and researched dosage stay informational', () => 
       ],
       calls: 1,
     }));
-    const { products } = await runIntimportEnrichment(
-      [{ intelligence, barcode: null }],
-      provider,
-    );
+    const { products } = await runIntimportEnrichment([{ intelligence, barcode: null }], provider);
     // The researched `50 g/kg` is stored as the manufacturer said it. It is
     // never normalized, never converted, and never a condition of import.
     expect(products[0]!.assessment.missingCritical).not.toContain('dosage');
@@ -183,15 +198,18 @@ describe('research is targeted, not generic', () => {
     expect(asked.length).toBeGreaterThan(0);
   });
 
-  it('caps the fields asked per product', async () => {
+  it('asks every source step for all fields still missing', async () => {
     const intelligence = intelligenceFor(row());
-    let asked: readonly string[] = [];
+    const asked: Array<readonly string[]> = [];
     const provider = vi.fn(async (request: { fields: readonly string[] }) => {
-      asked = request.fields;
+      asked.push(request.fields);
       return { facts: [], calls: 1 };
     });
     await runIntimportEnrichment([{ intelligence, barcode: null }], provider);
-    expect(asked.length).toBeLessThanOrEqual(3);
+    expect(asked).toHaveLength(3);
+    for (const fields of asked) {
+      expect(fields).toEqual(intelligence.enrichmentTargets);
+    }
   });
 });
 
@@ -243,9 +261,7 @@ describe('provider runs server-side only', () => {
   });
 
   it('is off unless explicitly enabled', () => {
-    expect(edgeSource).toContain(
-      "Deno.env.get('INTIMPORT_WEB_ENRICHMENT_ENABLED') !== 'true'",
-    );
+    expect(edgeSource).toContain("Deno.env.get('INTIMPORT_WEB_ENRICHMENT_ENABLED') !== 'true'");
     expect(edgeSource).toContain('intimport_web_enrichment_disabled');
   });
 
@@ -321,10 +337,7 @@ describe('research merges as evidence, never last-write-wins', () => {
       ],
       calls: 1,
     }));
-    const { products } = await runIntimportEnrichment(
-      [{ intelligence, barcode: null }],
-      provider,
-    );
+    const { products } = await runIntimportEnrichment([{ intelligence, barcode: null }], provider);
     expect(products[0]!.appliedFacts).toEqual([]);
     expect(products[0]!.postWebConfidence).toBe(products[0]!.preWebConfidence);
   });
@@ -360,10 +373,7 @@ describe('research merges as evidence, never last-write-wins', () => {
       facts: [{ field: 'ingredients' as const, value: 'Cukier.', source: 'manufacturer' as const }],
       calls: 1,
     }));
-    const { products } = await runIntimportEnrichment(
-      [{ intelligence, barcode: null }],
-      provider,
-    );
+    const { products } = await runIntimportEnrichment([{ intelligence, barcode: null }], provider);
     expect(products[0]!.appliedFacts.map((f) => f.field)).toContain('ingredients');
     expect(products[0]!.postWebConfidence).toBeGreaterThan(products[0]!.preWebConfidence);
   });

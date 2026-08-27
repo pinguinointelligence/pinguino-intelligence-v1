@@ -64,6 +64,10 @@ import {
   type ProductionAccuracyEvidenceProvenance,
   type ProductProductionAccuracyAssessment,
 } from './productProductionAccuracy';
+import {
+  applyOwnerProductClassification,
+  type OwnerProductClassification,
+} from './ownerProductClassification';
 
 /** Canonical lookups the caller supplies. Kept injected so this stays pure. */
 export interface IntimportCanonicalIndex {
@@ -79,19 +83,12 @@ export interface IntimportCanonicalIndex {
 export interface IntimportReassessmentOverride {
   evidence: ProductEvidenceInput;
   sourceCard: CardContribution | null;
-  evidenceProvenance: Partial<
-    Record<ProductEvidenceField, ProductionAccuracyEvidenceProvenance>
-  >;
+  evidenceProvenance: Partial<Record<ProductEvidenceField, ProductionAccuracyEvidenceProvenance>>;
   enrichmentEvidenceReceipts: readonly string[];
   semanticEvidenceReceipt?: string | null;
 }
 
-export type IntimportFinalResult =
-  | 'READY'
-  | 'REVIEW'
-  | 'BLOCKED'
-  | 'CONFLICT'
-  | 'TOPPING_ONLY';
+export type IntimportFinalResult = 'READY' | 'REVIEW' | 'BLOCKED' | 'CONFLICT' | 'TOPPING_ONLY';
 
 /** One final classifier for audits/UI. A semantic role is never itself proof
  * that ProductBehavior approved the role. */
@@ -128,6 +125,9 @@ export interface IntimportProductIntelligence {
   kind: ProductKind;
   /** One semantic authority shared by donor filtering and ProductBehavior. */
   recognition: ProductSemanticClassification;
+  /** Owner-authored S/T/O and taxonomy from the retained Poland working set.
+   * It narrows Recognition but never supplies chemistry. */
+  ownerClassification: OwnerProductClassification | null;
   recognitionEvidence: ProductSemanticEvidence;
   /** Server ledger receipt for a model-filled semantic result, when used. */
   semanticEvidenceReceipt: string | null;
@@ -475,14 +475,18 @@ export function assessIntimportProduct(
   recognitionOverride: ProductSemanticClassification | null = null,
   recognitionEvidenceOverride: ProductSemanticEvidence | null = null,
   reassessmentOverride: IntimportReassessmentOverride | null = null,
+  ownerClassification: OwnerProductClassification | null = null,
 ): IntimportProductIntelligence {
   const recognitionEvidence =
     recognitionEvidenceOverride ?? semanticEvidenceFromIntimportCandidate(candidate);
   const deterministicRecognition = classifyProductSemantics(recognitionEvidence);
-  const recognition =
+  const evidenceRecognition =
     recognitionOverride?.evidenceFingerprint === deterministicRecognition.evidenceFingerprint
       ? recognitionOverride
       : deterministicRecognition;
+  const recognition = ownerClassification
+    ? applyOwnerProductClassification(recognitionEvidence, ownerClassification, evidenceRecognition)
+    : evidenceRecognition;
   const family = inferMapperFamily({
     name: candidate.displayName,
     variant: candidate.source['Variant Original'] ?? candidate.source['Variant English'],
@@ -660,6 +664,7 @@ export function assessIntimportProduct(
     displayName: candidate.displayName,
     kind,
     recognition,
+    ownerClassification,
     recognitionEvidence,
     semanticEvidenceReceipt: reassessmentOverride?.semanticEvidenceReceipt ?? null,
     family,
@@ -751,6 +756,7 @@ export function runIntimportLocalIntelligence(
   recognitionOverrides: ReadonlyMap<number, ProductSemanticClassification> = new Map(),
   recognitionEvidenceOverrides: ReadonlyMap<number, ProductSemanticEvidence> = new Map(),
   reassessmentOverrides: ReadonlyMap<number, IntimportReassessmentOverride> = new Map(),
+  ownerClassifications: ReadonlyMap<number, OwnerProductClassification> = new Map(),
 ): { rows: IntimportProductIntelligence[]; summary: IntimportLocalSummary } {
   // INVALID rows have no usable identity and are not products to research.
   const rows = candidates
@@ -763,6 +769,7 @@ export function runIntimportLocalIntelligence(
         recognitionOverrides.get(candidate.rowIndex) ?? null,
         recognitionEvidenceOverrides.get(candidate.rowIndex) ?? null,
         reassessmentOverrides.get(candidate.rowIndex) ?? null,
+        ownerClassifications.get(candidate.rowIndex) ?? null,
       ),
     );
 
@@ -1007,6 +1014,7 @@ export function planIntimportImport(
           recognitionEvidence: row.recognitionEvidence,
           semanticEvidenceReceipt: row.semanticEvidenceReceipt,
           enrichmentEvidenceReceipts: row.enrichmentEvidenceReceipts,
+          ownerClassification: row.ownerClassification,
         },
         fields: provenance,
       },

@@ -42,6 +42,11 @@ import {
   type ProductSemanticClassification,
   type ProductSemanticEvidence,
 } from '../../../src/features/product-intelligence/productRecognition.ts';
+import {
+  applyOwnerProductClassification,
+  parseOwnerProductClassification,
+  type OwnerProductClassification,
+} from '../../../src/features/product-intelligence/ownerProductClassification.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -130,11 +135,25 @@ const MAPPER_AUTHORITY_COLUMNS = [
 ].join(',');
 
 const MAPPER_BEHAVIOR_AUTHORITY_COLUMNS = [
-  'id', 'mapper_ingredient_id', 'mapper_dataset_version', 'taxonomy_version_id',
-  'family_id', 'subfamily_id', 'form_id', 'main_eligibility', 'vegan_eligibility',
-  'protein_behavior', 'approved_liquid_dairy_carrier', 'profile_permissions',
-  'process_behavior', 'classifier_version', 'behavior_role', 'main_policy_status',
-  'profile_applicability', 'classification_reason_codes', 'is_current',
+  'id',
+  'mapper_ingredient_id',
+  'mapper_dataset_version',
+  'taxonomy_version_id',
+  'family_id',
+  'subfamily_id',
+  'form_id',
+  'main_eligibility',
+  'vegan_eligibility',
+  'protein_behavior',
+  'approved_liquid_dairy_carrier',
+  'profile_permissions',
+  'process_behavior',
+  'classifier_version',
+  'behavior_role',
+  'main_policy_status',
+  'profile_applicability',
+  'classification_reason_codes',
+  'is_current',
 ].join(',');
 
 let mapperAuthorityRowsCache: Promise<IntimportMapperAuthorityRow[]> | null = null;
@@ -153,13 +172,31 @@ const EVIDENCE_SOURCES = new Set<EvidenceSource>([
 ]);
 
 const EVIDENCE_FIELDS = new Set<ProductEvidenceField>([
-  'identity', 'brand', 'manufacturer', 'variant', 'netQuantity', 'ingredients', 'allergens',
-  'nutritionBasis', 'energyKcal', 'fat', 'carbohydrate', 'sugars', 'fiber', 'protein', 'salt',
-  'barcode', 'countryOfOrigin',
-  'dosage', 'technicalParameters', 'technicalSource',
+  'identity',
+  'brand',
+  'manufacturer',
+  'variant',
+  'netQuantity',
+  'ingredients',
+  'allergens',
+  'nutritionBasis',
+  'energyKcal',
+  'fat',
+  'carbohydrate',
+  'sugars',
+  'fiber',
+  'protein',
+  'salt',
+  'barcode',
+  'countryOfOrigin',
+  'dosage',
+  'technicalParameters',
+  'technicalSource',
 ]);
 
-async function loadMapperAuthorityRows(service: ServiceClient): Promise<IntimportMapperAuthorityRow[]> {
+async function loadMapperAuthorityRows(
+  service: ServiceClient,
+): Promise<IntimportMapperAuthorityRow[]> {
   if (!mapperAuthorityRowsCache) {
     mapperAuthorityRowsCache = (async () => {
       const rows: IntimportMapperAuthorityRow[] = [];
@@ -229,7 +266,10 @@ function serverMatchInput(canonicalInput: Record<string, unknown>): {
   // carries its mapped catalogue category. They are deliberately not compared:
   // requiring equality would reject every legitimately mapped source label.
 
-  const canonicalCode = String(canonicalInput.ean ?? canonicalInput.barcode ?? '').replace(/\D+/g, '');
+  const canonicalCode = String(canonicalInput.ean ?? canonicalInput.barcode ?? '').replace(
+    /\D+/g,
+    '',
+  );
   const proposedCode = String(raw.barcode ?? '').replace(/\D+/g, '');
   if (canonicalCode !== proposedCode) return null;
 
@@ -289,6 +329,7 @@ function serverProductProfileProposal(
   semanticEvidenceReceipt: string | null;
   enrichmentEvidenceReceipts: string[];
   sourceProductId: string | null;
+  ownerClassification: OwnerProductClassification | null;
 } | null {
   const serverInput = serverMatchInput(canonicalInput);
   if (!serverInput) return null;
@@ -297,7 +338,9 @@ function serverProductProfileProposal(
   const technicalParameters = clippedText(sourceEvidence.technicalParameters, 2_000);
   const labelled = (label: string): string | null => {
     if (!technicalParameters) return null;
-    const match = technicalParameters.match(new RegExp(`(?:^|\\|)\\s*${label}\\s*:\\s*([^|]+)`, 'i'));
+    const match = technicalParameters.match(
+      new RegExp(`(?:^|\\|)\\s*${label}\\s*:\\s*([^|]+)`, 'i'),
+    );
     return match?.[1]?.trim() || null;
   };
   const sourceUrls = [sourceEvidence.primarySourceUrl, sourceEvidence.technicalPdfUrl]
@@ -310,21 +353,29 @@ function serverProductProfileProposal(
     manufacturerCode: labelled('Kod producenta'),
     gtin: serverInput.matchInput.barcode ?? null,
     productType: clippedText(sourceEvidence.productType, 80),
-    category: clippedText(sourceEvidence.sourceCategory, 160) ?? serverInput.matchInput.category ?? null,
-    subcategory: clippedText(sourceEvidence.sourceSubcategory, 160) ?? serverInput.matchInput.subcategory ?? null,
+    category:
+      clippedText(sourceEvidence.sourceCategory, 160) ?? serverInput.matchInput.category ?? null,
+    subcategory:
+      clippedText(sourceEvidence.sourceSubcategory, 160) ??
+      serverInput.matchInput.subcategory ??
+      null,
     variant: clippedText(sourceEvidence.variant, 160),
     ingredients: clippedText(sourceEvidence.ingredients, 2_000),
-    nutrition: [
-      ['basis', sourceEvidence.nutritionBasis],
-      ['kcal', sourceEvidence.energyKcal],
-      ['fat_g', sourceEvidence.fat],
-      ['carbohydrate_g', sourceEvidence.carbohydrate],
-      ['sugars_g', sourceEvidence.sugars],
-      ['fiber_g', sourceEvidence.fibre],
-      ['protein_g', sourceEvidence.protein],
-      ['salt_g', sourceEvidence.salt],
-    ].flatMap(([label, value]) => evidenceValuePresent(value) ? [`${label}:${String(value)}`] : [])
-      .join(' | ') || null,
+    nutrition:
+      [
+        ['basis', sourceEvidence.nutritionBasis],
+        ['kcal', sourceEvidence.energyKcal],
+        ['fat_g', sourceEvidence.fat],
+        ['carbohydrate_g', sourceEvidence.carbohydrate],
+        ['sugars_g', sourceEvidence.sugars],
+        ['fiber_g', sourceEvidence.fibre],
+        ['protein_g', sourceEvidence.protein],
+        ['salt_g', sourceEvidence.salt],
+      ]
+        .flatMap(([label, value]) =>
+          evidenceValuePresent(value) ? [`${label}:${String(value)}`] : [],
+        )
+        .join(' | ') || null,
     description: labelled('Opis') ?? clippedText(sourceEvidence.notes, 1_000),
     dosage: clippedText(sourceEvidence.dosage, 240),
     technicalParameters,
@@ -348,6 +399,7 @@ function serverProductProfileProposal(
     'evidence',
     'enrichmentEvidenceReceipts',
     'semanticEvidenceReceipt',
+    'ownerClassification',
   ]);
   if (Object.keys(rawProposal).some((key) => !allowedProposalKeys.has(key))) return null;
   const allowedEvidenceKeys = new Set([
@@ -367,8 +419,11 @@ function serverProductProfileProposal(
     fields[field as ProductEvidenceField] = source as EvidenceSource;
   }
   if (rawEvidence.kind !== 'normal_food' && rawEvidence.kind !== 'technical') return null;
-  if (!Array.isArray(rawEvidence.materialConflicts) ||
-      rawEvidence.materialConflicts.some((entry) => typeof entry !== 'string')) return null;
+  if (
+    !Array.isArray(rawEvidence.materialConflicts) ||
+    rawEvidence.materialConflicts.some((entry) => typeof entry !== 'string')
+  )
+    return null;
   for (const flag of ['validatedBarcode', 'exactCanonicalMatch', 'mapperFamilyMatch'] as const) {
     if (typeof rawEvidence[flag] !== 'boolean') return null;
   }
@@ -377,18 +432,32 @@ function serverProductProfileProposal(
   // source row. A caller cannot swap evidence material after the adapter built
   // the canonical identity envelope.
   const proposedMatch = objectValue(rawProposal.matchInput);
-  if (stableJson(proposedMatch) !== stableJson(objectValue(
-    objectValue(objectValue(canonicalInput.facts).catalogImportIdentity).matchInput,
-  ))) return null;
+  if (
+    stableJson(proposedMatch) !==
+    stableJson(
+      objectValue(objectValue(objectValue(canonicalInput.facts).catalogImportIdentity).matchInput),
+    )
+  )
+    return null;
   const sourceProductId =
     typeof rawProposal.sourceProductId === 'string' && rawProposal.sourceProductId.trim() !== ''
       ? rawProposal.sourceProductId.trim()
       : null;
   if (sourceProductId !== serverInput.sourceProductId) return null;
+  const rawOwnerClassification = objectValue(rawProposal.ownerClassification);
+  const ownerClassification =
+    Object.keys(rawOwnerClassification).length > 0
+      ? parseOwnerProductClassification(rawOwnerClassification)
+      : null;
+  if (rawProposal.ownerClassification !== null && ownerClassification === null) return null;
+  const boundOwnerClassification = objectValue(
+    objectValue(objectValue(canonicalInput.facts).catalogImportIdentity).ownerClassification,
+  );
+  if (stableJson(rawOwnerClassification) !== stableJson(boundOwnerClassification)) return null;
+  if (ownerClassification && ownerClassification.sourceProductId !== sourceProductId) return null;
   const enrichmentEvidenceReceipts = Array.isArray(rawProposal.enrichmentEvidenceReceipts)
     ? rawProposal.enrichmentEvidenceReceipts.filter(
-        (entry): entry is string =>
-          typeof entry === 'string' && /^[0-9a-f]{64}$/.test(entry),
+        (entry): entry is string => typeof entry === 'string' && /^[0-9a-f]{64}$/.test(entry),
       )
     : [];
   if (
@@ -397,15 +466,19 @@ function serverProductProfileProposal(
       (Array.isArray(rawProposal.enrichmentEvidenceReceipts)
         ? rawProposal.enrichmentEvidenceReceipts.length
         : 0)
-  ) return null;
+  )
+    return null;
   const semanticEvidenceReceipt =
     typeof rawProposal.semanticEvidenceReceipt === 'string' &&
     /^[0-9a-f]{64}$/.test(rawProposal.semanticEvidenceReceipt)
       ? rawProposal.semanticEvidenceReceipt
       : null;
-  if (rawProposal.semanticEvidenceReceipt !== null &&
-      rawProposal.semanticEvidenceReceipt !== undefined &&
-      semanticEvidenceReceipt === null) return null;
+  if (
+    rawProposal.semanticEvidenceReceipt !== null &&
+    rawProposal.semanticEvidenceReceipt !== undefined &&
+    semanticEvidenceReceipt === null
+  )
+    return null;
 
   return {
     proposedMapperIngredientId:
@@ -426,6 +499,7 @@ function serverProductProfileProposal(
     semanticEvidenceReceipt,
     enrichmentEvidenceReceipts: [...new Set(enrichmentEvidenceReceipts)],
     sourceProductId,
+    ownerClassification,
   };
 }
 
@@ -436,13 +510,22 @@ async function trustedIntimportSemanticClassification(input: {
   recognitionEvidence: ProductSemanticEvidence;
 }): Promise<ProductSemanticClassification | null> {
   const deterministic = classifyProductSemantics(input.recognitionEvidence);
+  if (input.proposal.ownerClassification) {
+    return applyOwnerProductClassification(
+      input.recognitionEvidence,
+      input.proposal.ownerClassification,
+      deterministic,
+    );
+  }
   const receipt = input.proposal.semanticEvidenceReceipt;
   if (!receipt) return deterministic;
-  const expectedReceipt = await sha256Text(stableJson({
-    action: 'semantic_classification',
-    classifierVersion: PRODUCT_RECOGNITION_VERSION,
-    evidence: canonicalizeProductSemanticEvidence(input.recognitionEvidence),
-  }));
+  const expectedReceipt = await sha256Text(
+    stableJson({
+      action: 'semantic_classification',
+      classifierVersion: PRODUCT_RECOGNITION_VERSION,
+      evidence: canonicalizeProductSemanticEvidence(input.recognitionEvidence),
+    }),
+  );
   if (receipt !== expectedReceipt) return null;
   const { data, error } = await input.service
     .from('intimport_semantic_classification_usage')
@@ -452,7 +535,9 @@ async function trustedIntimportSemanticClassification(input: {
     .maybeSingle();
   if (error || !data) return null;
   const result = objectValue(data.result_json);
-  const classification = objectValue(result.classification) as unknown as ProductSemanticClassification;
+  const classification = objectValue(
+    result.classification,
+  ) as unknown as ProductSemanticClassification;
   if (
     data.idempotency_key !== receipt ||
     data.classifier_version !== PRODUCT_RECOGNITION_VERSION ||
@@ -460,7 +545,8 @@ async function trustedIntimportSemanticClassification(input: {
     classification.authority !== PRODUCT_RECOGNITION_VERSION ||
     classification.classificationSource !== 'SERVER_MODEL' ||
     classification.evidenceFingerprint !== deterministic.evidenceFingerprint
-  ) return null;
+  )
+    return null;
   return classification;
 }
 
@@ -516,9 +602,7 @@ async function trustedIntimportEvidence(input: {
     sourceUrl: string;
     authority: string;
   }[] = [];
-  let recognitionEvidence = canonicalizeProductSemanticEvidence(
-    input.proposal.recognitionEvidence,
-  );
+  let recognitionEvidence = canonicalizeProductSemanticEvidence(input.proposal.recognitionEvidence);
   const semanticNutrition = new Map<string, string>();
   for (const part of (recognitionEvidence.nutrition ?? '').split('|')) {
     const [label, ...value] = part.trim().split(':');
@@ -610,7 +694,9 @@ async function trustedIntimportEvidence(input: {
     });
   }
 
-  const nutritionBasis = String(source.nutritionBasis ?? '').toLowerCase().replace(/\s+/g, '');
+  const nutritionBasis = String(source.nutritionBasis ?? '')
+    .toLowerCase()
+    .replace(/\s+/g, '');
   const per100g = nutritionBasis === '100g' || nutritionBasis === 'per100g';
   direct('nutritionBasis', source.nutritionBasis);
   if (per100g) {
@@ -689,12 +775,73 @@ async function trustedIntimportEvidence(input: {
       const requestedFields = Array.isArray(usage.fields_requested)
         ? usage.fields_requested.filter((field): field is string => typeof field === 'string')
         : [];
-      const expectedReceipt = await sha256Text(
-        stableJson({ identity: researchIdentity, fields: [...requestedFields].sort() }),
-      );
-      if (expectedReceipt !== receipt) return null;
       const result = objectValue(usage.result_json);
+      const researchStep = objectValue(result.researchStep);
       const resultFacts = Array.isArray(result.facts) ? result.facts : [];
+      const storedRequestIdentity = objectValue(result.requestIdentity);
+      const receiptIdentity =
+        Object.keys(storedRequestIdentity).length > 0
+          ? {
+              brand: clippedText(storedRequestIdentity.brand, 120),
+              manufacturer: clippedText(storedRequestIdentity.manufacturer, 160),
+              name: clippedText(storedRequestIdentity.name, 200),
+              variant: clippedText(storedRequestIdentity.variant, 160),
+              barcode: clippedText(storedRequestIdentity.barcode, 20),
+              netQuantity: clippedText(storedRequestIdentity.netQuantity, 60),
+              knownSourceUrl: clippedText(storedRequestIdentity.knownSourceUrl, 400),
+              technicalPdfUrl: clippedText(storedRequestIdentity.technicalPdfUrl, 400),
+            }
+          : researchIdentity;
+      const withoutBarcode = (identity: typeof researchIdentity) => ({
+        ...identity,
+        barcode: null,
+      });
+      if (
+        stableJson(withoutBarcode(receiptIdentity)) !== stableJson(withoutBarcode(researchIdentity))
+      ) {
+        return null;
+      }
+      const normalizedReceiptBarcode = (receiptIdentity.barcode ?? '').replace(/\D/g, '');
+      const normalizedCurrentBarcode = (researchIdentity.barcode ?? '').replace(/\D/g, '');
+      const discoveredBarcodes = new Set(
+        resultFacts.flatMap((rawFact) => {
+          const fact = objectValue(rawFact);
+          if (fact.field !== 'barcode' || !evidenceValuePresent(fact.value)) return [];
+          const value = String(fact.value).replace(/\D/g, '');
+          return isValidGtin(value) ? [value] : [];
+        }),
+      );
+      const barcodeIdentityMatches =
+        normalizedReceiptBarcode === normalizedCurrentBarcode ||
+        (normalizedReceiptBarcode === '' &&
+          normalizedCurrentBarcode !== '' &&
+          discoveredBarcodes.size === 1 &&
+          discoveredBarcodes.has(normalizedCurrentBarcode));
+      if (!barcodeIdentityMatches) return null;
+      const expectedV2Receipt = await sha256Text(
+        stableJson({
+          identity: receiptIdentity,
+          fields: [...requestedFields].sort(),
+          researchStep: {
+            kind: clippedText(researchStep.kind, 120) ?? 'OPEN_WEB_SEARCH',
+            url: clippedText(researchStep.url, 400),
+            allowedDomains: Array.isArray(researchStep.allowedDomains)
+              ? researchStep.allowedDomains
+                  .filter((entry): entry is string => typeof entry === 'string')
+                  .sort()
+              : [],
+          },
+        }),
+      );
+      const expectedLegacyReceipt = await sha256Text(
+        stableJson({ identity: receiptIdentity, fields: [...requestedFields].sort() }),
+      );
+      if (
+        receipt !==
+        (Object.keys(researchStep).length > 0 ? expectedV2Receipt : expectedLegacyReceipt)
+      ) {
+        return null;
+      }
       for (const rawFact of resultFacts) {
         const fact = objectValue(rawFact);
         const field = String(fact.field ?? '') as ProductEvidenceField;
@@ -711,9 +858,13 @@ async function trustedIntimportEvidence(input: {
           authority.authority === 'UNKNOWN' ||
           fact.sourceAuthorityClass !== authority.authority ||
           fact.evidenceSource !== authority.evidenceSource
-        ) return null;
+        )
+          return null;
         const current = fields[field];
-        if (current && EVIDENCE_SOURCE_RANK[current] >= EVIDENCE_SOURCE_RANK[authority.evidenceSource]) {
+        if (
+          current &&
+          EVIDENCE_SOURCE_RANK[current] >= EVIDENCE_SOURCE_RANK[authority.evidenceSource]
+        ) {
           continue;
         }
         fields[field] = authority.evidenceSource;
@@ -775,12 +926,11 @@ async function trustedIntimportEvidence(input: {
   // Web nutrition becomes product-owned VERIFIED composition only when the
   // same server-validated receipt establishes a per-100 g basis. The browser
   // never supplies this source card; it is rebuilt from the service ledger.
-  const webBasisFact = acceptedWebNutritionFacts.find(
-    (fact) => fact.field === 'nutritionBasis',
-  );
-  const webBasis = String(webBasisFact?.value ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '');
-  const webPer100g =
-    per100g || (webBasis.includes('100g') && !webBasis.includes('100ml'));
+  const webBasisFact = acceptedWebNutritionFacts.find((fact) => fact.field === 'nutritionBasis');
+  const webBasis = String(webBasisFact?.value ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '');
+  const webPer100g = per100g || (webBasis.includes('100g') && !webBasis.includes('100ml'));
   const sourceCardFields: CardContribution['fields'] = {};
   const workingFieldByFact: Readonly<Partial<Record<ProductEvidenceField, WorkingNumericField>>> = {
     energyKcal: 'kcal_per_100g',
@@ -822,13 +972,14 @@ async function trustedIntimportEvidence(input: {
       });
     }
   }
-  const sourceCard: CardContribution | null = Object.keys(sourceCardFields).length > 0
-    ? {
-        fields: sourceCardFields,
-        per100ml: null,
-        reasons: [`server enrichment per 100 g: ${Object.keys(sourceCardFields).length} fields`],
-      }
-    : null;
+  const sourceCard: CardContribution | null =
+    Object.keys(sourceCardFields).length > 0
+      ? {
+          fields: sourceCardFields,
+          per100ml: null,
+          reasons: [`server enrichment per 100 g: ${Object.keys(sourceCardFields).length} fields`],
+        }
+      : null;
 
   const evidence: ProductEvidenceInput = {
     kind: input.proposal.evidence.kind,
@@ -846,17 +997,16 @@ async function trustedIntimportEvidence(input: {
   // Reject stale or forged browser evidence. A valid enriched client object is
   // an exact transport copy of the independently rebuilt server truth.
   if (stableJson(evidence) !== stableJson(input.proposal.evidence)) return null;
-  recognitionEvidence.nutrition = semanticNutrition.size > 0
-    ? [...semanticNutrition.entries()].map(([label, value]) => `${label}:${value}`).join(' | ')
-    : null;
+  recognitionEvidence.nutrition =
+    semanticNutrition.size > 0
+      ? [...semanticNutrition.entries()].map(([label, value]) => `${label}:${value}`).join(' | ')
+      : null;
   recognitionEvidence.sourceUrls = [...new Set(recognitionEvidence.sourceUrls)];
   recognitionEvidence = canonicalizeProductSemanticEvidence(recognitionEvidence);
   return { evidence, provenance, carbonationEvidence, recognitionEvidence, sourceCard };
 }
 
-function serverManualProductProfileProposal(
-  canonicalInput: Record<string, unknown>,
-): {
+function serverManualProductProfileProposal(canonicalInput: Record<string, unknown>): {
   matchInput: ProfileMatchInput;
   declared: Partial<Record<WorkingNumericField, number>>;
   declaredBasis: Partial<Record<WorkingNumericField, 'user_confirmed'>>;
@@ -865,20 +1015,26 @@ function serverManualProductProfileProposal(
 } | null {
   const facts = objectValue(canonicalInput.facts);
   const nutrition = objectValue(facts.nutrition);
-  const name = typeof canonicalInput.displayName === 'string' && canonicalInput.displayName.trim()
-    ? canonicalInput.displayName.trim()
-    : null;
-  const brand = typeof canonicalInput.brand === 'string' && canonicalInput.brand.trim()
-    ? canonicalInput.brand.trim()
-    : null;
+  const name =
+    typeof canonicalInput.displayName === 'string' && canonicalInput.displayName.trim()
+      ? canonicalInput.displayName.trim()
+      : null;
+  const brand =
+    typeof canonicalInput.brand === 'string' && canonicalInput.brand.trim()
+      ? canonicalInput.brand.trim()
+      : null;
   if (!name || (!brand && canonicalInput.explicitlyUnbranded !== true)) return null;
 
   const declared: Partial<Record<WorkingNumericField, number>> = {};
   const declaredBasis: Partial<Record<WorkingNumericField, 'user_confirmed'>> = {};
   const macroMap: Readonly<Record<string, WorkingNumericField>> = {
-    energyKcal: 'kcal_per_100g', fat: 'fat_percent', protein: 'protein_percent',
-    carbohydrate: 'carbohydrate_percent', sugars: 'total_sugars_percent',
-    fibre: 'fiber_percent', salt: 'salt_percent',
+    energyKcal: 'kcal_per_100g',
+    fat: 'fat_percent',
+    protein: 'protein_percent',
+    carbohydrate: 'carbohydrate_percent',
+    sugars: 'total_sugars_percent',
+    fibre: 'fiber_percent',
+    salt: 'salt_percent',
   };
   if (nutrition.basis === 'per_100g') {
     for (const [key, field] of Object.entries(macroMap)) {
@@ -890,10 +1046,13 @@ function serverManualProductProfileProposal(
       declaredBasis[field] = 'user_confirmed';
     }
   }
-  const ean = String(canonicalInput.ean ?? canonicalInput.barcode ?? '').replace(/\D+/g, '') || null;
+  const ean =
+    String(canonicalInput.ean ?? canonicalInput.barcode ?? '').replace(/\D+/g, '') || null;
   const fields: Partial<Record<ProductEvidenceField, EvidenceSource>> = {
     identity: 'user_confirmed',
-    ...(brand || canonicalInput.explicitlyUnbranded === true ? { brand: 'user_confirmed' as const } : {}),
+    ...(brand || canonicalInput.explicitlyUnbranded === true
+      ? { brand: 'user_confirmed' as const }
+      : {}),
     ...(typeof facts.packageSize === 'string' && facts.packageSize.trim()
       ? { netQuantity: 'user_confirmed' as const }
       : {}),
@@ -903,7 +1062,9 @@ function serverManualProductProfileProposal(
     ...(typeof facts.allergensText === 'string' && facts.allergensText.trim()
       ? { allergens: 'user_confirmed' as const }
       : {}),
-    ...(typeof declared.kcal_per_100g === 'number' ? { energyKcal: 'user_confirmed' as const } : {}),
+    ...(typeof declared.kcal_per_100g === 'number'
+      ? { energyKcal: 'user_confirmed' as const }
+      : {}),
     ...(typeof declared.fat_percent === 'number' ? { fat: 'user_confirmed' as const } : {}),
     ...(typeof declared.carbohydrate_percent === 'number'
       ? { carbohydrate: 'user_confirmed' as const }
@@ -920,7 +1081,7 @@ function serverManualProductProfileProposal(
     ['sugars_g', nutrition.sugars],
     ['protein_g', nutrition.protein],
     ['salt_g', nutrition.salt],
-  ].flatMap(([label, value]) => evidenceValuePresent(value) ? [`${label}:${String(value)}`] : []);
+  ].flatMap(([label, value]) => (evidenceValuePresent(value) ? [`${label}:${String(value)}`] : []));
   const recognitionEvidence = canonicalizeProductSemanticEvidence({
     name,
     brand,
@@ -949,15 +1110,21 @@ function serverManualProductProfileProposal(
       barcode: ean,
       knownMacros: {
         ...(typeof declared.fat_percent === 'number' ? { fat_percent: declared.fat_percent } : {}),
-        ...(typeof declared.protein_percent === 'number' ? { protein_percent: declared.protein_percent } : {}),
+        ...(typeof declared.protein_percent === 'number'
+          ? { protein_percent: declared.protein_percent }
+          : {}),
         ...(typeof declared.carbohydrate_percent === 'number'
           ? { carbohydrate_percent: declared.carbohydrate_percent }
           : {}),
         ...(typeof declared.total_sugars_percent === 'number'
           ? { total_sugars_percent: declared.total_sugars_percent }
           : {}),
-        ...(typeof declared.fiber_percent === 'number' ? { fiber_percent: declared.fiber_percent } : {}),
-        ...(typeof declared.salt_percent === 'number' ? { salt_percent: declared.salt_percent } : {}),
+        ...(typeof declared.fiber_percent === 'number'
+          ? { fiber_percent: declared.fiber_percent }
+          : {}),
+        ...(typeof declared.salt_percent === 'number'
+          ? { salt_percent: declared.salt_percent }
+          : {}),
       },
       technical: recognition.isTechnicalProduct,
       semantic: recognition,
@@ -966,8 +1133,11 @@ function serverManualProductProfileProposal(
     declaredBasis,
     evidence: {
       kind: recognition.isTechnicalProduct ? 'technical' : 'normal_food',
-      fields, validatedBarcode: ean !== null,
-      exactCanonicalMatch: false, mapperFamilyMatch: false, materialConflicts: [],
+      fields,
+      validatedBarcode: ean !== null,
+      exactCanonicalMatch: false,
+      mapperFamilyMatch: false,
+      materialConflicts: [],
     },
     recognitionEvidence,
   };
@@ -1397,7 +1567,7 @@ Deno.serve(async (request) => {
   const importRunId = typeof body.importRunId === 'string' ? body.importRunId : null;
   const importRowIndex = Number(body.importRowIndex);
   const hasImportRunMetadata =
-    importRunId !== null || body.importRowIndex !== null && body.importRowIndex !== undefined;
+    importRunId !== null || (body.importRowIndex !== null && body.importRowIndex !== undefined);
   if (
     hasImportRunMetadata &&
     (source !== 'catalog_import' ||
@@ -1407,7 +1577,8 @@ Deno.serve(async (request) => {
       ) ||
       !Number.isInteger(importRowIndex) ||
       importRowIndex < 0)
-  ) return json({ error: 'invalid_import_run_metadata' }, 400);
+  )
+    return json({ error: 'invalid_import_run_metadata' }, 400);
   const importSourceRowId =
     typeof body.importSourceRowId === 'string' ? body.importSourceRowId.slice(0, 240) : null;
   const importDisplayName =
@@ -1625,9 +1796,11 @@ Deno.serve(async (request) => {
     return json({ ...completedResult, idempotent: true });
   }
 
-  let serverProductProfileAuthority: (IntimportTrustedProductProfile & {
-    sourceProductId: string | null;
-  }) | null = null;
+  let serverProductProfileAuthority:
+    | (IntimportTrustedProductProfile & {
+        sourceProductId: string | null;
+      })
+    | null = null;
   let serverProductBehaviorAuthority: TrustedProductBehaviorAuthority | null = null;
   const productProfileProposal = objectValue(canonicalInput.intimportProductProfileProposal);
   delete canonicalInput.intimportProductProfileProposal;
@@ -1669,7 +1842,9 @@ Deno.serve(async (request) => {
         trustedRecognition,
         evidenceProvenance: trustedEvidence.provenance,
         carbonationEvidence: trustedEvidence.carbonationEvidence,
-        proposedTechnicalComposition: objectValue(objectValue(canonicalInput.facts).technicalComposition),
+        proposedTechnicalComposition: objectValue(
+          objectValue(canonicalInput.facts).technicalComposition,
+        ),
         rows: await loadMapperAuthorityRows(service),
       });
       if (!authority) return json({ error: 'intimport_product_profile_rejected' }, 409);
@@ -1700,7 +1875,9 @@ Deno.serve(async (request) => {
         declaredBasis: proposal.declaredBasis,
         evidence: proposal.evidence,
         recognitionEvidence: proposal.recognitionEvidence,
-        proposedTechnicalComposition: objectValue(objectValue(canonicalInput.facts).technicalComposition),
+        proposedTechnicalComposition: objectValue(
+          objectValue(canonicalInput.facts).technicalComposition,
+        ),
         rows: await loadMapperAuthorityRows(service),
       });
       if (!authority) return json({ error: 'manual_product_profile_rejected' }, 409);
@@ -1732,11 +1909,18 @@ Deno.serve(async (request) => {
   // shared authorities above provide the verdict.
   if (source === 'admin' && body.requireApprovalReady === true) {
     const accuracy = serverProductProfileAuthority?.productAccuracy ?? 0;
-    const roleReady = serverProductBehaviorAuthority !== null &&
-      (serverProductBehaviorAuthority.baseRecipeEligible || serverProductBehaviorAuthority.toppingEligible);
+    const roleReady =
+      serverProductBehaviorAuthority !== null &&
+      (serverProductBehaviorAuthority.baseRecipeEligible ||
+        serverProductBehaviorAuthority.toppingEligible);
     const gellattiReady =
       serverProductProfileAuthority?.productAccuracyAssessment.gellattiReadiness.ready === true;
-    if (!serverProductProfileAuthority || !serverProductBehaviorAuthority || !gellattiReady || !roleReady) {
+    if (
+      !serverProductProfileAuthority ||
+      !serverProductBehaviorAuthority ||
+      !gellattiReady ||
+      !roleReady
+    ) {
       return json({
         kind: 'approval_not_ready',
         productCreated: false,
@@ -1810,15 +1994,16 @@ Deno.serve(async (request) => {
       productBehaviorAuthority: serverProductBehaviorAuthority,
     },
   };
-  const { data, error } = hasImportRunMetadata && importRunId
-    ? await service.rpc('ingest_product_import_row_v1', {
-        ...ingestArguments,
-        p_import_run_id: importRunId,
-        p_row_index: importRowIndex,
-        p_source_row_id: importSourceRowId,
-        p_display_name: importDisplayName,
-      })
-    : await service.rpc('ingest_product_v1', ingestArguments);
+  const { data, error } =
+    hasImportRunMetadata && importRunId
+      ? await service.rpc('ingest_product_import_row_v1', {
+          ...ingestArguments,
+          p_import_run_id: importRunId,
+          p_row_index: importRowIndex,
+          p_source_row_id: importSourceRowId,
+          p_display_name: importDisplayName,
+        })
+      : await service.rpc('ingest_product_v1', ingestArguments);
   if (error) {
     console.error('catalog_product_ingest_failed', {
       source,

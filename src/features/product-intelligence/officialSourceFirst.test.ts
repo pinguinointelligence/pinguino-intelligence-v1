@@ -226,7 +226,7 @@ describe('call caps count real searches and stop before exceeding', () => {
     expect(edgeSource).not.toContain('Math.min(maxPerProduct, webCalls)');
   });
 
-  it('a response making 3 searches counts as 3', async () => {
+  it('three planned source steps making 3 searches each count as 9', async () => {
     const provider = vi.fn(async () => ({ facts: [], calls: 3 }));
     const rows: EnrichmentInputRow[] = [{ intelligence: intel(row()), barcode: null }];
     const { summary } = await runIntimportEnrichment(rows, provider, {
@@ -234,7 +234,8 @@ describe('call caps count real searches and stop before exceeding', () => {
       maxSpendUsd: 5,
       concurrency: 1,
     });
-    expect(summary.callsUsed).toBe(3);
+    expect(summary.callsUsed).toBe(9);
+    expect(provider).toHaveBeenCalledTimes(3);
   });
 
   it('an import limit of 6 makes a seventh search impossible', async () => {

@@ -185,7 +185,12 @@ export function canonicalizeProductSemanticEvidence(
 
 export interface ProductSemanticClassification {
   authority: typeof PRODUCT_RECOGNITION_VERSION;
-  classificationSource: 'DETERMINISTIC' | 'SERVER_MODEL' | 'CUSTOMER_CONFIRMED' | 'REVIEW_REQUIRED';
+  classificationSource:
+    | 'DETERMINISTIC'
+    | 'SERVER_MODEL'
+    | 'CUSTOMER_CONFIRMED'
+    | 'OWNER_CONFIRMED'
+    | 'REVIEW_REQUIRED';
   productArchetype: ProductArchetype;
   ingredientFamily: ProductSemanticFamily;
   physicalForm: ProductPhysicalForm;

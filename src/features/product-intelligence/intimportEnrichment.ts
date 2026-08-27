@@ -2,10 +2,10 @@
  * INTIMPORT targeted enrichment — bounded, cached, capped, and never automatic.
  *
  * Nothing in this module runs during Parse. It runs only after an explicit owner
- * action, only for products the local stage could not settle (< 90 %), and only
- * for the specific fields that are actually missing. Products at or above the
- * no-web threshold are skipped outright: turning 94 % into 97 % is not worth a
- * single paid call.
+ * action, only for products the shared readiness authority could not settle,
+ * and only for the specific fields that are actually missing. Products at or
+ * above the no-web threshold are skipped only when Gellatti Readiness also
+ * passes: turning a genuinely ready 94 % into 97 % is not worth a paid call.
  *
  * The external lookup itself is INJECTED. This module owns the policy — what to
  * ask, how often, when to stop — never the transport, so it stays pure and fully
@@ -28,6 +28,7 @@ import {
   type IntimportReassessmentOverride,
   type IntimportProductIntelligence,
 } from './intimportIntelligence';
+import type { OwnerProductClassification } from './ownerProductClassification';
 import {
   intimportNumber,
   normalizeNutritionBasis,
@@ -37,15 +38,14 @@ import type { SourceAuthorityClass } from './sourceAuthority';
 import type { MapperKnowledge } from './mapperValueInference';
 import { knownField, type FieldBasis, type WorkingNumericField } from './productFieldTruth';
 import type { CardContribution } from './productSourceCard';
-import type {
-  ProductionAccuracyEvidenceProvenance,
-} from './productProductionAccuracy';
+import type { ProductionAccuracyEvidenceProvenance } from './productProductionAccuracy';
 import {
   canonicalizeProductSemanticEvidence,
   classifyProductSemantics,
   type ProductSemanticClassification,
   type ProductSemanticEvidence,
 } from './productRecognition';
+import { validateBarcode } from '@/features/product-scanner/barcode';
 
 /** One external observation. `null` value means "looked, found nothing". */
 export interface EnrichmentFact {
@@ -200,9 +200,10 @@ function mergeSemanticFacts(
     if (nutritionLabel) nutrition.set(nutritionLabel, value);
     if (fact.sourceUrl) merged.sourceUrls = [...merged.sourceUrls, fact.sourceUrl];
   }
-  merged.nutrition = nutrition.size > 0
-    ? [...nutrition.entries()].map(([label, value]) => `${label}:${value}`).join(' | ')
-    : null;
+  merged.nutrition =
+    nutrition.size > 0
+      ? [...nutrition.entries()].map(([label, value]) => `${label}:${value}`).join(' | ')
+      : null;
   merged.sourceUrls = [...new Set(merged.sourceUrls)];
   return canonicalizeProductSemanticEvidence(merged);
 }
@@ -224,7 +225,10 @@ const isWeaker = (existing: EvidenceSource, incoming: EvidenceSource): boolean =
   CREDIT_ORDER[incoming] > CREDIT_ORDER[existing];
 
 /** Deterministic cache key: a validated GTIN identifies a product globally. */
-export const enrichmentCacheKey = (row: IntimportProductIntelligence, barcode: string | null): string =>
+export const enrichmentCacheKey = (
+  row: IntimportProductIntelligence,
+  barcode: string | null,
+): string =>
   barcode
     ? `gtin:${barcode}`
     : `id:${(row.displayName ?? '').toLowerCase().replace(/\s+/g, ' ').trim()}|${row.sourceProductId ?? ''}`;
@@ -292,7 +296,12 @@ function sourceCardFromEnrichment(
     if (!field || fact.value === null) continue;
     const parsed = intimportNumber(String(fact.value)).value;
     const authority = verifiedFactBasis(fact);
-    if (parsed === null || parsed < 0 || (field !== 'kcal_per_100g' && parsed > 100) || !authority) {
+    if (
+      parsed === null ||
+      parsed < 0 ||
+      (field !== 'kcal_per_100g' && parsed > 100) ||
+      !authority
+    ) {
       continue;
     }
     fields[field] = knownField({
@@ -316,6 +325,7 @@ function reassessmentOverride(
   candidate: IntimportCandidate,
   product: EnrichedProduct,
   semanticEvidenceReceipt: string | null,
+  evidence: ProductEvidenceInput = product.evidence,
 ): IntimportReassessmentOverride {
   const evidenceProvenance: Partial<
     Record<ProductEvidenceField, ProductionAccuracyEvidenceProvenance>
@@ -330,11 +340,58 @@ function reassessmentOverride(
     ]),
   );
   return {
-    evidence: product.evidence,
+    evidence,
     sourceCard: sourceCardFromEnrichment(candidate, product),
     evidenceProvenance,
     enrichmentEvidenceReceipts: product.enrichmentEvidenceReceipts,
     semanticEvidenceReceipt,
+  };
+}
+
+/**
+ * A checksum-valid GTIN discovered by the trusted enrichment loop becomes part
+ * of the same normalized identity contract that a tabular EAN would use. It is
+ * deliberately not written back into `source`: that map remains the untouched
+ * workbook evidence. Conflicting or invalid web values never become identity.
+ */
+function candidateWithResearchedBarcode(
+  candidate: IntimportCandidate,
+  product: EnrichedProduct,
+): { candidate: IntimportCandidate; evidence: ProductEvidenceInput } {
+  if (candidate.ean) return { candidate, evidence: product.evidence };
+  const validated = product.appliedFacts
+    .filter((fact) => fact.field === 'barcode' && fact.value !== null)
+    .map((fact) => validateBarcode(String(fact.value)))
+    .filter((value): value is NonNullable<ReturnType<typeof validateBarcode>> => value !== null);
+  const lookupValues = [...new Set(validated.map((value) => value.lookupValue))];
+  if (lookupValues.length !== 1) {
+    return {
+      candidate,
+      evidence:
+        lookupValues.length > 1
+          ? {
+              ...product.evidence,
+              materialConflicts: [
+                ...product.evidence.materialConflicts,
+                `conflicting researched GTIN values: ${lookupValues.join(', ')}`,
+              ],
+            }
+          : product.evidence,
+    };
+  }
+  const barcode = lookupValues[0]!;
+  return {
+    candidate: {
+      ...candidate,
+      ean: barcode,
+      eanRaw: barcode,
+      insert: { ...candidate.insert, ean_code: barcode },
+    },
+    evidence: {
+      ...product.evidence,
+      fields: { ...product.evidence.fields, barcode: 'barcode_registry' },
+      validatedBarcode: true,
+    },
   };
 }
 
@@ -347,9 +404,24 @@ export function reassessIntimportAfterEnrichment(input: {
   mapper: MapperKnowledge | null;
   semanticClassifications?: ReadonlyMap<number, ProductSemanticClassification>;
   semanticEvidenceReceipts?: ReadonlyMap<number, string>;
+  ownerClassifications?: ReadonlyMap<number, OwnerProductClassification>;
 }) {
   const enrichedByRow = new Map(input.enrichedProducts.map((row) => [row.rowIndex, row] as const));
-  const candidatesByRow = new Map(input.candidates.map((row) => [row.rowIndex, row] as const));
+  const candidateResults = input.candidates.map((candidate) => {
+    const product = enrichedByRow.get(candidate.rowIndex);
+    return product
+      ? candidateWithResearchedBarcode(candidate, product)
+      : { candidate, evidence: null };
+  });
+  const reassessmentCandidates = candidateResults.map((result) => result.candidate);
+  const candidatesByRow = new Map(
+    reassessmentCandidates.map((row) => [row.rowIndex, row] as const),
+  );
+  const evidenceByRow = new Map(
+    candidateResults.flatMap((result) =>
+      result.evidence ? [[result.candidate.rowIndex, result.evidence] as const] : [],
+    ),
+  );
   const recognitionEvidence = new Map(
     input.enrichedProducts.map((row) => [row.rowIndex, row.recognitionEvidence] as const),
   );
@@ -363,16 +435,18 @@ export function reassessIntimportAfterEnrichment(input: {
         candidate,
         product,
         input.semanticEvidenceReceipts?.get(rowIndex) ?? null,
+        evidenceByRow.get(rowIndex) ?? product.evidence,
       ),
     );
   }
   return runIntimportLocalIntelligence(
-    input.candidates,
+    reassessmentCandidates,
     {},
     input.mapper,
     input.semanticClassifications ?? new Map(),
     recognitionEvidence,
     overrides,
+    input.ownerClassifications ?? new Map(),
   );
 }
 
@@ -444,8 +518,13 @@ export async function runIntimportEnrichment(
             webSkippedReason: 'istniejący produkt kanoniczny — brak potrzeby wyszukiwania',
           }),
         );
-      } else if (intelligence.assessment.confidence >= NO_WEB_CONFIDENCE) {
-        // The hard cost rule: local evidence already suffices.
+      } else if (
+        intelligence.assessment.confidence >= NO_WEB_CONFIDENCE &&
+        intelligence.productionAccuracy.gellattiReadiness.ready
+      ) {
+        // The hard cost rule applies only after the shared readiness authority
+        // confirms that local evidence really suffices. A high legacy evidence
+        // score must not suppress research for an unresolved Engine-critical gap.
         results.push(
           settle(row, intelligence.assessment.confidence, {
             webSkippedReason: `lokalna pewność ≥${NO_WEB_CONFIDENCE}% — wyszukiwanie zbędne`,
@@ -465,67 +544,82 @@ export async function runIntimportEnrichment(
           }),
         );
       } else {
-        const key = enrichmentCacheKey(intelligence, row.barcode);
-        const cached = cache.get(key);
-        const response =
-          cached ??
-          (await provider({
-            cacheKey: key,
-            rowIndex: intelligence.rowIndex,
-            displayName: intelligence.displayName,
-            brand: intelligence.researchIdentity.brand,
-            barcode: row.barcode,
-            fields: intelligence.enrichmentTargets.slice(0, MAX_CALLS_PER_PRODUCT),
-            researchStepIndex: 0,
-          }));
-        if (response.capReached) {
-          // A server-side spend refusal is a truthful terminal state, not an
-          // exception that discards every enriched row already completed.
-          capReached = true;
-          results.push(
-            settle(row, intelligence.assessment.confidence, {
-              webSkippedReason: 'osiągnięto serwerowy limit wywołań importu',
-            }),
+        const productKey = enrichmentCacheKey(intelligence, row.barcode);
+        let currentEvidence = row.evidence ?? intelligence.evidence;
+        let recognitionEvidence = intelligence.recognitionEvidence;
+        const appliedFacts: EnrichmentFact[] = [];
+        const evidenceReceipts = new Set(intelligence.enrichmentEvidenceReceipts);
+        let productCalls = 0;
+        let productCacheHit = false;
+        let serverCapReached = false;
+
+        // Execute the existing strongest-first research plan. Preparing this
+        // plan without consuming its later steps made a first-source miss look
+        // terminal even when an official domain/retailer fallback was already
+        // available. Three bounded steps are enough to preserve the cap and
+        // still honour "try the next source".
+        for (
+          let researchStepIndex = 0;
+          researchStepIndex < MAX_CALLS_PER_PRODUCT;
+          researchStepIndex += 1
+        ) {
+          const remaining = intelligence.enrichmentTargets.filter(
+            (field) => !currentEvidence.fields[field],
           );
-        } else {
-          if (cached) cacheHits += 1;
-          else {
+          if (remaining.length === 0 || capExhausted()) break;
+          const key = `${productKey}|step:${researchStepIndex}|fields:${[...remaining].sort().join(',')}`;
+          const cached = cache.get(key);
+          const response =
+            cached ??
+            (await provider({
+              cacheKey: key,
+              rowIndex: intelligence.rowIndex,
+              displayName: intelligence.displayName,
+              brand: intelligence.researchIdentity.brand,
+              barcode: row.barcode,
+              fields: remaining,
+              researchStepIndex,
+            }));
+          if (response.capReached) {
+            capReached = true;
+            serverCapReached = true;
+            break;
+          }
+          if (cached) {
+            cacheHits += 1;
+            productCacheHit = true;
+          } else {
             cache.set(key, response);
             callsUsed += response.calls;
             spendUsd += response.estimatedCostUsd ?? 0;
+            productCalls += response.calls;
           }
-          webAttempted += 1;
-
-          const { evidence, applied } = mergeFacts(
-            row.evidence ?? intelligence.evidence,
-            response.facts,
-          );
-          const assessment = assessProductConfidence(evidence);
-          const recognitionEvidence = mergeSemanticFacts(
-            intelligence.recognitionEvidence,
-            applied,
-          );
-          results.push(
-            settle(row, assessment.confidence, {
-              evidence,
-              assessment,
-              webAttempted: true,
-              callsUsed: cached ? 0 : response.calls,
-              cacheHit: Boolean(cached),
-              appliedFacts: applied,
-              recognitionEvidence,
-              recognition: classifyProductSemantics(recognitionEvidence),
-              enrichmentEvidenceReceipts: response.evidenceReceipt
-                ? [
-                    ...new Set([
-                      ...intelligence.enrichmentEvidenceReceipts,
-                      response.evidenceReceipt,
-                    ]),
-                  ]
-                : intelligence.enrichmentEvidenceReceipts,
-            }),
-          );
+          if (response.evidenceReceipt) evidenceReceipts.add(response.evidenceReceipt);
+          const merged = mergeFacts(currentEvidence, response.facts);
+          currentEvidence = merged.evidence;
+          appliedFacts.push(...merged.applied);
+          recognitionEvidence = mergeSemanticFacts(recognitionEvidence, merged.applied);
+          if (assessProductConfidence(currentEvidence).criticalReadiness) break;
         }
+
+        webAttempted += 1;
+        const assessment = assessProductConfidence(currentEvidence);
+        results.push(
+          settle(row, assessment.confidence, {
+            evidence: currentEvidence,
+            assessment,
+            webAttempted: true,
+            webSkippedReason: serverCapReached
+              ? 'osiągnięto serwerowy limit wywołań importu'
+              : null,
+            callsUsed: productCalls,
+            cacheHit: productCacheHit,
+            appliedFacts,
+            recognitionEvidence,
+            recognition: classifyProductSemantics(recognitionEvidence),
+            enrichmentEvidenceReceipts: [...evidenceReceipts],
+          }),
+        );
       }
 
       onProgress?.({

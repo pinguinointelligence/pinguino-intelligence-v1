@@ -50,10 +50,11 @@ Deno.serve(async (request) => {
     const totalRows = Number(body.totalRows);
     if (!/^[0-9a-f]{64}$/.test(fingerprint) || !Number.isInteger(totalRows) || totalRows < 1)
       return json({ error: 'invalid_import_identity' }, 400);
+    const mode = body.mode === 'STANDARD' ? 'STANDARD' : 'CLEAN_OWNER_REIMPORT';
     rpc = await service.rpc('start_product_import_run_v1', {
       p_actor_user_id: auth.user.id,
       p_source: 'INTIMPORT',
-      p_mode: 'CLEAN_OWNER_REIMPORT',
+      p_mode: mode,
       p_label:
         typeof body.label === 'string' && body.label.trim()
           ? body.label.trim().slice(0, 160)
@@ -92,7 +93,8 @@ Deno.serve(async (request) => {
         !Number.isInteger(rowIndex) ||
         rowIndex < 0 ||
         !['REUSED', 'REVIEW', 'SKIPPED', 'FAILED'].includes(String(outcome))
-      ) return json({ error: 'invalid_import_row_outcome' }, 400);
+      )
+        return json({ error: 'invalid_import_row_outcome' }, 400);
       rpc = await service.rpc('record_product_import_row_outcome_v1', {
         p_actor_user_id: auth.user.id,
         p_import_run_id: runId,
@@ -101,8 +103,7 @@ Deno.serve(async (request) => {
         p_display_name: typeof body.displayName === 'string' ? body.displayName : null,
         p_outcome: outcome,
         p_error: typeof body.error === 'string' ? body.error.slice(0, 4000) : null,
-        p_result:
-          typeof body.result === 'object' && body.result !== null ? body.result : {},
+        p_result: typeof body.result === 'object' && body.result !== null ? body.result : {},
       });
     } else if (action === 'rollbackBatch') {
       const batchSize = Number(body.batchSize ?? 8);

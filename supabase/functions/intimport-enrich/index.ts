@@ -531,13 +531,18 @@ Deno.serve(async (request) => {
         .filter((d): d is string => typeof d === 'string' && /^[a-z0-9.-]+$/i.test(d))
         .slice(0, 8)
     : [];
+  const researchStep = {
+    kind: stepKind,
+    url: stepUrl,
+    allowedDomains: [...allowedDomains].sort(),
+  };
 
   // Cache key deliberately EXCLUDES importId: one canonical product is one
   // research job, however many imports or rows ask for it. Including the import
   // id meant a second run re-researched everything at full price — observed live
   // as 25 fresh searches and zero cache hits on an identical subset.
   const idempotencyKey = await sha256Text(
-    stableJson({ identity, fields: [...requestedFields].sort() }),
+    stableJson({ identity, fields: [...requestedFields].sort(), researchStep }),
   );
 
   const { data: cached } = await service
@@ -697,6 +702,7 @@ Deno.serve(async (request) => {
   const result = {
     requestIdentity: identity,
     requestedFields,
+    researchStep,
     facts,
     sources: [...sourceByUrl.values()],
     notFound: Array.isArray(parsed.notFound) ? parsed.notFound.map(String) : [],

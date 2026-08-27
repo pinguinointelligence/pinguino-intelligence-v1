@@ -114,23 +114,44 @@ describe('owner thresholds', () => {
   });
 
   it('skips the web at or above 90 when critical fields are satisfied', () => {
-    const assessment = { confidence: 94, criticalReadiness: true, missingCritical: [], technicalBlocked: false, reasons: [] };
+    const assessment = {
+      confidence: 94,
+      criticalReadiness: true,
+      missingCritical: [],
+      technicalBlocked: false,
+      reasons: [],
+    };
     expect(routeBeforeWeb(assessment)).toBe('READY_LOCAL');
   });
 
   it.each([89.99, 87, 85])('attempts targeted enrichment at %s', (confidence) => {
-    const assessment = { confidence, criticalReadiness: false, missingCritical: ['ingredients' as const], technicalBlocked: false, reasons: [] };
+    const assessment = {
+      confidence,
+      criticalReadiness: false,
+      missingCritical: ['ingredients' as const],
+      technicalBlocked: false,
+      reasons: [],
+    };
     expect(routeBeforeWeb(assessment)).toBe('WEB_RECOMMENDED');
   });
 
   it('requires enrichment below 85', () => {
-    const assessment = { confidence: 84.99, criticalReadiness: false, missingCritical: ['ingredients' as const], technicalBlocked: false, reasons: [] };
+    const assessment = {
+      confidence: 84.99,
+      criticalReadiness: false,
+      missingCritical: ['ingredients' as const],
+      technicalBlocked: false,
+      reasons: [],
+    };
     expect(routeBeforeWeb(assessment)).toBe('WEB_REQUIRED');
   });
 
   it('makes a product import-eligible once it clears 85 with critical readiness', () => {
     const strong = assessProductConfidence(
-      evidence({ validatedBarcode: true, fields: { ...evidence().fields, barcode: 'barcode_registry' } }),
+      evidence({
+        validatedBarcode: true,
+        fields: { ...evidence().fields, barcode: 'barcode_registry' },
+      }),
     );
     expect(strong.confidence).toBeGreaterThanOrEqual(AUTO_IMPORT_FLOOR);
     expect(isAutoImportEligible(strong)).toBe(true);
@@ -151,8 +172,11 @@ describe('confidence is deterministic evidence, never LLM self-confidence', () =
     const a = assessProductConfidence(evidence());
     const b = assessProductConfidence(evidence());
     expect(a.confidence).toBe(b.confidence);
-    expect(assessIntimportProduct(parseINTIMPORT(csv([completeRow()])).candidates[0]!).assessment)
-      .toEqual(assessIntimportProduct(parseINTIMPORT(csv([completeRow()])).candidates[0]!).assessment);
+    expect(
+      assessIntimportProduct(parseINTIMPORT(csv([completeRow()])).candidates[0]!).assessment,
+    ).toEqual(
+      assessIntimportProduct(parseINTIMPORT(csv([completeRow()])).candidates[0]!).assessment,
+    );
   });
 
   it('accepts no model-supplied confidence value anywhere in its input', () => {
@@ -163,7 +187,9 @@ describe('confidence is deterministic evidence, never LLM self-confidence', () =
   it('moves only when the evidence moves', () => {
     const base = assessProductConfidence(evidence()).confidence;
     const richer = assessProductConfidence(evidence({ validatedBarcode: true })).confidence;
-    const conflicted = assessProductConfidence(evidence({ materialConflicts: ['brand'] })).confidence;
+    const conflicted = assessProductConfidence(
+      evidence({ materialConflicts: ['brand'] }),
+    ).confidence;
     expect(richer).toBeGreaterThan(base);
     expect(conflicted).toBeLessThan(base);
   });
@@ -261,8 +287,9 @@ describe('Mapper family inference', () => {
   });
 
   it('never presents family inference as verification', () => {
-    const candidate = parseINTIMPORT(csv([row({ 'Product Name Original': 'Pea protein isolate 82%' })]))
-      .candidates[0]!;
+    const candidate = parseINTIMPORT(
+      csv([row({ 'Product Name Original': 'Pea protein isolate 82%' })]),
+    ).candidates[0]!;
     const intelligence = assessIntimportProduct(candidate);
     expect(intelligence.familyApplied).toBe(true);
     // The family supplies `mapper_family` evidence only — the weakest tier.
@@ -356,13 +383,34 @@ describe('targeted enrichment pipeline', () => {
       estimatedCostUsd: 0.01,
     }));
 
-  it('never calls the provider for a ≥90 % product', async () => {
+  it('never calls the provider for a ≥90 % product with no researchable gap', async () => {
     const call = provider();
     const { summary } = await runIntimportEnrichment(toEnrichmentRows([completeRow()]), call);
     expect(call).not.toHaveBeenCalled();
     expect(summary.webAttempted).toBe(0);
-    expect(summary.webSkippedHighConfidence).toBe(1);
+    expect(summary.webSkippedHighConfidence).toBe(0);
     expect(summary.callsUsed).toBe(0);
+  });
+
+  it('still researches a high legacy score when shared Gellatti Readiness is unresolved', async () => {
+    const call = provider();
+    const original = toEnrichmentRows([row()])[0]!;
+    const unresolved = {
+      ...original,
+      intelligence: {
+        ...original.intelligence,
+        assessment: {
+          ...original.intelligence.assessment,
+          confidence: 94,
+        },
+      },
+    };
+
+    const { summary } = await runIntimportEnrichment([unresolved], call);
+
+    expect(original.intelligence.productionAccuracy.gellattiReadiness.ready).toBe(false);
+    expect(call).toHaveBeenCalled();
+    expect(summary.webAttempted).toBe(1);
   });
 
   it('never calls the provider for an existing canonical product', async () => {
@@ -386,6 +434,32 @@ describe('targeted enrichment pipeline', () => {
     // short of the floor. Research fills gaps; it does not launder provenance.
     expect(products[0]!.postWebConfidence).toBeLessThan(AUTO_IMPORT_FLOOR);
     expect(products[0]!.autoImportEligible).toBe(false);
+  });
+
+  it('executes the next existing research-plan step when the first source cannot resolve critical evidence', async () => {
+    const call = vi.fn(async (request: { researchStepIndex: number }) =>
+      request.researchStepIndex === 0
+        ? { facts: [], calls: 1 }
+        : {
+            facts: [
+              {
+                field: 'ingredients' as const,
+                value: 'Cukier, kakao.',
+                source: 'manufacturer' as const,
+              },
+              { field: 'energyKcal' as const, value: 480, source: 'manufacturer' as const },
+              { field: 'fat' as const, value: 25, source: 'manufacturer' as const },
+              { field: 'carbohydrate' as const, value: 58, source: 'manufacturer' as const },
+              { field: 'protein' as const, value: 6, source: 'manufacturer' as const },
+              { field: 'salt' as const, value: 0.2, source: 'manufacturer' as const },
+            ],
+            calls: 1,
+          },
+    );
+    const { products } = await runIntimportEnrichment(toEnrichmentRows([row()]), call);
+    expect(call).toHaveBeenCalledTimes(2);
+    expect(call.mock.calls.map(([request]) => request.researchStepIndex)).toEqual([0, 1]);
+    expect(products[0]?.assessment.criticalReadiness).toBe(true);
   });
 
   it('propagates accepted enrichment facts into the semantic evidence fingerprint', async () => {
@@ -416,6 +490,53 @@ describe('targeted enrichment pipeline', () => {
     expect(products[0]!.recognition.evidenceFingerprint).not.toBe(before);
   });
 
+  it('promotes one checksum-valid researched GTIN into the normalized canonical identity', async () => {
+    const call = vi.fn(async () => ({
+      facts: [
+        {
+          field: 'barcode' as const,
+          value: '5902425088609',
+          source: 'barcode_registry' as const,
+        },
+      ],
+      calls: 1,
+    }));
+    const parsed = parseINTIMPORT(csv([row({ 'EAN / GTIN': 'not_found' })]));
+    const initial = runIntimportLocalIntelligence(parsed.candidates).rows[0]!;
+    const outcome = await runIntimportEnrichment([{ intelligence: initial, barcode: null }], call);
+    const recalculated = reassessIntimportAfterEnrichment({
+      candidates: parsed.candidates,
+      enrichedProducts: outcome.products,
+      mapper: null,
+    }).rows[0]!;
+
+    expect(recalculated.profileMatchInput.barcode).toBe('5902425088609');
+    expect(recalculated.insert.ean_code).toBe('5902425088609');
+    expect(recalculated.evidence).toMatchObject({
+      validatedBarcode: true,
+      fields: { barcode: 'barcode_registry' },
+    });
+  });
+
+  it('never promotes an invalid researched barcode into canonical identity', async () => {
+    const call = vi.fn(async () => ({
+      facts: [{ field: 'barcode' as const, value: '5902425088608', source: 'web_search' as const }],
+      calls: 1,
+    }));
+    const parsed = parseINTIMPORT(csv([row({ 'EAN / GTIN': 'not_found' })]));
+    const initial = runIntimportLocalIntelligence(parsed.candidates).rows[0]!;
+    const outcome = await runIntimportEnrichment([{ intelligence: initial, barcode: null }], call);
+    const recalculated = reassessIntimportAfterEnrichment({
+      candidates: parsed.candidates,
+      enrichedProducts: outcome.products,
+      mapper: null,
+    }).rows[0]!;
+
+    expect(recalculated.profileMatchInput.barcode).toBeNull();
+    expect(recalculated.insert.ean_code).toBeUndefined();
+    expect(recalculated.evidence.validatedBarcode).toBe(false);
+  });
+
   it('recalculates completion and Product Accuracy from the accepted web evidence', async () => {
     const call = vi.fn(async () => ({
       facts: [
@@ -432,10 +553,7 @@ describe('targeted enrichment pipeline', () => {
     }));
     const parsed = parseINTIMPORT(csv([row({ 'Product Name Original': 'Produkt X' })]));
     const initial = runIntimportLocalIntelligence(parsed.candidates).rows[0]!;
-    const outcome = await runIntimportEnrichment(
-      [{ intelligence: initial, barcode: null }],
-      call,
-    );
+    const outcome = await runIntimportEnrichment([{ intelligence: initial, barcode: null }], call);
     const mapper = buildMapperKnowledge([], 'empty-mapper');
 
     const recalculated = reassessIntimportAfterEnrichment({
@@ -453,9 +571,9 @@ describe('targeted enrichment pipeline', () => {
     expect(recalculated.productionAccuracy.components.nutrition.earnedPoints).toBeGreaterThan(
       initial.productionAccuracy.components.nutrition.earnedPoints,
     );
-    expect(recalculated.productionAccuracy.components.ingredientsEvidence.earnedPoints).toBeGreaterThan(
-      initial.productionAccuracy.components.ingredientsEvidence.earnedPoints,
-    );
+    expect(
+      recalculated.productionAccuracy.components.ingredientsEvidence.earnedPoints,
+    ).toBeGreaterThan(initial.productionAccuracy.components.ingredientsEvidence.earnedPoints);
     expect(recalculated.enrichmentEvidenceReceipts).toEqual(['c'.repeat(64)]);
   });
 
@@ -579,8 +697,12 @@ describe('targeted enrichment pipeline', () => {
       estimatedCostUsd: 0,
       _k: request.cacheKey,
     }));
-    const rows = Array.from({ length: 8 }, (_, i) =>
-      toEnrichmentRows([row({ 'Product ID': `P-${i}`, 'Product Name Original': `Produkt ${i}` })])[0]!,
+    const rows = Array.from(
+      { length: 8 },
+      (_, i) =>
+        toEnrichmentRows([
+          row({ 'Product ID': `P-${i}`, 'Product Name Original': `Produkt ${i}` }),
+        ])[0]!,
     );
     const { products, summary } = await runIntimportEnrichment(rows, call, {
       maxCallsPerImport: 3,
@@ -609,10 +731,12 @@ describe('targeted enrichment pipeline', () => {
           }
         : { facts: [], calls: 0, capReached: true };
     });
-    const rows = Array.from({ length: 8 }, (_, i) =>
-      toEnrichmentRows([
-        row({ 'Product ID': `SERVER-${i}`, 'Product Name Original': `Produkt ${i}` }),
-      ])[0]!,
+    const rows = Array.from(
+      { length: 8 },
+      (_, i) =>
+        toEnrichmentRows([
+          row({ 'Product ID': `SERVER-${i}`, 'Product Name Original': `Produkt ${i}` }),
+        ])[0]!,
     );
     const { products, summary } = await runIntimportEnrichment(rows, serverCapped, {
       maxCallsPerImport: 400,
@@ -625,7 +749,9 @@ describe('targeted enrichment pipeline', () => {
     expect(products).toHaveLength(8);
     expect(products[0]!.evidence.fields.ingredients).toBe('manufacturer');
     expect(products[0]!.enrichmentEvidenceReceipts).toEqual(['b'.repeat(64)]);
-    expect(products.slice(1).every((product) => product.finalRoute === 'REVIEW_REQUIRED')).toBe(true);
+    expect(products.slice(1).every((product) => product.finalRoute === 'REVIEW_REQUIRED')).toBe(
+      true,
+    );
   });
 
   it('uses a bounded worker pool rather than one call per row at once', async () => {
@@ -638,10 +764,18 @@ describe('targeted enrichment pipeline', () => {
       inFlight -= 1;
       return { facts: [], calls: 1 };
     });
-    const rows = Array.from({ length: 20 }, (_, i) =>
-      toEnrichmentRows([row({ 'Product ID': `P-${i}`, 'Product Name Original': `Produkt ${i}` })])[0]!,
+    const rows = Array.from(
+      { length: 20 },
+      (_, i) =>
+        toEnrichmentRows([
+          row({ 'Product ID': `P-${i}`, 'Product Name Original': `Produkt ${i}` }),
+        ])[0]!,
     );
-    await runIntimportEnrichment(rows, call, { maxCallsPerImport: 100, maxSpendUsd: 5, concurrency: 4 });
+    await runIntimportEnrichment(rows, call, {
+      maxCallsPerImport: 100,
+      maxSpendUsd: 5,
+      concurrency: 4,
+    });
     expect(peak).toBeLessThanOrEqual(4);
   });
 });

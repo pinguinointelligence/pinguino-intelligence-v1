@@ -26,7 +26,7 @@ export interface ProductImportRunState {
   id: string;
   status: ProductImportRunStatus;
   source: 'INTIMPORT';
-  mode: 'CLEAN_OWNER_REIMPORT';
+  mode: 'STANDARD' | 'CLEAN_OWNER_REIMPORT';
   label: string;
   source_file_name: string | null;
   source_fingerprint: string;
@@ -61,7 +61,8 @@ export async function productImportSourceFingerprint(sourceText: string): Promis
 export const getCleanProductImportPreflight = (): Promise<ProductImportPreflight> =>
   invoke('preflight');
 
-export async function startCleanIntimportRun(input: {
+export async function startIntimportRun(input: {
+  mode: 'STANDARD' | 'CLEAN_OWNER_REIMPORT';
   label: string;
   fileName: string | null;
   sourceFingerprint: string;
@@ -72,12 +73,15 @@ export async function startCleanIntimportRun(input: {
   return run;
 }
 
+export const startCleanIntimportRun = (
+  input: Omit<Parameters<typeof startIntimportRun>[0], 'mode'>,
+): Promise<ProductImportRunState> => startIntimportRun({ ...input, mode: 'CLEAN_OWNER_REIMPORT' });
+
 export const getProductImportRun = (runId: string): Promise<ProductImportRunState> =>
   invoke('state', { runId });
 
-export const requestProductImportCancellation = (
-  runId: string,
-): Promise<ProductImportRunState> => invoke('cancel', { runId });
+export const requestProductImportCancellation = (runId: string): Promise<ProductImportRunState> =>
+  invoke('cancel', { runId });
 
 export const finishProductImportRun = (
   runId: string,
