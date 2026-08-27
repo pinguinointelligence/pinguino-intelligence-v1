@@ -107,17 +107,14 @@ describe('one production-oriented Product Accuracy authority', () => {
       recognition: 7,
       nutrition: 45,
       enginePhysics: 25,
-      ingredientsEvidence: 10,
+      ingredientsEvidence: 13,
       productBehavior: 8,
       ean: 2,
-      manufacturer: 1,
-      country: 1,
-      package: 1,
     });
     expect(Object.values(PRODUCT_PRODUCTION_ACCURACY_WEIGHTS).reduce((a, b) => a + b, 0)).toBe(100);
   });
 
-  it('does not let minor metadata or allergen status block a complete ordinary formulation', () => {
+  it('does not let optional metadata block, while allergen evidence improves Accuracy only', () => {
     const withoutMetadataOrAllergens = assessProductProductionAccuracy(baseInput());
     const withAllergens = assessProductProductionAccuracy(
       baseInput({
@@ -130,10 +127,11 @@ describe('one production-oriented Product Accuracy authority', () => {
 
     expect(withoutMetadataOrAllergens.productAccuracy).toBeGreaterThanOrEqual(85);
     expect(withoutMetadataOrAllergens.criticalCapApplied).toBe(false);
-    expect(withAllergens.productAccuracy).toBe(withoutMetadataOrAllergens.productAccuracy);
+    expect(withAllergens.productAccuracy - withoutMetadataOrAllergens.productAccuracy).toBe(2);
+    expect(withAllergens.gellattiReadiness).toEqual(withoutMetadataOrAllergens.gellattiReadiness);
   });
 
-  it('charges at most 2/1/1/1 for EAN, manufacturer, country and package', () => {
+  it('keeps EAN in Product Accuracy and moves manufacturer/country/package to metadata completeness', () => {
     const all = baseInput();
     all.evidence = {
       ...all.evidence,
@@ -155,9 +153,55 @@ describe('one production-oriented Product Accuracy authority', () => {
     };
 
     expect(full.productAccuracy - missing('barcode').productAccuracy).toBe(2);
-    expect(full.productAccuracy - missing('manufacturer').productAccuracy).toBe(1);
-    expect(full.productAccuracy - missing('countryOfOrigin').productAccuracy).toBe(1);
-    expect(full.productAccuracy - missing('netQuantity').productAccuracy).toBe(1);
+    expect(full.productAccuracy - missing('manufacturer').productAccuracy).toBe(0);
+    expect(full.productAccuracy - missing('countryOfOrigin').productAccuracy).toBe(0);
+    expect(full.productAccuracy - missing('netQuantity').productAccuracy).toBe(0);
+    expect(full.metadataCompleteness.score).toBe(100);
+    expect(missing('manufacturer').metadataCompleteness.score).toBeCloseTo(66.67, 2);
+    expect(missing('countryOfOrigin').metadataCompleteness.score).toBeCloseTo(66.67, 2);
+    expect(missing('netQuantity').metadataCompleteness.score).toBeCloseTo(66.67, 2);
+  });
+
+  it('marks a complete usable product READY independently of optional metadata and score threshold', () => {
+    const fields = completeFieldTruth();
+    fields.fiber_percent = truth(0, 'ESTIMATED', 'mapper_similar_profile');
+    const result = assessProductProductionAccuracy(baseInput({ fieldTruth: fields }));
+
+    expect(result.gellattiReadiness.ready).toBe(true);
+    expect(result.gellattiReadiness.status).toBe('BASE_READY');
+    expect(result.metadataCompleteness.score).toBeCloseTo(33.33, 2);
+  });
+
+  it('keeps a high-accuracy product NOT READY when a genuinely critical fact is missing', () => {
+    const fields = completeFieldTruth();
+    delete fields.salt_percent;
+    const result = assessProductProductionAccuracy(
+      baseInput({
+        fieldTruth: fields,
+        engineUsable: false,
+        criticalPhysicsBlockers: ['MISSING_SALT_PERCENT'],
+      }),
+    );
+
+    expect(result.gellattiReadiness.ready).toBe(false);
+    expect(result.gellattiReadiness.blockers).toContain('MISSING_SALT_PERCENT');
+    expect(result.productAccuracy).toBe(result.rawProductAccuracy);
+    expect(result.criticalCapApplied).toBe(false);
+  });
+
+  it('does not deduct or block on a package-text conflict when exact EAN fixes SKU identity', () => {
+    const evidence = structuredClone(baseInput().evidence);
+    evidence.validatedBarcode = true;
+    evidence.fields.barcode = 'label';
+    evidence.materialConflicts = ['package.netQuantityText'];
+    const result = assessProductProductionAccuracy(baseInput({ evidence }));
+    const withoutConflict = assessProductProductionAccuracy(
+      baseInput({ evidence: { ...evidence, materialConflicts: [] } }),
+    );
+
+    expect(result.productAccuracy).toBe(withoutConflict.productAccuracy);
+    expect(result.gellattiReadiness.ready).toBe(true);
+    expect(result.criticalBlockers).not.toContain('MATERIAL_CONFLICT:package.netQuantityText');
   });
 
   it('credits a compatible Mapper-estimated technical field at exactly 80%', () => {
@@ -198,7 +242,7 @@ describe('one production-oriented Product Accuracy authority', () => {
     expect(atFloor.fields.ingredients).toMatchObject({ creditFactor: 0.8 });
   });
 
-  it('caps high raw accuracy at 84 when sugar physics remains unresolved', () => {
+  it('keeps Accuracy truthful while unresolved sugar physics independently blocks readiness', () => {
     const richEvidence = structuredClone(baseInput().evidence);
     richEvidence.validatedBarcode = true;
     Object.assign(richEvidence.fields, {
@@ -227,8 +271,9 @@ describe('one production-oriented Product Accuracy authority', () => {
 
     expect(result.rawProductAccuracy).toBeGreaterThan(85);
     expect(result.criticalBlockers).toContain('UNRESOLVED_SWEETENING_FREEZING_PATH');
-    expect(result.productAccuracy).toBe(84);
-    expect(result.criticalCapApplied).toBe(true);
+    expect(result.productAccuracy).toBe(result.rawProductAccuracy);
+    expect(result.criticalCapApplied).toBe(false);
+    expect(result.gellattiReadiness.ready).toBe(false);
   });
 
   it('caps missing canonical water/solids without inventing either value', () => {
@@ -243,8 +288,9 @@ describe('one production-oriented Product Accuracy authority', () => {
       }),
     );
 
-    expect(result.productAccuracy).toBeLessThanOrEqual(84);
+    expect(result.productAccuracy).toBe(result.rawProductAccuracy);
     expect(result.criticalBlockers).toContain('MISSING_WATER_PERCENT');
+    expect(result.gellattiReadiness.ready).toBe(false);
   });
 
   it('caps a technical/dosage-dependent product without required authority', () => {
@@ -269,8 +315,8 @@ describe('one production-oriented Product Accuracy authority', () => {
       }),
     );
 
-    expect(result.productAccuracy).toBeLessThanOrEqual(84);
     expect(result.criticalBlockers).toContain('TECHNICAL_DOSAGE_AUTHORITY_REQUIRED');
+    expect(result.gellattiReadiness.ready).toBe(false);
   });
 
   it('accepts TOPPING_ONLY against topping requirements without claiming base readiness', () => {

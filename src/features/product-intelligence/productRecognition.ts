@@ -615,10 +615,14 @@ const archetypeOf = (
   if (/\b(hummus|humus)\b/.test(identity)) return 'SAVORY_SPREAD';
   // Pure cocoa is intentionally identity-first. Mapper descriptions such as
   // "NUTELLA · Cocoa Powder" cannot enter this family merely through a noisy
-  // subcategory suffix.
+  // subcategory suffix. A directly declared one-product cocoa ingredient may
+  // supply the missing form wording when the front name is simply "Cacao
+  // Puro"; this is package evidence, not a product-specific override.
   if (
-    /^(?:cacao|cocoa|kakao)\b/.test(identity) &&
-    /\b(powder|polvo|proszek|magro|desgrasad|defatted|odtluszcz|alkaliz|amaro)\w*/.test(identity)
+    /^(?:cacao|cacau|cocoa|kakao)\b/.test(identity) &&
+    /(?:\b(?:powder|polvo|poudre|pulver|proszek|magro|desgrasad|defatted|odtluszcz|alkaliz|amaro)\w*|\bpo\b)/.test(
+      `${identity} ${ingredients}`,
+    )
   ) {
     return 'COCOA_POWDER';
   }
@@ -781,7 +785,9 @@ const formOf = (
   if (/\b(paste|pasta|krem)\w*/.test(all)) return 'PASTE';
   if (/\b(liquid|plyn|syrup|syrop)\w*/.test(all)) return 'LIQUID';
   if (/\b(coating|shell|copertura|polewa|otulina)\w*/.test(all)) return 'COATING';
-  if (/\b(powder|proszek|polvere|liofiliz)\w*/.test(all)) return 'POWDER';
+  if (/(?:\b(?:powder|polvo|poudre|pulver|proszek|polvere|liofiliz)\w*|\bpo\b)/.test(all)) {
+    return 'POWDER';
+  }
   if (/\b(dry tea|dried leaves|suszon[a-z]* lisc|herbata sucha|lisciasta)\b/.test(all))
     return 'DRY';
   if (

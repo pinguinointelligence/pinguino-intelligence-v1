@@ -3,9 +3,10 @@
  *
  * The percentage measures whether Gellatti has trustworthy facts needed to use
  * the article in formulation. It does not reward research activity itself and
- * it deliberately excludes allergen status, which remains a separate safety and
- * label authority. Existing Engine and ProductBehavior verdicts supply the
- * critical gate; this module does not invent a parallel physics contract.
+ * it includes allergen evidence when present while keeping commercial metadata
+ * in a separate completeness signal. Existing Engine and ProductBehavior
+ * verdicts supply the critical gate; this module does not invent a parallel
+ * physics contract.
  */
 import type {
   EvidenceSource,
@@ -27,19 +28,22 @@ import type {
 import type { SweetnessPath } from './productWorkingValues.ts';
 import { PROFILE_MATCH_FLOOR } from './mapperValueInference.ts';
 
-export const PRODUCT_PRODUCTION_ACCURACY_VERSION = 'PRODUCT_PRODUCTION_ACCURACY_V1' as const;
+export const PRODUCT_PRODUCTION_ACCURACY_VERSION = 'PRODUCT_PRODUCTION_ACCURACY_V2' as const;
 
 export const PRODUCT_PRODUCTION_ACCURACY_WEIGHTS = Object.freeze({
   recognition: 7,
   nutrition: 45,
   enginePhysics: 25,
-  ingredientsEvidence: 10,
+  ingredientsEvidence: 13,
   productBehavior: 8,
   ean: 2,
-  manufacturer: 1,
-  country: 1,
-  package: 1,
 });
+
+export const PRODUCT_METADATA_COMPLETENESS_FIELDS = Object.freeze({
+  manufacturer: 'manufacturer',
+  country: 'countryOfOrigin',
+  package: 'netQuantity',
+} satisfies Record<string, ProductEvidenceField>);
 
 export interface ProductionAccuracyFieldTruth {
   value: number;
@@ -94,6 +98,30 @@ export type ProductProductionRoleReadiness =
   | 'BLOCKED'
   | 'CONFLICT';
 
+export interface ProductMetadataCompletenessAssessment {
+  /** Internal catalogue/commercial completeness. It never affects Product
+   * Accuracy or Gellatti readiness. */
+  score: number;
+  completed: number;
+  available: number;
+  fields: {
+    manufacturer: boolean;
+    country: boolean;
+    package: boolean;
+  };
+}
+
+export interface GellattiReadinessAssessment {
+  ready: boolean;
+  status: ProductProductionRoleReadiness;
+  blockers: string[];
+  issues: {
+    missing: string[];
+    lowConfidence: string[];
+    conflicts: string[];
+  };
+}
+
 export interface ProductProductionAccuracyAssessment {
   authority: typeof PRODUCT_PRODUCTION_ACCURACY_VERSION;
   rawProductAccuracy: number;
@@ -110,10 +138,9 @@ export interface ProductProductionAccuracyAssessment {
     ingredientsEvidence: ProductionAccuracyComponent;
     productBehavior: ProductionAccuracyComponent;
     ean: ProductionAccuracyComponent;
-    manufacturer: ProductionAccuracyComponent;
-    country: ProductionAccuracyComponent;
-    package: ProductionAccuracyComponent;
   };
+  metadataCompleteness: ProductMetadataCompletenessAssessment;
+  gellattiReadiness: GellattiReadinessAssessment;
   fields: Partial<
     Record<WorkingNumericField | ProductEvidenceField, ProductionAccuracyFieldResult>
   >;
@@ -189,6 +216,26 @@ function fieldHasConflict(
   });
 }
 
+const metadataConflict = (conflict: string): boolean =>
+  /^(?:package\.|manufacturer$|country(?:oforigin)?$)/i.test(conflict.trim());
+
+/** Package quantity identifies a SKU only while no exact identity boundary is
+ * available. Once an EAN/canonical match is exact, a package disagreement is an
+ * auditable metadata issue, not a formulation or label-readiness blocker. */
+function readinessCriticalConflict(
+  input: ProductProductionAccuracyInput,
+  conflict: string,
+): boolean {
+  if (!metadataConflict(conflict)) return true;
+  if (/^package\./i.test(conflict)) {
+    return !input.evidence.validatedBarcode && !input.evidence.exactCanonicalMatch;
+  }
+  return false;
+}
+
+const accuracyRelevantConflicts = (input: ProductProductionAccuracyInput): string[] =>
+  input.evidence.materialConflicts.filter((conflict) => !metadataConflict(conflict));
+
 function truthCredit(input: ProductProductionAccuracyInput, field: WorkingNumericField): number {
   if (fieldHasConflict(input, field)) return 0;
   const truth = input.fieldTruth[field];
@@ -216,9 +263,6 @@ export function assessProductProductionAccuracy(
     ingredientsEvidence: 0,
     productBehavior: 0,
     ean: 0,
-    manufacturer: 0,
-    country: 0,
-    package: 0,
   };
 
   const addTruth = (
@@ -369,9 +413,11 @@ export function assessProductProductionAccuracy(
     componentEarned.enginePhysics += input.engineUsable ? 2 : 0;
   }
 
-  // Ingredients/evidence consistency — 10. Allergens intentionally absent.
-  addEvidence('ingredientsEvidence', 'ingredients', 6);
-  componentEarned.ingredientsEvidence += input.evidence.materialConflicts.length === 0 ? 4 : 0;
+  // Ingredients, allergens and consistency of usable facts — 13. Optional
+  // commercial metadata conflicts cannot consume this score.
+  addEvidence('ingredientsEvidence', 'ingredients', 7);
+  addEvidence('ingredientsEvidence', 'allergens', 2);
+  componentEarned.ingredientsEvidence += accuracyRelevantConflicts(input).length === 0 ? 4 : 0;
 
   // ProductBehavior / dosage / usage — 8.
   const roleKnown = role !== 'NEITHER_REVIEW';
@@ -396,7 +442,9 @@ export function assessProductProductionAccuracy(
     !dosageRequired || dosage?.semantics === 'FIXED' || dosage?.semantics === 'AS_DESIRED';
   componentEarned.productBehavior += dosageResolved ? 2 : 0;
 
-  // Minor metadata — 5 total.
+  // Exact EAN remains a Product Accuracy fact because it is the SKU identity
+  // boundary and enables canonical reuse. Manufacturer/country/package are
+  // measured separately below as internal metadata completeness.
   if (input.evidence.validatedBarcode) addEvidence('ean', 'barcode', 2);
   else
     fields.barcode = {
@@ -406,12 +454,23 @@ export function assessProductProductionAccuracy(
       state: 'UNKNOWN',
       basis: 'none',
     };
-  addEvidence('manufacturer', 'manufacturer', 1);
-  addEvidence('country', 'countryOfOrigin', 1);
-  addEvidence('package', 'netQuantity', 1);
+  const metadataFields = {
+    manufacturer: evidenceCredit(input, 'manufacturer') > 0,
+    country: evidenceCredit(input, 'countryOfOrigin') > 0,
+    package: evidenceCredit(input, 'netQuantity') > 0,
+  };
+  const metadataCompleted = Object.values(metadataFields).filter(Boolean).length;
+  const metadataCompleteness: ProductMetadataCompletenessAssessment = {
+    score: round2((metadataCompleted / Object.keys(metadataFields).length) * 100),
+    completed: metadataCompleted,
+    available: Object.keys(metadataFields).length,
+    fields: metadataFields,
+  };
 
   const criticalBlockers = new Set<string>();
-  for (const conflict of input.evidence.materialConflicts) {
+  for (const conflict of input.evidence.materialConflicts.filter((item) =>
+    readinessCriticalConflict(input, item),
+  )) {
     criticalBlockers.add(`MATERIAL_CONFLICT:${conflict}`);
   }
   if (
@@ -423,6 +482,20 @@ export function assessProductProductionAccuracy(
     role === 'NEITHER_REVIEW'
   ) {
     criticalBlockers.add('PRODUCT_SEMANTICS_UNRESOLVED');
+  }
+  if (!input.evidence.fields.identity) criticalBlockers.add('PRODUCT_IDENTITY_REQUIRED');
+  if (!input.evidence.fields.ingredients) criticalBlockers.add('INGREDIENTS_EVIDENCE_REQUIRED');
+  for (const field of [
+    'fat_percent',
+    'protein_percent',
+    'carbohydrate_percent',
+    'total_sugars_percent',
+    'salt_percent',
+    'kcal_per_100g',
+  ] as const satisfies readonly WorkingNumericField[]) {
+    if (truthCredit(input, field) === 0) {
+      criticalBlockers.add(`NUTRITION_FACT_REQUIRED:${field}`);
+    }
   }
   if (dosageRequired && !dosageResolved) {
     criticalBlockers.add('TECHNICAL_DOSAGE_AUTHORITY_REQUIRED');
@@ -469,45 +542,60 @@ export function assessProductProductionAccuracy(
       PRODUCT_PRODUCTION_ACCURACY_WEIGHTS.productBehavior,
     ),
     ean: component(componentEarned.ean, PRODUCT_PRODUCTION_ACCURACY_WEIGHTS.ean),
-    manufacturer: component(
-      componentEarned.manufacturer,
-      PRODUCT_PRODUCTION_ACCURACY_WEIGHTS.manufacturer,
-    ),
-    country: component(componentEarned.country, PRODUCT_PRODUCTION_ACCURACY_WEIGHTS.country),
-    package: component(componentEarned.package, PRODUCT_PRODUCTION_ACCURACY_WEIGHTS.package),
   };
   const rawProductAccuracy = round2(
     Object.values(components).reduce((sum, value) => sum + value.earnedPoints, 0),
   );
   const blockerList = [...criticalBlockers].sort();
-  const criticalCapApplied = blockerList.length > 0 && rawProductAccuracy > 84;
-  const productAccuracy = criticalCapApplied ? 84 : rawProductAccuracy;
+  // Accuracy describes confidence in usable facts; readiness is the independent
+  // capability decision below. A blocker must never rewrite an otherwise
+  // truthful score into a magic threshold value.
+  const criticalCapApplied = false;
+  const productAccuracy = rawProductAccuracy;
   const baseEngineReady =
     !toppingOnly &&
     input.engineUsable &&
     input.behavior.baseRecipeEligible &&
     blockerList.length === 0;
-  const roleReadiness: ProductProductionRoleReadiness =
-    input.evidence.materialConflicts.length > 0
-      ? 'CONFLICT'
-      : blockerList.length === 0 && toppingOnly && input.behavior.toppingEligible
-        ? 'TOPPING_READY'
-        : blockerList.length === 0 && baseEngineReady
-          ? 'BASE_READY'
-          : input.behavior.classificationOutcome === 'blocked'
-            ? 'BLOCKED'
-            : 'REVIEW';
+  const roleReadiness: ProductProductionRoleReadiness = blockerList.some((blocker) =>
+    blocker.startsWith('MATERIAL_CONFLICT:'),
+  )
+    ? 'CONFLICT'
+    : blockerList.length === 0 && toppingOnly && input.behavior.toppingEligible
+      ? 'TOPPING_READY'
+      : blockerList.length === 0 && baseEngineReady
+        ? 'BASE_READY'
+        : input.behavior.classificationOutcome === 'blocked'
+          ? 'BLOCKED'
+          : 'REVIEW';
+  const conflicts: string[] = blockerList.filter((blocker) =>
+    blocker.startsWith('MATERIAL_CONFLICT:'),
+  );
+  const lowConfidence: string[] = blockerList.filter(
+    (blocker) => blocker === 'PRODUCT_SEMANTICS_UNRESOLVED',
+  );
+  const missing = blockerList.filter(
+    (blocker) => !conflicts.includes(blocker) && !lowConfidence.includes(blocker),
+  );
+  const gellattiReadiness: GellattiReadinessAssessment = {
+    ready: roleReadiness === 'BASE_READY' || roleReadiness === 'TOPPING_READY',
+    status: roleReadiness,
+    blockers: blockerList,
+    issues: { missing, lowConfidence, conflicts },
+  };
 
   return {
     authority: PRODUCT_PRODUCTION_ACCURACY_VERSION,
     rawProductAccuracy,
     productAccuracy,
     criticalCapApplied,
-    criticalCap: blockerList.length > 0 ? 84 : null,
+    criticalCap: null,
     criticalBlockers: blockerList,
     roleReadiness,
     baseEngineReady,
     components,
+    metadataCompleteness,
+    gellattiReadiness,
     fields,
   };
 }

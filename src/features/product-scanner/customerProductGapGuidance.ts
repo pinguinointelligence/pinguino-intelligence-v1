@@ -1,6 +1,7 @@
 export interface CustomerProductGapGuidance {
   question: string | null;
   explanation: string;
+  requiresPhoto: boolean;
 }
 
 const hasAny = (gaps: readonly string[], patterns: readonly RegExp[]): boolean =>
@@ -25,6 +26,7 @@ export function customerProductGapGuidance(
     return {
       question: 'Czy opakowanie lub karta produktu podaje dozowanie albo sposób użycia?',
       explanation: 'To potrzebne tylko dla produktu technicznego lub zależnego od dozowania.',
+      requiresPhoto: true,
     };
   }
 
@@ -32,6 +34,7 @@ export function customerProductGapGuidance(
     return {
       question: 'Czy etykieta lub karta produktu podaje zawartość alkoholu?',
       explanation: 'Podaj ją tylko wtedy, gdy jest wyraźnie zadeklarowana przez producenta.',
+      requiresPhoto: true,
     };
   }
 
@@ -39,6 +42,7 @@ export function customerProductGapGuidance(
     return {
       question: 'Czy możesz sprawdzić pełny skład i deklarację alergenów na opakowaniu?',
       explanation: 'Wystarczy zdjęcie lub dokładny tekst z etykiety.',
+      requiresPhoto: true,
     };
   }
 
@@ -58,6 +62,7 @@ export function customerProductGapGuidance(
       question: 'Czy możesz sprawdzić pełną tabelę wartości odżywczych na opakowaniu?',
       explanation:
         'Najlepiej dodać wyraźne zdjęcie całej tabeli wraz z podstawą na 100 g lub 100 ml.',
+      requiresPhoto: true,
     };
   }
 
@@ -65,5 +70,6 @@ export function customerProductGapGuidance(
     question: null,
     explanation:
       'Gellatti nie może jeszcze bezpiecznie ukończyć profilu z dostępnych dowodów. Produkt nie jest gotowy do receptury i żadne wartości nie zostały zmyślone.',
+    requiresPhoto: false,
   };
 }

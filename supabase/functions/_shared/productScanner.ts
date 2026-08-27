@@ -428,7 +428,48 @@ function compareFactSpecificity(
 const normalizedComparable = (value: unknown): unknown =>
   typeof value === 'string' ? value.trim().replace(/\s+/g, ' ').toLocaleLowerCase() : value;
 
+interface SemanticNetQuantity {
+  value: number;
+  unit: 'g' | 'ml';
+}
+
+function semanticNetQuantity(value: unknown, pairedUnit?: unknown): SemanticNetQuantity | null {
+  let amount: number | null = null;
+  let unit: string | null = null;
+  if (typeof value === 'string') {
+    const matches = [...value.matchAll(/((?:\d+(?:[.,]\d+)?)|(?:[.,]\d+))\s*(kg|g|ml|l)\b/gi)];
+    const match = matches.at(-1);
+    if (match?.[1] && match[2]) {
+      amount = Number(match[1].replace(',', '.'));
+      unit = match[2].toLowerCase();
+    }
+  } else if (
+    typeof value === 'number' &&
+    Number.isFinite(value) &&
+    typeof pairedUnit === 'string'
+  ) {
+    amount = value;
+    unit = pairedUnit.trim().toLowerCase();
+  }
+  if (amount === null || !Number.isFinite(amount) || amount <= 0 || amount > 100_000) return null;
+  if (unit === 'kg') return { value: amount * 1000, unit: 'g' };
+  if (unit === 'g') return { value: amount, unit: 'g' };
+  if (unit === 'l') return { value: amount * 1000, unit: 'ml' };
+  if (unit === 'ml') return { value: amount, unit: 'ml' };
+  return null;
+}
+
 function materiallyEqual(field: string, prior: unknown, incoming: unknown): boolean {
+  if (field === 'package.netQuantityText') {
+    const priorQuantity = semanticNetQuantity(prior);
+    const incomingQuantity = semanticNetQuantity(incoming);
+    if (priorQuantity && incomingQuantity) {
+      return (
+        priorQuantity.unit === incomingQuantity.unit &&
+        Math.abs(priorQuantity.value - incomingQuantity.value) <= 0.001
+      );
+    }
+  }
   if (typeof prior === 'number' && typeof incoming === 'number') {
     const tolerance = field.startsWith('nutrition.')
       ? Math.max(0.01, Math.max(Math.abs(prior), Math.abs(incoming)) * 0.005)
@@ -548,20 +589,14 @@ const mergeUnique = (left: unknown, right: unknown): unknown[] => [
 function normalizeVisiblePackageQuantity(root: Record<string, unknown>): void {
   const packageValue = objectValue(root.package);
   const raw = typeof packageValue.netQuantityText === 'string' ? packageValue.netQuantityText : '';
-  const matches = [...raw.matchAll(/(\d+(?:[.,]\d+)?)\s*(kg|g|ml|l)\b/gi)];
-  if (matches.length === 0) return;
+  const quantity =
+    semanticNetQuantity(raw) ?? semanticNetQuantity(packageValue.netQuantity, packageValue.unit);
+  if (!quantity) return;
   const structuredUnit =
     typeof packageValue.unit === 'string' ? packageValue.unit.toLowerCase() : null;
-  const matchingUnit = [...matches]
-    .reverse()
-    .find((match) => !structuredUnit || match[2]?.toLowerCase() === structuredUnit);
-  if (!matchingUnit?.[1] || !matchingUnit[2]) return;
-  const amount = Number(matchingUnit[1].replace(',', '.'));
-  const unit = matchingUnit[2].toLowerCase();
-  if (!Number.isFinite(amount) || amount <= 0 || amount > 100_000) return;
-  if (packageValue.netQuantity === amount && structuredUnit === unit) return;
-  packageValue.netQuantity = amount;
-  packageValue.unit = unit;
+  if (packageValue.netQuantity === quantity.value && structuredUnit === quantity.unit) return;
+  packageValue.netQuantity = quantity.value;
+  packageValue.unit = quantity.unit;
   root.package = packageValue;
   root.warnings = mergeUnique(root.warnings, [
     'package_quantity_normalized_from_visible_label_text',
@@ -594,8 +629,10 @@ export function mergeProductScanResults(
   incomingValue: unknown,
   authoritativeBarcode: string | null = null,
 ): Record<string, unknown> {
-  const prior = objectValue(priorValue);
-  const incoming = objectValue(incomingValue);
+  const prior = structuredClone(objectValue(priorValue));
+  const incoming = structuredClone(objectValue(incomingValue));
+  normalizeVisiblePackageQuantity(prior);
+  normalizeVisiblePackageQuantity(incoming);
   const merged = structuredClone(Object.keys(prior).length ? prior : incoming);
   // Copied, never aliased: resolving a conflict below must not reach back into
   // the caller's prior session state.
@@ -762,10 +799,6 @@ export function validateServerResult(
     root.identity && typeof root.identity === 'object'
       ? (root.identity as Record<string, unknown>)
       : {};
-  const packageValue =
-    root.package && typeof root.package === 'object'
-      ? (root.package as Record<string, unknown>)
-      : {};
   const nutrition =
     root.nutrition && typeof root.nutrition === 'object'
       ? (root.nutrition as Record<string, unknown>)
@@ -773,10 +806,11 @@ export function validateServerResult(
   const missing: string[] = [];
   if (!identity.displayName && !identity.originalName) missing.push('product_identity');
   if (!identity.brand && identity.explicitlyUnbranded !== true) missing.push('brand_or_unbranded');
-  if (typeof packageValue.netQuantity !== 'number' || !packageValue.unit)
-    missing.push('net_quantity');
   if (!root.ingredientsText) missing.push('ingredientsText');
-  if (!root.allergensText) missing.push('allergen_confirmation');
+  // A complete ingredient declaration is the mandatory allergen source for a
+  // normal food. A separate "may contain" statement improves confidence when
+  // present, but its absence is not itself a reason to ask for another photo.
+  if (!root.allergensText && !root.ingredientsText) missing.push('allergen_confirmation');
   if (!nutrition.basis) missing.push('nutrition_basis');
   for (const field of ['energyKcal', 'fat', 'carbohydrate', 'protein', 'salt']) {
     if (typeof nutrition[field] !== 'number') missing.push(`nutrition_${field}`);
@@ -853,10 +887,15 @@ export function validateServerResult(
     if (field === 'identity.displayName' || field === 'identity.originalName') {
       return !identity.displayName && !identity.originalName;
     }
+    if (
+      field === 'package.netQuantity' ||
+      field === 'package.unit' ||
+      field === 'package.netQuantityText'
+    ) {
+      return barcodeValidation.accepted.length === 0;
+    }
     return new Set([
       'identity.brand',
-      'package.netQuantity',
-      'package.unit',
       'barcodes',
       'barcodes[0].value',
       'nutrition.basis',
@@ -892,7 +931,6 @@ export function validateServerResult(
       'identity.brand',
       identity.brand ?? (identity.explicitlyUnbranded === true ? 'unbranded' : null),
     ],
-    ['package.netQuantity', packageValue.netQuantity],
     ['nutrition.energyKcal', nutrition.energyKcal],
     ['nutrition.fat', nutrition.fat],
     ['nutrition.carbohydrate', nutrition.carbohydrate],

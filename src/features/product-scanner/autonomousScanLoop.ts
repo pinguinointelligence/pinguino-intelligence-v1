@@ -24,7 +24,6 @@ const PACKAGE_FIELDS = new Set([
   'barcode',
   'product_identity',
   'brand_or_unbranded',
-  'net_quantity',
   'nutrition',
   'nutrition_basis',
   'nutrition_energyKcal',

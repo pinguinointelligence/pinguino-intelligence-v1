@@ -175,6 +175,66 @@ describe('server Product Scanner result authority', () => {
     });
   });
 
+  it.each([
+    ['PESO NETO 250 g', '250 G'],
+    ['Masa netto 250,0 g', '0.25 kg'],
+    ['NET WEIGHT 250 g', '0,250 KG'],
+    ['Poids net 250 g', '250g'],
+    ['Contenido neto 250 ml', '0.25 L'],
+  ])('treats semantically equal package quantities as one fact: %s / %s', (label, web) => {
+    const prior = result();
+    prior.package = {
+      netQuantity: 250,
+      unit: label.toLowerCase().includes('ml') ? 'ml' : 'g',
+      netQuantityText: label,
+    };
+    const incoming = result();
+    incoming.package = {
+      netQuantity:
+        web.toLowerCase().includes('kg') || web.toLowerCase().includes(' l') ? 0.25 : 250,
+      unit: web.toLowerCase().includes('kg')
+        ? 'kg'
+        : web.toLowerCase().includes(' l')
+          ? 'l'
+          : web.toLowerCase().includes('ml')
+            ? 'ml'
+            : 'g',
+      netQuantityText: web,
+    };
+
+    const merged = mergeProductScanResults(prior, incoming);
+
+    expect(merged.package).toMatchObject({
+      netQuantity: 250,
+      unit: label.toLowerCase().includes('ml') ? 'ml' : 'g',
+    });
+    expect(merged.conflicts).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: expect.stringMatching(/^package\./) }),
+      ]),
+    );
+  });
+
+  it('retains a real 250 g / 300 g disagreement without making package metadata a readiness fact when EAN is exact', () => {
+    const prior = result();
+    prior.package = { netQuantity: 250, unit: 'g', netQuantityText: 'PESO NETO 250 g' };
+    const incoming = result();
+    incoming.package = { netQuantity: 300, unit: 'g', netQuantityText: '300 G' };
+
+    const merged = mergeProductScanResults(prior, incoming, '4001686322536');
+
+    expect(merged.conflicts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: 'package.netQuantity', retainedSource: null }),
+      ]),
+    );
+    expect(validateServerResult(merged, ['asset-1'])).toMatchObject({
+      ok: true,
+      overlayState: 'PENDING_PUBLICATION',
+      missingCriticalFields: [],
+    });
+  });
+
   it('rejects malformed model EAN and preserves a previously valid canonical EAN', () => {
     const prior = result();
     prior.barcodes = [{ value: '4001686322536', format: 'EAN_13' }];
@@ -360,14 +420,14 @@ describe('server Product Scanner result authority', () => {
     });
   });
 
-  it('routes an ordinary product without a separate allergen statement to one confirmation', () => {
+  it('uses the complete ingredient declaration without demanding a separate allergen statement', () => {
     const ordinary = result();
     ordinary.allergensText = null;
     ordinary.evidence = ordinary.evidence.filter((item) => item.field !== 'allergensText');
     expect(validateServerResult(ordinary, ['asset-1'])).toMatchObject({
       ok: true,
-      overlayState: 'SCAN_DRAFT',
-      missingCriticalFields: expect.arrayContaining(['allergen_confirmation']),
+      overlayState: 'PENDING_PUBLICATION',
+      missingCriticalFields: [],
       highRiskAuthorityRequired: false,
     });
   });

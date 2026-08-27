@@ -288,9 +288,9 @@ describe('La Chocolatera two-photo rounding and semantic handoff regression', ()
       35,
     );
     expect(authority?.productAccuracyAssessment.components.ean.earnedPoints).toBe(0);
-    expect(authority?.productAccuracyAssessment.components.manufacturer.earnedPoints).toBe(0);
-    expect(authority?.productAccuracyAssessment.components.country.earnedPoints).toBe(0);
-    expect(authority?.productAccuracyAssessment.components.package.earnedPoints).toBe(1);
+    expect(authority?.productAccuracyAssessment.metadataCompleteness).toMatchObject({
+      fields: { manufacturer: false, country: false, package: true },
+    });
     expect(authority?.productAccuracyAssessment.fields.water_percent?.creditFactor).toBe(0.8);
     if (process.env.PRODUCT_ACCURACY_REPORT === '1') {
       console.log(
@@ -362,7 +362,10 @@ describe('La Chocolatera two-photo rounding and semantic handoff regression', ()
       },
       rows: rows as unknown as IntimportMapperAuthorityRow[],
     });
-    expect(withoutAllergenScore?.productAccuracy).toBe(authority?.productAccuracy);
+    expect((authority?.productAccuracy ?? 0) - (withoutAllergenScore?.productAccuracy ?? 0)).toBe(
+      2,
+    );
+    expect(withoutAllergenScore?.productAccuracyAssessment.gellattiReadiness.ready).toBe(true);
     if (process.env.PRODUCT_ACCURACY_REPORT === '1') {
       console.log(
         `PRODUCT_ACCURACY_COCOA ${JSON.stringify({
@@ -377,28 +380,28 @@ describe('La Chocolatera two-photo rounding and semantic handoff regression', ()
     }
   });
 
-  it('completes the exact served chocolate + POWDER recognition without asking for water or solids', () => {
-    const served = structuredClone(merged);
+  it('recomputes the exact original 84% scan as a truthful ready product', () => {
+    const web = empty();
+    Object.assign(web.package as Record<string, unknown>, {
+      netQuantity: 250,
+      unit: 'g',
+      netQuantityText: '250 G',
+    });
+    web.externalSources = [
+      {
+        sourceType: 'barcode_registry',
+        url: 'https://example.test/ean/8410109108392',
+        title: 'La Chocolatera Cacao Puro 250 G',
+        fieldsUsed: ['package.netQuantity', 'package.netQuantityText'],
+      },
+    ];
+    const served = mergeProductScanResults(merged, web, '8410109108392');
     Object.assign(identity(served), {
-      category: 'Cacao desgrasado en polvo',
+      category: 'Cacao',
       variant: 'Puro',
     });
-    served.barcodes = [{ value: '8410109121551', format: 'EAN_13' }];
     const semanticEvidence = productSemanticEvidenceFromScanResult(served);
-    const deterministic = classifyProductSemantics(semanticEvidence);
-    const servedRecognition = {
-      ...deterministic,
-      classificationSource: 'SERVER_MODEL' as const,
-      productArchetype: 'CHOCOLATE' as const,
-      ingredientFamily: 'chocolate' as const,
-      physicalForm: 'POWDER' as const,
-      intendedUsageRole: 'BASE_ONLY' as const,
-      flavorDomain: 'CHOCOLATE_GENERAL' as const,
-      compatibleMapperCategories: ['chocolate', 'cocoa'],
-      confidence: 0.94,
-      modelRequired: false,
-      modelReasonCodes: [],
-    };
+    const servedRecognition = classifyProductSemantics(semanticEvidence);
     const proposal = customerProductProfileProposal({
       scanResult: served,
       recognitionEvidence: semanticEvidence,
@@ -451,6 +454,18 @@ describe('La Chocolatera two-photo rounding and semantic handoff regression', ()
       authority && behavior ? finalizeProductProductionAccuracy(authority, behavior) : null;
 
     expect(proposal).not.toBeNull();
+    expect(served.barcodes).toEqual([{ value: '8410109108392', format: 'EAN_13' }]);
+    expect(served.package).toMatchObject({ netQuantity: 250, unit: 'g' });
+    expect(served.conflicts).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ field: 'package.netQuantityText' })]),
+    );
+    expect(servedRecognition).toMatchObject({
+      productArchetype: 'COCOA_POWDER',
+      ingredientFamily: 'cocoa',
+      physicalForm: 'POWDER',
+      intendedUsageRole: 'BASE_ONLY',
+      modelRequired: false,
+    });
     expect(authority?.profileReferenceMapperIngredientId).toBe('PI-ING-001313');
     expect(authority?.mapperSimilarity).toBeGreaterThanOrEqual(0.85);
     expect(authority?.fieldTruth.water_percent).toMatchObject({
@@ -477,6 +492,31 @@ describe('La Chocolatera two-photo rounding and semantic handoff regression', ()
     });
     expect(finalized?.productAccuracy).toBeGreaterThanOrEqual(85);
     expect(finalized?.productAccuracyAssessment.criticalCapApplied).toBe(false);
+    expect(finalized?.productAccuracyAssessment.gellattiReadiness).toMatchObject({
+      ready: true,
+      status: 'BASE_READY',
+      blockers: [],
+    });
+    expect(finalized?.productAccuracyAssessment.metadataCompleteness.fields.package).toBe(true);
+    expect(
+      Object.values(finalized?.productAccuracyAssessment.components ?? {}).reduce(
+        (sum, component) => sum + component.earnedPoints,
+        0,
+      ),
+    ).toBe(finalized?.productAccuracy);
+    if (process.env.PRODUCT_ACCURACY_REPORT === '1') {
+      console.log(
+        `ORIGINAL_84_RECOMPUTE ${JSON.stringify({
+          ean: Array.isArray(served.barcodes) ? served.barcodes[0] : null,
+          package: served.package,
+          recognition: servedRecognition,
+          components: finalized?.productAccuracyAssessment.components,
+          productAccuracy: finalized?.productAccuracy,
+          metadataCompleteness: finalized?.productAccuracyAssessment.metadataCompleteness,
+          readiness: finalized?.productAccuracyAssessment.gellattiReadiness,
+        })}`,
+      );
+    }
   });
 });
 
@@ -818,7 +858,7 @@ describe('La Chocolatera allergen readiness regression', () => {
     expect(validation.highRiskAuthorityRequired).toBe(false);
   });
 
-  it('still fails closed when the may-contain evidence is not directly visible', () => {
+  it('does not invent an indirect may-contain statement or request it when ingredients are complete', () => {
     const root = scan();
     root.evidence = (root.evidence as Evidence[]).map((item) =>
       item.field === 'mayContainAllergens'
@@ -827,8 +867,6 @@ describe('La Chocolatera allergen readiness regression', () => {
     );
     const merged = mergeProductScanResults(null, root);
     expect(merged.allergensText).toBeNull();
-    expect(validateServerResult(merged, ['asset-1']).missingCriticalFields).toContain(
-      'allergen_confirmation',
-    );
+    expect(validateServerResult(merged, ['asset-1']).missingCriticalFields).toEqual([]);
   });
 });

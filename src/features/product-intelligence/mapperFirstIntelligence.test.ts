@@ -689,12 +689,13 @@ describe('INTIMPORT wiring', () => {
       basis: 'retailer',
     });
     expect(first?.productionAccuracy.fields.ingredients).toMatchObject({
-      earnedPoints: 6,
+      earnedPoints: 7,
       basis: 'retailer',
     });
-    expect(first?.productionAccuracy.fields.manufacturer?.earnedPoints).toBe(1);
-    expect(first?.productionAccuracy.fields.countryOfOrigin?.earnedPoints).toBe(1);
-    expect(first?.productionAccuracy.fields.netQuantity?.earnedPoints).toBe(1);
+    expect(first?.productionAccuracy.metadataCompleteness).toMatchObject({
+      score: 100,
+      fields: { manufacturer: true, country: true, package: true },
+    });
   });
 
   it('does not promote an unclassified owner URL to authoritative retailer evidence', () => {
@@ -1303,7 +1304,7 @@ describe('INTIMPORT import handoff', () => {
     expect(intelligenceOf(entry).legacyEvidenceAccuracy).toBe(84.99);
     expect(intelligenceOf(entry).productAccuracy).toBeLessThan(85);
     expect(intelligenceOf(entry).productAccuracyAssessment).toMatchObject({
-      authority: 'PRODUCT_PRODUCTION_ACCURACY_V1',
+      authority: 'PRODUCT_PRODUCTION_ACCURACY_V2',
     });
   });
 

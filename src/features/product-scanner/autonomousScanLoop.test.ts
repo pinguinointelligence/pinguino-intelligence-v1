@@ -123,6 +123,22 @@ describe('goal-driven Scanner loop', () => {
     expect(retryablePackageFields(['water_percent', 'DOSAGE_AUTHORITY_REQUIRED'])).toEqual([]);
   });
 
+  it('does not spend a retry or ask the customer for metadata-only package gaps', () => {
+    expect(retryablePackageFields(['net_quantity', 'MISSING_MANUFACTURER'])).toEqual([]);
+    expect(
+      nextAutonomousScanAction({
+        exactProductFound: false,
+        hasImage: true,
+        barcode: '4001686322536',
+        eanLookupDone: true,
+        visionCalls: 1,
+        missingCriticalFields: ['net_quantity'],
+        profilePreviewed: false,
+        profileReady: false,
+      }),
+    ).toEqual({ kind: 'complete_profile' });
+  });
+
   it('hands complete evidence to the shared product-owned profile authority', () => {
     expect(
       nextAutonomousScanAction({

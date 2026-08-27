@@ -11,6 +11,7 @@ describe('customer product gap guidance', () => {
     ]);
 
     expect(guidance.question).toBeNull();
+    expect(guidance.requiresPhoto).toBe(false);
     expect(guidance.explanation).not.toMatch(/water_percent|total_solids_percent/i);
     expect(guidance.explanation).toContain('nie jest gotowy do receptury');
   });
@@ -24,6 +25,7 @@ describe('customer product gap guidance', () => {
     expect(guidance.question).toBe(
       'Czy możesz sprawdzić pełną tabelę wartości odżywczych na opakowaniu?',
     );
+    expect(guidance.requiresPhoto).toBe(true);
     expect(guidance.question).not.toMatch(/protein_percent|salt_percent/i);
   });
 
@@ -31,6 +33,7 @@ describe('customer product gap guidance', () => {
     const guidance = customerProductGapGuidance(['DOSAGE_AUTHORITY_REQUIRED']);
 
     expect(guidance.question).toContain('dozowanie albo sposób użycia');
+    expect(guidance.requiresPhoto).toBe(true);
     expect(guidance.explanation).toContain('produktu technicznego');
   });
 
@@ -38,6 +41,17 @@ describe('customer product gap guidance', () => {
     const guidance = customerProductGapGuidance(['INTERNAL_UNRECOGNIZED_GATE_X']);
 
     expect(guidance.question).toBeNull();
+    expect(guidance.requiresPhoto).toBe(false);
     expect(guidance.explanation).not.toContain('INTERNAL_UNRECOGNIZED_GATE_X');
+  });
+
+  it('never requests another photo for optional package metadata or its conflict', () => {
+    const guidance = customerProductGapGuidance([
+      'MATERIAL_CONFLICT:package.netQuantityText',
+      'MISSING_MANUFACTURER',
+      'MISSING_COUNTRY',
+    ]);
+
+    expect(guidance).toMatchObject({ question: null, requiresPhoto: false });
   });
 });

@@ -11,6 +11,15 @@ const MIGRATION = readFileSync(
   join(REPO, 'supabase', 'migrations', '20260827100000_scanner_customer_added_products.sql'),
   'utf8',
 );
+const READINESS_MIGRATION = readFileSync(
+  join(
+    REPO,
+    'supabase',
+    'migrations',
+    '20260827123000_scanner_readiness_accuracy_metadata_contract.sql',
+  ),
+  'utf8',
+);
 
 describe('customer product finalization contract', () => {
   it('requires a checksum-valid EAN and persists the corrected server session before authority work', () => {
@@ -30,8 +39,9 @@ describe('customer product finalization contract', () => {
     expect(FINALIZE).toContain('finalizeProductProductionAccuracy');
   });
 
-  it('fails closed below shared readiness without creating a PM or request', () => {
-    expect(FINALIZE).toContain('profile.productAccuracy >= 85');
+  it('fails closed on shared capability readiness without a score-threshold proxy', () => {
+    expect(FINALIZE).not.toContain('profile.productAccuracy >= 85');
+    expect(FINALIZE).toContain('profile.productAccuracyAssessment.gellattiReadiness.ready');
     expect(FINALIZE).toContain('profile.productAccuracyAssessment.roleReadiness');
     expect(FINALIZE).toContain("roleReadiness === 'BASE_READY'");
     expect(FINALIZE).toContain("roleReadiness === 'TOPPING_READY'");
@@ -39,6 +49,12 @@ describe('customer product finalization contract', () => {
     expect(FINALIZE).toContain('customer_product_not_ready');
     expect(FINALIZE).not.toContain('gellatti_submit_product_request_v1');
     expect(MIGRATION).not.toContain("'PM-ING-'");
+    expect(READINESS_MIGRATION).toContain('{productAccuracyAssessment,gellattiReadiness,ready}');
+    expect(READINESS_MIGRATION).toContain('gellatti_upsert_customer_added_product_v1');
+    expect(READINESS_MIGRATION).toContain('gellatti_admin_canonicalize_customer_added_v1');
+    expect(READINESS_MIGRATION).toContain('gellatti_admin_product_request_action_v1');
+    expect(READINESS_MIGRATION).toContain('scanner_admin_accuracy_threshold_predicate_not_found');
+    expect(READINESS_MIGRATION).toContain('scanner_request_accuracy_threshold_predicate_not_found');
   });
 
   it('returns the same finalized product and saves through one exact-EAN transaction', () => {

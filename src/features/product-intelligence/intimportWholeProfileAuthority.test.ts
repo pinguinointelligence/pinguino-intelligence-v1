@@ -377,10 +377,11 @@ describe('INTIMPORT trusted product-owned profile', () => {
     expect(pr?.productAccuracyAssessment).toEqual(pm?.productAccuracyAssessment);
     expect(pr?.productAccuracy).toBe(pm?.productAccuracy);
     expect(pr?.productAccuracyAssessment.fields.identity?.earnedPoints).toBe(1);
-    expect(pr?.productAccuracyAssessment.fields.ingredients?.earnedPoints).toBe(6);
-    expect(pr?.productAccuracyAssessment.fields.manufacturer?.earnedPoints).toBe(1);
-    expect(pr?.productAccuracyAssessment.fields.countryOfOrigin?.earnedPoints).toBe(1);
-    expect(pr?.productAccuracyAssessment.fields.netQuantity?.earnedPoints).toBe(1);
+    expect(pr?.productAccuracyAssessment.fields.ingredients?.earnedPoints).toBe(7);
+    expect(pr?.productAccuracyAssessment.metadataCompleteness).toMatchObject({
+      score: 100,
+      fields: { manufacturer: true, country: true, package: true },
+    });
   });
 
   it('ignores a forged browser final composition and publishes only the recomputed profile', () => {

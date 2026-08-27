@@ -1734,7 +1734,9 @@ Deno.serve(async (request) => {
     const accuracy = serverProductProfileAuthority?.productAccuracy ?? 0;
     const roleReady = serverProductBehaviorAuthority !== null &&
       (serverProductBehaviorAuthority.baseRecipeEligible || serverProductBehaviorAuthority.toppingEligible);
-    if (!serverProductProfileAuthority || !serverProductBehaviorAuthority || accuracy < 85 || !roleReady) {
+    const gellattiReady =
+      serverProductProfileAuthority?.productAccuracyAssessment.gellattiReadiness.ready === true;
+    if (!serverProductProfileAuthority || !serverProductBehaviorAuthority || !gellattiReady || !roleReady) {
       return json({
         kind: 'approval_not_ready',
         productCreated: false,

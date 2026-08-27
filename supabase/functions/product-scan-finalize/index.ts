@@ -492,7 +492,7 @@ Deno.serve(async (request) => {
   // simultaneously blocked by BASE-only water/freezing requirements.
   const roleReadiness = profile.productAccuracyAssessment.roleReadiness;
   const roleReady = roleReadiness === 'BASE_READY' || roleReadiness === 'TOPPING_READY';
-  const ready = profile.productAccuracy >= 85 && roleReady;
+  const ready = profile.productAccuracyAssessment.gellattiReadiness.ready;
   const criticalGaps = [...profile.productAccuracyAssessment.criticalBlockers];
   const preview = {
     kind: 'profile_preview',

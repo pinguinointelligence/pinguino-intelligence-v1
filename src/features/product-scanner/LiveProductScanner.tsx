@@ -690,21 +690,25 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
       {phase === 'needs_evidence' && !ready && (
         <section className={`${card} mt-6 p-6 sm:p-8`}>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
-            Potrzebuję jeszcze jednego zdjęcia
+            {gapGuidance.requiresPhoto
+              ? 'Potrzebuję jeszcze jednego zdjęcia'
+              : 'Produkt wymaga weryfikacji'}
           </p>
           <h2 className="mt-2 text-xl font-semibold">
-            {gapGuidance.question ?? 'Pokaż wyraźniej brakującą część opakowania'}
+            {gapGuidance.question ?? 'Nie mogę jeszcze uczciwie udostępnić tego produktu'}
           </h2>
           <p className="mt-2 max-w-xl text-sm leading-6 text-stone-600">
             {gapGuidance.explanation}
           </p>
-          <button
-            type="button"
-            className={`${primaryButton} mt-5`}
-            onClick={() => cameraInput.current?.click()}
-          >
-            Dodaj potrzebne zdjęcie
-          </button>
+          {gapGuidance.requiresPhoto && (
+            <button
+              type="button"
+              className={`${primaryButton} mt-5`}
+              onClick={() => cameraInput.current?.click()}
+            >
+              Dodaj potrzebne zdjęcie
+            </button>
+          )}
           <details className="mt-6 border-t border-stone-200 pt-5">
             <summary className="pro-focus-ring min-h-11 cursor-pointer text-sm font-semibold">
               Pokaż szczegóły diagnostyczne

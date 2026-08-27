@@ -72,6 +72,18 @@ const mapperRow = (
 });
 
 describe('Product Recognition V2 — deterministic semantic authority', () => {
+  it.each(['Cacao puro desgrasado en polvo', 'Cacau magro em pó', 'Cacao poudre'])(
+    'recognizes multilingual explicit powder form without a model: %s',
+    (name) => {
+      const result = classifyProductSemantics(
+        evidence({ name, category: 'cacao', ingredients: name }),
+      );
+
+      expect(result.physicalForm).toBe('POWDER');
+      expect(result.modelReasonCodes).not.toContain('FORM_UNKNOWN');
+    },
+  );
+
   it('classifies pure defatted cocoa before generic chocolate matching', () => {
     const result = classifyProductSemantics(
       evidence({
@@ -92,6 +104,24 @@ describe('Product Recognition V2 — deterministic semantic authority', () => {
       modelRequired: false,
     });
     expect(result.compatibleMapperCategories).toEqual(['cocoa', 'chocolate']);
+  });
+
+  it('uses a direct pure-cocoa ingredient declaration to resolve the package form', () => {
+    const result = classifyProductSemantics(
+      evidence({
+        name: 'Cacao Puro',
+        brand: 'La Chocolatera',
+        category: 'Cacao',
+        ingredients: 'Cacao desgrasado en polvo, carbonato de potasio.',
+      }),
+    );
+
+    expect(result).toMatchObject({
+      productArchetype: 'COCOA_POWDER',
+      ingredientFamily: 'cocoa',
+      physicalForm: 'POWDER',
+      modelRequired: false,
+    });
   });
 
   it('keeps a chocolate-flavoured baking mix out of the chocolate family', () => {
