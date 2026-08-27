@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
-import { SectionLabel } from '@/components/shared/SectionLabel';
 import { buttonClasses } from '@/components/ui/buttonStyles';
+import { applicationFieldClasses } from '@/components/ui/applicationControlStyles';
 import { copy } from '@/copy/en';
 import { cn } from '@/lib/cn';
 import { useAuthStore } from '@/stores/authStore';
@@ -10,8 +10,7 @@ const a = copy.auth;
 
 type Mode = 'signin' | 'signup';
 
-const fieldClass =
-  'mt-1 w-full rounded-md border border-ink/15 bg-paper px-3 py-2 text-sm text-ink placeholder:text-stone-400 transition-colors focus:border-ink/40 focus:outline-none';
+const fieldClass = applicationFieldClasses('mt-1 bg-paper text-sm');
 
 /** Minimal email/password auth modal (Phase 2A). Degrades to an "unavailable"
  * note when this build has no auth backend configured. */
@@ -70,9 +69,9 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
         className="absolute inset-0 h-full w-full bg-ink/30"
         onClick={onClose}
       />
-      <div className="relative w-full max-w-sm rounded-xl border border-ink/10 bg-paper p-7">
-        <SectionLabel>{copy.brand.name}</SectionLabel>
-        <h2 className="mt-2 text-xl font-light tracking-tight text-ink">
+      <div className="relative w-full max-w-sm rounded-xl border border-ink/10 bg-paper p-5 shadow-pro-e2 sm:p-6">
+        <p className="text-xs font-semibold text-stone-500">{copy.brand.name}</p>
+        <h2 className="mt-2 text-xl font-semibold tracking-[-0.02em] text-ink">
           {mode === 'signin' ? a.titleSignIn : a.titleSignUp}
         </h2>
 
@@ -81,7 +80,7 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
             <p className="mt-4 text-sm leading-relaxed text-stone-500">{a.unavailable}</p>
             <button
               type="button"
-              className={cn(buttonClasses('ghost', 'sm'), 'mt-5 w-full')}
+              className={cn(buttonClasses('ghost', 'sm'), 'mt-5 w-full max-sm:min-h-11')}
               onClick={onClose}
             >
               {a.close}
@@ -101,7 +100,7 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
             ) : null}
             <form className="mt-5 space-y-4" onSubmit={submit}>
               <label className="block">
-                <span className="text-xs tracking-label text-stone-500 uppercase">{a.email}</span>
+                <span className="text-xs font-semibold text-stone-500">{a.email}</span>
                 <input
                   type="email"
                   required
@@ -112,9 +111,7 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
                 />
               </label>
               <label className="block">
-                <span className="text-xs tracking-label text-stone-500 uppercase">
-                  {a.password}
-                </span>
+                <span className="text-xs font-semibold text-stone-500">{a.password}</span>
                 <input
                   type="password"
                   required
@@ -133,7 +130,7 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
                 disabled={busy || googleBusy}
                 className={cn(
                   buttonClasses('primary', 'sm'),
-                  'w-full',
+                  'w-full max-sm:min-h-11',
                   (busy || googleBusy) && 'opacity-50',
                 )}
               >
@@ -143,7 +140,7 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
 
             <div className="mt-5 flex items-center gap-3" aria-hidden="true">
               <span className="h-px flex-1 bg-ink/10" />
-              <span className="text-xs tracking-label text-stone-400 uppercase">{a.orDivider}</span>
+              <span className="text-xs text-stone-400">{a.orDivider}</span>
               <span className="h-px flex-1 bg-ink/10" />
             </div>
             <button
@@ -153,7 +150,7 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
               aria-busy={googleBusy}
               className={cn(
                 buttonClasses('ghost', 'sm'),
-                'mt-4 flex w-full items-center justify-center gap-2',
+                'mt-4 flex w-full items-center justify-center gap-2 max-sm:min-h-11',
                 (busy || googleBusy) && 'opacity-50',
               )}
               onClick={continueWithGoogle}

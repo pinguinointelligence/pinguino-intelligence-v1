@@ -34,6 +34,7 @@ import {
 } from '@/features/machine-onboarding';
 import { selectMachinePreferenceStore } from '@/services/machinePreference/machinePreferenceSelector';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
+import { PageHeading } from '@/components/shared/PageHeading';
 
 type PageMode = 'view' | 'onboarding' | 'edit_custom';
 
@@ -92,7 +93,14 @@ export function MachineProfilePage() {
       <AppShell>
         <div className={`${APP_PAGE_WORKSPACE} pb-24 pt-8`}>
           <div className={APP_PAGE_MEASURE}>
-            <CustomerSurface>{children}</CustomerSurface>
+            <CustomerSurface measure="workspace">
+              <PageHeading
+                eyebrow="Konto"
+                title="Ustawienia maszyny"
+                blurb="Domyślna maszyna i partia są punktem startu dla nowych receptur."
+              />
+              <div className="mt-6">{children}</div>
+            </CustomerSurface>
           </div>
         </div>
       </AppShell>

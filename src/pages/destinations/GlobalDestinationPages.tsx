@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
 import { buttonClasses } from '@/components/ui/buttonStyles';
+import { applicationPrimaryClasses } from '@/components/ui/applicationControlStyles';
 import { cn } from '@/lib/cn';
 import { useAuthStore } from '@/stores/authStore';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
@@ -121,10 +122,7 @@ export function ProductsHubPage() {
                 Admina.
               </p>
             </div>
-            <Link
-              to="/products/scan"
-              className="min-h-11 px-2 py-3 text-xs font-medium tracking-label text-ink uppercase transition-opacity hover:opacity-55"
-            >
+            <Link to="/products/scan" className={applicationPrimaryClasses()}>
               Skanuj produkt
             </Link>
           </div>
@@ -163,9 +161,9 @@ export function ProductsHubPage() {
 
 type ProductionTab = 'current' | 'history' | 'labels';
 const productionTabs: readonly { id: ProductionTab; label: string }[] = [
-  { id: 'current', label: 'BIEŻĄCA' },
-  { id: 'history', label: 'HISTORIA' },
-  { id: 'labels', label: 'ETYKIETY' },
+  { id: 'current', label: 'Bieżąca' },
+  { id: 'history', label: 'Historia' },
+  { id: 'labels', label: 'Etykiety' },
 ];
 
 export function ProductionHubPage() {
@@ -268,7 +266,7 @@ export function ProductionHubPage() {
                   );
                 }}
                 className={cn(
-                  'min-h-12 border-b-2 px-4 text-xs font-semibold tracking-[0.08em]',
+                  'min-h-11 border-b-2 px-4 text-xs font-semibold sm:min-h-10',
                   active === tab.id ? 'border-ink text-ink' : 'border-transparent text-stone-600',
                 )}
                 data-testid={`production-tab-${tab.id}`}

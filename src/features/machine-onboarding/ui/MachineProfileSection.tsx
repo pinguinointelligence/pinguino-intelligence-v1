@@ -57,11 +57,26 @@ interface MachineProfileSectionProps {
   onEditCustom?: () => void;
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({
+  label,
+  value,
+  numeric = true,
+}: {
+  label: string;
+  value: string;
+  numeric?: boolean;
+}) {
   return (
     <div className="flex items-baseline justify-between gap-4 border-t border-ink/10 py-2.5 first:border-t-0 first:pt-0">
       <span className={cn(type.secondary, color.textSecondary)}>{label}</span>
-      <span className={cn(type.bodyStrong, color.textPrimary, 'text-right font-mono tabular-nums')}>
+      <span
+        className={cn(
+          type.bodyStrong,
+          color.textPrimary,
+          'text-right',
+          numeric && 'font-mono tabular-nums',
+        )}
+      >
         {value}
       </span>
     </div>
@@ -205,196 +220,272 @@ export function MachineProfileSection({
     <section aria-label={copy.profile.title}>
       <h2 className={cn(type.title, color.textPrimary)}>{copy.profile.title}</h2>
 
-      <div className={cn('mt-4 p-5', cardShell)}>
-        {/* This surface stores the PROFILE DEFAULT machine (owner correction). */}
-        <p className={cn(type.caption, color.textMuted)}>{copy.profile.defaultLabel}</p>
-        <p className={cn('mt-0.5', type.bodyStrong, color.textPrimary)}>{view.name}</p>
-        {view.usesOwnContainer || view.isCustomMachine ? (
-          <p className={cn('mt-1', type.caption, color.textMuted)}>{copy.settings.customContainerBadge}</p>
-        ) : null}
-
-        {/* Manufacturer data — informational, read-only (§1, §8). */}
-        <div className="mt-4">
-          {view.container !== null ? (
-            <Row
-              label={view.container.label}
-              value={`${view.container.capacityMl} ${copy.settings.unitMl}`}
-            />
+      <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className={cn('p-4 sm:p-5', cardShell)}>
+          {/* This surface stores the PROFILE DEFAULT machine (owner correction). */}
+          <p className={cn(type.caption, color.textMuted)}>{copy.profile.defaultLabel}</p>
+          <p className={cn('mt-0.5', type.bodyStrong, color.textPrimary)}>{view.name}</p>
+          {view.usesOwnContainer || view.isCustomMachine ? (
+            <p className={cn('mt-1', type.caption, color.textMuted)}>
+              {copy.settings.customContainerBadge}
+            </p>
           ) : null}
-          {view.recommendedGrams !== null ? (
-            <Row
-              label={copy.batch.recommendedLabel}
-              value={`${formatGrams(view.recommendedGrams)} ${copy.batch.recommendedUnit}`}
-            />
+
+          {/* Manufacturer data — informational, read-only (§1, §8). */}
+          <div className="mt-4">
+            {view.container !== null ? (
+              <Row
+                label={view.container.label}
+                value={`${view.container.capacityMl} ${copy.settings.unitMl}`}
+              />
+            ) : null}
+            {view.recommendedGrams !== null ? (
+              <Row
+                label={copy.batch.recommendedLabel}
+                value={`${formatGrams(view.recommendedGrams)} ${copy.batch.recommendedUnit}`}
+              />
+            ) : null}
+          </div>
+          {view.recommendedGrams === null ? (
+            <p className={cn('mt-2 max-w-prose', type.caption, color.textMuted)}>
+              {copy.settings.noRecommendation}
+            </p>
           ) : null}
-        </div>
-        {view.recommendedGrams === null ? (
-          <p className={cn('mt-2 max-w-prose', type.caption, color.textMuted)}>
-            {copy.settings.noRecommendation}
-          </p>
-        ) : null}
-        {view.estimatedNote !== null ? (
-          <p className={cn('mt-2 max-w-prose', type.caption, color.textMuted)}>{view.estimatedNote}</p>
-        ) : null}
-        {view.vesselOnlyFallback ? (
-          <p className={cn('mt-2 max-w-prose', type.caption, color.textMuted)}>
-            {copy.profile.vesselOnlyFlag}
-          </p>
-        ) : null}
+          {view.estimatedNote !== null ? (
+            <p className={cn('mt-2 max-w-prose', type.caption, color.textMuted)}>
+              {view.estimatedNote}
+            </p>
+          ) : null}
+          {view.vesselOnlyFallback ? (
+            <p className={cn('mt-2 max-w-prose', type.caption, color.textMuted)}>
+              {copy.profile.vesselOnlyFlag}
+            </p>
+          ) : null}
 
-        {/* The user's OWN setting (§1) — always editable, never a hard limit. */}
-        <div className="mt-5">
-          <TextField
-            label={copy.settings.userDefaultLabel}
-            inputMode="decimal"
-            value={batchText}
-            onChange={(e) => {
-              setBatchText(e.target.value);
-              setBatchError(null);
-              setAboveChoice('undecided');
-              setStatus('idle');
-            }}
-            trailing={<span className={cn(type.secondary, color.textMuted)}>{copy.batch.recommendedUnit}</span>}
-            {...(batchError !== null ? { error: batchError } : { hint: copy.settings.userDefaultHint })}
-          />
-        </div>
+          {/* The user's OWN setting (§1) — always editable, never a hard limit. */}
+          <div className="mt-5">
+            <TextField
+              label={copy.settings.userDefaultLabel}
+              inputMode="decimal"
+              value={batchText}
+              onChange={(e) => {
+                setBatchText(e.target.value);
+                setBatchError(null);
+                setAboveChoice('undecided');
+                setStatus('idle');
+              }}
+              trailing={
+                <span className={cn(type.secondary, color.textMuted)}>
+                  {copy.batch.recommendedUnit}
+                </span>
+              }
+              {...(batchError !== null
+                ? { error: batchError }
+                : { hint: copy.settings.userDefaultHint })}
+            />
+          </div>
 
-        {/* Above the recommendation: warn + offer choices, never block (§7).
+          {/* Above the recommendation: warn + offer choices, never block (§7).
             role="status" so a screen reader announces the as-you-type warning
             (WCAG 4.1.3 — adversarial review #10). */}
-        {guidance.kind === 'custom_above' && guidance.choice === 'undecided' ? (
-          <div className={cn('mt-3 px-4 py-3', radius.card, notice.risky, notice.text, type.secondary)}>
-            <p role="status" className={cn('font-medium', color.textPrimary)}>{copy.batch.aboveWarning}</p>
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-              <TouchButton variant="secondary" onClick={() => setAboveChoice('split')}>
-                {copy.batch.splitAction}
-              </TouchButton>
-              <TouchButton variant="quiet" onClick={() => setAboveChoice('keep_mine')}>
-                {copy.batch.keepMine}
-              </TouchButton>
-              <TouchButton variant="quiet" onClick={restore}>
-                {copy.batch.restoreShort}
-              </TouchButton>
-            </div>
-          </div>
-        ) : null}
-        {split !== null ? (
-          <div
-            role="status"
-            className={cn('mt-3 px-4 py-3', radius.card, notice.neutral, notice.text, type.secondary)}
-          >
-            <p className={cn('font-medium', color.textPrimary)}>{split.message}</p>
-            <p className="mt-0.5">{split.detail}</p>
-          </div>
-        ) : null}
-        {guidance.kind === 'custom' ||
-        (guidance.kind === 'custom_above' && guidance.choice === 'keep_mine') ? (
-          <p className={cn('mt-3', type.caption, color.textSecondary)}>{copy.batch.customInUse}</p>
-        ) : null}
-
-        {/* The user's own container (§8) — the model's figure is never edited. */}
-        <div className="mt-5 border-t border-ink/10 pt-4">
-          {!containerOpen ? (
-            <TouchButton variant="quiet" onClick={() => setContainerOpen(true)}>
-              {copy.settings.useCustomContainer}
-            </TouchButton>
-          ) : (
-            <div>
-              <p className={cn(type.bodyStrong, color.textPrimary)}>{copy.settings.customContainerTitle}</p>
-              <p className={cn('mt-1 max-w-prose', type.caption, color.textMuted)}>
-                {copy.settings.customContainerLead}
+          {guidance.kind === 'custom_above' && guidance.choice === 'undecided' ? (
+            <div
+              className={cn(
+                'mt-3 px-4 py-3',
+                radius.card,
+                notice.risky,
+                notice.text,
+                type.secondary,
+              )}
+            >
+              <p role="status" className={cn('font-medium', color.textPrimary)}>
+                {copy.batch.aboveWarning}
               </p>
-              <div className="mt-3 flex flex-col gap-3">
-                <TextField
-                  label={copy.settings.customCapacityFieldLabel}
-                  inputMode="decimal"
-                  value={capacityText}
-                  onChange={(e) => {
-                    setCapacityText(e.target.value);
-                    setCapacityError(null);
-                    setStatus('idle');
-                    // Offer the 0.95 proposal for the declared container; the
-                    // user may overwrite it (never forced).
-                    const parsed = parseGramsInput(e.target.value);
-                    if (parsed !== null && parsed !== 'invalid' && containerBatchText.trim() === '') {
-                      const suggested = suggestRecommendedGramsForContainer(parsed);
-                      if (suggested !== null) setContainerBatchText(String(suggested));
-                    }
-                  }}
-                  trailing={<span className={cn(type.secondary, color.textMuted)}>{copy.settings.unitMl}</span>}
-                  {...(capacityError !== null ? { error: capacityError } : {})}
-                />
-                <TextField
-                  label={copy.settings.customRecommendedFieldLabel}
-                  hint={copy.settings.customRecommendedHint}
-                  inputMode="decimal"
-                  value={containerBatchText}
-                  onChange={(e) => {
-                    setContainerBatchText(e.target.value);
-                    setStatus('idle');
-                  }}
-                  trailing={
-                    <span className={cn(type.secondary, color.textMuted)}>{copy.batch.recommendedUnit}</span>
-                  }
-                />
-              </div>
-              <div className="mt-3">
-                <TouchButton
-                  variant="quiet"
-                  onClick={() => {
-                    setContainerOpen(false);
-                    setCapacityText('');
-                    setContainerBatchText('');
-                    setCapacityError(null);
-                    setStatus('idle');
-                  }}
-                >
-                  {copy.settings.customContainerRemove}
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <TouchButton variant="secondary" onClick={() => setAboveChoice('split')}>
+                  {copy.batch.splitAction}
+                </TouchButton>
+                <TouchButton variant="quiet" onClick={() => setAboveChoice('keep_mine')}>
+                  {copy.batch.keepMine}
+                </TouchButton>
+                <TouchButton variant="quiet" onClick={restore}>
+                  {copy.batch.restoreShort}
                 </TouchButton>
               </div>
             </div>
-          )}
-          {draftCapacity === 'invalid' && capacityError === null ? (
-            <p className={cn('mt-2', type.caption, color.statusError)}>{copy.settings.invalidCapacity}</p>
           ) : null}
-        </div>
+          {split !== null ? (
+            <div
+              role="status"
+              className={cn(
+                'mt-3 px-4 py-3',
+                radius.card,
+                notice.neutral,
+                notice.text,
+                type.secondary,
+              )}
+            >
+              <p className={cn('font-medium', color.textPrimary)}>{split.message}</p>
+              <p className="mt-0.5">{split.detail}</p>
+            </div>
+          ) : null}
+          {guidance.kind === 'custom' ||
+          (guidance.kind === 'custom_above' && guidance.choice === 'keep_mine') ? (
+            <p className={cn('mt-3', type.caption, color.textSecondary)}>
+              {copy.batch.customInUse}
+            </p>
+          ) : null}
 
-        {/* Actions (§2) — explicit save, explicit restore, explicit change. */}
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-          <TouchButton onClick={() => void submit()}>{copy.settings.save}</TouchButton>
-          <TouchButton variant="secondary" onClick={restore} disabled={view.recommendedGrams === null}>
-            {copy.settings.restoreRecommended}
-          </TouchButton>
-          {/* Owner §2/§7: „Zmień maszynę” is a SECONDARY action (not buried as a
-              quiet link) and is always present for a saved machine. */}
-          <TouchButton variant="secondary" onClick={onChange}>
-            {copy.profile.change}
-          </TouchButton>
-          {view.isCustomMachine && onEditCustom ? (
-            <TouchButton variant="quiet" onClick={onEditCustom}>
-              {copy.profile.editCustom}
+          {/* The user's own container (§8) — the model's figure is never edited. */}
+          <div className="mt-5 border-t border-ink/10 pt-4">
+            {!containerOpen ? (
+              <TouchButton variant="quiet" onClick={() => setContainerOpen(true)}>
+                {copy.settings.useCustomContainer}
+              </TouchButton>
+            ) : (
+              <div>
+                <p className={cn(type.bodyStrong, color.textPrimary)}>
+                  {copy.settings.customContainerTitle}
+                </p>
+                <p className={cn('mt-1 max-w-prose', type.caption, color.textMuted)}>
+                  {copy.settings.customContainerLead}
+                </p>
+                <div className="mt-3 flex flex-col gap-3">
+                  <TextField
+                    label={copy.settings.customCapacityFieldLabel}
+                    inputMode="decimal"
+                    value={capacityText}
+                    onChange={(e) => {
+                      setCapacityText(e.target.value);
+                      setCapacityError(null);
+                      setStatus('idle');
+                      // Offer the 0.95 proposal for the declared container; the
+                      // user may overwrite it (never forced).
+                      const parsed = parseGramsInput(e.target.value);
+                      if (
+                        parsed !== null &&
+                        parsed !== 'invalid' &&
+                        containerBatchText.trim() === ''
+                      ) {
+                        const suggested = suggestRecommendedGramsForContainer(parsed);
+                        if (suggested !== null) setContainerBatchText(String(suggested));
+                      }
+                    }}
+                    trailing={
+                      <span className={cn(type.secondary, color.textMuted)}>
+                        {copy.settings.unitMl}
+                      </span>
+                    }
+                    {...(capacityError !== null ? { error: capacityError } : {})}
+                  />
+                  <TextField
+                    label={copy.settings.customRecommendedFieldLabel}
+                    hint={copy.settings.customRecommendedHint}
+                    inputMode="decimal"
+                    value={containerBatchText}
+                    onChange={(e) => {
+                      setContainerBatchText(e.target.value);
+                      setStatus('idle');
+                    }}
+                    trailing={
+                      <span className={cn(type.secondary, color.textMuted)}>
+                        {copy.batch.recommendedUnit}
+                      </span>
+                    }
+                  />
+                </div>
+                <div className="mt-3">
+                  <TouchButton
+                    variant="quiet"
+                    onClick={() => {
+                      setContainerOpen(false);
+                      setCapacityText('');
+                      setContainerBatchText('');
+                      setCapacityError(null);
+                      setStatus('idle');
+                    }}
+                  >
+                    {copy.settings.customContainerRemove}
+                  </TouchButton>
+                </div>
+              </div>
+            )}
+            {draftCapacity === 'invalid' && capacityError === null ? (
+              <p className={cn('mt-2', type.caption, color.statusError)}>
+                {copy.settings.invalidCapacity}
+              </p>
+            ) : null}
+          </div>
+
+          {/* Actions (§2) — explicit save, explicit restore, explicit change. */}
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <TouchButton onClick={() => void submit()}>{copy.settings.save}</TouchButton>
+            <TouchButton
+              variant="secondary"
+              onClick={restore}
+              disabled={view.recommendedGrams === null}
+            >
+              {copy.settings.restoreRecommended}
             </TouchButton>
+            {/* Owner §2/§7: „Zmień maszynę” is a SECONDARY action (not buried as a
+              quiet link) and is always present for a saved machine. */}
+            <TouchButton variant="secondary" onClick={onChange}>
+              {copy.profile.change}
+            </TouchButton>
+            {view.isCustomMachine && onEditCustom ? (
+              <TouchButton variant="quiet" onClick={onEditCustom}>
+                {copy.profile.editCustom}
+              </TouchButton>
+            ) : null}
+          </div>
+
+          {/* Unambiguous status — never leave the user guessing (§2). */}
+          {status === 'saved' ? (
+            <p role="status" className={cn('mt-4', type.secondary, color.statusIdeal)}>
+              ✓ {copy.settings.saved}
+            </p>
+          ) : null}
+          {status === 'failed' ? (
+            <p role="alert" className={cn('mt-4', type.secondary, color.statusError)}>
+              {copy.settings.saveFailed}
+            </p>
           ) : null}
         </div>
 
-        {/* Unambiguous status — never leave the user guessing (§2). */}
-        {status === 'saved' ? (
-          <p role="status" className={cn('mt-4', type.secondary, color.statusIdeal)}>
-            ✓ {copy.settings.saved}
-          </p>
-        ) : null}
-        {status === 'failed' ? (
-          <p role="alert" className={cn('mt-4', type.secondary, color.statusError)}>
-            {copy.settings.saveFailed}
-          </p>
-        ) : null}
-      </div>
-
-      {/* The next action is always offered (§3). */}
-      <div className="mt-5">
-        <TouchButton size="lg" onClick={onGoToRecipe}>
-          {goToRecipeLabel}
-        </TouchButton>
+        <aside className={cn('h-max p-4 sm:p-5', cardShell)} aria-label="Podsumowanie ustawień">
+          <h3 className={cn(type.title, color.textPrimary)}>Podsumowanie</h3>
+          <dl className="mt-4">
+            <Row label={copy.profile.defaultLabel} value={view.name} numeric={false} />
+            {view.container !== null ? (
+              <Row
+                label={view.container.label}
+                value={`${view.container.capacityMl} ${copy.settings.unitMl}`}
+              />
+            ) : null}
+            {view.recommendedGrams !== null ? (
+              <Row
+                label={copy.batch.recommendedLabel}
+                value={`${formatGrams(view.recommendedGrams)} ${copy.batch.recommendedUnit}`}
+              />
+            ) : null}
+            <Row
+              label={copy.settings.userDefaultLabel}
+              value={
+                view.userDefaultGrams !== null
+                  ? `${formatGrams(view.userDefaultGrams)} ${copy.batch.recommendedUnit}`
+                  : view.recommendedGrams !== null
+                    ? `${formatGrams(view.recommendedGrams)} ${copy.batch.recommendedUnit}`
+                    : '—'
+              }
+            />
+          </dl>
+          {/* The next action is always offered (§3), now in the contextual summary. */}
+          <div className="mt-4">
+            <TouchButton size="lg" onClick={onGoToRecipe}>
+              {goToRecipeLabel}
+            </TouchButton>
+          </div>
+        </aside>
       </div>
     </section>
   );

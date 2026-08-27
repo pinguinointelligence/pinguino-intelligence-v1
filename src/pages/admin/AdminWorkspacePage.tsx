@@ -28,25 +28,24 @@ import {
 } from '@/services/adminControl';
 
 const NAV = [
-  ['overview', 'OVERVIEW'],
-  ['customer-added-products', 'CUSTOMER-ADDED PRODUCTS'],
-  ['product-requests', 'PRODUCT REQUESTS'],
-  ['catalog', 'CATALOG & COUNTRIES'],
-  ['users', 'USERS'],
-  ['revenue', 'SUBSCRIPTIONS & REVENUE'],
-  ['partners', 'PARTNERS'],
-  ['community', 'COMMUNITY & CONTENT'],
-  ['operations', 'OPERATIONS'],
-  ['audit', 'AUDIT LOG'],
-  ['settings', 'ADMIN SETTINGS'],
+  ['overview', 'Overview'],
+  ['customer-added-products', 'Customer-added products'],
+  ['product-requests', 'Product requests'],
+  ['catalog', 'Catalog & countries'],
+  ['users', 'Users'],
+  ['revenue', 'Subscriptions & revenue'],
+  ['partners', 'Partners'],
+  ['community', 'Community & content'],
+  ['operations', 'Operations'],
+  ['audit', 'Audit log'],
+  ['settings', 'Admin settings'],
 ] as const;
 type Section = (typeof NAV)[number][0];
 const validSection = (value: string | undefined): Section =>
   NAV.some(([id]) => id === value) ? (value as Section) : 'overview';
 
 const table = 'w-full min-w-[760px] border-collapse text-left text-xs';
-const th =
-  'border-b border-ink/15 px-3 py-3 font-semibold uppercase tracking-[0.1em] text-stone-500';
+const th = 'border-b border-ink/15 px-3 py-2.5 font-semibold text-stone-500';
 const td = 'border-b border-ink/8 px-3 py-3 align-top text-stone-700';
 
 export function AdminWorkspacePage() {
@@ -54,14 +53,14 @@ export function AdminWorkspacePage() {
   const active = validSection(section);
   return (
     <AppShell maxWidthClass="max-w-[1600px]">
-      <div className="mx-auto grid max-w-[1600px] lg:grid-cols-[250px_minmax(0,1fr)]">
-        <aside className="border-b border-ink/10 bg-[#f3ede3] px-4 py-5 lg:min-h-[calc(100vh-64px)] lg:border-r lg:border-b-0">
-          <SectionLabel>Operacje Gellatti</SectionLabel>
-          <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.14em] text-stone-500">
-            STAGING · KONTROLOWANE
+      <div className="gellatti-admin mx-auto grid max-w-[1600px] lg:grid-cols-[190px_minmax(0,1fr)]">
+        <aside className="border-b border-ink/10 bg-pro-warm-raised px-3 py-3 lg:min-h-[calc(100vh-82px)] lg:border-r-0 lg:border-b-0 lg:bg-pro-graphite lg:px-3 lg:py-5 lg:text-white">
+          <p className="px-2 text-xs font-semibold text-ink lg:text-white">Gellatti Operations</p>
+          <p className="mt-1 px-2 text-[10px] text-stone-500 lg:text-white/55">
+            STAGING · kontrolowane
           </p>
           <nav
-            className="mt-6 grid grid-cols-2 gap-1 sm:grid-cols-3 lg:grid-cols-1"
+            className="mt-3 flex gap-1 overflow-x-auto pb-1 lg:mt-5 lg:grid lg:grid-cols-1 lg:overflow-visible lg:pb-0"
             aria-label="Admin"
           >
             {NAV.map(([id, label]) => (
@@ -69,10 +68,10 @@ export function AdminWorkspacePage() {
                 key={id}
                 to={`/admin/${id}`}
                 className={cn(
-                  'min-h-10 border-l px-3 py-2.5 text-[11px] font-semibold tracking-[0.08em] focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40',
+                  'min-h-11 shrink-0 rounded-[var(--radius-pro-studio)] px-3 py-2 text-[11px] font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40 lg:min-h-[38px] lg:whitespace-normal',
                   active === id
-                    ? 'border-ink bg-white text-ink'
-                    : 'border-transparent text-stone-600 hover:border-ink/25 hover:bg-white/60',
+                    ? 'bg-pro-graphite text-white lg:bg-white/10'
+                    : 'text-stone-600 hover:bg-white lg:text-white/65 lg:hover:bg-white/5 lg:hover:text-white',
                 )}
               >
                 {label}
@@ -80,7 +79,7 @@ export function AdminWorkspacePage() {
             ))}
           </nav>
         </aside>
-        <main className="min-w-0 bg-white px-5 py-7 sm:px-8 lg:px-10">
+        <main className="min-w-0 bg-white px-4 py-6 sm:px-6 lg:px-7">
           <AdminSection section={active} />
         </main>
       </div>
@@ -104,9 +103,11 @@ function AdminSection({ section }: { section: Section }) {
 
 function Heading({ eyebrow, title, detail }: { eyebrow: string; title: string; detail: string }) {
   return (
-    <header className="border-b border-ink/10 pb-6">
-      <SectionLabel>{eyebrow}</SectionLabel>
-      <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-ink">{title}</h1>
+    <header className="border-b border-ink/10 pb-5">
+      <p className="text-xs font-semibold text-stone-500">{eyebrow}</p>
+      <h1 className="mt-2 text-[28px] font-semibold leading-tight tracking-[-0.035em] text-ink">
+        {title}
+      </h1>
       <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-600">{detail}</p>
     </header>
   );
@@ -223,15 +224,15 @@ function OperationalList({
 }
 
 const REQUEST_TABS: readonly (readonly [ProductRequestStatus | 'ALL', string])[] = [
-  ['SUBMITTED', 'NEW'],
-  ['ADMIN_REVIEW', 'IN REVIEW'],
-  ['NEEDS_INFO', 'WAITING FOR USER'],
-  ['RESUBMITTED', 'RESUBMITTED'],
-  ['APPROVED', 'APPROVED'],
-  ['REJECTED', 'REJECTED'],
-  ['DUPLICATE', 'DUPLICATE'],
-  ['USER_CANCELED', 'CANCELED'],
-  ['ALL', 'ALL'],
+  ['SUBMITTED', 'New'],
+  ['ADMIN_REVIEW', 'In review'],
+  ['NEEDS_INFO', 'Waiting for user'],
+  ['RESUBMITTED', 'Resubmitted'],
+  ['APPROVED', 'Approved'],
+  ['REJECTED', 'Rejected'],
+  ['DUPLICATE', 'Duplicate'],
+  ['USER_CANCELED', 'Canceled'],
+  ['ALL', 'All'],
 ];
 function ProductRequests() {
   const [status, setStatus] = useState<ProductRequestStatus | 'ALL'>(() =>
@@ -294,10 +295,61 @@ function ProductRequests() {
   );
   if (selected) {
     const onClose = () => navigate('/admin/product-requests');
-    return selected.requestType === 'PRODUCT_CAPABILITY_REANALYSIS' ? (
-      <AdminProductCapabilityReanalysisDetail request={selected} onClose={onClose} />
-    ) : (
-      <RequestDetail request={selected} onClose={onClose} />
+    const detail =
+      selected.requestType === 'PRODUCT_CAPABILITY_REANALYSIS' ? (
+        <AdminProductCapabilityReanalysisDetail request={selected} onClose={onClose} />
+      ) : (
+        <RequestDetail request={selected} onClose={onClose} />
+      );
+    return (
+      <>
+        <div className="mb-4 flex items-center gap-2 xl:hidden">
+          <button
+            type="button"
+            onClick={onClose}
+            className="pro-focus-ring min-h-11 text-xs font-semibold text-stone-600"
+          >
+            ← Zgłoszenia
+          </button>
+          <span className="ml-auto rounded-full bg-pro-amber px-2.5 py-1 text-[10px] font-semibold text-attention">
+            {filtered.length} w kolejce
+          </span>
+        </div>
+        <div className="grid min-w-0 gap-3 xl:grid-cols-[330px_minmax(0,1fr)]">
+          <aside className="hidden h-max overflow-hidden rounded-[var(--radius-pro-studio)] border border-ink/10 xl:block">
+            <div className="bg-pro-warm-raised px-3 py-3">
+              <h2 className="text-sm font-semibold text-ink">Kolejka zgłoszeń</h2>
+              <p className="mt-1 text-[10px] text-stone-500">{filtered.length} w bieżącym widoku</p>
+            </div>
+            <div className="max-h-[calc(100vh-190px)] overflow-y-auto">
+              {filtered.slice(0, 40).map((request) => (
+                <button
+                  key={request.id}
+                  type="button"
+                  onClick={() => navigate(`/admin/product-requests?request=${request.id}`)}
+                  className={cn(
+                    'pro-focus-ring block w-full border-t border-ink/8 px-3 py-3 text-left',
+                    request.id === selected.id
+                      ? 'bg-pro-amber/60'
+                      : 'bg-white hover:bg-pro-warm-raised',
+                  )}
+                >
+                  <span className="block truncate text-xs font-semibold text-ink">
+                    {request.name || request.brand || `#${request.requestNumber}`}
+                  </span>
+                  <span className="mt-1 block truncate font-mono text-[9px] text-stone-500">
+                    {request.ean ?? request.id}
+                  </span>
+                  <span className="mt-1 block text-[10px] text-stone-500">{request.status}</span>
+                </button>
+              ))}
+            </div>
+          </aside>
+          <div className="min-w-0 rounded-[var(--radius-pro-studio)] border border-ink/10 bg-white p-4 sm:p-5">
+            {detail}
+          </div>
+        </div>
+      </>
     );
   }
   return (
@@ -313,7 +365,7 @@ function ProductRequests() {
             key={tab}
             onClick={() => setStatus(tab)}
             className={cn(
-              'min-h-10 shrink-0 px-3 text-[10px] font-semibold tracking-[0.1em]',
+              'min-h-11 shrink-0 rounded-[var(--radius-pro-studio)] px-3 text-[11px] font-semibold sm:min-h-8',
               status === tab ? 'bg-ink text-white' : 'border border-ink/10 text-stone-600',
             )}
           >

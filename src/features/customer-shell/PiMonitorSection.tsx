@@ -115,14 +115,36 @@ function TraitReadingRow({ label, reading }: { label: string; reading: GoldenRan
 function CheckRow({ check }: { check: MonitorHomeCheckRow }) {
   return (
     <li className="flex items-start gap-2.5">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden className="mt-0.5 shrink-0">
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 16 16"
+        fill="none"
+        aria-hidden
+        className="mt-0.5 shrink-0"
+      >
         {check.tone === 'ok' ? (
-          <path d="M3 8.5l3.2 3.2L13 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="text-ink" />
+          <path
+            d="M3 8.5l3.2 3.2L13 5"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="text-ink"
+          />
         ) : (
-          <path d="M8 3.5v6M8 12.4v.1" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="text-status-risky" />
+          <path
+            d="M8 3.5v6M8 12.4v.1"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            className="text-status-risky"
+          />
         )}
       </svg>
-      <span className={`text-[13px] leading-relaxed ${check.tone === 'ok' ? 'text-stone-700' : 'text-status-risky'}`}>
+      <span
+        className={`text-[13px] leading-relaxed ${check.tone === 'ok' ? 'text-stone-700' : 'text-status-risky'}`}
+      >
         {check.text}
       </span>
     </li>
@@ -140,11 +162,7 @@ function CheckRow({ check }: { check: MonitorHomeCheckRow }) {
  * View-model in, presentation out; every number is stripped at the view-model
  * source (§22) except the sanctioned 1–10 score.
  */
-export function MonitorHomeReadout({
-  home,
-}: {
-  home: ReturnType<typeof buildMonitorHomeView>;
-}) {
+export function MonitorHomeReadout({ home }: { home: ReturnType<typeof buildMonitorHomeView> }) {
   return (
     <>
       {/* ACCEPTANCE ADDENDUM (2): „Dopasowanie techniczne" — integer 1–10 +
@@ -168,7 +186,9 @@ export function MonitorHomeReadout({
         ))}
         <div className="flex items-baseline justify-between gap-4 border-t border-ink/10 pt-3">
           <span className="text-[14px] font-medium text-ink">{home.stability.label}</span>
-          <span className={`text-right text-[13px] ${READING_TEXT_TONE[home.stability.reading.state]}`}>
+          <span
+            className={`text-right text-[13px] ${READING_TEXT_TONE[home.stability.reading.state]}`}
+          >
             {home.stability.reading.text}
           </span>
         </div>
@@ -239,7 +259,7 @@ export function PiMonitorSection({
 
   return (
     <section className="mt-6 rounded-2xl border border-ink/10 bg-ink/[0.02] p-4">
-      <p className="text-[12px] uppercase tracking-[0.14em] text-stone-500">{copy.monitor.label}</p>
+      <p className="text-[11px] font-semibold text-stone-500">{copy.monitor.label}</p>
 
       {/* The shared §13 readout (also mounted by the landing demo — Slice F). */}
       <MonitorHomeReadout home={home} />
@@ -287,7 +307,9 @@ export function PiMonitorSection({
       {/* Blocked by unresolved ingredients — status-risky tokens, readable text
           on the light surface (audit #26; never raw Tailwind ambers). */}
       {!gate.canRecalculate ? (
-        <p className={`mt-3 rounded-xl px-4 py-3 text-[13px] leading-relaxed ${notice.risky} ${notice.text}`}>
+        <p
+          className={`mt-3 rounded-xl px-4 py-3 text-[13px] leading-relaxed ${notice.risky} ${notice.text}`}
+        >
           {gate.blockCopy}
         </p>
       ) : recipeInput !== null && !tuningApproved ? (
@@ -305,13 +327,17 @@ export function PiMonitorSection({
         <div className="mt-3 rounded-xl border border-ink/10 bg-ink/[0.03] px-4 py-3">
           <p className="text-[14px] font-medium text-ink">{result.outcomeLabel}</p>
           {result.outcomeDetail ? (
-            <p className="mt-1 text-[13px] leading-relaxed text-stone-600">{result.outcomeDetail}</p>
+            <p className="mt-1 text-[13px] leading-relaxed text-stone-600">
+              {result.outcomeDetail}
+            </p>
           ) : null}
           {/* Exact gram adjustments — Home/Pro only (Demo payload carries none).
               Data readout, not decoration: primary ink + mono numerals. */}
           {gramsVisible && result.proposedAdjustments && result.proposedAdjustments.length > 0 ? (
             <div className="mt-3">
-              <p className="text-[12px] uppercase tracking-[0.12em] text-stone-500">{copy.monitor.adjustmentsTitle}</p>
+              <p className="text-[11px] font-semibold text-stone-500">
+                {copy.monitor.adjustmentsTitle}
+              </p>
               <ul className="mt-1 space-y-1">
                 {result.proposedAdjustments.map((a, i) => (
                   <li key={`${a.ingredient}-${i}`} className="text-[13px] text-ink">

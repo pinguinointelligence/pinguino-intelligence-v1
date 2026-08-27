@@ -41,7 +41,9 @@ const c = customerShellCopy.save;
 /** Quiet informational line — the shell's neutral notice surface. */
 function Line({ children }: { children: ReactNode }) {
   return (
-    <p className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${notice.neutral} ${notice.text}`}>
+    <p
+      className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${notice.neutral} ${notice.text}`}
+    >
       {children}
     </p>
   );
@@ -153,8 +155,11 @@ export function HomeSaveSection({
 
   return (
     // Same card language as the neighbouring Monitor block on the result screen.
-    <section className="mt-6 rounded-2xl border border-ink/10 bg-ink/[0.02] p-4" data-testid="home-save-section">
-      <p className="text-[12px] uppercase tracking-[0.14em] text-stone-500">{c.label}</p>
+    <section
+      className="mt-6 rounded-2xl border border-ink/10 bg-ink/[0.02] p-4"
+      data-testid="home-save-section"
+    >
+      <p className="text-[11px] font-semibold text-stone-500">{c.label}</p>
       <p className="mt-2 text-[17px] font-medium text-ink">{c.title}</p>
       <p className="mt-1 text-[13px] leading-relaxed text-stone-500">{c.lead}</p>
 
@@ -243,7 +248,9 @@ export function HomeSaveSection({
             data-testid="home-save-confirmation"
             className={`rounded-2xl px-4 py-3 text-[13px] leading-relaxed ${notice.ideal} ${notice.text}`}
           >
-            <p className="font-medium text-ink">{saved === 'created' ? c.savedCreated : c.savedVersion}</p>
+            <p className="font-medium text-ink">
+              {saved === 'created' ? c.savedCreated : c.savedVersion}
+            </p>
             <Link
               to="/my-recipes"
               className="mt-1 inline-block underline decoration-stone-300 underline-offset-4 transition-colors hover:text-ink"

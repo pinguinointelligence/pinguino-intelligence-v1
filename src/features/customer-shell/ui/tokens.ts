@@ -30,12 +30,12 @@
  * ------------------------------------------------------------------ */
 
 export const customerSpec = {
-  /** Comfortable primary body size on mobile. */
-  bodyPrimaryPx: 17,
-  /** Minimum height for primary interactive controls (buttons, inputs). */
-  controlMinHeightPx: 52,
-  /** Large / hero control height (sticky CTA, primary submit). */
-  controlLargeHeightPx: 56,
+  /** Current-PRO body density projected onto the customer surface. */
+  bodyPrimaryPx: 13,
+  /** Current-PRO mobile touch target; desktop compacts to 40 px. */
+  controlMinHeightPx: 44,
+  /** The accepted 44 px current-PRO medium action. */
+  controlLargeHeightPx: 44,
   /** Minimum square tap target for icon-only controls (WCAG 2.5.5-conscious). */
   tapTargetPx: 44,
   /** Content max-width on the widest breakpoint (reads as a product, not a dashboard). */
@@ -50,23 +50,23 @@ export const customerSpec = {
 
 export const type = {
   /** Page hero. */
-  display: 'text-[30px] leading-[1.04] font-semibold tracking-[-0.035em] sm:text-[38px]',
+  display: 'text-[28px] leading-[1.08] font-semibold tracking-[-0.035em]',
   /** Section / card title. */
-  title: 'text-[22px] leading-[1.08] font-semibold tracking-[-0.025em]',
+  title: 'text-[16px] leading-tight font-semibold tracking-[-0.015em]',
   /** Sub-heading inside a card. */
-  heading: 'text-[19px] leading-snug font-medium',
-  /** Primary body — comfortable on mobile (>=17px). */
-  body: 'text-[17px] leading-relaxed',
+  heading: 'text-[14px] leading-snug font-semibold',
+  /** Compact readable body inherited from current PRO. */
+  body: 'text-[13px] leading-relaxed',
   /** Primary body, emphasised. */
-  bodyStrong: 'text-[17px] leading-relaxed font-medium',
+  bodyStrong: 'text-[13px] leading-relaxed font-semibold',
   /** Secondary supporting copy. */
-  secondary: 'text-[15px] leading-relaxed',
+  secondary: 'text-[12px] leading-relaxed',
   /** Caption / metadata. */
-  caption: 'text-[13px] leading-normal',
-  /** Uppercase eyebrow label (echoes the wordmark tracking). */
-  label: 'text-[12px] font-medium uppercase tracking-[0.14em]',
+  caption: 'text-[10px] leading-normal',
+  /** Human sentence-case label; uppercase is reserved for real codes. */
+  label: 'text-[11px] font-semibold',
   /** Tabular numeric readout (grams, temperature). */
-  numeric: 'font-mono text-[15px] tabular-nums',
+  numeric: 'font-mono text-[13px] tabular-nums',
 } as const;
 
 /* ------------------------------------------------------------------ *
@@ -124,7 +124,7 @@ export const notice = {
 
 export const radius = {
   control: 'rounded-xl', // 12px — inputs, buttons
-  card: 'rounded-2xl', // 16px — cards
+  card: 'rounded-xl', // 12px — the current-PRO rectangular language
   sheet: 'rounded-t-3xl', // 24px — bottom sheet top corners
   pill: 'rounded-full', // chips, mic button
 } as const;
@@ -154,10 +154,10 @@ export const focusRing =
   'outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-paper';
 
 export const touch = {
-  /** Primary control minimum height (52px). */
-  control: 'min-h-[52px]',
-  /** Large control (56px). */
-  controlLarge: 'min-h-[56px]',
+  /** 44px at 390; the source current-PRO desktop action is 40px. */
+  control: 'min-h-11 sm:min-h-10',
+  /** Current-PRO medium action remains 44px; it is not a new global default. */
+  controlLarge: 'min-h-11',
   /** Square icon-only tap target (44px). */
   iconTarget: 'min-h-[44px] min-w-[44px]',
 } as const;
@@ -211,8 +211,8 @@ export const touchButtonVariants: Record<TouchButtonVariant, string> = {
 };
 
 export const touchButtonSizes: Record<TouchButtonSize, string> = {
-  md: `${touch.control} px-6`,
-  lg: `${touch.controlLarge} px-7`,
+  md: `${touch.control} px-4`,
+  lg: `${touch.controlLarge} px-5`,
 };
 
 /**

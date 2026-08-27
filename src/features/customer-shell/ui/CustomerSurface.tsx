@@ -17,6 +17,8 @@ interface CustomerSurfaceProps {
    * first measurement lands.
    */
   stickyReservePx?: number | null;
+  /** Wider V2 start/settings layouts; the in-flow recipe remains on its accepted measure. */
+  measure?: 'flow' | 'workspace';
   className?: string;
 }
 
@@ -33,6 +35,7 @@ export function CustomerSurface({
   children,
   hasStickyCta = false,
   stickyReservePx = null,
+  measure = 'flow',
   className,
 }: CustomerSurfaceProps) {
   return (
@@ -46,8 +49,8 @@ export function CustomerSurface({
       )}
     >
       <div
-        className="mx-auto w-full px-5 pt-6 sm:px-8 sm:pt-10"
-        style={{ maxWidth: customerSpec.contentMaxWidthPx }}
+        className="mx-auto w-full px-4 pt-6 sm:px-6 sm:pt-8"
+        style={{ maxWidth: measure === 'workspace' ? 1120 : customerSpec.contentMaxWidthPx }}
       >
         {children}
         {/* Spacer so the sticky CTA (fixed) never overlaps the final content. The
@@ -55,10 +58,7 @@ export function CustomerSurface({
             reserve is (measured + gap); until the first measurement we reserve a
             generous default that clears a captioned two-button bar. */}
         {hasStickyCta ? (
-          <div
-            aria-hidden
-            style={{ height: `${(stickyReservePx ?? 148) + 16}px` }}
-          />
+          <div aria-hidden style={{ height: `${(stickyReservePx ?? 148) + 16}px` }} />
         ) : (
           <div aria-hidden className={cn('h-8', safeArea.bottomRaw)} />
         )}
@@ -87,8 +87,12 @@ export function CustomerSection({
   return (
     <section className={cn('py-7 first:pt-0', className)}>
       {label ? <p className={cn(type.label, color.textMuted)}>{label}</p> : null}
-      {title ? <h2 className={cn(type.title, color.textPrimary, label && 'mt-2')}>{title}</h2> : null}
-      {lead ? <p className={cn(type.secondary, color.textSecondary, 'mt-2 max-w-prose')}>{lead}</p> : null}
+      {title ? (
+        <h2 className={cn(type.title, color.textPrimary, label && 'mt-2')}>{title}</h2>
+      ) : null}
+      {lead ? (
+        <p className={cn(type.secondary, color.textSecondary, 'mt-2 max-w-prose')}>{lead}</p>
+      ) : null}
       {children ? <div className={cn(title || lead || label ? 'mt-5' : '')}>{children}</div> : null}
     </section>
   );

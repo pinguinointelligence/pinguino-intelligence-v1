@@ -19,6 +19,7 @@
  * speech-recognition, no persistence.
  */
 import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Link } from 'react-router';
 import {
   createCustomerFlow,
   setProductType,
@@ -111,6 +112,10 @@ import { ResolutionSheet } from './ResolutionSheet';
 import { PiMonitorSection } from './PiMonitorSection';
 import { HomeSaveSection } from './HomeSaveSection';
 import { parseInspirationStartIntent } from '@/data/recipes/inspirationHandoff';
+import {
+  applicationQuietClasses,
+  applicationSecondaryClasses,
+} from '@/components/ui/applicationControlStyles';
 
 /* ------------------------------------------------------------------ *
  * Browser speech recognition (optional, never an external service)   *
@@ -202,8 +207,8 @@ const noteText = (code: string): string => copy.tech.notes[code] ?? code;
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-4 py-1.5">
-      <span className="text-[13px] uppercase tracking-[0.12em] text-stone-500">{label}</span>
-      <span className="min-w-0 text-right text-[15px] text-ink">{value}</span>
+      <span className="text-[11px] font-semibold text-stone-500">{label}</span>
+      <span className="min-w-0 text-right text-[13px] text-ink">{value}</span>
     </div>
   );
 }
@@ -242,7 +247,9 @@ function ShellRoot({ persona, children }: { persona: CustomerPersona; children: 
 
 export function CustomerShellV1() {
   const discoveryIntent = parseInspirationStartIntent(
-    typeof window === 'undefined' ? new URLSearchParams() : new URLSearchParams(window.location.search),
+    typeof window === 'undefined'
+      ? new URLSearchParams()
+      : new URLSearchParams(window.location.search),
   );
   const [flow, setFlow] = useState<CustomerFlowState | null>(() =>
     discoveryIntent === null
@@ -488,11 +495,12 @@ export function CustomerShellV1() {
       resolution: l.resolution,
     }));
   }, [flow, selectedDraft, engineResult]);
+  const ingredientResolutionPolicy = { authenticated: authUserId !== null };
   const resolution = useIngredientResolution(
     workingRecipeId,
     resolvableLines,
     undefined,
-    { authenticated: authUserId !== null },
+    ingredientResolutionPolicy,
   );
 
   // Speech (browser-only, optional).
@@ -598,65 +606,100 @@ export function CustomerShellV1() {
   if (flow === null) {
     return (
       <ShellRoot persona={persona}>
-        <CustomerSurface>
+        <CustomerSurface measure="workspace">
           <CustomerMenu />
-          {/* Responsive hero offset: push the opening interaction ~20-25% down the
-              first viewport using small-viewport height (svh, browser-chrome-aware),
-              clamped so it never grows awkward on very tall or very short screens. */}
-          <div style={{ paddingTop: 'clamp(2rem, 14svh, 9rem)' }}>
+          <div className="pt-6 sm:pt-8">
             <DevPersonaSelect persona={persona} onChange={switchPersona} />
             <header className="pt-2">
-              <h1 className="text-[30px] font-semibold leading-[1.04] tracking-[-0.035em] text-ink sm:text-[38px]">
+              <h1 className="text-[28px] font-semibold leading-[1.08] tracking-[-0.035em] text-ink">
                 {copy.home.headline}
               </h1>
-              <p className="mt-3 max-w-prose text-[15px] leading-relaxed text-stone-600">
+              <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-stone-600">
                 {copy.home.subhead}
               </p>
             </header>
 
-            <div className="mt-8">
-              <TextField
-                label={copy.home.inputLabel}
-                placeholder={copy.home.placeholder}
-                value={draftText}
-                onChange={(e) => setDraftText(e.target.value)}
-                // §4: Enter (incl. NumpadEnter — both report key 'Enter') and the
-                // mobile Go/Done key start the flow, exactly like „Dalej”. The IME
-                // guard keeps composition (e.g. a mid-word suggestion) from
-                // submitting a half-typed idea.
-                enterKeyHint="go"
-                onKeyDown={(e) => {
-                  if (e.key !== 'Enter' || e.nativeEvent.isComposing) return;
-                  e.preventDefault();
-                  startFlowFromDraft();
-                }}
-                trailing={
-                  <MicrophoneButton
-                    state={micState}
-                    label={copy.mic[micLabelKey(micState)]}
-                    onClick={handleMic}
+            <div className="mt-6 grid gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(300px,0.85fr)]">
+              <section className="rounded-xl border border-ink/10 bg-white p-4 sm:p-5">
+                <h2 className="text-base font-semibold text-ink">Nowa receptura</h2>
+                <p className="mt-1 text-xs leading-5 text-stone-600">
+                  Zacznij od smaku. Ustawienia maszyny i partii pozostają częścią tego samego flow.
+                </p>
+                <div className="mt-4">
+                  <TextField
+                    label={copy.home.inputLabel}
+                    placeholder={copy.home.placeholder}
+                    value={draftText}
+                    onChange={(e) => setDraftText(e.target.value)}
+                    // §4: Enter (incl. NumpadEnter — both report key 'Enter') and the
+                    // mobile Go/Done key start the flow, exactly like „Dalej”. The IME
+                    // guard keeps composition (e.g. a mid-word suggestion) from
+                    // submitting a half-typed idea.
+                    enterKeyHint="go"
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Enter' || e.nativeEvent.isComposing) return;
+                      e.preventDefault();
+                      startFlowFromDraft();
+                    }}
+                    trailing={
+                      <MicrophoneButton
+                        state={micState}
+                        label={copy.mic[micLabelKey(micState)]}
+                        onClick={handleMic}
+                      />
+                    }
                   />
-                }
-              />
-              <div className="mt-3">
-                <TouchButton
-                  variant="quiet"
-                  size="md"
-                  onClick={() => setDraftText(copy.home.example)}
-                >
-                  {copy.home.tryExample}
-                </TouchButton>
-              </div>
-              <div className="mt-6">
-                <TouchButton
-                  block
-                  size="lg"
-                  disabled={draftText.trim() === ''}
-                  onClick={startFlowFromDraft}
-                >
-                  {copy.home.next}
-                </TouchButton>
-              </div>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <TouchButton
+                    variant="quiet"
+                    size="md"
+                    onClick={() => setDraftText(copy.home.example)}
+                  >
+                    {copy.home.tryExample}
+                  </TouchButton>
+                  <TouchButton
+                    size="lg"
+                    disabled={draftText.trim() === ''}
+                    onClick={startFlowFromDraft}
+                  >
+                    {copy.home.next}
+                  </TouchButton>
+                </div>
+              </section>
+
+              <aside className="rounded-xl border border-ink/10 bg-pro-warm-raised p-4 sm:p-5">
+                <h2 className="text-base font-semibold text-ink">Szybki start</h2>
+                <div className="mt-3 divide-y divide-ink/10 border-y border-ink/10">
+                  <div className="py-3">
+                    <h3 className="text-sm font-semibold text-ink">Zeskanuj produkt</h3>
+                    <p className="mt-1 text-xs leading-5 text-stone-600">
+                      Dodaj składnik lub topping do swojego katalogu.
+                    </p>
+                    <Link to="/products/scan" className={applicationQuietClasses('mt-2')}>
+                      Otwórz Scanner
+                    </Link>
+                  </div>
+                  <div className="py-3">
+                    <h3 className="text-sm font-semibold text-ink">Produkty</h3>
+                    <p className="mt-1 text-xs leading-5 text-stone-600">
+                      Wyszukaj produkt i sprawdź jego gotowość.
+                    </p>
+                    <Link to="/products" className={applicationQuietClasses('mt-2')}>
+                      Otwórz katalog
+                    </Link>
+                  </div>
+                  <div className="py-3">
+                    <h3 className="text-sm font-semibold text-ink">Moje receptury</h3>
+                    <p className="mt-1 text-xs leading-5 text-stone-600">
+                      Wróć do zapisanych receptur lub ich pustego stanu.
+                    </p>
+                    <Link to="/recipes?tab=mine" className={applicationSecondaryClasses('mt-2')}>
+                      Zobacz receptury
+                    </Link>
+                  </div>
+                </div>
+              </aside>
             </div>
           </div>
         </CustomerSurface>
@@ -955,9 +998,7 @@ export function CustomerShellV1() {
           if (codes.length === 0) return null;
           return (
             <div className="mt-3 border-t border-ink/10 pt-3">
-              <p className="text-[12px] uppercase tracking-[0.12em] text-stone-500">
-                {copy.tech.notesTitle}
-              </p>
+              <p className="text-[11px] font-semibold text-stone-500">{copy.tech.notesTitle}</p>
               <ul className="mt-2 space-y-1">
                 {codes.map((code, i) => (
                   <li key={`${code}-${i}`} className="text-[13px] leading-relaxed text-stone-600">
@@ -972,9 +1013,7 @@ export function CustomerShellV1() {
         {/* Raw trace strings live ONLY in a dev-gated advanced sub-section. */}
         {import.meta.env.DEV ? (
           <div className="mt-3 border-t border-ink/10 pt-3">
-            <p className="text-[12px] uppercase tracking-[0.12em] text-stone-500">
-              {copy.tech.advancedTitle}
-            </p>
+            <p className="text-[11px] font-semibold text-stone-500">{copy.tech.advancedTitle}</p>
             {typeRes.engineCategory ? (
               <SummaryRow label={copy.tech.engineCategory} value={typeRes.engineCategory} />
             ) : null}
@@ -1536,7 +1575,7 @@ export function CustomerShellV1() {
             </div>
 
             <div className="mt-5">
-              <p className="text-[12px] uppercase tracking-[0.14em] text-stone-500">
+              <p className="text-[11px] font-semibold text-stone-500">
                 {copy.result.ingredientsTitle}
               </p>
               <div className="mt-1 divide-y divide-ink/10">

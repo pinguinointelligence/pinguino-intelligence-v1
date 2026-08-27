@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router';
 import { validateBarcode, type ValidBarcode } from '@/features/product-scanner/barcode';
 import {
   getSharedBarcodeDecoder,
@@ -30,14 +31,19 @@ import {
   assertUserSafeScannerMessage,
   scannerMessageFromUnknown,
 } from '@/services/scannerErrorGuard';
+import {
+  applicationPrimaryClasses,
+  applicationQuietClasses,
+  applicationSecondaryClasses,
+} from '@/components/ui/applicationControlStyles';
 
 export const MAX_IMAGES = 4;
 
-const card = 'border border-stone-200 bg-white';
-const quietButton =
-  'pro-focus-ring inline-flex min-h-11 items-center justify-center border border-stone-300 bg-white px-4 text-sm font-semibold text-ink transition hover:border-stone-500 disabled:cursor-not-allowed disabled:opacity-45';
-const primaryButton =
-  'pro-focus-ring inline-flex min-h-11 items-center justify-center bg-ink px-5 text-sm font-semibold text-white transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:bg-stone-400';
+const card = 'rounded-[var(--radius-pro-studio)] border border-ink/10 bg-white';
+const quietButton = applicationSecondaryClasses('disabled:cursor-not-allowed disabled:opacity-45');
+const primaryButton = applicationPrimaryClasses(
+  'disabled:cursor-not-allowed disabled:bg-stone-400',
+);
 
 const INITIAL_MISSING_FIELDS = [
   'product_identity',
@@ -55,6 +61,9 @@ const INITIAL_MISSING_FIELDS = [
   'barcode',
   'production_declarations',
 ] as const;
+
+const SCANNER_UPLOAD_PRIVACY =
+  'Zdjęcie zostanie przesłane do analizy etykiety; ceny, dostawcy, notatki i stan magazynowy pozostają prywatne.';
 
 type ScannerPhase =
   | 'idle'
@@ -492,26 +501,38 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
         if (files.length) void addFiles(files, 'paste');
       }}
     >
-      <section className={`${card} mt-6`} aria-label="Sesja skanowania produktu">
-        <div className="border-b border-stone-200 bg-[#fbfaf7] p-5 sm:p-7">
-          {intro && <p className="mb-4 text-sm leading-6 text-stone-600">{intro}</p>}
-          <p className="text-sm leading-6 text-stone-600">
-            Dodaj jedno dobre zdjęcie produktu. Zdjęcie zostanie przesłane do analizy etykiety;
-            ceny, dostawcy, notatki i stan magazynowy pozostają prywatne.
-          </p>
-          <div className="mt-5 flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => cameraInput.current?.click()}
-              className={primaryButton}
-              disabled={Boolean(busy)}
-            >
-              Zrób zdjęcie
-            </button>
+      <section className={`${card} overflow-hidden`} aria-label="Sesja skanowania produktu">
+        <div className="border-b border-ink/10 bg-pro-warm-raised px-4 py-3 sm:px-5">
+          {intro && <p className="mb-2 text-sm leading-6 text-stone-600">{intro}</p>}
+          <p className="text-xs leading-5 text-stone-600">{SCANNER_UPLOAD_PRIVACY}</p>
+        </div>
+        <div className="grid lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+          <div className="grid min-h-[272px] place-items-center bg-pro-graphite p-4 text-center text-white sm:min-h-[360px] sm:p-6">
+            <div className="grid w-full max-w-[420px] place-items-center rounded-[var(--radius-pro-studio)] border border-white/35 px-5 py-10 sm:aspect-[1.65] sm:py-6">
+              <span aria-hidden className="text-3xl font-light">
+                ⌗
+              </span>
+              <h2 className="mt-3 text-base font-semibold">Umieść kod i etykietę w kadrze</h2>
+              <p className="mt-2 max-w-xs text-xs leading-5 text-white/70">
+                Jedno wyraźne zdjęcie może zawierać nazwę, kod, skład i tabelę wartości odżywczych.
+              </p>
+              <button
+                type="button"
+                onClick={() => cameraInput.current?.click()}
+                className={applicationPrimaryClasses('mt-5 bg-white text-ink hover:bg-white/90')}
+                disabled={Boolean(busy)}
+              >
+                Zrób zdjęcie
+              </button>
+            </div>
+          </div>
+
+          <div className="p-4 sm:p-5">
+            <h2 className="text-base font-semibold text-ink">Dodaj ze zdjęcia</h2>
             <button
               type="button"
               onClick={() => galleryInput.current?.click()}
-              className={quietButton}
+              className={`${quietButton} mt-4`}
               disabled={Boolean(busy)}
             >
               Dodaj zdjęcie
@@ -540,40 +561,45 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
                 void addFiles(files, 'gallery');
               }}
             />
+
+            <div
+              className="mt-5 rounded-[var(--radius-pro-studio)] border border-dashed border-ink/20 bg-pro-warm-raised p-3"
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => {
+                event.preventDefault();
+                void addFiles([...event.dataTransfer.files], 'drop');
+              }}
+            >
+              {assets.length === 0 ? (
+                <p className="py-4 text-center text-xs leading-5 text-stone-500">
+                  Na komputerze możesz też przeciągnąć zdjęcie tutaj.
+                </p>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  {assets.map((asset, index) => (
+                    <figure
+                      key={asset.id}
+                      className="overflow-hidden rounded-[var(--radius-pro-studio)] border border-ink/10 bg-white"
+                    >
+                      <img
+                        src={asset.previewUrl}
+                        alt={`Zdjęcie produktu ${index + 1}`}
+                        className="aspect-square w-full object-cover"
+                      />
+                    </figure>
+                  ))}
+                </div>
+              )}
+            </div>
+            <p className="mt-4 border-t border-ink/10 pt-4 text-xs leading-5 text-stone-500">
+              Po dodaniu produkt będzie dostępny w katalogu i we właściwym pickerze receptury.
+            </p>
           </div>
         </div>
 
-        <div
-          className="m-5 border border-dashed border-stone-300 p-4 sm:m-7"
-          onDragOver={(event) => event.preventDefault()}
-          onDrop={(event) => {
-            event.preventDefault();
-            void addFiles([...event.dataTransfer.files], 'drop');
-          }}
-        >
-          {assets.length === 0 ? (
-            <p className="py-8 text-center text-sm text-stone-500">
-              Jedno wyraźne zdjęcie może zawierać nazwę, kod, skład i tabelę wartości odżywczych. Na
-              komputerze możesz też przeciągnąć je tutaj.
-            </p>
-          ) : (
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-              {assets.map((asset, index) => (
-                <figure key={asset.id} className="border border-stone-200">
-                  <img
-                    src={asset.previewUrl}
-                    alt={`Zdjęcie produktu ${index + 1}`}
-                    className="aspect-square w-full object-cover"
-                  />
-                </figure>
-              ))}
-            </div>
-          )}
-        </div>
-
         {busy && (
-          <div className="border-t border-stone-200 bg-stone-50 p-5 sm:p-7" role="status">
-            <p className="text-lg font-semibold text-ink">Analizuję produkt…</p>
+          <div className="border-t border-ink/10 bg-pro-warm-raised p-5" role="status">
+            <p className="text-base font-semibold text-ink">Analizuję produkt…</p>
             <p className="mt-1 text-sm text-stone-600">{busy}</p>
             <ol className="mt-5 grid gap-2 sm:grid-cols-5">
               {PROGRESS_STEPS.map((step, index) => {
@@ -600,10 +626,8 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
       </section>
 
       {exactProduct && (
-        <section className={`${card} mt-6 border-sage/50 p-6 sm:p-8`}>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#246238]">
-            Gellatti · gotowe
-          </p>
+        <section className={`${card} mt-4 border-status-ideal/35 p-5 sm:p-6`}>
+          <p className="text-xs font-semibold text-status-ideal">Produkt już jest w Gellatti</p>
           <h2 className="mt-2 text-2xl font-semibold">{exactProduct.displayName}</h2>
           <p className="mt-2 text-sm text-stone-600">
             {exactProduct.brand ?? 'Bez marki'}
@@ -614,7 +638,7 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
               Dokładność produktu: {confidence(exactProduct.productAccuracy)}%
             </p>
           )}
-          <p className="mt-2 text-sm font-semibold text-[#246238]">
+          <p className="mt-2 text-sm font-semibold text-status-ideal">
             {exactProductStatus(exactProduct)}
           </p>
           {onResolved && exactProduct.engineReady !== false && (
@@ -632,10 +656,8 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
       )}
 
       {ready && displayResult && !exactProduct && !saved && (
-        <section className={`${card} mt-6 border-sage/50 p-6 sm:p-8`}>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#246238]">
-            Gellatti Ready
-          </p>
+        <section className={`${card} mt-4 border-status-ideal/35 p-5 sm:p-6`}>
+          <p className="text-xs font-semibold text-status-ideal">Gotowy do dodania</p>
           <div className="mt-2 flex flex-wrap items-start justify-between gap-5">
             <div>
               <h2 className="text-2xl font-semibold">
@@ -652,7 +674,7 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
               <p className="text-xs text-stone-500">Dokładność produktu</p>
             </div>
           </div>
-          <p className="mt-5 text-sm font-semibold text-[#246238]">GOTOWY DO UŻYCIA</p>
+          <p className="mt-5 text-sm font-semibold text-status-ideal">Gotowy do użycia</p>
           <button type="button" className={`${primaryButton} mt-5`} onClick={() => void save()}>
             Dodaj produkt
           </button>
@@ -695,8 +717,8 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
       )}
 
       {phase === 'needs_evidence' && !ready && (
-        <section className={`${card} mt-6 p-6 sm:p-8`}>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
+        <section className={`${card} mt-4 p-5 sm:p-6`}>
+          <p className="text-xs font-semibold text-stone-500">
             {gapGuidance.requiresPhoto
               ? 'Potrzebuję jeszcze jednego zdjęcia'
               : 'Produkt wymaga weryfikacji'}
@@ -735,20 +757,63 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
       )}
 
       {saved && (
-        <section className={`${card} mt-6 border-sage/50 p-6 sm:p-8`} aria-live="polite">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#246238]">
-            Dodano do Twojego katalogu
-          </p>
-          <h2 className="mt-2 text-2xl font-semibold">
-            {String(saved.displayName ?? displayResult?.identity.displayName ?? 'Produkt')}
-          </h2>
-          <p className="mt-2 text-sm text-stone-600">
-            Kod {String(saved.productCode ?? '')} · Dokładność{' '}
-            {confidence(saved.productAccuracy ?? preview?.productAccuracy)}%
-          </p>
-          <p className="mt-3 text-sm font-semibold text-[#246238]">
-            Produkt jest gotowy do użycia w recepturze i zapisany na przyszłość.
-          </p>
+        <section className="mx-auto mt-6 max-w-4xl" aria-live="polite">
+          <div className="grid grid-cols-[40px_minmax(0,1fr)] gap-3 sm:gap-4">
+            <span
+              aria-hidden
+              className="grid size-10 place-items-center rounded-full bg-status-ideal/12 text-xl font-semibold text-status-ideal"
+            >
+              ✓
+            </span>
+            <div>
+              <h2 className="text-2xl font-semibold leading-tight tracking-[-0.03em] text-ink sm:text-3xl">
+                Produkt został dodany
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-stone-600">
+                Operacja jest zakończona. Produkt jest gotowy i zapisany w Twoim katalogu.
+              </p>
+            </div>
+          </div>
+
+          <div className={`${card} mt-5 flex flex-wrap items-center gap-3 p-4`}>
+            <span className="grid size-12 shrink-0 place-items-center rounded-[var(--radius-pro-studio)] bg-pro-sage text-lg font-semibold text-status-ideal">
+              ✓
+            </span>
+            <div className="min-w-0 flex-1">
+              <h3 className="truncate text-sm font-semibold text-ink">
+                {String(saved.displayName ?? displayResult?.identity.displayName ?? 'Produkt')}
+              </h3>
+              <p className="mt-1 font-mono text-[11px] text-stone-500">
+                {String(saved.productCode ?? '')}
+                {activeBarcode ? ` · EAN ${activeBarcode.lookupValue}` : ''}
+              </p>
+            </div>
+            <span className="rounded-full bg-status-ideal/12 px-2.5 py-1 text-[10px] font-semibold text-status-ideal">
+              Gotowy
+            </span>
+          </div>
+
+          <div className={`${card} mt-3 bg-pro-warm-raised p-4`}>
+            <h3 className="text-sm font-semibold text-ink">Co dalej?</h3>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Link to="/pro/recipe" className={applicationPrimaryClasses()}>
+                Użyj w recepturze
+              </Link>
+              <button
+                type="button"
+                className={applicationSecondaryClasses()}
+                onClick={() => window.location.reload()}
+              >
+                Zeskanuj następny
+              </button>
+              <Link to="/products" className={applicationQuietClasses()}>
+                Zobacz produkt
+              </Link>
+            </div>
+            <p className="mt-3 border-t border-ink/10 pt-3 text-xs leading-5 text-stone-500">
+              Produkt znajdziesz w Produkty oraz we właściwym pickerze receptury.
+            </p>
+          </div>
         </section>
       )}
 

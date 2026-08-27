@@ -18,7 +18,10 @@ const SURFACE: Record<MicState, string> = {
   'permission-denied': 'bg-status-error/10 border border-status-error/40 text-status-error',
 };
 
-interface MicrophoneButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'aria-label'> {
+interface MicrophoneButtonProps extends Omit<
+  ButtonHTMLAttributes<HTMLButtonElement>,
+  'aria-label'
+> {
   state?: MicState;
   /** Override the accessible label; defaults to a state-appropriate description. */
   label?: string;
@@ -26,7 +29,7 @@ interface MicrophoneButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElem
 
 /**
  * Voice-input affordance — VISUAL STATES ONLY (no capture logic here). Renders a
- * round 56px target. `listening` pulses a calm ring; `unavailable` and
+ * round current-PRO icon target (44px touch / 36px desktop). `listening` pulses a calm ring; `unavailable` and
  * `permission-denied` are non-actionable and communicate why. The state is
  * conveyed by label + icon (not colour alone).
  */
@@ -50,7 +53,7 @@ export function MicrophoneButton({
       className={cn(
         'relative inline-flex items-center justify-center',
         touch.iconTarget,
-        'h-14 w-14',
+        'h-11 w-11 sm:h-9 sm:w-9 [&_svg]:size-4',
         radius.pill,
         SURFACE[state],
         motion.base,

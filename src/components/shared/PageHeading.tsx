@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { SectionLabel } from '@/components/shared/SectionLabel';
 import { cn } from '@/lib/cn';
 
 /**
@@ -32,8 +31,8 @@ export function PageHeading({
   return (
     <div className={cn('flex flex-wrap items-end justify-between gap-x-6 gap-y-3', className)}>
       <div className="min-w-0">
-        {eyebrow ? <SectionLabel>{eyebrow}</SectionLabel> : null}
-        <h1 className="mt-2 max-w-3xl text-3xl font-semibold leading-none tracking-[-0.035em] text-balance text-ink">
+        {eyebrow ? <p className="text-xs font-semibold text-stone-500">{eyebrow}</p> : null}
+        <h1 className="mt-2 max-w-3xl text-[28px] font-semibold leading-[1.12] tracking-[-0.035em] text-balance text-ink">
           {title}
         </h1>
         {blurb ? (
@@ -46,4 +45,4 @@ export function PageHeading({
 }
 
 /** The one gap between a page heading and the content it introduces. */
-export const PAGE_HEADING_CONTENT_GAP = 'mt-10';
+export const PAGE_HEADING_CONTENT_GAP = 'mt-6';

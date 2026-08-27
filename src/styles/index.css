@@ -148,3 +148,23 @@
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-attention) 28%, transparent);
   }
 }
+
+/* Gellatti V2 Admin keeps the current-PRO control family while preserving every
+   existing Admin action and query. The rail is contextual to Admin; this scope
+   never reaches the frozen Recipe workbench. */
+.gellatti-admin :where(input, select, textarea) {
+  border-radius: var(--radius-pro-studio);
+  font-family: var(--font-sans);
+  letter-spacing: normal;
+}
+
+.gellatti-admin :where(input[type='number'], input[inputmode='numeric'], input.font-mono) {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 639px) {
+  .gellatti-admin :where(input:not([type='checkbox']):not([type='radio']), select) {
+    min-height: 44px;
+  }
+}

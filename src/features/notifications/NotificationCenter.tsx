@@ -48,11 +48,9 @@ function UserStartupNotice({ notification }: { notification: DurableNotification
       role="dialog"
       aria-modal="true"
       aria-label={notification.title}
-      className="fixed inset-x-3 bottom-3 z-[70] mx-auto max-w-2xl border border-ink/15 bg-paper p-5 shadow-[0_24px_80px_rgba(16,17,19,0.22)] sm:bottom-6 sm:p-6"
+      className="fixed inset-x-3 bottom-3 z-[70] mx-auto max-w-2xl rounded-[var(--radius-pro-studio)] border border-ink/15 bg-paper p-5 shadow-pro-e3 sm:bottom-6 sm:p-6"
     >
-      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-stone-500">
-        Gellatti · zgłoszenie produktu
-      </p>
+      <p className="text-[11px] font-semibold text-stone-500">Gellatti · zgłoszenie produktu</p>
       <h2 className="mt-2 text-xl font-semibold tracking-[-0.025em] text-ink">
         {notification.title}
       </h2>
@@ -64,7 +62,7 @@ function UserStartupNotice({ notification }: { notification: DurableNotification
           <Link
             to={notification.deepLink}
             onClick={() => void notificationAction(notification.id, 'READ')}
-            className="pro-focus-ring inline-flex min-h-11 items-center bg-ink px-5 text-sm font-semibold text-paper"
+            className="pro-focus-ring inline-flex min-h-11 items-center rounded-[var(--radius-pro-studio)] bg-ink px-5 text-sm font-semibold text-paper sm:min-h-10"
           >
             {needsInfo
               ? 'Uzupełnij dane'
@@ -148,23 +146,21 @@ function AdminNotifications({ items }: { items: DurableNotification[] }) {
         aria-label={`Powiadomienia Admin${unread ? `: ${unread} nowych` : ''}`}
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        className="pro-focus-ring relative grid size-11 place-items-center border border-ink/15 bg-paper text-lg shadow-sm"
+        className="pro-focus-ring relative grid size-11 place-items-center rounded-full border border-ink/15 bg-paper text-lg shadow-sm sm:size-9"
       >
         <span aria-hidden>◇</span>
         {unread ? (
-          <span className="absolute -right-1 -top-1 grid min-h-5 min-w-5 place-items-center bg-ink px-1 font-mono text-[10px] text-white">
+          <span className="absolute -right-1 -top-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-ink px-1 font-mono text-[10px] text-white">
             {unread}
           </span>
         ) : null}
       </button>
       {open ? (
-        <aside className="mt-2 w-[min(92vw,420px)] border border-ink/15 bg-paper shadow-[0_20px_70px_rgba(16,17,19,0.2)]">
-          <header className="border-b border-ink/10 bg-[#f3ede3] p-4">
+        <aside className="mt-2 w-[min(92vw,420px)] overflow-hidden rounded-[var(--radius-pro-studio)] border border-ink/15 bg-paper shadow-pro-e2">
+          <header className="border-b border-ink/10 bg-pro-warm p-4">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-stone-500">
-                  Admin
-                </p>
+                <p className="text-[11px] font-semibold text-stone-500">Admin</p>
                 <h2 className="mt-1 text-base font-semibold text-ink">Centrum powiadomień</h2>
               </div>
               <label className="flex items-center gap-2 text-xs font-semibold text-ink">
