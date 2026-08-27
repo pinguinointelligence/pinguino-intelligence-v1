@@ -408,6 +408,18 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     expect(surface).not.toContain('overflow-x-auto');
   });
 
+  it('keeps coherent Apply success visible in the normal 390 px document flow', () => {
+    const surface = read('features', 'studio', 'StudioEngineSurface.tsx');
+    const profile = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
+
+    expect(profile).toContain("new CustomEvent('gellatti:friendly-lab-apply-success')");
+    expect(surface).toContain("'gellatti:friendly-lab-apply-success'");
+    expect(surface).toContain('testId="mobile-friendly-lab-apply-success"');
+    expect(surface).toContain('timing="important"');
+    expect(surface).toContain('Perfetto. Receptura jest gotowa.');
+    expect(surface).toContain('xl:hidden');
+  });
+
   it('treats the mobile cockpit as a real modal with keyboard and scroll containment', () => {
     const surface = read('features', 'studio', 'StudioEngineSurface.tsx');
     expect(shouldActivateMobileCockpitModal(true, true)).toBe(true);

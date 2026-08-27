@@ -253,6 +253,7 @@ function ProfileContent({
     if (!applyPending && friendlyCurrentResultReady && applySuccessAwaitingCurrent.current) {
       applySuccessAwaitingCurrent.current = false;
       setApplySuccessKey((key) => key + 1);
+      window.dispatchEvent(new CustomEvent('gellatti:friendly-lab-apply-success'));
     }
     previousApplyPending.current = applyPending;
   }, [appliedHistoryCount, applyBlocked, applyPending, friendlyCurrentResultReady]);

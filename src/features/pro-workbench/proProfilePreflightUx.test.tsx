@@ -4,7 +4,7 @@ import { join, resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createRoot } from 'react-dom/client';
 import { act } from 'react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { calculateRecipe, proposeCorrections, type RecipeInput } from '@/engine';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
 import { buildRecipeInput, recipeContext } from '@/features/studio/buildRecipeInput';
@@ -106,6 +106,8 @@ describe('profile hierarchy and compact preflight', () => {
     const host = document.createElement('div');
     document.body.appendChild(host);
     const root = createRoot(host);
+    const applySuccessEvent = vi.fn();
+    window.addEventListener('gellatti:friendly-lab-apply-success', applySuccessEvent);
     const renderPanel = () => (
       <RecipeProfilePanel
         activeTab="profile"
@@ -204,7 +206,9 @@ describe('profile hierarchy and compact preflight', () => {
       });
       expect(host.querySelector('[data-testid="friendly-lab-apply-success"]')).not.toBeNull();
       expect(host.textContent).toContain('Perfetto. Receptura jest gotowa.');
+      expect(applySuccessEvent).toHaveBeenCalledOnce();
     } finally {
+      window.removeEventListener('gellatti:friendly-lab-apply-success', applySuccessEvent);
       await act(async () => root.unmount());
       host.remove();
     }
