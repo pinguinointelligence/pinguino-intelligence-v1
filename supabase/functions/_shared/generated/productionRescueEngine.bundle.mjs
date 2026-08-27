@@ -7665,8 +7665,10 @@ function buildProductionForecastInput(session) {
 			lock_type: line.confirmed && !hasPendingTopUp ? "already_added" : item.lock_type
 		};
 	});
+	const targetBatchGrams = session.durableRescueRevision > 0 ? session.lines.reduce((sum, line) => sum + line.targetGrams, 0) : session.plannedInput.target_batch_grams;
 	return {
 		...session.plannedInput,
+		target_batch_grams: targetBatchGrams,
 		items
 	};
 }

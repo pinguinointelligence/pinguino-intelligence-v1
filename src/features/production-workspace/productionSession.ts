@@ -626,7 +626,16 @@ export function buildProductionForecastInput(session: ProductionSession): Recipe
       lock_type: line.confirmed && !hasPendingTopUp ? ('already_added' as const) : item.lock_type,
     };
   });
-  return { ...session.plannedInput, items };
+  // Before Rescue, the immutable source target remains the comparison basis for
+  // a deviation. Once a verified Rescue is accepted, its line targets are the
+  // active plan and therefore the canonical Engine denominator/target metadata.
+  // Keeping the historical 1000 g target here did not change normalized physics,
+  // but it produced a stale batch-mass warning for an otherwise exact final vector.
+  const targetBatchGrams =
+    session.durableRescueRevision > 0
+      ? session.lines.reduce((sum, line) => sum + line.targetGrams, 0)
+      : session.plannedInput.target_batch_grams;
+  return { ...session.plannedInput, target_batch_grams: targetBatchGrams, items };
 }
 
 /** Every line uses its actual confirmed mass; intended only at completion. */

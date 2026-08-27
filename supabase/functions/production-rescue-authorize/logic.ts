@@ -29,6 +29,8 @@ export interface AuthorizeRescueRequest {
   expectedActualRevision: number;
   expectedRescueRevision: number;
   idempotencyKey: string;
+  /** Browser build identity; a stale Edge Engine must fail closed. */
+  expectedEngineBundleSha256: string;
 }
 
 export interface SafeRescueInstruction {
@@ -242,6 +244,7 @@ const REQUEST_KEYS = new Set([
   'expectedActualRevision',
   'expectedRescueRevision',
   'idempotencyKey',
+  'expectedEngineBundleSha256',
 ]);
 
 export function parseAuthorizeRescueRequest(value: unknown): AuthorizeRescueRequest {
@@ -258,6 +261,10 @@ export function parseAuthorizeRescueRequest(value: unknown): AuthorizeRescueRequ
   const rescueRevision = record.expectedRescueRevision;
   const idempotencyKey =
     typeof record.idempotencyKey === 'string' ? record.idempotencyKey.trim() : '';
+  const expectedEngineBundleSha256 =
+    typeof record.expectedEngineBundleSha256 === 'string'
+      ? record.expectedEngineBundleSha256.trim()
+      : '';
   if (!UUID.test(runId)) throw new RescueAuthorizationError('invalid_run_id', 400);
   if (
     stableOptionId !== 'keep_original_batch' &&
@@ -280,12 +287,16 @@ export function parseAuthorizeRescueRequest(value: unknown): AuthorizeRescueRequ
   ) {
     throw new RescueAuthorizationError('invalid_idempotency_key', 400);
   }
+  if (!/^[0-9a-f]{64}$/.test(expectedEngineBundleSha256)) {
+    throw new RescueAuthorizationError('invalid_engine_bundle_sha256', 400);
+  }
   return {
     runId,
     stableOptionId,
     expectedActualRevision: Number(actualRevision),
     expectedRescueRevision: Number(rescueRevision),
     idempotencyKey,
+    expectedEngineBundleSha256,
   };
 }
 
@@ -475,6 +486,12 @@ export async function authorizeTrustedProductionRescue(
   request: AuthorizeRescueRequest,
   dependencies: TrustedRescueDependencies,
 ): Promise<AuthorizeRescueResponse> {
+  if (request.expectedEngineBundleSha256 !== PRODUCTION_RESCUE_BUNDLE_SHA256) {
+    throw new RescueAuthorizationError('engine_bundle_mismatch', 409, {
+      expectedEngineBundleSha256: request.expectedEngineBundleSha256,
+      actualEngineBundleSha256: PRODUCTION_RESCUE_BUNDLE_SHA256,
+    });
+  }
   const context = await dependencies.loadContext(ownerUserId, request.runId);
   if (!context) throw new RescueAuthorizationError('production_run_not_found', 404);
   if (Number(context.run.actual_revision) !== request.expectedActualRevision) {

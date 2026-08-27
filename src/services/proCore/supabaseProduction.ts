@@ -63,6 +63,7 @@ import type {
   RecordActualArgs,
 } from './productionRepository';
 import type { ProductionCompletionSnapshot } from '@/features/production-workspace/productionSession';
+import { PRODUCTION_RESCUE_BUNDLE_SHA256 } from '../../../supabase/functions/_shared/generated/productionRescueEngine.metadata.mjs';
 
 const RUNS = 'production_runs';
 const PLANNED = 'production_run_planned_items';
@@ -788,6 +789,7 @@ export function supabaseProductionRepository(
         expectedActualRevision: input.expectedActualRevision,
         expectedRescueRevision: input.expectedRescueRevision,
         idempotencyKey: input.idempotencyKey,
+        expectedEngineBundleSha256: PRODUCTION_RESCUE_BUNDLE_SHA256,
       };
       const { data, error } = await client.functions.invoke(AUTHORIZE_RESCUE_FUNCTION, { body });
       if (error) throw await edgeFunctionError(error);

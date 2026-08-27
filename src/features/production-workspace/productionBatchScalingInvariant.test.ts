@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { calculateRecipe, type RecipeInput, type RecipeResult } from '@/engine';
+import { calculateRecipe, detectViolations, type RecipeInput, type RecipeResult } from '@/engine';
 import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
 import { sorbetMapperIngredient } from '@/features/recipe-constraints/__fixtures__/sorbetAuthorityFixture';
 import {
   applyVerifiedRescueInput,
   buildFinalActualInput,
+  buildProductionForecastInput,
   confirmProductionLine,
   confirmProductionTopUpTask,
   createProductionSession,
@@ -24,6 +25,15 @@ const OWNER_PLAN = [
   ['dextrose', 'PI-ING-000494', 71],
   ['tara', 'PI-ING-000492', 3],
   ['apple', 'PI-ING-000342', 40],
+] as const;
+
+const P0_RESCUE_SCORE_PLAN = [
+  ['milk', 'PI-ING-000236', 613],
+  ['cream', 'PI-ING-000180', 176],
+  ['smp', 'PI-ING-000270', 48],
+  ['sucrose', 'PI-ING-000514', 95],
+  ['dextrose', 'PI-ING-000494', 64],
+  ['tara', 'PI-ING-000492', 4],
 ] as const;
 
 const ownerInput = (): RecipeInput => ({
@@ -75,6 +85,70 @@ const ownerSession = (): ProductionSession => {
     },
     startedAt: '2026-08-27T06:02:16.078Z',
   });
+};
+
+const p0RescueScoreInput = (): RecipeInput => ({
+  mode: 'classic',
+  category: 'milk_gelato',
+  target_temperature_c: -11,
+  target_batch_grams: 1_000,
+  machine_capacity_grams: null,
+  goals: {
+    formulation_strategy: 'optimal',
+    cost_priority: 'balanced',
+    flavor_intensity: 'balanced',
+    direction_targets_active: true,
+    direction_targets: { sweetness: 0, softness: 0, creaminess: 0, flavor: 0 },
+    excluded_ingredient_ids: [],
+    unavailable_main_ingredient_ids: [],
+  },
+  items: P0_RESCUE_SCORE_PLAN.map(([id, mapperId, plannedGrams]) => ({
+    id,
+    ingredient: sorbetMapperIngredient(mapperId),
+    planned_grams: plannedGrams,
+    actual_grams: null,
+    lock_type: 'unlocked' as const,
+  })),
+});
+
+const p0RescueScoreSession = (): ProductionSession => {
+  const plannedInput = p0RescueScoreInput();
+  return createProductionSession({
+    sessionId: 'p0-production-rescue-score-authority',
+    ownerUserId: 'owner',
+    source: {
+      recipeId: 'p0-production-rescue-score-authority',
+      recipeVersionId: 'p0-production-rescue-score-authority-v1',
+      recipeVersionNumber: 1,
+      recipeName: 'P0 Production Rescue score authority',
+    },
+    plannedInput,
+    plannedComposition: {
+      schemaVersion: 1,
+      baseScope: 'BASE_FORMULATION',
+      baseOrder: plannedInput.items.map((item) => item.id),
+      toppings: [],
+      behaviorSnapshots: productBehaviorTestSnapshots(plannedInput),
+      migrationAmbiguities: [],
+    },
+    startedAt: '2026-08-27T21:00:00.000Z',
+  });
+};
+
+const p0RescueScoreDeviation = (
+  changedLineId: 'dextrose' | 'sucrose' | 'smp' | 'tara',
+  actualGrams: number,
+): ProductionSession => {
+  let session = p0RescueScoreSession();
+  for (const [index, line] of session.lines.entries()) {
+    const grams = line.lineId === changedLineId ? actualGrams : line.plannedGrams;
+    session = confirmProductionLine(
+      setDraftActualGrams(session, line.lineId, grams),
+      line.lineId,
+      `2026-08-27T21:${String(index + 1).padStart(2, '0')}:00.000Z`,
+    );
+  }
+  return session;
 };
 
 const confirmVector = (actualByLineId: Readonly<Record<string, number>>): ProductionSession => {
@@ -137,6 +211,141 @@ const expectRatioMetricsEquivalent = (actual: RecipeResult, expected: RecipeResu
 };
 
 describe('Production batch scaling mathematical truth', () => {
+  it('proves the served 1017 g vector scores 8/10 in canonical Recipe because of Direction, not Engine physics', () => {
+    const plannedInput = p0RescueScoreInput();
+    const plannedResult = calculateRecipe(plannedInput);
+    const roundedGrams = [623, 179, 49, 97, 65, 4] as const;
+    const roundedInput: RecipeInput = {
+      ...plannedInput,
+      target_batch_grams: 1_017,
+      items: plannedInput.items.map((item, index) => ({
+        ...item,
+        planned_grams: roundedGrams[index]!,
+      })),
+    };
+    const roundedResult = calculateRecipe(roundedInput);
+    const roundedScore = recipeFitForInput(roundedInput, roundedResult);
+
+    expect(recipeFitForInput(plannedInput, plannedResult).display).toBe('10/10');
+    expect(roundedResult.total_batch_g).toBe(1_017);
+    expect(detectViolations(roundedResult)).toEqual([]);
+    expect(roundedScore).toMatchObject({
+      score: 8,
+      display: '8/10',
+      validatedNative: true,
+      provisional: false,
+      violationCount: 0,
+    });
+    expect(roundedScore.ariaText).toContain('Kierunek receptury: 0 z 2 obsługiwanych osi w celu.');
+    expect(roundedResult).toMatchObject({
+      pod_points: 15.009423795476895,
+      pac_points: 27.38850245821042,
+      npac_points: 41.04947818110864,
+      ice_fraction_percent: 46.003328586607545,
+      percentages: {
+        water_percent: 66.72070796460177,
+        solids_percent: 33.27929203539823,
+        fat_percent: 7.464798426745328,
+        protein_percent: 3.970501474926254,
+      },
+    });
+  });
+
+  it('uses the exact P0 Dextrose 64 → 65 g Restore candidate for score, apply, forecast, and completion', () => {
+    const plannedInput = p0RescueScoreInput();
+    const plannedResult = calculateRecipe(plannedInput);
+    let session = p0RescueScoreDeviation('dextrose', 65);
+    const assessment = assessProductionRescue(session);
+    const restore = assessment.options.find(({ id }) => id === 'restore_original_recipe');
+    const scale = 65 / 64;
+    const idealVector = plannedInput.items.map((item) => item.planned_grams * scale);
+    const idealInput: RecipeInput = {
+      ...plannedInput,
+      target_batch_grams: 1_015.625,
+      items: plannedInput.items.map((item, index) => ({
+        ...item,
+        planned_grams: idealVector[index]!,
+      })),
+    };
+    const idealResult = calculateRecipe(idealInput);
+
+    expect(idealVector).toEqual([622.578125, 178.75, 48.75, 96.484375, 65, 4.0625]);
+    expect(idealVector.reduce((sum, grams) => sum + grams, 0)).toBe(1_015.625);
+    expectRatioMetricsEquivalent(idealResult, plannedResult);
+    expect(recipeFitForInput(idealInput, idealResult).display).toBe('10/10');
+    expect(
+      assessment.forecastInput.items.map((item) => item.actual_grams ?? item.planned_grams),
+    ).toEqual([613, 176, 48, 95, 65, 4]);
+    expect(recipeFitForInput(plannedInput, plannedResult).display).toBe('10/10');
+    expect(restore).toBeDefined();
+    expect(restore!.candidateInput.items.map((item) => item.planned_grams)).toEqual([
+      622.6, 178.8, 48.800000000000004, 96.5, 65, 4.1000000000000005,
+    ]);
+    expect(restore!.finalMassG).toBeCloseTo(1_015.8, 9);
+    expect(restore!.scoreDisplay).toBe('10/10');
+
+    const recipeResult = calculateRecipe(restore!.candidateInput);
+    const recipeScore = recipeFitForInput(restore!.candidateInput, recipeResult);
+    expect(restore!.practicalAudit.executableResult).toEqual(recipeResult);
+    expect(restore!.scoreDisplay).toBe(recipeScore.display);
+
+    session = applyVerifiedRescueInput(session, restore!.candidateInput, 1);
+    const appliedForecast = buildProductionForecastInput(session);
+    const appliedResult = calculateRecipe(appliedForecast);
+    expect(appliedForecast.items.map((item) => item.actual_grams ?? item.planned_grams)).toEqual(
+      restore!.candidateInput.items.map((item) => item.planned_grams),
+    );
+    expect(appliedForecast.target_batch_grams).toBeCloseTo(1_015.8, 9);
+    expect(appliedResult.warnings).toEqual([]);
+    expectRatioMetricsEquivalent(appliedResult, recipeResult);
+    expect(recipeFitForInput(appliedForecast, appliedResult).display).toBe(restore!.scoreDisplay);
+
+    for (const task of pendingProductionTopUpTasks(session)) {
+      session = confirmProductionTopUpTask(session, task.taskId, '2026-08-27T21:30:00.000Z');
+    }
+    const finalInput = buildFinalActualInput(session);
+    const finalResult = calculateRecipe(finalInput);
+    expect(finalInput.items.map((item) => item.actual_grams)).toEqual(
+      restore!.candidateInput.items.map((item) => item.planned_grams),
+    );
+    expectRatioMetricsEquivalent(finalResult, recipeResult);
+    expect(recipeFitForInput(finalInput, finalResult).display).toBe(restore!.scoreDisplay);
+  });
+
+  it.each([
+    ['Dextrose 64 → 65 g', 'dextrose', 65],
+    ['Dextrose 64 → 66 g', 'dextrose', 66],
+    ['Sucrose 95 → 96 g', 'sucrose', 96],
+    ['SMP 48 → 49 g', 'smp', 49],
+    ['TARA 4.0 → 4.1 g', 'tara', 4.1],
+  ] as const)(
+    'keeps Recipe and Production Rescue score/metric authority identical for %s',
+    (_label, lineId, actualGrams) => {
+      const assessment = assessProductionRescue(p0RescueScoreDeviation(lineId, actualGrams));
+      const restore = assessment.options.find(({ id }) => id === 'restore_original_recipe');
+
+      expect(restore, 'feasible proportional Restore').toBeDefined();
+      const recipeResult = calculateRecipe(restore!.candidateInput);
+      const recipeScore = recipeFitForInput(restore!.candidateInput, recipeResult);
+      const rescueResult = restore!.practicalAudit.executableResult;
+
+      expect(restore!.scoreDisplay).toBe(recipeScore.display);
+      expect(rescueResult.pod_points).toBeCloseTo(recipeResult.pod_points!, 12);
+      expect(rescueResult.pac_points).toBeCloseTo(recipeResult.pac_points!, 12);
+      expect(rescueResult.npac_points).toBeCloseTo(recipeResult.npac_points!, 12);
+      expect(rescueResult.ice_fraction_percent).toBeCloseTo(recipeResult.ice_fraction_percent!, 12);
+      for (const metric of [
+        'water_percent',
+        'solids_percent',
+        'fat_percent',
+        'protein_percent',
+      ] as const) {
+        expect(rescueResult.percentages[metric]).toBeCloseTo(recipeResult.percentages[metric], 12);
+      }
+      expect(rescueResult).toEqual(recipeResult);
+    },
+  );
+
   it.each([3.1, 3.2, 3.5])(
     'keeps a safe 3.0 → %s g stabilizer deviation continuable and proportionally restorable',
     (actualStabilizerG) => {

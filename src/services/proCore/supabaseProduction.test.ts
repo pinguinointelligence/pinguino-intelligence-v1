@@ -1147,6 +1147,7 @@ describe('supabaseProduction — atomic served start, Rescue, and completion', (
           expectedActualRevision: 0,
           expectedRescueRevision: 0,
           idempotencyKey: 'authorize-once',
+          expectedEngineBundleSha256: expect.stringMatching(/^[0-9a-f]{64}$/),
         },
       },
     ]);

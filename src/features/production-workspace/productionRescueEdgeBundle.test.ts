@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
 import type { RecipeInput } from '@/engine';
+import { sorbetMapperIngredient } from '@/features/recipe-constraints/__fixtures__/sorbetAuthorityFixture';
 import { assessProductionRescue as assessCanonical } from './productionRescue';
 import {
   confirmProductionLine,
@@ -64,7 +65,78 @@ const deviation = (query: string, delta: number) => {
   );
 };
 
+const exactP0DextroseDeviation = () => {
+  const rows = [
+    ['milk', 'PI-ING-000236', 613],
+    ['cream', 'PI-ING-000180', 176],
+    ['smp', 'PI-ING-000270', 48],
+    ['sucrose', 'PI-ING-000514', 95],
+    ['dextrose', 'PI-ING-000494', 64],
+    ['tara', 'PI-ING-000492', 4],
+  ] as const;
+  const plannedInput: RecipeInput = {
+    mode: 'classic',
+    category: 'milk_gelato',
+    target_temperature_c: -11,
+    target_batch_grams: 1_000,
+    machine_capacity_grams: null,
+    goals: {
+      formulation_strategy: 'optimal',
+      cost_priority: 'balanced',
+      flavor_intensity: 'balanced',
+      direction_targets_active: true,
+      direction_targets: { sweetness: 0, softness: 0, creaminess: 0, flavor: 0 },
+    },
+    items: rows.map(([id, mapperId, plannedGrams]) => ({
+      id,
+      ingredient: sorbetMapperIngredient(mapperId),
+      planned_grams: plannedGrams,
+      actual_grams: null,
+      lock_type: 'unlocked' as const,
+    })),
+  };
+  let session = createProductionSession({
+    sessionId: 'edge-bundle-exact-p0',
+    ownerUserId: 'owner',
+    source: {
+      recipeId: 'recipe-p0',
+      recipeVersionId: 'version-p0',
+      recipeVersionNumber: 1,
+      recipeName: 'P0 score authority',
+    },
+    plannedInput,
+    startedAt: '2026-08-27T21:00:00.000Z',
+  });
+  for (const [index, line] of session.lines.entries()) {
+    session = confirmProductionLine(
+      setDraftActualGrams(
+        session,
+        line.lineId,
+        line.lineId === 'dextrose' ? 65 : line.plannedGrams,
+      ),
+      line.lineId,
+      `2026-08-27T21:${String(index + 1).padStart(2, '0')}:00.000Z`,
+    );
+  }
+  return session;
+};
+
 describe('generated canonical Production Rescue Edge bundle', () => {
+  it('matches canonical Recipe/Rescue for the exact served Dextrose 64 → 65 g incident', () => {
+    const session = exactP0DextroseDeviation();
+    const canonical = assessCanonical(session);
+    const generated = assessGenerated(session);
+    const restore = generated.options.find(({ id }) => id === 'restore_original_recipe');
+
+    expect(generated).toEqual(canonical);
+    expect(restore).toBeDefined();
+    expect(restore!.candidateInput.items.map((item) => item.planned_grams)).toEqual([
+      622.6, 178.8, 48.800000000000004, 96.5, 65, 4.1000000000000005,
+    ]);
+    expect(restore!.finalMassG).toBeCloseTo(1_015.8, 9);
+    expect(restore!.scoreDisplay).toBe('10/10');
+  });
+
   it('pins all formula/config/orchestration identities', () => {
     expect({
       engine: ENGINE_VERSION,

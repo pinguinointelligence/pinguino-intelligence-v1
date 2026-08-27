@@ -21,13 +21,31 @@ const RUN = '22222222-2222-4222-8222-222222222222';
 const RECIPE = '33333333-3333-4333-8333-333333333333';
 const VERSION = '44444444-4444-4444-8444-444444444444';
 const AUTHORIZATION = '55555555-5555-4555-8555-555555555555';
+const CURRENT_BUNDLE_SHA256 = (
+  JSON.parse(
+    readFileSync(
+      join(
+        process.cwd(),
+        'supabase/functions/_shared/generated/productionRescueEngine.manifest.json',
+      ),
+      'utf8',
+    ),
+  ) as { bundle: { sha256: string } }
+).bundle.sha256;
 
-const request = (patch: Partial<AuthorizeRescueRequest> = {}): AuthorizeRescueRequest => ({
+type BundleBoundAuthorizeRescueRequest = AuthorizeRescueRequest & {
+  expectedEngineBundleSha256: string;
+};
+
+const request = (
+  patch: Partial<BundleBoundAuthorizeRescueRequest> = {},
+): BundleBoundAuthorizeRescueRequest => ({
   runId: RUN,
   stableOptionId: 'enlarge_batch',
   expectedActualRevision: 1,
   expectedRescueRevision: 0,
   idempotencyKey: 'rescue-idempotency-0001',
+  expectedEngineBundleSha256: CURRENT_BUNDLE_SHA256,
   ...patch,
 });
 
@@ -200,7 +218,7 @@ const dependencies = (
 });
 
 describe('Production Rescue Edge request boundary', () => {
-  it('accepts only the five authority fields', () => {
+  it('accepts only the six authority fields including the browser bundle identity', () => {
     expect(parseAuthorizeRescueRequest(request())).toEqual(request());
   });
 
@@ -238,6 +256,12 @@ describe('Production Rescue Edge request boundary', () => {
     ).toThrow();
   });
 
+  it('rejects an invalid Engine bundle identity', () => {
+    expect(() =>
+      parseAuthorizeRescueRequest({ ...request(), expectedEngineBundleSha256: 'stale' }),
+    ).toThrowError('invalid_engine_bundle_sha256');
+  });
+
   it('maps the database statement deadline to the exact safe timeout state', () => {
     expect(
       rescuePersistenceErrorForMessage('canceling statement due to statement timeout'),
@@ -246,6 +270,19 @@ describe('Production Rescue Edge request boundary', () => {
 });
 
 describe('trusted Production Rescue authorization', () => {
+  it('fails closed before loading Production state when browser and Edge bundles differ', async () => {
+    const deps = dependencies();
+    await expect(
+      authorizeTrustedProductionRescue(
+        OWNER,
+        request({ expectedEngineBundleSha256: '0'.repeat(64) }),
+        deps,
+      ),
+    ).rejects.toMatchObject({ code: 'engine_bundle_mismatch', status: 409 });
+    expect(deps.loadContext).not.toHaveBeenCalled();
+    expect(deps.persistAuthorization).not.toHaveBeenCalled();
+  });
+
   it('authorizes both truthful continuation and proportional restore for TARA 3.0 → 3.1 g', async () => {
     let continued: PersistTrustedAuthorizationInput | null = null;
     const continuation = await authorizeTrustedProductionRescue(
