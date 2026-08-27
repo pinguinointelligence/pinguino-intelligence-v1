@@ -97,7 +97,7 @@ export function AdminProductCapabilityReanalysisDetail({
       </header>
 
       <div className="mt-7 grid gap-7 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="space-y-7">
+        <div className="min-w-0 space-y-7">
           <section aria-label="Podsumowanie prośby o ponowną analizę">
             <h2 className="text-sm font-semibold text-ink">Zakres prośby</h2>
             <dl className="mt-3 grid border-l border-t border-ink/10 sm:grid-cols-2">
@@ -151,7 +151,7 @@ export function AdminProductCapabilityReanalysisDetail({
           </section>
         </div>
 
-        <aside className="space-y-5">
+        <aside className="min-w-0 space-y-5">
           <section className="border border-ink/12 bg-[#f3ede3] p-5">
             <SectionLabel>Decyzja administratora</SectionLabel>
             <p className="mt-3 text-xs leading-5 text-stone-600">

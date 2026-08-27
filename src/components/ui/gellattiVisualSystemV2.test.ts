@@ -69,11 +69,18 @@ describe('Gellatti Visual System V2', () => {
   it('uses V2 master-detail architecture only where it is contextual', () => {
     const catalog = read('features', 'global-catalog', 'GlobalCatalogSearchPanel.tsx');
     const admin = read('pages', 'admin', 'AdminWorkspacePage.tsx');
+    const adminReanalysis = read(
+      'features',
+      'admin',
+      'AdminProductCapabilityReanalysisDetail.tsx',
+    );
     const appShell = read('features', 'shell', 'AppShell.tsx');
 
     expect(catalog).toContain('lg:grid-cols-[minmax(340px,0.85fr)_minmax(420px,1.15fr)]');
     expect(admin).toContain('lg:grid-cols-[190px_minmax(0,1fr)]');
     expect(admin).toContain('<aside className="min-w-0 border-b');
+    expect(adminReanalysis).toContain('<div className="min-w-0 space-y-7">');
+    expect(adminReanalysis).toContain('<aside className="min-w-0 space-y-5">');
     expect(admin).toContain('xl:grid-cols-[330px_minmax(0,1fr)]');
     expect(appShell).not.toContain('190px_minmax');
   });
