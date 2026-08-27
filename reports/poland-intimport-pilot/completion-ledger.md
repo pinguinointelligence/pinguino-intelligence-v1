@@ -76,26 +76,36 @@ Blocker groups overlap because one product may have more than one real readiness
 
 - Canonical PR range: `PR-ING-007145` through `PR-ING-007164`; exact UUIDs are retained in staging ingest evidence and the live-test output.
 - Second pass: 20 reused, 0 created, 0 failed, 0 duplicates.
-- `mapper_basement`: **2075 rows before and after**, fingerprint `runtime-2075-a3f740db` before and after. No Mapper row was added, updated, or deleted.
+- Database counts were identical before and after the final two-pass replay: **20 products, 22 historical versions, 44 historical behavior bindings, 0 PI runtime bindings**. The replay added neither a product, version, nor binding.
+- Product Intelligence's authenticated base-approved Mapper donor set: **2075 rows before and after**, fingerprint `runtime-2075-a3f740db` before and after. The staging table contains **2088 active canonical rows**; its existing `mapper_basement_search` contract intentionally exposes only `is_active AND approved_for_base`. No Mapper row was added, updated, or deleted.
 - No PI runtime binding was created for the commercial PRs. Mapper donors are field-level evidence only.
 - No user-level price, existing canonical PR, Scanner photo/Vision path, Engine/Solver formula, Production rule, or Label calculation was changed.
 - The remaining 711 owner rows were not processed.
 
 ## Verification ledger
 
+### Files changed across the pilot workstream
+
+- Workbook/selection/report: `src/data/products/intimportWorkbook.ts`, `reports/poland-intimport-pilot/selection.json`, `reports/poland-intimport-pilot/completion-ledger.md`, `scripts/run-poland-owner-20-live.mjs`.
+- Shared INTIMPORT Product Intelligence path: `src/features/product-intelligence/intimportEnrichment.ts`, `intimportIntelligence.ts`, `intimportReceiptIdentity.ts`, `ownerProductClassification.ts`, `productRecognition.ts`.
+- Canonical/Mapper services: `src/services/intimportCanonicalLookup.ts`, `ingredients.ts`, `mapperKnowledge.ts`, `productImportRuns.ts`, `productIngest.ts`.
+- UI/Edge/database boundary: `src/pages/destinations/ProductImportPage.tsx`, `supabase/functions/catalog-submit/index.ts`, `supabase/functions/intimport-enrich/index.ts`, `supabase/functions/product-import-run/index.ts`, `supabase/migrations/20260827230000_product_accuracy_v2_ingest_authority.sql`.
+- Tests: the colocated workbook, evidence-authority, standard-run, owner-classification, enrichment, research-provider, official-source, canonical-lookup, receipt-identity, Mapper paging, ingest-boundary, migration-authority, dry-run and live-pilot test files.
+- Generated parity only: `docs/engine-validation/ENGINE_AUTHENTICITY_TESTS.json` and the three `supabase/functions/_shared/generated/productionRescueEngine.*` artifacts. These were regenerated because accepted staging source had advanced without its matching generated closure; no Engine/Solver source or science changed.
+
 ### Focused and integration tests
 
 - `npm test -- --run <18 INTIMPORT/Scanner/Mapper/ingest test files>` — **18 files, 208 tests passed**.
-- `node scripts/run-poland-owner-20-live.mjs --project-ref=tunabqqrwabacxjcxxkz` — **1 live staging test passed**, 20/20 reused twice, 0 failures, 0 duplicates; duration 75.55 s.
+- `node scripts/run-poland-owner-20-live.mjs --project-ref=tunabqqrwabacxjcxxkz` — **1 live staging test passed** on the rebased branch, 20/20 reused twice, 0 failures, 0 duplicates; duration 91.97 s.
 - `npm test -- --run src/features/constraint-studio/recipeVectorProximity.test.ts --reporter=verbose` — **23/23 passed**; confirms the single default-parallel full-suite timeout is load-related and the branch has no diff in this test/Solver area.
 - `npm run production-rescue:bundle-check` and generated bundle parity test — **passed**.
 
 ### Full gates
 
-- Full suite: `npm test -- --reporter=dot --silent=passed-only --maxWorkers=2` — **775 files passed, 22 skipped; 9562 tests passed, 121 skipped; 0 failures**. Duration 622.15 s. The first default-parallel run completed 797 files with one unchanged Horchata test timing out at 5 s; the same file passed independently and the complete suite passed with bounded concurrency, without changing timeout or Engine/Solver.
-- Typecheck: **PENDING final run**.
-- Lint: **PENDING final run**.
-- Build: **PENDING final run**.
+- Full suite on the final rebased branch: `npm test -- --reporter=dot --silent=passed-only --maxWorkers=2` — **775 files passed, 22 skipped; 9562 tests passed, 121 skipped; 0 failures**. Duration 696.14 s. The first default-parallel run completed 797 files with one unchanged Horchata test timing out at 5 s; the same file passed independently and the complete suite passed twice with bounded concurrency, without changing timeout or Engine/Solver.
+- Typecheck: `npm run typecheck` — **passed**.
+- Lint: `npm run lint` — **0 errors, 4 pre-existing Fast Refresh warnings**.
+- Build: `npm run build` — **passed**; only the existing large-chunk and mixed static/dynamic import warnings were emitted.
 
 ### Staging changes already applied
 
@@ -113,6 +123,6 @@ Blocker groups overlap because one product may have more than one real readiness
 6. Test results: focused, live staging pilot, isolated regression, Production Rescue parity, and full suite green.
 7. Accepted flows retested: Scanner contract tests, exact EAN reuse, Product Accuracy/readiness, Mapper immutability, ProductBehavior and Production Rescue parity.
 8. Deployment environment: staging project `tunabqqrwabacxjcxxkz`; public production is out of scope and untouched.
-9. Remaining incomplete items: final full gates, staging app deployment, and served runtime checks.
+9. Remaining incomplete items: staging app deployment and served runtime checks.
 10. External blockers/actions: none at this revision.
 11. Git state: branch `codex/intimport-product-intelligence-pilot`; final commit/status recorded after acceptance.
