@@ -63,6 +63,64 @@ describe('Master Label direct vector PDF', () => {
     expect(pdf.getPageCount()).toBe(2);
   });
 
+  it('renders a production storage instruction containing the Unicode minus sign', async () => {
+    const unicodeStorage = createCompleteLabel('EU', {
+      storageInstructions: { en: 'Keep frozen at −18 °C or below.' },
+      size: { widthMm: 102, heightMm: 152 },
+      printer: {
+        ...createCompleteLabel('EU').printer,
+        profileId: 'zebra_zd421_300',
+        widthMm: 102,
+        heightMm: 152,
+        copies: 2,
+        dpi: 300,
+      },
+    });
+
+    const artifact = await composeMasterLabelPdf(unicodeStorage);
+
+    expect(artifact).toMatchObject({ widthMm: 102, heightMm: 152, pageCount: 2 });
+  });
+
+  it('renders the served six-ingredient production label at 102 x 152 mm', async () => {
+    const base = createCompleteLabel('WORLD');
+    const ingredient = base.ingredients[0]!;
+    const served = createCompleteLabel('WORLD', {
+      productName: { en: 'd' },
+      legalProductName: { en: '' },
+      businessName: 'Gellatti QA Laboratory (staging)',
+      storageInstructions: { en: 'Keep frozen at -18 C or below.' },
+      size: { widthMm: 102, heightMm: 152 },
+      ingredients: [
+        ['MILK 3.5% · Milk · Chilled', 623, 61.3],
+        ['CREAM 30% · Mlekovita Cream · Chilled', 179, 17.6],
+        ['SUCROSE SUGAR · Sweetener · Dry', 97, 9.5],
+        ['DEXTROSE · Sweetener · Dry', 65, 6.4],
+        ['SKIMMED MILK · Milk', 49, 4.8],
+        ['TARA GUM · Stabilizer', 4, 0.4],
+      ].map(([name, actualGrams, percent], index) => ({
+        ...ingredient,
+        lineId: `served-${index}`,
+        canonicalIngredientId: `PI-SERVED-${index}`,
+        names: { en: String(name) },
+        actualGrams: Number(actualGrams),
+        percent: Number(percent),
+        sourceIngredientsText: String(name),
+      })),
+      printer: {
+        ...base.printer,
+        widthMm: 102,
+        heightMm: 152,
+        copies: 2,
+        dpi: 300,
+      },
+    });
+
+    const artifact = await composeMasterLabelPdf(served);
+
+    expect(artifact).toMatchObject({ widthMm: 102, heightMm: 152, pageCount: 2 });
+  });
+
   it('creates the vector FDA dual-column and bilingual Canadian draft geometries', async () => {
     const usBase = createCompleteLabel('US');
     const us = createCompleteLabel('US', {
