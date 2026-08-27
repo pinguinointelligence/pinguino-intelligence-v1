@@ -72,6 +72,13 @@ describe('StatusChip', () => {
       expect(html).toContain(STATUS_LABELS[status]);
     }
   });
+
+  it('renders explicit status text while retaining the semantic tone', () => {
+    const html = renderToStaticMarkup(<StatusChip status="good">OPEN</StatusChip>);
+
+    expect(html).toContain('OPEN');
+    expect(html).not.toContain(`>${STATUS_LABELS.good}<`);
+  });
 });
 
 describe('ConfidenceBadge', () => {
