@@ -11,6 +11,7 @@ import { Card } from '@/components/ui/Card';
 import { DialogShell } from '@/components/ui/DialogShell';
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import type { ProductionCompletionSnapshot } from '@/features/production-workspace/productionSession';
+import { buildNutritionDeclaration } from '@/data/label/nutritionLabel';
 import {
   buildLabelPreflight,
   buildMasterLabelData,
@@ -2018,8 +2019,7 @@ function RunLabelEditor({
           </div>
         </SettingsSection>
 
-        {draft.purpose === 'retail_consumer' &&
-        ['EU', 'UK', 'US', 'CA', 'AU_NZ'].includes(draft.market) ? (
+        {draft.purpose === 'retail_consumer' ? (
           <RegulatoryNutritionFields
             value={draft}
             missing={draftPreflight.items.some(
@@ -2766,8 +2766,29 @@ function RegulatoryNutritionFields({
   const canadaFop = assessCanadaFop(value.nutritionSource, facts);
   const numberOrNull = (raw: string): number | null =>
     raw.trim() === '' ? null : Number.isFinite(Number(raw)) ? Number(raw) : null;
+  const [editableNutritionSourceKeys] = useState(
+    () =>
+      new Set(
+        (['saturated_fat_g', 'sugars_g'] as const).filter(
+          (key) => value.nutritionSource?.[key] === null,
+        ),
+      ),
+  );
   const updateFacts = (next: Partial<MasterLabelData['regulatoryNutrition']>) =>
     onChange({ ...value, regulatoryNutrition: { ...facts, ...next } });
+  const updateMissingNutritionSource = (key: 'saturated_fat_g' | 'sugars_g', raw: string) => {
+    if (!value.nutritionSource) return;
+    const parsed = numberOrNull(raw);
+    const nutritionSource = {
+      ...value.nutritionSource,
+      [key]: parsed !== null && parsed >= 0 ? parsed : null,
+    };
+    onChange({
+      ...value,
+      nutritionSource,
+      nutritionDeclaration: buildNutritionDeclaration(nutritionSource),
+    });
+  };
   const numberField = (
     key: keyof MasterLabelData['regulatoryNutrition'],
     label: string,
@@ -2819,6 +2840,47 @@ function RegulatoryNutritionFields({
           Wartości dodatkowe muszą mieć udokumentowane źródło produktu. Brak danych blokuje wydruk
           detaliczny; Gellatti nie zgaduje wartości.
         </p>
+        {value.nutritionSource ? (
+          <div
+            className="mt-3 grid gap-3 sm:grid-cols-2"
+            data-testid="label-nutrition-source-completion"
+          >
+            {(
+              [
+                ['saturated_fat_g', 'Tłuszcze nasycone'],
+                ['sugars_g', 'Cukry'],
+              ] as const
+            ).map(([key, label]) => {
+              const confirmed = value.nutritionSource?.[key] !== null;
+              const editable = editableNutritionSourceKeys.has(key);
+              return (
+                <label key={key} className="text-xs font-medium text-stone-600">
+                  {label} · g / 100 g
+                  <input
+                    type="number"
+                    min={0}
+                    step="any"
+                    value={value.nutritionSource?.[key] ?? ''}
+                    disabled={!editable}
+                    data-label-nutrition-source={key}
+                    onChange={(event) =>
+                      updateMissingNutritionSource(key, event.currentTarget.value)
+                    }
+                    className={cn(
+                      SETTINGS_INPUT_CLASS,
+                      'font-mono tabular-nums disabled:bg-stone-50 disabled:text-stone-500',
+                    )}
+                  />
+                  <span className="mt-1 block text-[11px] text-stone-500">
+                    {confirmed
+                      ? 'Wartość pochodzi z finalnych danych partii.'
+                      : 'Brakującą wartość wpisz wyłącznie na podstawie potwierdzonej dokumentacji.'}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        ) : null}
         {(value.market === 'EU' || value.market === 'UK') &&
         (value.nutritionSource?.alcohol_g ?? 0) > 0 ? (
           <div className="mt-3 grid gap-3 sm:grid-cols-2">

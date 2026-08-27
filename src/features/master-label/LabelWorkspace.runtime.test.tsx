@@ -14,6 +14,7 @@ import {
   defaultAccountLabelProfile,
   inMemoryLabelRepository,
   resetInMemoryLabelRepositoryForTests,
+  type AccountLabelProfile,
   type LabelRepository,
   type RunLabelSnapshot,
 } from '@/services/labels/labelRepository';
@@ -96,27 +97,35 @@ describe('LabelWorkspace unified actual-run surface', () => {
     host.remove();
   });
 
-  async function renderWorkspace(initialView: 'data' | 'label' | 'settings' = 'label') {
+  async function renderWorkspace(
+    initialView: 'data' | 'label' | 'settings' = 'label',
+    options: {
+      snapshot?: ReturnType<typeof completedSnapshot>;
+      profileOverrides?: Partial<AccountLabelProfile>;
+    } = {},
+  ) {
     const repository = inMemoryLabelRepository('owner-label-workspace');
+    const defaultProfile = defaultAccountLabelProfile('owner-label-workspace');
     await repository.saveAccountProfile({
-      ...defaultAccountLabelProfile('owner-label-workspace'),
+      ...defaultProfile,
       businessName: 'Gellatti Laboratory',
       logoPath: 'owner-label-workspace/logo.png',
       presentation: {
-        ...defaultAccountLabelProfile('owner-label-workspace').presentation,
+        ...defaultProfile.presentation,
         widthMm: 102,
         heightMm: 152,
         printer: {
-          ...defaultAccountLabelProfile('owner-label-workspace').presentation.printer,
+          ...defaultProfile.presentation.printer,
           widthMm: 102,
           heightMm: 152,
         },
       },
+      ...options.profileOverrides,
     });
     await act(async () => {
       root.render(
         <LabelWorkspace
-          snapshot={completedSnapshot()}
+          snapshot={options.snapshot ?? completedSnapshot()}
           repository={repository}
           initialView={initialView}
         />,
@@ -183,7 +192,11 @@ describe('LabelWorkspace unified actual-run surface', () => {
       const context = intake.querySelector<HTMLInputElement>('input[placeholder="np. ES, PL, DE"]');
       if (context) setInputValue(context, 'ES');
       const nutrition = intake.querySelector<HTMLElement>('[data-label-field="market_nutrition"]');
-      const energy = nutrition?.querySelector<HTMLInputElement>('input');
+      const energy = ['EU', 'UK', 'AU_NZ'].includes(intake.getAttribute('data-label-market') ?? '')
+        ? [...(nutrition?.querySelectorAll<HTMLInputElement>('input[type="number"]') ?? [])].find(
+            (input) => !input.hasAttribute('data-label-nutrition-source'),
+          )
+        : undefined;
       if (energy) setInputValue(energy, '900');
       const authority = nutrition?.querySelector<HTMLSelectElement>('select');
       if (authority) setSelectValue(authority, 'market_factors');
@@ -271,6 +284,49 @@ describe('LabelWorkspace unified actual-run surface', () => {
     await act(async () => button('Wróć do etykiety')!.click());
     expect(workspace.getAttribute('data-active-label-view')).toBe('label');
     expect(workspace.querySelector('[data-testid="label-consumer-preview"]')).not.toBeNull();
+  });
+
+  it('collects a missing saturated-fat source value in Step 1 for the WORLD profile', async () => {
+    const snapshot = completedSnapshot();
+    await renderWorkspace('data', {
+      snapshot: {
+        ...snapshot,
+        finalProduct: {
+          ...snapshot.finalProduct,
+          labelNutritionPer100g: {
+            ...COMPLETE_LABEL_NUTRITION,
+            saturated_fat_g: null,
+          },
+        },
+      },
+      profileOverrides: {
+        market: 'WORLD',
+        uiLanguage: 'en',
+        labelLanguages: ['en'],
+      },
+    });
+
+    await completeRequiredLabelData();
+
+    const intake = host.querySelector('[data-testid="label-data-intake"]')!;
+    const sourceInput = intake.querySelector<HTMLInputElement>(
+      '[data-label-nutrition-source="saturated_fat_g"]',
+    )!;
+    const continueButton = button('Pokaż etykietę') as HTMLButtonElement;
+
+    expect(sourceInput).not.toBeNull();
+    expect(sourceInput.disabled).toBe(false);
+    expect(continueButton.disabled).toBe(true);
+    expect(intake.textContent).toContain('Brakującą wartość wpisz wyłącznie');
+
+    await act(async () => setInputValue(sourceInput, '3.4'));
+
+    expect(sourceInput.disabled).toBe(false);
+    expect(continueButton.disabled).toBe(false);
+    await act(async () => continueButton.click());
+    expect(host.querySelector('[data-testid="label-consumer-preview"]')?.textContent).toContain(
+      '3.4 g',
+    );
   });
 
   it('shows one market-driven preview with ACTUAL overview outside the print boundary', async () => {
