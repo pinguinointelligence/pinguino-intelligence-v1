@@ -213,6 +213,12 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(host.textContent).toContain('Nutrition declaration');
     expect(host.textContent).toContain('Koszt');
     expect(host.textContent).toContain('Baza techniczna');
+    expect(host.querySelector('[data-testid="label-print-blocked-message"]')).not.toBeNull();
+    expect(
+      host
+        .querySelector('[data-testid="label-print-blocked-message"]')
+        ?.closest('[data-friendly-lab-message="true"]'),
+    ).toBeNull();
     expect(
       host.querySelector('[data-testid="label-consumer-preview"]')?.getAttribute('data-market'),
     ).toBe('EU');
@@ -473,6 +479,12 @@ describe('LabelWorkspace unified actual-run surface', () => {
     const workspace = host.querySelector('[data-testid="label-workspace"]')!;
     expect(workspace.getAttribute('data-active-label-view')).toBe('label');
     expect(workspace.querySelector('[data-testid="label-consumer-preview"]')).not.toBeNull();
+    expect(
+      workspace
+        .querySelector('[data-testid="label-print-ready-message"]')
+        ?.getAttribute('data-friendly-lab-timing'),
+    ).toBe('informational');
+    expect(workspace.textContent).toContain('Gotowe. Etykieta czeka na druk.');
     expect(button('Pobierz PDF')).not.toBeUndefined();
     expect((button('Drukuj') as HTMLButtonElement).disabled).toBe(false);
 

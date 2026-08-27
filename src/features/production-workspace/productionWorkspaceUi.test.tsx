@@ -953,6 +953,8 @@ describe('Production workspace touch-first UI', () => {
     const html = renderToStaticMarkup(<ProductionWorkspaceHeader production={view} />);
     expect(html).toContain('data-production-state="completed"');
     expect(html).toContain('Partia gotowa');
+    expect(html).toContain('data-friendly-lab-timing="important"');
+    expect(html).toContain('data-motion-phase="entering"');
     expect(html).not.toContain('production-workspace-instructions');
     expect(html).not.toContain('production-workspace-progress');
     expect(html).not.toContain('składników');

@@ -39,6 +39,7 @@ import {
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/cn';
 import { WorkflowNotice } from '@/components/shared/WorkflowNotice';
+import { FriendlyLabMessageMotion } from '@/components/shared/FriendlyLabMessageMotion';
 import {
   PRINTER_PROFILES,
   normalizePrinterSettings,
@@ -510,18 +511,27 @@ export function LabelWorkspace({
                   </Button>
                 </div>
               </header>
-              <div className="border-b border-ink/10 bg-[#f7f5f0] px-4 py-3" role="status">
-                <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                  <span
-                    className={
-                      preflight?.readyForSystemPrint ? 'text-status-success' : 'text-stone-700'
-                    }
-                  >
-                    {preflight?.readyForSystemPrint
-                      ? '✓ Gotowe. Etykieta czeka na druk.'
-                      : `Do wydruku brakuje: ${unresolved.length} ${unresolved.length === 1 ? 'pozycja' : 'pozycji'}`}
-                  </span>
-                  {!preflight?.readyForSystemPrint ? (
+              {preflight?.readyForSystemPrint ? (
+                <FriendlyLabMessageMotion
+                  timing="informational"
+                  className="border-b border-ink/10 bg-[#f7f5f0] px-4 py-3"
+                  testId="label-print-ready-message"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <span className="text-status-success">✓ Gotowe. Etykieta czeka na druk.</span>
+                  </div>
+                </FriendlyLabMessageMotion>
+              ) : (
+                <div
+                  className="border-b border-ink/10 bg-[#f7f5f0] px-4 py-3"
+                  role="status"
+                  data-testid="label-print-blocked-message"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <span className="text-stone-700">
+                      Do wydruku brakuje: {unresolved.length}{' '}
+                      {unresolved.length === 1 ? 'pozycja' : 'pozycji'}
+                    </span>
                     <button
                       type="button"
                       className="font-semibold underline underline-offset-4"
@@ -530,9 +540,9 @@ export function LabelWorkspace({
                     >
                       {printBlockedReason}
                     </button>
-                  ) : null}
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="border-b border-ink/10 bg-white px-4 py-3 text-[11px] text-stone-600">
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                   <strong className="text-ink">

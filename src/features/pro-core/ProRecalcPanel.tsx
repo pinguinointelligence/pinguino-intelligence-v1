@@ -14,6 +14,7 @@ import { copy } from '@/copy/en';
 import { calculateRecipe } from '@/engine';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { useRecipeStore } from '@/stores/recipeStore';
+import { FriendlyLabMessageMotion } from '@/components/shared/FriendlyLabMessageMotion';
 import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
 import {
   constraintStudioCopy,
@@ -840,14 +841,13 @@ export function ProRecalcPanel({
 
         <div className={customerPreviewOpen ? 'space-y-3' : 'mt-3 space-y-3'}>
           {recalculationTerminal?.state === 'WORKING' ? (
-            <p
+            <FriendlyLabMessageMotion
+              timing="progress"
               className="text-sm leading-relaxed text-ivory/80"
-              role="status"
-              aria-live="polite"
-              data-testid="pro-recalc-working"
+              testId="pro-recalc-working"
             >
               Sprawdzamy recepturę i szukamy bezpiecznej korekty…
-            </p>
+            </FriendlyLabMessageMotion>
           ) : null}
 
           {recalculationTerminal?.state === 'SETTINGS_CONFIRMATION_REQUIRED' ? (
@@ -967,25 +967,31 @@ export function ProRecalcPanel({
           ) : null}
 
           {preview && recalculationTerminal?.state === 'PREVIEW_READY' ? (
-            <ConstraintPreviewCard
-              preview={preview}
-              applyPending={applyPending}
-              showCloseControl
-              showTechnicalDetails={canViewTechnicalDetails}
-              onApply={() => {
-                void (async () => {
-                  await applyPreviewWithServerAuthority();
-                  // Close only after the same terminal server validation used by
-                  // Constraint Studio. A stale/blocked preview stays visible.
-                  const after = useConstraintStudioStore.getState();
-                  if (after.preview === null && after.blocked === null) onClose();
-                })();
-              }}
-              onCancel={() => {
-                store.cancelPreview();
-                onClose();
-              }}
-            />
+            <FriendlyLabMessageMotion
+              timing="persistent"
+              role={undefined}
+              testId="pro-recalc-preview-motion"
+            >
+              <ConstraintPreviewCard
+                preview={preview}
+                applyPending={applyPending}
+                showCloseControl
+                showTechnicalDetails={canViewTechnicalDetails}
+                onApply={() => {
+                  void (async () => {
+                    await applyPreviewWithServerAuthority();
+                    // Close only after the same terminal server validation used by
+                    // Constraint Studio. A stale/blocked preview stays visible.
+                    const after = useConstraintStudioStore.getState();
+                    if (after.preview === null && after.blocked === null) onClose();
+                  })();
+                }}
+                onCancel={() => {
+                  store.cancelPreview();
+                  onClose();
+                }}
+              />
+            </FriendlyLabMessageMotion>
           ) : null}
 
           {!preview && recalculationTerminal === null && undoAvailable ? (

@@ -84,6 +84,11 @@ describe('PI visible terminal contract', () => {
 
     expect(visibleScore()).toBe('8/10');
     expect(summaryText()).toMatch(/\d+ zmian(?:a|y)?/);
+    expect(
+      document
+        .querySelector('[data-testid="pro-recalc-preview-motion"]')
+        ?.getAttribute('data-friendly-lab-timing'),
+    ).toBe('persistent');
 
     await act(async () => {
       document.querySelector<HTMLButtonElement>('[data-testid="preview-cancel"]')!.click();
@@ -156,6 +161,11 @@ describe('PI visible terminal contract', () => {
     expect(document.body.textContent).toContain(
       'Sprawdzamy recepturę i szukamy bezpiecznej korekty…',
     );
+    expect(
+      document
+        .querySelector('[data-testid="pro-recalc-working"]')
+        ?.getAttribute('data-friendly-lab-timing'),
+    ).toBe('progress');
     expect(
       document.querySelector<HTMLButtonElement>('[data-testid="pro-recalc-close"]')?.disabled,
     ).toBe(false);
@@ -358,6 +368,11 @@ describe('PI visible terminal contract', () => {
       'Jeszcze jeden krok. Potwierdź ustawienia, a potem przeliczymy recepturę.',
     );
     expect(document.body.textContent).toContain('Otwórz ustawienia');
+    expect(
+      document
+        .querySelector('[data-testid="pro-recalc-settings-required"]')
+        ?.closest('[data-friendly-lab-message="true"]'),
+    ).toBeNull();
   });
 
   it('renders an impossible result with exact lock facts and both recovery actions', async () => {
