@@ -55,9 +55,9 @@ import type {
 import {
   isProductionRescueAuthorizationRefreshError,
   isProductionRescueOptionUnavailableError,
+  PRODUCTION_RESCUE_AUTHORITY_NAMESPACE,
   productionRescueOptionUnavailableDetails,
 } from '@/services/proCore/supabaseProduction';
-import { PRODUCTION_RESCUE_BUNDLE_SHA256 } from '../../../supabase/functions/_shared/generated/productionRescueEngine.metadata.mjs';
 import { metricLabel } from '@/features/pi-panel/indicatorView';
 import type {
   ProductionRescueStableOptionId,
@@ -905,7 +905,7 @@ export function useProductionWorkspace(enabled: boolean) {
           stableOptionId: option.id,
           expectedActualRevision: basisSession.durableActualRevision,
           expectedRescueRevision: basisSession.durableRescueRevision,
-          idempotencyKey: `rescue:${PRODUCTION_RESCUE_BUNDLE_SHA256.slice(0, 16)}:${basisSession.sessionId}:${basisSession.durableActualRevision}:${basisSession.durableRescueRevision}:${rescueOptionsRetryRevision}:${option.id}`,
+          idempotencyKey: `rescue:${PRODUCTION_RESCUE_AUTHORITY_NAMESPACE}:${basisSession.sessionId}:${basisSession.durableActualRevision}:${basisSession.durableRescueRevision}:${rescueOptionsRetryRevision}:${option.id}`,
         })
         .then((authorization) => {
           if (cancelled) return;

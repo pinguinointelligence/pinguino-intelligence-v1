@@ -18,8 +18,8 @@ import type {
   ProductionRepository,
   ProductionRescueAuthorization,
 } from '@/services/proCore/productionRepository';
+import { PRODUCTION_RESCUE_AUTHORITY_NAMESPACE } from '@/services/proCore/supabaseProduction';
 import type { ProductionRun } from '@/features/pro-core/productionContracts';
-import { PRODUCTION_RESCUE_BUNDLE_SHA256 } from '../../../supabase/functions/_shared/generated/productionRescueEngine.metadata.mjs';
 import { useProductionSessionStore } from './productionSessionStore';
 import {
   buildProductionForecastInput,
@@ -298,7 +298,7 @@ describe('Production trusted Rescue runtime races', () => {
     expect(
       authorizeRescue.mock.calls.every(([input]) =>
         input.idempotencyKey.startsWith(
-          `rescue:${PRODUCTION_RESCUE_BUNDLE_SHA256.slice(0, 16)}:${local.sessionId}:${local.durableActualRevision}:${local.durableRescueRevision}:`,
+          `rescue:${PRODUCTION_RESCUE_AUTHORITY_NAMESPACE}:${local.sessionId}:${local.durableActualRevision}:${local.durableRescueRevision}:`,
         ),
       ),
     ).toBe(true);

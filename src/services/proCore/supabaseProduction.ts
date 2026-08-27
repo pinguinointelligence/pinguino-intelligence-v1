@@ -65,6 +65,8 @@ import type {
 import type { ProductionCompletionSnapshot } from '@/features/production-workspace/productionSession';
 import { PRODUCTION_RESCUE_BUNDLE_SHA256 } from '../../../supabase/functions/_shared/generated/productionRescueEngine.metadata.mjs';
 
+export const PRODUCTION_RESCUE_AUTHORITY_NAMESPACE = PRODUCTION_RESCUE_BUNDLE_SHA256.slice(0, 16);
+
 const RUNS = 'production_runs';
 const PLANNED = 'production_run_planned_items';
 const ACTUALS = 'production_run_actuals';
