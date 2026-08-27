@@ -49,24 +49,9 @@ import {
 import { assessCanadaFop } from './regulatoryNutrition';
 import { downloadMasterLabelPdf } from './masterLabelPdf';
 import { customerErrorMessage } from '@/copy/customerError';
-import { responsibleBusinessDetails } from './businessAuthority';
 
 const MARKET_CODES: readonly MarketProfileCode[] = MARKET_PROFILE_ORDER;
 export type LabelWorkspaceView = 'data' | 'settings' | 'label';
-
-const LABEL_DATA_FIELDS = new Set([
-  'product_name',
-  'operator',
-  'net_quantity',
-  'jurisdiction_context',
-]);
-
-const missingLabelDataFields = (label: MasterLabelData): Set<string> =>
-  new Set(
-    buildLabelPreflight(label)
-      .items.filter((item) => item.status === 'missing' && LABEL_DATA_FIELDS.has(item.field))
-      .map((item) => item.field),
-  );
 
 const primaryText = (value: Record<string, string>, languages: readonly string[]): string =>
   languages.map((language) => value[language]).find((text) => text?.trim()) ?? '';
@@ -170,9 +155,9 @@ export function LabelWorkspace({
     url: string | null;
   } | null>(null);
   const requestedRunId = suppliedSnapshot?.sessionId ?? runId;
-  const visibleView: LabelWorkspaceView = saved ? 'label' : activeView;
-  const labelDataReady = label ? missingLabelDataFields(label).size === 0 : false;
   const preflight = useMemo(() => (label ? buildLabelPreflight(label) : null), [label]);
+  const labelDataReady = preflight?.readyForSystemPrint ?? false;
+  const visibleView: LabelWorkspaceView = saved ? 'label' : !labelDataReady ? 'data' : activeView;
 
   const openView = (next: LabelWorkspaceView) => {
     if (next === visibleView || (next === 'settings' && saved)) return;
@@ -610,23 +595,24 @@ export function LabelWorkspace({
             </div>
           </>
         ) : visibleView === 'data' ? (
-          <LabelDataIntake
+          <RunLabelEditor
             label={label}
-            onContinue={(next) => {
+            logoUrl={logoUrl}
+            repository={repository}
+            onSave={async (next) => {
               setLabel(next);
               setTransitionDirection('forward');
               setActiveView('label');
             }}
           />
         ) : (
-          <RunLabelEditor
+          <RunLabelSettings
             label={label}
             logoUrl={logoUrl}
             repository={repository}
             saveAsDefault={saveAsDefault}
             onSaveAsDefaultChange={setSaveAsDefault}
-            onClose={() => openView(labelDataReady ? 'label' : 'data')}
-            backLabel={labelDataReady ? 'Etykieta' : 'Dane do etykiety'}
+            onClose={() => openView('label')}
             onSave={async (next) => {
               setBusy(true);
               setError(null);
@@ -634,7 +620,7 @@ export function LabelWorkspace({
                 if (saveAsDefault) await persistProfile(profileFromLabel(profile, next));
                 setLabel(next);
                 setTransitionDirection('forward');
-                setActiveView('label');
+                setActiveView(buildLabelPreflight(next).readyForSystemPrint ? 'label' : 'data');
               } catch (caught) {
                 setError(customerErrorMessage(caught, 'labels', 'LABEL_SAVE_FAILED'));
               } finally {
@@ -723,330 +709,6 @@ function OverviewMetric({
       </dd>
     </div>
   );
-}
-
-function LabelDataIntake({
-  label,
-  onContinue,
-}: {
-  label: MasterLabelData;
-  onContinue: (label: MasterLabelData) => void;
-}) {
-  const [draft, setDraft] = useState(label);
-  const [initialMissing] = useState(() => missingLabelDataFields(label));
-  const [responsibleRole] = useState(() => responsibleBusinessDetails(label).role);
-  const currentMissing = missingLabelDataFields(draft);
-  const ready = currentMissing.size === 0;
-  const party =
-    responsibleRole === 'importer'
-      ? {
-          name: draft.operator.importerName ?? '',
-          address: draft.operator.importerAddress ?? '',
-          countryCode: draft.operator.importerCountryCode ?? '',
-        }
-      : responsibleRole === 'distributor'
-        ? {
-            name: draft.operator.distributorName ?? '',
-            address: draft.operator.distributorAddress ?? '',
-            countryCode: draft.operator.distributorCountryCode ?? '',
-          }
-        : {
-            name: draft.operator.operatorName,
-            address: draft.operator.address,
-            countryCode: draft.operator.countryCode,
-          };
-  const partyLabel =
-    responsibleRole === 'importer'
-      ? 'Importer'
-      : responsibleRole === 'distributor'
-        ? 'Dystrybutor'
-        : 'Producent / operator';
-  const updateParty = (field: 'name' | 'address' | 'countryCode', value: string) => {
-    if (responsibleRole === 'importer') {
-      const key =
-        field === 'name'
-          ? 'importerName'
-          : field === 'address'
-            ? 'importerAddress'
-            : 'importerCountryCode';
-      setDraft({ ...draft, operator: { ...draft.operator, [key]: value } });
-      return;
-    }
-    if (responsibleRole === 'distributor') {
-      const key =
-        field === 'name'
-          ? 'distributorName'
-          : field === 'address'
-            ? 'distributorAddress'
-            : 'distributorCountryCode';
-      setDraft({ ...draft, operator: { ...draft.operator, [key]: value } });
-      return;
-    }
-    const key = field === 'name' ? 'operatorName' : field;
-    setDraft({ ...draft, operator: { ...draft.operator, [key]: value } });
-  };
-  const updatePackageQuantity = (raw: string) => {
-    const amount = Number(raw) || null;
-    const canada = draft.market === 'CA';
-    const grams = amount
-      ? canada
-        ? draft.regulatoryNutrition.productDensityGPerMl
-          ? amount * draft.regulatoryNutrition.productDensityGPerMl
-          : null
-        : amount
-      : null;
-    setDraft({
-      ...draft,
-      netQuantityG: grams,
-      packageQuantity: amount
-        ? {
-            value: amount,
-            unit: canada ? 'ml' : 'g',
-            netWeightG: grams,
-            netVolumeMl: canada ? amount : null,
-            source: 'selected_fill',
-            confirmedAt: new Date().toISOString(),
-          }
-        : null,
-    });
-  };
-
-  return (
-    <Card
-      padding="none"
-      className="mx-auto w-full max-w-xl overflow-hidden rounded-[18px] border-ink/10 shadow-pro-e0"
-      data-testid="label-data-intake"
-      data-label-market={draft.market}
-    >
-      <header className="border-b border-ink/10 bg-[#fffdf8] px-4 py-5 sm:px-5">
-        <SectionLabel>Dane do etykiety</SectionLabel>
-        <h2 className="mt-1 text-xl font-semibold tracking-[-0.02em] text-ink">
-          Uzupełnij dane do etykiety
-        </h2>
-        <p className="mt-1 text-sm leading-relaxed text-stone-600">
-          Pokazujemy tylko informacje potrzebne przed otwarciem ustawień.
-        </p>
-      </header>
-
-      <div className="grid gap-4 px-4 py-5 sm:px-5">
-        {initialMissing.has('product_name')
-          ? draft.labelLanguages.map((language) =>
-              (label.productName[language] ?? '').trim() ? null : (
-                <label key={language} className="text-xs font-medium text-stone-600">
-                  Nazwa produktu · {language.toUpperCase()}
-                  <input
-                    value={draft.productName[language] ?? ''}
-                    onChange={(event) =>
-                      setDraft({
-                        ...draft,
-                        productName: {
-                          ...draft.productName,
-                          [language]: event.currentTarget.value,
-                        },
-                      })
-                    }
-                    className={SETTINGS_INPUT_CLASS}
-                    data-label-intake-field="product-name"
-                  />
-                </label>
-              ),
-            )
-          : null}
-
-        {initialMissing.has('operator') ? (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {!party.name.trim() ? (
-              <label className="text-xs font-medium text-stone-600">
-                {partyLabel}
-                <input
-                  value={party.name}
-                  onChange={(event) => updateParty('name', event.currentTarget.value)}
-                  className={SETTINGS_INPUT_CLASS}
-                  data-label-intake-field="operator-name"
-                />
-              </label>
-            ) : null}
-            {!party.address.trim() ? (
-              <label className="text-xs font-medium text-stone-600">
-                Adres
-                <input
-                  value={party.address}
-                  onChange={(event) => updateParty('address', event.currentTarget.value)}
-                  className={SETTINGS_INPUT_CLASS}
-                  data-label-intake-field="operator-address"
-                />
-              </label>
-            ) : null}
-            {!party.countryCode.trim() ? (
-              <label className="text-xs font-medium text-stone-600">
-                Kraj · kod ISO
-                <input
-                  maxLength={2}
-                  value={party.countryCode}
-                  onChange={(event) =>
-                    updateParty('countryCode', event.currentTarget.value.toUpperCase())
-                  }
-                  className={SETTINGS_INPUT_CLASS}
-                  data-label-intake-field="operator-country"
-                />
-              </label>
-            ) : null}
-          </div>
-        ) : null}
-
-        {initialMissing.has('jurisdiction_context') ? (
-          <LabelMarketContextField value={draft} onChange={setDraft} />
-        ) : null}
-
-        {initialMissing.has('net_quantity') ? (
-          <label className="text-xs font-medium text-stone-600">
-            {draft.market === 'CA' ? 'Objętość opakowania · mL' : 'Masa opakowania · g'}
-            <input
-              type="number"
-              min={0.1}
-              step="any"
-              value={
-                draft.market === 'CA'
-                  ? (draft.packageQuantity?.netVolumeMl ?? '')
-                  : (draft.packageQuantity?.netWeightG ?? '')
-              }
-              onChange={(event) => updatePackageQuantity(event.currentTarget.value)}
-              className={cn(SETTINGS_INPUT_CLASS, 'font-mono tabular-nums')}
-              data-label-intake-field="package-quantity"
-            />
-          </label>
-        ) : null}
-
-        {initialMissing.size === 0 ? (
-          <p className="rounded-[12px] border border-status-ideal/25 bg-status-ideal/[0.06] p-3 text-sm text-stone-700">
-            Wszystkie podstawowe dane są już uzupełnione.
-          </p>
-        ) : null}
-      </div>
-
-      <footer className="border-t border-ink/10 bg-white p-4 sm:px-5">
-        <Button className="w-full" disabled={!ready} onClick={() => onContinue(draft)}>
-          Pokaż etykietę
-        </Button>
-      </footer>
-    </Card>
-  );
-}
-
-function LabelMarketContextField({
-  value,
-  onChange,
-}: {
-  value: MasterLabelData;
-  onChange: (value: MasterLabelData) => void;
-}) {
-  const context = value.jurisdictionContext ?? {
-    euDestinationCountryCode: '',
-    ukRegion: 'unresolved' as const,
-    auNzCountry: 'unresolved' as const,
-    usSaleContext: 'unresolved' as const,
-  };
-  if (value.market === 'EU') {
-    return (
-      <label className="text-xs font-medium text-stone-600">
-        Kraj / rynek docelowy · kod ISO
-        <input
-          maxLength={2}
-          value={context.euDestinationCountryCode}
-          onChange={(event) =>
-            onChange({
-              ...value,
-              jurisdictionContext: {
-                ...context,
-                euDestinationCountryCode: event.currentTarget.value.toUpperCase(),
-              },
-            })
-          }
-          className={SETTINGS_INPUT_CLASS}
-          data-label-intake-field="market-context"
-        />
-      </label>
-    );
-  }
-  if (value.market === 'UK') {
-    return (
-      <label className="text-xs font-medium text-stone-600">
-        Rynek docelowy
-        <select
-          value={context.ukRegion}
-          onChange={(event) =>
-            onChange({
-              ...value,
-              jurisdictionContext: {
-                ...context,
-                ukRegion: event.currentTarget.value as 'GB' | 'NI' | 'unresolved',
-              },
-            })
-          }
-          className={SETTINGS_INPUT_CLASS}
-          data-label-intake-field="market-context"
-        >
-          <option value="unresolved">Wybierz rynek</option>
-          <option value="GB">Great Britain</option>
-          <option value="NI">Northern Ireland</option>
-        </select>
-      </label>
-    );
-  }
-  if (value.market === 'AU_NZ') {
-    return (
-      <label className="text-xs font-medium text-stone-600">
-        Kraj / rynek docelowy
-        <select
-          value={context.auNzCountry}
-          onChange={(event) =>
-            onChange({
-              ...value,
-              jurisdictionContext: {
-                ...context,
-                auNzCountry: event.currentTarget.value as 'AU' | 'NZ' | 'unresolved',
-              },
-            })
-          }
-          className={SETTINGS_INPUT_CLASS}
-          data-label-intake-field="market-context"
-        >
-          <option value="unresolved">Wybierz kraj</option>
-          <option value="AU">Australia</option>
-          <option value="NZ">New Zealand</option>
-        </select>
-      </label>
-    );
-  }
-  if (value.market === 'US') {
-    return (
-      <label className="text-xs font-medium text-stone-600">
-        Rynek docelowy
-        <select
-          value={context.usSaleContext}
-          onChange={(event) =>
-            onChange({
-              ...value,
-              jurisdictionContext: {
-                ...context,
-                usSaleContext: event.currentTarget.value as
-                  | 'interstate_retail'
-                  | 'food_service'
-                  | 'unresolved',
-              },
-            })
-          }
-          className={SETTINGS_INPUT_CLASS}
-          data-label-intake-field="market-context"
-        >
-          <option value="unresolved">Wybierz kontekst</option>
-          <option value="interstate_retail">Packaged retail</option>
-          <option value="food_service">Food service</option>
-        </select>
-      </label>
-    );
-  }
-  return null;
 }
 
 function ProfileEditor({
@@ -1362,14 +1024,13 @@ function ProfileEditor({
   );
 }
 
-function RunLabelEditor({
+function RunLabelSettings({
   label,
   logoUrl,
   repository,
   saveAsDefault,
   onSaveAsDefaultChange,
   onClose,
-  backLabel,
   onSave,
 }: {
   label: MasterLabelData;
@@ -1378,13 +1039,347 @@ function RunLabelEditor({
   saveAsDefault: boolean;
   onSaveAsDefaultChange: (value: boolean) => void;
   onClose: () => void;
-  backLabel: 'Etykieta' | 'Dane do etykiety';
+  onSave: (label: MasterLabelData) => Promise<void>;
+}) {
+  const [draft, setDraft] = useState(label);
+  const [uploading, setUploading] = useState(false);
+  const primaryLanguage = draft.labelLanguages[0] ?? 'pl';
+  const updateOptionalText = (
+    field: 'origin' | 'customerNote' | 'shortDescription',
+    value: string,
+  ) => setDraft({ ...draft, [field]: { ...draft[field], [primaryLanguage]: value } });
+
+  return (
+    <Card
+      padding="none"
+      className="overflow-hidden rounded-[18px] border-ink/10 shadow-pro-e0"
+      data-testid="label-settings-view"
+    >
+      <header className="border-b border-ink/10 bg-[#fffdf8] px-4 py-4 sm:px-5">
+        <button
+          type="button"
+          onClick={onClose}
+          className="pro-focus-ring -ml-1 min-h-11 px-1 text-xs font-semibold text-stone-600 transition-colors hover:text-ink"
+        >
+          ← Etykieta
+        </button>
+        <div className="mt-1 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <SectionLabel>Ustawienia etykiety</SectionLabel>
+            <h2 className="mt-1 text-xl font-semibold tracking-[-0.02em] text-ink">
+              Profil, format i drukarka
+            </h2>
+            <p className="mt-1 text-sm leading-relaxed text-stone-600">
+              Konfiguracja wydruku i opcjonalnych elementów. Obowiązkowe dane uzupełnia się w kroku
+              1.
+            </p>
+          </div>
+          <span className="rounded-full border border-ink/10 bg-white px-2.5 py-1 text-xs font-semibold text-ink">
+            {marketProfile(draft.market).flag} {marketProfile(draft.market).label}
+          </span>
+        </div>
+      </header>
+
+      <div className="px-4 sm:px-5">
+        <SettingsSection title="Rynek i profil">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="text-xs font-medium text-stone-600">
+              Cel etykiety
+              <select
+                value={draft.purpose}
+                onChange={(event) =>
+                  setDraft({
+                    ...draft,
+                    purpose: event.currentTarget.value as MasterLabelData['purpose'],
+                  })
+                }
+                className={SETTINGS_INPUT_CLASS}
+              >
+                <option value="retail_consumer">Retail / konsumencka</option>
+                <option value="internal_production">Wewnętrzna produkcyjna</option>
+                <option value="display_gelateria">Ekspozycja / gelateria</option>
+              </select>
+            </label>
+            <label className="text-xs font-medium text-stone-600">
+              Sposób sprzedaży
+              <select
+                value={draft.packagingContext}
+                onChange={(event) =>
+                  setDraft({
+                    ...draft,
+                    packagingContext: event.currentTarget
+                      .value as MasterLabelData['packagingContext'],
+                  })
+                }
+                className={SETTINGS_INPUT_CLASS}
+              >
+                <option value="prepacked">Prepacked</option>
+                <option value="ppds">PPDS / pakowane w miejscu sprzedaży</option>
+                <option value="loose_non_prepacked">Loose / nieopakowane</option>
+              </select>
+            </label>
+          </div>
+          <div className="mt-3">
+            <span className="text-xs font-medium text-stone-600">Jurysdykcja / profil</span>
+            <div className="mt-2 grid grid-cols-2 gap-1.5 min-[480px]:grid-cols-3">
+              {MARKET_CODES.map((code) => (
+                <button
+                  key={code}
+                  type="button"
+                  className={cn(
+                    'pro-focus-ring grid min-h-12 content-center rounded-[10px] border px-2 py-1 text-xs font-semibold transition-colors',
+                    draft.market === code
+                      ? 'border-ink bg-ink text-white'
+                      : 'border-ink/12 bg-white text-ink hover:bg-stone-50',
+                  )}
+                  data-market-active={draft.market === code ? 'true' : undefined}
+                  title={MARKET_PROFILES[code].jurisdiction}
+                  onClick={() => {
+                    const nextProfile = MARKET_PROFILES[code];
+                    const labelLanguages =
+                      code === 'WORLD'
+                        ? ['en']
+                        : [...new Set([...nextProfile.requiredLanguages, ...draft.labelLanguages])];
+                    setDraft(
+                      applyAutoLabelLayout({
+                        ...draft,
+                        market: code,
+                        marketProfileVersion: nextProfile.version,
+                        labelLanguages,
+                        enabledOptionalFields: normalizeEnabledOptionalFields(
+                          code,
+                          draft.enabledOptionalFields,
+                        ),
+                        regulatoryReview: {
+                          translations: false,
+                          ingredientOrderAndQuid: false,
+                          marketSpecific: false,
+                        },
+                        preflightAcknowledged: false,
+                      }),
+                    );
+                  }}
+                >
+                  <span>{MARKET_PROFILES[code].label}</span>
+                  <span className="text-[9px] font-medium opacity-70">
+                    {marketAvailabilityLabel(MARKET_PROFILES[code])}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <label className="mt-3 block text-xs font-medium text-stone-600">
+            Języki · po przecinku
+            <input
+              value={draft.labelLanguages.join(', ')}
+              onChange={(event) => {
+                const parsed = event.currentTarget.value
+                  .split(',')
+                  .map((value) => value.trim())
+                  .filter(Boolean);
+                setDraft({
+                  ...draft,
+                  labelLanguages:
+                    parsed.length > 0 ? parsed : [draft.market === 'WORLD' ? 'en' : 'pl'],
+                });
+              }}
+              className={SETTINGS_INPUT_CLASS}
+            />
+          </label>
+        </SettingsSection>
+
+        <SettingsSection title="Marka i elementy opcjonalne">
+          <label className="block text-xs font-medium text-stone-600">
+            Marka / nazwa firmy
+            <input
+              value={draft.businessName}
+              onChange={(event) => setDraft({ ...draft, businessName: event.currentTarget.value })}
+              className={SETTINGS_INPUT_CLASS}
+            />
+          </label>
+          <label className="mt-3 flex min-h-14 items-center gap-3 rounded-[12px] border border-ink/10 bg-[#fffdf8] p-3 text-xs text-stone-600">
+            {logoUrl ? (
+              <img src={logoUrl} alt="Aktualne logo" className="size-12 object-contain" />
+            ) : (
+              <span className="grid size-12 shrink-0 place-items-center rounded-[10px] border border-ink/10 bg-white text-[10px] text-stone-400">
+                Logo
+              </span>
+            )}
+            <span className="min-w-0 flex-1">PNG, JPEG, WebP lub SVG · maks. 5 MB</span>
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+              disabled={uploading}
+              className="max-w-32 text-xs"
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                if (!file) return;
+                setUploading(true);
+                void repository
+                  .uploadLogo(file)
+                  .then((logoPath) => setDraft((current) => ({ ...current, logoPath })))
+                  .finally(() => setUploading(false));
+              }}
+            />
+          </label>
+          <OptionalFieldSettings
+            market={draft.market}
+            enabled={draft.enabledOptionalFields}
+            onChange={(enabledOptionalFields) => setDraft({ ...draft, enabledOptionalFields })}
+          />
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {draft.enabledOptionalFields.includes('origin') ? (
+              <label className="text-xs font-medium text-stone-600">
+                Pochodzenie
+                <input
+                  value={draft.origin[primaryLanguage] ?? ''}
+                  onChange={(event) => updateOptionalText('origin', event.currentTarget.value)}
+                  className={SETTINGS_INPUT_CLASS}
+                />
+              </label>
+            ) : null}
+            {draft.enabledOptionalFields.includes('customer_note') ? (
+              <label className="text-xs font-medium text-stone-600">
+                Nota dla klienta
+                <input
+                  value={draft.customerNote[primaryLanguage] ?? ''}
+                  onChange={(event) =>
+                    updateOptionalText('customerNote', event.currentTarget.value)
+                  }
+                  className={SETTINGS_INPUT_CLASS}
+                />
+              </label>
+            ) : null}
+            {draft.enabledOptionalFields.includes('short_description') ? (
+              <label className="text-xs font-medium text-stone-600">
+                Krótki opis
+                <input
+                  value={draft.shortDescription?.[primaryLanguage] ?? ''}
+                  onChange={(event) =>
+                    updateOptionalText('shortDescription', event.currentTarget.value)
+                  }
+                  className={SETTINGS_INPUT_CLASS}
+                />
+              </label>
+            ) : null}
+            {draft.enabledOptionalFields.includes('qr_code') ? (
+              <label className="text-xs font-medium text-stone-600">
+                Wartość QR
+                <input
+                  value={draft.qrCodeValue ?? ''}
+                  onChange={(event) =>
+                    setDraft({ ...draft, qrCodeValue: event.currentTarget.value })
+                  }
+                  className={SETTINGS_INPUT_CLASS}
+                />
+              </label>
+            ) : null}
+            {draft.enabledOptionalFields.includes('gtin') ? (
+              <label className="text-xs font-medium text-stone-600">
+                Potwierdzony GTIN / EAN
+                <input
+                  inputMode="numeric"
+                  value={draft.gtin ?? ''}
+                  onChange={(event) => setDraft({ ...draft, gtin: event.currentTarget.value })}
+                  className={SETTINGS_INPUT_CLASS}
+                />
+              </label>
+            ) : null}
+          </div>
+        </SettingsSection>
+
+        <SettingsSection title="Format i drukarka">
+          <button
+            type="button"
+            className={cn(
+              'pro-focus-ring min-h-11 rounded-[10px] border px-3 text-xs font-semibold',
+              draft.layoutMode === 'auto'
+                ? 'border-ink bg-ink text-white'
+                : 'border-ink/15 bg-white text-ink',
+            )}
+            onClick={() => setDraft(applyAutoLabelLayout(draft))}
+          >
+            Auto · wybierz najmniejszy format, który spełnia wymagania wydruku
+          </button>
+          <PrinterSettingsFields
+            value={draft.printer}
+            onChange={(printer) =>
+              setDraft({
+                ...draft,
+                printer,
+                size: { widthMm: printer.widthMm, heightMm: printer.heightMm },
+                copies: printer.copies,
+              })
+            }
+          />
+          <details className="mt-3 rounded-[12px] border border-ink/10 bg-white p-3">
+            <summary className="cursor-pointer text-xs font-semibold text-ink">
+              Zaawansowane · własne wymiary i kształt
+            </summary>
+            <PresentationFields
+              format={draft.format}
+              widthMm={draft.size.widthMm}
+              heightMm={draft.size.heightMm}
+              copies={draft.copies}
+              onChange={(presentation) =>
+                setDraft({
+                  ...draft,
+                  layoutMode: 'manual',
+                  format: presentation.format,
+                  size: { widthMm: presentation.widthMm, heightMm: presentation.heightMm },
+                  copies: presentation.copies,
+                  printer: normalizePrinterSettings({
+                    ...draft.printer,
+                    formatMode: 'custom',
+                    widthMm: presentation.widthMm,
+                    heightMm: presentation.heightMm,
+                    copies: presentation.copies,
+                  }),
+                })
+              }
+            />
+          </details>
+        </SettingsSection>
+
+        <label className="my-5 flex min-h-12 items-center gap-3 rounded-[12px] border border-ink/10 bg-[#fffdf8] px-3 text-xs text-ink">
+          <input
+            type="checkbox"
+            className="size-5 accent-ink"
+            checked={saveAsDefault}
+            onChange={(event) => onSaveAsDefaultChange(event.currentTarget.checked)}
+          />
+          Zapisz konfigurację jako domyślną dla przyszłych etykiet.
+        </label>
+      </div>
+
+      <footer className="sticky bottom-11 z-10 grid grid-cols-2 gap-2 border-t border-ink/10 bg-white/95 p-4 backdrop-blur sm:px-5">
+        <Button variant="ghost" onClick={onClose}>
+          Wróć do etykiety
+        </Button>
+        <Button data-testid="apply-label-settings" onClick={() => void onSave(draft)}>
+          Zastosuj ustawienia
+        </Button>
+      </footer>
+    </Card>
+  );
+}
+
+function RunLabelEditor({
+  label,
+  logoUrl,
+  repository,
+  onSave,
+}: {
+  label: MasterLabelData;
+  logoUrl: string | null;
+  repository: LabelRepository;
   onSave: (label: MasterLabelData) => Promise<void>;
 }) {
   const [draft, setDraft] = useState(label);
   const [uploading, setUploading] = useState(false);
   const primaryLanguage = draft.labelLanguages[0] ?? 'pl';
   const draftPreflight = useMemo(() => buildLabelPreflight(draft), [draft]);
+  const blockingCount = draftPreflight.items.filter((item) => item.status !== 'ready').length;
   const missingFields = useMemo(
     () =>
       new Set(
@@ -1415,22 +1410,20 @@ function RunLabelEditor({
     <Card
       padding="none"
       className="overflow-hidden rounded-[18px] border-ink/10 shadow-pro-e0"
-      data-testid="label-settings-view"
+      data-testid="label-data-intake"
+      data-label-market={draft.market}
     >
       <header className="border-b border-ink/10 bg-[#fffdf8] px-4 py-4 sm:px-5">
-        <button
-          type="button"
-          onClick={onClose}
-          className="pro-focus-ring -ml-1 min-h-11 px-1 text-xs font-semibold text-stone-600 transition-colors hover:text-ink"
-        >
-          ← {backLabel}
-        </button>
         <div className="mt-1 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <SectionLabel>Ustawienia etykiety</SectionLabel>
+            <SectionLabel>Dane do etykiety</SectionLabel>
             <h2 className="mt-1 text-xl font-semibold tracking-[-0.02em] text-ink">
-              Profil i dane bieżącej etykiety
+              Uzupełnij wszystko przed podglądem
             </h2>
+            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-stone-600">
+              To jedyne miejsce na obowiązkowe dane. Etykietę pokażemy dopiero, gdy będzie gotowa do
+              druku i eksportu PDF.
+            </p>
           </div>
           <span className="rounded-full border border-ink/10 bg-white px-2.5 py-1 text-xs font-semibold text-ink">
             {marketProfile(draft.market).flag} {marketProfile(draft.market).label}
@@ -1439,32 +1432,32 @@ function RunLabelEditor({
         <div
           className={cn(
             'mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[12px] border px-3 py-3',
-            draftPreflight.missingCount > 0
+            blockingCount > 0
               ? 'border-[#d8bb8d] bg-[#fbf8f1]'
               : 'border-status-ideal/25 bg-status-ideal/[0.06]',
           )}
-          data-testid="label-settings-missing-count"
+          data-testid="label-data-missing-count"
           role="status"
           aria-live="polite"
         >
           <div>
             <strong className="block text-sm text-ink">
-              {draftPreflight.missingCount > 0
+              {blockingCount > 0
                 ? 'Uzupełnij wymagane pola'
                 : 'Wszystkie wymagane informacje są uzupełnione'}
             </strong>
             <span className="mt-0.5 block text-xs text-stone-600">
-              {draftPreflight.missingCount > 0
-                ? `Brakuje ${draftPreflight.missingCount} informacji. Wszystkie są oznaczone poniżej.`
-                : 'Pozostają istniejące kontrole profilu prawnego i przeglądu.'}
+              {blockingCount > 0
+                ? `Do gotowego wydruku brakuje ${blockingCount} pozycji. Wszystkie są dostępne na tym ekranie.`
+                : 'Możesz przejść bezpośrednio do gotowej etykiety.'}
             </span>
           </div>
-          {draftPreflight.missingCount > 0 ? (
+          {blockingCount > 0 ? (
             <button
               type="button"
               className="pro-focus-ring min-h-11 px-2 text-xs font-semibold text-[#8a5b23] underline underline-offset-4"
               onClick={(event) => {
-                const root = event.currentTarget.closest('[data-testid="label-settings-view"]');
+                const root = event.currentTarget.closest('[data-testid="label-data-intake"]');
                 const control = root?.querySelector<HTMLElement>(
                   '[data-missing-required="true"] input, [data-missing-required="true"] select, [data-missing-required="true"] button',
                 );
@@ -2379,15 +2372,6 @@ function RunLabelEditor({
               />
               Sprawdziłem dane etykiety przed wydrukiem.
             </label>
-            <label className="flex min-h-12 items-center gap-3 rounded-[12px] border border-ink/10 bg-[#fffdf8] px-3 text-xs text-ink">
-              <input
-                type="checkbox"
-                className="size-5 accent-ink"
-                checked={saveAsDefault}
-                onChange={(event) => onSaveAsDefaultChange(event.currentTarget.checked)}
-              />
-              Zapisz jako domyślne dla przyszłych etykiet.
-            </label>
           </div>
           <p className="mt-3 text-xs leading-relaxed text-stone-500">
             Profil prawny pozostaje oznaczony zgodnie z istniejącą macierzą. Gellatti nie deklaruje
@@ -2396,13 +2380,11 @@ function RunLabelEditor({
         </SettingsSection>
       </div>
 
-      <footer className="sticky bottom-11 z-10 grid grid-cols-2 gap-2 border-t border-ink/10 bg-white/95 p-4 backdrop-blur sm:px-5">
-        <Button variant="ghost" onClick={onClose}>
-          {backLabel === 'Etykieta' ? 'Wróć do etykiety' : 'Wróć do danych etykiety'}
-        </Button>
+      <footer className="sticky bottom-11 z-10 border-t border-ink/10 bg-white/95 p-4 backdrop-blur sm:px-5">
         <Button
+          className="w-full"
           data-testid="show-label-preview"
-          disabled={draftPreflight.missingCount > 0}
+          disabled={!draftPreflight.readyForSystemPrint}
           onClick={() => void onSave(draft)}
         >
           Pokaż etykietę
