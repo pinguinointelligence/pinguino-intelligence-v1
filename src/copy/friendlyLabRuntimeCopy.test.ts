@@ -13,6 +13,7 @@ const MATERIAL_SURFACES = [
   ['features', 'ingredient-builder', 'IngredientPicker.tsx'],
   ['features', 'ingredient-builder', 'ServerIngredientPicker.tsx'],
   ['features', 'pro-core', 'ProRecalcPanel.tsx'],
+  ['features', 'pro-core', 'ProWorkbar.tsx'],
   ['features', 'pro-workbench', 'RecipeAxisScale.tsx'],
   ['features', 'pro-workbench', 'RecipeProfilePanel.tsx'],
   ['features', 'recipes', 'useCanonicalRecipeSave.ts'],
@@ -68,7 +69,11 @@ describe('Gellatti Friendly Lab — material runtime copy', () => {
       'Jeszcze nie widzę smaku. Dodaj go poniżej i ruszamy dalej.',
       'Gotowe. Produkt jest w Twoim katalogu.',
       'Jeszcze jeden krok. Potwierdź ustawienia, a potem przeliczymy recepturę.',
-      'Sprawdzamy recepturę i szukamy bezpiecznej korekty…',
+      'Jeszcze nie liczyliśmy tej receptury.',
+      'Liczymy balans receptury…',
+      'Gotowe. Sprawdź proponowaną korektę.',
+      'Perfetto. Receptura jest gotowa.',
+      'Gotowe. Receptura zapisana.',
       'Gotowe. Sprawdź korektę i zastosuj ją, jeśli Ci odpowiada.',
       'Wszystko gotowe do rozpoczęcia partii',
       'Partia odbiega od planu',
@@ -103,6 +108,10 @@ describe('Gellatti Friendly Lab — material runtime copy', () => {
       /\b(?:Mamma mia|Perfetto|Andiamo|Gellattissimo|Bellissimo)\b/i.test(text),
     );
     expect(italian).toEqual([
+      {
+        file: 'features/pro-workbench/RecipeProfilePanel.tsx',
+        text: 'Perfetto. Receptura jest gotowa.',
+      },
       {
         file: 'features/constraint-studio/ui/ConstraintPreviewCard.tsx',
         text: 'Gellattissimo! Wybrany profil osiągnięty.',

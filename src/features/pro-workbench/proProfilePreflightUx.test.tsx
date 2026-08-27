@@ -38,6 +38,7 @@ import { RecipeProfilePanel } from './RecipeProfilePanel';
 import { WorkbenchIntelligenceHeader } from './WorkbenchIntelligenceHeader';
 import { monitorScoreView } from './monitorSummaryView';
 import { formatMonitorValue } from './professionalMonitorModel';
+import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 
 const SRC = resolve(import.meta.dirname, '..', '..');
 const read = (...parts: string[]) => readFileSync(join(SRC, ...parts), 'utf8');
@@ -99,6 +100,116 @@ describe('canonical Pro header contract', () => {
 });
 
 describe('profile hierarchy and compact preflight', () => {
+  it('renders honest INITIAL, WORKING, STALE and BLOCKED Recipe states in the real panel', async () => {
+    const input = starterMilkBase();
+    const result = calculateRecipe(input);
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    const renderPanel = () => (
+      <RecipeProfilePanel
+        activeTab="profile"
+        onTabChange={() => undefined}
+        result={result}
+        servingTemperatureC={input.target_temperature_c}
+        corrections={proposeCorrections({
+          input,
+          context: recipeContext(input),
+          redact: false,
+        })}
+        input={input}
+        idPrefix="friendly-lab-state"
+        showTabs={false}
+        onOpenPreview={() => undefined}
+        onRecalculate={() => undefined}
+      />
+    );
+
+    useConstraintStudioStore.getState().resetForTests();
+    useRecipeStore.setState({
+      newRecipeStarterKey: {
+        visibleProductType: 'gelato',
+        servingModeId: 'temp_minus_11',
+        formulationStrategy: 'optimal',
+        targetBatchGrams: 1_000,
+      },
+      productBehaviorSnapshots: productBehaviorTestSnapshots(input),
+      draftRevision: 51,
+    });
+    useRecipeProfileStore.getState().acknowledgeRecalculation();
+
+    try {
+      await act(async () => root.render(renderPanel()));
+      expect(host.querySelector('[data-testid="friendly-lab-recipe-initial"]')).not.toBeNull();
+      expect(host.textContent).toContain('Jeszcze nie liczyliśmy tej receptury.');
+      expect(host.textContent).not.toContain('Podgląd receptury');
+
+      await act(async () => {
+        useRecipeProfileStore.getState().markRecalculationRequired();
+        useConstraintStudioStore.setState({ recalculationTerminal: { state: 'WORKING' } });
+        root.render(renderPanel());
+      });
+      expect(host.querySelector('[data-testid="friendly-lab-recipe-working"]')).not.toBeNull();
+      expect(host.textContent).toContain('Liczymy balans receptury…');
+
+      await act(async () => {
+        useRecipeStore.setState({ newRecipeStarterKey: null });
+        useConstraintStudioStore.setState({ recalculationTerminal: null });
+        root.render(renderPanel());
+      });
+      expect(host.querySelector('[data-testid="friendly-lab-recipe-stale"]')).not.toBeNull();
+      expect(host.textContent).toContain('Receptura się zmieniła.');
+
+      await act(async () => {
+        useRecipeProfileStore.getState().acknowledgeRecalculation();
+        const blockedSnapshots = productBehaviorTestSnapshots(input);
+        const firstLineId = input.items[0]!.id;
+        blockedSnapshots[firstLineId] = {
+          ...blockedSnapshots[firstLineId]!,
+          moduleEligibility: {
+            ...blockedSnapshots[firstLineId]!.moduleEligibility,
+            NUTRITION: 'blocked',
+          },
+        };
+        useRecipeStore.setState({ productBehaviorSnapshots: blockedSnapshots });
+        useConstraintStudioStore.setState({
+          recalculationTerminal: {
+            state: 'ERROR',
+            messagePl: 'Nie udało się przeliczyć receptury.',
+          },
+        });
+        root.render(renderPanel());
+      });
+      expect(host.querySelector('[data-testid="friendly-lab-recipe-blocked"]')).not.toBeNull();
+      expect(host.textContent).toContain('Nie możemy jeszcze pokazać aktualnego balansu.');
+
+      await act(async () => {
+        useRecipeStore.setState({ productBehaviorSnapshots: productBehaviorTestSnapshots(input) });
+        useRecipeProfileStore.getState().acknowledgeRecalculation();
+        useConstraintStudioStore.setState({
+          applyPending: false,
+          blocked: null,
+          history: [],
+          recalculationTerminal: null,
+        });
+        root.render(renderPanel());
+      });
+      await act(async () => {
+        useConstraintStudioStore.setState({ applyPending: true });
+        root.render(renderPanel());
+      });
+      await act(async () => {
+        useConstraintStudioStore.setState({ applyPending: false, history: [{} as never] });
+        root.render(renderPanel());
+      });
+      expect(host.querySelector('[data-testid="friendly-lab-apply-success"]')).not.toBeNull();
+      expect(host.textContent).toContain('Perfetto. Receptura jest gotowa.');
+    } finally {
+      await act(async () => root.unmount());
+      host.remove();
+    }
+  });
+
   it('publishes score, inline Monitor, full Monitor, kcal and cost under one current-result gate', async () => {
     const input = starterMilkBase();
     const result = calculateRecipe(input);

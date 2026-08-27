@@ -109,7 +109,7 @@ describe('customer copy guard', () => {
     expect(formatEntries(violations)).toBe('');
   });
 
-  it('allows only the three approved Italian success moments', () => {
+  it('allows only the four approved Italian success moments', () => {
     const italian = entries.filter((entry) =>
       /\b(?:Mamma mia|Perfetto|Andiamo|Gellattissimo|Bellissimo)\b/i.test(entry.text),
     );
@@ -121,6 +121,10 @@ describe('customer copy guard', () => {
       {
         file: 'src/features/constraint-studio/ui/ConstraintPreviewCard.tsx',
         text: 'Gellattissimo! Wybrany profil osiągnięty.',
+      },
+      {
+        file: 'src/features/pro-workbench/RecipeProfilePanel.tsx',
+        text: 'Perfetto. Receptura jest gotowa.',
       },
       {
         file: 'src/features/production-workspace/ProductionWorkspaceHeader.tsx',

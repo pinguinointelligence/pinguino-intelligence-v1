@@ -593,7 +593,7 @@ export const copy = {
     recalcPanel: {
       title: 'Podgląd przeliczenia',
       close: 'Zamknij',
-      applied: 'Zastosowano zmiany do receptury roboczej. Zapisz recepturę, aby je utrwalić.',
+      applied: 'Zmiany są w recepturze roboczej. Zapisz, aby je zachować.',
       undo: 'Cofnij',
     },
   },

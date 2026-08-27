@@ -199,13 +199,13 @@ export function ConstraintPreviewCard({
 
   return (
     <section
-      aria-label="Gotowe. Sprawdź proponowaną korektę"
+      aria-label="Gotowe. Sprawdź proponowaną korektę."
       className="rounded-[14px] border border-black/10 bg-white px-3 py-3 text-black [--color-charcoal:#191a1d] [--color-ivory:#202124] [--color-shell:#f5f3ee] [color-scheme:light] sm:px-4 sm:py-4"
       data-testid="preview-customer-view"
     >
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-base font-semibold leading-tight text-black sm:text-lg">
-          Gotowe. Sprawdź proponowaną korektę
+          Gotowe. Sprawdź proponowaną korektę.
         </h2>
         <div className="flex shrink-0 items-center gap-2">
           <span className="hidden rounded-full border border-black/10 bg-stone-100 px-2.5 py-1 text-[0.625rem] font-semibold tracking-[0.08em] text-black/65 uppercase sm:inline-flex">

@@ -12,6 +12,7 @@ import { scorePresentationSource } from './scorePresentationSource';
 import { assessProteinFormulation } from '@/features/protein-gelato/proteinAuthority';
 import { WorkbenchScoreDisplay } from './WorkbenchScoreDisplay';
 import { buildCurrentRecipeResultAuthority } from './currentRecipeResultAuthority';
+import { friendlyLabRecipeJourneyState } from './friendlyLabRecipeJourney';
 
 export function WorkbenchIntelligenceHeader({
   result,
@@ -31,6 +32,7 @@ export function WorkbenchIntelligenceHeader({
   const toppings = useRecipeStore((state) => state.toppings);
   const draftRevision = useRecipeStore((state) => state.draftRevision);
   const savedRecipeId = useRecipeStore((state) => state.savedRecipeId);
+  const hasNewRecipeStarter = useRecipeStore((state) => state.newRecipeStarterKey !== null);
   const preview = useConstraintStudioStore((state) => state.preview);
   const directionBestCandidate = useConstraintStudioStore((state) => state.directionBestCandidate);
   const recalculationTerminal = useConstraintStudioStore((state) => state.recalculationTerminal);
@@ -64,6 +66,14 @@ export function WorkbenchIntelligenceHeader({
     ],
   );
   const legacyInspection = recipeBehaviorLegacyInspection(authority, savedRecipeId);
+  const journeyState = friendlyLabRecipeJourneyState({
+    currentResultAuthority,
+    awaitingRecalculation,
+    hasNewRecipeStarter,
+    appliedHistoryCount,
+    recalculationTerminal,
+    legacyInspection: Boolean(legacyInspection),
+  });
   const hasRecipe = result.total_batch_g > 0;
   const previewInput =
     recalculationTerminal?.state === 'PREVIEW_READY'
@@ -78,7 +88,8 @@ export function WorkbenchIntelligenceHeader({
   // the authoritative calculated score, or `Przelicz` — never both. The live
   // as-written evaluation belongs to the Monitor alone; binding this control to
   // it would duplicate the score and destroy the designed state semantics.
-  const current = hasRecipe && currentResultAuthority.ready && !legacyInspection;
+  const current =
+    hasRecipe && journeyState === 'CURRENT' && currentResultAuthority.ready && !legacyInspection;
   const displayedMatch = previewMatch ?? (current ? match : null);
   // Protein v2: measured content of the SAME candidate the ring is describing,
   // so a preview that lowers protein while raising the score renders exactly
@@ -105,7 +116,7 @@ export function WorkbenchIntelligenceHeader({
     hasAppliedHistory: appliedHistoryCount > 0,
   });
   const working = recalculationTerminal?.state === 'WORKING';
-  const pending = !displayedMatch || awaitingRecalculation;
+  const pending = !displayedMatch || (journeyState !== 'CURRENT' && previewMatch === null);
 
   if (variant === 'dock') {
     return (
@@ -115,6 +126,7 @@ export function WorkbenchIntelligenceHeader({
         data-score-source={scoreSource ?? 'AWAITING_CALCULATION'}
         data-current-result-state={currentResultAuthority.state}
         data-current-result-revision={currentResultAuthority.draftRevision}
+        data-friendly-lab-recipe-state={journeyState}
       >
         {pending || working ? (
           <button
@@ -162,6 +174,7 @@ export function WorkbenchIntelligenceHeader({
       data-score-source={scoreSource ?? 'AWAITING_CALCULATION'}
       data-current-result-state={currentResultAuthority.state}
       data-current-result-revision={currentResultAuthority.draftRevision}
+      data-friendly-lab-recipe-state={journeyState}
       aria-label={`Dopasowanie techniczne receptury: ${displayedMatch ? displayedMatch.display : 'oczekuje na przeliczenie'}`}
     >
       <button

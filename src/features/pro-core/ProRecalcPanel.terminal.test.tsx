@@ -164,9 +164,7 @@ describe('PI visible terminal contract', () => {
     });
     await renderPanel();
     expect(document.querySelector('[data-terminal-state="WORKING"]')).not.toBeNull();
-    expect(document.body.textContent).toContain(
-      'Sprawdzamy recepturę i szukamy bezpiecznej korekty…',
-    );
+    expect(document.body.textContent).toContain('Liczymy balans receptury…');
     expect(
       document
         .querySelector('[data-testid="pro-recalc-working"]')

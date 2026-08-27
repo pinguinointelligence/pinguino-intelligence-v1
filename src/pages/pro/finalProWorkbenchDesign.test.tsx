@@ -386,7 +386,7 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     expect(preview).toContain('role="dialog"');
     expect(preview).toContain('effectiveAccess?.canAdmin === true');
     expect(preview).toContain('showTechnicalDetails={canViewTechnicalDetails}');
-    expect(preview).toContain("'Gotowe. Sprawdź proponowaną korektę'");
+    expect(preview).toContain("'Gotowe. Sprawdź proponowaną korektę.'");
   });
 
   it('locks the desktop body and provides a mobile cockpit bottom sheet without horizontal scrolling', () => {

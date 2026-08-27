@@ -11,6 +11,7 @@ import {
 import { NewRecipeConfirmationDialog } from '@/features/recipes/NewRecipeConfirmationDialog';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { iconButtonClasses } from '@/components/ui/buttonStyles';
+import { FriendlyLabMessageMotion } from '@/components/shared/FriendlyLabMessageMotion';
 
 const w = copy.proWorkbar;
 const pm = copy.proMachine;
@@ -52,6 +53,7 @@ export function ProWorkbar({
   const [nameDraft, setNameDraft] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
   const [newRecipeConfirmOpen, setNewRecipeConfirmOpen] = useState(false);
+  const [saveSuccessKey, setSaveSuccessKey] = useState(0);
   const name = nameDraft ?? savedRecipeName ?? '';
 
   const product = copy.studio.goal.productTypes[visibleProductType];
@@ -82,7 +84,10 @@ export function ProWorkbar({
     setNameError(null);
     if (!linked) {
       const created = await save.createNew(title);
-      if (created) setNameDraft(null);
+      if (created) {
+        setNameDraft(null);
+        setSaveSuccessKey((key) => key + 1);
+      }
       return;
     }
     if (title !== (savedRecipeName ?? '')) {
@@ -90,7 +95,10 @@ export function ProWorkbar({
       if (!renamed) return;
     }
     const saved = await save.saveVersion();
-    if (saved) setNameDraft(null);
+    if (saved) {
+      setNameDraft(null);
+      setSaveSuccessKey((key) => key + 1);
+    }
   };
 
   const blockedMsg = save.blocked ? w.blocked[save.blocked] : null;
@@ -261,6 +269,17 @@ export function ProWorkbar({
           </span>
         </div>
       </div>
+
+      {saveSuccessKey > 0 ? (
+        <FriendlyLabMessageMotion
+          key={saveSuccessKey}
+          timing="informational"
+          className="mt-2 rounded-[12px] border border-[#2f6f3c]/20 bg-[#2f6f3c]/[0.055] px-3 py-2 text-xs font-semibold text-[#2f6f3c]"
+          testId="pro-workbar-save-success"
+        >
+          Gotowe. Receptura zapisana.
+        </FriendlyLabMessageMotion>
+      ) : null}
 
       {nameError ? (
         <p

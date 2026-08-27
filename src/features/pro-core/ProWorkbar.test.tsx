@@ -1,3 +1,4 @@
+/** @vitest-environment jsdom */
 /**
  * PINGÜINO Pro sticky workbar contract (owner binding decision: primary actions always at top).
  *
@@ -9,6 +10,8 @@
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { createRoot } from 'react-dom/client';
+import { act } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { copy } from '@/copy/en';
 
@@ -173,6 +176,32 @@ describe('ProWorkbar (sticky top workbar)', () => {
     expect(html).not.toContain('data-attention="required"');
     expect(html).not.toContain('gellatti-next-action-attention');
     mockSave.practicalBlocked = false;
+  });
+
+  it('shows the Friendly Lab save confirmation only after the canonical save succeeds', async () => {
+    mockState = {
+      ...mockState,
+      savedRecipeId: 'r1',
+      savedRecipeName: 'Pistacja Premium',
+      dirty: true,
+    };
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    try {
+      await act(async () => root.render(<ProWorkbar variant="panel" />));
+      const button = host.querySelector<HTMLButtonElement>('[data-testid="pro-workbar-save"]');
+      expect(button).not.toBeNull();
+      await act(async () => {
+        button!.click();
+        await Promise.resolve();
+      });
+      expect(host.querySelector('[data-testid="pro-workbar-save-success"]')).not.toBeNull();
+      expect(host.textContent).toContain('Gotowe. Receptura zapisana.');
+    } finally {
+      await act(async () => root.unmount());
+      host.remove();
+    }
   });
 
   it('returns to Niezapisane after another edit and reuses the ingredient warning-dot token', () => {
