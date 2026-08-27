@@ -21,8 +21,8 @@
     "productionSessionSchema": 2
   },
   "bundle": {
-    "bytes": 333282,
-    "sha256": "ffd3f026cbc46873206e95358dd3b3959c8fb16762d31a8d1a80925cb89a23a5",
+    "bytes": 333318,
+    "sha256": "a1522d8ffa29c46912be23d5b588f733cdc3be5bdbf53a89dc21707afb5314ec",
     "externalImports": 0,
     "dynamicImports": 0
   },
@@ -185,7 +185,7 @@
     },
     {
       "path": "src/features/product-intelligence/productBehaviorResolver.ts",
-      "sha256": "003bcc884447ec0566a77a35513d01dfeb7d17cd07519f4751bf38424d2ce37b"
+      "sha256": "08470912c5af2a3f740ccf71332346d95b343736c54869b6a7f5973af7f305c2"
     },
     {
       "path": "src/features/product-intelligence/recipeBehaviorAuthority.ts",
@@ -268,5 +268,5 @@
       "sha256": "a2207c9c4e9431daa728d6b03fe1b9c4a4a3ba3403a0c056f2808c0759a455c8"
     }
   ],
-  "sourceClosureSha256": "2f544a2f347424ad3285ea6f733ee5683d2135cd61cd5d39b337c51f62d13dcf"
+  "sourceClosureSha256": "9e53718f63a07f2228398ecaa3f7aa6cf95f626a5980014e0ccefb3f3b87f0bc"
 }

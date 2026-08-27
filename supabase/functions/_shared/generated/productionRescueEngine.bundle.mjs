@@ -4204,7 +4204,8 @@ function productBehaviorSnapshotFingerprint(snapshots) {
 		value.moduleEligibility,
 		value.processScope,
 		value.resolutionContext,
-		value.sharedFacts ?? null
+		value.sharedFacts ?? null,
+		value.historicalIdentity ?? null
 	]));
 }
 
