@@ -171,8 +171,8 @@ export function verifiedRecipeSubstituteCandidates(
         'Ta sama rola technologiczna; Gellatti przeliczy całą recepturę przed zastosowaniem.',
       compatibility:
         input.category === 'vegan_gelato'
-          ? 'Potwierdzona zgodność Vegan i pełny profil Engine.'
-          : 'Kompletny profil Engine; znane alergeny bez zmiany.',
+          ? 'Potwierdzona zgodność Vegan i kompletne dane do obliczeń.'
+          : 'Kompletne dane do obliczeń; znane alergeny bez zmiany.',
       requiresMainConfirmation: isMain,
     }));
 }

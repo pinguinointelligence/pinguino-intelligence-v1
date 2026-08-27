@@ -668,7 +668,7 @@ export function useProductionWorkspace(enabled: boolean) {
             key: recoveryKey,
             busy: false,
             error:
-              'Nie udało się uzgodnić lokalnej sesji z trwałym zapisem Produkcji. Wróć do receptury i spróbuj ponownie.',
+              'Nie udało się połączyć bieżącej partii z jej zapisem. Wróć do receptury i spróbuj ponownie.',
             orphanedLocal: caught instanceof MissingDurableProductionRunError,
           });
         }
@@ -764,8 +764,8 @@ export function useProductionWorkspace(enabled: boolean) {
   const productionPrerequisite = sessionOwnerMismatch
     ? prerequisite(
         'owner_mismatch',
-        'Otwórz własną sesję',
-        'Zapisana sesja należy do innego konta i nie może zostać otwarta.',
+        'Otwórz własną partię',
+        'Ta partia należy do innego konta i nie może zostać otwarta.',
         'return_to_recipe',
         'Wróć do receptury',
       )
@@ -773,25 +773,25 @@ export function useProductionWorkspace(enabled: boolean) {
       ? prerequisite(
           'repository_unavailable',
           'Produkcja chwilowo niedostępna',
-          'Nie udało się połączyć z bezpiecznym repozytorium Produkcji. Receptura nie została zmieniona.',
+          'Nie udało się połączyć z zapisem produkcji. Receptura nie została zmieniona.',
           'return_to_recipe',
           'Wróć do receptury',
         )
       : recoveryOrphanedLocal
         ? prerequisite(
             'repository_recovery',
-            'Lokalna sesja nie ma trwałego runu',
-            'Zachowaj osieroconą sesję w lokalnej historii i odłącz ją, aby bezpiecznie sprawdzić lub rozpocząć partię dla zapisanej wersji.',
+            'Bieżąca partia nie ma zapisu',
+            'Zachowaj ją w lokalnej historii i odłącz, aby bezpiecznie rozpocząć partię dla zapisanej wersji.',
             'archive_stale_session',
-            'Zachowaj i odłącz lokalną sesję',
+            'Zachowaj i odłącz partię',
           )
         : staleSource
           ? prerequisite(
               'stale_source',
               'Źródło Produkcji jest nieaktualne',
-              'Receptura zmieniła się po przygotowaniu tej sesji. Zarchiwizuj starą sesję, aby zachować jej zapis i przygotować nową partię.',
+              'Receptura zmieniła się po przygotowaniu tej partii. Zarchiwizuj wcześniejszą partię, aby zachować jej zapis i przygotować nową.',
               'archive_stale_session',
-              'Zarchiwizuj starą sesję',
+              'Zarchiwizuj wcześniejszą partię',
             )
           : (practicalGate.prerequisite ??
             (practicalGate.ready && source.recipeVersionId === null
@@ -821,16 +821,16 @@ export function useProductionWorkspace(enabled: boolean) {
               ? prerequisite(
                   'repository_recovery',
                   recoveryOrphanedLocal
-                    ? 'Lokalna sesja nie ma trwałego runu'
+                    ? 'Bieżąca partia nie ma zapisu'
                     : recoveryError
                       ? 'Nie udało się odzyskać partii'
                       : 'Odzyskujemy partię',
                   recoveryOrphanedLocal
-                    ? 'Zachowaj osieroconą sesję w lokalnej historii i odłącz ją, aby bezpiecznie sprawdzić lub rozpocząć partię dla zapisanej wersji.'
+                    ? 'Zachowaj ją w lokalnej historii i odłącz, aby bezpiecznie rozpocząć partię dla zapisanej wersji.'
                     : (recoveryError ??
                         'Sprawdzamy trwały zapis, aby nie uruchomić drugi raz tej samej partii.'),
                   recoveryOrphanedLocal ? 'archive_stale_session' : 'return_to_recipe',
-                  recoveryOrphanedLocal ? 'Zachowaj i odłącz lokalną sesję' : 'Wróć do receptury',
+                  recoveryOrphanedLocal ? 'Zachowaj i odłącz partię' : 'Wróć do receptury',
                 )
               : null));
 
@@ -1423,7 +1423,7 @@ export function useProductionWorkspace(enabled: boolean) {
       } catch {
         setPersistence({
           busy: false,
-          error: 'Nie udało się bezpiecznie zarchiwizować trwałego runu Produkcji.',
+          error: 'Nie udało się bezpiecznie zarchiwizować partii. Zapis pozostaje bez zmian.',
         });
         setReconcileRevision((current) => current + 1);
         return;

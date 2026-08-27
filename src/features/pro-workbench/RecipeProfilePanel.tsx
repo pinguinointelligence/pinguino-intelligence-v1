@@ -355,10 +355,12 @@ function SummaryPanel({
         data-testid="label-workspace-empty"
       >
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#9b7d37]">Etykieta</p>
-        <h2 className="mt-2 text-lg font-semibold text-ink">Najpierw zakończ Produkcję</h2>
+        <h2 className="mt-2 text-lg font-semibold text-ink">
+          Etykieta potrzebuje zakończonej partii
+        </h2>
         <p className="mt-2 max-w-xl text-sm leading-relaxed text-stone-600">
-          Etykieta powstaje z faktycznie wykonanej partii. Po zakończeniu runu pojawią się tutaj
-          składniki ACTUAL, wartości odżywcze, koszt, baza techniczna i automatyczny LOT.
+          Gdy zakończysz produkcję, pojawią się tu potwierdzone składniki, wartości odżywcze, koszt,
+          baza techniczna i numer partii (LOT).
         </p>
         <Button className="mt-4" onClick={onOpenProduction}>
           Otwórz Produkcję

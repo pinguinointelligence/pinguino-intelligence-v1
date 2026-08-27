@@ -147,7 +147,7 @@ export const communityCopyPl: CommunityCopy = {
     creator: 'Twórca',
     partner: 'Gellatti Partner',
     createdBy: 'Autor',
-    sharedBy: 'Udostępnił(a)',
+    sharedBy: 'Udostępnione przez',
     basedOn: 'Na podstawie',
   },
   actions: {
@@ -159,7 +159,7 @@ export const communityCopyPl: CommunityCopy = {
     unlockThisRecipe: 'Odblokuj tę recepturę',
     revokeLink: 'Unieważnij link',
     copyLink: 'Kopiuj link',
-    linkCopied: 'Link skopiowany',
+    linkCopied: 'Gotowe. Link czeka w schowku.',
     share: 'Udostępnij',
     removeFromReceived: 'Usuń z otrzymanych',
     report: 'Zgłoś',
@@ -193,15 +193,16 @@ export const communityCopyPl: CommunityCopy = {
   },
   share: {
     dialogTitle: 'Udostępnij recepturę',
-    dialogBody: 'Tworzymy bezpieczny link. Receptura NIE trafia do Community ani do wyszukiwarek.',
+    dialogBody:
+      'Tworzymy bezpieczny, niepubliczny link. Receptura nie trafi do Community ani do wyszukiwarek.',
     versionNote: (versionNumber) =>
       `Link wskazuje wersję ${versionNumber} i zawsze będzie ją pokazywał.`,
     unlistedNote: 'Link niepubliczny — dostępny tylko dla osób, którym go wyślesz.',
     partnerNote:
       'Ten link jest powiązany z Twoim aktywnym statusem Gellatti Partner. Prowizja przysługuje wyłącznie za subskrypcje pozyskane w czasie aktywnego statusu.',
-    notFound: 'Nie znaleziono tej receptury.',
-    revoked: 'Ten link został unieważniony przez osobę, która go wysłała.',
-    expired: 'Ten link wygasł.',
+    notFound: 'Nie możemy otworzyć tej receptury. Sprawdź link i spróbuj ponownie.',
+    revoked: 'Ten link został wyłączony. Poproś o nowy, jeśli nadal potrzebujesz dostępu.',
+    expired: 'Ten link wygasł. Poproś o nowy.',
     openedByYou: 'Otwarto',
   },
   publish: {
@@ -220,7 +221,7 @@ export const communityCopyPl: CommunityCopy = {
     categoryLabel: 'Kategoria',
     slugLabel: 'Adres publiczny',
     needsCreatorProfile: 'Najpierw utwórz profil Twórcy.',
-    published: 'Opublikowano',
+    published: 'Gotowe. Receptura jest już w Community.',
   },
   creator: {
     claimTitle: 'Profil Twórcy',
@@ -252,11 +253,11 @@ export const communityCopyPl: CommunityCopy = {
     separateFromCreator: 'Statystyki Twórcy znajdziesz w osobnej sekcji.',
   },
   empty: {
-    community: 'Nie ma jeszcze receptur w Community.',
-    top100: 'Ranking pojawi się, gdy receptury zaczną być wykonywane.',
-    received: 'Nikt jeszcze nie udostępnił Ci receptury.',
-    sent: 'Nie udostępniłeś(-aś) jeszcze żadnej receptury.',
-    creatorRecipes: 'Ten twórca nie ma jeszcze publicznych receptur.',
+    community: 'Tu pojawią się pierwsze opublikowane receptury.',
+    top100: 'Ranking ruszy, gdy pojawią się pierwsze wykonania.',
+    received: 'Nie masz jeszcze udostępnionych receptur.',
+    sent: 'Nie masz jeszcze wysłanych receptur.',
+    creatorRecipes: 'Na tym profilu nie ma jeszcze publicznych receptur.',
     firstCreator:
       'Opublikuj swoją pierwszą recepturę i zostań jednym z pierwszych Twórców Gellatti.',
   },

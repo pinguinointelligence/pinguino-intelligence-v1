@@ -417,7 +417,7 @@ describe('honest failure shape (Phase 9) + science freeze (test 18)', () => {
       diagnosis.violatedMetrics!.map((m) => constraintStudioCopy.diagnosis.metricLabels[m] ?? m),
       diagnosis.solverInvocations!,
     );
-    expect(message).toContain('Gellatti przeliczyło recepturę (3 prób)');
+    expect(message).toContain('Przeliczyliśmy recepturę (3 prób)');
     expect(message).toContain('NPAC');
   });
 

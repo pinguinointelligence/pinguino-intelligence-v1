@@ -80,11 +80,11 @@ type ScannerPhase =
   | 'blocked';
 
 const PROGRESS_STEPS = [
-  { id: 'identity', label: 'Rozpoznaję produkt' },
-  { id: 'barcode', label: 'Sprawdzam kod' },
-  { id: 'label', label: 'Odczytuję etykietę' },
-  { id: 'research', label: 'Weryfikuję dane' },
-  { id: 'profile', label: 'Przygotowuję produkt' },
+  { id: 'identity', label: 'Rozpoznajemy produkt' },
+  { id: 'barcode', label: 'Sprawdzamy kod' },
+  { id: 'label', label: 'Odczytujemy etykietę' },
+  { id: 'research', label: 'Potwierdzamy dane' },
+  { id: 'profile', label: 'Przygotowujemy produkt' },
 ] as const;
 
 function fileToBase64(file: File): Promise<string> {
@@ -219,11 +219,11 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
   ): Promise<{ exact: ScanExactProduct | null; evidence: ScanAnalysisResponse | null }> {
     setBarcode(value);
     setPhase('barcode');
-    setBusy('Sprawdzam kod produktu…');
+    setBusy('Sprawdzamy kod produktu…');
     const localMatch = await lookupExactBarcode(value);
     if (localMatch) return { exact: localMatch, evidence: null };
     setPhase('research');
-    setBusy('Weryfikuję produkt i źródła…');
+    setBusy('Potwierdzamy produkt i źródła…');
     try {
       const response = await lookupExactBarcodeFacts({ sessionId, barcode: value });
       setEanLookupDone(true);
@@ -252,7 +252,7 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
     requestedFields: readonly string[],
   ): Promise<{ exact: ScanExactProduct | null; evidence: ScanAnalysisResponse | null }> {
     setPhase(accurateRetry ? 'label' : 'identity');
-    setBusy(accurateRetry ? 'Sprawdzam brakujące dane…' : 'Analizuję produkt…');
+    setBusy(accurateRetry ? 'Sprawdzamy brakujące dane…' : 'Analizujemy produkt…');
     const response = await analyzeProductImages({
       sessionId,
       images: await preparedImages(inputAssets),
@@ -271,7 +271,7 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
     activeBarcode: ValidBarcode,
   ): Promise<Record<string, unknown>> {
     setPhase('profile');
-    setBusy('Przygotowuję produkt do Gellatti…');
+    setBusy('Przygotowujemy produkt do Gellatti…');
     setErrorStage('save');
     const result = await finalizeProductScan({
       action: 'preview',
@@ -599,7 +599,7 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
 
         {busy && (
           <div className="border-t border-ink/10 bg-pro-warm-raised p-5" role="status">
-            <p className="text-base font-semibold text-ink">Analizuję produkt…</p>
+            <p className="text-base font-semibold text-ink">Sprawdzamy produkt…</p>
             <p className="mt-1 text-sm text-stone-600">{busy}</p>
             <ol className="mt-5 grid gap-2 sm:grid-cols-5">
               {PROGRESS_STEPS.map((step, index) => {
@@ -684,8 +684,8 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
               Pokaż szczegóły
             </summary>
             <div className="mt-3 grid gap-3 text-sm text-stone-600 sm:grid-cols-2">
-              <p>Etykieta: {displayResult.evidence.length} potwierdzonych odczytów</p>
-              <p>Źródła internetowe: {displayResult.externalSources.length}</p>
+              <p>Potwierdzone odczyty z etykiety: {displayResult.evidence.length}</p>
+              <p>Dodatkowe źródła: {displayResult.externalSources.length}</p>
               <p>
                 Rodzina:{' '}
                 {String(
@@ -693,23 +693,10 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
                     'rozpoznana',
                 )}
               </p>
+              <p>Dane produktu: potwierdzone dla katalogu</p>
               <p>
-                Źródło danych:{' '}
-                {String(
-                  (preview?.mapper as Record<string, unknown>)?.selectedDonorId ??
-                    'nie był potrzebny',
-                )}
-              </p>
-              <p>
-                Zastosowanie:{' '}
-                {String(
-                  (preview?.productAccuracyAssessment as Record<string, unknown>)?.roleReadiness ??
-                    'gotowe',
-                )}
-              </p>
-              <p>
-                Profil techniczny:{' '}
-                {preview?.engineUsable === true ? 'gotowy do obliczeń' : 'zweryfikowany'}
+                Obliczenia receptury:{' '}
+                {preview?.engineUsable === true ? 'gotowe' : 'wymagają uzupełnienia'}
               </p>
             </div>
           </details>
@@ -747,10 +734,7 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
               <p>
                 Profil obliczeń: {preview?.engineUsable === true ? 'gotowy' : 'wymaga uzupełnienia'}
               </p>
-              <p>
-                Kody decyzji:{' '}
-                {criticalGaps.length > 0 ? criticalGaps.join(', ') : 'brak wystarczającego dowodu'}
-              </p>
+              <p>Weryfikacja: {gapGuidance.explanation}</p>
             </div>
           </details>
         </section>
@@ -767,10 +751,10 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
             </span>
             <div>
               <h2 className="text-2xl font-semibold leading-tight tracking-[-0.03em] text-ink sm:text-3xl">
-                Produkt został dodany
+                Gotowe. Produkt jest w Twoim katalogu.
               </h2>
               <p className="mt-2 text-sm leading-6 text-stone-600">
-                Operacja jest zakończona. Produkt jest gotowy i zapisany w Twoim katalogu.
+                Możesz od razu użyć go w recepturze albo zeskanować kolejny.
               </p>
             </div>
           </div>
@@ -811,7 +795,7 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
               </Link>
             </div>
             <p className="mt-3 border-t border-ink/10 pt-3 text-xs leading-5 text-stone-500">
-              Produkt znajdziesz w Produkty oraz we właściwym pickerze receptury.
+              Znajdziesz go w „Produktach” i przy wyborze składnika do receptury.
             </p>
           </div>
         </section>

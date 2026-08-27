@@ -39,9 +39,9 @@ export function previewIssueMessagePl(issue: PreviewIssue): string {
         ? `Przy ograniczeniu „${issue.conflict.ingredientName}" = ${formatGramsPl(issue.conflict.grams)} `
         : 'Przy obecnych ograniczeniach ';
       const searchPart = issue.capReached
-        ? `Gellatti sprawdziło dostępne korekty (${issue.solverInvocations} prób) ` +
+        ? `Sprawdziliśmy dostępne korekty (${issue.solverInvocations} prób) ` +
           'bez osiągnięcia zatwierdzonych zakresów — taki wynik nie jest uznawany za gotową recepturę.'
-        : `Gellatti sprawdziło wszystkie dozwolone korekty (${issue.solverInvocations} prób).`;
+        : `Sprawdziliśmy wszystkie dozwolone korekty (${issue.solverInvocations} prób).`;
       const nearestPart =
         issue.nearestFeasibleGrams !== null && issue.conflict
           ? ` Najbliższa wykonalna wartość dla „${issue.conflict.ingredientName}": ` +

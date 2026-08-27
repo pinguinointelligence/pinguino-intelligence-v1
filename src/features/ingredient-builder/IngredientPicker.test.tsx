@@ -35,13 +35,12 @@ describe('IngredientPicker — My Products', () => {
         onAdd={() => {}}
       />,
     );
-    expect(html).toMatch(/My Products/);
+    expect(html).toMatch(/Moje produkty/);
     expect(text(html)).toContain('Nata para montar');
     expect(text(html)).toContain('PR-ING-000010');
-    expect(text(html)).toMatch(/PI Generated/);
-    expect(text(html)).toMatch(/Reference-linked profile/);
-    expect(text(html)).toMatch(/PAC\/POD from approved reference/);
-    expect(text(html)).toMatch(/not independently measured/);
+    expect(text(html)).toMatch(/Profil przygotowany przez Gellatti/);
+    expect(text(html)).toMatch(/Profil oparty na zatwierdzonym wzorcu/);
+    expect(text(html)).toMatch(/parametry technologiczne nie były mierzone niezależnie/);
     expect(html).not.toMatch(/%/); // no internal confidence percentage shown
     expect(html).not.toMatch(/Mapper/i); // never the internal "Mapper" word
   });
@@ -56,7 +55,7 @@ describe('IngredientPicker — My Products', () => {
         onAdd={() => {}}
       />,
     );
-    expect(text(html)).toMatch(/pending verification/i);
+    expect(text(html)).toMatch(/zawiera składniki wymagające weryfikacji/i);
   });
 
   it('basement ingredients still render in their category group; no products → no My Products group', () => {
@@ -65,7 +64,7 @@ describe('IngredientPicker — My Products', () => {
       <IngredientPicker library={lib({ ingredients: [milk], searchIndex: new Map([['PI-ING-1', 'whole milk']]) })} onAdd={() => {}} />,
     );
     expect(text(html)).toContain('Whole Milk');
-    expect(html).not.toMatch(/My Products/);
+    expect(html).not.toMatch(/Moje produkty/);
   });
 });
 

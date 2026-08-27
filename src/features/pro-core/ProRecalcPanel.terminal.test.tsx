@@ -153,7 +153,9 @@ describe('PI visible terminal contract', () => {
     });
     await renderPanel();
     expect(document.querySelector('[data-terminal-state="WORKING"]')).not.toBeNull();
-    expect(document.body.textContent).toContain('Gellatti przelicza recepturę…');
+    expect(document.body.textContent).toContain(
+      'Sprawdzamy recepturę i szukamy bezpiecznej korekty…',
+    );
     expect(
       document.querySelector<HTMLButtonElement>('[data-testid="pro-recalc-close"]')?.disabled,
     ).toBe(false);
@@ -352,8 +354,10 @@ describe('PI visible terminal contract', () => {
     });
     await renderPanel();
 
-    expect(document.body.textContent).toContain('Najpierw potwierdź ustawienia receptury.');
-    expect(document.body.textContent).toContain('Przejdź do ustawień');
+    expect(document.body.textContent).toContain(
+      'Jeszcze jeden krok. Potwierdź ustawienia, a potem przeliczymy recepturę.',
+    );
+    expect(document.body.textContent).toContain('Otwórz ustawienia');
   });
 
   it('renders an impossible result with exact lock facts and both recovery actions', async () => {

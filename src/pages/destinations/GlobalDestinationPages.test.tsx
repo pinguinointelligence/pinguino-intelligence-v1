@@ -69,7 +69,7 @@ describe('canonical global destination hubs', () => {
   it('keeps Production gated from Home without pretending it works', () => {
     persona = 'home';
     const html = render(<ProductionHubPage />, '/production');
-    expect(html).toContain('Produkcja jest funkcją planu Pro');
+    expect(html).toContain('Produkcja jest dostępna w planie Pro');
     expect(html).not.toContain('data-testid="production-current"');
   });
 

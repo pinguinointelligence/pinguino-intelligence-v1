@@ -817,7 +817,7 @@ describe('Production trusted Rescue runtime races', () => {
     expect(view?.prerequisite).toMatchObject({
       code: 'repository_recovery',
       action: 'archive_stale_session',
-      actionLabel: 'Zachowaj i odłącz lokalną sesję',
+      actionLabel: 'Zachowaj i odłącz partię',
     });
 
     await act(async () => view!.archiveStaleSession());
@@ -893,7 +893,7 @@ describe('Production trusted Rescue runtime races', () => {
     expect(view?.prerequisite).toMatchObject({
       code: 'stale_source',
       action: 'archive_stale_session',
-      actionLabel: 'Zarchiwizuj starą sesję',
+      actionLabel: 'Zarchiwizuj wcześniejszą partię',
     });
 
     await act(async () => view!.archiveStaleSession());

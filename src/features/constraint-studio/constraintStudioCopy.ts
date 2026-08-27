@@ -127,7 +127,7 @@ export const constraintStudioCopy = {
        batch reconciliation. It is NEVER called a technical improvement. */
     batchReconciledHeading: 'Wyrównanie partii',
     batchReconciledNote: (before: string, target: string) =>
-      `Receptura ważyła ${before} przy celu partii ${target} — Gellatti wyrównało ją dokładnie do celu. ` +
+      `Receptura ważyła ${before} przy celu partii ${target} — wyrównaliśmy ją dokładnie do celu. ` +
       `Nie potwierdzono dalszej poprawy technicznej: proporcje składników pozostają twoje.`,
     /* ── OWNER FINAL INTEGRATION ADDENDUM item 4 (2026-07-25) ──────────────
        „Batch reconciliation is NOT formulation improvement." The heading a
@@ -137,7 +137,7 @@ export const constraintStudioCopy = {
        can never be reduced to „przeskalowano". */
     outcome: {
       batchRescaleHeading: 'Przeskalowano partię',
-      optimizationHeading: 'Gellatti poprawiło balans receptury',
+      optimizationHeading: 'Balans receptury poprawiony',
       /* The mixed case says BOTH, batch first (the owner's order of honesty). */
       bothHeading: 'Przeskalowano partię i poprawiono balans receptury',
       noChangeHeading: 'Bez zweryfikowanej zmiany',
@@ -151,7 +151,7 @@ export const constraintStudioCopy = {
          said „proporcje pozostają twoje" while proposing 595 → 486 g milk and
          180 → 267 g cream). It states what actually happened instead. */
       rescaleChangedCompositionNote: (before: string, after: string) =>
-        `Zmieniono masę partii: ${before} → ${after}. Gellatti zbilansowało recepturę, zachowując ` +
+        `Zmieniono masę partii: ${before} → ${after}. Zbilansowaliśmy recepturę, zachowując ` +
         `wskazane składniki i ograniczenia — proporcje składników uległy zmianie. ` +
         `Nie potwierdzono poprawy technicznej.`,
       /* Only a REAL engine-verified gain may use this sentence. */
@@ -159,7 +159,7 @@ export const constraintStudioCopy = {
         `Obliczenia potwierdziły poprawę techniczną: parametry poza zatwierdzonym zakresem ` +
         `${violationsBefore} → ${violationsAfter}.`,
       noChangeNote:
-        'Gellatti nie potwierdziło ani wyrównania partii, ani poprawy technicznej — ten podgląd ' +
+        'Nie potwierdziliśmy ani wyrównania partii, ani poprawy technicznej — ten podgląd ' +
         'niczego takiego nie deklaruje.',
     },
     /* ── USER-INTENT SOFT HOLD (owner GLOBAL SOFT-HOLD §13, 2026-08-23) ────
@@ -169,15 +169,15 @@ export const constraintStudioCopy = {
        silently. The heading + per-line sentence below are that disclosure. */
     userIntentDeviationHeading: 'Znacząca zmiana wskazanego składnika',
     userIntentDeviationNote:
-      'Aby osiągnąć wybrany profil, Gellatti musiałoby znacząco zmienić składnik, który podałeś. ' +
+      'Aby osiągnąć wybrany profil, trzeba znacząco zmienić wskazany składnik. ' +
       'Pozostałe wskazane składniki i ograniczenia zostały zachowane.',
     userIntentDeviationLine: (name: string, before: string, after: string) =>
       `${name}: ${before} → ${after}.`,
     /* Owner P0 NIGHTLY Phase 6 — the template-seeded fallback provenance note. */
     localFallbackNote:
-      'Pierwsza korekta nie znalazła bezpiecznej poprawy — Gellatti ułożyło recepturę od zatwierdzonego ' +
+      'Pierwsza korekta nie znalazła bezpiecznej poprawy — ułożyliśmy recepturę od zatwierdzonego ' +
       'wzorca z tymi samymi składnikami, blokadami i partią.',
-    addedLine: (name: string, grams: string) => `Gellatti dodało: ${name} · ${grams}.`,
+    addedLine: (name: string, grams: string) => `Dodaliśmy: ${name} · ${grams}.`,
     residualWarning: (residual: string) =>
       `Suma składników odbiega od docelowej masy partii o ${residual}. Zastosowanie zostanie zablokowane.`,
     /* Owner P0 UX repair (2026-07-24) — truthful de-emphasis of deliberate 0 g lines
@@ -244,7 +244,7 @@ export const constraintStudioCopy = {
       `masą partii (${formatGramsPl(targetBatch)}). Receptura nie została zmieniona.`,
     /* Owner P0 (definitive fail) — the exact required rejection sentence. */
     unsafeProposal:
-      'Gellatti nie utworzyło bezpiecznej receptury. Propozycja została odrzucona. ' +
+      'Nie udało się utworzyć bezpiecznej receptury. Propozycja została odrzucona. ' +
       'Receptura nie została zmieniona.',
     /**
      * A Main/product-authority verdict here describes the PROPOSAL the solver built, not the
@@ -383,15 +383,14 @@ export const constraintStudioCopy = {
     /** Owner P0 (Przelicz z PI): a PROVEN no-solution failure — the solver really
      * ran and these exact metrics stayed out of the approved bands. */
     optimizerNoSolution: (metricLabels: readonly string[], solverInvocations: number) =>
-      `Gellatti przeliczyło recepturę (${solverInvocations} prób), ale nie znalazło ` +
+      `Przeliczyliśmy recepturę (${solverInvocations} prób), ale nie znaleźliśmy ` +
       `bezpiecznej korekty w zatwierdzonych zakresach.` +
       (metricLabels.length > 0 ? ` Parametry poza zakresem: ${listPl(metricLabels)}.` : ''),
     /** PL labels for the engine's target metrics (proof list rendering). */
     metricLabels: METRIC_LABELS_PL,
     /** Verified: every ingredient is non-adjustable (locks / odważone gramatury). */
     allLocked:
-      'Wszystkie składniki są zablokowane. Odblokuj przynajmniej jeden składnik, aby Gellatti mogło ' +
-      'przeliczyć recepturę.',
+      'Wszystkie składniki są zablokowane. Odblokuj przynajmniej jeden składnik, aby przeliczyć recepturę.',
     /** Verified: N real active locks constrain the solver — the list is shown below. */
     withLocks: (locked: number, total: number) =>
       `Nie znaleziono korekty możliwej przy obecnych blokadach — zablokowane składniki: ` +

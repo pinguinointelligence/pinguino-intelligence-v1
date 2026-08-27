@@ -1087,7 +1087,7 @@ describe('Production workspace touch-first UI', () => {
         onReturnToRecipe={vi.fn()}
       />,
     );
-    expect(html).toContain('Jak chcesz postąpić z odchyleniem?');
+    expect(html).toContain('Partia odbiega od planu');
     expect(html).toContain('data-testid="production-rescue-options"');
     expect(html).toContain('data-testid="production-decision-enlarge_batch"');
     expect(html).toContain('data-decision-state="selected"');
@@ -1210,7 +1210,7 @@ describe('Production workspace touch-first UI', () => {
               title: 'Źródło Produkcji jest nieaktualne',
               message: 'Zachowaj zakończony zapis i przygotuj nowe źródło.',
               action: 'archive_stale_session',
-              actionLabel: 'Zarchiwizuj starą sesję',
+              actionLabel: 'Zarchiwizuj wcześniejszą partię',
             },
             archiveStaleSession: vi.fn(),
           } as unknown as ProductionWorkspaceView
@@ -1221,7 +1221,7 @@ describe('Production workspace touch-first UI', () => {
       />,
     );
     expect(staleCompletedHtml).toContain('data-testid="production-completed"');
-    expect(staleCompletedHtml).toContain('Zarchiwizuj starą sesję');
+    expect(staleCompletedHtml).toContain('Zarchiwizuj wcześniejszą partię');
     expect(staleCompletedHtml).toContain('Zachowaj zakończony zapis');
     const labelWorkspace = readFileSync(
       resolve(import.meta.dirname, '..', 'master-label', 'LabelWorkspace.tsx'),

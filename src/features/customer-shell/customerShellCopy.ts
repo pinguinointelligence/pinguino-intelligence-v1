@@ -60,7 +60,7 @@ export const customerShellCopy = {
     addLabel: 'Dodaj smak',
     addPlaceholder: 'np. bazylia',
     addButton: 'Dodaj',
-    empty: 'Nie wykryliśmy jeszcze żadnego smaku — możesz dodać go poniżej.',
+    empty: 'Jeszcze nie widzę smaku. Dodaj go poniżej i ruszamy dalej.',
   },
 
   /* ------------------------------------------------------------- Product type -- */
@@ -239,7 +239,7 @@ export const customerShellCopy = {
     label: 'Gotowe receptury',
     title: 'Najbliższe pomysły',
     lead: 'To najbliższe propozycje z katalogu. Nie pokazujemy zmyślonych procentów dopasowania — tylko uczciwą etykietę.',
-    empty: 'Nie znaleźliśmy pasujących gotowych receptur. Spróbuj stworzyć nową.',
+    empty: 'Nie ma tu jeszcze pasującej receptury. Stwórzmy nową od początku.',
     view: 'Zobacz recepturę',
     useAsStart: 'Użyj jako punkt wyjścia',
     changeSelection: 'Zmień recepturę',
@@ -278,7 +278,7 @@ export const customerShellCopy = {
     label: 'Podgląd',
     title: 'Podgląd receptury',
     fixtureNotice:
-      'To podglądowa struktura składników, a nie wyliczona receptura. Nazwy są przykładowe, a dokładne ilości wyliczy silnik po odblokowaniu.',
+      'To podgląd struktury składników, nie gotowa receptura. Nazwy są przykładowe, a dokładne ilości pojawią się po uzupełnieniu danych i przeliczeniu.',
     draftNotice:
       'Utworzono edytowalny szkic roboczy na podstawie gotowej receptury — katalog pozostaje bez zmian.',
     typeLabel: 'Rodzaj',
@@ -339,7 +339,7 @@ export const customerShellCopy = {
     stateOutOfBandNoTuning:
       'Receptura wyliczona — część parametrów jest poza złotym zakresem dla tej temperatury podawania.',
     stateStructureOnly:
-      'To podglądowa struktura składników, a nie wyliczona receptura. Dokładne ilości wyliczy silnik, gdy uzupełnisz wymagane dane.',
+      'To podgląd struktury składników, nie gotowa receptura. Uzupełnij wymagane dane, aby zobaczyć dokładne ilości.',
     /**
      * Owner UX correction §11 — ONE unambiguous recipe status, never the old
      * double message („prawie gotowa” + „wyliczona przez silnik” at once).
@@ -374,8 +374,8 @@ export const customerShellCopy = {
     noteToggle: 'Dodaj notatkę',
     create: 'Zapisz recepturę',
     saving: 'Zapisuję…',
-    savedCreated: 'Zapisano recepturę.',
-    savedVersion: 'Zapisano nową wersję tej receptury.',
+    savedCreated: 'Gotowe. Receptura czeka w „Moich recepturach”.',
+    savedVersion: 'Gotowe. Nowa wersja czeka w „Moich recepturach”.',
     openMyRecipes: 'Otwórz „Moje receptury”',
     /** The Home aggregate limit — stated plainly, with the action that IS allowed. */
     homeLimitTitle: (title: string) => `Plan Home przechowuje jedną recepturę: „${title}”.`,
@@ -386,8 +386,8 @@ export const customerShellCopy = {
     signInCta: 'Zaloguj się',
     unavailable:
       'Zapis receptur nie jest dostępny w tym środowisku. Receptura zostaje na ekranie — nic nie zostało zapisane.',
-    notCalculated: 'Recepturę zapiszesz, gdy silnik wyliczy dokładne ilości.',
-    loading: 'Sprawdzam Twoje zapisane receptury…',
+    notCalculated: 'Recepturę zapiszesz po uzupełnieniu danych i dokładnym przeliczeniu.',
+    loading: 'Sprawdzamy Twoje zapisane receptury…',
     localMode: 'Tryb lokalny (dev): zapis nie jest trwały i zniknie po odświeżeniu.',
   },
 
@@ -423,7 +423,7 @@ export const customerShellCopy = {
     remove: 'Usuń',
     why: 'Po co jest ten składnik?',
     whyBody:
-      'Ten składnik należy do bazowej struktury tej receptury. Dokładne proporcje wylicza silnik po odblokowaniu — tutaj pokazujemy tylko, z czego składa się przepis.',
+      'Ten składnik buduje bazową strukturę receptury. Tutaj pokazujemy jego rolę; dokładne proporcje pojawią się po przeliczeniu.',
     close: 'Zamknij',
   },
 
@@ -453,7 +453,8 @@ export const customerShellCopy = {
     pickerTitle: 'Wybierz konkretny produkt',
     searchLabel: 'Szukaj produktu',
     searchPlaceholder: 'Nazwa, marka lub kod EAN…',
-    noResults: 'Brak pasujących produktów. Możesz dodać produkt ręcznie albo zeskanować etykietę.',
+    noResults:
+      'Nie znaleźliśmy pasującego produktu. Dodaj go ręcznie albo zeskanuj etykietę.',
     /**
      * Picker sources (owner 2026-07-18): the canonical shared catalogue „Składniki PI"
      * (live Mapper search) is always present; „Moje produkty" (private, user-owned) is an
@@ -485,12 +486,12 @@ export const customerShellCopy = {
     ingredientEngineApproved: 'Gotowy do obliczeń',
     ingredientNeedsVerification: 'Do weryfikacji po wyborze',
     /** Post-selection engine-values fetch states (rich data, logged-in only). */
-    pickChecking: 'Sprawdzam dane silnika…',
+    pickChecking: 'Sprawdzamy dane produktu…',
     pickLoginRequired:
-      'Dokładne wartości silnika wymagają zalogowania. Wyszukiwanie działa bez konta, ale dane do przeliczenia pobierzemy po zalogowaniu.',
+      'Dokładne dane do przeliczenia są dostępne po zalogowaniu. Wyszukiwanie nadal działa bez konta.',
     pickUnavailable:
-      'Nie udało się pobrać danych silnika — środowisko na żywo nie jest jeszcze dostępne.',
-    pickError: 'Nie udało się pobrać danych silnika. Spróbuj ponownie.',
+      'Nie udało się teraz pobrać danych produktu. Wybierz inny produkt albo spróbuj ponownie za chwilę.',
+    pickError: 'Nie udało się pobrać danych produktu. Spróbuj ponownie.',
     badgeReady: 'Gotowy do przeliczenia',
     badgeNeedsData: 'Wymaga danych',
     packagePrefix: 'Opakowanie',
@@ -507,7 +508,7 @@ export const customerShellCopy = {
     substituteLabel: 'Czym zastąpić?',
     substitutePlaceholder: 'np. rum zamiast whisky',
     substituteConfirm: 'Zastąp',
-    substituteRecorded: 'Zapisaliśmy propozycję zamiany. Silnik uwzględni ją przy przeliczeniu.',
+    substituteRecorded: 'Gotowe. Uwzględnimy tę zamianę przy następnym przeliczeniu.',
     dontHaveRecorded:
       'Zanotowaliśmy, że nie masz tego składnika — możesz go zastąpić albo pominąć.',
     /** Scan / manual add delegation (no live persistence in this environment). */
@@ -518,7 +519,7 @@ export const customerShellCopy = {
     intakeDevLink: 'Otwórz dodawanie produktu (dev)',
     /** Explanation for "Po co jest ten składnik?". */
     whyBody:
-      'Ten składnik realizuje smak, o który poprosiłeś. Wybór konkretnego produktu pozwala silnikowi policzyć recepturę dokładnie — bez zgadywania składu.',
+      'Ten składnik buduje wskazany smak. Wybierz konkretny produkt, aby dokładnie przeliczyć recepturę bez zgadywania składu.',
   },
 
   /* ------------------------------------------------------------- Monitor PI -- */
@@ -530,12 +531,12 @@ export const customerShellCopy = {
     recalc: 'Przelicz recepturę',
     /** Shown when recalculation is allowed (all products resolved). */
     readyNote:
-      'Kierunek zapisany. Dokładne przeliczenie z gramami uruchomisz w planie Home lub Pro — na recepturze wyliczonej przez silnik.',
+      'Kierunek zapisany. W planie Home lub Pro możesz teraz uruchomić dokładne przeliczenie z gramami.',
     /** Shown in the Demo preview (qualitative only, no grams). */
     demoNote: 'W podglądzie pokazujemy kierunek zmian jakościowo, bez gramów.',
     /** Shown when there is no calculated recipe yet (structure_only). */
     needsCalculatedNote:
-      'Monitor receptury dokładnie przeliczy recepturę, gdy karta będzie wyliczona przez silnik (uzupełnij wymagane dane).',
+      'Monitor potrzebuje jeszcze danych produktu. Uzupełnij je, aby dokładnie przeliczyć recepturę.',
     przed: 'Przed',
     po: 'Po zmianie',
     apply: 'Zastosuj zmiany',

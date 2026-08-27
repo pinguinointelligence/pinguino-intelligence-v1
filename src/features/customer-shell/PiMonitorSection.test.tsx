@@ -110,7 +110,7 @@ describe('PiMonitorSection — §13 Monitor Home content', () => {
       renderSection({ persona: 'home', gramsVisible: true, recipeInput: null }),
     );
     expect(text).toContain('Brak wystarczających danych do oceny');
-    expect(text).toContain('Monitor receptury dokładnie przeliczy recepturę');
+    expect(text).toContain('Monitor potrzebuje jeszcze danych produktu');
   });
 
   it('§16 stepped preference controls stay (three steps, never a numeric slider)', () => {

@@ -254,7 +254,7 @@ describe('addendum1 — iteration_cap is NEVER an applicable recipe (T9)', () =>
     expect(message).toContain('Możesz też zmienić typ produktu na Sorbet.');
     expect(message).toContain('Receptura nie została zmieniona.');
     // Honest account of the search: bounded attempts, never "full search proof".
-    expect(message).toContain('Gellatti sprawdziło dostępne korekty (18 prób)');
+    expect(message).toContain('Sprawdziliśmy dostępne korekty (18 prób)');
     expect(message).toContain('taki wynik nie jest uznawany za gotową recepturę');
   });
 

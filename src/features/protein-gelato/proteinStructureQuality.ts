@@ -217,7 +217,7 @@ export function assessProteinStructure(
       messagePl:
         `Tłuszcz ${fatPercent.toFixed(1)}% leży poza oknem ${PROTEIN_FAT_EVIDENCE_ENVELOPE.fatFloorPercent}-` +
         `${PROTEIN_FAT_EVIDENCE_ENVELOPE.fatCeilingPercent}%, w którym badano receptury wysokobiałkowe. ` +
-        `Koperta fizyczna Engine pozostaje nadrzędna.`,
+        `Twarde granice bezpieczeństwa obliczeń pozostają nadrzędne.`,
     });
   }
   const proteinToFat = fatPercent > 0 ? proteinPercent / fatPercent : null;

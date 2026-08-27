@@ -238,7 +238,8 @@ export function useCanonicalRecipeSave(
     if (!restoredVerified) {
       return {
         blocked: true,
-        message: 'Przed zapisem otwórz Preview i zastosuj zweryfikowaną recepturę wykonawczą.',
+        message:
+          'Jeszcze jeden krok. Otwórz podgląd i zastosuj zweryfikowaną recepturę przed zapisem.',
       };
     }
     const result = practicalizeRecipeCandidate(input, constraints);
@@ -251,7 +252,7 @@ export function useCanonicalRecipeSave(
       : {
           blocked: true,
           message:
-            'Przed zapisem otwórz Preview i zastosuj zweryfikowaną recepturę w pełnych gramach.',
+            'Jeszcze jeden krok. Otwórz podgląd i zastosuj zweryfikowaną recepturę z pełnymi gramaturami przed zapisem.',
         };
   }, [constraints, draftRevision, options.buildInput, practicalRecipeAudit]);
 

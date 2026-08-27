@@ -332,7 +332,7 @@ export function LabelWorkspace({
   };
 
   if (busy && !profile) {
-    return <p className="py-8 text-sm text-stone-500">Odczytuję profil i zapis etykiety…</p>;
+    return <p className="py-8 text-sm text-stone-500">Sprawdzamy profil i zapis etykiety…</p>;
   }
 
   if (!profile) {
@@ -403,8 +403,8 @@ export function LabelWorkspace({
       <WorkflowNotice
         className="my-3"
         eyebrow="Etykieta"
-        title="Brak zakończonej partii"
-        description="Najpierw zakończ Produkcję. Etykieta powstaje z zatwierdzonego wyniku partii."
+        title="Jeszcze nie ma partii do etykiety"
+        description="Zakończ produkcję, a przygotujemy etykietę z zatwierdzonego wyniku partii."
         variant="neutral"
         testId="label-workspace-empty"
       />
@@ -416,7 +416,7 @@ export function LabelWorkspace({
   const activeMarket = marketProfile(label.market);
   const unresolved = preflight?.items.filter((item) => item.status !== 'ready') ?? [];
   const printBlockedReason =
-    unresolved[0]?.message ?? activeMarket.externalAssetRequirement ?? 'Uzupełnij preflight.';
+    unresolved[0]?.message ?? activeMarket.externalAssetRequirement ?? 'Uzupełnij wymagane dane.';
   const percentages = snapshot.finalResult.percentages;
 
   return (
@@ -453,7 +453,7 @@ export function LabelWorkspace({
                     </span>
                   </div>
                   <p className="mt-1 text-sm text-stone-500">
-                    Profil rynku steruje wymaganymi polami i wydrukiem.
+                    Wybrany rynek wyznacza wymagane dane i układ wydruku.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -518,10 +518,8 @@ export function LabelWorkspace({
                     }
                   >
                     {preflight?.readyForSystemPrint
-                      ? preflight.printReadiness === 'PRINT_READY_UNIVERSAL'
-                        ? '✓ Gotowa do druku · Universal'
-                        : '✓ Gotowa do druku · Regulatory'
-                      : `Wydruk zablokowany · ${unresolved.length} pozycji do rozwiązania`}
+                      ? '✓ Gotowe. Etykieta czeka na druk.'
+                      : `Do wydruku brakuje: ${unresolved.length} ${unresolved.length === 1 ? 'pozycja' : 'pozycji'}`}
                   </span>
                   {!preflight?.readyForSystemPrint ? (
                     <button
@@ -547,13 +545,13 @@ export function LabelWorkspace({
                   <span>{label.printer.dpi} dpi</span>
                   <span>{label.printer.copies} kopii</span>
                   <span>
-                    Tekst bazowy {preflight?.geometry.baseFontPt.toFixed(2)} pt · x-height{' '}
+                    Czytelność {preflight?.geometry.baseFontPt.toFixed(2)} pt · wysokość znaków{' '}
                     {preflight?.geometry.xHeightMm.toFixed(2)} mm
                   </span>
                 </div>
                 <p className="mt-1 text-stone-500">
-                  Podgląd, pobrany PDF i wydruk systemowy korzystają z tej samej fizycznej
-                  geometrii. PDF nie wymaga podłączonej drukarki.
+                  Podgląd, PDF i wydruk zachowują ten sam układ i wymiary. PDF możesz przygotować
+                  bez podłączonej drukarki.
                 </p>
               </div>
               <div className="overflow-x-auto p-4 sm:p-6" data-testid="consumer-print-boundary">
@@ -587,7 +585,7 @@ export function LabelWorkspace({
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-ink/10 bg-white px-4 py-3">
               <p className="text-xs text-stone-600">
                 {saved
-                  ? `Zapisana etykieta partii · ${new Date(saved.createdAt).toLocaleString('pl-PL')}`
+                  ? `Gotowe. Etykieta partii zapisana · ${new Date(saved.createdAt).toLocaleString('pl-PL')}`
                   : 'Finalny zapis zachowa rynek, treść, LOT i logo dla tej partii.'}
               </p>
               {saved ? null : (
@@ -2216,7 +2214,7 @@ function RunLabelEditor({
             )}
             onClick={() => setDraft(applyAutoLabelLayout(draft))}
           >
-            Auto · wybierz najmniejszy format, który przechodzi preflight
+            Auto · wybierz najmniejszy format, który spełnia wymagania wydruku
           </button>
           <PrinterSettingsFields
             value={draft.printer}
@@ -3089,7 +3087,7 @@ function RegulatoryNutritionFields({
             <span className="mt-1 block">{canadaFop.reason}</span>
             {canadaFop.state === 'required' && !facts.canadaFopAssetId ? (
               <span className="mt-1 block font-semibold text-[#8a5b23]">
-                Wydruk zablokowany: wymagany jest zatwierdzony, oficjalny asset Health Canada.
+                Nie można wydrukować: wymagany jest zatwierdzony, oficjalny materiał Health Canada.
               </span>
             ) : null}
           </div>

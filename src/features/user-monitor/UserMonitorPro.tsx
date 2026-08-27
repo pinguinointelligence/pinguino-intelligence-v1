@@ -325,7 +325,7 @@ export function UserMonitorPro({
                 ) : null}
                 {module.id === 'expert' ? (
                   <p className="mt-2 text-[11px] text-ivory/60">
-                    Wersja silnika {result.engine_version} · konfiguracja {result.config_version}
+                    Wersja obliczeń {result.engine_version} · zestaw reguł {result.config_version}
                   </p>
                 ) : null}
               </div>

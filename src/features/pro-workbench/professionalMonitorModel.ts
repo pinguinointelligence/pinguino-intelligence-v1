@@ -53,7 +53,7 @@ const TOOLTIP = {
   pac: 'Siła przeciwzamrożeniowa mieszanki. Wyższa wartość zwykle oznacza słabsze zamarzanie.',
   npac: 'Wskaźnik związany z odpornością mieszanki na zamarzanie i zachowaniem w temperaturze.',
   pod: 'Odczuwalna słodycz wynikająca z całego profilu cukrów receptury.',
-  sugars: 'Łączna ilość cukrów obliczona przez Engine dla 100 g mieszanki.',
+  sugars: 'Łączna ilość cukrów obliczona dla 100 g mieszanki.',
   water: 'Udział wody w całej recepturze. Wpływa na zamrożenie, strukturę i stabilność.',
   solids: 'Udział składników innych niż woda. Wpływa na pełnię i strukturę produktu.',
   fat: 'Łączny udział tłuszczu. Wpływa na kremowość, pełnię i topnienie.',
@@ -63,7 +63,7 @@ const TOOLTIP = {
   stabilizer:
     'Ilość stabilizatora w bieżącej recepturze względem zatwierdzonego profilu składnika.',
   stability: 'Semantyczny stan zachowania przy zamrażaniu, bez powtarzania surowej wartości NPAC.',
-  serving: 'Temperatura użyta przez Engine do bieżącej oceny technologicznej.',
+  serving: 'Temperatura użyta do bieżącej oceny technologicznej.',
   fiber: 'Łączna ilość błonnika w całej partii.',
   totalFat: 'Łączna masa tłuszczu w aktualnej partii.',
   totalProtein: 'Łączna masa białka w aktualnej partii.',

@@ -391,19 +391,19 @@ function buildOutcomeDetail(
   switch (outcome) {
     case 'poprawione':
       return ctx.changedAxes.length
-        ? `Gellatti przesunęło recepturę w stronę zakresu (${axisNames(ctx.changedAxes)}).`
-        : 'Gellatti przesunęło recepturę w stronę zakresu.';
+        ? `Przesunęliśmy recepturę w stronę zakresu (${axisNames(ctx.changedAxes)}).`
+        : 'Przesunęliśmy recepturę w stronę zakresu.';
     case 'kompromis':
       return ctx.tradedOffAxes.length
-        ? `Gellatti poprawiło jedną cechę kosztem innej — zmieniło się: ${axisNames(ctx.tradedOffAxes)}. To kompromis, nie pełne dopasowanie.`
-        : 'Gellatti poprawiło recepturę, ale część cech nadal jest poza zakresem. To kompromis, nie pełne dopasowanie.';
+        ? `Poprawiliśmy jedną cechę kosztem innej — zmieniło się: ${axisNames(ctx.tradedOffAxes)}. To kompromis, nie pełne dopasowanie.`
+        : 'Poprawiliśmy recepturę, ale część cech nadal jest poza zakresem. To kompromis, nie pełne dopasowanie.';
     case 'juz_w_zakresie':
       return 'Receptura jest już w zakresie — nie ma nic do zmiany.';
     case 'niemozliwe':
       // VERIFIED optimizer no-solution: the solver actually ran on this cell's own
       // approved targets and found no safe change. Honest + specific (names the
       // serving temperature) — and always states that nothing was changed.
-      return `Gellatti nie znalazło bezpiecznej zmiany, która dopasowałaby tę recepturę${tempPhrase} bez pogorszenia innych cech. ${RECIPE_NOT_CHANGED}`;
+      return `Nie znaleźliśmy bezpiecznej zmiany, która dopasowałaby tę recepturę${tempPhrase} bez pogorszenia innych cech. ${RECIPE_NOT_CHANGED}`;
     case 'zablokowane':
       return `${describeFailure(ctx.failureReason)} ${RECIPE_NOT_CHANGED}`;
   }

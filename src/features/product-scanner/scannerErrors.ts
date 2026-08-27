@@ -47,19 +47,17 @@ export interface ScannerError {
 
 const COPY: Record<ScannerErrorCode, string> = {
   analysis_failed:
-    'Nie udało się przeanalizować etykiety. Spróbuj ponownie lub dodaj wyraźniejsze zdjęcie.',
+    'Hmm, nie udało się pewnie odczytać etykiety. Dodaj wyraźniejsze zdjęcie i spróbuj ponownie.',
   analysis_incomplete:
-    'Analiza się udała, ale jednego pola nie dało się potwierdzić. Uzupełnij brakujące ujęcie ' +
-    'etykiety i ponów analizę.',
+    'Prawie gotowe. Brakuje jednego potwierdzenia — dodaj wskazane ujęcie i ponów analizę.',
   save_failed:
-    'Analiza jest gotowa, ale nie udało się zapisać produktu. Wynik pozostaje na ekranie — ' +
-    'spróbuj zapisać ponownie za chwilę.',
+    'Analiza jest bezpieczna na ekranie, ale produktu nie zapisaliśmy. Spróbuj ponownie za chwilę.',
   save_not_ready:
-    'Produktu nie można jeszcze zapisać: analiza wymaga potwierdzenia brakujących informacji.',
+    'Jeszcze jeden krok. Potwierdź brakujące informacje, a produkt będzie można zapisać.',
   quota_reached: 'Limit analiz lub zapisów został wykorzystany. Spróbuj ponownie później.',
   auth_required: 'Zaloguj się ponownie, aby dokończyć skanowanie produktu.',
-  connection: 'Problem z połączeniem. Sprawdź sieć i spróbuj ponownie.',
-  unavailable: 'Skaner produktu jest chwilowo niedostępny.',
+  connection: 'Nie mamy teraz połączenia. Sprawdź sieć i spróbuj ponownie.',
+  unavailable: 'Skaner potrzebuje chwili. Spróbuj ponownie za moment.',
 };
 
 /** Server error codes → the user-facing category. Anything unlisted falls back per stage. */

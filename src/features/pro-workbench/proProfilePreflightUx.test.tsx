@@ -188,7 +188,7 @@ describe('profile hierarchy and compact preflight', () => {
 
         await act(async () => root.render(panel('summary')));
         expect(host.querySelector('[data-testid="label-workspace-empty"]')?.textContent).toContain(
-          'Najpierw zakończ Produkcję',
+          'Etykieta potrzebuje zakończonej partii',
         );
         expect(host.querySelector('[data-testid="label-consumer-preview"]')).toBeNull();
       }

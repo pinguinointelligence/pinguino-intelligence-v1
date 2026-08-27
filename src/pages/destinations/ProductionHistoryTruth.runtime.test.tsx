@@ -150,6 +150,6 @@ describe('Production History ↔ Label canonical truth', () => {
     });
 
     expect(container.textContent).not.toContain('Pistacchio 1000');
-    expect(container.textContent).toContain('Nie udało się odczytać pełnej historii produkcji');
+    expect(container.textContent).toContain('Nie mamy teraz pełnej historii produkcji');
   });
 });

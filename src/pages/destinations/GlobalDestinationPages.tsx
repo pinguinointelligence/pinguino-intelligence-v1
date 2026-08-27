@@ -108,7 +108,7 @@ export function ProductsHubPage() {
     >
       {!capabilities.canSaveRecipe ? (
         <p className="border-y border-ink/10 py-8 text-sm text-stone-600">
-          Katalog produktów jest dostępny w Gellatti Home i Pro.
+          Katalog produktów otwiera się w planach Home i Pro. Wybierz plan, aby dodać własne produkty.
         </p>
       ) : (
         <>
@@ -118,8 +118,8 @@ export function ProductsHubPage() {
                 Katalog produktów
               </h2>
               <p className="mt-1 text-sm text-stone-500">
-                Zatwierdzony katalog Gellatti. Nieznany produkt możesz przesłać do weryfikacji
-                Admina.
+                Korzystaj z potwierdzonych produktów Gellatti. Nowy produkt dodasz ze zdjęcia
+                etykiety.
               </p>
             </div>
             <Link to="/products/scan" className={applicationPrimaryClasses()}>
@@ -150,8 +150,7 @@ export function ProductsHubPage() {
           </div>
           <GlobalCatalogSearchPanel />
           <p className="mt-8 max-w-xl text-xs leading-relaxed text-stone-500">
-            Prywatna cena klienta pozostaje własnością istniejącego modelu danych. Ten hub nie
-            tworzy drugiego magazynu cen.
+            Twoja cena, dostawca, notatki i stan magazynowy pozostają prywatne.
           </p>
         </>
       )}
@@ -231,11 +230,11 @@ export function ProductionHubPage() {
     <DestinationSurface
       eyebrow="Gellatti Pro"
       title="Produkcja"
-      blurb="Bieżąca partia, zamrożona historia wykonania i etykiety z faktycznej produkcji."
+      blurb="Bieżąca partia, zapis zakończonych produkcji i etykiety — zawsze oparte na tych samych danych."
     >
       {!capabilities.canUseProductionMode ? (
         <p className="border-y border-ink/10 py-8 text-sm text-stone-600">
-          Produkcja jest funkcją planu Pro.
+          Produkcja jest dostępna w planie Pro.
         </p>
       ) : (
         <>
@@ -327,8 +326,8 @@ export function ProductionHubPage() {
                   className="mt-5"
                   variant="blocking"
                   role="alert"
-                  title="Nie udało się odczytać pełnej historii produkcji"
-                  description="Dane partii pozostały bez zmian. Spróbuj ponownie."
+                  title="Nie mamy teraz pełnej historii produkcji"
+                  description="Dane partii są bezpieczne. Spróbuj ponownie."
                   action={
                     <button
                       type="button"
@@ -454,7 +453,7 @@ export function LabelsHubPage() {
     <DestinationSurface
       eyebrow="Gellatti Pro"
       title="Etykiety"
-      blurb="Jedno miejsce dla domyślnego profilu konta i niezmiennych etykiet z faktycznie zakończonych partii."
+      blurb="Profil konta i etykiety zakończonych partii — w jednym, spójnym miejscu."
     >
       <LabelWorkspace profileOnly repository={repository} />
 
@@ -463,7 +462,7 @@ export function LabelsHubPage() {
           <div>
             <h2 className="text-xl font-semibold text-ink">Etykieta zakończonej partii</h2>
             <p className="mt-1 text-sm text-stone-500">
-              Etykieta korzysta wyłącznie z zatwierdzonych danych zakończonej partii.
+              Dane etykiety pochodzą wyłącznie z zatwierdzonego wyniku tej partii.
             </p>
           </div>
           {history.length > 0 ? (
@@ -519,7 +518,7 @@ export function AccountSettingsPage() {
     <DestinationSurface
       eyebrow="Konto"
       title="Konto i ustawienia"
-      blurb="Profil, plan i ustawienia poziomu konta — bez duplikowania Maszyny, Produktów ani receptury."
+      blurb="Twój profil, plan i najważniejsze ustawienia konta."
     >
       {status !== 'authed' && !import.meta.env.DEV ? (
         <p className="border-y border-ink/10 py-8 text-sm text-stone-600">

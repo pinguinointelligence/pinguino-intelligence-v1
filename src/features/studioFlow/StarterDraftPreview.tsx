@@ -85,9 +85,9 @@ export function StarterDraftPreview({
           </dl>
           {display.enginePreview ? (
             <p className="font-mono text-[10px] leading-relaxed text-ivory/60">
-              {`silnik CONFIG ${display.enginePreview.configVersion} · npac ${
+              {`wersja obliczeń ${display.enginePreview.configVersion} · miękkość ${
                 display.enginePreview.npacPoints?.toFixed(1) ?? '—'
-              } · pod ${display.enginePreview.podPoints?.toFixed(1) ?? '—'} · lód ${
+              } · słodycz ${display.enginePreview.podPoints?.toFixed(1) ?? '—'} · lód ${
                 display.enginePreview.iceFractionPercent?.toFixed(1) ?? '—'
               }%`}
             </p>

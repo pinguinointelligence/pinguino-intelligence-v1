@@ -141,13 +141,13 @@ describe('Otrzymane', () => {
     expect(text).toContain('Pistachio Salted Caramel');
     expect(text).toContain('Marysia');
     // Jan shared Marysia's recipe → both are named.
-    expect(text).toContain('Udostępnił(a)');
+    expect(text).toContain('Udostępnione przez');
     expect(text).toContain('Jan');
-    // Marysia shared her own → the row must not say „Udostępnił(a) Marysia".
+    // Marysia shared her own → the row must not repeat the sharer byline.
     const truskawkaRow = [...container.querySelectorAll('li')].find((node) =>
       node.textContent?.includes('Truskawka'),
     );
-    expect(truskawkaRow?.textContent).not.toContain('Udostępnił(a)');
+    expect(truskawkaRow?.textContent).not.toContain('Udostępnione przez');
   });
 
   it('distinguishes the Demo state from the unlocked state', async () => {
@@ -236,8 +236,8 @@ describe('empty states are honest', () => {
     listReceivedShares.mockResolvedValue([]);
     listSentShares.mockResolvedValue([]);
     await render();
-    expect(container.textContent).toContain('Nikt jeszcze nie udostępnił Ci receptury.');
+    expect(container.textContent).toContain('Nie masz jeszcze udostępnionych receptur.');
     await click('Wysłane przeze mnie');
-    expect(container.textContent).toContain('Nie udostępniłeś(-aś) jeszcze żadnej receptury.');
+    expect(container.textContent).toContain('Nie masz jeszcze wysłanych receptur.');
   });
 });

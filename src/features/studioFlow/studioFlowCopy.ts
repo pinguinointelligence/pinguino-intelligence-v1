@@ -123,7 +123,7 @@ const PL: StudioFlowCopy = {
   situations: {
     new_recipe: {
       title: 'Zaczynamy nową recepturę',
-      body: 'Ustaw kategorię, temperaturę serwowania i składniki po lewej. Silnik liczy wszystko na bieżąco — nic nie zapisuje się samo.',
+      body: 'Ustaw kategorię, temperaturę serwowania i składniki po lewej. Obliczenia aktualizują się na bieżąco — nic nie zapisuje się samo.',
       nextAction: 'Gdy receptura będzie gotowa, uruchom podgląd optymalizacji.',
     },
     recipe_in_range: {
@@ -143,7 +143,7 @@ const PL: StudioFlowCopy = {
     },
     recipe_impossible: {
       title: 'Brak bezpiecznej korekty',
-      body: 'Przy obecnych ograniczeniach silnik nie znalazł bezpiecznej korekty. Nie zgadujemy i nie wymuszamy liczb.',
+      body: 'Przy obecnych ograniczeniach nie znaleźliśmy bezpiecznej korekty. Nie zgadujemy i nie wymuszamy liczb.',
       nextAction: 'Zmień założenia — składniki, styl albo temperaturę — i przelicz ponownie.',
     },
     recipe_blocked: {

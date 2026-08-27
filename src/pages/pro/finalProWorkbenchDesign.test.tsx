@@ -166,7 +166,7 @@ describe('one global menu and four local contexts', () => {
     expect(panel).toContain('snapshot={completed}');
     expect(panel).toContain('initialView={initialLabelView}');
     expect(panel).toContain('key={labelViewRequestKey ?? initialLabelView}');
-    expect(panel).toContain('Najpierw zakończ Produkcję');
+    expect(panel).toContain('Etykieta potrzebuje zakończonej partii');
     expect(panel).not.toContain('Faktyczna zakończona partia');
     expect(panel).not.toContain('Receptura wykonawcza');
     expect(panel).not.toContain('Proces i gotowość');

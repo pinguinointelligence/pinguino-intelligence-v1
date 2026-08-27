@@ -938,7 +938,7 @@ export function buildFormulationProposal(
             grams: targetGrams,
             role: roleTarget.role,
             reasonPl:
-              `Gellatti dodało ${canonical ? `„${canonical.namePl}" (${canonical.mapperId})` : 'składnik'} ` +
+              `Dodaliśmy ${canonical ? `„${canonical.namePl}" (${canonical.mapperId})` : 'składnik'} ` +
               `w roli „${ROLE_LABEL_PL[roleTarget.role]}", ponieważ ` +
               `zatwierdzona receptura ${template.templateId} wymaga tej roli.`,
           });

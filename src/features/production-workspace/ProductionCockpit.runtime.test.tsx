@@ -338,7 +338,7 @@ describe('Production correction decision accessibility', () => {
     const recovery = host.querySelector<HTMLElement>(
       '[data-testid="production-decision-recovery"]',
     );
-    expect(recovery?.textContent).toContain('Żadna bezpieczna korekta nie jest dostępna');
+    expect(recovery?.textContent).toContain('Nie mamy bezpiecznej korekty dla tej partii');
     const abort = recovery?.querySelector<HTMLButtonElement>(
       '[data-testid="production-abort-recovery"]',
     );
@@ -438,7 +438,7 @@ describe('Production correction decision accessibility', () => {
     ).toBeNull();
     expect(host.querySelector('[data-testid="production-decision-enlarge_batch"]')).toBeNull();
     expect(host.querySelector('[data-testid="production-decision-leave_as_is"]')).toBeNull();
-    expect(host.textContent).not.toContain('Żadna bezpieczna korekta nie jest dostępna');
+    expect(host.textContent).not.toContain('Nie mamy bezpiecznej korekty dla tej partii');
   });
 
   it('requires one explicit in-app confirmation before completing an accepted lower score', async () => {
@@ -563,7 +563,7 @@ describe('Production correction decision accessibility', () => {
         title: 'Źródło Produkcji jest nieaktualne',
         message: 'Zachowaj zakończony zapis i przygotuj nowe źródło.',
         action: 'archive_stale_session',
-        actionLabel: 'Zarchiwizuj starą sesję',
+        actionLabel: 'Zarchiwizuj wcześniejszą partię',
       },
       archiveStaleSession,
     } as unknown as ProductionWorkspaceView;
@@ -579,7 +579,7 @@ describe('Production correction decision accessibility', () => {
       ),
     );
     const archive = [...host.querySelectorAll('button')].find((button) =>
-      button.textContent?.includes('Zarchiwizuj starą sesję'),
+      button.textContent?.includes('Zarchiwizuj wcześniejszą partię'),
     );
     await act(async () => (archive as HTMLButtonElement | undefined)?.click());
     expect(archiveStaleSession).not.toHaveBeenCalled();
@@ -588,7 +588,7 @@ describe('Production correction decision accessibility', () => {
     );
     expect(dialog?.textContent).toContain('Bieżąca receptura nie zostanie zmieniona');
     const confirm = [...(dialog?.querySelectorAll('button') ?? [])].find((button) =>
-      button.textContent?.includes('Zarchiwizuj sesję'),
+      button.textContent?.includes('Zarchiwizuj partię'),
     );
     await act(async () => (confirm as HTMLButtonElement | undefined)?.click());
     expect(archiveStaleSession).toHaveBeenCalledTimes(1);

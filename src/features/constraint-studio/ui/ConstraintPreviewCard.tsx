@@ -192,7 +192,7 @@ export function ConstraintPreviewCard({
       : preview.directionAssessment?.reached
         ? 'Receptura spełnia wybrany profil.'
         : changedLines.length > 0
-          ? 'Proponowana korekta jest gotowa do zastosowania.'
+          ? 'Gotowe. Sprawdź korektę i zastosuj ją, jeśli Ci odpowiada.'
           : 'Receptura nie wymaga zmian.';
   const mainCount = preview.proposedInput.items.filter((item) => item.lock_type === 'main').length;
 
@@ -406,7 +406,7 @@ export function ConstraintPreviewCard({
                 data-testid="preview-direction-reason"
               >
                 <span className="font-semibold text-ivory">Wybrany kierunek:</span>{' '}
-                {selectedDirection}. Gellatti zmieniło wyłącznie dozwolone składniki; blokady
+                {selectedDirection}. Zmieniliśmy tylko dozwolone składniki; blokady
                 gramowe, procentowe, role Główne i wykluczenia pozostają nienaruszalne.
               </div>
             ) : null}
@@ -423,8 +423,8 @@ export function ConstraintPreviewCard({
                   </span>
                 </div>
                 <p className="mt-1 text-xs leading-relaxed text-ivory/65">
-                  Gellatti przeliczyło dokładne ilości w gramach. POD, NPAC i wszystkie wymagane
-                  warunki zostały ponownie sprawdzone dla wartości widocznych poniżej.
+                  Dokładne ilości w gramach są gotowe. Wszystkie wymagane warunki zostały ponownie
+                  sprawdzone dla wartości widocznych poniżej.
                 </p>
                 <dl className="mt-3 grid grid-cols-2 gap-2 text-xs text-ivory/70">
                   <div className="rounded-xl bg-black/15 px-3 py-2">
@@ -493,7 +493,9 @@ export function ConstraintPreviewCard({
                   {preview.directionAssessment.reached
                     ? diagnostic
                       ? 'Kierunek osiągnięty tylko w podglądzie diagnostycznym. Receptura nadal nie jest gotowa do zastosowania.'
-                      : 'Gellatti osiągnęło wybrany profil.'
+                      : score === 10
+                        ? 'Gellattissimo! Wybrany profil osiągnięty.'
+                        : 'Wybrany profil osiągnięty.'
                     : 'Najbliższy bezpieczny profil — zaakceptowany świadomie przed tym podglądem.'}
                 </p>
               </div>

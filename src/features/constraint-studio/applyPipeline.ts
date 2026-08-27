@@ -5447,7 +5447,7 @@ function buildFormulationPreviewInternal(
       messagePl:
         `Brakuje składnika w twardej roli technologicznej: ` +
         `${built.proposal.missingHardRoles.join(', ')}. ` +
-        `Dodaj zatwierdzony składnik tej roli, aby Gellatti mogło ułożyć recepturę.`,
+        `Dodaj zatwierdzony składnik tej roli, aby ułożyć recepturę.`,
       roleTrace: built.proposal.roleTrace,
     };
   }

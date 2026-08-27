@@ -355,7 +355,7 @@ export function GlobalCatalogSearchPanel() {
                     {selectedHit.displayName}
                   </h3>
                   <p className="mt-1 break-all font-mono text-[10px] text-stone-500">
-                    {selectedHit.productCode ?? selectedHit.mappedIngredientId ?? selectedHit.id}
+                    {selectedHit.productCode ?? 'Produkt z katalogu Gellatti'}
                     {selectedHit.eans[0] ? ` · EAN ${selectedHit.eans[0]}` : ''}
                   </p>
                 </div>

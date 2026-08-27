@@ -6737,7 +6737,7 @@ function assessProteinStructure(input, result = calculateRecipe(input), qualific
 	if (fatPercent < PROTEIN_FAT_EVIDENCE_ENVELOPE.fatFloorPercent || fatPercent > PROTEIN_FAT_EVIDENCE_ENVELOPE.fatCeilingPercent) warnings.push({
 		code: "fat_outside_evidence_envelope",
 		scored: false,
-		messagePl: `Tłuszcz ${fatPercent.toFixed(1)}% leży poza oknem ${PROTEIN_FAT_EVIDENCE_ENVELOPE.fatFloorPercent}-${PROTEIN_FAT_EVIDENCE_ENVELOPE.fatCeilingPercent}%, w którym badano receptury wysokobiałkowe. Koperta fizyczna Engine pozostaje nadrzędna.`
+		messagePl: `Tłuszcz ${fatPercent.toFixed(1)}% leży poza oknem ${PROTEIN_FAT_EVIDENCE_ENVELOPE.fatFloorPercent}-${PROTEIN_FAT_EVIDENCE_ENVELOPE.fatCeilingPercent}%, w którym badano receptury wysokobiałkowe. Twarde granice bezpieczeństwa obliczeń pozostają nadrzędne.`
 	});
 	const proteinToFat = fatPercent > 0 ? proteinPercent / fatPercent : null;
 	if (proteinToFat !== null && (proteinToFat < PROTEIN_FAT_EVIDENCE_ENVELOPE.proteinToFatFloor || proteinToFat > PROTEIN_FAT_EVIDENCE_ENVELOPE.proteinToFatCeiling)) warnings.push({
@@ -7318,7 +7318,7 @@ function practicalizeRecipeCandidate(exactInput, set, nonIncreasableLineIds = /*
 		if (Object.is(executable.items[index].planned_grams, item.planned_grams)) return false;
 		return approvedStabilizerDosage(canonicalIngredientId(item.ingredient)) === null && approvedStabilizerDosage(item.ingredient.id) === null;
 	});
-	if (unapprovedRoundedStabilizers.length > 0) return block(exact, exactResult, exactHardMetrics, "stabilizer_contract_changed", unapprovedRoundedStabilizers.map((item) => item.id), "Ten stabilizator nie ma zatwierdzonego zakresu do praktycznego zaokrąglenia. Gellatti zachowało dokładną wartość i zablokowało wersję wykonawczą.", executable);
+	if (unapprovedRoundedStabilizers.length > 0) return block(exact, exactResult, exactHardMetrics, "stabilizer_contract_changed", unapprovedRoundedStabilizers.map((item) => item.id), "Ten stabilizator nie ma zatwierdzonego zakresu do praktycznego zaokrąglenia. Zachowaliśmy dokładną wartość i zablokowaliśmy wersję wykonawczą.", executable);
 	let executableResult = calculateRecipe(executable);
 	let executableHardMetrics = classifyViolationBands(executable).hardMetrics;
 	let newHardMetrics = executableHardMetrics.filter((metric) => !exactHardMetrics.includes(metric));

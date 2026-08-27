@@ -89,7 +89,7 @@ describe('resultStatus (§11 — exactly ONE status, never the double message)',
     expect(s.label).toBe('Receptura gotowa do podglądu');
     expect(s.label).not.toBe('Gotowa do przeliczenia');
     // …and it honestly flags that nothing was engine-calculated yet.
-    expect(s.guidance).toContain('podglądowa struktura');
+    expect(s.guidance).toContain('podgląd struktury składników');
   });
 
   it('out-of-band + tuning unavailable → guidance does NOT point at Monitor tuning (Track G)', () => {

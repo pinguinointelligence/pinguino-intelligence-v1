@@ -12,7 +12,7 @@ export function customerStopReasonPl(reason: 'local_no_proposal' | 'template_fix
 
 export function customerOptimizerNoSolutionPl(metricLabels: readonly string[]): string {
   return (
-    'Gellatti przeliczyło recepturę, ale nie znalazło bezpiecznej korekty w zatwierdzonych zakresach.' +
+    'Przeliczyliśmy recepturę, ale nie znaleźliśmy bezpiecznej korekty w zatwierdzonych zakresach.' +
     (metricLabels.length > 0 ? ` Parametry poza zakresem: ${metricLabels.join(', ')}.` : '')
   );
 }
@@ -29,7 +29,7 @@ export function customerPreviewIssueMessagePl(issue: PreviewIssue): string {
       (metric) => constraintStudioCopy.diagnosis.metricLabels[metric] ?? metric,
     );
     return (
-      'To najbliższy osiągalny wynik dla wybranego kierunku. Gellatti nie znalazło bezpiecznej ' +
+      'To najbliższy osiągalny wynik dla wybranego kierunku. Nie znaleźliśmy bezpiecznej ' +
       'korekty, która poprawia ten cel bez naruszenia twardych ograniczeń.' +
       (labels.length > 0 ? ` Parametry kierunku: ${labels.join(', ')}.` : '')
     );
@@ -39,8 +39,8 @@ export function customerPreviewIssueMessagePl(issue: PreviewIssue): string {
       ? `Przy ograniczeniu „${issue.conflict.ingredientName}” = ${formatGramsPl(issue.conflict.grams)} `
       : 'Przy obecnych ograniczeniach ';
     const searchPart = issue.capReached
-      ? 'Gellatti sprawdziło bezpieczny zakres korekt bez osiągnięcia zatwierdzonych wartości.'
-      : 'Gellatti sprawdziło wszystkie dozwolone korekty.';
+      ? 'Sprawdziliśmy bezpieczny zakres korekt bez osiągnięcia zatwierdzonych wartości.'
+      : 'Sprawdziliśmy wszystkie dozwolone korekty.';
     const nearestPart =
       issue.nearestFeasibleGrams !== null && issue.conflict
         ? ` Najbliższa wykonalna wartość dla „${issue.conflict.ingredientName}”: ${formatGramsPl(issue.nearestFeasibleGrams)}.`

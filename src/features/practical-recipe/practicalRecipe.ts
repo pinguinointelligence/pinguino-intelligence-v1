@@ -811,7 +811,7 @@ export function practicalizeRecipeCandidate(
       exactHardMetrics,
       'stabilizer_contract_changed',
       unapprovedRoundedStabilizers.map((item) => item.id),
-      'Ten stabilizator nie ma zatwierdzonego zakresu do praktycznego zaokrąglenia. Gellatti zachowało dokładną wartość i zablokowało wersję wykonawczą.',
+      'Ten stabilizator nie ma zatwierdzonego zakresu do praktycznego zaokrąglenia. Zachowaliśmy dokładną wartość i zablokowaliśmy wersję wykonawczą.',
       executable,
     );
   }

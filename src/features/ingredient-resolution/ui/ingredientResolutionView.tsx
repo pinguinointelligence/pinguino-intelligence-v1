@@ -242,7 +242,7 @@ function substitutionNote(line: LineResolution): string {
         ? `Prośba o zamianę na: ${intent.requestedSubstituteName}.`
         : 'Podaj nazwę zamiennika.';
     case 'why_is_this_here':
-      return 'Ten składnik należy do bazowej struktury receptury. Dokładne proporcje wylicza silnik po uzupełnieniu danych.';
+      return 'Ten składnik buduje bazową strukturę receptury. Dokładne proporcje pojawią się po uzupełnieniu danych i przeliczeniu.';
     default:
       return '';
   }

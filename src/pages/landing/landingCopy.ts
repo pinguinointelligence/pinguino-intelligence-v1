@@ -132,9 +132,9 @@ export const landingCopy = {
   subscription: {
     eyebrow: 'Plany',
     title: 'Home czy Pro?',
-    lead: 'Ta sama wiedza technologiczna — wybierz głębokość, której potrzebujesz.',
+    lead: 'Wybierz plan, który pasuje do Twojego sposobu pracy.',
     whatUnlocks:
-      'Bezpłatny podgląd pokazuje prawdziwe obliczenia i Monitor receptury, ale ukrywa dokładne gramatury. Home i Pro to plany płatne — odblokowują dokładne ilości, zapis receptur i pełniejsze dane techniczne.',
+      'Bezpłatny podgląd pokazuje wynik i Monitor receptury bez dokładnych gramatur. Home i Pro to płatne plany: odblokowują dokładne ilości oraz zapis receptur, a Pro dodaje narzędzia pracowni i produkcję.',
     homeBadge: 'Plan Home',
     proBadge: 'Plan Pro',
     homeCta: 'Wybierz Home',
@@ -144,7 +144,7 @@ export const landingCopy = {
       'Chcesz najpierw zobaczyć, jak to działa? Bezpłatny podgląd pokazuje prawdziwe obliczenia i Monitor receptury — bez dokładnych gramatur.',
     demoCta: 'Wypróbuj bezpłatnie',
     billingNote: 'Bezpieczna płatność online. Anulujesz w dowolnym momencie.',
-    billingUnavailable: 'Logowanie jest chwilowo niedostępne. Zajrzyj wkrótce.',
+    billingUnavailable: 'Logowanie jest chwilowo niedostępne. Spróbuj ponownie później.',
     checkout: {
       cycleLabel: 'Rozliczenie',
       monthly: 'Miesięcznie',
@@ -153,7 +153,7 @@ export const landingCopy = {
       errorGeneric: 'Nie udało się rozpocząć płatności. Spróbuj ponownie za chwilę.',
       errorAlready: 'Masz już aktywny plan.',
       errorUnavailable: 'Płatności są chwilowo niedostępne.',
-      successNote: 'Dziękujemy! Twój plan jest właśnie aktywowany — odśwież stronę za chwilę.',
+      successNote: 'Płatność potwierdzona. Aktywujemy plan — odśwież stronę za chwilę.',
       cancelNote: 'Płatność została anulowana. Możesz spróbować ponownie, kiedy zechcesz.',
       owned: 'Twój aktualny plan',
       ownedNote: 'Masz już aktywny dostęp do tego planu.',

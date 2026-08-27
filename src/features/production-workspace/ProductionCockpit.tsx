@@ -187,13 +187,13 @@ export function ProductionCockpit({
     prerequisite?.code !== 'owner_mismatch';
   const archiveSessionDialog = archiveDialogOpen ? (
     <DialogShell
-      label="Zarchiwizować nieaktualną sesję?"
+      label="Zarchiwizować nieaktualną partię?"
       testId="production-archive-session-dialog"
       placement="responsive"
       onClose={() => setArchiveDialogOpen(false)}
     >
       <div className="p-5 sm:p-0">
-        <h2 className="text-lg font-semibold text-ink">Zarchiwizować nieaktualną sesję?</h2>
+        <h2 className="text-lg font-semibold text-ink">Zarchiwizować nieaktualną partię?</h2>
         <p className="mt-2 text-xs leading-relaxed text-stone-600">
           Zapis partii pozostanie w historii. Bieżąca receptura nie zostanie zmieniona.
         </p>
@@ -213,7 +213,7 @@ export function ProductionCockpit({
             }}
             className="pro-focus-ring min-h-11 rounded-[10px] bg-ink px-4 text-xs font-semibold text-white"
           >
-            Zarchiwizuj sesję
+            Zarchiwizuj partię
           </button>
         </div>
       </div>
@@ -261,7 +261,7 @@ export function ProductionCockpit({
           data-testid="production-start-ready"
         >
           <p className="text-[10px] font-semibold tracking-[0.09em] text-[#8a5b23] uppercase">
-            Receptura wykonawcza gotowa
+            Wszystko gotowe do rozpoczęcia partii
           </p>
           <div className="mt-2 flex items-end justify-between gap-4">
             <div className="min-w-0">
@@ -298,7 +298,7 @@ export function ProductionCockpit({
             data-testid="start-production-session"
           >
             {production.sessionStarting
-              ? 'Uruchamianie partii…'
+              ? 'Rozpoczynamy partię…'
               : production.degassingRequired && !production.degassingAcknowledged
                 ? 'Najpierw potwierdź odgazowanie'
                 : (production.heatInformation?.length ?? 0) > 0 &&
@@ -632,15 +632,15 @@ export function ProductionCockpit({
 
       {session.source.recipeVersionId === null ? (
         <ReadinessFrame
-          state="CZĘŚCIOWO PODŁĄCZONE"
-          title="Źródło: bieżący szkic"
+          state="W PRZYGOTOWANIU"
+          title="Bieżący szkic receptury"
           compact
           tone="light"
           details={{
-            limitation: 'Run nie jest jeszcze powiązany z trwałym ID wersji receptury.',
+            limitation: 'Ta partia nie jest jeszcze powiązana z zapisaną wersją receptury.',
             calculationImpact:
-              'Plan sesji jest zamrożony lokalnie i pozostaje oddzielony od receptury.',
-            remaining: 'Zapisać recepturę i utworzyć run przez ProductionRepository.',
+              'Plan pozostaje oddzielony od receptury i nie zmienia jej danych.',
+            remaining: 'Zapisz recepturę, a potem rozpocznij partię ponownie.',
           }}
         >
           <p className="text-xs text-stone-700">
@@ -659,14 +659,13 @@ export function ProductionCockpit({
           data-testid="production-rescue-options"
         >
           <p className="text-[10px] font-semibold tracking-[0.08em] text-[#8a5b23] uppercase">
-            Decyzja po odchyleniu
+            Korekta partii
           </p>
           <h3 className="mt-1 text-sm font-semibold text-ink">
-            Jak chcesz postąpić z odchyleniem?
+            Partia odbiega od planu
           </h3>
           <p className="mt-1 text-xs leading-relaxed text-stone-600">
-            Potwierdzonych ilości nie odejmiemy. Możesz wybrać tylko wynik bezpiecznie obliczony dla
-            obecnej zawartości naczynia.
+            Potwierdzonych ilości nie cofniemy. Wybierz bezpieczny sposób dalszej pracy.
           </p>
           <div className="mt-3 grid gap-3" data-testid="production-decision-list">
             {visibleDecisionOptions.map((option) => {
@@ -811,7 +810,7 @@ export function ProductionCockpit({
               data-testid="production-decision-recovery"
             >
               <p className="text-xs font-semibold text-ink">
-                Żadna bezpieczna korekta nie jest dostępna
+                Nie mamy bezpiecznej korekty dla tej partii
               </p>
               <p className="mt-1 text-[11px] leading-relaxed text-stone-600">
                 Jeśli któraś liczba została wpisana błędnie, użyj „popraw zapis” w jej wierszu.
@@ -885,7 +884,7 @@ export function ProductionCockpit({
               <div className="p-5 sm:p-0">
                 <h2 className="text-lg font-semibold text-ink">Przerwać tę partię?</h2>
                 <p className="mt-2 text-xs leading-relaxed text-stone-600">
-                  Aktywny run zostanie oznaczony jako przerwany. Zapis pozostanie w historii, a
+                  Aktywna partia zostanie oznaczona jako przerwana. Zapis pozostanie w historii, a
                   potwierdzone ilości nie zostaną przepisane ani usunięte.
                 </p>
                 <div className="mt-5 grid gap-2 sm:grid-cols-2">

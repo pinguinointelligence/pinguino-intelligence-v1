@@ -112,12 +112,11 @@ export function ManualProductPage() {
       </Link>
       <header className="mt-5 max-w-2xl">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
-          Gellatti Product Intelligence
+          Produkt Gellatti
         </p>
         <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">Dodaj produkt ręcznie</h1>
         <p className="mt-3 text-sm leading-6 text-stone-600">
-          Przepisz fakty z opakowania. Parametry techniczne obliczymy bez pytania o POD, PAC ani
-          dane Mappera.
+          Przepisz fakty z opakowania. Na tej podstawie przygotujemy dane potrzebne do receptury.
         </p>
       </header>
 

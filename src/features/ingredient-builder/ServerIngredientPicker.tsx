@@ -15,6 +15,7 @@ import type { EngineIngredient } from '@/engine';
 import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
 import { getEngineApprovedIngredientById } from '@/services/ingredients';
 import { groupHitsByForm, resultRowTextPl } from './ingredientPresentation';
+import { productProfileStatusLabelPl } from './productProfileStatusLabel';
 import { useIngredientSearch } from './useIngredientSearch';
 import { PickerEmptyState } from './IngredientPicker';
 import type { IngredientLibrary } from './ingredientLibrary';
@@ -210,7 +211,7 @@ export function ServerIngredientPicker({
                 </optgroup>
               ))}
               {filteredProducts.length > 0 ? (
-                <optgroup label="My Products">
+                <optgroup label="Moje produkty">
                   {filteredProducts.map((product) => (
                     <option key={product.id} value={product.id}>
                       {product.name} ({product.id})
@@ -248,16 +249,18 @@ export function ServerIngredientPicker({
             <p className="text-xs leading-relaxed text-ivory/65">
               {selectedProvenance.class_derived ? (
                 <span className="text-ivory/70">
-                  {selectedProvenance.provenance_note ??
-                    'Obliczone przez Gellatti · dane szacowane'}
+                  Profil obliczony na podstawie klasy produktu · parametry nie były mierzone
+                  niezależnie
                 </span>
               ) : (
                 <>
                   {selectedProvenance.status_label ? (
-                    <span className="text-ivory/70">{selectedProvenance.status_label} · </span>
+                    <span className="text-ivory/70">
+                      {productProfileStatusLabelPl(selectedProvenance.status_label)} ·{' '}
+                    </span>
                   ) : null}
-                  <span className="text-ivory/70">Reference-linked profile</span> · PAC/POD from
-                  approved reference · not independently measured
+                  <span className="text-ivory/70">Profil oparty na zatwierdzonym wzorcu</span> ·
+                  parametry technologiczne nie były mierzone niezależnie
                 </>
               )}
             </p>

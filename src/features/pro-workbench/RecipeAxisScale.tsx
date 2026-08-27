@@ -115,7 +115,7 @@ export function RecipeAxisScale({
             <span
               className="absolute top-[3px] size-3 -translate-x-1/2 rounded-full border-2 border-gold bg-white/90"
               style={{ left: `${previewPosition}%` }}
-              title="Wynik Preview"
+              title="Wynik podglądu"
               data-testid={`axis-preview-${id}`}
               data-position={previewPosition}
             />

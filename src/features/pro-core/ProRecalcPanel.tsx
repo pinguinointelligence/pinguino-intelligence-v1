@@ -846,21 +846,21 @@ export function ProRecalcPanel({
               aria-live="polite"
               data-testid="pro-recalc-working"
             >
-              Gellatti przelicza recepturę…
+              Sprawdzamy recepturę i szukamy bezpiecznej korekty…
             </p>
           ) : null}
 
           {recalculationTerminal?.state === 'SETTINGS_CONFIRMATION_REQUIRED' ? (
             <div className="space-y-2" data-testid="pro-recalc-settings-required">
               <p className="text-sm leading-relaxed text-ivory/85" role="alert">
-                Najpierw potwierdź ustawienia receptury.
+                Jeszcze jeden krok. Potwierdź ustawienia, a potem przeliczymy recepturę.
               </p>
               <button
                 type="button"
                 className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
                 onClick={goToSettings}
               >
-                Przejdź do ustawień
+                Otwórz ustawienia
               </button>
             </div>
           ) : null}
