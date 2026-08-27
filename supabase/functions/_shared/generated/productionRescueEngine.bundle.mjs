@@ -7996,13 +7996,24 @@ function hydrateProductionSessionFromRun(run, source, plannedInput, plannedCompo
 * continue to identify the formulas and calibrated data; this stamp identifies
 * the option-selection and practicalization layer authorized by the server.
 */
-const PRODUCTION_RESCUE_MODEL_VERSION = "production-rescue-v3";
+const PRODUCTION_RESCUE_MODEL_VERSION = "production-rescue-v4";
 /**
 * OWNER RULE §17 — a batch size is spoken exactly as the Engine verified it.
 * 1086 g is reported as 1086 g; it is never rounded up to a tidier 1100 g.
 */
 const formatBatchMassG = (grams) => Number.isInteger(grams) ? grams.toFixed(0) : grams.toFixed(1).replace(/\.0$/, "");
 const totalFor = (input) => input.items.reduce((sum, item) => sum + (item.actual_grams ?? item.planned_grams), 0);
+/**
+* Rescue recovery already chooses the operator's 0.1 g grid. Canonicalize only
+* values that are within floating-point epsilon of that grid so the trusted
+* JSON snapshot contains `48.8`, not `48.800000000000004`. This changes no
+* physical target; it makes the scored/displayed decimal identical to the
+* value enforced by the database Apply boundary.
+*/
+const canonicalProductionTenthGram = (grams) => {
+	const tenths = Math.round(grams * 10);
+	return Math.abs(grams * 10 - tenths) <= 1e-8 ? tenths / 10 : grams;
+};
 const productionRescueCandidateFingerprint = (input) => JSON.stringify({
 	mode: input.mode,
 	category: input.category,
@@ -8191,7 +8202,7 @@ function tenthGramProductionAudit(session, exactCandidate) {
 		...exactCandidate,
 		items: exactCandidate.items.map((item) => ({
 			...item,
-			planned_grams: item.actual_grams ?? item.planned_grams,
+			planned_grams: canonicalProductionTenthGram(item.actual_grams ?? item.planned_grams),
 			actual_grams: null,
 			lock_type: item.lock_type === "already_added" ? "unlocked" : item.lock_type
 		}))

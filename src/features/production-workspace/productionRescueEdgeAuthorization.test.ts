@@ -332,7 +332,7 @@ describe('trusted Production Rescue authorization', () => {
     expect(persisted!.recipeInput.items).toSatisfy((items: unknown[]) =>
       items.every((item) => {
         const tenths = (item as { planned_grams: number }).planned_grams * 10;
-        return Math.abs(tenths - Math.round(tenths)) <= 1e-8;
+        return Number.isInteger(tenths);
       }),
     );
   });
@@ -437,7 +437,7 @@ describe('trusted Production Rescue authorization', () => {
       engineVersion: '0.4.0',
       configVersion: '0.7.0',
       practicalRecipeVersion: 'pro-whole-gram-v1',
-      rescueModelVersion: 'production-rescue-v3',
+      rescueModelVersion: 'production-rescue-v4',
       bundlerVersion: '1.0.3',
       ttlSeconds: 300,
     });

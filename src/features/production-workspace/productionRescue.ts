@@ -36,7 +36,7 @@ export type ProductionRescueOptionId = ProductionRescueStableOptionId;
  * continue to identify the formulas and calibrated data; this stamp identifies
  * the option-selection and practicalization layer authorized by the server.
  */
-export const PRODUCTION_RESCUE_MODEL_VERSION = 'production-rescue-v3' as const;
+export const PRODUCTION_RESCUE_MODEL_VERSION = 'production-rescue-v4' as const;
 
 export interface ProductionRescueInstruction {
   lineId: string | null;
@@ -133,6 +133,18 @@ export const formatBatchMassG = (grams: number): string =>
 
 const totalFor = (input: RecipeInput): number =>
   input.items.reduce((sum, item) => sum + (item.actual_grams ?? item.planned_grams), 0);
+
+/**
+ * Rescue recovery already chooses the operator's 0.1 g grid. Canonicalize only
+ * values that are within floating-point epsilon of that grid so the trusted
+ * JSON snapshot contains `48.8`, not `48.800000000000004`. This changes no
+ * physical target; it makes the scored/displayed decimal identical to the
+ * value enforced by the database Apply boundary.
+ */
+const canonicalProductionTenthGram = (grams: number): number => {
+  const tenths = Math.round(grams * 10);
+  return Math.abs(grams * 10 - tenths) <= 1e-8 ? tenths / 10 : grams;
+};
 
 export const productionRescueCandidateFingerprint = (input: RecipeInput): string =>
   JSON.stringify({
@@ -379,7 +391,7 @@ function tenthGramProductionAudit(
     ...exactCandidate,
     items: exactCandidate.items.map((item) => ({
       ...item,
-      planned_grams: item.actual_grams ?? item.planned_grams,
+      planned_grams: canonicalProductionTenthGram(item.actual_grams ?? item.planned_grams),
       actual_grams: null,
       lock_type: item.lock_type === 'already_added' ? 'unlocked' : item.lock_type,
     })),

@@ -279,8 +279,11 @@ describe('Production batch scaling mathematical truth', () => {
     expect(recipeFitForInput(plannedInput, plannedResult).display).toBe('10/10');
     expect(restore).toBeDefined();
     expect(restore!.candidateInput.items.map((item) => item.planned_grams)).toEqual([
-      622.6, 178.8, 48.800000000000004, 96.5, 65, 4.1000000000000005,
+      622.6, 178.8, 48.8, 96.5, 65, 4.1,
     ]);
+    expect(
+      restore!.candidateInput.items.every((item) => Number.isInteger(item.planned_grams * 10)),
+    ).toBe(true);
     expect(restore!.finalMassG).toBeCloseTo(1_015.8, 9);
     expect(restore!.scoreDisplay).toBe('10/10');
 

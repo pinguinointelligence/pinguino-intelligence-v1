@@ -131,8 +131,11 @@ describe('generated canonical Production Rescue Edge bundle', () => {
     expect(generated).toEqual(canonical);
     expect(restore).toBeDefined();
     expect(restore!.candidateInput.items.map((item) => item.planned_grams)).toEqual([
-      622.6, 178.8, 48.800000000000004, 96.5, 65, 4.1000000000000005,
+      622.6, 178.8, 48.8, 96.5, 65, 4.1,
     ]);
+    expect(
+      restore!.candidateInput.items.every((item) => Number.isInteger(item.planned_grams * 10)),
+    ).toBe(true);
     expect(restore!.finalMassG).toBeCloseTo(1_015.8, 9);
     expect(restore!.scoreDisplay).toBe('10/10');
   });
@@ -147,7 +150,7 @@ describe('generated canonical Production Rescue Edge bundle', () => {
       engine: '0.4.0',
       config: '0.7.0',
       practicalRecipe: 'pro-whole-gram-v1',
-      productionRescue: 'production-rescue-v3',
+      productionRescue: 'production-rescue-v4',
     });
     expect(manifest.bundler.version).toBe('1.0.3');
     expect(manifest.versions.productionSessionSchema).toBe(2);
