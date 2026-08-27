@@ -220,4 +220,43 @@ describe('per-row catalog → Mapper verification status', () => {
       reason: null,
     });
   });
+
+  it('keeps a canonical TOPPING_ONLY PR ready without inventing a runtime Mapper binding', () => {
+    const canonicalTopping = hit({
+      id: '363ff5b6-0b7b-41a9-acbb-394daa26b4d2',
+      productCode: 'PR-ING-007144',
+      displayName: 'HARIBO Quaxi',
+      mappedIngredientId: null,
+      usableInBase: false,
+      usableAsTopping: true,
+      blockedReason: null,
+      publicData: {
+        productAccuracy: 93,
+        technicalComposition: {
+          fat: 0.5,
+          salt: 0.02,
+          sugars: 53,
+          protein: 5.8,
+          energyKcal: 345,
+          carbohydrate: 79,
+        },
+        productIntelligence: {
+          engineUsable: false,
+          productAccuracyAssessment: { roleReadiness: 'TOPPING_READY' },
+        },
+      },
+    });
+
+    expect(productPickerVerificationView(canonicalTopping, 'BASE_FORMULATION').status).toBe(
+      'MAPPER BINDING REQUIRED',
+    );
+    expect(productPickerVerificationView(canonicalTopping, 'POST_PROCESS_ADDON')).toEqual({
+      status: 'PINGÜINO — SPRAWDZONY',
+      reason: null,
+    });
+    expect(productCatalogOverviewVerificationView(canonicalTopping)).toEqual({
+      status: 'PINGÜINO — SPRAWDZONY',
+      reason: null,
+    });
+  });
 });

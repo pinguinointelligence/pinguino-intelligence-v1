@@ -236,43 +236,18 @@ export function productCatalogOverviewVerificationView(
   }
   const anyRoleReady = hit.usableInBase || hit.usableAsTopping;
   if (!anyRoleReady) {
-    return productPickerVerificationView(
-      hit,
-      hit.usableAsTopping ? 'POST_PROCESS_ADDON' : 'BASE_FORMULATION',
-    );
+    return productPickerVerificationView(hit, 'BASE_FORMULATION');
   }
-  if (hit.entityKind === 'pi_base') {
-    const scope = hit.usableInBase ? 'BASE_FORMULATION' : 'POST_PROCESS_ADDON';
-    return productPickerVerificationView(hit, scope);
-  }
-  if (!hit.mappedIngredientId && !hasProductOwnedEngineProfile(hit)) {
-    return {
-      status: 'MAPPER BINDING REQUIRED',
-      reason: exactPickerBlock(
-        hit,
-        'BASE_FORMULATION',
-        'product-owned profile / mappedIngredientId',
-        'Utwórz gotowy profil produktu albo wybierz dokładne powiązanie Mapper.',
-      ),
-    };
-  }
-  if (hit.verificationMethod === 'mapper_estimated') {
-    return {
-      status: 'Dane szacowane',
-      reason: 'Profil jest technicznie gotowy; część danych pochodzi z dopasowania rodzinnego.',
-    };
-  }
-  if (hit.verificationMethod === 'mapper_needs_label_review') {
-    return {
-      status: 'WYMAGA SPRAWDZENIA ETYKIETY',
-      reason: 'Produkt jest technicznie używalny, ale aktualna etykieta nadal wymaga sprawdzenia.',
-    };
-  }
-  if (hit.status === 'verified') return { status: 'PINGÜINO — SPRAWDZONY', reason: null };
-  if (hit.provenance === 'automatic_verified' || hit.verificationMethod === 'automatic') {
-    return { status: 'SYSTEM — DOPASOWANY', reason: null };
-  }
-  return { status: 'DODANY PRZEZ UŻYTKOWNIKA', reason: null };
+
+  // The catalogue is module-neutral. Once the server-owned role projection
+  // says a product is usable in at least one real module, present that exact
+  // ready role instead of re-running the BASE-only Mapper/profile gate. This
+  // is essential for canonical TOPPING_ONLY products: their product-owned
+  // profile is intentionally not base-engine-usable and they must keep
+  // runtimeMapperIngredientId=null, while TOPPING/SAVE/PRODUCTION/LABEL remain
+  // approved by ProductBehavior.
+  const readyScope = hit.usableInBase ? 'BASE_FORMULATION' : 'POST_PROCESS_ADDON';
+  return productPickerVerificationView(hit, readyScope);
 }
 
 export function productPickerUnavailableReason(

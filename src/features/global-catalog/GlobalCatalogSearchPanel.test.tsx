@@ -75,6 +75,24 @@ describe('GlobalCatalogSearchPanel status projection', () => {
         usableAsTopping: true,
         missingFields: ['allergens_text'],
       }),
+      hit('PR-ING-007144', {
+        entityKind: 'commercial_product',
+        status: 'verified',
+        provenance: 'human_verified',
+        mappedIngredientId: null,
+        verificationMethod: 'human',
+        displayName: 'HARIBO Quaxi',
+        usableInBase: false,
+        usableAsTopping: true,
+        publicData: {
+          productAccuracy: 93,
+          technicalComposition: { sugars: 53, protein: 5.8 },
+          productIntelligence: {
+            engineUsable: false,
+            productAccuracyAssessment: { roleReadiness: 'TOPPING_READY' },
+          },
+        },
+      }),
     ];
     mocks.usePicker.mockReturnValue({
       hits,
@@ -127,7 +145,9 @@ describe('GlobalCatalogSearchPanel status projection', () => {
       host.querySelector('[data-catalog-verification-status="WYMAGA SPRAWDZENIA ETYKIETY"]')
         ?.className,
     ).toContain('bg-amber-100');
-    expect(statuses.filter((status) => status === 'PINGÜINO — SPRAWDZONY')).toHaveLength(2);
-    expect(host.querySelectorAll('button[aria-label*="do Ulubionych"]')).toHaveLength(6);
+    expect(statuses.filter((status) => status === 'PINGÜINO — SPRAWDZONY')).toHaveLength(3);
+    expect(host.querySelectorAll('button[aria-label*="do Ulubionych"]')).toHaveLength(7);
+    expect(host.textContent).toContain('HARIBO Quaxi');
+    expect(host.textContent).not.toContain('PR-ING-007144 · ID');
   });
 });
