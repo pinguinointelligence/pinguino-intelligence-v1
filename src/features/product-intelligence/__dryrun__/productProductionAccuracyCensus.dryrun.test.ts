@@ -128,14 +128,53 @@ describe.runIf(existsSync(POLAND_FILE) && existsSync(OLD_AUDIT))(
       expect(oldScores).toHaveLength(820);
       expect(mapperRows).toHaveLength(2088);
       expect(Object.values(readiness).reduce((sum, value) => sum + value, 0)).toBe(820);
+
       for (const row of rows) {
+        expect(row.productionAccuracy.criticalCapApplied).toBe(false);
+        expect(row.productionAccuracy.criticalCap).toBeNull();
+        expect(row.productionAccuracy.productAccuracy).toBe(
+          row.productionAccuracy.rawProductAccuracy,
+        );
+
         if (row.productionAccuracy.criticalBlockers.length > 0) {
-          expect(row.productionAccuracy.productAccuracy).toBeLessThanOrEqual(84);
+          expect(classifyIntimportFinalResult(row)).not.toBe('READY');
         }
         if (row.productionAccuracy.roleReadiness === 'TOPPING_READY') {
           expect(row.productionAccuracy.baseEngineReady).toBe(false);
         }
       }
+
+      const highAccuracyBlocked = rows.filter(
+        (row) =>
+          row.productionAccuracy.productAccuracy >= 85 &&
+          row.productionAccuracy.criticalBlockers.length > 0,
+      );
+      expect(highAccuracyBlocked.length).toBeGreaterThan(0);
+      expect(highAccuracyBlocked.every((row) => classifyIntimportFinalResult(row) !== 'READY')).toBe(
+        true,
+      );
+
+      const lowAccuracyReadinessComplete = rows.filter(
+        (row) =>
+          row.productionAccuracy.productAccuracy < 85 &&
+          row.productionAccuracy.gellattiReadiness.ready &&
+          row.productionAccuracy.criticalBlockers.length === 0,
+      );
+      expect(lowAccuracyReadinessComplete.length).toBeGreaterThan(0);
+
+      const plBie00001 = rows.find((row) => row.sourceProductId === 'PL-BIE-00001');
+      expect(plBie00001).toBeDefined();
+      expect(plBie00001!.productionAccuracy.rawProductAccuracy).toBeCloseTo(94.5, 2);
+      expect(plBie00001!.productionAccuracy.productAccuracy).toBe(
+        plBie00001!.productionAccuracy.rawProductAccuracy,
+      );
+      expect(plBie00001!.productionAccuracy.criticalCapApplied).toBe(false);
+      expect(plBie00001!.productionAccuracy.criticalCap).toBeNull();
+      expect(plBie00001!.productionAccuracy.criticalBlockers).toContain(
+        'PRODUCT_SEMANTICS_UNRESOLVED',
+      );
+      expect(classifyIntimportFinalResult(plBie00001!)).toBe('REVIEW');
+
       expect(createHash('sha256').update(readFileSync(POLAND_FILE)).digest('hex')).toBe(
         polandBefore,
       );
