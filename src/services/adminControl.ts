@@ -1,4 +1,11 @@
 import { supabase } from '@/lib/supabase/client';
+import type {
+  ProductCapability,
+  ProductCapabilityClassification,
+  ProductCapabilityReanalysisReason,
+  ProductCapabilityReanalysisStatus,
+  ProductPickerAttemptContext,
+} from '@/services/productCapabilityReanalysis';
 
 const unavailable = (): never => {
   throw new Error('Admin backend is unavailable in this build.');
@@ -46,11 +53,11 @@ export interface AdminOverview {
   knownIncidents: Array<Record<string, unknown>>;
 }
 
-export interface AdminProductRequest {
+interface AdminProductRequestBase {
   id: string;
-  requestNumber: number;
-  status: ProductRequestStatus;
-  source: 'SCANNER' | 'MANUAL_EVIDENCE' | 'ADMIN';
+  requestNumber: number | null;
+  status: ProductRequestStatus | ProductCapabilityReanalysisStatus;
+  source: 'SCANNER' | 'MANUAL_EVIDENCE' | 'ADMIN' | 'CONTRIBUTOR_REANALYSIS';
   requesterUserId: string;
   requesterEmail: string;
   marketCountryCode: string | null;
@@ -77,6 +84,40 @@ export interface AdminProductRequest {
   events: Array<Record<string, unknown>>;
   evidence: Array<Record<string, unknown>>;
 }
+
+export interface AdminProductAddRequest extends AdminProductRequestBase {
+  requestType: 'PRODUCT_ADD';
+  requestNumber: number;
+  status: ProductRequestStatus;
+  source: 'SCANNER' | 'MANUAL_EVIDENCE' | 'ADMIN';
+}
+
+export interface AdminProductCapabilityReanalysisQueueRequest extends AdminProductRequestBase {
+  requestType: 'PRODUCT_CAPABILITY_REANALYSIS';
+  requestNumber: null;
+  status: ProductCapabilityReanalysisStatus;
+  source: 'CONTRIBUTOR_REANALYSIS';
+  canonicalProductId: string;
+  productCode: string | null;
+  requestingUserId: string;
+  requestedCapability: ProductCapability;
+  attemptedContext: ProductPickerAttemptContext;
+  reasonCode: ProductCapabilityReanalysisReason;
+  currentClassification: ProductCapabilityClassification;
+  identitySnapshot: Record<string, unknown>;
+  capabilitySnapshot: Record<string, unknown>;
+  readinessSnapshot: Record<string, unknown>;
+  contributionReference: Record<string, unknown>;
+  evidenceReferences: Array<Record<string, unknown>>;
+  currentAuthority: Record<string, unknown> | null;
+  reviewReason: string | null;
+  reviewStartedAt: string | null;
+  resolvedAt: string | null;
+}
+
+export type AdminProductRequest =
+  | AdminProductAddRequest
+  | AdminProductCapabilityReanalysisQueueRequest;
 
 export interface AdminCustomerAddedProduct {
   id: string;
@@ -167,7 +208,7 @@ const value = (primary: unknown, fallback: unknown): unknown =>
  * before creating a product; incomplete previews leave no orphan PR.
  */
 export async function approveProductRequest(
-  request: AdminProductRequest,
+  request: AdminProductAddRequest,
 ): Promise<Record<string, unknown>> {
   if (!supabase) return unavailable();
   const extracted = record(request.extractedData);

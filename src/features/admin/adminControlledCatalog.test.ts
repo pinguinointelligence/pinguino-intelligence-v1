@@ -132,6 +132,15 @@ describe('controlled customer product intake', () => {
     expect(workspace).toContain('ProductBehavior role');
     expect(workspace).toContain('Usage readiness');
     expect(workspace).toContain('aria-label="Podgląd wiadomości do użytkownika"');
+    expect(workspace).toContain("request.requestType==='PRODUCT_CAPABILITY_REANALYSIS'");
+    expect(workspace).toContain('to="/admin/product-requests"');
+    const customerAdded = read(
+      'src',
+      'features',
+      'admin',
+      'AdminCustomerAddedProductsSection.tsx',
+    );
+    expect(customerAdded).not.toContain('AdminProductCapabilityReanalysisSection');
   });
 });
 

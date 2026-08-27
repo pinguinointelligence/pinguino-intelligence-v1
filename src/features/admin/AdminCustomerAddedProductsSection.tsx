@@ -7,7 +7,6 @@ import {
   listAdminCustomerAddedProducts,
   type AdminCustomerAddedProduct,
 } from '@/services/adminControl';
-import { AdminProductCapabilityReanalysisSection } from './AdminProductCapabilityReanalysisSection';
 
 export function AdminCustomerAddedProductsSection() {
   const queryClient = useQueryClient();
@@ -142,7 +141,6 @@ export function AdminCustomerAddedProductsSection() {
           )}
         </aside>
       </div>
-      <AdminProductCapabilityReanalysisSection />
     </>
   );
 }

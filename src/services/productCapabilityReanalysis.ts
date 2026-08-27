@@ -28,34 +28,6 @@ export interface ProductCapabilityReviewSubmission {
   alreadyExists: boolean;
 }
 
-export interface AdminProductCapabilityReanalysisRequest {
-  id: string;
-  status: ProductCapabilityReanalysisStatus;
-  requestingUserId: string;
-  canonicalProductId: string;
-  productCode: string | null;
-  productName: string;
-  brand: string | null;
-  ean: string | null;
-  requestedCapability: ProductCapability;
-  attemptedContext: ProductPickerAttemptContext;
-  reasonCode: ProductCapabilityReanalysisReason;
-  currentClassification: ProductCapabilityClassification;
-  identitySnapshot: Record<string, unknown>;
-  capabilitySnapshot: Record<string, unknown>;
-  readinessSnapshot: Record<string, unknown>;
-  contributionReference: Record<string, unknown>;
-  evidenceReferences: Array<Record<string, unknown>>;
-  currentAuthority: Record<string, unknown> | null;
-  assignedAdminUserId: string | null;
-  reviewReason: string | null;
-  resolutionAuthority: Record<string, unknown> | null;
-  submittedAt: string;
-  reviewStartedAt: string | null;
-  resolvedAt: string | null;
-  updatedAt: string;
-}
-
 export const attemptedContextForCapability = (
   capability: ProductCapability,
 ): ProductPickerAttemptContext =>
@@ -90,18 +62,6 @@ export async function requestProductCapabilityReview(input: {
   });
   if (error) throw new Error(error.message);
   return data as unknown as ProductCapabilityReviewSubmission;
-}
-
-export async function listAdminProductCapabilityReanalysisRequests(
-  status: ProductCapabilityReanalysisStatus | 'ALL' = 'OPEN',
-): Promise<AdminProductCapabilityReanalysisRequest[]> {
-  if (!supabase) return unavailable();
-  const { data, error } = await supabase.rpc('gellatti_admin_product_capability_reanalysis_v1', {
-    p_status: status,
-    p_limit: 500,
-  });
-  if (error) throw new Error(error.message);
-  return (data ?? []) as unknown as AdminProductCapabilityReanalysisRequest[];
 }
 
 export async function adminProductCapabilityReanalysisAction(
