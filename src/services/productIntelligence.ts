@@ -623,6 +623,9 @@ export async function resolveLegacyRecipeBehaviorForSelection(input: {
     productVersionId?: string | null;
     behaviorBindingId?: string | null;
     normalizedIdentity?: string | null;
+    sourceRecipeId?: string | null;
+    sourceRecipeVersionId?: string | null;
+    sourceLineId?: string | null;
   };
   context: ProductBehaviorContext;
 }): Promise<ServerResolvedProductBehavior | null> {
@@ -648,6 +651,8 @@ export async function resolveRecipeProposalBehaviorSnapshots(input: {
   technicalOnlyMainLineIds?: readonly string[];
   /** Runtime callers omit this and use the canonical server resolver. */
   resolveSelection?: typeof resolveProductBehaviorForSelection;
+  /** Runtime callers omit this and use the owner-scoped historical resolver. */
+  resolveLegacySelection?: typeof resolveLegacyRecipeBehaviorForSelection;
 }): Promise<{
   snapshots: Record<string, ProductBehaviorSnapshot>;
   unresolvedLineIds: string[];
@@ -732,25 +737,76 @@ export async function resolveRecipeProposalBehaviorSnapshots(input: {
             : mapperIngredientId.startsWith('PI-ING-')
               ? { entityKind: 'mapper' as const, entityId: mapperIngredientId }
               : null;
+      const requestedRole = recipeAuthorityRequestedRole(
+        effectiveModule,
+        line?.lock_type === 'main',
+        line ? (input.technicalOnlyMainLineIds ?? []).includes(lineId) : false,
+      );
+      const resolutionContext: ProductBehaviorContext = {
+        accountId: input.accountId,
+        productProfile: input.recipe.category,
+        temperatureC: input.recipe.target_temperature_c,
+        mode,
+        processScope,
+        requestedRole,
+        module: effectiveModule,
+      };
+      const historical = prior?.historicalIdentity;
+      const frozenContext = prior?.resolutionContext;
+      const historicalContextStillApplies =
+        historical !== undefined &&
+        frozenContext !== null &&
+        frozenContext !== undefined &&
+        frozenContext.accountId === resolutionContext.accountId &&
+        frozenContext.productProfile === resolutionContext.productProfile &&
+        frozenContext.temperatureC === resolutionContext.temperatureC &&
+        frozenContext.mode === resolutionContext.mode &&
+        frozenContext.processScope === resolutionContext.processScope &&
+        frozenContext.requestedRole === resolutionContext.requestedRole;
+      if (historical && prior && historicalContextStillApplies) {
+        const successor = await (
+          input.resolveLegacySelection ?? resolveLegacyRecipeBehaviorForSelection
+        )({
+          reference: {
+            productId: historical.sourceProductId,
+            productVersionId: historical.sourceProductVersionId,
+            behaviorBindingId: historical.sourceBehaviorBindingId,
+            mapperIngredientId: prior.mapperIngredientId,
+            canonicalIdentity: mapperIngredientId,
+            sourceRecipeId: historical.sourceRecipeId,
+            sourceRecipeVersionId: historical.sourceRecipeVersionId,
+            sourceLineId: lineId,
+          },
+          context: resolutionContext,
+        }).catch(() => null);
+        if (successor?.state === 'eligible') {
+          snapshots[lineId] = {
+            ...structuredClone(prior),
+            resolutionState: 'RESOLVED',
+            resolutionContext,
+            historicalIdentity: {
+              ...historical,
+              canonicalProductId: successor.productId,
+              canonicalProductVersionId: successor.productVersionId,
+              canonicalBehaviorBindingId: successor.behaviorBindingId,
+              canonicalProductCode:
+                successor.canonicalProductCode ?? historical.canonicalProductCode,
+              resolutionKind:
+                successor.historicalResolutionKind ?? historical.resolutionKind,
+            },
+          };
+          return;
+        }
+        unresolvedLineIds.push(lineId);
+        return;
+      }
       if (!entity) {
         unresolvedLineIds.push(lineId);
         return;
       }
       const resolved = await (input.resolveSelection ?? resolveProductBehaviorForSelection)({
         entity,
-        context: {
-          accountId: input.accountId,
-          productProfile: input.recipe.category,
-          temperatureC: input.recipe.target_temperature_c,
-          mode,
-          processScope,
-          requestedRole: recipeAuthorityRequestedRole(
-            effectiveModule,
-            line?.lock_type === 'main',
-            line ? (input.technicalOnlyMainLineIds ?? []).includes(lineId) : false,
-          ),
-          module: effectiveModule,
-        },
+        context: resolutionContext,
       }).catch(() => null);
       if (!resolved || resolved.state !== 'eligible') {
         unresolvedLineIds.push(lineId);

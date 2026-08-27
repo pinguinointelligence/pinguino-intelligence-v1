@@ -76,6 +76,13 @@ export function useLegacyRecipeBehaviorRevalidation(enabled = true): void {
       const lineName = ingredient?.name ?? lineId;
       if (!ingredient) return { lineId, lineName, error: 'brak składnika w zapisanej linii' };
       const storedSnapshot = initial.productBehaviorSnapshots[lineId];
+      const historicalSource =
+        storedSnapshot?.sharedFacts && initial.savedRecipeId && initial.currentVersionId
+          ? {
+              recipeId: initial.savedRecipeId,
+              recipeVersionId: initial.currentVersionId,
+            }
+          : null;
       const catalogReference = catalogReferenceFromPrivateId(
         ingredient.private_product_id ?? undefined,
       );
@@ -90,6 +97,9 @@ export function useLegacyRecipeBehaviorRevalidation(enabled = true): void {
             productVersionId:
               storedSnapshot?.productVersionId ?? catalogReference.productVersionId,
             behaviorBindingId: storedSnapshot?.behaviorBindingId ?? null,
+            sourceRecipeId: historicalSource?.recipeId ?? null,
+            sourceRecipeVersionId: historicalSource?.recipeVersionId ?? null,
+            sourceLineId: historicalSource ? lineId : null,
           },
           context: {
             accountId: userId,
@@ -117,24 +127,58 @@ export function useLegacyRecipeBehaviorRevalidation(enabled = true): void {
           error: resolved.blockReasons.join(', ') || 'brak aktualnego bindingu produktu',
         };
       }
-      const row = base && resolved.mapperIngredientId
+      const preserveFrozen = historicalSource !== null && storedSnapshot !== undefined;
+      const row = !preserveFrozen && base && resolved.mapperIngredientId
         ? await getEngineApprovedIngredientById(resolved.mapperIngredientId).catch(() => null)
         : null;
-      if (base && !row) {
+      if (!preserveFrozen && base && resolved.entityKind === 'mapper' && !row) {
         return {
           lineId,
           lineName,
           error: `brak aktywnego Mapper row ${resolved.mapperIngredientId ?? mapperIngredientId ?? lineId}`,
         };
       }
+      const currentSnapshot = snapshotServerResolvedProductBehavior({
+        lineId,
+        processScope,
+        resolved,
+      });
+      const snapshot = preserveFrozen
+        ? {
+            ...structuredClone(storedSnapshot),
+            resolutionState: 'RESOLVED' as const,
+            resolutionContext: currentSnapshot.resolutionContext,
+            blockReasons: storedSnapshot.blockReasons.filter(
+              (reason) => reason !== 'recipe_context_changed',
+            ),
+            historicalIdentity: {
+              schemaVersion: 1 as const,
+              sourceRecipeId: historicalSource.recipeId,
+              sourceRecipeVersionId: historicalSource.recipeVersionId,
+              sourceProductId: storedSnapshot.productId,
+              sourceProductVersionId: storedSnapshot.productVersionId,
+              sourceBehaviorBindingId: storedSnapshot.behaviorBindingId,
+              canonicalProductId: resolved.productId,
+              canonicalProductVersionId: resolved.productVersionId,
+              canonicalBehaviorBindingId: resolved.behaviorBindingId,
+              canonicalProductCode: resolved.canonicalProductCode ?? null,
+              resolutionKind:
+                resolved.historicalResolutionKind ??
+                (resolved.productId === storedSnapshot.productId
+                  ? 'VERSION_SUCCESSOR' as const
+                  : 'PRODUCT_MERGE' as const),
+            },
+          }
+        : {
+            ...currentSnapshot,
+            resolutionState: 'RESOLVED' as const,
+          };
       return {
         lineId,
         lineName,
         row,
-        snapshot: {
-          ...snapshotServerResolvedProductBehavior({ lineId, processScope, resolved }),
-          resolutionState: 'RESOLVED' as const,
-        },
+        snapshot,
+        preserveFrozen,
       };
     })).then((resolvedLines) => {
       if (cancelled) return;
@@ -178,6 +222,29 @@ export function useLegacyRecipeBehaviorRevalidation(enabled = true): void {
         ...latest.productBehaviorSnapshots,
         ...Object.fromEntries(complete.map((line) => [line.lineId, line.snapshot])),
       };
+      // A saved immutable recipe already carries the exact ingredient vector.
+      // When every repaired line is identity-only, update only the authority
+      // map: running the general verified-write door would unnecessarily
+      // re-judge or project the historical recipe before the customer asks to
+      // recalculate it.
+      if (complete.every((line) => line.preserveFrozen)) {
+        useRecipeStore.setState((current) => {
+          if (
+            current.draftContextSeq !== draftContextSeq ||
+            current.draftRevision !== draftRevision
+          ) return current;
+          return {
+            productBehaviorSnapshots: structuredClone(snapshots),
+            compositionMigrationAmbiguities: current.compositionMigrationAmbiguities.filter(
+              (issue) =>
+                !required.includes(issue.lineId) ||
+                !issue.reason.startsWith('LEGACY_BEHAVIOR:'),
+            ),
+          };
+        });
+        useRecipeProfileStore.getState().markRecalculationRequired();
+        return;
+      }
       let upgraded = buildRecipeInput(latest);
       upgraded = {
         ...upgraded,

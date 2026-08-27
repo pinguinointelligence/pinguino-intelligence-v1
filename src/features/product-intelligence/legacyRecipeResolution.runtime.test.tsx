@@ -219,6 +219,201 @@ describe('legacy recipe runtime resolution', () => {
     expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(true);
   });
 
+  it('reopens a canonicalized catalog product without Mapper and preserves frozen grams, Crown and physics', async () => {
+    const saved = starterMilkBase();
+    const cacaoLine = saved.items.at(-1)!;
+    cacaoLine.ingredient = {
+      ...cacaoLine.ingredient,
+      id: 'CA-ING-007141',
+      canonical_ingredient_id: 'CA-ING-007141',
+      private_product_id:
+        'catalog:55bd0ed2-2d13-4c6b-9020-5c563188f1ef:version:2b000db4-7e18-4b74-936d-8ca991beecb9',
+      name: 'Cacao Puro',
+      composition: {
+        ...cacaoLine.ingredient.composition,
+        water_percent: 0,
+        solids_percent: 100,
+        fat_percent: 16,
+        protein_percent: 25.5,
+        carbohydrate_percent: 16.3,
+        sugar_percent: 0.7,
+        fiber_percent: 31.7,
+        salt_percent: 0.03,
+      },
+      pac_value: 1.102,
+      pod_value: 0.4,
+    };
+    cacaoLine.planned_grams = 30;
+    cacaoLine.lock_type = 'unlocked';
+    saved.items[0] = {
+      ...saved.items[0]!,
+      planned_grams: saved.items[0]!.planned_grams - 27,
+    };
+
+    const snapshots = productBehaviorTestSnapshots(saved);
+    const frozen = snapshots[cacaoLine.id]!;
+    snapshots[cacaoLine.id] = {
+      ...frozen,
+      resolutionState: 'REVALIDATION_REQUIRED',
+      source: 'manual',
+      productId: '55bd0ed2-2d13-4c6b-9020-5c563188f1ef',
+      productVersionId: '2b000db4-7e18-4b74-936d-8ca991beecb9',
+      behaviorBindingId: '6f1a7e48-2725-4d73-90c1-8a00e8a9d8c6',
+      behaviorBindingVersion: 'customer-added-runtime-null-v1',
+      factsFingerprint: '606e35153e7e86761c739a61e10b3394fb51f4f338140677659afedd7802a34e',
+      mapperIngredientId: null,
+      technicalAuthority: 'none',
+      sharedFacts: {
+        ...frozen.sharedFacts!,
+        technicalComposition: {
+          ...frozen.sharedFacts!.technicalComposition!,
+          water: 0,
+          totalSolids: 100,
+          fat: 16,
+          protein: 25.5,
+          carbohydrate: 16.3,
+          sugars: 0.7,
+          fibre: 31.7,
+          salt: 0.03,
+          pacValue: 1.102,
+          podValue: 0.4,
+        },
+      },
+    };
+    const frozenIngredient = structuredClone(cacaoLine.ingredient);
+
+    mocks.resolve.mockImplementation(async ({ reference }) => {
+      if (reference.productId === snapshots[cacaoLine.id]!.productId) {
+        return {
+          schemaVersion: 1,
+          resolverVersion: 'historical-recipe-successor-v1',
+          entityKind: 'catalog_product_version',
+          productId: '55bd0ed2-2d13-4c6b-9020-5c563188f1ef',
+          productVersionId: '6a463055-ac6d-41d1-8fbb-01e662ba943b',
+          factsFingerprint: 'current-facts-deliberately-different',
+          catalogStatus: 'verified',
+          provenance: 'admin',
+          behaviorBindingId: '639f48f5-9d1c-4948-86a0-02ed20205203',
+          behaviorBindingVersion: 'current-binding-v2',
+          taxonomyVersion: frozen.taxonomyVersion,
+          mapperIngredientId: null,
+          familyId: frozen.familyId,
+          subfamilyId: frozen.subfamilyId,
+          formId: frozen.formId,
+          mainEligibility: frozen.mainClassification,
+          veganEligibility: 'verified',
+          proteinBehavior: 'neutral',
+          processBehavior: {},
+          sharedFacts: {
+            ...frozen.sharedFacts!,
+            technicalComposition: {
+              ...frozen.sharedFacts!.technicalComposition!,
+              fat: 99,
+            },
+          },
+          approvedLiquidDairyCarrier: false,
+          context: {
+            accountId: 'owner-runtime',
+            productProfile: saved.category,
+            temperatureC: saved.target_temperature_c,
+            mode: 'optimal',
+            processScope: 'BASE_FORMULATION',
+            requestedRole: 'STANDARD',
+            module: 'BASE_RECIPE',
+          },
+          module: 'BASE_RECIPE',
+          state: 'eligible',
+          moduleEligibility: frozen.moduleEligibility,
+          mainPolicy: null,
+          warnings: [],
+          blockReasons: [],
+          canonicalProductCode: 'PR-ING-007142',
+          historicalResolutionKind: 'VERSION_SUCCESSOR',
+        };
+      }
+      const mapperId = reference.mapperIngredientId ?? reference.canonicalIdentity;
+      const line = saved.items.find(
+        (item) => (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) === mapperId,
+      );
+      if (!line) return null;
+      const snapshot = snapshots[line.id]!;
+      return {
+        schemaVersion: 1,
+        resolverVersion: snapshot.resolverVersion,
+        entityKind: 'mapper',
+        productId: snapshot.productId,
+        productVersionId: snapshot.productVersionId,
+        factsFingerprint: snapshot.factsFingerprint,
+        catalogStatus: 'pi_base',
+        provenance: 'mapper',
+        behaviorBindingId: snapshot.behaviorBindingId,
+        behaviorBindingVersion: snapshot.behaviorBindingVersion,
+        taxonomyVersion: snapshot.taxonomyVersion,
+        mapperIngredientId: mapperId,
+        familyId: null,
+        subfamilyId: null,
+        formId: null,
+        mainEligibility: 'STANDARD_ONLY',
+        veganEligibility: 'unknown',
+        proteinBehavior: 'unknown',
+        processBehavior: {},
+        sharedFacts: snapshot.sharedFacts,
+        approvedLiquidDairyCarrier: false,
+        context: snapshot.resolutionContext ?? {},
+        module: 'BASE_RECIPE',
+        state: 'eligible',
+        moduleEligibility: snapshot.moduleEligibility,
+        mainPolicy: null,
+        warnings: [],
+        blockReasons: [],
+      };
+    });
+    mocks.getRow.mockImplementation(async (mapperId: string) => {
+      const line = saved.items.find(
+        (item) => (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) === mapperId,
+      );
+      return line ? rowFromEngine(line.ingredient) : null;
+    });
+
+    useRecipeStore.getState().loadRecipeInput(saved, {
+      savedId: 'd7246dcf-50e1-4e57-80e3-4facbfcf6e1c',
+      savedName: 'P0 Cacao proof',
+      versionId: '374bd44b-901c-46ce-9e8d-57c4a5b49704',
+      versionNumber: 2,
+      composition: {
+        schemaVersion: 1,
+        baseScope: 'BASE_FORMULATION',
+        baseOrder: saved.items.map((item) => item.id),
+        toppings: [],
+        behaviorSnapshots: snapshots,
+        migrationAmbiguities: [],
+      },
+    });
+
+    await act(async () => root.render(<Harness />));
+    await vi.waitFor(() => {
+      expect(
+        useRecipeStore.getState().productBehaviorSnapshots[cacaoLine.id]?.resolutionState,
+      ).toBe('RESOLVED');
+    });
+
+    const reopened = useRecipeStore.getState();
+    const reopenedCacao = reopened.items.find((item) => item.id === cacaoLine.id)!;
+    const reopenedSnapshot = reopened.productBehaviorSnapshots[cacaoLine.id]!;
+    expect(reopenedCacao.planned_grams).toBe(30);
+    expect(reopenedCacao.lock_type).toBe('unlocked');
+    expect(reopenedCacao.ingredient).toEqual(frozenIngredient);
+    expect(reopenedSnapshot.productVersionId).toBe('2b000db4-7e18-4b74-936d-8ca991beecb9');
+    expect(reopenedSnapshot.sharedFacts).toEqual(snapshots[cacaoLine.id]!.sharedFacts);
+    expect(reopenedSnapshot.historicalIdentity).toMatchObject({
+      canonicalProductCode: 'PR-ING-007142',
+      canonicalProductVersionId: '6a463055-ac6d-41d1-8fbb-01e662ba943b',
+      resolutionKind: 'VERSION_SUCCESSOR',
+    });
+    expect(reopened.compositionMigrationAmbiguities).toEqual([]);
+    expect(mocks.getRow).not.toHaveBeenCalledWith(null);
+  });
+
   it('re-resolves persisted Owner Review Main seeds as technical STANDARD without changing the visible lock', async () => {
     const saved = starterMilkBase();
     saved.items[0] = { ...saved.items[0]!, lock_type: 'main' };

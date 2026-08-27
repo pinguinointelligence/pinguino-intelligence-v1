@@ -151,6 +151,7 @@ export function productBehaviorSnapshotFingerprint(
         value.processScope,
         value.resolutionContext,
         value.sharedFacts ?? null,
+        value.historicalIdentity ?? null,
       ]),
   );
 }
@@ -181,6 +182,29 @@ export function readProductBehaviorSnapshot(value: unknown): ProductBehaviorSnap
       (facts.allergens !== null && typeof facts.allergens !== 'object') ||
       !Array.isArray(facts.processEvidence) ||
       !Array.isArray(facts.profileEligibility)
+    ) return null;
+  }
+  if (row.historicalIdentity !== undefined) {
+    const historical = row.historicalIdentity;
+    if (
+      !historical ||
+      historical.schemaVersion !== 1 ||
+      typeof historical.sourceRecipeId !== 'string' ||
+      typeof historical.sourceRecipeVersionId !== 'string' ||
+      typeof historical.sourceProductId !== 'string' ||
+      typeof historical.sourceProductVersionId !== 'string' ||
+      typeof historical.sourceBehaviorBindingId !== 'string' ||
+      typeof historical.canonicalProductId !== 'string' ||
+      typeof historical.canonicalProductVersionId !== 'string' ||
+      typeof historical.canonicalBehaviorBindingId !== 'string' ||
+      !(historical.canonicalProductCode === null ||
+        typeof historical.canonicalProductCode === 'string') ||
+      ![
+        'DIRECT_CURRENT',
+        'VERSION_SUCCESSOR',
+        'PRODUCT_MERGE',
+        'IMMUTABLE_SNAPSHOT',
+      ].includes(historical.resolutionKind)
     ) return null;
   }
   const resolutionContext = row.resolutionContext ?? null;

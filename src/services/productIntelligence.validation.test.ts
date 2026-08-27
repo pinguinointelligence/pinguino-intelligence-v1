@@ -630,6 +630,108 @@ describe('recipe behavior server validation', () => {
     });
   });
 
+  it('revalidates historical identity for Recalculate without replacing frozen effective facts', async () => {
+    const historicalRecipe: RecipeInput = {
+      ...recipe,
+      items: [
+        {
+          ...recipe.items[1]!,
+          id: 'cacao-line',
+          ingredient: {
+            ...recipe.items[1]!.ingredient,
+            id: 'CA-ING-007141',
+            canonical_ingredient_id: 'CA-ING-007141',
+            private_product_id:
+              'catalog:55bd0ed2-2d13-4c6b-9020-5c563188f1ef:version:2b000db4-7e18-4b74-936d-8ca991beecb9',
+            name: 'Cacao Puro',
+          },
+          planned_grams: 1000,
+        },
+      ],
+    };
+    const frozen: ProductBehaviorSnapshot = {
+      ...snapshot('cacao-line', 'PI-ING-001313'),
+      source: 'manual',
+      mapperIngredientId: null,
+      technicalAuthority: 'none',
+      productId: '55bd0ed2-2d13-4c6b-9020-5c563188f1ef',
+      productVersionId: '2b000db4-7e18-4b74-936d-8ca991beecb9',
+      behaviorBindingId: '6f1a7e48-2725-4d73-90c1-8a00e8a9d8c6',
+      factsFingerprint: 'frozen-cacao-facts',
+      resolutionContext: {
+        accountId: 'account-1',
+        productProfile: 'milk_gelato',
+        temperatureC: -12,
+        mode: 'optimal',
+        processScope: 'BASE_FORMULATION',
+        requestedRole: 'STANDARD',
+        module: 'BASE_RECIPE',
+      },
+      historicalIdentity: {
+        schemaVersion: 1,
+        sourceRecipeId: 'd7246dcf-50e1-4e57-80e3-4facbfcf6e1c',
+        sourceRecipeVersionId: '374bd44b-901c-46ce-9e8d-57c4a5b49704',
+        sourceProductId: '55bd0ed2-2d13-4c6b-9020-5c563188f1ef',
+        sourceProductVersionId: '2b000db4-7e18-4b74-936d-8ca991beecb9',
+        sourceBehaviorBindingId: '6f1a7e48-2725-4d73-90c1-8a00e8a9d8c6',
+        canonicalProductId: '55bd0ed2-2d13-4c6b-9020-5c563188f1ef',
+        canonicalProductVersionId: '6a463055-ac6d-41d1-8fbb-01e662ba943b',
+        canonicalBehaviorBindingId: '639f48f5-9d1c-4948-86a0-02ed20205203',
+        canonicalProductCode: 'PR-ING-007142',
+        resolutionKind: 'VERSION_SUCCESSOR',
+      },
+    };
+    const frozenFacts = structuredClone(frozen.sharedFacts);
+    const resolveLegacySelection = vi.fn().mockResolvedValue({
+      ...frozen,
+      entityKind: 'catalog_product_version',
+      state: 'eligible',
+      module: 'OPTIMAL',
+      context: { ...frozen.resolutionContext, module: 'OPTIMAL' },
+      productVersionId: '6a463055-ac6d-41d1-8fbb-01e662ba943b',
+      behaviorBindingId: '639f48f5-9d1c-4948-86a0-02ed20205203',
+      factsFingerprint: 'new-facts-must-not-enter-history',
+      sharedFacts: {
+        ...frozen.sharedFacts!,
+        technicalComposition: { ...frozen.sharedFacts!.technicalComposition!, fat: 99 },
+      },
+      canonicalProductCode: 'PR-ING-007142',
+      historicalResolutionKind: 'VERSION_SUCCESSOR',
+    });
+    const resolveSelection = vi.fn();
+
+    const result = await resolveRecipeProposalBehaviorSnapshots({
+      recipe: historicalRecipe,
+      snapshots: { 'cacao-line': frozen },
+      accountId: 'account-1',
+      module: 'OPTIMAL',
+      resolveSelection,
+      resolveLegacySelection,
+    });
+
+    expect(result.unresolvedLineIds).toEqual([]);
+    expect(resolveSelection).not.toHaveBeenCalled();
+    expect(resolveLegacySelection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reference: expect.objectContaining({
+          productVersionId: '2b000db4-7e18-4b74-936d-8ca991beecb9',
+          sourceRecipeVersionId: '374bd44b-901c-46ce-9e8d-57c4a5b49704',
+        }),
+        context: expect.objectContaining({ module: 'OPTIMAL' }),
+      }),
+    );
+    expect(result.snapshots['cacao-line']).toMatchObject({
+      productVersionId: '2b000db4-7e18-4b74-936d-8ca991beecb9',
+      factsFingerprint: 'frozen-cacao-facts',
+      resolutionContext: { module: 'OPTIMAL' },
+      historicalIdentity: {
+        canonicalProductCode: 'PR-ING-007142',
+        canonicalProductVersionId: '6a463055-ac6d-41d1-8fbb-01e662ba943b',
+      },
+    });
+    expect(result.snapshots['cacao-line']?.sharedFacts).toEqual(frozenFacts);
+  });
+
   it.each(['gelato', 'sorbet', 'vegan', 'protein'] as const)(
     'hydrates every fresh %s native-starter line against the current Base context',
     async (visibleProductType) => {

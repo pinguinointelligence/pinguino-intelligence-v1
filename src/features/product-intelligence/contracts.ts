@@ -263,6 +263,14 @@ export interface ServerResolvedProductBehavior {
   };
   warnings: string[];
   blockReasons: string[];
+  /** Identity-only successor metadata returned by legacy recipe resolution.
+   * It never replaces the immutable facts carried by a saved recipe version. */
+  canonicalProductCode?: string | null;
+  historicalResolutionKind?:
+    | 'DIRECT_CURRENT'
+    | 'VERSION_SUCCESSOR'
+    | 'PRODUCT_MERGE'
+    | 'IMMUTABLE_SNAPSHOT';
 }
 
 export interface ProductBehaviorContext {
@@ -402,4 +410,24 @@ export interface ProductBehaviorSnapshot {
   sharedFacts?: SharedProductBehaviorFacts | null;
   warnings: string[];
   blockReasons: string[];
+  /** Current catalog identity proved for an immutable historical selection.
+   * The source product/version/binding and sharedFacts above remain the
+   * effective recipe authority; this object is identity routing only. */
+  historicalIdentity?: {
+    schemaVersion: 1;
+    sourceRecipeId: string;
+    sourceRecipeVersionId: string;
+    sourceProductId: string;
+    sourceProductVersionId: string;
+    sourceBehaviorBindingId: string;
+    canonicalProductId: string;
+    canonicalProductVersionId: string;
+    canonicalBehaviorBindingId: string;
+    canonicalProductCode: string | null;
+    resolutionKind:
+      | 'DIRECT_CURRENT'
+      | 'VERSION_SUCCESSOR'
+      | 'PRODUCT_MERGE'
+      | 'IMMUTABLE_SNAPSHOT';
+  };
 }
