@@ -102,7 +102,7 @@ Blocker groups overlap because one product may have more than one real readiness
 
 ### Full gates
 
-- Full suite on the final rebased branch: `npm test -- --reporter=dot --silent=passed-only --maxWorkers=2` — **775 files passed, 22 skipped; 9562 tests passed, 121 skipped; 0 failures**. Duration 696.14 s. The first default-parallel run completed 797 files with one unchanged Horchata test timing out at 5 s; the same file passed independently and the complete suite passed twice with bounded concurrency, without changing timeout or Engine/Solver.
+- Full suite on the final rebased branch: `npm test -- --reporter=dot --silent=passed-only --maxWorkers=2` — **775 files passed, 22 skipped; 9562 tests passed, 121 skipped; 0 failures**. Final duration 436.79 s. The first default-parallel run completed 797 files with one unchanged Horchata test timing out at 5 s; the same file passed independently and the complete suite passed repeatedly with bounded concurrency, without changing timeout or Engine/Solver.
 - Typecheck: `npm run typecheck` — **passed**.
 - Lint: `npm run lint` — **0 errors, 4 pre-existing Fast Refresh warnings**.
 - Build: `npm run build` — **passed**; only the existing large-chunk and mixed static/dynamic import warnings were emitted.
