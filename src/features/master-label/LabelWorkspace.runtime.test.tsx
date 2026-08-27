@@ -137,15 +137,20 @@ describe('LabelWorkspace unified actual-run surface', () => {
     });
   };
 
-  it('starts with only missing label data, then reveals settings in a three-step flow', async () => {
+  it('moves from required data to the actual label before exposing Settings as step three', async () => {
     await renderWorkspace('data');
 
     const workspace = host.querySelector('[data-testid="label-workspace"]')!;
     const intake = workspace.querySelector('[data-testid="label-data-intake"]')!;
-    const continueButton = button('Przejdź do ustawień etykiety') as HTMLButtonElement;
+    const continueButton = button('Pokaż etykietę') as HTMLButtonElement;
 
     expect(workspace.getAttribute('data-active-label-view')).toBe('data');
     expect(workspace.querySelectorAll('[data-testid^="label-workspace-dot-"]')).toHaveLength(3);
+    expect(
+      [
+        ...workspace.querySelectorAll<HTMLButtonElement>('[data-testid^="label-workspace-dot-"]'),
+      ].map((dot) => dot.getAttribute('aria-label')),
+    ).toEqual(['Dane do etykiety', 'Etykieta', 'Ustawienia etykiety']);
     expect(intake.textContent).toContain('Uzupełnij dane do etykiety');
     expect(intake.textContent).not.toContain('Jurysdykcja / profil');
     expect(intake.textContent).not.toContain('Profil drukarki');
@@ -187,6 +192,17 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(continueButton.disabled).toBe(false);
     await act(async () => continueButton.click());
 
+    expect(workspace.getAttribute('data-active-label-view')).toBe('label');
+    expect(workspace.querySelector('[data-testid="label-consumer-preview"]')).not.toBeNull();
+    expect(button('Ustawienia')).not.toBeUndefined();
+    expect(button('Pobierz podgląd')).not.toBeUndefined();
+    expect((button('Drukuj') as HTMLButtonElement).disabled).toBe(true);
+    expect(
+      workspace.querySelector<HTMLButtonElement>('[data-testid="label-workspace-dot-label"]')
+        ?.disabled,
+    ).toBe(false);
+
+    await act(async () => button('Ustawienia')!.click());
     const settings = workspace.querySelector('[data-testid="label-settings-view"]')!;
     expect(workspace.getAttribute('data-active-label-view')).toBe('settings');
     expect(settings.textContent).toContain('Uzupełnij wymagane pola');
@@ -195,12 +211,10 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(settings.querySelector('[data-label-field="date_mark"]')).not.toBeNull();
     expect(settings.querySelector('[data-label-field="allergens"]')).not.toBeNull();
     expect(settings.querySelector('[data-label-field="market_nutrition"]')).not.toBeNull();
-    expect(workspace.querySelector('[data-testid="label-consumer-preview"]')).toBeNull();
-    expect(
-      workspace.querySelector<HTMLButtonElement>('[data-testid="label-workspace-dot-label"]')
-        ?.disabled,
-    ).toBe(true);
     expect((button('Pokaż etykietę') as HTMLButtonElement).disabled).toBe(true);
+    await act(async () => button('Wróć do etykiety')!.click());
+    expect(workspace.getAttribute('data-active-label-view')).toBe('label');
+    expect(workspace.querySelector('[data-testid="label-consumer-preview"]')).not.toBeNull();
   });
 
   it('shows one market-driven preview with ACTUAL overview outside the print boundary', async () => {
@@ -291,7 +305,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
       host.querySelector('[data-testid="label-settings-view"] [data-market-active="true"]')
         ?.textContent,
     ).toContain('United Kingdom');
-    await act(async () => button('Anuluj')!.click());
+    await act(async () => button('Wróć do danych etykiety')!.click());
     expect(host.querySelector('[data-active-label-view="data"]')).not.toBeNull();
     expect(
       host.querySelector('[data-testid="label-data-intake"]')?.getAttribute('data-label-market'),
@@ -507,7 +521,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(workspace.getAttribute('data-active-label-view')).toBe('label');
   });
 
-  it('uses accessible dots and Cancel returns without applying the draft', async () => {
+  it('uses accessible dots and returns an incomplete deep link to required data', async () => {
     await renderWorkspace();
     const settingsDot = host.querySelector<HTMLButtonElement>(
       '[data-testid="label-workspace-dot-settings"]',
@@ -521,7 +535,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
       candidate.textContent?.startsWith('United Kingdom'),
     )!;
     await act(async () => uk.click());
-    await act(async () => button('Anuluj')!.click());
+    await act(async () => button('Wróć do danych etykiety')!.click());
 
     expect(host.querySelector('[data-active-label-view="data"]')).not.toBeNull();
     expect(
@@ -545,6 +559,9 @@ describe('LabelWorkspace unified actual-run surface', () => {
     await swipe(workspace, 260, 130);
     expect(workspace.getAttribute('data-active-label-view')).toBe('settings');
     await swipe(workspace, 80, 170);
+    expect(workspace.getAttribute('data-active-label-view')).toBe('settings');
+
+    await act(async () => button('Wróć do danych etykiety')!.click());
     expect(workspace.getAttribute('data-active-label-view')).toBe('data');
 
     const settingsInput = workspace.querySelector<HTMLInputElement>(

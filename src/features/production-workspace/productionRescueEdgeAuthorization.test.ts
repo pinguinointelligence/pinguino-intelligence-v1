@@ -144,6 +144,40 @@ function context(): TrustedRescueContext {
   };
 }
 
+function stabilizerDeviationContext(actualStabilizerG = 3.1): TrustedRescueContext {
+  const source = context();
+  const recipeInput = structuredClone(source.version.recipe_input) as unknown as RecipeInput;
+  const stabilizer = recipeInput.items.find((item) =>
+    item.ingredient.name.toLowerCase().includes('tara'),
+  )!;
+  const milk = recipeInput.items.find((item) =>
+    item.ingredient.name.toLowerCase().includes('milk 3.5'),
+  )!;
+  stabilizer.planned_grams = 3;
+  milk.planned_grams += 2;
+  source.version.recipe_input = recipeInput as unknown as Record<string, unknown>;
+  source.planned = source.planned.map((line) => {
+    const recipeLine = recipeInput.items.find((item) => item.id === line.line_id)!;
+    return {
+      ...line,
+      planned_grams: recipeLine.planned_grams,
+      display_grams: recipeLine.planned_grams,
+    };
+  });
+  source.actual = {
+    ...source.actual!,
+    actual_items: recipeInput.items.map((item, index) => ({
+      id: item.id,
+      name: item.ingredient.name,
+      actualGrams: item.id === stabilizer.id ? actualStabilizerG : item.planned_grams,
+      confirmedAt: `2026-08-19T00:${String(index + 1).padStart(2, '0')}:00.000Z`,
+      confirmationOrder: index + 1,
+    })),
+    actual_total_mix_g: 1_000 + actualStabilizerG - 3,
+  };
+  return source;
+}
+
 const dependencies = (
   source = context(),
   onPersist: (input: PersistTrustedAuthorizationInput) => void = () => undefined,
@@ -212,6 +246,39 @@ describe('Production Rescue Edge request boundary', () => {
 });
 
 describe('trusted Production Rescue authorization', () => {
+  it('authorizes both truthful continuation and proportional restore for TARA 3.0 → 3.1 g', async () => {
+    let continued: PersistTrustedAuthorizationInput | null = null;
+    const continuation = await authorizeTrustedProductionRescue(
+      OWNER,
+      request({ stableOptionId: 'leave_as_is' }),
+      dependencies(stabilizerDeviationContext(), (input) => {
+        continued = input;
+      }),
+    );
+    expect(continuation.preview.finalMassG).toBeCloseTo(1_000.1, 9);
+    expect(continued!.recipeInput.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: expect.stringContaining('tara_gum'), planned_grams: 3.1 }),
+      ]),
+    );
+
+    let restored: PersistTrustedAuthorizationInput | null = null;
+    const restore = await authorizeTrustedProductionRescue(
+      OWNER,
+      request({ stableOptionId: 'restore_original_recipe' }),
+      dependencies(stabilizerDeviationContext(), (input) => {
+        restored = input;
+      }),
+    );
+    expect(restore.preview.finalMassG).toBeCloseTo(1_033.3, 9);
+    expect(restored!.recipeInput.target_batch_grams).toBeCloseTo(1_033.3, 9);
+    expect(restored!.recipeInput.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: expect.stringContaining('tara_gum'), planned_grams: 3.1 }),
+      ]),
+    );
+  });
+
   it('executes the canonical Engine option and persists only scale-supported 0.1 g values', async () => {
     let persisted: PersistTrustedAuthorizationInput | null = null;
     const result = await authorizeTrustedProductionRescue(
@@ -333,7 +400,7 @@ describe('trusted Production Rescue authorization', () => {
       engineVersion: '0.4.0',
       configVersion: '0.7.0',
       practicalRecipeVersion: 'pro-whole-gram-v1',
-      rescueModelVersion: 'production-rescue-v2',
+      rescueModelVersion: 'production-rescue-v3',
       bundlerVersion: '1.0.3',
       ttlSeconds: 300,
     });

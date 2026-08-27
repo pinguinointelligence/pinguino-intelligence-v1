@@ -692,6 +692,13 @@ describe('Production workspace touch-first UI', () => {
     const pending = render(false);
     expect(pending).toContain('Pamiętaj o obróbce');
     expect(pending).toContain('Najpierw potwierdź informację');
+    expect(pending).toContain('grid-cols-[minmax(0,1fr)_auto]');
+    expect(pending).toMatch(
+      /<button(?=[^>]*data-testid="acknowledge-production-heat-information")(?=[^>]*self-start)(?=[^>]*min-h-11)/,
+    );
+    expect(pending).not.toMatch(
+      /<button(?=[^>]*data-testid="acknowledge-production-heat-information")(?=[^>]*mt-3)/,
+    );
     expect(pending).toMatch(
       /<button(?=[^>]*data-testid="start-production-session")(?=[^>]*\sdisabled="")/,
     );
@@ -952,7 +959,7 @@ describe('Production workspace touch-first UI', () => {
 
     const html = renderToStaticMarkup(<ProductionWorkspaceHeader production={view} />);
     expect(html).toContain('data-production-state="completed"');
-    expect(html).toContain('Partia gotowa');
+    expect(html).toContain('Gellattissimo! Partia gotowa.');
     expect(html).toContain('data-friendly-lab-timing="important"');
     expect(html).toContain('data-motion-phase="entering"');
     expect(html).not.toContain('production-workspace-instructions');

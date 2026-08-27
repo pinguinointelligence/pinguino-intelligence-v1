@@ -170,8 +170,16 @@ export function evaluateRecipeConstraintAuthority(
 
   const stabilizerSystem = assessGelatoStabilizerSystem(recipe);
   const sorbetStabilizerSystem = assessSorbetStabilizerSystem(recipe);
+  // Recipe publication keeps the owner-approved whole-gram stabilizer rule.
+  // BATCH_RESCUE validates an already-weighed physical vector, whose supported
+  // execution precision is 0.1 g. Rejecting that physical truth solely for
+  // being fractional can remove both safe continuation and proportional
+  // restoration. Aggregate min/max and every Engine hard gate remain active.
+  const stabilizerIssues = [...stabilizerSystem.issues, ...sorbetStabilizerSystem.issues].filter(
+    (issue) => input.module !== 'BATCH_RESCUE' || issue.code !== 'component_not_whole_grams',
+  );
   issues.push(
-    ...[...stabilizerSystem.issues, ...sorbetStabilizerSystem.issues].map((issue) => ({
+    ...stabilizerIssues.map((issue) => ({
       source: 'owner_policy' as const,
       code: issue.code,
       lineIds: issue.lineIds,

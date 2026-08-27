@@ -36,7 +36,7 @@ export type ProductionRescueOptionId = ProductionRescueStableOptionId;
  * continue to identify the formulas and calibrated data; this stamp identifies
  * the option-selection and practicalization layer authorized by the server.
  */
-export const PRODUCTION_RESCUE_MODEL_VERSION = 'production-rescue-v2' as const;
+export const PRODUCTION_RESCUE_MODEL_VERSION = 'production-rescue-v3' as const;
 
 export interface ProductionRescueInstruction {
   lineId: string | null;
@@ -391,13 +391,24 @@ function tenthGramProductionAudit(
   for (const [index, item] of baseExecutableInput.items.entries()) {
     if (!isTemplateControlledStabilizer(item.ingredient)) continue;
     const physicalFloor = physicalById.get(item.id) ?? 0;
-    const choices = [
-      Math.round(item.planned_grams),
-      Math.floor(item.planned_grams),
-      Math.ceil(item.planned_grams),
-    ].filter(
+    // The whole-gram stabilizer rule belongs to recipe publication, not to a
+    // physical Production correction. Once a stabilizer has been weighed at
+    // supported 0.1 g precision, replacing that truth with 3 → 4 g can make a
+    // safe continuation or proportional restore disappear. Keep the exact
+    // tenth-gram target for physically present stabilizers; retain the legacy
+    // whole-gram choices for still-unweighed recipe-plan lines.
+    const choices = (
+      physicalFloor > PRODUCTION_GRAMS_EPSILON
+        ? [item.planned_grams]
+        : [
+            Math.round(item.planned_grams),
+            Math.floor(item.planned_grams),
+            Math.ceil(item.planned_grams),
+          ]
+    ).filter(
       (grams, position, values) =>
         grams > 0 &&
+        Math.abs(grams * 10 - Math.round(grams * 10)) <= 1e-8 &&
         grams + PRODUCTION_GRAMS_EPSILON >= physicalFloor &&
         values.indexOf(grams) === position,
     );

@@ -40,7 +40,7 @@ export function ProductionWorkspaceHeader({ production }: { production: Producti
               />
             </svg>
           </span>
-          <span>Perfetto. Partia gotowa.</span>
+          <span>Gellattissimo! Partia gotowa.</span>
         </FriendlyLabMessageMotion>
       ) : (
         <p className="text-xs text-stone-600">Ważenie składników</p>

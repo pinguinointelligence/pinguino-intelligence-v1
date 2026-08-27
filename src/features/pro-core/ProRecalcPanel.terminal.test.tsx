@@ -82,7 +82,10 @@ describe('PI visible terminal contract', () => {
     const summaryText = () =>
       document.querySelector('[data-testid="preview-summary"]')?.textContent;
 
-    expect(visibleScore()).toBe('8/10');
+    expect(visibleScore()).toBe('8');
+    expect(document.querySelector('[data-testid="preview-score"]')).toMatchObject({
+      dataset: expect.objectContaining({ score: '8', scoreProgress: '0.80' }),
+    });
     expect(summaryText()).toMatch(/\d+ zmian(?:a|y)?/);
     expect(
       document
@@ -104,7 +107,7 @@ describe('PI visible terminal contract', () => {
         recalculationTerminal: { state: 'PREVIEW_READY' },
       });
     });
-    expect(visibleScore()).toBe('8/10');
+    expect(visibleScore()).toBe('8');
 
     const failedGeneration = beginPiRecalculation();
     await act(async () => {
@@ -125,7 +128,10 @@ describe('PI visible terminal contract', () => {
         recalculationTerminal: { state: 'PREVIEW_READY' },
       });
     });
-    expect(visibleScore()).toBe('9/10');
+    expect(visibleScore()).toBe('9');
+    expect(document.querySelector('[data-testid="preview-score"]')).toMatchObject({
+      dataset: expect.objectContaining({ score: '9', scoreProgress: '0.90' }),
+    });
     expect(document.body.textContent).not.toContain('8 / 10');
     expect(summaryText()).toMatch(/\d+ zmian(?:a|y)?/);
   });

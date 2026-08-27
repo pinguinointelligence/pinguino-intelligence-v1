@@ -65,4 +65,25 @@ describe('printer profiles', () => {
       'Szerokość musi mieścić się w zakresie 20–58 mm.',
     ]);
   });
+
+  it('preserves an operator-defined custom label size on the renderer tenth-millimetre grid', () => {
+    const settings = normalizePrinterSettings({
+      profileId: 'custom',
+      formatMode: 'custom',
+      widthMm: 87.5,
+      heightMm: 43.2,
+      marginMm: 1.5,
+      copies: 2,
+    });
+
+    expect(settings).toMatchObject({
+      profileId: 'custom',
+      formatMode: 'custom',
+      widthMm: 87.5,
+      heightMm: 43.2,
+      marginMm: 1.5,
+      copies: 2,
+    });
+    expect(printerGeometryIssues(settings)).toEqual([]);
+  });
 });

@@ -50,25 +50,27 @@ function HeatInformationCard({ production }: { production: ProductionWorkspaceVi
   if (acknowledged) return null;
   return (
     <section
-      className="rounded-[12px] border border-[#d9c49a] bg-[#fbf8f1] px-3 py-3 text-ink"
+      className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1.5 rounded-[12px] border border-[#d9c49a] bg-[#fbf8f1] px-3 py-2.5 text-ink"
       role="status"
       data-testid="production-heat-information"
       data-acknowledged={acknowledged ? 'true' : 'false'}
     >
-      <p className="text-xs font-semibold leading-relaxed">Pamiętaj o obróbce</p>
-      <p className="mt-1 text-[11px] leading-relaxed text-stone-600">
-        Dla poniższych składników wskazana jest obróbka na ciepło:
-      </p>
-      <ul className="mt-2 space-y-1 text-xs text-stone-700">
-        {products.map((productName) => (
-          <li key={productName}>{productName}</li>
-        ))}
-      </ul>
+      <div className="min-w-0">
+        <p className="text-xs font-semibold leading-relaxed">Pamiętaj o obróbce</p>
+        <p className="mt-0.5 text-[11px] leading-relaxed text-stone-600">
+          Dla poniższych składników wskazana jest obróbka na ciepło:
+        </p>
+        <ul className="mt-1 space-y-0.5 text-xs text-stone-700">
+          {products.map((productName) => (
+            <li key={productName}>{productName}</li>
+          ))}
+        </ul>
+      </div>
       <button
         type="button"
         onClick={() => void production.acknowledgeHeatInformation()}
         disabled={production.persistenceBusy}
-        className="pro-focus-ring mt-3 min-h-11 rounded-[12px] bg-ink px-4 py-2 text-xs font-semibold text-white shadow-pro-sm disabled:cursor-wait disabled:opacity-60"
+        className="pro-focus-ring min-h-11 self-start rounded-[10px] bg-ink px-3 py-1.5 text-xs font-semibold text-white shadow-pro-sm disabled:cursor-wait disabled:opacity-60"
         data-testid="acknowledge-production-heat-information"
       >
         OK
@@ -638,8 +640,7 @@ export function ProductionCockpit({
           tone="light"
           details={{
             limitation: 'Ta partia nie jest jeszcze powiązana z zapisaną wersją receptury.',
-            calculationImpact:
-              'Plan pozostaje oddzielony od receptury i nie zmienia jej danych.',
+            calculationImpact: 'Plan pozostaje oddzielony od receptury i nie zmienia jej danych.',
             remaining: 'Zapisz recepturę, a potem rozpocznij partię ponownie.',
           }}
         >
@@ -661,9 +662,7 @@ export function ProductionCockpit({
           <p className="text-[10px] font-semibold tracking-[0.08em] text-[#8a5b23] uppercase">
             Korekta partii
           </p>
-          <h3 className="mt-1 text-sm font-semibold text-ink">
-            Partia odbiega od planu
-          </h3>
+          <h3 className="mt-1 text-sm font-semibold text-ink">Partia odbiega od planu</h3>
           <p className="mt-1 text-xs leading-relaxed text-stone-600">
             Potwierdzonych ilości nie cofniemy. Wybierz bezpieczny sposób dalszej pracy.
           </p>

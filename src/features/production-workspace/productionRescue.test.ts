@@ -313,14 +313,8 @@ describe('production rescue orchestration', () => {
     expect(plannedResult.scores!.overall).toBeCloseTo(83.44466666666666, 9);
     expect(assessment.forecastResult.pod_points).toBeCloseTo(14.905785963165751, 9);
     expect(assessment.forecastResult.pac_points).toBeCloseTo(28.083677451468397, 9);
-    expect(assessment.forecastResult.percentages.solids_percent).toBeCloseTo(
-      31.265485316077644,
-      9,
-    );
-    expect(assessment.forecastResult.percentages.water_percent).toBeCloseTo(
-      68.73451468392236,
-      9,
-    );
+    expect(assessment.forecastResult.percentages.solids_percent).toBeCloseTo(31.265485316077644, 9);
+    expect(assessment.forecastResult.percentages.water_percent).toBeCloseTo(68.73451468392236, 9);
     expect(assessment.forecastResult.scores).not.toBeNull();
     expect(assessment.forecastResult.scores!.overall).toBeCloseTo(83.38966318234611, 9);
     expect(
@@ -434,13 +428,22 @@ describe('production rescue orchestration', () => {
       safe: false,
       violationMetrics: ['total_solids', 'water', 'fat'],
     });
-    expect(assessment.options.map((option) => option.id)).toEqual([
-      'restore_original_recipe',
-    ]);
+    expect(assessment.options.map((option) => option.id)).toEqual(['restore_original_recipe']);
     expect(restore).toMatchObject({
-      finalMassG: 1_156.6,
+      finalMassG: 1_156.1,
       scoreDisplay: '10/10',
       verifiedByEngine: true,
+    });
+    expect(restore!.candidateInput.items.find((item) => item.id === 'tara')).toMatchObject({
+      planned_grams: 3.5,
+      actual_grams: null,
+    });
+    expect(
+      restore!.instructions.find((instruction) => instruction.lineId === 'tara'),
+    ).toMatchObject({
+      kind: 'add',
+      grams: 0.5,
+      finalTargetGrams: 3.5,
     });
     run = applyVerifiedRescueInput(run, restore!.candidateInput, 1);
     expect(pendingProductionTopUpTasks(run).length).toBeGreaterThan(0);

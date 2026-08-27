@@ -124,7 +124,7 @@ describe('customer copy guard', () => {
       },
       {
         file: 'src/features/production-workspace/ProductionWorkspaceHeader.tsx',
-        text: 'Perfetto. Partia gotowa.',
+        text: 'Gellattissimo! Partia gotowa.',
       },
     ]);
   });

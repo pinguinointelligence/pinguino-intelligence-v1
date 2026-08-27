@@ -52,6 +52,51 @@ describe('canonical exact-candidate constraint authority', () => {
     );
   });
 
+  it('keeps whole-gram stabilizer publication strict but accepts a safe 0.1 g physical Rescue fact', () => {
+    const starter = starterMilkBase();
+    const recipe = {
+      ...starter,
+      items: starter.items.map((item) =>
+        item.id === starterLine('tara_gum')
+          ? { ...item, planned_grams: 3 }
+          : item.id === starterLine('milk_3_5')
+            ? { ...item, planned_grams: item.planned_grams + 2 }
+            : item,
+      ),
+    };
+    const physicalRescue = {
+      ...recipe,
+      items: recipe.items.map((item) =>
+        item.id === starterLine('tara_gum')
+          ? { ...item, planned_grams: item.planned_grams + 0.1 }
+          : item.id === starterLine('milk_3_5')
+            ? { ...item, planned_grams: item.planned_grams - 0.1 }
+            : item,
+      ),
+    };
+
+    expect(
+      evaluateRecipeConstraintAuthority({
+        recipe: physicalRescue,
+        requireProductBehavior: false,
+      }).issues,
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: 'owner_policy',
+          code: 'component_not_whole_grams',
+        }),
+      ]),
+    );
+    const rescueVerdict = evaluateRecipeConstraintAuthority({
+      recipe: physicalRescue,
+      module: 'BATCH_RESCUE',
+      requireProductBehavior: false,
+    });
+    expect(rescueVerdict.issues).toEqual([]);
+    expect(rescueVerdict.valid).toBe(true);
+  });
+
   it('fails closed when a managed technical line has no current ProductBehavior', () => {
     const recipe = starterMilkBase();
     const snapshots = productBehaviorTestSnapshots(recipe);

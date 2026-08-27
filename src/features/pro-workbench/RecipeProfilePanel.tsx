@@ -350,22 +350,18 @@ function SummaryPanel({
 
   return (
     <div className="pro-scroll-safe p-3" data-testid="pro-context-summary">
-      <section
-        className="rounded-[20px] border border-ink/10 bg-[#fffdf8] p-5 shadow-pro-e0"
-        data-testid="label-workspace-empty"
-      >
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#9b7d37]">Etykieta</p>
-        <h2 className="mt-2 text-lg font-semibold text-ink">
-          Etykieta potrzebuje zakończonej partii
-        </h2>
-        <p className="mt-2 max-w-xl text-sm leading-relaxed text-stone-600">
-          Gdy zakończysz produkcję, pojawią się tu potwierdzone składniki, wartości odżywcze, koszt,
-          baza techniczna i numer partii (LOT).
-        </p>
-        <Button className="mt-4" onClick={onOpenProduction}>
-          Otwórz Produkcję
-        </Button>
-      </section>
+      <WorkflowNotice
+        eyebrow="Etykieta"
+        title="Etykieta potrzebuje zakończonej partii"
+        description="Gdy zakończysz produkcję, pojawią się tu potwierdzone składniki, wartości odżywcze, koszt, baza techniczna i numer partii (LOT)."
+        variant="attention"
+        action={
+          <Button size="sm" onClick={onOpenProduction}>
+            Otwórz Produkcję
+          </Button>
+        }
+        testId="label-workspace-empty"
+      />
     </div>
   );
 }

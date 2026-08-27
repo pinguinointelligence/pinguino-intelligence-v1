@@ -6929,7 +6929,8 @@ function evaluateRecipeConstraintAuthority(input) {
 	});
 	const stabilizerSystem = assessGelatoStabilizerSystem(recipe);
 	const sorbetStabilizerSystem = assessSorbetStabilizerSystem(recipe);
-	issues.push(...[...stabilizerSystem.issues, ...sorbetStabilizerSystem.issues].map((issue) => ({
+	const stabilizerIssues = [...stabilizerSystem.issues, ...sorbetStabilizerSystem.issues].filter((issue) => input.module !== "BATCH_RESCUE" || issue.code !== "component_not_whole_grams");
+	issues.push(...stabilizerIssues.map((issue) => ({
 		source: "owner_policy",
 		code: issue.code,
 		lineIds: issue.lineIds,
@@ -7993,7 +7994,7 @@ function hydrateProductionSessionFromRun(run, source, plannedInput, plannedCompo
 * continue to identify the formulas and calibrated data; this stamp identifies
 * the option-selection and practicalization layer authorized by the server.
 */
-const PRODUCTION_RESCUE_MODEL_VERSION = "production-rescue-v2";
+const PRODUCTION_RESCUE_MODEL_VERSION = "production-rescue-v3";
 /**
 * OWNER RULE §17 — a batch size is spoken exactly as the Engine verified it.
 * 1086 g is reported as 1086 g; it is never rounded up to a tidier 1100 g.
@@ -8198,11 +8199,11 @@ function tenthGramProductionAudit(session, exactCandidate) {
 	for (const [index, item] of baseExecutableInput.items.entries()) {
 		if (!isTemplateControlledStabilizer(item.ingredient)) continue;
 		const physicalFloor = physicalById.get(item.id) ?? 0;
-		const choices = [
+		const choices = (physicalFloor > 1e-6 ? [item.planned_grams] : [
 			Math.round(item.planned_grams),
 			Math.floor(item.planned_grams),
 			Math.ceil(item.planned_grams)
-		].filter((grams, position, values) => grams > 0 && grams + 1e-6 >= physicalFloor && values.indexOf(grams) === position);
+		]).filter((grams, position, values) => grams > 0 && Math.abs(grams * 10 - Math.round(grams * 10)) <= 1e-8 && grams + 1e-6 >= physicalFloor && values.indexOf(grams) === position);
 		executableCandidates = executableCandidates.flatMap((candidate) => choices.map((grams) => ({
 			...candidate,
 			items: candidate.items.map((candidateItem, candidateIndex) => candidateIndex === index ? {

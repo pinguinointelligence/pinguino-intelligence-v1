@@ -187,9 +187,13 @@ describe('profile hierarchy and compact preflight', () => {
         );
 
         await act(async () => root.render(panel('summary')));
-        expect(host.querySelector('[data-testid="label-workspace-empty"]')?.textContent).toContain(
-          'Etykieta potrzebuje zakończonej partii',
-        );
+        const labelPrerequisite = host.querySelector('[data-testid="label-workspace-empty"]');
+        expect(labelPrerequisite?.textContent).toContain('Etykieta potrzebuje zakończonej partii');
+        expect(labelPrerequisite?.tagName).toBe('SECTION');
+        expect(labelPrerequisite?.className).toContain('rounded-[12px]');
+        expect(labelPrerequisite?.className).toContain('px-3');
+        expect(labelPrerequisite?.querySelector('h3')).not.toBeNull();
+        expect(labelPrerequisite?.textContent).toContain('Otwórz Produkcję');
         expect(host.querySelector('[data-testid="label-consumer-preview"]')).toBeNull();
       }
     } finally {

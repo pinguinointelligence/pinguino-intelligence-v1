@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { calculateRecipe, type RecipeInput, type RecipeResult } from '@/engine';
 import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
+import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
 import { sorbetMapperIngredient } from '@/features/recipe-constraints/__fixtures__/sorbetAuthorityFixture';
 import {
+  applyVerifiedRescueInput,
   buildFinalActualInput,
   confirmProductionLine,
+  confirmProductionTopUpTask,
   createProductionSession,
+  pendingProductionTopUpTasks,
   setDraftActualGrams,
+  topUpProductionLine,
   type ProductionSession,
 } from './productionSession';
 import { assessProductionRescue } from './productionRescue';
@@ -48,8 +53,9 @@ const ownerInput = (): RecipeInput => ({
   })),
 });
 
-const ownerSession = (): ProductionSession =>
-  createProductionSession({
+const ownerSession = (): ProductionSession => {
+  const plannedInput = ownerInput();
+  return createProductionSession({
     sessionId: 'owner-final-tests-1',
     ownerUserId: 'owner',
     source: {
@@ -58,9 +64,18 @@ const ownerSession = (): ProductionSession =>
       recipeVersionNumber: 1,
       recipeName: 'FinalTests1',
     },
-    plannedInput: ownerInput(),
+    plannedInput,
+    plannedComposition: {
+      schemaVersion: 1,
+      baseScope: 'BASE_FORMULATION',
+      baseOrder: plannedInput.items.map((item) => item.id),
+      toppings: [],
+      behaviorSnapshots: productBehaviorTestSnapshots(plannedInput),
+      migrationAmbiguities: [],
+    },
     startedAt: '2026-08-27T06:02:16.078Z',
   });
+};
 
 const confirmVector = (actualByLineId: Readonly<Record<string, number>>): ProductionSession => {
   let session = ownerSession();
@@ -75,10 +90,7 @@ const confirmVector = (actualByLineId: Readonly<Record<string, number>>): Produc
   return session;
 };
 
-const expectCloseRecord = (
-  actualValue: object,
-  expectedValue: object,
-): void => {
+const expectCloseRecord = (actualValue: object, expectedValue: object): void => {
   const actual = actualValue as Readonly<Record<string, number>>;
   const expected = expectedValue as Readonly<Record<string, number>>;
   expect(Object.keys(actual).sort()).toEqual(Object.keys(expected).sort());
@@ -107,10 +119,7 @@ const expectRatioMetricsEquivalent = (actual: RecipeResult, expected: RecipeResu
     if (expectedIndicator.value === null) {
       expect(actualIndicator.value, expectedIndicator.key).toBeNull();
     } else {
-      expect(actualIndicator.value, expectedIndicator.key).toBeCloseTo(
-        expectedIndicator.value,
-        9,
-      );
+      expect(actualIndicator.value, expectedIndicator.key).toBeCloseTo(expectedIndicator.value, 9);
     }
     expect({
       bandStatus: actualIndicator.band_status,
@@ -128,6 +137,94 @@ const expectRatioMetricsEquivalent = (actual: RecipeResult, expected: RecipeResu
 };
 
 describe('Production batch scaling mathematical truth', () => {
+  it.each([3.1, 3.2, 3.5])(
+    'keeps a safe 3.0 → %s g stabilizer deviation continuable and proportionally restorable',
+    (actualStabilizerG) => {
+      const plannedInput = ownerInput();
+      const session = confirmVector({ tara: actualStabilizerG });
+      const assessment = assessProductionRescue(session);
+      const continuation = assessment.options.find(({ id }) => id === 'leave_as_is');
+      const restore = assessment.options.find(({ id }) => id === 'restore_original_recipe');
+
+      expect(assessment.hardSafety).toMatchObject({ safe: true, violationMetrics: [] });
+      expect(continuation, 'safe continuation').toBeDefined();
+      expect(continuation!.candidateInput.items.find(({ id }) => id === 'tara')).toMatchObject({
+        planned_grams: actualStabilizerG,
+        actual_grams: null,
+      });
+      expect(continuation!.candidateInput.target_batch_grams).toBeCloseTo(
+        1_000 + actualStabilizerG - 3,
+        9,
+      );
+      expect(continuation!.scoreDisplay).toBe(
+        recipeFitForInput(assessment.forecastInput, assessment.forecastResult).display,
+      );
+
+      expect(restore, 'proportional restoration').toBeDefined();
+      const scale = actualStabilizerG / 3;
+      const expectedTargets = Object.fromEntries(
+        plannedInput.items.map((item) => [
+          item.id,
+          Math.round((item.planned_grams * scale + Number.EPSILON) * 10) / 10,
+        ]),
+      );
+      const expectedTotal = Object.values(expectedTargets).reduce((sum, grams) => sum + grams, 0);
+      expect(restore!.candidateInput.target_batch_grams).toBeCloseTo(expectedTotal, 9);
+      expect(restore!.finalMassG).toBeCloseTo(expectedTotal, 9);
+      for (const item of restore!.candidateInput.items) {
+        expect(item.planned_grams, item.id).toBeCloseTo(expectedTargets[item.id]!, 9);
+        expect(item.actual_grams, item.id).toBeNull();
+      }
+      expect(restore!.instructions).toEqual(
+        expect.arrayContaining(
+          plannedInput.items
+            .filter((item) => item.id !== 'tara')
+            .map((item) => ({
+              lineId: item.id,
+              ingredientName: item.ingredient.name,
+              kind: 'add' as const,
+              grams: expect.closeTo(expectedTargets[item.id]! - item.planned_grams, 9),
+              finalTargetGrams: expect.closeTo(expectedTargets[item.id]!, 9),
+            })),
+        ),
+      );
+      expect(restore!.instructions.some(({ lineId }) => lineId === 'tara')).toBe(false);
+    },
+  );
+
+  it('uses the accepted proportional stabilizer plan after a repeated deviation', () => {
+    let session = confirmVector({ tara: 3.1 });
+    const firstRestore = assessProductionRescue(session).options.find(
+      ({ id }) => id === 'restore_original_recipe',
+    );
+    expect(firstRestore).toBeDefined();
+    session = applyVerifiedRescueInput(session, firstRestore!.candidateInput, 1);
+    for (const task of pendingProductionTopUpTasks(session)) {
+      session = confirmProductionTopUpTask(session, task.taskId, '2026-08-27T07:00:00.000Z');
+    }
+    const acceptedTargetG = session.lines.reduce((sum, line) => sum + line.targetGrams, 0);
+    session = topUpProductionLine(session, 'tara', 3.2, '2026-08-27T07:05:00.000Z');
+
+    const secondAssessment = assessProductionRescue(session);
+    const secondRestore = secondAssessment.options.find(
+      ({ id }) => id === 'restore_original_recipe',
+    );
+    expect(secondRestore).toBeDefined();
+    expect(secondRestore!.candidateInput.target_batch_grams).toBeGreaterThan(acceptedTargetG);
+    expect(secondRestore!.candidateInput.items.find(({ id }) => id === 'tara')).toMatchObject({
+      planned_grams: 3.2,
+      actual_grams: null,
+    });
+  });
+
+  it('keeps an ordinary non-stabilizer +0.1 g overweigh as the control case', () => {
+    const assessment = assessProductionRescue(confirmVector({ cream: 95.1 }));
+    expect(assessment.hardSafety).toMatchObject({ safe: true, violationMetrics: [] });
+    expect(assessment.options.map(({ id }) => id)).toEqual(
+      expect.arrayContaining(['leave_as_is', 'restore_original_recipe']),
+    );
+  });
+
   it('uniform_batch_scaling_preserves_formula_score', () => {
     const plannedInput = ownerInput();
     const plannedResult = calculateRecipe(plannedInput);
@@ -144,14 +241,8 @@ describe('Production batch scaling mathematical truth', () => {
       const scaledResult = calculateRecipe(finalActualInput);
       const scaledScore = recipeFitForInput(finalActualInput, scaledResult);
 
-      expect(finalActualInput.target_batch_grams, `target ×${scale}`).toBeCloseTo(
-        1_000 * scale,
-        9,
-      );
-      expect(scaledResult.total_batch_g, `denominator ×${scale}`).toBeCloseTo(
-        1_000 * scale,
-        9,
-      );
+      expect(finalActualInput.target_batch_grams, `target ×${scale}`).toBeCloseTo(1_000 * scale, 9);
+      expect(scaledResult.total_batch_g, `denominator ×${scale}`).toBeCloseTo(1_000 * scale, 9);
       for (const item of finalActualInput.items) {
         const planned = plannedInput.items.find(({ id }) => id === item.id)!;
         expect(
@@ -173,13 +264,7 @@ describe('Production batch scaling mathematical truth', () => {
 
     expect(recipeFitForInput(plannedInput, plannedResult).display).toBe('10/10');
     expect(finalActualInput.items.map((item) => item.actual_grams)).toEqual([
-      657,
-      95.5,
-      49,
-      95,
-      71,
-      3,
-      40,
+      657, 95.5, 49, 95, 71, 3, 40,
     ]);
     expect(assessment.forecastResult.total_batch_g).toBe(1_010.5);
     expect(assessment.forecastInput.target_batch_grams).toBe(1_000);

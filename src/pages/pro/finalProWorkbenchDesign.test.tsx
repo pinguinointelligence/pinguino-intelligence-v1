@@ -167,6 +167,9 @@ describe('one global menu and four local contexts', () => {
     expect(panel).toContain('initialView={initialLabelView}');
     expect(panel).toContain('key={labelViewRequestKey ?? initialLabelView}');
     expect(panel).toContain('Etykieta potrzebuje zakończonej partii');
+    expect(panel).toContain('<WorkflowNotice');
+    expect(panel).toContain('variant="attention"');
+    expect(panel).not.toContain('rounded-[20px] border border-ink/10 bg-[#fffdf8] p-5');
     expect(panel).not.toContain('Faktyczna zakończona partia');
     expect(panel).not.toContain('Receptura wykonawcza');
     expect(panel).not.toContain('Proces i gotowość');

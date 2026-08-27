@@ -43,6 +43,7 @@ import {
   type PiRecalculationView,
 } from '@/features/pi-monitor';
 import { TECHNICAL_FIT_TOOLTIPS, type GoldenRangeReading } from '@/features/recipe-score';
+import { ScoreRing } from '@/features/pro-workbench/ScoreRing';
 import { SelectableCard, TouchButton, notice } from './ui';
 import { customerShellCopy as copy } from './customerShellCopy';
 
@@ -165,17 +166,14 @@ function CheckRow({ check }: { check: MonitorHomeCheckRow }) {
 export function MonitorHomeReadout({ home }: { home: ReturnType<typeof buildMonitorHomeView> }) {
   return (
     <>
-      {/* ACCEPTANCE ADDENDUM (2): „Dopasowanie techniczne" — integer 1–10 +
-          verdict; never /100, never a percent, never decimals. Tooltip: 10/10 =
-          all native bands in range, never a laboratory claim. */}
+      {/* ACCEPTANCE ADDENDUM (2): „Dopasowanie techniczne" — approved dynamic
+          1–10 ring + verdict; never /100, never a percent, never decimals. */}
       <div
-        className="mt-2 flex items-baseline gap-3"
+        className="mt-2 flex items-center gap-3"
         aria-label={home.score.ariaText}
         title={TECHNICAL_FIT_TOOLTIPS[home.score.tooltipKey]}
       >
-        <span className="font-mono text-[34px] font-medium leading-none tracking-tight tabular-nums text-ink">
-          {home.score.display}
-        </span>
+        <ScoreRing score={home.score.score} testId="monitor-home-score-ring" />
         <span className="text-[15px] font-medium text-ink">{home.score.label}</span>
       </div>
 

@@ -72,7 +72,7 @@ describe('Gellatti Friendly Lab — material runtime copy', () => {
       'Gotowe. Sprawdź korektę i zastosuj ją, jeśli Ci odpowiada.',
       'Wszystko gotowe do rozpoczęcia partii',
       'Partia odbiega od planu',
-      'Perfetto. Partia gotowa.',
+      'Gellattissimo! Partia gotowa.',
       'Gotowe. Etykieta czeka na druk.',
       'Nie mamy teraz połączenia. Sprawdź sieć i spróbuj ponownie.',
     ];
@@ -109,7 +109,7 @@ describe('Gellatti Friendly Lab — material runtime copy', () => {
       },
       {
         file: 'features/production-workspace/ProductionWorkspaceHeader.tsx',
-        text: 'Perfetto. Partia gotowa.',
+        text: 'Gellattissimo! Partia gotowa.',
       },
     ]);
   });

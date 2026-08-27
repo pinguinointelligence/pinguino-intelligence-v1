@@ -176,8 +176,8 @@ export function LabelWorkspace({
 
   const openView = (next: LabelWorkspaceView) => {
     if (next === visibleView || (next === 'settings' && saved)) return;
-    if (next === 'label' && !saved && (preflight?.missingCount ?? 0) > 0) return;
-    const order: readonly LabelWorkspaceView[] = ['data', 'settings', 'label'];
+    if (next === 'label' && !saved && !labelDataReady) return;
+    const order: readonly LabelWorkspaceView[] = ['data', 'label', 'settings'];
     setTransitionDirection(order.indexOf(next) > order.indexOf(visibleView) ? 'forward' : 'back');
     setActiveView(next);
   };
@@ -326,7 +326,7 @@ export function LabelWorkspace({
     const deltaX = touch.clientX - start.x;
     const deltaY = touch.clientY - start.y;
     if (Math.abs(deltaX) < 56 || Math.abs(deltaX) <= Math.abs(deltaY) * 1.25) return;
-    const order: readonly LabelWorkspaceView[] = ['data', 'settings', 'label'];
+    const order: readonly LabelWorkspaceView[] = ['data', 'label', 'settings'];
     const currentIndex = order.indexOf(visibleView);
     const next = order[currentIndex + (deltaX < 0 ? 1 : -1)];
     if (next) openView(next);
@@ -615,7 +615,7 @@ export function LabelWorkspace({
             onContinue={(next) => {
               setLabel(next);
               setTransitionDirection('forward');
-              setActiveView('settings');
+              setActiveView('label');
             }}
           />
         ) : (
@@ -625,7 +625,8 @@ export function LabelWorkspace({
             repository={repository}
             saveAsDefault={saveAsDefault}
             onSaveAsDefaultChange={setSaveAsDefault}
-            onClose={() => openView('data')}
+            onClose={() => openView(labelDataReady ? 'label' : 'data')}
+            backLabel={labelDataReady ? 'Etykieta' : 'Dane do etykiety'}
             onSave={async (next) => {
               setBusy(true);
               setError(null);
@@ -657,8 +658,8 @@ export function LabelWorkspace({
         {(
           [
             ['data', 'Dane do etykiety'],
-            ['settings', 'Ustawienia etykiety'],
             ['label', 'Etykieta'],
+            ['settings', 'Ustawienia etykiety'],
           ] as const
         ).map(([view, label]) => (
           <button
@@ -670,9 +671,7 @@ export function LabelWorkspace({
               Boolean(saved) && view !== 'label'
                 ? true
                 : (visibleView === 'data' && !labelDataReady && view !== 'data') ||
-                  (view === 'label' &&
-                    visibleView !== 'label' &&
-                    (preflight?.missingCount ?? 0) > 0)
+                  (view === 'label' && visibleView !== 'label' && !labelDataReady)
             }
             onClick={() => openView(view)}
             className={cn(
@@ -927,7 +926,7 @@ function LabelDataIntake({
 
       <footer className="border-t border-ink/10 bg-white p-4 sm:px-5">
         <Button className="w-full" disabled={!ready} onClick={() => onContinue(draft)}>
-          Przejdź do ustawień etykiety
+          Pokaż etykietę
         </Button>
       </footer>
     </Card>
@@ -1370,6 +1369,7 @@ function RunLabelEditor({
   saveAsDefault,
   onSaveAsDefaultChange,
   onClose,
+  backLabel,
   onSave,
 }: {
   label: MasterLabelData;
@@ -1378,6 +1378,7 @@ function RunLabelEditor({
   saveAsDefault: boolean;
   onSaveAsDefaultChange: (value: boolean) => void;
   onClose: () => void;
+  backLabel: 'Etykieta' | 'Dane do etykiety';
   onSave: (label: MasterLabelData) => Promise<void>;
 }) {
   const [draft, setDraft] = useState(label);
@@ -1422,7 +1423,7 @@ function RunLabelEditor({
           onClick={onClose}
           className="pro-focus-ring -ml-1 min-h-11 px-1 text-xs font-semibold text-stone-600 transition-colors hover:text-ink"
         >
-          ← Dane do etykiety
+          ← {backLabel}
         </button>
         <div className="mt-1 flex flex-wrap items-end justify-between gap-3">
           <div>
@@ -2397,7 +2398,7 @@ function RunLabelEditor({
 
       <footer className="sticky bottom-11 z-10 grid grid-cols-2 gap-2 border-t border-ink/10 bg-white/95 p-4 backdrop-blur sm:px-5">
         <Button variant="ghost" onClick={onClose}>
-          Anuluj
+          {backLabel === 'Etykieta' ? 'Wróć do etykiety' : 'Wróć do danych etykiety'}
         </Button>
         <Button
           data-testid="show-label-preview"
