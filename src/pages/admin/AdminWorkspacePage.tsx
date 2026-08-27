@@ -13,6 +13,7 @@ import { AdminInvitesSection } from '@/features/admin/AdminInvitesSection';
 import { AdminPartnersSection } from '@/features/admin/AdminPartnersSection';
 import { AdminUsersSection } from '@/features/admin/AdminUsersSection';
 import { AdminCustomerAddedProductsSection } from '@/features/admin/AdminCustomerAddedProductsSection';
+import { AdminProductCapabilityReanalysisDetail } from '@/features/admin/AdminProductCapabilityReanalysisDetail';
 import {
   adminProductRequestAction,
   approveProductRequest,
@@ -22,7 +23,7 @@ import {
   getAdminOperations,
   getSignedRequestEvidence,
   listAdminProductRequests,
-  type AdminProductRequest,
+  type AdminProductAddRequest,
   type ProductRequestStatus,
 } from '@/services/adminControl';
 
@@ -154,6 +155,12 @@ function Overview() {
         detail="Rzeczy wymagające decyzji, pieniądze i awarie — bez dekoracyjnych wskaźników."
       />
       {query.isError ? <ErrorBox message="Nie udało się odczytać stanu operacyjnego." /> : null}
+      <Link
+        to="/admin/product-requests"
+        className="mt-5 inline-flex min-h-10 items-center border border-ink/15 px-4 text-xs font-semibold text-ink"
+      >
+        Otwórz zgłoszenia produktów →
+      </Link>
       <dl className="mt-7 grid border-t border-l border-ink/10 sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map(([label, n]) => (
           <div key={label} className="border-r border-b border-ink/10 p-5">
@@ -285,8 +292,14 @@ function ProductRequests() {
       }),
     [filter, query.data, query.dataUpdatedAt],
   );
-  if (selected)
-    return <RequestDetail request={selected} onClose={() => navigate(`/admin/product-requests`)} />;
+  if (selected) {
+    const onClose = () => navigate('/admin/product-requests');
+    return selected.requestType === 'PRODUCT_CAPABILITY_REANALYSIS' ? (
+      <AdminProductCapabilityReanalysisDetail request={selected} onClose={onClose} />
+    ) : (
+      <RequestDetail request={selected} onClose={onClose} />
+    );
+  }
   return (
     <>
       <Heading
@@ -418,6 +431,7 @@ function ProductRequests() {
           <option value="SCANNER">Skaner</option>
           <option value="MANUAL_EVIDENCE">Dane dodane ręcznie</option>
           <option value="ADMIN">Admin</option>
+          <option value="CONTRIBUTOR_REANALYSIS">Ponowna analiza</option>
         </select>
       </div>
       <div className="mt-4 overflow-x-auto">
@@ -428,58 +442,74 @@ function ProductRequests() {
               <th className={th}>PRODUKT</th>
               <th className={th}>UŻYTKOWNIK</th>
               <th className={th}>RYNEK</th>
-              <th className={th}>ŹRÓDŁO / DOPASOWANIE</th>
+              <th className={th}>TYP / ŹRÓDŁO</th>
               <th className={th}>STATUS</th>
               <th className={th}>DALEJ</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map((r) => (
-              <tr key={r.id}>
+            {filtered.map((request) => (
+              <tr key={request.id}>
                 <td className={td}>
-                  <span className="font-mono">#{r.requestNumber}</span>
+                  {request.requestType === 'PRODUCT_CAPABILITY_REANALYSIS' ? (
+                    <>
+                      <strong>Ponowna analiza</strong>
+                      <br />
+                      <span className="font-mono text-[10px] text-stone-400">{request.id}</span>
+                    </>
+                  ) : (
+                    <span className="font-mono">#{request.requestNumber}</span>
+                  )}
                   <br />
                   <span className="text-stone-400">
-                    {new Date(r.submittedAt).toLocaleDateString('pl-PL')} ·{' '}
+                    {new Date(request.submittedAt).toLocaleDateString('pl-PL')} ·{' '}
                     {Math.floor(
-                      ((query.dataUpdatedAt || Date.parse(r.updatedAt)) -
-                        Date.parse(r.submittedAt)) /
+                      ((query.dataUpdatedAt || Date.parse(request.updatedAt)) -
+                        Date.parse(request.submittedAt)) /
                         86400000,
                     )}
                     d
                   </span>
                 </td>
                 <td className={td}>
-                  <strong className="text-ink">{r.name ?? 'Nazwa nieustalona'}</strong>
+                  <strong className="text-ink">{request.name ?? 'Nazwa nieustalona'}</strong>
                   <br />
-                  {r.brand ?? '—'} · {r.ean ?? 'brak EAN'}
+                  {request.brand ?? '—'} · {request.ean ?? 'brak EAN'}
+                  {request.requestType === 'PRODUCT_CAPABILITY_REANALYSIS' ? (
+                    <>
+                      <br />
+                      <span className="font-mono text-[10px] text-stone-400">
+                        {request.productCode ?? request.canonicalProductId}
+                      </span>
+                    </>
+                  ) : null}
                 </td>
                 <td className={td}>
-                  {r.requesterEmail}
+                  {request.requesterEmail}
                   <br />
                   <span className="font-mono text-[10px] text-stone-400">
-                    przypisano {r.assignedAdminUserId ?? '—'}
+                    przypisano {request.assignedAdminUserId ?? '—'}
                   </span>
                 </td>
                 <td className={td}>
-                  {r.marketCountryCode ?? '—'}
-                  <br />
-                  <span className="text-stone-400">pochodzenie {r.countryOfOrigin ?? '—'}</span>
-                </td>
-                <td className={td}>
-                  {r.source}
+                  {request.marketCountryCode ?? '—'}
                   <br />
                   <span className="text-stone-400">
-                    dokładne {r.exactMatchCandidate ? 'TAK' : 'NIE'}
+                    pochodzenie {request.countryOfOrigin ?? '—'}
                   </span>
                 </td>
                 <td className={td}>
-                  <StatusChip status={statusTone(r.status)}>{r.status}</StatusChip>
+                  {request.requestType}
+                  <br />
+                  <span className="text-stone-400">{request.source}</span>
+                </td>
+                <td className={td}>
+                  <StatusChip status={statusTone(request.status)}>{request.status}</StatusChip>
                 </td>
                 <td className={td}>
                   <button
                     className="min-h-10 border border-ink/15 px-3 font-semibold text-ink"
-                    onClick={() => navigate(`/admin/product-requests?request=${r.id}`)}
+                    onClick={() => navigate(`/admin/product-requests?request=${request.id}`)}
                   >
                     Otwórz →
                   </button>
@@ -516,7 +546,7 @@ function RequestDetail({
   request,
   onClose,
 }: {
-  request: AdminProductRequest;
+  request: AdminProductAddRequest;
   onClose: () => void;
 }) {
   const qc = useQueryClient();
@@ -722,7 +752,7 @@ const previewValue = (...values: unknown[]): string => {
   if (Array.isArray(selected)) return selected.length ? selected.join(', ') : '—';
   return String(selected);
 };
-function ApprovalPreview({ request }: { request: AdminProductRequest }) {
+function ApprovalPreview({ request }: { request: AdminProductAddRequest }) {
   const extracted = objectRecord(request.extractedData);
   const corrected = objectRecord(request.userCorrections);
   const verified = objectRecord(request.adminVerifiedData);
@@ -821,7 +851,7 @@ function ApprovalPreview({ request }: { request: AdminProductRequest }) {
   );
 }
 
-function CatalogCandidates({ request }: { request: AdminProductRequest }) {
+function CatalogCandidates({ request }: { request: AdminProductAddRequest }) {
   const key = request.ean ?? request.name ?? '';
   const query = useQuery({
     queryKey: ['admin-request-candidates', request.id, key],
@@ -856,7 +886,7 @@ function CatalogCandidates({ request }: { request: AdminProductRequest }) {
   );
 }
 
-function EvidencePanel({ request }: { request: AdminProductRequest }) {
+function EvidencePanel({ request }: { request: AdminProductAddRequest }) {
   const signed = useQuery({
     queryKey: ['admin-request-evidence', request.id],
     queryFn: () => getSignedRequestEvidence(request.id),
@@ -1103,8 +1133,8 @@ function ErrorBox({ message }: { message: string }) {
   );
 }
 function statusTone(status: string): 'ideal' | 'risky' | 'needs_correction' | 'good' {
-  if (status === 'APPROVED') return 'ideal';
+  if (['APPROVED', 'ACCEPTED'].includes(status)) return 'ideal';
   if (['REJECTED', 'USER_CANCELED'].includes(status)) return 'risky';
-  if (['NEEDS_INFO', 'RESUBMITTED'].includes(status)) return 'needs_correction';
+  if (['NEEDS_INFO', 'RESUBMITTED', 'IN_REVIEW'].includes(status)) return 'needs_correction';
   return 'good';
 }

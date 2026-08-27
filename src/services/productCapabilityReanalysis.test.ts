@@ -16,7 +16,6 @@ const {
   adminProductCapabilityReanalysisAction,
   attemptedContextForCapability,
   getProductCapabilityReviewEligibility,
-  listAdminProductCapabilityReanalysisRequests,
   requestProductCapabilityReview,
 } = await import('./productCapabilityReanalysis');
 
@@ -66,14 +65,7 @@ describe('productCapabilityReanalysis service', () => {
     });
   });
 
-  it('keeps the Admin list and review action on their permission-checked RPCs', async () => {
-    harness.result.data = [];
-    await expect(listAdminProductCapabilityReanalysisRequests('IN_REVIEW')).resolves.toEqual([]);
-    expect(harness.rpc).toHaveBeenLastCalledWith(
-      'gellatti_admin_product_capability_reanalysis_v1',
-      { p_status: 'IN_REVIEW', p_limit: 500 },
-    );
-
+  it('keeps the review action on its permission-checked domain RPC', async () => {
     harness.result.data = { ok: true };
     await adminProductCapabilityReanalysisAction('request-1', 'REJECT', 'Not supported');
     expect(harness.rpc).toHaveBeenLastCalledWith(
