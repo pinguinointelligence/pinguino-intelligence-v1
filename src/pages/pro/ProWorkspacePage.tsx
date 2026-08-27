@@ -50,6 +50,7 @@ import { resolveProductionRepository } from '@/features/pro-core/proCoreProducti
 import { resolveCostsRepository } from '@/features/pro-core/proCoreCostsRepo';
 import type { ProCorePersona } from '@/features/pro-core/proCoreCapabilities';
 import type { CockpitTab, ProContextTab } from '@/features/pro-workbench/RecipeProfilePanel';
+import type { LabelWorkspaceView } from '@/features/master-label/LabelWorkspace';
 import { WorkbenchModuleTabs } from '@/features/pro-workbench/WorkbenchModuleTabs';
 import { ReviewBadge } from '@/features/design-review/ReviewBadge';
 import { OfficialProLogo } from '@/components/shared/OfficialProLogo';
@@ -184,7 +185,7 @@ function RecipeWorkbench({
   onOpenExistingPreview: () => void;
   onRecalculate: () => void;
   onCloseRecalc: () => void;
-  initialLabelView: 'label' | 'settings';
+  initialLabelView: LabelWorkspaceView;
   labelViewRequestKey: string;
 }) {
   const draftContextSeq = useRecipeStore((state) => state.draftContextSeq);
@@ -549,7 +550,7 @@ export function ProWorkspacePage() {
                   onRecalculate={startRecalc}
                   onCloseRecalc={() => setRecalcOpen(false)}
                   initialLabelView={
-                    searchParams.get('labelView') === 'settings' ? 'settings' : 'label'
+                    searchParams.get('labelView') === 'settings' ? 'settings' : 'data'
                   }
                   labelViewRequestKey={location.key}
                 />

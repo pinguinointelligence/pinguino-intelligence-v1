@@ -130,7 +130,7 @@ export function StudioEngineSurface({
   onRecalculate,
   onOpenExistingPreview,
   recipeSaveAttention = false,
-  initialLabelView = 'label',
+  initialLabelView = 'data',
   labelViewRequestKey,
 }: {
   forceDemo?: boolean;

@@ -19,7 +19,7 @@ const task: ProductionTopUpTask = {
 };
 
 describe('Production correction top-up section', () => {
-  it('shows grams to add now as the active value and cumulative mass only as secondary information', () => {
+  it('reuses the normal weighing hierarchy without exposing technical rescue details', () => {
     const html = renderToStaticMarkup(
       <ProductionTopUpSection
         tasks={[task]}
@@ -29,13 +29,40 @@ describe('Production correction top-up section', () => {
       />,
     );
 
-    expect(html).toContain('KOREKTA — DODAJ JESZCZE');
-    expect(html).toContain('Dodaj teraz');
+    expect(html).toContain('Dodaj jeszcze');
+    expect(html).toMatch(/Do dodania:[\s\S]*?>0\.8 g<\/strong>/);
     expect(html).toContain('value="0.8"');
-    expect(html).toContain('W naczyniu: 98 g');
-    expect(html).toContain('Po uzupełnieniu: 98.8 g');
+    expect(html).toContain('data-production-active="true"');
+    expect(html).toContain('production-line-active');
+    expect(html).toContain('data-production-control-state="top-up"');
+    expect(html).toContain('aria-label="CREAM 30% — potwierdź dolewkę"');
+    expect(html).not.toContain('Osobne zadania wykonawcze');
+    expect(html).not.toContain('W naczyniu:');
+    expect(html).not.toContain('Po uzupełnieniu:');
+    expect(html).not.toContain('Dodaj teraz +0.8 g');
     expect(html).not.toContain('value="98.8"');
     expect(html).toContain('data-production-top-up-task="top-up:4:cream-line"');
+  });
+
+  it('marks only the next pending top-up as the current weighing action', () => {
+    const secondTask: ProductionTopUpTask = {
+      ...task,
+      taskId: 'top-up:4:milk-line',
+      sourceIngredientId: 'PI-ING-MILK-35',
+      sourceRecipeLineId: 'milk-line',
+      ingredientName: 'MILK 3.5%',
+    };
+    const html = renderToStaticMarkup(
+      <ProductionTopUpSection
+        tasks={[task, secondTask]}
+        disabled={false}
+        onChange={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    );
+
+    expect(html.match(/data-production-active="true"/g)).toHaveLength(1);
+    expect(html.match(/production-line-active/g)).toHaveLength(1);
   });
 
   it('renders nothing when no pending tasks remain', () => {

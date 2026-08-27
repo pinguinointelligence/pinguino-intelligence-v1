@@ -13,6 +13,10 @@ import {
   useConstraintStudioStore,
   type PreviewIssue,
 } from '@/features/constraint-studio/constraintStudioStore';
+import {
+  buildBatchRescalePreview,
+  type ConstraintPreview,
+} from '@/features/constraint-studio/applyPipeline';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { ProRecalcPanel } from './ProRecalcPanel';
 
@@ -26,6 +30,28 @@ const renderPanel = async (onClose = vi.fn(), retryRunner?: () => Promise<void>)
   await act(async () => {
     root.render(<ProRecalcPanel open onClose={onClose} retryRunner={retryRunner} />);
   });
+};
+
+const previewWithScore = (score: 8 | 9): ConstraintPreview => {
+  const built = buildBatchRescalePreview(
+    starterMilkBase(),
+    { byLineId: {} },
+    1_200,
+    `preview-score-${score}`,
+  );
+  if (!built.ok) throw new Error(`preview score fixture failed: ${built.code}`);
+  return {
+    ...built.preview,
+    directionAssessment: {
+      active: true,
+      reached: false,
+      supportedAxisCount: 1,
+      reachedAxisCount: 0,
+      score,
+      residuals: [],
+      blockedAxes: [],
+    },
+  };
 };
 
 beforeEach(() => {
@@ -43,6 +69,62 @@ afterEach(async () => {
 });
 
 describe('PI visible terminal contract', () => {
+  it('clears a cancelled or failed Preview score and renders the next recalculation score', async () => {
+    const onClose = vi.fn();
+    useConstraintStudioStore.setState({
+      preview: previewWithScore(8),
+      recalculationTerminal: { state: 'PREVIEW_READY' },
+    });
+    await renderPanel(onClose);
+
+    const visibleScore = () =>
+      document.querySelector('[data-testid="preview-score"]')?.textContent?.replace(/\s+/g, '');
+    const summaryText = () =>
+      document.querySelector('[data-testid="preview-summary"]')?.textContent;
+
+    expect(visibleScore()).toBe('8/10');
+    expect(summaryText()).toMatch(/\d+ zmian(?:a|y)?/);
+
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>('[data-testid="preview-cancel"]')!.click();
+    });
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(useConstraintStudioStore.getState().preview).toBeNull();
+    expect(visibleScore()).toBeUndefined();
+
+    await act(async () => {
+      useConstraintStudioStore.setState({
+        preview: previewWithScore(8),
+        previewIssue: null,
+        recalculationTerminal: { state: 'PREVIEW_READY' },
+      });
+    });
+    expect(visibleScore()).toBe('8/10');
+
+    const failedGeneration = beginPiRecalculation();
+    await act(async () => {
+      await runPiRecalculationWithTerminal(async () => {
+        throw new Error('preview failed');
+      }, failedGeneration);
+    });
+    expect(useConstraintStudioStore.getState().recalculationTerminal).toMatchObject({
+      state: 'ERROR',
+    });
+    expect(useConstraintStudioStore.getState().preview).toBeNull();
+    expect(visibleScore()).toBeUndefined();
+
+    await act(async () => {
+      useConstraintStudioStore.setState({
+        preview: previewWithScore(9),
+        previewIssue: null,
+        recalculationTerminal: { state: 'PREVIEW_READY' },
+      });
+    });
+    expect(visibleScore()).toBe('9/10');
+    expect(document.body.textContent).not.toContain('8 / 10');
+    expect(summaryText()).toMatch(/\d+ zmian(?:a|y)?/);
+  });
+
   it('starts cleanly after a prior refusal, then never leaves a resolved run stranded in WORKING', async () => {
     useConstraintStudioStore.setState({
       preview: {} as never,

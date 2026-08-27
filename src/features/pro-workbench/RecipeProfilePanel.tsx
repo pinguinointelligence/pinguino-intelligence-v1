@@ -381,7 +381,7 @@ export function RecipeProfilePanel({
   showTabs,
   onOpenPreview,
   onRecalculate,
-  initialLabelView = 'label',
+  initialLabelView = 'data',
   labelViewRequestKey,
 }: {
   activeTab: CockpitTab;
