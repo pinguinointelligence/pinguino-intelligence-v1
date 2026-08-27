@@ -23,6 +23,7 @@ import { LockedCalculatorPreview } from '@/features/studio/locked/LockedCalculat
 import { ReviewMarkedModule } from '@/features/design-review/ReviewMarkedModule';
 import { ProReviewZone, type ReviewInventoryRow } from '@/features/pro-workbench/ProReviewZone';
 import { RecipeProfilePanel, type CockpitTab } from '@/features/pro-workbench/RecipeProfilePanel';
+import { FRIENDLY_LAB_APPLY_SUCCESS } from '@/features/pro-workbench/friendlyLabRecipeCopy';
 import type { LabelWorkspaceView } from '@/features/master-label/LabelWorkspace';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
 import { WorkbenchRecipeActionDock } from '@/features/pro-workbench/WorkbenchRecipeActionDock';
@@ -431,8 +432,8 @@ export function StudioEngineSurface({
             testId="mobile-friendly-lab-apply-success"
           >
             <WorkflowNotice
-              title="Perfetto. Receptura jest gotowa."
-              description="Aktualny balans jest już widoczny. Zapisz recepturę, jeśli chcesz zachować tę wersję."
+              title={FRIENDLY_LAB_APPLY_SUCCESS.title}
+              description={FRIENDLY_LAB_APPLY_SUCCESS.description}
               variant="neutral"
             />
           </FriendlyLabMessageMotion>

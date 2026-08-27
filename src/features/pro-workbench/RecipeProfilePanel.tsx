@@ -36,6 +36,7 @@ import { useRecipeProfileStore } from './recipeProfileStore';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { buildCurrentRecipeResultAuthority } from './currentRecipeResultAuthority';
 import { friendlyLabRecipeJourneyState } from './friendlyLabRecipeJourney';
+import { FRIENDLY_LAB_APPLY_SUCCESS } from './friendlyLabRecipeCopy';
 
 export type ProContextTab = 'recipe' | 'monitor' | 'production';
 export type CockpitTab = WorkbenchModuleTab;
@@ -314,8 +315,8 @@ function ProfileContent({
           testId="friendly-lab-apply-success"
         >
           <WorkflowNotice
-            title="Perfetto. Receptura jest gotowa."
-            description="Aktualny balans jest już widoczny. Zapisz recepturę, jeśli chcesz zachować tę wersję."
+            title={FRIENDLY_LAB_APPLY_SUCCESS.title}
+            description={FRIENDLY_LAB_APPLY_SUCCESS.description}
             variant="neutral"
           />
         </FriendlyLabMessageMotion>

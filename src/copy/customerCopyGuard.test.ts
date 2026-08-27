@@ -123,7 +123,7 @@ describe('customer copy guard', () => {
         text: 'Gellattissimo! Wybrany profil osiągnięty.',
       },
       {
-        file: 'src/features/pro-workbench/RecipeProfilePanel.tsx',
+        file: 'src/features/pro-workbench/friendlyLabRecipeCopy.ts',
         text: 'Perfetto. Receptura jest gotowa.',
       },
       {

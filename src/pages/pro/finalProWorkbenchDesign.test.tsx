@@ -411,12 +411,14 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
   it('keeps coherent Apply success visible in the normal 390 px document flow', () => {
     const surface = read('features', 'studio', 'StudioEngineSurface.tsx');
     const profile = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
+    const recipeCopy = read('features', 'pro-workbench', 'friendlyLabRecipeCopy.ts');
 
     expect(profile).toContain("new CustomEvent('gellatti:friendly-lab-apply-success')");
     expect(surface).toContain("'gellatti:friendly-lab-apply-success'");
     expect(surface).toContain('testId="mobile-friendly-lab-apply-success"');
     expect(surface).toContain('timing="important"');
-    expect(surface).toContain('Perfetto. Receptura jest gotowa.');
+    expect(surface).toContain('FRIENDLY_LAB_APPLY_SUCCESS.title');
+    expect(recipeCopy).toContain("title: 'Perfetto. Receptura jest gotowa.'");
     expect(surface).toContain('xl:hidden');
   });
 
