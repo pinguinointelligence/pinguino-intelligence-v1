@@ -518,6 +518,47 @@ describe('La Chocolatera two-photo rounding and semantic handoff regression', ()
       );
     }
   });
+
+  it('keeps a web-only macro as evidence without promoting it to a verified declaration', () => {
+    const served = structuredClone(merged);
+    served.barcodes = [{ value: '8410109108392', format: 'EAN_13' }];
+    nutrition(served).fibre = 0;
+    served.evidence = (served.evidence as Evidence[]).filter(
+      (row) => row.field !== 'nutrition.fibre',
+    );
+    served.externalSources = [
+      {
+        sourceType: 'web_search',
+        url: 'https://example.test/ean/8410109108392',
+        title: 'Cacao Puro 250 G',
+        fieldsUsed: ['nutrition.fibre'],
+      },
+    ];
+    const recognitionEvidence = productSemanticEvidenceFromScanResult(served);
+    const recognition = classifyProductSemantics(recognitionEvidence);
+    const proposal = customerProductProfileProposal({
+      scanResult: served,
+      recognitionEvidence,
+      recognition,
+    });
+    const { rows } = loadMapperKnowledgeRows();
+    const authority = proposal
+      ? validateIntimportProductProfileProposal({
+          origin: 'CUSTOMER_ADDED',
+          proposedMapperIngredientId: null,
+          ...proposal,
+          rows: rows as unknown as IntimportMapperAuthorityRow[],
+        })
+      : null;
+
+    expect(proposal?.declared.fiber_percent).toBeUndefined();
+    expect(proposal?.evidence.fields.fiber).toBe('web_search');
+    expect(proposal?.declared.kcal_per_100g).toBe(375);
+    expect(proposal?.declared.fat_percent).toBe(16);
+    expect(authority?.fieldTruth.fiber_percent.state).toBe('ESTIMATED');
+    expect(authority?.engineUsable).toBe(true);
+    expect(authority?.criticalPhysicsBlockers).not.toContain('SELF_CONTRADICTORY_DECLARATION');
+  });
 });
 
 describe('HARIBO Quaxi cumulative-evidence regression', () => {

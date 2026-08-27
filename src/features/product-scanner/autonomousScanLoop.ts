@@ -1,4 +1,4 @@
-import type { ProductScanNutrition, ProductScanResult } from './contracts';
+import type { ProductScanResult } from './contracts';
 
 export type AutonomousScanAction =
   | { kind: 'existing_product' }
@@ -66,56 +66,15 @@ export function nextAutonomousScanAction(state: AutonomousScanState): Autonomous
   return { kind: 'complete_profile' };
 }
 
-const finiteValue = (value: unknown): number | null =>
-  typeof value === 'number' && Number.isFinite(value) ? value : null;
-
-const nutritionForConfirmation = (
-  nutrition: ProductScanNutrition,
-): Record<string, number | string> => {
-  const confirmed: Record<string, number | string> = {};
-  if (nutrition.basis) confirmed.basis = nutrition.basis;
-  for (const key of [
-    'energyKj',
-    'energyKcal',
-    'fat',
-    'saturatedFat',
-    'carbohydrate',
-    'sugars',
-    'protein',
-    'salt',
-    'fibre',
-  ] as const) {
-    const value = finiteValue(nutrition[key]);
-    if (value !== null) confirmed[key] = value;
-  }
-  return confirmed;
-};
-
 /**
- * Translate server-owned extraction into the existing finalizer contract.
- * There are intentionally no customer-editable technical fields here: water,
- * solids, POD/PAC and Mapper completion remain Product Intelligence work.
+ * Pass only the locally validated exact identity into the finalizer. The rest
+ * of the result is already server-owned session evidence. Re-sending Vision or
+ * web values through `confirmations` would falsely relabel them as customer
+ * confirmed and erase their real per-field provenance.
  */
 export function productFieldsFromScanResult(
-  result: ProductScanResult,
+  _result: ProductScanResult,
   validatedBarcode: string,
 ): Record<string, unknown> {
-  return {
-    barcode: validatedBarcode,
-    identity: {
-      displayName: result.identity.displayName ?? result.identity.originalName,
-      brand: result.identity.brand,
-      explicitlyUnbranded: result.identity.explicitlyUnbranded,
-    },
-    nutrition: nutritionForConfirmation(result.nutrition),
-    ingredientsText: result.ingredientsText ?? undefined,
-    allergensText: result.allergensText ?? undefined,
-    productionDeclarations: Object.fromEntries(
-      Object.entries(result.productionDeclarations ?? {}).filter(
-        ([, value]) =>
-          (typeof value === 'number' && Number.isFinite(value)) ||
-          (typeof value === 'string' && value.trim().length > 0),
-      ),
-    ),
-  };
+  return { barcode: validatedBarcode };
 }

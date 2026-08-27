@@ -154,13 +154,9 @@ describe('goal-driven Scanner loop', () => {
     ).toEqual({ kind: 'complete_profile' });
   });
 
-  it('never asks a normal customer to type Engine or Mapper fields', () => {
+  it('passes only exact identity instead of relabelling autonomous facts as customer-confirmed', () => {
     const fields = productFieldsFromScanResult(result(), '4001686322536');
-    expect(fields).toMatchObject({
-      barcode: '4001686322536',
-      identity: { displayName: 'HARIBO Quaxi', brand: 'HARIBO' },
-      nutrition: { basis: 'per_100g', sugars: 53 },
-    });
+    expect(fields).toEqual({ barcode: '4001686322536' });
     expect(JSON.stringify(fields)).not.toMatch(/water_percent|total_solids|pod|pac|mapper/i);
   });
 

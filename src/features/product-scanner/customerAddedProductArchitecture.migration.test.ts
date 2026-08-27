@@ -87,21 +87,11 @@ describe('Scanner customer-added product authority', () => {
     expect(ui).not.toContain('patchReview');
   });
 
-  it('accepts every granular first-pass evidence field sent by the customer UI', () => {
-    for (const field of [
-      'nutrition_basis',
-      'nutrition_energyKcal',
-      'nutrition_fat',
-      'nutrition_carbohydrate',
-      'nutrition_sugars',
-      'nutrition_protein',
-      'nutrition_salt',
-      'allergen_confirmation',
-      'production_declarations',
-    ]) {
-      expect(ui).toContain(`'${field}'`);
-      expect(analyze).toContain(`'${field}'`);
-    }
+  it('keeps autonomous evidence server-owned instead of relabelling it as customer-confirmed', () => {
+    expect(ui).toContain('productFieldsFromScanResult');
+    expect(ui).not.toContain('nutritionForConfirmation');
+    expect(ui).not.toContain('productionDeclarations: Object.fromEntries');
+    expect(finalize).toContain('userConfirmedFields: corrections.confirmedEvidenceFields');
   });
 
   it('records only bounded provider metadata when Vision rejects the request', () => {

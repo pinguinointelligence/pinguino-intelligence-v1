@@ -114,6 +114,14 @@ const MACRO_FIELDS: Readonly<Record<string, WorkingNumericField>> = {
   salt: 'salt_percent',
 };
 
+const DECLARATION_SOURCES = new Set<EvidenceSource>([
+  'label',
+  'user_confirmed',
+  'manufacturer',
+  'source_file',
+  'mapper_exact',
+]);
+
 export interface CustomerProductProfileProposal {
   matchInput: ProfileMatchInput;
   declared: Partial<Record<WorkingNumericField, number>>;
@@ -151,8 +159,13 @@ export function customerProductProfileProposal(input: {
     for (const [key, field] of Object.entries(MACRO_FIELDS)) {
       const value = finiteNumber(nutrition[key]);
       if (value === null || (key !== 'energyKcal' && value > 100)) continue;
-      declared[field] = value;
       const evidenceField = (key === 'fibre' ? 'fiber' : key) as ProductEvidenceField;
+      const source = evidenceSource(root, evidenceField, userConfirmed);
+      // A merged Scanner result may contain a lower-authority web fill beside
+      // direct label values. Keep it as evidence, but never promote it into a
+      // VERIFIED Engine declaration without declaration-grade provenance.
+      if (!source || !DECLARATION_SOURCES.has(source)) continue;
+      declared[field] = value;
       declaredBasis[field] = userConfirmed.has(evidenceField)
         ? 'user_confirmed'
         : 'product_declared';
