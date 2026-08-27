@@ -386,7 +386,7 @@ export function RequiredRemovalDialog({
   );
 }
 
-function IngredientDataDialog({ item, onBack }: { item: EffectiveRecipeItem; onBack: () => void }) {
+function IngredientDataView({ item, onBack }: { item: EffectiveRecipeItem; onBack: () => void }) {
   const estimated = !item.ingredient.is_verified || item.ingredient.confidence_score < 90;
   // Product information the manufacturer supplied. It is shown because it is
   // useful to know, and for no other reason: neither line decides anything
@@ -400,51 +400,47 @@ function IngredientDataDialog({ item, onBack }: { item: EffectiveRecipeItem; onB
     [t.data.id, item.ingredient.canonical_ingredient_id ?? item.ingredient.id],
   ];
   return (
-    <DialogShell
-      label={`${t.data.open}: ${item.ingredient.name}`}
-      testId="ingredient-data-dialog"
-      placement="responsive"
-      panelClassName="sm:!w-[min(420px,94vw)] sm:!p-0"
-      onClose={onBack}
+    <div
+      className="min-h-full p-4"
+      data-testid="ingredient-data-view"
+      data-ingredient-modal-view="data"
     >
-      <div className="p-4 sm:p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-stone-100 text-stone-600">
-              <IngredientCategoryIcon
-                symbol={ingredientCategorySymbolFor({ category: item.ingredient.category })}
-              />
-            </span>
-            <div className="min-w-0">
-              <h2 className="text-sm font-semibold break-words text-ink">{item.ingredient.name}</h2>
-              <p className="mt-0.5 text-[11px] text-stone-500">{t.data.heading}</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onBack}
-            className="pro-focus-ring grid size-10 shrink-0 place-items-center rounded-full border border-ink/12 text-lg text-ink"
-            aria-label="Wróć do opcji składnika"
-          >
-            <span aria-hidden>←</span>
-          </button>
-        </div>
-        <dl
-          className="mt-3 grid gap-px overflow-hidden rounded-lg border border-ink/10 bg-ink/10"
-          data-testid="ingredient-data-compact-list"
+      <div className="flex items-start gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="pro-focus-ring grid size-10 shrink-0 place-items-center rounded-full border border-ink/12 text-lg text-ink"
+          aria-label="Wróć do opcji składnika"
         >
-          {rows.map(([label, value]) => (
-            <div
-              key={label}
-              className="grid grid-cols-[104px_minmax(0,1fr)] gap-2 bg-white px-3 py-2 text-[11px]"
-            >
-              <dt className="text-stone-500">{label}</dt>
-              <dd className="break-words text-right font-mono text-ink">{value}</dd>
-            </div>
-          ))}
-        </dl>
+          <span aria-hidden>←</span>
+        </button>
+        <div className="flex min-w-0 flex-1 items-center gap-2.5 pt-1">
+          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-stone-100 text-stone-600">
+            <IngredientCategoryIcon
+              symbol={ingredientCategorySymbolFor({ category: item.ingredient.category })}
+            />
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold break-words text-ink">{item.ingredient.name}</h2>
+            <p className="mt-0.5 text-[11px] text-stone-500">{t.data.heading}</p>
+          </div>
+        </div>
       </div>
-    </DialogShell>
+      <dl
+        className="mt-3 grid gap-px overflow-hidden rounded-lg border border-ink/10 bg-ink/10"
+        data-testid="ingredient-data-compact-list"
+      >
+        {rows.map(([label, value]) => (
+          <div
+            key={label}
+            className="grid grid-cols-[104px_minmax(0,1fr)] gap-2 bg-white px-3 py-2 text-[11px]"
+          >
+            <dt className="text-stone-500">{label}</dt>
+            <dd className="break-words text-right font-mono text-ink">{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
   );
 }
 
@@ -487,12 +483,12 @@ function RecipeRow({
   const unit = 'g' as const;
   const [rowMenuOpen, setRowMenuOpen] = useState(false);
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
-  const [dialog, setDialog] = useState<
-    'substitute' | 'required' | 'required-confirm' | 'data-from-article' | null
-  >(null);
+  const [ingredientModalView, setIngredientModalView] = useState<'actions' | 'data'>('actions');
+  const [dialog, setDialog] = useState<'substitute' | 'required' | 'required-confirm' | null>(null);
   const closeLineMenus = () => {
     setRowMenuOpen(false);
     setMobileSheetOpen(false);
+    setIngredientModalView('actions');
   };
   const [loadedSubstitutes, setLoadedSubstitutes] =
     useState<readonly SubstituteCandidate[]>(substituteCandidates);
@@ -603,7 +599,7 @@ function RecipeRow({
             <button
               type="button"
               aria-label="Informacja o roli składnika"
-              onClick={() => setDialog('data-from-article')}
+              onClick={() => setIngredientModalView('data')}
               className="pro-focus-ring grid h-full w-full place-items-center"
             >
               <span
@@ -625,7 +621,7 @@ function RecipeRow({
         <ArticleActionButton
           label="Dane składnika"
           icon="info"
-          onClick={() => setDialog('data-from-article')}
+          onClick={() => setIngredientModalView('data')}
         />
       </div>
 
@@ -891,53 +887,69 @@ function RecipeRow({
               aria-haspopup="dialog"
               aria-expanded={rowMenuOpen}
               aria-controls={`row-menu-dialog-${item.id}`}
-              onClick={() => setRowMenuOpen(true)}
+              onClick={() => {
+                setIngredientModalView('actions');
+                setRowMenuOpen(true);
+              }}
               className={iconButtonClasses('xs')}
             >
               •••
             </button>
             {rowMenuOpen ? (
               <DialogShell
-                label={`Opcje składnika ${item.ingredient.name}`}
+                label={
+                  ingredientModalView === 'data'
+                    ? `${t.data.open}: ${item.ingredient.name}`
+                    : `Opcje składnika ${item.ingredient.name}`
+                }
                 testId={`row-menu-${item.id}`}
                 placement="responsive"
-                panelClassName="sm:!w-[min(500px,calc(100vw-32px))] sm:!rounded-[14px] sm:!p-0"
+                panelClassName="sm:!min-h-[290px] sm:!w-[min(500px,calc(100vw-32px))] sm:!rounded-[14px] sm:!p-0"
                 onClose={() => closeLineMenus()}
               >
-                <div id={`row-menu-dialog-${item.id}`}>
-                  <div
-                    className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-ink/[0.08] bg-white/95 px-4 py-3 backdrop-blur-sm"
-                    data-testid="article-panel-header"
-                  >
-                    <div className="flex min-w-0 items-center gap-2.5">
-                      <span className="grid size-8 shrink-0 place-items-center rounded-[9px] bg-stone-100 text-stone-600">
-                        <IngredientCategoryIcon
-                          symbol={ingredientCategorySymbolFor({
-                            category: item.ingredient.category,
-                          })}
-                        />
-                      </span>
-                      <div className="min-w-0">
-                        <h2 className="text-[13px] font-semibold leading-[1.2] break-words text-ink">
-                          {item.ingredient.name}
-                        </h2>
-                        <p className="mt-1 text-[10px] leading-none font-medium text-stone-500">
-                          {categoryLabelPl(item.ingredient.category)}
-                        </p>
+                <div id={`row-menu-dialog-${item.id}`} data-ingredient-modal-shell="true">
+                  {ingredientModalView === 'data' ? (
+                    <IngredientDataView
+                      item={item}
+                      onBack={() => setIngredientModalView('actions')}
+                    />
+                  ) : (
+                    <div data-ingredient-modal-view="actions">
+                      <div
+                        className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-ink/[0.08] bg-white/95 px-4 py-3 backdrop-blur-sm"
+                        data-testid="article-panel-header"
+                      >
+                        <div className="flex min-w-0 items-center gap-2.5">
+                          <span className="grid size-8 shrink-0 place-items-center rounded-[9px] bg-stone-100 text-stone-600">
+                            <IngredientCategoryIcon
+                              symbol={ingredientCategorySymbolFor({
+                                category: item.ingredient.category,
+                              })}
+                            />
+                          </span>
+                          <div className="min-w-0">
+                            <h2 className="text-[13px] font-semibold leading-[1.2] break-words text-ink">
+                              {item.ingredient.name}
+                            </h2>
+                            <p className="mt-1 text-[10px] leading-none font-medium text-stone-500">
+                              {categoryLabelPl(item.ingredient.category)}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => closeLineMenus()}
+                          className={iconButtonClasses('sm')}
+                          aria-label="Zamknij opcje składnika"
+                        >
+                          <span aria-hidden className="text-base leading-none">
+                            ×
+                          </span>
+                        </button>
                       </div>
+                      <div className="px-4 pt-3 pb-3">{articlePanelContent}</div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => closeLineMenus()}
-                      className={iconButtonClasses('sm')}
-                      aria-label="Zamknij opcje składnika"
-                    >
-                      <span aria-hidden className="text-base leading-none">
-                        ×
-                      </span>
-                    </button>
-                  </div>
-                  <div className="px-4 pt-3 pb-3">{articlePanelContent}</div>
+                  )}
                 </div>
               </DialogShell>
             ) : null}
@@ -953,8 +965,12 @@ function RecipeRow({
           lock={lock}
           meta={meta}
           gramsLocked={gramsLocked}
-          onClose={() => setMobileSheetOpen(false)}
+          view={ingredientModalView}
+          onClose={() => closeLineMenus()}
           panelContent={articlePanelContent}
+          dataContent={
+            <IngredientDataView item={item} onBack={() => setIngredientModalView('actions')} />
+          }
         />
       ) : null}
 
@@ -983,9 +999,6 @@ function RecipeRow({
           }}
           onClose={() => setDialog(null)}
         />
-      ) : null}
-      {dialog === 'data-from-article' ? (
-        <IngredientDataDialog item={item} onBack={() => setDialog(null)} />
       ) : null}
     </>
   );

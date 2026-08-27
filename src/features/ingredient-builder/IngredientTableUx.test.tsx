@@ -266,8 +266,10 @@ describe('Recipe ingredient table — quiet primary surface', () => {
         lock={lock(false)}
         meta={DEFAULT_INGREDIENT_ROW_META}
         gramsLocked={false}
+        view="actions"
         onClose={vi.fn()}
         panelContent={<div data-testid="shared-article-panel">Panel</div>}
+        dataContent={<div data-testid="ingredient-data-view">Data</div>}
       />,
     );
 

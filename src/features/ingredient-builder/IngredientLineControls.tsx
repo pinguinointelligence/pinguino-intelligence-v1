@@ -257,8 +257,10 @@ export function MobileIngredientSheet({
   lock,
   meta,
   gramsLocked,
+  view,
   onClose,
   panelContent,
+  dataContent,
 }: {
   item: EffectiveRecipeItem;
   percent: number | null;
@@ -266,140 +268,152 @@ export function MobileIngredientSheet({
   lock?: IngredientRowLockView;
   meta: IngredientRowMeta;
   gramsLocked: boolean;
+  view: 'actions' | 'data';
   onClose: () => void;
   /** The SAME compact article panel the desktop ••• dialog renders. */
   panelContent: ReactNode;
+  /** Ingredient facts rendered as the second view inside this same modal shell. */
+  dataContent: ReactNode;
 }) {
   const rangeLocked = lock?.state === 'range';
   const missingAmount = meta.dose.provenance === 'UNKNOWN' && item.planned_grams <= 0;
 
   return (
     <DialogShell
-      label={`${item.ingredient.name} — edycja składnika`}
+      label={
+        view === 'data'
+          ? `${t.data.open}: ${item.ingredient.name}`
+          : `${item.ingredient.name} — edycja składnika`
+      }
       testId={`ingredient-mobile-sheet-${item.id}`}
       placement="bottom"
+      panelClassName="min-h-[min(560px,88dvh)]"
       onClose={onClose}
     >
-      <div className="flex flex-col">
-        {/* ── Identity — the same compact header language as desktop. ──────── */}
-        <div className="sticky top-0 z-10 border-b border-ink/[0.08] bg-white px-4 py-3">
-          <div className="flex min-w-0 items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-2.5">
-              <span className="grid size-8 shrink-0 place-items-center rounded-[9px] bg-stone-100 text-stone-600">
-                <IngredientCategoryIcon
-                  symbol={ingredientCategorySymbolFor({ category: item.ingredient.category })}
-                />
-              </span>
-              <div className="min-w-0">
-                {/* The DETAIL view must be able to show the whole catalog name —
+      {view === 'data' ? (
+        dataContent
+      ) : (
+        <div className="flex flex-col" data-ingredient-modal-view="actions">
+          {/* ── Identity — the same compact header language as desktop. ──────── */}
+          <div className="sticky top-0 z-10 border-b border-ink/[0.08] bg-white px-4 py-3">
+            <div className="flex min-w-0 items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <span className="grid size-8 shrink-0 place-items-center rounded-[9px] bg-stone-100 text-stone-600">
+                  <IngredientCategoryIcon
+                    symbol={ingredientCategorySymbolFor({ category: item.ingredient.category })}
+                  />
+                </span>
+                <div className="min-w-0">
+                  {/* The DETAIL view must be able to show the whole catalog name —
                   real Mapper names ("CREAM 30% · Mlekovita Cream · Chilled")
                   are longer than a phone line, so this header wraps instead of
                   truncating. The collapsed list row still keeps one line. */}
-                <h2 className="text-[13px] font-semibold leading-[1.2] break-words text-ink">
-                  {item.ingredient.name}
-                </h2>
-                <p className="mt-1 text-[10px] leading-none font-medium text-stone-500">
-                  {categoryLabelPl(item.ingredient.category)}
-                </p>
+                  <h2 className="text-[13px] font-semibold leading-[1.2] break-words text-ink">
+                    {item.ingredient.name}
+                  </h2>
+                  <p className="mt-1 text-[10px] leading-none font-medium text-stone-500">
+                    {categoryLabelPl(item.ingredient.category)}
+                  </p>
+                </div>
               </div>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Zamknij edycję składnika"
+                className={iconButtonClasses('sm')}
+              >
+                <span aria-hidden className="text-base leading-none">
+                  ×
+                </span>
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Zamknij edycję składnika"
-              className={iconButtonClasses('sm')}
-            >
-              <span aria-hidden className="text-base leading-none">
-                ×
-              </span>
-            </button>
+          </div>
+
+          <div className="px-4 py-3">{panelContent}</div>
+
+          {/* ── THUMB ZONE — the most frequent action sits lowest ──────────────── */}
+          <div className="sticky bottom-0 border-t border-ink/10 bg-white px-4 pt-3 pb-4">
+            <div className="grid gap-3">
+              <label className="grid gap-1.5">
+                <SheetSectionLabel>{t.columns.percent}</SheetSectionLabel>
+                <DirectNumberControl
+                  value={percent ?? 0}
+                  step={0.1}
+                  min={0}
+                  max={100}
+                  decimals={1}
+                  suffix="%"
+                  ariaLabel={`${item.ingredient.name} — udział w partii`}
+                  disabled={
+                    percent === null ||
+                    !actions.setPlannedPercent ||
+                    Boolean(lock?.plannedDisabled) ||
+                    gramsLocked ||
+                    Boolean(lock?.percentLocked)
+                  }
+                  onChange={(next) => actions.setPlannedPercent?.(item.id, next)}
+                  testId={`row-mobile-percent-control-${item.id}`}
+                  widthPreset="fluid"
+                  softDanger={missingAmount}
+                  lockSegment={{
+                    pressed: lock?.percentLocked ?? false,
+                    disabled: lock?.percentToggleDisabled ?? true,
+                    ariaLabel: `${item.ingredient.name} — ${lock?.percentLocked ? '% partii zablokowany. Odblokuj' : 'Zablokuj % partii'}`,
+                    title: lock?.percentLocked
+                      ? `Udział zablokowany: ${lock.percentLabel ?? ''}`
+                      : 'Zablokuj procent finalnej partii',
+                    suffix: '%',
+                    onToggle: lock?.onTogglePercent ?? (() => undefined),
+                    testId: `row-mobile-lock-percent-${item.id}`,
+                  }}
+                />
+              </label>
+              <label className="grid gap-1.5">
+                <SheetSectionLabel>{t.columns.quantity}</SheetSectionLabel>
+                <DirectNumberControl
+                  value={item.planned_grams}
+                  step={1}
+                  min={rangeLocked ? lock?.minGrams : 0}
+                  max={rangeLocked ? lock?.maxGrams : undefined}
+                  decimals={Number.isInteger(item.planned_grams) ? 0 : 1}
+                  suffix="g"
+                  ariaLabel={`${item.ingredient.name} — ilość w g`}
+                  disabled={
+                    Boolean(lock?.plannedDisabled) || gramsLocked || Boolean(lock?.percentLocked)
+                  }
+                  onChange={(next) => actions.setPlannedGrams(item.id, Math.max(0, next))}
+                  testId={`row-mobile-grams-control-${item.id}`}
+                  widthPreset="fluid"
+                  softDanger={missingAmount}
+                  lockSegment={{
+                    pressed: gramsLocked,
+                    disabled: lock?.toggleDisabled,
+                    ariaLabel: `${item.ingredient.name} — ${gramsLocked ? 'Gramatura zablokowana. Odblokuj' : 'Zablokuj gramy'}`,
+                    title: lock?.title ?? b.lockTypes.grams,
+                    suffix: 'g',
+                    onToggle: () => {
+                      if (lock) {
+                        lock.onToggle();
+                        return;
+                      }
+                      actions.setLockType(item.id, gramsLocked ? 'unlocked' : 'grams');
+                    },
+                    testId: `row-mobile-lock-grams-${item.id}`,
+                  }}
+                />
+              </label>
+              <button
+                type="button"
+                onClick={onClose}
+                data-testid={`row-mobile-done-${item.id}`}
+                className="pro-focus-ring min-h-12 w-full rounded-xl bg-ink px-4 text-sm font-semibold text-white"
+              >
+                Gotowe
+              </button>
+            </div>
           </div>
         </div>
-
-        <div className="px-4 py-3">{panelContent}</div>
-
-        {/* ── THUMB ZONE — the most frequent action sits lowest ──────────────── */}
-        <div className="sticky bottom-0 border-t border-ink/10 bg-white px-4 pt-3 pb-4">
-          <div className="grid gap-3">
-            <label className="grid gap-1.5">
-              <SheetSectionLabel>{t.columns.percent}</SheetSectionLabel>
-              <DirectNumberControl
-                value={percent ?? 0}
-                step={0.1}
-                min={0}
-                max={100}
-                decimals={1}
-                suffix="%"
-                ariaLabel={`${item.ingredient.name} — udział w partii`}
-                disabled={
-                  percent === null ||
-                  !actions.setPlannedPercent ||
-                  Boolean(lock?.plannedDisabled) ||
-                  gramsLocked ||
-                  Boolean(lock?.percentLocked)
-                }
-                onChange={(next) => actions.setPlannedPercent?.(item.id, next)}
-                testId={`row-mobile-percent-control-${item.id}`}
-                widthPreset="fluid"
-                softDanger={missingAmount}
-                lockSegment={{
-                  pressed: lock?.percentLocked ?? false,
-                  disabled: lock?.percentToggleDisabled ?? true,
-                  ariaLabel: `${item.ingredient.name} — ${lock?.percentLocked ? '% partii zablokowany. Odblokuj' : 'Zablokuj % partii'}`,
-                  title: lock?.percentLocked
-                    ? `Udział zablokowany: ${lock.percentLabel ?? ''}`
-                    : 'Zablokuj procent finalnej partii',
-                  suffix: '%',
-                  onToggle: lock?.onTogglePercent ?? (() => undefined),
-                  testId: `row-mobile-lock-percent-${item.id}`,
-                }}
-              />
-            </label>
-            <label className="grid gap-1.5">
-              <SheetSectionLabel>{t.columns.quantity}</SheetSectionLabel>
-              <DirectNumberControl
-                value={item.planned_grams}
-                step={1}
-                min={rangeLocked ? lock?.minGrams : 0}
-                max={rangeLocked ? lock?.maxGrams : undefined}
-                decimals={Number.isInteger(item.planned_grams) ? 0 : 1}
-                suffix="g"
-                ariaLabel={`${item.ingredient.name} — ilość w g`}
-                disabled={
-                  Boolean(lock?.plannedDisabled) || gramsLocked || Boolean(lock?.percentLocked)
-                }
-                onChange={(next) => actions.setPlannedGrams(item.id, Math.max(0, next))}
-                testId={`row-mobile-grams-control-${item.id}`}
-                widthPreset="fluid"
-                softDanger={missingAmount}
-                lockSegment={{
-                  pressed: gramsLocked,
-                  disabled: lock?.toggleDisabled,
-                  ariaLabel: `${item.ingredient.name} — ${gramsLocked ? 'Gramatura zablokowana. Odblokuj' : 'Zablokuj gramy'}`,
-                  title: lock?.title ?? b.lockTypes.grams,
-                  suffix: 'g',
-                  onToggle: () => {
-                    if (lock) {
-                      lock.onToggle();
-                      return;
-                    }
-                    actions.setLockType(item.id, gramsLocked ? 'unlocked' : 'grams');
-                  },
-                  testId: `row-mobile-lock-grams-${item.id}`,
-                }}
-              />
-            </label>
-            <button
-              type="button"
-              onClick={onClose}
-              data-testid={`row-mobile-done-${item.id}`}
-              className="pro-focus-ring min-h-12 w-full rounded-xl bg-ink px-4 text-sm font-semibold text-white"
-            >
-              Gotowe
-            </button>
-          </div>
-        </div>
-      </div>
+      )}
     </DialogShell>
   );
 }
