@@ -73,6 +73,7 @@ describe('Gellatti Visual System V2', () => {
 
     expect(catalog).toContain('lg:grid-cols-[minmax(340px,0.85fr)_minmax(420px,1.15fr)]');
     expect(admin).toContain('lg:grid-cols-[190px_minmax(0,1fr)]');
+    expect(admin).toContain('<aside className="min-w-0 border-b');
     expect(admin).toContain('xl:grid-cols-[330px_minmax(0,1fr)]');
     expect(appShell).not.toContain('190px_minmax');
   });
