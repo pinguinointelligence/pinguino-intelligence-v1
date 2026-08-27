@@ -555,7 +555,7 @@ describe('La Chocolatera two-photo rounding and semantic handoff regression', ()
     expect(proposal?.evidence.fields.fiber).toBe('web_search');
     expect(proposal?.declared.kcal_per_100g).toBe(375);
     expect(proposal?.declared.fat_percent).toBe(16);
-    expect(authority?.fieldTruth.fiber_percent.state).toBe('ESTIMATED');
+    expect(authority?.fieldTruth.fiber_percent?.state).toBe('ESTIMATED');
     expect(authority?.engineUsable).toBe(true);
     expect(authority?.criticalPhysicsBlockers).not.toContain('SELF_CONTRADICTORY_DECLARATION');
   });
