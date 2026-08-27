@@ -29,6 +29,19 @@ describe('customer product gap guidance', () => {
     expect(guidance.question).not.toMatch(/protein_percent|salt_percent/i);
   });
 
+  it('asks one identity question when the exact barcode is the active blocker', () => {
+    const guidance = customerProductGapGuidance([
+      'MISSING_EAN',
+      'MISSING_INGREDIENTS',
+    ]);
+
+    expect(guidance).toEqual({
+      question: 'Czy możesz pokazać wyraźnie kod kreskowy produktu?',
+      explanation: 'Kod pozwala bezpiecznie rozpoznać dokładnie ten produkt i uniknąć duplikatu.',
+      requiresPhoto: true,
+    });
+  });
+
   it('keeps technical products fail-closed while asking only for realistic authority', () => {
     const guidance = customerProductGapGuidance(['DOSAGE_AUTHORITY_REQUIRED']);
 

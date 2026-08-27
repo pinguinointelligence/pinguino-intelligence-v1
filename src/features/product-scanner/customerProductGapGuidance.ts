@@ -15,6 +15,14 @@ const hasAny = (gaps: readonly string[], patterns: readonly RegExp[]): boolean =
 export function customerProductGapGuidance(
   criticalGaps: readonly string[],
 ): CustomerProductGapGuidance {
+  if (hasAny(criticalGaps, [/(?:^|_)EAN(?:_|$)/, /BARCODE/, /(?:^|_)GTIN(?:_|$)/])) {
+    return {
+      question: 'Czy możesz pokazać wyraźnie kod kreskowy produktu?',
+      explanation: 'Kod pozwala bezpiecznie rozpoznać dokładnie ten produkt i uniknąć duplikatu.',
+      requiresPhoto: true,
+    };
+  }
+
   if (
     hasAny(criticalGaps, [
       /DOSAGE/,

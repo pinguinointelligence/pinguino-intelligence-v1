@@ -148,6 +148,7 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [errorStage, setErrorStage] = useState<'analysis' | 'save'>('analysis');
+  const [identityEvidenceGap, setIdentityEvidenceGap] = useState<string | null>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
   const galleryInput = useRef<HTMLInputElement>(null);
   const decoder = useRef<BarcodeDecoder | null>(null);
@@ -183,7 +184,11 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
     : [];
   const packageGaps = retryablePackageFields(analysis?.missingCriticalFields ?? criticalGaps);
   const gapGuidance = customerProductGapGuidance(
-    packageGaps.length > 0 ? packageGaps : criticalGaps,
+    identityEvidenceGap
+      ? [identityEvidenceGap]
+      : packageGaps.length > 0
+        ? packageGaps
+        : criticalGaps,
   );
 
   async function preparedImages(inputAssets: readonly PreparedProductScanAsset[]) {
@@ -361,7 +366,8 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
           if (!activeBarcode) {
             setPhase('needs_evidence');
             setBusy(null);
-            setError('Potrzebuję jeszcze jednego zdjęcia. Pokaż wyraźnie kod kreskowy produktu.');
+            setIdentityEvidenceGap('MISSING_EAN');
+            setError(null);
             return;
           }
           if (!activeAnalysis) throw new Error('Nie udało się odczytać produktu.');
@@ -387,6 +393,7 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
     if (!remaining || files.length === 0 || running.current) return;
     setPhase('preparing');
     setBusy('Przygotowuję zdjęcie…');
+    setIdentityEvidenceGap(null);
     setError(null);
     const next: PreparedProductScanAsset[] = [];
     let foundBarcode: ValidBarcode | null = null;
