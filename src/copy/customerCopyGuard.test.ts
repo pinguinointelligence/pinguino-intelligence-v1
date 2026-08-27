@@ -82,6 +82,15 @@ describe('customer copy guard', () => {
     expect(formatEntries(violations)).toBe('');
   });
 
+  it('keeps the public document metadata on the Gellatti brand', () => {
+    const document = fs.readFileSync(path.join(process.cwd(), 'index.html'), 'utf8');
+    expect(document).toContain('<title>GELLATTI — FRIENDLY LAB</title>');
+    expect(document).toContain(
+      'content="GELLATTI — przyjazne laboratorium receptur lodowych. Od pomysłu do gotowej partii."',
+    );
+    expect(document).not.toMatch(/PINGÜINO|PINGUINO/);
+  });
+
   it('keeps primary copy free of retired actions and internal implementation language', () => {
     const forbidden =
       /Przelicz z PI|Monitor PI|PI Calculated|class-derived|MAPPER BINDING REQUIRED|PRODUCT DATA INCOMPLETE|ACTUAL Production|immutable snapshot|canonical authority|repository unavailable|\bProductBehavior\b|\bRLS\b|\bEngine\b|\bMapper\b/;
