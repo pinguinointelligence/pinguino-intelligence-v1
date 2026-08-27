@@ -210,11 +210,10 @@ body:has(details[open] [data-testid^='row-menu-']) [data-testid='design-review-o
   }
 }
 
-@container right-pane (max-width: 540px) {
-  .profile-settings-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
+/* Batch + Strategy need less inline space than the rest of the profile grid.
+   Keep their shared three-row geometry until the panel itself drops below the
+   desktop shell's 400px minimum, then use the existing one-column fallback. */
+@container right-pane (max-width: 399px) {
   .profile-settings-final-row {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: none;
@@ -224,6 +223,12 @@ body:has(details[open] [data-testid^='row-menu-']) [data-testid='design-review-o
   .profile-settings-final-card {
     grid-row: auto;
     grid-template-rows: auto 3.25rem auto;
+  }
+}
+
+@container right-pane (max-width: 540px) {
+  .profile-settings-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .profile-nutrition-details {
