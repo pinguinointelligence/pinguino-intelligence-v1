@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router';
+import { copy } from '@/copy/en';
 import type { EngineIngredient } from '@/engine';
 import type { CarbonationStatus } from '@/data/products/carbonation';
 import { CarbonationBubbles } from '@/components/product/CarbonationBubbles';
@@ -63,8 +64,23 @@ import {
   resolveCurrentMapperCatalogSelection,
   scannedProductRecipeTarget,
 } from './mapperOnlyCatalog';
+import { ProductPickerContextualRow } from './ProductPickerContextualRow';
+import {
+  contextualPickerMatch,
+  getProductPickerCompatibility,
+  type ProductPickerScope,
+} from './productPickerCompatibility';
 
-export type ProductPickerScope = 'BASE_FORMULATION' | 'POST_PROCESS_ADDON';
+export interface ProductPickerRouteRequest {
+  targetScope: ProductPickerScope;
+  query: string;
+  productId: string;
+}
+
+export interface ProductPickerHandoff extends ProductPickerRouteRequest {
+  key: number;
+  scope: ProductPickerScope;
+}
 
 export interface ProductPickerSelectionResult {
   /** Existing or newly-created row that should receive focus after close. */
@@ -155,6 +171,10 @@ type ProductPickerPopoverProps = {
   /** Read-only Base duplicate check before ProductBehavior/network work. The
    * store's atomic add remains the final race-safe authority. */
   onPreflightDuplicate?: (ingredient: EngineIngredient) => ProductPickerSelectionResult | void;
+  intent?: 'ADD' | 'REPLACE';
+  /** Parent-owned transfer between the two recipe picker contexts. */
+  handoff?: ProductPickerHandoff | null;
+  onRouteToScope?: (request: ProductPickerRouteRequest) => void;
 } & (
   | {
       scope: 'BASE_FORMULATION';
@@ -180,6 +200,9 @@ export function ProductPickerPopover({
   className,
   behaviorContext,
   onPreflightDuplicate,
+  handoff,
+  onRouteToScope,
+  intent = 'ADD',
 }: ProductPickerPopoverProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -187,6 +210,7 @@ export function ProductPickerPopover({
   const [adding, setAdding] = useState(false);
   const [unavailableNotice, setUnavailableNotice] = useState<string | null>(null);
   const [informationOption, setInformationOption] = useState<PickerOption | null>(null);
+  const [handoffTargetProductId, setHandoffTargetProductId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<IngredientCategoryFilterId>('all');
   const [scanning, setScanning] = useState(false);
   const [scrollThumb, setScrollThumb] = useState({ top: 0, height: 50, visible: false });
@@ -196,6 +220,7 @@ export function ProductPickerPopover({
   const listRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const informationCloseRef = useRef<HTMLButtonElement>(null);
+  const lastHandoffKeyRef = useRef<number | null>(null);
   const pickerInstanceId = useId().replace(/:/g, '');
   const globalCatalog = useGlobalCatalogPicker({
     enabled: open && library.serverSearch,
@@ -212,6 +237,26 @@ export function ProductPickerPopover({
     // its name was typed.
     mapperOnly: false,
   });
+  useEffect(() => {
+    if (!handoff || handoff.scope !== scope || lastHandoffKeyRef.current === handoff.key) {
+      return;
+    }
+    lastHandoffKeyRef.current = handoff.key;
+    setQuery(handoff.query);
+    setHandoffTargetProductId(handoff.productId);
+    setActiveFilter('all');
+    setActiveIndex(0);
+    setUnavailableNotice(null);
+    setInformationOption(null);
+    setScanning(false);
+    setOpen(true);
+  }, [handoff, scope]);
+
+  useEffect(() => {
+    if (!open) return;
+    queueMicrotask(() => inputRef.current?.focus({ preventScroll: true }));
+  }, [handoff?.key, open]);
+
   useLayoutEffect(() => {
     if (!open || typeof window === 'undefined') return;
     const updatePosition = () => {
@@ -274,8 +319,15 @@ export function ProductPickerPopover({
           context,
         ),
       );
+      const siblingReferenceHits = new Set(
+        filterCurrentMapperCatalogHits(
+          globalCatalog.hits.filter((hit) => hit.entityKind === 'pi_base'),
+          context === 'BASE' ? 'TOPPING' : 'BASE',
+        ),
+      );
       const eligible = globalCatalog.hits.filter(
-        (hit) => hit.entityKind !== 'pi_base' || referenceHits.has(hit),
+        (hit) =>
+          hit.entityKind !== 'pi_base' || referenceHits.has(hit) || siblingReferenceHits.has(hit),
       );
       const catalog = globalCatalog.isSettled
         ? preserveServerProductRank(eligible, globalCatalog.preferences).map((hit) => ({
@@ -350,14 +402,46 @@ export function ProductPickerPopover({
     query,
     scope,
   ]);
-  const segments = useMemo(
-    () => buildProductPickerSegments(options, { activeQuery: query.trim() !== '' }),
-    [options, query],
-  );
+  const segments = useMemo(() => {
+    const primary = options.filter((option) => {
+      if (!option.catalog) return true;
+      return (
+        getProductPickerCompatibility(option.catalog, scope).state !== 'AVAILABLE_IN_OTHER_CONTEXT'
+      );
+    });
+    const contextual = (intent === 'ADD' ? options : [])
+      .filter((option) => {
+        if (!option.catalog) return false;
+        return (
+          getProductPickerCompatibility(option.catalog, scope).state ===
+            'AVAILABLE_IN_OTHER_CONTEXT' && contextualPickerMatch(option.catalog, query)
+        );
+      })
+      .slice(0, 5);
+    return [
+      ...buildProductPickerSegments(primary, { activeQuery: query.trim() !== '' }),
+      ...(contextual.length > 0
+        ? [
+            {
+              id: 'otherContext' as const,
+              label: copy.productPicker.otherContextSection,
+              items: contextual,
+            },
+          ]
+        : []),
+    ];
+  }, [intent, options, query, scope]);
   const visibleOptions = useMemo(() => segments.flatMap((segment) => segment.items), [segments]);
   const uniqueOptionCount = uniqueCatalogProductCount(segments);
+  const handoffTargetIndex = handoffTargetProductId
+    ? visibleOptions.findIndex((option) => option.catalog?.id === handoffTargetProductId)
+    : -1;
   const safeActiveIndex =
-    visibleOptions.length === 0 ? 0 : Math.min(Math.max(activeIndex, 0), visibleOptions.length - 1);
+    handoffTargetIndex >= 0
+      ? handoffTargetIndex
+      : visibleOptions.length === 0
+        ? 0
+        : Math.min(Math.max(activeIndex, 0), visibleOptions.length - 1);
 
   useEffect(() => {
     const option = listRef.current?.querySelector<HTMLElement>(
@@ -421,6 +505,28 @@ export function ProductPickerPopover({
     setInformationOption(null);
     setOpen(true);
     queueMicrotask(() => inputRef.current?.focus({ preventScroll: true }));
+  };
+
+  const routeToOtherScope = (option: PickerOption) => {
+    if (!option.catalog) return;
+    const compatibility = getProductPickerCompatibility(option.catalog, scope);
+    if (compatibility.state !== 'AVAILABLE_IN_OTHER_CONTEXT') return;
+    if (!onRouteToScope) {
+      setUnavailableNotice(
+        compatibility.redirectScope === 'BASE_FORMULATION'
+          ? copy.productPicker.contextual.openIngredientManually
+          : copy.productPicker.contextual.openToppingManually,
+      );
+      return;
+    }
+    setOpen(false);
+    setUnavailableNotice(null);
+    setInformationOption(null);
+    onRouteToScope({
+      targetScope: compatibility.redirectScope,
+      query,
+      productId: option.catalog.id,
+    });
   };
 
   const choose = async (option: PickerOption | undefined) => {
@@ -549,6 +655,18 @@ export function ProductPickerPopover({
     } finally {
       setAdding(false);
     }
+  };
+
+  const activateOption = (option: PickerOption | undefined) => {
+    if (!option) return;
+    const compatibility = option.catalog
+      ? getProductPickerCompatibility(option.catalog, scope)
+      : { state: 'ALLOWED' as const };
+    if (compatibility.state === 'AVAILABLE_IN_OTHER_CONTEXT') {
+      routeToOtherScope(option);
+      return;
+    }
+    void choose(option);
   };
 
   /**
@@ -750,14 +868,16 @@ export function ProductPickerPopover({
                   } else if (event.key === 'ArrowDown') {
                     event.preventDefault();
                     if (visibleOptions.length > 0) {
-                      setActiveIndex((index) => Math.min(visibleOptions.length - 1, index + 1));
+                      setHandoffTargetProductId(null);
+                      setActiveIndex(Math.min(visibleOptions.length - 1, safeActiveIndex + 1));
                     }
                   } else if (event.key === 'ArrowUp') {
                     event.preventDefault();
-                    setActiveIndex((index) => Math.max(0, index - 1));
+                    setHandoffTargetProductId(null);
+                    setActiveIndex(Math.max(0, safeActiveIndex - 1));
                   } else if (event.key === 'Enter' && event.target === inputRef.current) {
                     event.preventDefault();
-                    void choose(visibleOptions[safeActiveIndex]);
+                    activateOption(visibleOptions[safeActiveIndex]);
                   } else if (event.key === 'Tab') {
                     const focusable = Array.from(
                       dialogRef.current?.querySelectorAll<HTMLElement>(
@@ -797,6 +917,7 @@ export function ProductPickerPopover({
                           value={query}
                           onChange={(event) => {
                             setQuery(event.currentTarget.value);
+                            setHandoffTargetProductId(null);
                             setActiveIndex(0);
                             setUnavailableNotice(null);
                             setInformationOption(null);
@@ -810,6 +931,7 @@ export function ProductPickerPopover({
                             data-testid="product-picker-clear"
                             onClick={() => {
                               setQuery('');
+                              setHandoffTargetProductId(null);
                               setActiveIndex(0);
                               setUnavailableNotice(null);
                               setInformationOption(null);
@@ -969,6 +1091,29 @@ export function ProductPickerPopover({
                                 </p>
                                 {segment.items.map((option, itemIndex) => {
                                   const index = segmentOffset + itemIndex;
+                                  const compatibility = option.catalog
+                                    ? getProductPickerCompatibility(option.catalog, scope)
+                                    : { state: 'ALLOWED' as const };
+                                  if (
+                                    option.catalog &&
+                                    compatibility.state === 'AVAILABLE_IN_OTHER_CONTEXT'
+                                  ) {
+                                    return (
+                                      <ProductPickerContextualRow
+                                        key={option.canonicalId}
+                                        product={option.catalog}
+                                        compatibility={compatibility}
+                                        optionId={`${listId}-${option.id}`}
+                                        optionIndex={index}
+                                        active={index === safeActiveIndex}
+                                        onActivate={() => {
+                                          setHandoffTargetProductId(null);
+                                          setActiveIndex(index);
+                                        }}
+                                        onRoute={() => routeToOtherScope(option)}
+                                      />
+                                    );
+                                  }
                                   return (
                                     <div
                                       key={option.canonicalId}
@@ -980,7 +1125,10 @@ export function ProductPickerPopover({
                                           : 'hover:border-ink/8 hover:bg-stone-50',
                                         !option.selectable ? 'cursor-not-allowed opacity-60' : '',
                                       )}
-                                      onMouseEnter={() => setActiveIndex(index)}
+                                      onMouseEnter={() => {
+                                        setHandoffTargetProductId(null);
+                                        setActiveIndex(index);
+                                      }}
                                     >
                                       <button
                                         id={`${listId}-${option.id}`}

@@ -39,7 +39,11 @@ import {
   type IngredientTableMode,
   type ProductionRowActions,
 } from './IngredientRow';
-import { ProductPickerPopover } from './ProductPickerPopover';
+import {
+  ProductPickerPopover,
+  type ProductPickerHandoff,
+  type ProductPickerRouteRequest,
+} from './ProductPickerPopover';
 import { ToppingRow } from './ToppingRow';
 import {
   ingredientRowMeta,
@@ -147,6 +151,8 @@ export function IngredientBuilder({
   const draggedToppingId = useRef<string | null>(null);
   const [pickerNotice, setPickerNotice] = useState<string | null>(null);
   const [reorderNotice, setReorderNotice] = useState('');
+  const [pickerHandoff, setPickerHandoff] = useState<ProductPickerHandoff | null>(null);
+  const pickerHandoffKey = useRef(0);
   const library = useIngredientLibrary({ demo });
   const { lockFor, wrapActions } = useLineLockControls();
   const legacyReferenceIssues = compositionMigrationAmbiguities.filter((issue) =>
@@ -744,6 +750,15 @@ export function IngredientBuilder({
     </div>
   );
 
+  const routeProductPicker = (request: ProductPickerRouteRequest) => {
+    pickerHandoffKey.current += 1;
+    setPickerHandoff({
+      ...request,
+      key: pickerHandoffKey.current,
+      scope: request.targetScope,
+    });
+  };
+
   const picker = (
     <ProductPickerPopover
       library={library}
@@ -756,6 +771,24 @@ export function IngredientBuilder({
       }}
       onPreflightDuplicate={preflightDuplicateBaseIngredient}
       onAdd={addIngredientAndResolveRequiredRole}
+      handoff={pickerHandoff?.scope === 'BASE_FORMULATION' ? pickerHandoff : null}
+      onRouteToScope={routeProductPicker}
+    />
+  );
+
+  const toppingPicker = (
+    <ProductPickerPopover
+      library={library}
+      scope="POST_PROCESS_ADDON"
+      behaviorContext={{
+        accountId: authUserId,
+        productProfile: behaviorProfile,
+        temperatureC: behaviorTemperatureC,
+        mode: behaviorMode,
+      }}
+      onAdd={addOrFocusTopping}
+      handoff={pickerHandoff?.scope === 'POST_PROCESS_ADDON' ? pickerHandoff : null}
+      onRouteToScope={routeProductPicker}
     />
   );
 
@@ -987,17 +1020,7 @@ export function IngredientBuilder({
                         data-testid="ingredient-add-slot"
                       >
                         {picker}
-                        <ProductPickerPopover
-                          library={library}
-                          scope="POST_PROCESS_ADDON"
-                          behaviorContext={{
-                            accountId: authUserId,
-                            productProfile: behaviorProfile,
-                            temperatureC: behaviorTemperatureC,
-                            mode: behaviorMode,
-                          }}
-                          onAdd={addOrFocusTopping}
-                        />
+                        {toppingPicker}
                       </div>
                       {recipeActionDock ? (
                         // The SAME dock is pinned above the mobile preview bar below
@@ -1068,17 +1091,7 @@ export function IngredientBuilder({
       <section className="mt-6 border-t border-status-ideal/20 pt-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <SectionLabel>Toppingi po produkcji</SectionLabel>
-          <ProductPickerPopover
-            library={library}
-            scope="POST_PROCESS_ADDON"
-            behaviorContext={{
-              accountId: authUserId,
-              productProfile: behaviorProfile,
-              temperatureC: behaviorTemperatureC,
-              mode: behaviorMode,
-            }}
-            onAdd={addOrFocusTopping}
-          />
+          {toppingPicker}
         </div>
         <div className="mt-3">{toppingRows}</div>
         <div className="mt-4 flex justify-between text-sm text-ivory/70">

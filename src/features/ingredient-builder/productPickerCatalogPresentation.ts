@@ -7,6 +7,7 @@ export const PRODUCT_PICKER_SEGMENT_LABELS = {
   remaining: 'POZOSTAŁE SKŁADNIKI',
   ingredients: 'SKŁADNIKI',
   all: 'WSZYSTKIE SKŁADNIKI',
+  otherContext: 'DOSTĘPNE W INNYM ZAKRESIE',
 } as const;
 
 export type ProductPickerSegmentId = keyof typeof PRODUCT_PICKER_SEGMENT_LABELS;
@@ -38,9 +39,11 @@ export function canonicalCatalogProductId(
 export function catalogDataConfidencePercent(
   hit: Pick<CatalogProductSearchHit, 'publicData'>,
 ): number {
-  return normalizeDataConfidencePercent(
-    hit.publicData.productAccuracy ?? hit.publicData.sourceConfidence,
-  ) ?? 0;
+  return (
+    normalizeDataConfidencePercent(
+      hit.publicData.productAccuracy ?? hit.publicData.sourceConfidence,
+    ) ?? 0
+  );
 }
 
 export function normalizeDataConfidencePercent(value: unknown): number | null {

@@ -537,6 +537,32 @@ export const copy = {
     openMachine: 'Otwórz ustawienia maszyny',
     devPersona: 'Persona (dev):',
   },
+  productPicker: {
+    otherContextSection: 'DOSTĘPNE W INNYM ZAKRESIE',
+    contextual: {
+      TOPPING: {
+        badge: 'Topping',
+        available: 'Ten produkt jest dostępny jako topping.',
+        route: 'Przejdź do toppingów →',
+        question: 'Uważasz, że powinien działać też jako składnik?',
+        submitted: 'Dzięki — sprawdzimy to jeszcze raz.',
+        unchanged: 'Na razie produkt pozostaje dostępny jako topping.',
+      },
+      INGREDIENT: {
+        badge: 'Składnik',
+        available: 'Ten produkt jest dostępny jako składnik receptury.',
+        route: 'Przejdź do składników →',
+        question: 'Uważasz, że powinien działać też jako topping?',
+        submitted: 'Dzięki — sprawdzimy, czy ten produkt może działać również jako topping.',
+        unchanged: 'Na razie pozostaje dostępny jako składnik.',
+      },
+      request: 'Poproś o ponowną analizę',
+      existing: 'Prośba o ponowną analizę została już wysłana.',
+      failed: 'Nie udało się wysłać prośby. Spróbuj ponownie.',
+      openIngredientManually: 'Otwórz „Dodaj składnik”, aby użyć tego produktu w recepturze.',
+      openToppingManually: 'Otwórz „Dodaj topping”, aby użyć tego produktu po produkcji.',
+    },
+  },
   /** PINGÜINO Pro sticky top workbar — primary actions always visible (recipe name + save +
    * Przelicz z PI + Monitor PI + version/status). PL copy. */
   proWorkbar: {

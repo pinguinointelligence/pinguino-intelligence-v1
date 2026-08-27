@@ -250,6 +250,7 @@ export function ToppingRow({
             <ProductPickerPopover
               library={library}
               scope="POST_PROCESS_ADDON"
+              intent="REPLACE"
               behaviorContext={behaviorContext}
               triggerLabel="Zamień topping"
               onAdd={(ingredient, behavior) => {
