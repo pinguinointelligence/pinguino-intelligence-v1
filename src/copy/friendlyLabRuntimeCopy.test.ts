@@ -15,6 +15,7 @@ const MATERIAL_SURFACES = [
   ['features', 'pro-core', 'ProRecalcPanel.tsx'],
   ['features', 'pro-core', 'ProWorkbar.tsx'],
   ['features', 'pro-workbench', 'RecipeAxisScale.tsx'],
+  ['features', 'pro-workbench', 'friendlyLabRecipeCopy.ts'],
   ['features', 'pro-workbench', 'RecipeProfilePanel.tsx'],
   ['features', 'recipes', 'useCanonicalRecipeSave.ts'],
   ['features', 'constraint-studio', 'constraintStudioCopy.ts'],
@@ -109,7 +110,7 @@ describe('Gellatti Friendly Lab — material runtime copy', () => {
     );
     expect(italian).toEqual([
       {
-        file: 'features/pro-workbench/RecipeProfilePanel.tsx',
+        file: 'features/pro-workbench/friendlyLabRecipeCopy.ts',
         text: 'Perfetto. Receptura jest gotowa.',
       },
       {
