@@ -13,7 +13,7 @@ interface StatusChipProps extends HTMLAttributes<HTMLSpanElement> {
 }
 
 /** Muted laboratory status badge — premium tones only, never candy (Design Lock §3). */
-export function StatusChip({ status, className, ...rest }: StatusChipProps) {
+export function StatusChip({ status, className, children, ...rest }: StatusChipProps) {
   const tone = useSurfaceTone();
   const classes = tone === 'shell' ? STATUS_CHIP_CLASSES_SHELL : STATUS_CHIP_CLASSES;
   return (
@@ -25,7 +25,7 @@ export function StatusChip({ status, className, ...rest }: StatusChipProps) {
       )}
       {...rest}
     >
-      {STATUS_LABELS[status]}
+      {children ?? STATUS_LABELS[status]}
     </span>
   );
 }
