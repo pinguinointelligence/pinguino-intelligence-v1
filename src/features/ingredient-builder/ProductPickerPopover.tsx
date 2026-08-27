@@ -1297,7 +1297,7 @@ export function ProductPickerPopover({
                               </div>
                               <div>
                                 <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-500">
-                                  Status danych
+                                  Pewność
                                 </dt>
                                 <dd className="mt-1 font-mono text-sm font-semibold">
                                   {formatDataConfidencePercent(informationOption.confidencePercent)}

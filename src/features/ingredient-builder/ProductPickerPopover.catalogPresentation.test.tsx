@@ -256,10 +256,10 @@ describe('ProductPickerPopover catalog presentation', () => {
     expect(dialog?.textContent).toContain('BANANA · Fresh Fruit');
     expect(dialog?.textContent).toContain('ID');
     expect(dialog?.textContent).toContain('PI-ING-000345');
-    expect(dialog?.textContent).toContain('Status danych');
+    expect(dialog?.textContent).toContain('Pewność');
     expect(dialog?.textContent).toContain('92%');
     expect(dialog?.textContent).not.toMatch(
-      /Źródło|ai_estimated|verified_db|Zweryfikowane|Częściowo szacowane|Pewność/,
+      /Źródło|ai_estimated|verified_db|Zweryfikowane|Częściowo szacowane/,
     );
 
     await act(async () => {
