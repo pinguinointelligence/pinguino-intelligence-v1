@@ -35,6 +35,16 @@ function completedSnapshot() {
     target_batch_grams: DEFAULT_PRESET.target_batch_grams,
     machine_capacity_grams: null,
   };
+  const behaviorSnapshots = productBehaviorTestSnapshots(input);
+  for (const frozen of Object.values(behaviorSnapshots)) {
+    frozen.source = 'supplier_specification';
+    if (
+      (frozen.sharedFacts?.nutritionPer100g?.fat ?? 0) > 0 &&
+      frozen.sharedFacts?.nutritionPer100g
+    ) {
+      frozen.sharedFacts.nutritionPer100g.saturatedFat ??= 0;
+    }
+  }
   let session = createProductionSession({
     sessionId: 'run-label-workspace',
     ownerUserId: 'owner-label-workspace',
@@ -50,7 +60,7 @@ function completedSnapshot() {
       baseScope: 'BASE_FORMULATION',
       baseOrder: input.items.map((item) => item.id),
       toppings: [],
-      behaviorSnapshots: productBehaviorTestSnapshots(input),
+      behaviorSnapshots,
       migrationAmbiguities: [],
     },
     startedAt: '2026-08-24T10:00:00.000Z',
@@ -97,8 +107,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
     document.body.append(host);
     root = createRoot(host);
     moments = [];
-    onMoment = (event) =>
-      moments.push((event as CustomEvent<FriendlyLabMomentEventDetail>).detail);
+    onMoment = (event) => moments.push((event as CustomEvent<FriendlyLabMomentEventDetail>).detail);
     window.addEventListener(FRIENDLY_LAB_MOMENT_EVENT, onMoment);
   });
 
@@ -322,11 +331,15 @@ describe('LabelWorkspace unified actual-run surface', () => {
     const sourceInput = intake.querySelector<HTMLInputElement>(
       '[data-label-nutrition-source="saturated_fat_g"]',
     )!;
+    const authorityInput = intake.querySelector<HTMLInputElement>(
+      '[data-label-nutrition-authority="saturated_fat_source"]',
+    )!;
     const continueButton = intake.querySelector<HTMLButtonElement>(
       '[data-testid="show-label-preview"]',
     )!;
 
     expect(sourceInput).not.toBeNull();
+    expect(authorityInput).not.toBeNull();
     expect(sourceInput.disabled).toBe(false);
     expect(continueButton.disabled).toBe(true);
     expect(intake.textContent).toContain('Tylko pola, których nie ma');
@@ -334,6 +347,12 @@ describe('LabelWorkspace unified actual-run surface', () => {
     await act(async () => setInputValue(sourceInput, '3.4'));
 
     expect(sourceInput.disabled).toBe(false);
+    expect(continueButton.disabled).toBe(true);
+
+    await act(async () =>
+      setInputValue(authorityInput, 'Supplier specification MILK-CREAM-2026-08'),
+    );
+
     expect(continueButton.disabled).toBe(false);
     await act(async () => continueButton.click());
     expect(host.querySelector('[data-testid="label-consumer-preview"]')?.textContent).toContain(

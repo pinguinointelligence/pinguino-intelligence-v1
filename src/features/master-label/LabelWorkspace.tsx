@@ -2460,7 +2460,10 @@ function CompactMarketNutritionFields({
   onChange: (value: MasterLabelData) => void;
 }) {
   const facts = value.regulatoryNutrition;
-  const num = (raw: string) => (raw.trim() === '' ? null : Number(raw));
+  const num = (raw: string) => {
+    const parsed = raw.trim() === '' ? null : Number(raw);
+    return parsed !== null && Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+  };
   const updateFact = (field: keyof typeof facts, raw: string) =>
     onChange({ ...value, regulatoryNutrition: { ...facts, [field]: num(raw) } });
   const numberField = (field: keyof typeof facts, label: string) => (
@@ -2476,9 +2479,45 @@ function CompactMarketNutritionFields({
       />
     </label>
   );
+  const saturatedFatAuthorityMissing =
+    value.nutritionSource?.saturated_fat_g === null ||
+    value.saturatedFatAuthority?.status === 'missing' ||
+    !value.saturatedFatAuthority?.sourceReferences.some((reference) => reference.trim().length > 0);
   const sourceMissing =
     value.nutritionSource &&
-    (value.nutritionSource.saturated_fat_g === null || value.nutritionSource.sugars_g === null);
+    (saturatedFatAuthorityMissing || value.nutritionSource.sugars_g === null);
+  const updateSaturatedFatValue = (raw: string) => {
+    if (!value.nutritionSource) return;
+    const saturatedFat = num(raw);
+    const sourceReferences = value.saturatedFatAuthority?.sourceReferences ?? [];
+    const sourceReady = sourceReferences.some((reference) => reference.trim().length > 0);
+    const nutritionSource = {
+      ...value.nutritionSource,
+      saturated_fat_g: saturatedFat,
+    };
+    onChange({
+      ...value,
+      nutritionSource,
+      nutritionDeclaration: buildNutritionDeclaration(nutritionSource),
+      saturatedFatAuthority: {
+        status: saturatedFat !== null && sourceReady ? 'manual_final_value' : 'missing',
+        sourceReferences,
+        missingIngredientNames: value.saturatedFatAuthority?.missingIngredientNames ?? [],
+      },
+    });
+  };
+  const updateSaturatedFatSource = (raw: string) => {
+    const sourceReference = raw.trim();
+    const saturatedFat = value.nutritionSource?.saturated_fat_g ?? null;
+    onChange({
+      ...value,
+      saturatedFatAuthority: {
+        status: saturatedFat !== null && sourceReference ? 'manual_final_value' : 'missing',
+        sourceReferences: sourceReference ? [sourceReference] : [],
+        missingIngredientNames: value.saturatedFatAuthority?.missingIngredientNames ?? [],
+      },
+    });
+  };
   return (
     <MissingDataCard
       field="market_nutrition"
@@ -2488,29 +2527,40 @@ function CompactMarketNutritionFields({
         Tylko pola, których nie ma w finalnych danych partii lub profilu rynku.
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
-        {sourceMissing && value.nutritionSource?.saturated_fat_g === null ? (
-          <label className="text-xs font-medium text-stone-600">
-            Tłuszcze nasycone · g / 100 g
-            <input
-              data-label-nutrition-source="saturated_fat_g"
-              type="number"
-              min={0}
-              step="any"
-              value=""
-              onChange={(event) => {
-                const nutritionSource = {
-                  ...value.nutritionSource!,
-                  saturated_fat_g: num(event.currentTarget.value),
-                };
-                onChange({
-                  ...value,
-                  nutritionSource,
-                  nutritionDeclaration: buildNutritionDeclaration(nutritionSource),
-                });
-              }}
-              className={SETTINGS_INPUT_CLASS}
-            />
-          </label>
+        {sourceMissing && saturatedFatAuthorityMissing ? (
+          <div className="grid gap-2 sm:col-span-2">
+            {value.saturatedFatAuthority?.missingIngredientNames.length ? (
+              <p className="text-[11px] leading-relaxed text-[#7a4a25]">
+                Brak potwierdzonych danych składników:{' '}
+                {value.saturatedFatAuthority.missingIngredientNames.join(', ')}. Wymagana jest
+                potwierdzona wartość zamiast wartości zastępczej.
+              </p>
+            ) : null}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="text-xs font-medium text-stone-600">
+                Tłuszcze nasycone · g / 100 g produktu
+                <input
+                  data-label-nutrition-source="saturated_fat_g"
+                  type="number"
+                  min={0}
+                  step="any"
+                  value={value.nutritionSource?.saturated_fat_g ?? ''}
+                  onChange={(event) => updateSaturatedFatValue(event.currentTarget.value)}
+                  className={SETTINGS_INPUT_CLASS}
+                />
+              </label>
+              <label className="text-xs font-medium text-stone-600">
+                Źródło potwierdzenia
+                <input
+                  data-label-nutrition-authority="saturated_fat_source"
+                  value={value.saturatedFatAuthority?.sourceReferences[0] ?? ''}
+                  onChange={(event) => updateSaturatedFatSource(event.currentTarget.value)}
+                  placeholder="Np. karta produktu, raport laboratorium"
+                  className={SETTINGS_INPUT_CLASS}
+                />
+              </label>
+            </div>
+          </div>
         ) : null}
         {sourceMissing && value.nutritionSource?.sugars_g === null ? (
           <label className="text-xs font-medium text-stone-600">

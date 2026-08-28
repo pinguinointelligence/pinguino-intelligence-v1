@@ -122,6 +122,11 @@ function label(
     },
     nutritionSource: nutrition,
     nutritionDeclaration: buildNutritionDeclaration(nutrition),
+    saturatedFatAuthority: {
+      status: 'ingredient_facts',
+      sourceReferences: ['supplier_specification:market-golden:milk-v1'],
+      missingIngredientNames: [],
+    },
     regulatoryNutrition: regulatoryFacts(languages, usServing),
     netQuantityG: market === 'CA' ? 300 : 500,
     packageQuantity: {

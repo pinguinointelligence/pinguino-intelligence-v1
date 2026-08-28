@@ -117,6 +117,11 @@ export function createCompleteLabel(
     },
     nutritionSource: COMPLETE_LABEL_NUTRITION,
     nutritionDeclaration: buildNutritionDeclaration(COMPLETE_LABEL_NUTRITION),
+    saturatedFatAuthority: {
+      status: 'ingredient_facts',
+      sourceReferences: ['supplier_specification:fixture:milk-v1'],
+      missingIngredientNames: [],
+    },
     regulatoryNutrition: completeRegulatoryFacts(
       languages,
       canada

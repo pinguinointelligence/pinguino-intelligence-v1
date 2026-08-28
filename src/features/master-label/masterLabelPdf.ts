@@ -38,6 +38,8 @@ import {
 import { normalizeConfirmedGtin } from './machineCodes';
 import { responsibleBusinessDetails } from './businessAuthority';
 import { canadianFrenchAllergenName } from './allergenTaxonomy';
+import { resolveMasterLabelLogoUrl } from './labelBrand';
+import { WORLD_INFORMATIONAL_WARNING_LINES } from './worldUniversal';
 
 const POINTS_PER_MM = 72 / 25.4;
 const MAX_RASTER_DPI = 600;
@@ -747,17 +749,37 @@ async function drawLabelPage(
       opacity: 0.2,
     });
   }
+  if (data.market === 'WORLD') {
+    drawRule(context, 1, 2);
+    drawWrapped(context, WORLD_INFORMATIONAL_WARNING_LINES[0], {
+      font: context.fonts.bold,
+      size: Math.max(8, context.baseFont + 0.5),
+      after: 1,
+    });
+    drawWrapped(context, WORLD_INFORMATIONAL_WARNING_LINES[1], {
+      font: context.fonts.bold,
+      size: Math.max(7, context.baseFont),
+      after: 2,
+    });
+    drawRule(context, 1, 3);
+  }
   if (options.logo) {
     const logo = await embedRaster(pdf, options.logo);
     const maxWidth = mmToPoints(22);
     const maxHeight = mmToPoints(13);
     const scale = Math.min(maxWidth / logo.width, maxHeight / logo.height);
+    const logoHeight = logo.height * scale;
+    const logoY =
+      data.market === 'WORLD'
+        ? context.y - logoHeight
+        : context.height - context.margin - logoHeight;
     context.page.drawImage(logo, {
       x: context.width - context.margin - logo.width * scale,
-      y: context.height - context.margin - logo.height * scale,
+      y: logoY,
       width: logo.width * scale,
-      height: logo.height * scale,
+      height: logoHeight,
     });
+    if (data.market === 'WORLD') context.y -= logoHeight + 3;
   }
   const languages = data.market === 'CA' ? ['en', 'fr'] : data.labelLanguages;
   const product = primaryText(data.productName, languages);
@@ -1093,8 +1115,11 @@ export async function downloadMasterLabelPdf(
   if (!options.draft && !options.calibration && !preflight.readyForSystemPrint) {
     throw new Error('Master Label preflight is incomplete.');
   }
+  const outputLogoUrl = resolveMasterLabelLogoUrl(data, logoUrl);
   const [logo, machineCodes, canadaFop] = await Promise.all([
-    logoUrl && data.enabledOptionalFields.includes('logo') ? imageUrlToPng(logoUrl) : null,
+    outputLogoUrl && data.enabledOptionalFields.includes('logo')
+      ? imageUrlToPng(outputLogoUrl)
+      : null,
     buildMachineCodeAssets(data),
     data.market === 'CA' &&
     data.regulatoryNutrition.canadaFopAssetId &&

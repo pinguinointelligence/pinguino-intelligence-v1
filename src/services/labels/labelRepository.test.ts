@@ -100,6 +100,11 @@ function printReadyActualLabel(
     allergens: { ...raw.allergens, reviewedByUser: true },
     nutritionSource,
     nutritionDeclaration: buildNutritionDeclaration(nutritionSource),
+    saturatedFatAuthority: {
+      status: 'manual_final_value',
+      sourceReferences: ['Supplier specification repository-fixture-v1'],
+      missingIngredientNames: [],
+    },
     packageQuantity: {
       value: 500,
       unit: 'g',

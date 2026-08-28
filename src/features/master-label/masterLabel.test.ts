@@ -16,6 +16,7 @@ import {
   type MasterLabelData,
 } from './masterLabel';
 import { buildMasterLabelPrintHtml } from './masterLabelPrint';
+import { OFFICIAL_GELLATTI_WORDMARK_URL } from './labelBrand';
 import { MARKET_PROFILES, marketProfile } from './marketProfiles';
 import type { CatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
 import type { RecipeToppingItem } from '@/features/recipe-composition/recipeCompositionPersistence';
@@ -28,6 +29,7 @@ function behaviorSnapshots(
 ): Record<string, ProductBehaviorSnapshot> {
   const snapshots = productBehaviorTestSnapshots(input, toppings);
   for (const [lineId, snapshot] of Object.entries(snapshots)) {
+    snapshot.source = 'supplier_specification';
     const item =
       input.items.find((candidate) => candidate.id === lineId) ??
       toppings.find((candidate) => candidate.id === lineId);
@@ -283,6 +285,11 @@ function printable(data: MasterLabelData): MasterLabelData {
     nutritionSource: data.nutritionSource
       ? { ...data.nutritionSource, saturated_fat_g: 0, sugars_g: 0 }
       : data.nutritionSource,
+    saturatedFatAuthority: {
+      status: 'manual_final_value',
+      sourceReferences: ['Supplier specification TEST-SAT-0'],
+      missingIngredientNames: [],
+    },
     legalProductName: { es: 'Helado de leche', en: 'Milk gelato' },
     allergens: { ...data.allergens, reviewedByUser: true },
     netQuantityG: 500,
@@ -346,6 +353,34 @@ describe('Master Label — one actual-batch source model', () => {
       en: expect.stringContaining('-18'),
     });
     expect(actual.allergens.reviewedByUser).toBe(true);
+  });
+
+  it('fails the label closed when a fat-bearing ingredient carries the Mapper zero placeholder', () => {
+    const snapshot = completedSnapshot();
+    for (const frozen of Object.values(snapshot.productComposition.behaviorSnapshots ?? {})) {
+      frozen.source = 'mapper';
+    }
+    const label = buildMasterLabelData({
+      masterLabelId: 'label-mapper-saturates-placeholder',
+      snapshot,
+      market: 'WORLD',
+      uiLanguage: 'en',
+      labelLanguages: ['en'],
+    });
+
+    expect(label.nutritionSource?.saturated_fat_g).toBeNull();
+    expect(label.saturatedFatAuthority).toMatchObject({
+      status: 'missing',
+      sourceReferences: [],
+      missingIngredientNames: expect.arrayContaining([expect.stringMatching(/milk|cream/i)]),
+    });
+    expect(buildLabelPreflight(label).items).toContainEqual(
+      expect.objectContaining({
+        field: 'market_nutrition',
+        status: 'missing',
+        message: expect.stringContaining('autorytatywnych'),
+      }),
+    );
   });
 
   it('uses actual toppings and legal mass order independently from manual UI order', () => {
@@ -687,6 +722,11 @@ describe('Master Label — one actual-batch source model', () => {
     delete legacy['printer'];
     delete legacy['regulatoryReview'];
     delete legacy['preflightAcknowledged'];
+    delete legacy['saturatedFatAuthority'];
+    const legacyNutrition = legacy['nutritionSource'] as NonNullable<
+      MasterLabelData['nutritionSource']
+    >;
+    legacyNutrition.saturated_fat_g = 0;
 
     const normalized = normalizeMasterLabelData(legacy as unknown as MasterLabelData);
     expect(normalized).toMatchObject({
@@ -708,6 +748,8 @@ describe('Master Label — one actual-batch source model', () => {
       },
     });
     expect(normalized.regulatoryNutrition.servingQuantityG).toBeNull();
+    expect(normalized.nutritionSource?.saturated_fat_g).toBeNull();
+    expect(normalized.saturatedFatAuthority).toMatchObject({ status: 'missing' });
     expect(() => buildLabelPreflight(normalized)).not.toThrow();
     expect(buildLabelPreflight(normalized).readyForSystemPrint).toBe(false);
   });
@@ -726,7 +768,9 @@ describe('Master Label — one actual-batch source model', () => {
     const html = buildMasterLabelPrintHtml(branded, 'https://example.test/private-logo.png');
     expect(html.match(/<article class="label"/g)).toHaveLength(3);
     expect(html).toContain('Gellatti Lab');
-    expect(html).toContain('https://example.test/private-logo.png');
+    expect(html).toContain(OFFICIAL_GELLATTI_WORDMARK_URL);
+    expect(html).not.toContain('private-logo.png');
+    expect(html).not.toContain('gellatti AI');
     expect(html).not.toContain('Koszt');
     expect(html).not.toContain('Never print me.');
     expect(html).not.toContain('Cała partia');

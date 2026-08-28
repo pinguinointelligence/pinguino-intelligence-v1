@@ -122,6 +122,14 @@ export interface ShelfLifeAuthority {
   reviewedByUser: boolean;
 }
 
+export interface LabelSaturatedFatAuthority {
+  status: 'ingredient_facts' | 'manual_final_value' | 'missing';
+  /** Immutable product-version fingerprints or an explicit document/lab reference. */
+  sourceReferences: string[];
+  /** Only the fat-bearing lines whose saturated-fat fact is not authoritative. */
+  missingIngredientNames: string[];
+}
+
 export interface LabelJurisdictionContext {
   /** Destination Member State authority for language and national overlays; not a new profile. */
   euDestinationCountryCode: string;
@@ -159,6 +167,7 @@ export interface MasterLabelData {
   };
   nutritionSource: LabelNutritionPer100g | null;
   nutritionDeclaration: NutritionDeclaration | null;
+  saturatedFatAuthority?: LabelSaturatedFatAuthority;
   regulatoryNutrition: RegulatoryNutritionInputs;
   /** Consumer-package fill; a new completed run starts as one whole-batch package. */
   packageQuantity?: LabelPackageQuantity | null;
@@ -309,6 +318,55 @@ function defaultFrozenStorage(languages: readonly string[]): MultilingualText {
   );
 }
 
+function saturatedFatAuthorityFromSnapshot(
+  snapshot: ProductionCompletionSnapshot,
+  behaviorAuthority: ReturnType<typeof buildRecipeBehaviorAuthority>,
+  nutrition: LabelNutritionPer100g | null,
+): LabelSaturatedFatAuthority {
+  const missingIngredientNames = new Set<string>();
+  const sourceReferences = new Set<string>();
+  let fatBearingLineCount = 0;
+
+  for (const item of snapshot.finalProduct.items.filter((row) => row.effective_grams > 0)) {
+    const frozen = behaviorAuthority.snapshots[item.id];
+    const frozenNutrition = frozen?.sharedFacts?.nutritionPer100g;
+    const embeddedFat =
+      'composition' in item.ingredient ? item.ingredient.composition.fat_percent : null;
+    const fat = frozenNutrition?.fat ?? embeddedFat;
+    if (typeof fat !== 'number' || !Number.isFinite(fat) || fat <= 0) continue;
+    fatBearingLineCount += 1;
+
+    const saturatedFat = frozenNutrition?.saturatedFat;
+    const isMapperPlaceholder =
+      frozen?.source === 'mapper' && saturatedFat === 0 && typeof fat === 'number' && fat > 0;
+    if (saturatedFat === null || saturatedFat === undefined || isMapperPlaceholder) {
+      missingIngredientNames.add(item.ingredient.name);
+      continue;
+    }
+    sourceReferences.add(
+      `${frozen!.source}:${frozen!.productVersionId}:${frozen!.factsFingerprint}`,
+    );
+  }
+
+  if (
+    missingIngredientNames.size === 0 &&
+    nutrition?.saturated_fat_g !== null &&
+    fatBearingLineCount === 0
+  ) {
+    sourceReferences.add('canonical_engine:no_fat_bearing_ingredients');
+  }
+
+  const complete =
+    missingIngredientNames.size === 0 &&
+    nutrition?.saturated_fat_g !== null &&
+    sourceReferences.size > 0;
+  return {
+    status: complete ? 'ingredient_facts' : 'missing',
+    sourceReferences: complete ? [...sourceReferences] : [],
+    missingIngredientNames: [...missingIngredientNames],
+  };
+}
+
 export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelData {
   const { snapshot } = input;
   const behaviorAuthority = buildRecipeBehaviorAuthority({
@@ -416,8 +474,17 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
   ];
   const facility = { ...emptyFacility(), ...input.facilityDefaults };
   const completedDate = snapshot.productionCompletedAt.slice(0, 10);
-  const nutrition =
+  const calculatedNutrition =
     snapshot.finalProduct.labelNutritionPer100g ?? snapshot.finalProduct.nutritionPer100g;
+  const saturatedFatAuthority = saturatedFatAuthorityFromSnapshot(
+    snapshot,
+    behaviorAuthority,
+    calculatedNutrition,
+  );
+  const nutrition =
+    calculatedNutrition && saturatedFatAuthority.status === 'missing'
+      ? { ...calculatedNutrition, saturated_fat_g: null }
+      : calculatedNutrition;
   const marketEnergyKj = euEnergyKjPer100g(snapshot);
   const regulatoryNutrition = {
     ...defaultRegulatoryNutrition(nutrition, languages),
@@ -464,6 +531,7 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
     },
     nutritionSource: nutrition,
     nutritionDeclaration: buildNutritionDeclaration(nutrition),
+    saturatedFatAuthority,
     regulatoryNutrition,
     packageQuantity,
     netQuantityG: packageQuantity?.netWeightG ?? null,
@@ -550,7 +618,19 @@ export function normalizeMasterLabelData(value: MasterLabelData): MasterLabelDat
     legacy.labelLanguages && legacy.labelLanguages.length > 0
       ? legacy.labelLanguages
       : [market === 'WORLD' ? 'en' : 'pl'];
-  const nutritionSource = legacy.nutritionSource ?? null;
+  const storedNutritionSource = legacy.nutritionSource ?? null;
+  const storedSaturatedFatAuthority = legacy.saturatedFatAuthority;
+  const nutritionSource =
+    storedNutritionSource &&
+    !storedSaturatedFatAuthority &&
+    storedNutritionSource.saturated_fat_g === 0
+      ? { ...storedNutritionSource, saturated_fat_g: null }
+      : storedNutritionSource;
+  const saturatedFatAuthority: LabelSaturatedFatAuthority = storedSaturatedFatAuthority ?? {
+    status: 'missing',
+    sourceReferences: [],
+    missingIngredientNames: [],
+  };
   const regulatoryDefaults = defaultRegulatoryNutrition(nutritionSource, labelLanguages);
   const regulatoryNutrition = legacy.regulatoryNutrition as
     | Partial<RegulatoryNutritionInputs>
@@ -565,6 +645,9 @@ export function normalizeMasterLabelData(value: MasterLabelData): MasterLabelDat
     purpose: legacy.purpose ?? 'retail_consumer',
     packagingContext: legacy.packagingContext ?? 'prepacked',
     labelLanguages,
+    nutritionSource,
+    nutritionDeclaration: buildNutritionDeclaration(nutritionSource),
+    saturatedFatAuthority,
     regulatoryNutrition: {
       ...regulatoryDefaults,
       ...regulatoryNutrition,
@@ -897,6 +980,26 @@ export function buildLabelPreflight(data: MasterLabelData): LabelPreflight {
     data.regulatoryNutrition,
     requiredLanguages,
   );
+  const retail = data.purpose === 'retail_consumer';
+  const saturatedFatAuthorityIssues = (() => {
+    if (!retail) return [];
+    const authority = data.saturatedFatAuthority;
+    if (
+      data.nutritionSource?.saturated_fat_g !== null &&
+      data.nutritionSource?.saturated_fat_g !== undefined &&
+      authority &&
+      authority.status !== 'missing' &&
+      authority.sourceReferences.some((reference) => reference.trim().length > 0)
+    ) {
+      return [];
+    }
+    const ingredients = authority?.missingIngredientNames.filter(Boolean) ?? [];
+    return [
+      ingredients.length > 0
+        ? `Brak autorytatywnych danych o tłuszczach nasyconych dla: ${ingredients.join(', ')}. Podaj wynik finalny wyłącznie z odniesieniem do dokumentacji lub laboratorium.`
+        : 'Tłuszcze nasycone wymagają wartości oraz odniesienia do dokumentacji produktu lub laboratorium.',
+    ];
+  })();
   const usServingIssues =
     data.market === 'US'
       ? usServingAndFormatIssues(
@@ -917,7 +1020,6 @@ export function buildLabelPreflight(data: MasterLabelData): LabelPreflight {
       ? ['Format podglądu i format sterownika drukarki muszą mieć identyczne wymiary.']
       : []),
   ];
-  const retail = data.purpose === 'retail_consumer';
   const labelText = (value: MultilingualText): string =>
     data.labelLanguages
       .map((language) => value[language]?.trim())
@@ -1030,15 +1132,26 @@ export function buildLabelPreflight(data: MasterLabelData): LabelPreflight {
       field: 'market_nutrition',
       status:
         !retail ||
-        (nutritionReadiness.ready && usServingIssues.length === 0 && canadaNftIssues.length === 0)
+        (nutritionReadiness.ready &&
+          saturatedFatAuthorityIssues.length === 0 &&
+          usServingIssues.length === 0 &&
+          canadaNftIssues.length === 0)
           ? 'ready'
           : 'missing',
       label: `Wartości odżywcze · ${profile.nutritionFormat}`,
       message:
         !retail ||
-        (nutritionReadiness.ready && usServingIssues.length === 0 && canadaNftIssues.length === 0)
+        (nutritionReadiness.ready &&
+          saturatedFatAuthorityIssues.length === 0 &&
+          usServingIssues.length === 0 &&
+          canadaNftIssues.length === 0)
           ? 'Kompletny zestaw danych dla układu rynku.'
-          : [...nutritionReadiness.missing, ...usServingIssues, ...canadaNftIssues].join(' '),
+          : [
+              ...nutritionReadiness.missing,
+              ...saturatedFatAuthorityIssues,
+              ...usServingIssues,
+              ...canadaNftIssues,
+            ].join(' '),
     },
     ...(data.market === 'CA' && retail
       ? [

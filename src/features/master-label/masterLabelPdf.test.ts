@@ -1,11 +1,12 @@
-import { PDFDocument } from 'pdf-lib';
-import { describe, expect, it } from 'vitest';
+import { PDFDocument, PDFPage } from 'pdf-lib';
+import { describe, expect, it, vi } from 'vitest';
 import { createCompleteLabel } from './masterLabelTestFixture';
 import {
   composeMasterLabelPdf,
   masterLabelPdfFilename,
   masterLabelPdfGeometry,
 } from './masterLabelPdf';
+import { WORLD_INFORMATIONAL_WARNING_LINES } from './worldUniversal';
 
 const label = createCompleteLabel('EU', {
   masterLabelId: 'label-pdf',
@@ -61,6 +62,24 @@ describe('Master Label direct vector PDF', () => {
     expect(artifact.filename).toMatch(/^gellatti-draft-/);
     expect(pdf.getTitle()).toContain('DRAFT');
     expect(pdf.getPageCount()).toBe(2);
+  });
+
+  it('draws both World informational warnings on every physical PDF page', async () => {
+    const worldBase = createCompleteLabel('WORLD');
+    const world = createCompleteLabel('WORLD', {
+      copies: 2,
+      printer: { ...worldBase.printer, copies: 2 },
+    });
+    const drawText = vi.spyOn(PDFPage.prototype, 'drawText');
+    try {
+      const artifact = await composeMasterLabelPdf(world);
+      expect(artifact.pageCount).toBe(2);
+      for (const warning of WORLD_INFORMATIONAL_WARNING_LINES) {
+        expect(drawText.mock.calls.filter(([text]) => text === warning)).toHaveLength(2);
+      }
+    } finally {
+      drawText.mockRestore();
+    }
   });
 
   it('creates the vector FDA dual-column and bilingual Canadian draft geometries', async () => {
