@@ -705,7 +705,7 @@ describe('§19 apply through the store', () => {
     expect(JSON.stringify(recipeItems())).toBe(before); // recipe untouched
     const blocked = useConstraintStudioStore.getState().blocked;
     expect(blocked?.code).toBe('constraints_violated');
-    expect(blocked?.messagePl).toContain('Receptura nie została zmieniona');
+    expect(blocked?.messagePl).toContain('Receptura pozostała bez zmian');
     expect(useConstraintStudioStore.getState().history.length).toBe(0);
   });
 

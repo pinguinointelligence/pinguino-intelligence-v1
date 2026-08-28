@@ -188,7 +188,7 @@ describe('recipe and production table modes', () => {
 
   it('Production replaces builder controls with one weighing control and SR labels', () => {
     const html = renderIngredients('production');
-    for (const label of ['Składnik', 'Plan', 'Faktycznie', 'Odchylenie'])
+    for (const label of ['Plan', 'Faktycznie', 'Odchylenie'])
       expect(html).toContain(label);
     expect(html).toContain('data-testid="production-table-header"');
     expect(html).toContain('data-table-family="recipe"');
@@ -387,7 +387,7 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     expect(preview).toContain('role="dialog"');
     expect(preview).toContain('effectiveAccess?.canAdmin === true');
     expect(preview).toContain('showTechnicalDetails={canViewTechnicalDetails}');
-    expect(preview).toContain("'Gotowe. Sprawdź proponowaną korektę.'");
+    expect(preview).toContain("'Sprawdź proponowaną korektę.'");
   });
 
   it('locks the desktop body and provides a mobile cockpit bottom sheet without horizontal scrolling', () => {

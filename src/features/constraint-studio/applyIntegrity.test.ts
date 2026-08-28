@@ -348,7 +348,7 @@ describe('PHASE 5/6/7 — the guarded store API rejects every corruption shape',
     if (!result.ok) expect(result.code).toBe('invalid_line');
     expect(JSON.stringify(storeRows())).toBe(before); // draft untouched
     expect(constraintStudioCopy.applyGuard.batchMismatch(0, 1000)).toContain(
-      'Receptura nie została zmieniona.',
+      'Receptura pozostała bez zmian.',
     );
   });
 

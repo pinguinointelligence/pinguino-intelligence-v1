@@ -49,7 +49,7 @@ describe('Gellatti Visual System V2', () => {
 
   it('implements outcome-context-next-step Scanner success and normal entry', () => {
     const scanner = read('features', 'product-scanner', 'LiveProductScanner.tsx');
-    expect(scanner).toContain('Gotowe. Produkt jest w Twoim katalogu.');
+    expect(scanner).toContain('Produkt dodany do Twojego katalogu.');
     expect(scanner).toContain('Co dalej?');
     expect(scanner).toContain('Użyj w recepturze');
     expect(scanner).toContain('Zeskanuj następny');

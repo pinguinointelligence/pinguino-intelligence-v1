@@ -1272,7 +1272,7 @@ describe('Production workspace touch-first UI', () => {
       'utf8',
     );
     expect(labelWorkspace).toContain('Zapisz finalną etykietę');
-    expect(labelWorkspace).toContain('Dane wewnętrzne · poza wydrukiem.');
+    expect(labelWorkspace).toContain('Dane wewnętrzne · poza wydrukiem');
     expect(labelWorkspace).toContain('data-testid="consumer-print-boundary"');
     const recipeProfilePanel = readFileSync(
       resolve(import.meta.dirname, '..', 'pro-workbench', 'RecipeProfilePanel.tsx'),
