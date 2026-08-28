@@ -223,6 +223,49 @@ describe('WorkbenchSettingsLine deferred batch editing', () => {
     expect(materialVector()).toEqual(before);
   });
 
+  it('applies the 1000 g Professional default on selection and preserves only a manual Professional batch across serving modes', async () => {
+    const baseSum = () =>
+      useRecipeStore
+        .getState()
+        .items.reduce((sum, item) => sum + item.planned_grams, 0);
+    const displayedBatch = () =>
+      (host.querySelector('[aria-label="Docelowa partia"]') as HTMLInputElement).value;
+    const expectBatch = (grams: number, source: string) => {
+      expect(displayedBatch()).toBe(String(grams));
+      expect(useRecipeStore.getState().target_batch_grams).toBe(grams);
+      expect(baseSum()).toBeCloseTo(grams, 8);
+      expect(useRecipeStore.getState().batch_source).toBe(source);
+    };
+
+    expectBatch(1_000, 'PROFESSIONAL_DEFAULT');
+
+    await selectValue('workbench-machine', 'ninja-creami-deluxe-nc502eu-eu-es');
+    expectBatch(670, 'MACHINE_DEFAULT');
+
+    await selectValue('workbench-machine', 'professional');
+    expectBatch(1_000, 'PROFESSIONAL_DEFAULT');
+
+    const input = host.querySelector('[aria-label="Docelowa partia"]') as HTMLInputElement;
+    await act(async () => {
+      input.focus();
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, '3000');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.blur();
+    });
+    expectBatch(3_000, 'PROFESSIONAL_USER_BATCH');
+
+    for (const servingMode of ['temp_minus_11', 'temp_minus_12', 'temp_minus_13']) {
+      await selectValue('workbench-serving', servingMode);
+      expectBatch(3_000, 'PROFESSIONAL_USER_BATCH');
+    }
+
+    await selectValue('workbench-machine', 'ninja-creami-nc302eu-eu-es');
+    expectBatch(450, 'MACHINE_DEFAULT');
+
+    await selectValue('workbench-machine', 'professional');
+    expectBatch(1_000, 'PROFESSIONAL_DEFAULT');
+  });
+
   it.each(ALL_PROFILE_TRANSITIONS)(
     '%s → %s requires confirmation, preserves the source, and scales the native target to the professional batch',
     async (sourceProfile, targetProfile) => {

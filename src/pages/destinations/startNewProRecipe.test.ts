@@ -28,7 +28,7 @@ describe('visible + Nowa receptura action', () => {
     useCustomerPriceStore.getState().clear();
   });
 
-  it('detaches the previous saved draft, keeps non-mode product defaults, and starts OPTIMAL', () => {
+  it('detaches the previous saved draft, applies the Professional 1000 g default, and starts OPTIMAL', () => {
     const previous = useRecipeStore.getState();
     const savedInput = {
       items: previous.items.map((item) => ({ ...item, ingredient: { ...item.ingredient } })),
@@ -63,7 +63,8 @@ describe('visible + Nowa receptura action', () => {
     const fresh = useRecipeStore.getState();
     expect(fresh.savedRecipeId).toBeNull();
     expect(fresh.savedRecipeName).toBeNull();
-    expect(fresh.target_batch_grams).toBe(1_200);
+    expect(fresh.target_batch_grams).toBe(1_000);
+    expect(fresh.batch_source).toBe('PROFESSIONAL_DEFAULT');
     expect(fresh.formulation_strategy).toBe('optimal');
     expect(useRecipeProfileStore.getState().directionIntents.sweetness).toBe(-2);
     expect(savedInput.target_batch_grams).toBe(875);

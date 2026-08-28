@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { copy } from '@/copy/en';
 import { cn } from '@/lib/cn';
-import { useRecipeStore } from '@/stores/recipeStore';
+import {
+  PROFESSIONAL_DEFAULT_BATCH_GRAMS,
+  useRecipeStore,
+} from '@/stores/recipeStore';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { BATCH_UNITS, fromGrams, toGrams, type BatchUnit } from '@/lib/units';
 import { temperatureForMode } from '@/features/customer-flow/servingMode';
@@ -193,7 +196,7 @@ export function WorkbenchSettingsLine({
   const capacity = store.machineKind === 'home' ? store.machine_capacity_grams : null;
   const cyclePlan = capacity ? planContainerSplit(store.target_batch_grams, capacity) : null;
 
-  const pickServing = (id: string) => {
+  const pickServing = (id: string, resetToProfessionalDefault = false) => {
     const temp = temperatureForMode(id);
     if (temp == null) return;
     const servingModeId = isNewRecipeServingModeId(id)
@@ -205,8 +208,11 @@ export function WorkbenchSettingsLine({
       machineId: null,
       label: professionalLabel,
       temperatureC: temp,
-      batchGrams: null,
+      batchGrams: resetToProfessionalDefault ? PROFESSIONAL_DEFAULT_BATCH_GRAMS : null,
       capacityGrams: null,
+      ...(resetToProfessionalDefault
+        ? { batchSource: 'PROFESSIONAL_DEFAULT' as const }
+        : {}),
     });
   };
 
@@ -215,6 +221,7 @@ export function WorkbenchSettingsLine({
       isNewRecipeServingModeId(activeServing)
         ? activeServing
         : starterServingModeForTemperature(store.target_temperature_c),
+      true,
     );
 
   const selectHome = (profile: HomeMachineProfile) => {
@@ -437,7 +444,7 @@ export function WorkbenchSettingsLine({
               value={activeServing}
               options={SERVING_OPTIONS.map((option) => option.id)}
               labelOf={(id) => SERVING_OPTIONS.find((option) => option.id === id)?.label ?? id}
-              onChange={pickServing}
+              onChange={(id) => pickServing(id)}
               testid="workbench-serving"
               stacked={compact}
             />

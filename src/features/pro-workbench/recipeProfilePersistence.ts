@@ -22,6 +22,7 @@ const MODES = new Set(['eco', 'classic', 'premium', 'signature']);
 const BATCH_SOURCES = new Set([
   'MACHINE_DEFAULT',
   'USER_OVERRIDE',
+  'PROFESSIONAL_DEFAULT',
   'PROFESSIONAL_USER_BATCH',
   'CUSTOM_MACHINE_BATCH',
 ]);

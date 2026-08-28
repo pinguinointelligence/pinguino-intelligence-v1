@@ -67,7 +67,7 @@ describe('canonical machine/manual batch coherence', () => {
   });
 
   it('executes the exact owner machine sequence with immediate Partia = Base sum', () => {
-    expectCoherent(1000, 'PROFESSIONAL_USER_BATCH');
+    expectCoherent(1000, 'PROFESSIONAL_DEFAULT');
     useRecipeStore.getState().setMachineSelection({
       kind: 'professional',
       servingModeId: 'fresh',
@@ -75,7 +75,7 @@ describe('canonical machine/manual batch coherence', () => {
       label: 'Maszyna profesjonalna',
       temperatureC: -11,
     });
-    expectCoherent(1000, 'PROFESSIONAL_USER_BATCH');
+    expectCoherent(1000, 'PROFESSIONAL_DEFAULT');
 
     for (const [profile, grams] of [
       [NINJA_CREAMI_NC302EU, 450],
@@ -120,6 +120,26 @@ describe('canonical machine/manual batch coherence', () => {
     }
   });
 
+  it('reopens an explicitly saved Professional user batch while every fresh Professional recipe returns to 1000 g', () => {
+    expectCoherent(1000, 'PROFESSIONAL_DEFAULT');
+    expect(useRecipeStore.getState().setBatchGrams(3000)).toEqual({ ok: true });
+    expectCoherent(3000, 'PROFESSIONAL_USER_BATCH');
+
+    const saved = attachRecipeProfileMetadata(
+      buildRecipeInput(useRecipeStore.getState()),
+      profileSnapshotFromState(useRecipeStore.getState(), DEFAULT_DIRECTION_TARGETS),
+    );
+    useRecipeStore.getState().loadRecipeInput(structuredClone(saved), {
+      savedId: 'professional-3000',
+      savedName: 'Professional 3000 g',
+      versionNumber: 1,
+    });
+    expectCoherent(3000, 'PROFESSIONAL_USER_BATCH');
+
+    useRecipeStore.getState().startNewRecipe('gelato');
+    expectCoherent(1000, 'PROFESSIONAL_DEFAULT');
+  });
+
   it('keeps machine working batch fixed and derives three informational cycles for 1000 g', () => {
     select(NINJA_CREAMI_NC302EU);
     expect(useRecipeStore.getState().machine_capacity_grams).toBe(450);
@@ -146,7 +166,7 @@ describe('canonical machine/manual batch coherence', () => {
       machineTechnology: 'compressor',
     });
     expect(selected).toEqual({ ok: true });
-    expect(useRecipeStore.getState().batch_source).toBe('PROFESSIONAL_USER_BATCH');
+    expect(useRecipeStore.getState().batch_source).toBe('PROFESSIONAL_DEFAULT');
     expect(useRecipeStore.getState().setBatchGrams(0, undefined, 'CUSTOM_MACHINE_BATCH')).toEqual({
       ok: false,
       conflict: expect.objectContaining({ reason: 'invalid_target' }),

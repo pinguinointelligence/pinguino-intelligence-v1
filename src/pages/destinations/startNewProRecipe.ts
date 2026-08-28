@@ -130,12 +130,21 @@ export function changeProRecipeProductType(next: VisibleProductType): void {
       temperatureC: prior.temperatureC,
       batchGrams: prior.batchGrams,
       capacityGrams: null,
-      batchSource: 'PROFESSIONAL_USER_BATCH',
+      batchSource:
+        prior.batchSource === 'PROFESSIONAL_DEFAULT'
+          ? 'PROFESSIONAL_DEFAULT'
+          : 'PROFESSIONAL_USER_BATCH',
     });
     return;
   }
 
-  recipe.setBatchGrams(prior.batchGrams, undefined, 'PROFESSIONAL_USER_BATCH');
+  recipe.setBatchGrams(
+    prior.batchGrams,
+    undefined,
+    prior.batchSource === 'PROFESSIONAL_DEFAULT'
+      ? 'PROFESSIONAL_DEFAULT'
+      : 'PROFESSIONAL_USER_BATCH',
+  );
 }
 
 export type NewRecipeStarterSettingsPatch = Partial<

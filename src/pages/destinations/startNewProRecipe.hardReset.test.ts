@@ -419,6 +419,7 @@ describe('P0 working-recipe hard reset', () => {
     startNewProRecipe();
 
     expectCleanStarter('gelato', 'temp_minus_13');
-    expect(useRecipeStore.getState().target_batch_grams).toBe(1_250);
+    expect(useRecipeStore.getState().target_batch_grams).toBe(1_000);
+    expect(useRecipeStore.getState().batch_source).toBe('PROFESSIONAL_DEFAULT');
   });
 });

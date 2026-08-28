@@ -65,6 +65,7 @@ import {
 import { productionVersionFingerprint } from '@/features/production-workspace/productionReadinessState';
 import {
   buildCanonicalNewRecipeStarter,
+  DEFAULT_NEW_RECIPE_BATCH_G,
   DEFAULT_NEW_RECIPE_PROFILE,
   DEFAULT_NEW_RECIPE_STRATEGY,
   isNewRecipeServingModeId,
@@ -162,8 +163,12 @@ export type AddIngredientResult =
 export type RecipeBatchSource =
   | 'MACHINE_DEFAULT'
   | 'USER_OVERRIDE'
+  | 'PROFESSIONAL_DEFAULT'
   | 'PROFESSIONAL_USER_BATCH'
   | 'CUSTOM_MACHINE_BATCH';
+
+/** Canonical Gellatti batch applied whenever Professional is selected. */
+export const PROFESSIONAL_DEFAULT_BATCH_GRAMS = DEFAULT_NEW_RECIPE_BATCH_G;
 
 export const BATCH_RESIZE_TOLERANCE_GRAMS = 0.1;
 
@@ -2272,7 +2277,10 @@ export const useRecipeStore = create<RecipeState>()(
           visibleProductType: visible,
           servingModeId: starterServingMode,
           formulationStrategy,
-          targetBatchGrams: defaults?.targetBatchGrams,
+          targetBatchGrams:
+            defaults?.machineKind === 'home'
+              ? defaults.targetBatchGrams
+              : PROFESSIONAL_DEFAULT_BATCH_GRAMS,
         });
         const starterMaterialFingerprint = newRecipeStarterMaterialFingerprint({
           items: starter.items,
@@ -2287,12 +2295,12 @@ export const useRecipeStore = create<RecipeState>()(
           target_temperature_c: starter.targetTemperatureC,
           target_batch_grams: starter.targetBatchGrams,
           batch_source:
-            defaults?.batchSource ??
-            (defaults?.machineKind === 'home'
-              ? defaults.machineId?.startsWith('custom-')
-                ? 'CUSTOM_MACHINE_BATCH'
-                : 'MACHINE_DEFAULT'
-              : 'PROFESSIONAL_USER_BATCH'),
+            defaults?.machineKind === 'home'
+              ? (defaults.batchSource ??
+                (defaults.machineId?.startsWith('custom-')
+                  ? 'CUSTOM_MACHINE_BATCH'
+                  : 'MACHINE_DEFAULT'))
+              : 'PROFESSIONAL_DEFAULT',
           batchResizeConflict: null,
           machine_capacity_grams:
             defaults?.machineKind === 'home' ? defaults.machineCapacityGrams : null,
@@ -2425,7 +2433,11 @@ export const useRecipeStore = create<RecipeState>()(
                   machineTechnology: null,
                   machine_capacity_grams: null,
                   machine_capacity_source: null,
-                  batch_source: 'PROFESSIONAL_USER_BATCH' as const,
+                  batch_source:
+                    state.batch_source === 'PROFESSIONAL_DEFAULT' &&
+                    starter.targetBatchGrams === PROFESSIONAL_DEFAULT_BATCH_GRAMS
+                      ? ('PROFESSIONAL_DEFAULT' as const)
+                      : ('PROFESSIONAL_USER_BATCH' as const),
                   batchResizeConflict: null,
                 }),
             dirty: false,
@@ -2457,9 +2469,15 @@ export const useRecipeStore = create<RecipeState>()(
       // machine that produced it and fire a capacity warning forever.
       setMachineSelection: (sel) => {
         const state = get();
-        const targetBatchGrams = sel.batchGrams ?? state.target_batch_grams;
+        const enteringProfessionalFromHome =
+          sel.kind === 'professional' && state.machineKind === 'home';
+        const targetBatchGrams =
+          sel.batchGrams ??
+          (enteringProfessionalFromHome
+            ? PROFESSIONAL_DEFAULT_BATCH_GRAMS
+            : state.target_batch_grams);
         const resized =
-          sel.batchGrams == null
+          sel.batchGrams == null && !enteringProfessionalFromHome
             ? ({ ok: true, items: state.items } as const)
             : resizeRecipeBatch(state.items, state.target_batch_grams, targetBatchGrams);
         if (!resized.ok) {
@@ -2469,7 +2487,9 @@ export const useRecipeStore = create<RecipeState>()(
         const batchSource =
           sel.batchGrams == null
             ? sel.kind === 'professional'
-              ? 'PROFESSIONAL_USER_BATCH'
+              ? enteringProfessionalFromHome
+                ? 'PROFESSIONAL_DEFAULT'
+                : state.batch_source
               : state.batch_source
             : (sel.batchSource ??
               (sel.kind === 'professional'

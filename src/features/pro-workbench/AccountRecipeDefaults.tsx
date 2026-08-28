@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
-import { useRecipeStore } from '@/stores/recipeStore';
+import { PROFESSIONAL_DEFAULT_BATCH_GRAMS, useRecipeStore } from '@/stores/recipeStore';
 import {
   DEFAULT_DIRECTION_INTENTS,
   useRecipeProfileStore,
@@ -162,7 +162,8 @@ export function AccountRecipeDefaults() {
                   machineLabel: copy.proMachine.professionalLabel,
                   machineTechnology: null,
                   machineCapacityGrams: null,
-                  batchSource: 'PROFESSIONAL_USER_BATCH',
+                  targetBatchGrams: PROFESSIONAL_DEFAULT_BATCH_GRAMS,
+                  batchSource: 'PROFESSIONAL_DEFAULT',
                 });
                 return;
               }
