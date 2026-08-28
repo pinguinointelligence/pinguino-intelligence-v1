@@ -9,10 +9,7 @@ import { findVerifiedProteinFormulationCandidate } from '@/data/ingredients/veri
 import { WorkbenchScoreDisplay } from '@/features/pro-workbench/WorkbenchScoreDisplay';
 import { ProteinContentReadout } from './ProteinContentReadout';
 import { assessProteinFormulation } from './proteinAuthority';
-import {
-  assessProteinQualification,
-  requiredProteinPercentFor,
-} from './proteinQualification';
+import { assessProteinQualification, requiredProteinPercentFor } from './proteinQualification';
 import { overrunProxyAtProteinPercent } from './proteinStructureQuality';
 import { proteinContentLabelPl, formatProteinPercentPl } from './proteinReadout';
 import { PROTEIN_CONCENTRATION_EVIDENCE, PROTEIN_QUALIFICATION } from './proteinScienceAuthority';
@@ -341,12 +338,14 @@ describe('qualification arithmetic is the EU rule, exactly', () => {
 });
 
 describe('the overrun proxy reproduces the measured AFR 2022 series', () => {
-  it.each(PROTEIN_CONCENTRATION_EVIDENCE.series.map((point) => [point.proteinPercent, point.overrunPercent]))(
-    'returns the measured overrun %s%% → %s%%',
-    (proteinPercent, overrunPercent) => {
-      expect(overrunProxyAtProteinPercent(proteinPercent)).toBeCloseTo(overrunPercent, 9);
-    },
-  );
+  it.each(
+    PROTEIN_CONCENTRATION_EVIDENCE.series.map((point) => [
+      point.proteinPercent,
+      point.overrunPercent,
+    ]),
+  )('returns the measured overrun %s%% → %s%%', (proteinPercent, overrunPercent) => {
+    expect(overrunProxyAtProteinPercent(proteinPercent)).toBeCloseTo(overrunPercent, 9);
+  });
 
   it('is monotonically decreasing across the measured range', () => {
     let previous = Infinity;
@@ -363,15 +362,15 @@ describe('the overrun proxy reproduces the measured AFR 2022 series', () => {
   });
 });
 
-describe('§40.14 — the Mapper base is untouched', () => {
-  it('still holds exactly 2088 rows at the recorded hash', () => {
+describe('§40.14 — the Mapper base matches owner authority', () => {
+  it('holds exactly 2089 rows at the recorded hash', () => {
     const raw = readFileSync(
       resolve(process.cwd(), 'docs/ingredients/validation/mapper_basement.csv'),
     );
     const rows = raw.toString('utf8').trim().split('\n').length - 1;
-    expect(rows).toBe(2088);
+    expect(rows).toBe(2089);
     expect(createHash('sha256').update(raw).digest('hex')).toBe(
-      'b13f5db4affd9c3be5ccbe59b40920053197a3697a3fa1bd4a859406e8baed38',
+      '057375cd60cefe613892ff1d9f8f7eda880ff0eb06732f9229051fc37d8deca7',
     );
   });
 });

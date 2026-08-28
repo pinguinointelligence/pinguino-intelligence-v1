@@ -243,7 +243,7 @@ describe.runIf(LIVE)('Recognition V2 final real staging proof', () => {
     });
 
     expect(initial.rows).toHaveLength(820);
-    expect(mapperRows).toHaveLength(2088);
+    expect(mapperRows).toHaveLength(2089);
     expect(priorRows).toHaveLength(820);
     expect(countBy(priorRows.map((row) => row.final_status ?? ''))).toMatchObject({
       ENGINE_READY: 140,

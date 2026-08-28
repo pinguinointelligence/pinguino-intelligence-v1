@@ -1,5 +1,5 @@
 {
-  "mapperFingerprint": "b13f5db4affd9c3be5ccbe59b40920053197a3697a3fa1bd4a859406e8baed38",
+  "mapperFingerprint": "057375cd60cefe613892ff1d9f8f7eda880ff0eb06732f9229051fc37d8deca7",
   "rules": {
     "minRows": 8,
     "maxMad": 4,
@@ -126,16 +126,16 @@
     },
     {
       "cohort": "stabilizer",
-      "n": 49,
+      "n": 50,
       "median": 4.9,
-      "mad": 4.5,
-      "iqr": 8.5,
+      "mad": 4.48,
+      "iqr": 8.475,
       "p10": 0,
-      "p90": 28.466,
+      "p90": 28.378,
       "min": 0,
       "max": 78.5,
       "narrow": false,
-      "reason": "rozrzut MAD 4.5 przekracza 4"
+      "reason": "rozrzut MAD 4.48 przekracza 4"
     },
     {
       "cohort": "sweetener",
@@ -985,6 +985,19 @@
       "reason": "kohorta waska fizycznie"
     },
     {
+      "cohort": "stabilizer|stabilizer_blend",
+      "n": 12,
+      "median": 5.9313,
+      "mad": 5.9313,
+      "iqr": 19.0725,
+      "p10": 0,
+      "p90": 28.23,
+      "min": 0,
+      "max": 78.5,
+      "narrow": false,
+      "reason": "rozrzut MAD 5.9313 przekracza 4"
+    },
+    {
       "cohort": "stabilizer|stabilizer_emulsifier_mix",
       "n": 12,
       "median": 3.9,
@@ -1035,19 +1048,6 @@
       "max": 50,
       "narrow": false,
       "reason": "rozrzut MAD 11.89 przekracza 4"
-    },
-    {
-      "cohort": "stabilizer|stabilizer_blend",
-      "n": 11,
-      "median": 4.7,
-      "mad": 4.7,
-      "iqr": 21.945,
-      "p10": 0,
-      "p90": 28.29,
-      "min": 0,
-      "max": 78.5,
-      "narrow": false,
-      "reason": "rozrzut MAD 4.7 przekracza 4"
     },
     {
       "cohort": "flavor_syrup|cordial_syrup",
@@ -1496,9 +1496,9 @@
     },
     {
       "cohort": "stabilizer",
-      "n": 49,
-      "mad": 4.5,
-      "iqr": 8.5
+      "n": 50,
+      "mad": 4.48,
+      "iqr": 8.475
     },
     {
       "cohort": "sweetener",

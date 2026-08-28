@@ -31,7 +31,7 @@ export async function listActiveIngredients(): Promise<IngredientRow[]> {
   // silently capped by the server's row limit, and the caller cannot tell a
   // truncated Mapper from a small one: it just sees fewer reference profiles and
   // quietly matches fewer products. That cost 26 of the Polish file's products
-  // their composition on the served path while the local run had all 2088 rows.
+  // their composition on the served path while the local run had all 2089 rows.
   const rows: IngredientRow[] = [];
   for (let offset = 0; ; offset += SEARCH_DB_PAGE_ROWS) {
     const { data, error } = await supabase
@@ -149,7 +149,7 @@ export async function searchEngineApprovedIngredients(
   // tiebreak) in windows below the PostgREST cap. A short window = end of the
   // result set; otherwise keep paging until the requested client limit.
   const rows: IngredientSearchRow[] = [];
-  for (let offset = 0; offset < limit; ) {
+  for (let offset = 0; offset < limit;) {
     const to = Math.min(offset + SEARCH_DB_PAGE_ROWS, limit) - 1;
     let query = supabase
       .from(AUTHENTICATED_SELECTION_VIEW)

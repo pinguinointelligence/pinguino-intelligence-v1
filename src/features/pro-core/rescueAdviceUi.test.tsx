@@ -4,7 +4,12 @@ import { findDemoIngredient } from '@/data/demoIngredients';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
 import type { ConstraintPreview } from '@/features/constraint-studio/applyPipeline';
 import type { RescueIngredientAdvice } from '@/features/constraint-studio/rescueIngredientAdvisor';
-import { DirectionBestDecision, RescueAdviceHint } from '@/features/pro-core/ProRecalcPanel';
+import type { StarterPackDirectionRescueReport } from '@/features/constraint-studio/starterPackDirectionRescue';
+import {
+  DirectionBestDecision,
+  RescueAdviceHint,
+  StarterPackRescueDecision,
+} from '@/features/pro-core/ProRecalcPanel';
 
 const candidate = (): ConstraintPreview =>
   ({
@@ -81,5 +86,63 @@ describe('rescue ingredient advice UI (simulation-proven, never auto-add)', () =
     expect(html).not.toContain('Możliwy kolejny krok');
     expect(html).not.toContain('fruktoz');
     expect(renderToStaticMarkup(<RescueAdviceHint advice={null} />)).toBe('');
+  });
+});
+
+describe('Starter Pack Direction Rescue decision UI', () => {
+  const report = (withBest: boolean): StarterPackDirectionRescueReport => ({
+    palette: [
+      'PI-ING-000494',
+      'PI-ING-000496',
+      'PI-ING-000456',
+      'PI-ING-001645',
+      'PI-ING-000270',
+      'PI-ING-000260',
+      'PI-ING-002114',
+    ],
+    records: [],
+    best: withBest
+      ? {
+          mapperId: 'PI-ING-000496',
+          namePl: 'Fruktoza',
+          eligible: true,
+          reason: 'candidate',
+          bestGramsTested: 20,
+          targetReached: false,
+          npac: 34,
+          pod: 17,
+          score: 10,
+          bandDistance: 2,
+          totalRecipeMovement: 40,
+          hardGates: 'PASS',
+          mainPreserved: true,
+          runtimeMs: 12,
+          preview: candidate(),
+        }
+      : null,
+    totalRuntimeMs: 12,
+  });
+
+  it('keeps technical Score separate from an unreached Direction and offers Preview, not Apply', () => {
+    const html = renderToStaticMarkup(
+      <StarterPackRescueDecision report={report(true)} pending={false} onOpen={vi.fn()} />,
+    );
+    expect(html).toContain('Wynik techniczny: 10/10');
+    expect(html).toContain('cel kierunku: nieosiągnięty');
+    expect(html).toContain('nie udało się osiągnąć wybranego celu');
+    expect(html).toContain('najbliższa bezpieczna opcja');
+    expect(html).toContain('Sprawdź z fruktozą');
+    expect(html).not.toContain('Zastosuj zmiany');
+  });
+
+  it('renders a truthful working state and a closed-palette no-result state', () => {
+    expect(renderToStaticMarkup(<StarterPackRescueDecision report={null} pending />)).toContain(
+      'Sprawdzam pojedynczo produkty Gellatti Starter Pack',
+    );
+    expect(
+      renderToStaticMarkup(<StarterPackRescueDecision report={report(false)} pending={false} />),
+    ).toContain(
+      'Z obecnych składników ani produktów Gellatti Starter Pack nie udało się osiągnąć wybranego celu.',
+    );
   });
 });

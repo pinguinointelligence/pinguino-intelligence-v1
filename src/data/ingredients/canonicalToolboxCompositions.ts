@@ -14,7 +14,7 @@
  * and Score 6 served.
  *
  * Source of truth: docs/ingredients/validation/mapper_basement.csv
- * Mapper SHA-256 at generation: b13f5db4affd9c3be5ccbe59b40920053197a3697a3fa1bd4a859406e8baed38
+ * Mapper SHA-256 at generation: 057375cd60cefe613892ff1d9f8f7eda880ff0eb06732f9229051fc37d8deca7
  *
  * The Mapper base is never written by this file or its generator.
  */
@@ -36,7 +36,7 @@ export interface CanonicalToolboxComposition {
 
 /** Mapper SHA-256 this file was generated from. */
 export const CANONICAL_TOOLBOX_MAPPER_SHA256 =
-  'b13f5db4affd9c3be5ccbe59b40920053197a3697a3fa1bd4a859406e8baed38';
+  '057375cd60cefe613892ff1d9f8f7eda880ff0eb06732f9229051fc37d8deca7';
 
 export const CANONICAL_TOOLBOX_COMPOSITIONS: readonly CanonicalToolboxComposition[] = [
   {
@@ -746,6 +746,129 @@ export const CANONICAL_TOOLBOX_COMPOSITIONS: readonly CanonicalToolboxCompositio
     "cost_per_kg": 12,
     "cost_currency": "EUR",
     "confidence_score": 98,
+    "verified": true
+  },
+  {
+    "toolboxId": "fructose",
+    "mapperId": "PI-ING-000496",
+    "displayName": "FRUCTOSE · Sweetener · Dry",
+    "composition": {
+      "water_percent": 0.197,
+      "solids_percent": 99.803,
+      "fat_percent": 0,
+      "protein_percent": 0,
+      "carbohydrate_percent": 99.8,
+      "sugar_percent": 99.8,
+      "sucrose_percent": 0,
+      "glucose_percent": 0,
+      "dextrose_percent": 0,
+      "fructose_percent": 99.8,
+      "lactose_percent": 0,
+      "polyol_percent": 0,
+      "fiber_percent": 0,
+      "salt_percent": 0.003,
+      "alcohol_percent": 0,
+      "kcal_per_100g": 399,
+      "saturated_fat_percent": 0
+    },
+    "pod_value": 169.66,
+    "pac_value": 189.638,
+    "de_value": null,
+    "cost_per_kg": 3.5,
+    "cost_currency": "EUR",
+    "confidence_score": 98,
+    "verified": true
+  },
+  {
+    "toolboxId": "dried_egg_yolk",
+    "mapperId": "PI-ING-001645",
+    "displayName": "EGGS CHICKEN YOLK DRIED · Egg",
+    "composition": {
+      "water_percent": 6.056,
+      "solids_percent": 93.944,
+      "fat_percent": 56.5,
+      "protein_percent": 34.5,
+      "carbohydrate_percent": 2.5,
+      "sugar_percent": 0,
+      "sucrose_percent": 0,
+      "glucose_percent": 0,
+      "dextrose_percent": 0,
+      "fructose_percent": 0,
+      "lactose_percent": 0,
+      "polyol_percent": 0,
+      "fiber_percent": 0,
+      "salt_percent": 0.44375,
+      "alcohol_percent": 0,
+      "kcal_per_100g": 656
+    },
+    "pod_value": 0,
+    "pac_value": 2.596,
+    "de_value": null,
+    "cost_per_kg": null,
+    "cost_currency": "EUR",
+    "confidence_score": 95,
+    "verified": true
+  },
+  {
+    "toolboxId": "cream_powder_42",
+    "mapperId": "PI-ING-000260",
+    "displayName": "CREAM · Mlekovita Cream",
+    "composition": {
+      "water_percent": 0,
+      "solids_percent": 100,
+      "fat_percent": 42,
+      "protein_percent": 20,
+      "carbohydrate_percent": 30,
+      "sugar_percent": 30,
+      "sucrose_percent": 0,
+      "glucose_percent": 0,
+      "dextrose_percent": 0,
+      "fructose_percent": 0,
+      "lactose_percent": 30,
+      "polyol_percent": 0,
+      "fiber_percent": 0,
+      "salt_percent": 0.1,
+      "alcohol_percent": 0,
+      "kcal_per_100g": 578,
+      "saturated_fat_percent": 0
+    },
+    "pod_value": 4.8,
+    "pac_value": 30.585,
+    "de_value": null,
+    "cost_per_kg": 8.5,
+    "cost_currency": "EUR",
+    "confidence_score": 98,
+    "verified": true
+  },
+  {
+    "toolboxId": "gellatti_stabilizer",
+    "mapperId": "PI-ING-002114",
+    "displayName": "GELLATTI STABILIZER · Gellatti Stabilizer Blend · Dry",
+    "composition": {
+      "water_percent": 7.1625,
+      "solids_percent": 92.8375,
+      "fat_percent": 0.5375,
+      "protein_percent": 2.9985,
+      "carbohydrate_percent": 13.17,
+      "sugar_percent": 0,
+      "sucrose_percent": 0,
+      "glucose_percent": 0,
+      "dextrose_percent": 0,
+      "fructose_percent": 0,
+      "lactose_percent": 0,
+      "polyol_percent": 0,
+      "fiber_percent": 74.315,
+      "salt_percent": 0,
+      "alcohol_percent": 0,
+      "kcal_per_100g": 192,
+      "saturated_fat_percent": 0
+    },
+    "pod_value": 0,
+    "pac_value": 0,
+    "de_value": null,
+    "cost_per_kg": null,
+    "cost_currency": null,
+    "confidence_score": 100,
     "verified": true
   }
 ];

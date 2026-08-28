@@ -234,7 +234,7 @@ describe('clean INTIMPORT safety controls', () => {
       shellRender(
         <CleanImportPreflightView
           preflight={{
-            pi: 2088,
+            pi: 2089,
             pr: 820,
             prVersions: 820,
             prBehaviorBindings: 2763,
@@ -244,18 +244,18 @@ describe('clean INTIMPORT safety controls', () => {
         />,
       ),
     );
-    expect(text).toContain('Składniki: 2088');
+    expect(text).toContain('Składniki: 2089');
     expect(text).toContain('Produkty: 820');
     expect(text).toContain('Import zablokowany');
     expect(text).toContain('pustego katalogu produktów');
   });
 
-  it('shows the approved clean boundary only for PI=2088 / PR=0', () => {
+  it('shows the approved clean boundary only for PI=2089 / PR=0', () => {
     const text = visibleText(
       shellRender(
         <CleanImportPreflightView
           preflight={{
-            pi: 2088,
+            pi: 2089,
             pr: 0,
             prVersions: 0,
             prBehaviorBindings: 0,

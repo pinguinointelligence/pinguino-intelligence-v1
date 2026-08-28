@@ -126,6 +126,8 @@ import {
   bindProductBehaviorToPreview,
   buildExplicitStandardRemovalPreview,
   buildOptimizePreview,
+  buildStarterPackRescueCandidatePreview,
+  buildStarterPackRescueSimulationInput,
   buildSubstitutionPreview,
   buildSuggestedFixPreview,
   commitPreview,
@@ -152,6 +154,17 @@ import {
 } from './rescueIngredientAdvisor';
 import { runOptimizePreviewOffMainThread } from './optimizePreviewRuntime';
 import type { OptimizePreviewComputation } from './optimizePreviewComputation';
+import {
+  buildStarterPackDirectionRescue,
+  shouldRunStarterPackDirectionRescue,
+  type StarterPackDirectionRescueReport,
+} from './starterPackDirectionRescue';
+import {
+  STARTER_PACK_RESCUE_MAPPER_IDS,
+  starterPackRescueEligibility,
+  starterPackRescueLineId,
+  starterPackRescueProbeGrams,
+} from './starterPackRescuePalette';
 
 export type RecalculationTerminalState = PipelineRecalculationTerminalState;
 
@@ -552,6 +565,10 @@ export interface ConstraintStudioState {
    * auto-add): present only when the exact Direction target is not reached
    * with the current ingredients AND one approved candidate materially helps. */
   rescueAdvice: RescueIngredientAdvice | null;
+  /** Closed seven-product Recipe/Direction Rescue. Preview payloads remain
+   * hidden here until the owner explicitly chooses “Sprawdź z …”. */
+  starterPackRescueReport: StarterPackDirectionRescueReport | null;
+  starterPackRescuePending: boolean;
   directionConsent: DirectionBestAchievableConsent | null;
   blocked: BlockedApply | null;
   /** Terminal Apply lifecycle state; true only while server/Worker validation runs. */
@@ -599,6 +616,10 @@ export interface ConstraintStudioState {
     prebuilt?: PrebuiltOptimizePreview,
   ) => void;
   acceptBestDirectionCandidate: () => void;
+  stageStarterPackRescuePreview: (
+    preview: ConstraintPreview,
+    proposedSnapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>,
+  ) => void;
   createExplicitStandardRemovalPreview: (
     lineId: string,
     proposalSnapshots?: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>,
@@ -643,6 +664,8 @@ const INITIAL = {
   suggestedFixAuthorization: null,
   directionBestCandidate: null,
   rescueAdvice: null as RescueIngredientAdvice | null,
+  starterPackRescueReport: null as StarterPackDirectionRescueReport | null,
+  starterPackRescuePending: false,
   directionConsent: null,
   blocked: null,
   applyPending: false,
@@ -665,6 +688,8 @@ const CLEAR_STAGED = {
   suggestedFixAuthorization: null,
   directionBestCandidate: null,
   rescueAdvice: null,
+  starterPackRescueReport: null,
+  starterPackRescuePending: false,
   directionConsent: null,
   feasibility: null,
   blocked: null,
@@ -1327,6 +1352,78 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         });
       },
 
+      stageStarterPackRescuePreview: (candidate, proposedSnapshots) => {
+        const draft = selectCanonicalDraft();
+        const currentSnapshots = useRecipeStore.getState().productBehaviorSnapshots;
+        if (
+          candidate.starterPackRescue === undefined ||
+          workingStateFingerprint(draft.input, draft.constraints) !== candidate.baseFingerprint
+        ) {
+          set({ ...CLEAR_STAGED });
+          return;
+        }
+        const bound = bindProductBehaviorToPreview(
+          { ok: true, preview: structuredClone(candidate) },
+          proposedSnapshots,
+          currentSnapshots,
+          useRecipeStore.getState().ownerReviewGate?.technicalOnlyMainLineIds ?? [],
+        );
+        if (!bound.ok) {
+          set({
+            preview: null,
+            previewIssue: bound,
+            starterPackRescuePending: false,
+            blocked: null,
+          });
+          return;
+        }
+        bound.preview.baseDraftRevision = draft.revision;
+        const direction = bound.preview.directionAssessment;
+        const needsDirectionConsent =
+          direction?.active === true && direction.supportedAxisCount > 0 && !direction.reached;
+        publishRecalculationMarker(draft.input, bound.preview.proposedInput);
+        set({
+          preview: bound.preview,
+          directionBestCandidate: null,
+          rescueAdvice: null,
+          starterPackRescuePending: false,
+          directionConsent: needsDirectionConsent
+            ? {
+                baseFingerprint: bound.preview.baseFingerprint,
+                targetFingerprint: directionTargetFingerprint(draft.input),
+                candidateFingerprint: workingStateFingerprint(
+                  bound.preview.proposedInput,
+                  bound.preview.nextConstraints,
+                ),
+              }
+            : null,
+          proposalProductBehaviorAuthorization: {
+            baseFingerprint: bound.preview.baseFingerprint,
+            proposedFingerprint: workingStateFingerprint(
+              bound.preview.proposedInput,
+              bound.preview.nextConstraints,
+            ),
+            baseProductBehaviorFingerprint: productBehaviorSnapshotFingerprint(currentSnapshots),
+            proposedProductBehaviorFingerprint:
+              productBehaviorSnapshotFingerprint(proposedSnapshots),
+            snapshots: structuredClone(
+              Object.fromEntries(
+                Object.entries(proposedSnapshots).filter(
+                  (entry): entry is [string, ProductBehaviorSnapshot] => entry[1] !== undefined,
+                ),
+              ),
+            ),
+          },
+          substitutionConsent: null,
+          substitutionAuthorization: null,
+          explicitStandardRemovalConsent: null,
+          suggestedFixAuthorization: null,
+          previewIssue: null,
+          blocked: null,
+          recalculationTerminal: { state: 'PREVIEW_READY' },
+        });
+      },
+
       createExplicitStandardRemovalPreview: (lineId, proposalSnapshots) => {
         get().reconcile();
         const draft = selectCanonicalDraft();
@@ -1603,6 +1700,8 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         set({
           preview: null,
           directionBestCandidate: null,
+          starterPackRescueReport: null,
+          starterPackRescuePending: false,
           directionConsent: null,
           previewIssue: null,
           substitutionConsent: null,
@@ -2520,6 +2619,136 @@ async function restoreScorePresentationAfterUndo(
   }
 }
 
+async function computeStarterPackRescueWithServerAuthority(input: {
+  generation: number;
+  signal?: AbortSignal;
+  draft: CanonicalDraft;
+  normalResult: BuildPreviewResult;
+  createdAt: string;
+  baseSnapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
+  technicalOnlyMainLineIds: readonly string[];
+}): Promise<void> {
+  if (!shouldRunStarterPackDirectionRescue(input.draft.input, input.normalResult)) {
+    useConstraintStudioStore.setState({
+      starterPackRescueReport: null,
+      starterPackRescuePending: false,
+    });
+    return;
+  }
+  useConstraintStudioStore.setState({
+    starterPackRescueReport: null,
+    starterPackRescuePending: true,
+  });
+  const commonOptions = {
+    excludedIngredientIds: input.draft.excludedIngredientIds,
+    unavailableMainIngredientIds: input.draft.unavailableMainIngredientIds,
+    effectivePriceOverrides: useCustomerPriceStore.getState().overridesByCanonicalId,
+    requirePracticalPreview: true,
+    technicalOnlyMainLineIds: input.technicalOnlyMainLineIds,
+  } as const;
+  const trials = new Map<string, BuildPreviewResult>();
+
+  await Promise.all(
+    STARTER_PACK_RESCUE_MAPPER_IDS.map(async (mapperId) => {
+      const eligibility = starterPackRescueEligibility(
+        mapperId,
+        input.draft.input.category,
+        input.draft.input,
+      );
+      if (!eligibility.eligible) return;
+      const probes = starterPackRescueProbeGrams(mapperId, input.draft.input);
+      const simulatedInput = buildStarterPackRescueSimulationInput(
+        input.draft.input,
+        input.draft.constraints,
+        mapperId,
+        probes[0],
+      );
+      if (simulatedInput === null) return;
+      const authority = await currentRecipeAuthorityReady({
+        recipe: simulatedInput,
+        toppings: [],
+        snapshots: input.baseSnapshots,
+        technicalOnlyMainLineIds: input.technicalOnlyMainLineIds,
+      });
+      if (!authority.ready) {
+        for (const probeGrams of probes) {
+          trials.set(`${mapperId}:${probeGrams}`, {
+            ok: false,
+            code: 'product_behavior_invalid',
+            violations: [],
+            messagePl: 'Brak aktualnej authority ProductBehavior dla produktu Starter Pack.',
+            productBehaviorIssues: authority.issues.map((issue) => ({
+              lineId: issue.lineId,
+              lineName: issue.lineName,
+              reasons: issue.reasons,
+            })),
+          });
+        }
+        return;
+      }
+      for (const probeGrams of probes) {
+        const probeInput = buildStarterPackRescueSimulationInput(
+          input.draft.input,
+          input.draft.constraints,
+          mapperId,
+          probeGrams,
+        );
+        if (probeInput === null) continue;
+        try {
+          const computation = await runOptimizePreviewOffMainThread(
+            {
+              input: probeInput,
+              constraints: input.draft.constraints,
+              createdAt: input.createdAt,
+              options: {
+                ...commonOptions,
+                productBehaviorSnapshots: authority.snapshots,
+                rescueSimulationLineIds: [starterPackRescueLineId(mapperId)],
+              },
+            },
+            input.signal,
+          );
+          const rebound = buildStarterPackRescueCandidatePreview(
+            input.draft.input,
+            input.draft.constraints,
+            mapperId,
+            input.createdAt,
+            { ...commonOptions, productBehaviorSnapshots: authority.snapshots },
+            computation.result,
+            probeGrams,
+          );
+          trials.set(`${mapperId}:${probeGrams}`, rebound);
+          if (rebound.ok && rebound.preview.directionAssessment?.reached === true) break;
+        } catch {
+          trials.set(`${mapperId}:${probeGrams}`, { ok: false, code: 'no_proposal' });
+        }
+      }
+    }),
+  );
+
+  if (
+    !isCurrentPiRun(input.generation) ||
+    useRecipeStore.getState().draftRevision !== input.draft.revision
+  ) {
+    return;
+  }
+  const report = buildStarterPackDirectionRescue({
+    input: input.draft.input,
+    set: input.draft.constraints,
+    createdAt: input.createdAt,
+    normalResult: input.normalResult,
+    evaluateCandidate: ({ candidate }) =>
+      trials.get(`${candidate.mapperId}:${candidate.probeGrams}`) ?? {
+        ok: false,
+        code: 'no_proposal',
+      },
+  });
+  useConstraintStudioStore.setState({
+    starterPackRescueReport: report,
+    starterPackRescuePending: false,
+  });
+}
+
 /** Runtime wrapper: every customer-visible Preview rechecks current server
  * authority while pure store actions remain deterministic domain seams. */
 export async function createOptimizePreviewWithServerAuthority(
@@ -2735,6 +2964,15 @@ export async function createOptimizePreviewWithServerAuthority(
   if (deferredRescueAdvice !== undefined) {
     publishDeferredRescueAdvice(deferredRescueAdvice);
   }
+  await computeStarterPackRescueWithServerAuthority({
+    generation: ownedGeneration,
+    signal,
+    draft,
+    normalResult: rawProposal,
+    createdAt: optimizeCreatedAt,
+    baseSnapshots: validation.snapshots,
+    technicalOnlyMainLineIds,
+  });
   if (useConstraintStudioStore.getState().recalculationTerminal?.state !== 'NO_CHANGE_NEEDED') {
     return;
   }
@@ -3114,6 +3352,46 @@ export async function createSubstitutionPreviewWithServerAuthority(input: {
     );
 }
 
+/** Explicit “Sprawdź z …” boundary. It opens the already Engine-proven SECOND
+ * Preview only after the exact proposal receives fresh server authority. The
+ * draft is not written here. */
+export async function openStarterPackRescuePreviewWithServerAuthority(): Promise<void> {
+  const session = useConstraintStudioStore.getState();
+  const candidate = session.starterPackRescueReport?.best?.preview;
+  if (!candidate) return;
+  const draft = selectCanonicalDraft();
+  if (workingStateFingerprint(draft.input, draft.constraints) !== candidate.baseFingerprint) {
+    useConstraintStudioStore.setState({ ...CLEAR_STAGED });
+    return;
+  }
+  useConstraintStudioStore.setState({ starterPackRescuePending: true, blocked: null });
+  const recipeState = useRecipeStore.getState();
+  const validation = await currentRecipeAuthorityReady({
+    recipe: candidate.proposedInput,
+    toppings: [],
+    snapshots: recipeState.productBehaviorSnapshots,
+    technicalOnlyMainLineIds: recipeState.ownerReviewGate?.technicalOnlyMainLineIds,
+  });
+  if (useRecipeStore.getState().draftRevision !== draft.revision) {
+    useConstraintStudioStore.setState({ ...CLEAR_STAGED });
+    return;
+  }
+  if (!validation.ready) {
+    useConstraintStudioStore.setState({
+      starterPackRescuePending: false,
+      blocked: {
+        code: 'apply_validation_failed',
+        messagePl:
+          'Nie udało się potwierdzić aktualnej authority produktu Starter Pack. Receptura pozostała bez zmian.',
+      },
+    });
+    return;
+  }
+  useConstraintStudioStore
+    .getState()
+    .stageStarterPackRescuePreview(candidate, validation.snapshots);
+}
+
 /** Terminal Apply wrapper. Stale product authority clears the Preview before
  * the guarded recipe-store write is reached. An Optimize frontier rebuild is
  * still mandatory, but runs through the same Worker boundary as Preview so a
@@ -3156,7 +3434,7 @@ export async function applyPreviewWithServerAuthority(
   try {
     const validation = await currentRecipeAuthorityReady({
       recipe: preview.proposedInput,
-      toppings: recipeAtStart.toppings,
+      toppings: preview.starterPackRescue ? [] : recipeAtStart.toppings,
       snapshots,
       technicalOnlyMainLineIds,
     });
@@ -3181,8 +3459,20 @@ export async function applyPreviewWithServerAuthority(
       session.explicitStandardRemovalConsent === null &&
       optimizePreviewApplyRequiresCanonicalRebuild(draft.input, draft.constraints, preview)
     ) {
+      const rescueSimulationInput = preview.starterPackRescue
+        ? buildStarterPackRescueSimulationInput(
+            draft.input,
+            draft.constraints,
+            preview.starterPackRescue.mapperId,
+            preview.starterPackRescue.seedGrams,
+          )
+        : null;
+      if (preview.starterPackRescue && rescueSimulationInput === null) {
+        publishStale();
+        return;
+      }
       const computation = await runtime.runOptimizePreview({
-        input: draft.input,
+        input: rescueSimulationInput ?? draft.input,
         constraints: draft.constraints,
         createdAt: preview.createdAt,
         options: {
@@ -3190,8 +3480,11 @@ export async function applyPreviewWithServerAuthority(
           unavailableMainIngredientIds: draft.unavailableMainIngredientIds,
           effectivePriceOverrides: useCustomerPriceStore.getState().overridesByCanonicalId,
           requirePracticalPreview: true,
-          productBehaviorSnapshots: currentSnapshots,
+          productBehaviorSnapshots: preview.starterPackRescue ? snapshots : currentSnapshots,
           technicalOnlyMainLineIds,
+          ...(preview.starterPackRescue
+            ? { rescueSimulationLineIds: [preview.starterPackRescue.lineId] }
+            : {}),
         },
       });
       if (useConstraintStudioStore.getState().preview !== preview) return;

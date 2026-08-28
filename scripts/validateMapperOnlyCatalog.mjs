@@ -4,11 +4,11 @@ import path from 'node:path';
 
 const root = process.cwd();
 const mapperPath = path.join(root, 'docs/ingredients/validation/mapper_basement.csv');
-const seedPath = path.join(root, 'supabase/migrations/20260809194001_mapper_basement_2088.sql');
+const seedPath = path.join(root, 'supabase/seed/mapper_basement_v1_0.sql');
 const pickerPath = path.join(root, 'src/features/ingredient-builder/ProductPickerPopover.tsx');
 const hookPath = path.join(root, 'src/features/global-catalog/useGlobalCatalogPicker.ts');
 const boundaryPath = path.join(root, 'src/features/ingredient-builder/mapperOnlyCatalog.ts');
-const expectedHash = 'b13f5db4affd9c3be5ccbe59b40920053197a3697a3fa1bd4a859406e8baed38';
+const expectedHash = '057375cd60cefe613892ff1d9f8f7eda880ff0eb06732f9229051fc37d8deca7';
 
 function parseCsv(text) {
   const rows = [];
@@ -53,10 +53,10 @@ const selectableIds = new Set(
     .filter((row) => row.approved_for_base.toLowerCase() === 'true')
     .map((row) => row.ingredient_id),
 );
-if (mapperRows.length !== 2088 || mapperIds.size !== 2088) {
+if (mapperRows.length !== 2089 || mapperIds.size !== 2089) {
   throw new Error(`Mapper identity census drift: ${mapperRows.length}/${mapperIds.size}`);
 }
-if (selectableIds.size !== 2075) {
+if (selectableIds.size !== 2076) {
   throw new Error(`Selectable Mapper census drift: ${selectableIds.size}`);
 }
 
@@ -67,7 +67,7 @@ const seedIds = new Set(
 );
 const catalogOutsideMapper = [...seedIds].filter((id) => !mapperIds.has(id));
 const mapperMissingFromSeed = [...mapperIds].filter((id) => !seedIds.has(id));
-if (seedIds.size !== 2088 || catalogOutsideMapper.length || mapperMissingFromSeed.length) {
+if (seedIds.size !== 2089 || catalogOutsideMapper.length || mapperMissingFromSeed.length) {
   throw new Error(
     `Mapper seed membership drift: seed=${seedIds.size} outside=${catalogOutsideMapper.length} missing=${mapperMissingFromSeed.length}`,
   );
@@ -92,7 +92,7 @@ if (
   !boundary.includes('loadCurrentRow(articleId)') ||
   !boundary.includes("kind: 'catalog_product'") ||
   !boundary.includes('productVersionId: hit.currentVersionId!') ||
-  !boundary.includes('const canonicalProductId = /^(?:PR|PM)-ING-\\d{6}$/') ||
+  !boundary.includes('const canonicalProductId = /^(?:PR|PM|CA)-ING-\\d{6}$/') ||
   !boundary.includes(
     "return hit.entityKind === 'pi_base' ? currentCatalogArticleId(hit, context) : null",
   ) ||
@@ -104,10 +104,12 @@ if (
 }
 
 console.log('Mapper-resolved catalog validation PASS');
-console.log(`2088 mapper rows inspected (SHA-256 ${mapperHash})`);
+console.log(`2089 mapper rows inspected (SHA-256 ${mapperHash})`);
 console.log(`${selectableIds.size} current Base-selectable Mapper products covered`);
 console.log('Shared commercial catalog discovery enabled');
-console.log('Commercial selections retain canonical PR/PM identity and immutable product version');
+console.log(
+  'Commercial selections retain canonical PR/PM/CA identity and immutable product version',
+);
 console.log('0 stale favorite products rendered');
 console.log('0 stale recent products rendered');
 console.log('0 direct non-authoritative additions accepted by the selection boundary');

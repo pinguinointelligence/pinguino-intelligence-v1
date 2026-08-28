@@ -17,7 +17,7 @@
  * drafts start outside the approved bands, which is the point of the torture.
  *
  * Source of truth: docs/ingredients/validation/mapper_basement.csv
- * Mapper SHA-256 at generation: b13f5db4affd9c3be5ccbe59b40920053197a3697a3fa1bd4a859406e8baed38
+ * Mapper SHA-256 at generation: 057375cd60cefe613892ff1d9f8f7eda880ff0eb06732f9229051fc37d8deca7
  * The Mapper base is never written by this file or its generator.
  */
 import type { IngredientComponentProfile } from '@/engine';
@@ -5747,4 +5747,4 @@ export const INTERNET_PROTEIN_RECIPES: readonly InternetProteinRecipe[] = [
 ];
 
 /** Mapper SHA-256 this corpus was generated from. */
-export const INTERNET_CORPUS_MAPPER_SHA256 = 'b13f5db4affd9c3be5ccbe59b40920053197a3697a3fa1bd4a859406e8baed38';
+export const INTERNET_CORPUS_MAPPER_SHA256 = '057375cd60cefe613892ff1d9f8f7eda880ff0eb06732f9229051fc37d8deca7';

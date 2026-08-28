@@ -399,7 +399,7 @@ export function ProductImportPage() {
     if (!result) return;
     if (source === 'intimport' && !ownerClassifiedMode && preflight?.ready !== true) {
       setRunError(
-        'Czysty import wymaga pełnej bazy 2088 składników i braku produktów komercyjnych.',
+        'Czysty import wymaga pełnej bazy 2089 składników i braku produktów komercyjnych.',
       );
       return;
     }

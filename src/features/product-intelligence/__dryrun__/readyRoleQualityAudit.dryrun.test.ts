@@ -105,7 +105,7 @@ describe.runIf(existsSync(POLAND_FILE) && existsSync(PRIOR_FINAL_TRACE))(
       expect(priorReady).toHaveLength(138);
       expect(priorTopping).toHaveLength(213);
       expect(current).toHaveLength(138);
-      expect(mapperRows).toHaveLength(2088);
+      expect(mapperRows).toHaveLength(2089);
 
       const auditRows = current.map((row) => {
         const prior = priorById.get(row.sourceProductId ?? '')!;

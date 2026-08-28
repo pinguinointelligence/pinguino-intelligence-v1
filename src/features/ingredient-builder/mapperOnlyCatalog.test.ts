@@ -159,20 +159,20 @@ const row = (overrides: Partial<IngredientRow> = {}): IngredientRow => ({
 });
 
 describe('Mapper-only product catalog', () => {
-  it('A/B derives the exact current/selectable census from the immutable 2,088-row Mapper', () => {
+  it('A/B derives the exact current/selectable census from the owner-approved 2,089-row Mapper', () => {
     const mapper = parseCsv(
       readFileSync(
         resolve(process.cwd(), 'docs/ingredients/validation/mapper_basement.csv'),
         'utf8',
       ),
     );
-    expect(mapper).toHaveLength(2088);
-    expect(new Set(mapper.map((entry) => entry.ingredient_id)).size).toBe(2088);
+    expect(mapper).toHaveLength(2089);
+    expect(new Set(mapper.map((entry) => entry.ingredient_id)).size).toBe(2089);
     expect(
       mapper.filter((entry) => entry.approved_for_base?.toLowerCase() === 'true'),
-    ).toHaveLength(2075);
+    ).toHaveLength(2076);
     expect(CURRENT_MAPPER_CATALOG_CACHE_KEY).toContain(
-      'b13f5db4affd9c3be5ccbe59b40920053197a3697a3fa1bd4a859406e8baed38',
+      '057375cd60cefe613892ff1d9f8f7eda880ff0eb06732f9229051fc37d8deca7',
     );
   });
 
@@ -286,6 +286,44 @@ describe('Mapper-only product catalog', () => {
       });
       expect(load).toHaveBeenCalledWith('PI-ING-000001');
     }
+  });
+
+  it('resolves PI-ING-002114 as the one canonical Gellatti Stabilizer Base identity', async () => {
+    const current = row({
+      ingredient_id: 'PI-ING-002114',
+      ingredient_name_internal: 'gellatti_stabilizer',
+      ingredient_name_display: 'GELLATTI STABILIZER · Gellatti Stabilizer Blend · Dry',
+      ingredient_category: 'stabilizer',
+      ingredient_subcategory: 'stabilizer_blend',
+      water_percent: 7.1625,
+      total_solids_percent: 92.8375,
+      pod_value: 0,
+      pac_value: 0,
+      cost_per_kg: null,
+      currency: '',
+    });
+    const load = vi.fn(async () => current);
+    const outcome = await resolveCurrentMapperCatalogSelection(
+      hit({
+        id: 'mapper-gellatti-stabilizer',
+        displayName: current.ingredient_name_display,
+        category: 'stabilizer',
+        productForm: 'stabilizer_blend',
+        mappedIngredientId: 'PI-ING-002114',
+        usableInBase: true,
+        usableAsTopping: false,
+      }),
+      'BASE',
+      load,
+    );
+    expect(outcome).toEqual({
+      ok: true,
+      kind: 'mapper',
+      articleId: 'PI-ING-002114',
+      mapperId: 'PI-ING-002114',
+      row: current,
+    });
+    expect(load).toHaveBeenCalledOnce();
   });
 
   it('resolves an admitted PR from its own version without loading a Mapper row', async () => {

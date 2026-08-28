@@ -20,7 +20,7 @@ import {
   type VeganEnhancementLevel,
 } from './veganBehaviorTaxonomy';
 
-/** Bounded memo — the Mapper universe is 2088 rows, private products add few. */
+/** Bounded memo — the Mapper universe is 2089 rows, private products add few. */
 const MAX_CACHE_ENTRIES = 8192;
 const cache = new Map<string, VeganBehavior>();
 

@@ -108,7 +108,10 @@ describe('resolveMainCapability — capability states (§3)', () => {
 
   it('a family-calibrated carrier reports FAMILY, not EXACT_PRODUCT (§8)', () => {
     const capability = resolveMainCapability({
-      snapshot: calibrated({ mainCalibrationLevel: 'FAMILY', mainPolicyId: 'main-banana-fresh-dairy' }),
+      snapshot: calibrated({
+        mainCalibrationLevel: 'FAMILY',
+        mainPolicyId: 'main-banana-fresh-dairy',
+      }),
     });
     expect(capability.state).toBe('MAIN_CAPABLE');
     expect(capability.calibrationLevel).toBe('FAMILY');
@@ -131,18 +134,21 @@ describe('resolveMainCapability — capability states (§3)', () => {
     ['TOPPING_ONLY', 'Produkt po produkcji (topping) nie może być składnikiem głównym.'],
     ['PROTEIN_CONTRIBUTOR_ONLY', 'Składnik białkowy nie jest automatycznie smakiem Main.'],
     ['STANDARD_ONLY', 'Składnik bazowy/standardowy — nie definiuje smaku receptury.'],
-  ])('a %s product is blocked with its real reason, never a vague tooltip (§23)', (role, reason) => {
-    const blocked = snapshot({
-      mainCapability: 'MAIN_TECHNICAL_BLOCKED',
-      behaviorRole: role as ProductBehaviorSnapshot['behaviorRole'],
-      moduleEligibility: { BASE_RECIPE: 'eligible', MAIN: 'blocked' },
-    });
-    const capability = resolveMainCapability({ snapshot: blocked });
-    expect(capability.state).toBe('MAIN_TECHNICAL_BLOCKED');
-    expect(capability.selectable).toBe(false);
-    expect(capability.reasonPl).toBe(reason);
-    expect(mainBehaviorBlockReason(blocked)).toBe(reason);
-  });
+  ])(
+    'a %s product is blocked with its real reason, never a vague tooltip (§23)',
+    (role, reason) => {
+      const blocked = snapshot({
+        mainCapability: 'MAIN_TECHNICAL_BLOCKED',
+        behaviorRole: role as ProductBehaviorSnapshot['behaviorRole'],
+        moduleEligibility: { BASE_RECIPE: 'eligible', MAIN: 'blocked' },
+      });
+      const capability = resolveMainCapability({ snapshot: blocked });
+      expect(capability.state).toBe('MAIN_TECHNICAL_BLOCKED');
+      expect(capability.selectable).toBe(false);
+      expect(capability.reasonPl).toBe(reason);
+      expect(mainBehaviorBlockReason(blocked)).toBe(reason);
+    },
+  );
 
   it('a post-process line can never be Main', () => {
     const topping = snapshot({ processScope: 'POST_PROCESS_ADDON' });
@@ -153,15 +159,20 @@ describe('resolveMainCapability — capability states (§3)', () => {
     const stale = snapshot({ resolutionState: 'REVALIDATION_REQUIRED' });
     expect(resolveMainCapability({ snapshot: stale }).state).toBe('MAIN_UNKNOWN');
     expect(resolveMainCapability({ snapshot: stale }).selectable).toBe(false);
-    expect(resolveMainCapability({ snapshot: undefined, snapshotRequired: true }).state)
-      .toBe('MAIN_UNKNOWN');
+    expect(resolveMainCapability({ snapshot: undefined, snapshotRequired: true }).state).toBe(
+      'MAIN_UNKNOWN',
+    );
   });
 });
 
 describe('legacy snapshots (§35, §36)', () => {
   it('reconstructs capability from a schema-v1 snapshot with no capability layer', () => {
-    const { mainCapability, mainAuthority, mainCalibrationLevel, behaviorRole, ...legacy } = snapshot();
-    void mainCapability; void mainAuthority; void mainCalibrationLevel; void behaviorRole;
+    const { mainCapability, mainAuthority, mainCalibrationLevel, behaviorRole, ...legacy } =
+      snapshot();
+    void mainCapability;
+    void mainAuthority;
+    void mainCalibrationLevel;
+    void behaviorRole;
     const capability = resolveMainCapability({ snapshot: legacy as ProductBehaviorSnapshot });
     // MAIN_PROFILE_SPECIFIC with no envelope is the historical "blocked policy"
     // state; it is a calibration gap, so the honest answer is user-held.
@@ -216,7 +227,10 @@ describe('multi-main groups (§19, §21)', () => {
   it('a non-Main line is never user-held', () => {
     const held = userHeldMainLineIds({
       items,
-      snapshots: { 'main-a': snapshot({ lineId: 'main-a' }), 'main-b': snapshot({ lineId: 'main-b' }) },
+      snapshots: {
+        'main-a': snapshot({ lineId: 'main-a' }),
+        'main-b': snapshot({ lineId: 'main-b' }),
+      },
     });
     expect(held).not.toContain('sugar');
   });
@@ -224,7 +238,10 @@ describe('multi-main groups (§19, §21)', () => {
   it('Owner Review technical-only Main seeds stay outside the user-held group', () => {
     const held = userHeldMainLineIds({
       items,
-      snapshots: { 'main-a': snapshot({ lineId: 'main-a' }), 'main-b': snapshot({ lineId: 'main-b' }) },
+      snapshots: {
+        'main-a': snapshot({ lineId: 'main-a' }),
+        'main-b': snapshot({ lineId: 'main-b' }),
+      },
       excludeLineIds: ['main-a', 'main-b'],
     });
     expect(held).toEqual([]);
@@ -267,9 +284,8 @@ describe('server projection (§26)', () => {
     moduleEligibility: { BASE_RECIPE: 'eligible' as const },
     mainPolicy,
     warnings: [],
-    blockReasons: capability === 'MAIN_CAPABLE_UNCALIBRATED'
-      ? ['main_user_held_no_calibration']
-      : [],
+    blockReasons:
+      capability === 'MAIN_CAPABLE_UNCALIBRATED' ? ['main_user_held_no_calibration'] : [],
   });
 
   it('an uncalibrated flavour carrier is stored MAIN-eligible with no envelope', () => {
@@ -319,8 +335,9 @@ describe('architecture guard (§24, §39)', () => {
   it('no Main capability source decides eligibility from an exact ingredient id', () => {
     for (const relative of MAIN_AUTHORITY_SOURCES) {
       const source = fs.readFileSync(path.join(ROOT, relative), 'utf8');
-      expect(source, `${relative} must not contain a PI-ING identity literal`)
-        .not.toMatch(/PI-ING-\d{6}/);
+      expect(source, `${relative} must not contain a PI-ING identity literal`).not.toMatch(
+        /PI-ING-\d{6}/,
+      );
     }
   });
 
@@ -353,24 +370,32 @@ describe('full Mapper audit artifact (§12, §38)', () => {
     for (let i = 0; i < line.length; i += 1) {
       const ch = line[i]!;
       if (quoted) {
-        if (ch === '"') { if (line[i + 1] === '"') { cur += '"'; i += 1; } else quoted = false; }
-        else cur += ch;
+        if (ch === '"') {
+          if (line[i + 1] === '"') {
+            cur += '"';
+            i += 1;
+          } else quoted = false;
+        } else cur += ch;
       } else if (ch === '"') quoted = true;
-      else if (ch === ',') { out.push(cur); cur = ''; }
-      else cur += ch;
+      else if (ch === ',') {
+        out.push(cur);
+        cur = '';
+      } else cur += ch;
     }
     out.push(cur);
     return out;
   };
-  const byId = new Map(rows.slice(1).map((line) => {
-    const parts = cells(line);
-    return [parts[index('ingredient_id')]!, parts];
-  }));
+  const byId = new Map(
+    rows.slice(1).map((line) => {
+      const parts = cells(line);
+      return [parts[index('ingredient_id')]!, parts];
+    }),
+  );
   const capabilityOf = (id: string) => byId.get(id)?.[index('capability')];
 
   it('covers every active Mapper row exactly once', () => {
-    expect(rows.length - 1).toBe(2088);
-    expect(byId.size).toBe(2088);
+    expect(rows.length - 1).toBe(2089);
+    expect(byId.size).toBe(2089);
   });
 
   it('matches the counts proved on the staging authority', () => {
@@ -381,20 +406,20 @@ describe('full Mapper audit artifact (§12, §38)', () => {
     expect(counts).toEqual({
       MAIN_CAPABLE: 110,
       MAIN_CAPABLE_UNCALIBRATED: 1282,
-      MAIN_TECHNICAL_BLOCKED: 696,
+      MAIN_TECHNICAL_BLOCKED: 697,
     });
   });
 
   it.each([
-    ['PI-ING-001553', 'MAIN_CAPABLE'],          // strawberry, exact Sorbet 60 %
-    ['PI-ING-000369', 'MAIN_CAPABLE'],          // lime, exact Sorbet 60 %
-    ['PI-ING-000340', 'MAIN_CAPABLE'],          // mango puree, exact Sorbet 60 %
-    ['PI-ING-000345', 'MAIN_CAPABLE'],          // banana fresh
-    ['PI-ING-001589', 'MAIN_CAPABLE'],          // banana puree
-    ['PI-ING-000394', 'MAIN_CAPABLE'],          // raspberries
-    ['PI-ING-000366', 'MAIN_CAPABLE'],          // kiwi
-    ['PI-ING-000614', 'MAIN_CAPABLE'],          // pistachio paste
-    ['PI-ING-001578', 'MAIN_CAPABLE'],          // cocoa
+    ['PI-ING-001553', 'MAIN_CAPABLE'], // strawberry, exact Sorbet 60 %
+    ['PI-ING-000369', 'MAIN_CAPABLE'], // lime, exact Sorbet 60 %
+    ['PI-ING-000340', 'MAIN_CAPABLE'], // mango puree, exact Sorbet 60 %
+    ['PI-ING-000345', 'MAIN_CAPABLE'], // banana fresh
+    ['PI-ING-001589', 'MAIN_CAPABLE'], // banana puree
+    ['PI-ING-000394', 'MAIN_CAPABLE'], // raspberries
+    ['PI-ING-000366', 'MAIN_CAPABLE'], // kiwi
+    ['PI-ING-000614', 'MAIN_CAPABLE'], // pistachio paste
+    ['PI-ING-001578', 'MAIN_CAPABLE'], // cocoa
     ['PI-ING-000166', 'MAIN_CAPABLE_UNCALIBRATED'], // ground coffee
   ])('%s is %s', (id, expected) => {
     expect(capabilityOf(id)).toBe(expected);
@@ -416,12 +441,21 @@ describe('full Mapper audit artifact (§12, §38)', () => {
 
   it('no product in a technical Mapper category is Main-capable', () => {
     const technical = new Set([
-      'sweetener', 'stabilizer', 'fiber', 'emulsifier', 'starch', 'acid', 'colorant',
-      'functional_additive', 'additive', 'protein',
+      'sweetener',
+      'stabilizer',
+      'fiber',
+      'emulsifier',
+      'starch',
+      'acid',
+      'colorant',
+      'functional_additive',
+      'additive',
+      'protein',
     ]);
-    const leaked = [...byId.values()].filter((parts) =>
-      technical.has(parts[index('category')]!) &&
-      parts[index('capability')] !== 'MAIN_TECHNICAL_BLOCKED',
+    const leaked = [...byId.values()].filter(
+      (parts) =>
+        technical.has(parts[index('category')]!) &&
+        parts[index('capability')] !== 'MAIN_TECHNICAL_BLOCKED',
     );
     expect(leaked.map((parts) => parts[index('ingredient_id')])).toEqual([]);
   });

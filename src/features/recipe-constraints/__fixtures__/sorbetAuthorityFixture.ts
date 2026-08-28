@@ -1,7 +1,7 @@
 /**
  * Deterministic Sorbet fixtures for the freezing-authority tests — REAL Mapper
  * compositions (docs/ingredients/validation/mapper_basement.csv, the immutable
- * 2088-row source of truth) and the REAL canonical Sorbet starter scaffold.
+ * 2089-row source of truth) and the REAL canonical Sorbet starter scaffold.
  * Nothing here is invented: the Multi-Main base is the same owner-approved
  * strawberry + lime 60 % identity exercised by the 150-cell Direction matrix.
  */

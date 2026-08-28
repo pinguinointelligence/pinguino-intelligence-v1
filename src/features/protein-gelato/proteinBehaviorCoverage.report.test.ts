@@ -89,7 +89,7 @@ const proteinRelevant = ingredients.filter(
 
 describe('derived ProteinBehavior coverage over the canonical Mapper base', () => {
   it('classifies every row deterministically and never throws', () => {
-    expect(ingredients.length).toBe(2088);
+    expect(ingredients.length).toBe(2089);
     for (const ingredient of ingredients) {
       const first = deriveProteinBehavior(ingredient);
       const second = deriveProteinBehavior(ingredient);
@@ -105,10 +105,7 @@ describe('derived ProteinBehavior coverage over the canonical Mapper base', () =
     for (const ingredient of proteinRelevant) {
       const behavior = deriveProteinBehavior(ingredient);
       byClass.set(behavior.sourceClass, (byClass.get(behavior.sourceClass) ?? 0) + 1);
-      byEvidence.set(
-        behavior.sourceEvidence,
-        (byEvidence.get(behavior.sourceEvidence) ?? 0) + 1,
-      );
+      byEvidence.set(behavior.sourceEvidence, (byEvidence.get(behavior.sourceEvidence) ?? 0) + 1);
       if (behavior.lactosePerProteinGram !== null) lactoseKnown += 1;
       if (behavior.fatPerProteinGram !== null) fatKnown += 1;
     }
@@ -166,7 +163,9 @@ describe('classification honesty spot-checks', () => {
     const missed = proteinRelevant
       .filter((ingredient) => ingredient.category === 'dairy')
       .filter((ingredient) => deriveProteinBehavior(ingredient).sourceClass === 'unknown')
-      .map((ingredient) => `${ingredient.name} (${ingredient.composition.protein_percent}% protein)`);
+      .map(
+        (ingredient) => `${ingredient.name} (${ingredient.composition.protein_percent}% protein)`,
+      );
     console.info(JSON.stringify({ unclassifiedDairyProteinSources: missed }, null, 2));
     expect(missed).toEqual([]);
   });

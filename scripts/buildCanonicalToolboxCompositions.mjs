@@ -54,11 +54,31 @@ for (const cells of grid.slice(1)) {
   if (rec.ingredient_id) byId.set(rec.ingredient_id, rec);
 }
 
-// The bound identities, read from the identity registry so the two can never
-// drift apart. Kept as a literal list mirroring CORE_INGREDIENT_IDENTITIES.
-const identitySource = readFileSync(resolve(process.cwd(), 'src/data/ingredients/canonicalIngredientIdentity.ts'), 'utf8');
-const bound = [...identitySource.matchAll(/toolboxId:\s*'([^']+)',\s*mapperId:\s*'(PI-ING-\d+)'/g)]
-  .map((m) => ({ toolboxId: m[1], mapperId: m[2] }));
+// Normal toolbox bindings remain owned by the canonical identity registry.
+// The isolated Starter Pack Rescue owns a second closed registry so adding its
+// exact candidates does not alter the Production Rescue source closure.
+const identitySource = readFileSync(
+  resolve(process.cwd(), 'src/data/ingredients/canonicalIngredientIdentity.ts'),
+  'utf8',
+);
+const rescueSource = readFileSync(
+  resolve(process.cwd(), 'src/features/constraint-studio/starterPackRescuePalette.ts'),
+  'utf8',
+);
+const identityBound = [
+  ...identitySource.matchAll(/toolboxId:\s*'([^']+)',\s*mapperId:\s*'(PI-ING-\d+)'/g),
+].map((match) => ({ toolboxId: match[1], mapperId: match[2] }));
+const rescueBound = [
+  ...rescueSource.matchAll(/mapperId:\s*'(PI-ING-\d+)',\s*toolboxId:\s*'([^']+)'/g),
+].map((match) => ({ toolboxId: match[2], mapperId: match[1] }));
+const bound = [
+  ...new Map(
+    [...identityBound, ...rescueBound].map((entry) => [
+      `${entry.toolboxId}:${entry.mapperId}`,
+      entry,
+    ]),
+  ).values(),
+];
 if (bound.length === 0) throw new Error('No toolbox↔Mapper identities found.');
 
 const n = (v) => (v === null || v === undefined ? 0 : v);

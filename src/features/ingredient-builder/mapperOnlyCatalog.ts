@@ -9,7 +9,7 @@ import { carbonationProfileFromPublicData } from '@/data/products/carbonation';
 
 /** Immutable source pin for the current PI catalog. */
 export const CURRENT_MAPPER_CATALOG_CACHE_KEY =
-  'mapper:v1.0:sha256:b13f5db4affd9c3be5ccbe59b40920053197a3697a3fa1bd4a859406e8baed38';
+  'mapper:v1.0:sha256:057375cd60cefe613892ff1d9f8f7eda880ff0eb06732f9229051fc37d8deca7';
 
 export const MAPPER_ONLY_CATALOG_ERROR =
   'Produkt nie ma aktualnego kompletnego profilu technicznego. Odśwież katalog i spróbuj ponownie.';
@@ -34,7 +34,13 @@ const finiteAt = (value: Record<string, unknown>, key: string): number | null =>
 };
 
 const REQUIRED_PRODUCT_PROFILE = [
-  'water', 'totalSolids', 'fat', 'protein', 'carbohydrate', 'sugars', 'salt',
+  'water',
+  'totalSolids',
+  'fat',
+  'protein',
+  'carbohydrate',
+  'sugars',
+  'salt',
 ] as const;
 
 export function catalogProductHasOwnEngineProfile(hit: CatalogProductSearchHit): boolean {
@@ -43,8 +49,8 @@ export function catalogProductHasOwnEngineProfile(hit: CatalogProductSearchHit):
   const intelligence = objectAt(hit.publicData.productIntelligence);
   return Boolean(
     technical &&
-      intelligence?.engineUsable === true &&
-      REQUIRED_PRODUCT_PROFILE.every((key) => finiteAt(technical, key) !== null),
+    intelligence?.engineUsable === true &&
+    REQUIRED_PRODUCT_PROFILE.every((key) => finiteAt(technical, key) !== null),
   );
 }
 
@@ -58,10 +64,12 @@ export function currentCatalogArticleId(
     hit.currentVersionId.trim() === '' ||
     hit.publicData.lifecycleRejected === true ||
     (context === 'BASE' ? !hit.usableInBase : !hit.usableAsTopping)
-  ) return null;
+  )
+    return null;
 
   if (hit.entityKind === 'pi_base') {
-    return hit.status === 'pi_base' && typeof hit.mappedIngredientId === 'string' &&
+    return hit.status === 'pi_base' &&
+      typeof hit.mappedIngredientId === 'string' &&
       canonicalPiId.test(hit.mappedIngredientId)
       ? hit.mappedIngredientId
       : null;
@@ -142,7 +150,8 @@ export async function resolveCurrentMapperCatalogSelection(
     row.ingredient_id !== articleId ||
     row.dataset_version !== 'v1.0' ||
     row.approved_for_base !== true
-  ) return { ok: false, message: MAPPER_ONLY_CATALOG_ERROR };
+  )
+    return { ok: false, message: MAPPER_ONLY_CATALOG_ERROR };
   return { ok: true, kind: 'mapper', articleId, mapperId: articleId, row };
 }
 
@@ -227,10 +236,12 @@ export function scannedProductRecipeTarget(
 ): CatalogProductSearchHit | null {
   const selectable = filterCurrentMapperCatalogHits(hits, context);
   const byBarcode = scanned.barcode
-    ? selectable.find((hit) => hit.eans.includes(scanned.barcode!)) ?? null
+    ? (selectable.find((hit) => hit.eans.includes(scanned.barcode!)) ?? null)
     : null;
   if (byBarcode) return byBarcode;
-  return selectable.find(
-    (hit) => currentCatalogArticleId(hit, context) === scanned.id || hit.id === scanned.id,
-  ) ?? null;
+  return (
+    selectable.find(
+      (hit) => currentCatalogArticleId(hit, context) === scanned.id || hit.id === scanned.id,
+    ) ?? null
+  );
 }

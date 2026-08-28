@@ -121,32 +121,37 @@ async function searchCanonicalMapperIngredientsWithPolicy(
       });
       cursor += hits.length;
       exhausted = hits.length < batchLimit;
-      rows.push(...hits
-        .filter((hit) => {
-          if (hit.entityKind !== 'pi_base' || !hit.mappedIngredientId) return false;
-          if (!preserveHomeBaseline) return true;
-          const verificationStatus = hit.publicData.verificationStatus;
-          return hit.usableInBase && hit.publicData.approvedForEngines === true &&
-            typeof verificationStatus === 'string' &&
-            verificationStatus.toLocaleLowerCase('en').startsWith('verified');
-        })
-        .map((hit) => {
-          const approvedForEngines = hit.publicData.approvedForEngines;
-          return ({
-          ingredient_id: hit.mappedIngredientId!,
-          ingredient_name_display: hit.displayName,
-          ingredient_name_internal: hit.originalName,
-          ingredient_category: hit.category,
-          ingredient_subcategory: hit.productForm ?? null,
-          vegan: null,
-          dairy_free: null,
-          gluten_free: null,
-          contains_alcohol: null,
-          approved_for_base: hit.usableInBase,
-          approved_for_engines: approvedForEngines === true,
-          dataset_version: null,
-          });
-        }));
+      rows.push(
+        ...hits
+          .filter((hit) => {
+            if (hit.entityKind !== 'pi_base' || !hit.mappedIngredientId) return false;
+            if (!preserveHomeBaseline) return true;
+            const verificationStatus = hit.publicData.verificationStatus;
+            return (
+              hit.usableInBase &&
+              hit.publicData.approvedForEngines === true &&
+              typeof verificationStatus === 'string' &&
+              verificationStatus.toLocaleLowerCase('en').startsWith('verified')
+            );
+          })
+          .map((hit) => {
+            const approvedForEngines = hit.publicData.approvedForEngines;
+            return {
+              ingredient_id: hit.mappedIngredientId!,
+              ingredient_name_display: hit.displayName,
+              ingredient_name_internal: hit.originalName,
+              ingredient_category: hit.category,
+              ingredient_subcategory: hit.productForm ?? null,
+              vegan: null,
+              dairy_free: null,
+              gluten_free: null,
+              contains_alcohol: null,
+              approved_for_base: hit.usableInBase,
+              approved_for_engines: approvedForEngines === true,
+              dataset_version: null,
+            };
+          }),
+      );
     }
     if (query.signal?.aborted) return { kind: 'aborted' };
     const sliceOffset = preserveHomeBaseline ? requestedOffset : 0;
@@ -161,7 +166,7 @@ async function searchCanonicalMapperIngredientsWithPolicy(
 }
 
 /** Frozen Home search retains its previously accepted Verified + Base + Engine
- * result set even though the shared RPC now exposes all 2,088 active rows. */
+ * result set even though the shared RPC now exposes all 2,089 active rows. */
 export async function searchCanonicalMapperIngredients(
   query: MapperSearchQuery,
 ): Promise<MapperSearchOutcome> {
@@ -239,7 +244,9 @@ function isAborted(error: QueryError, signal?: AbortSignal): boolean {
  * limit/offset for incremental loading. Fetches limit+1 rows to report `hasMore`
  * honestly. Never throws for expected failures — returns a typed outcome.
  */
-export async function searchMapperIngredients(query: MapperSearchQuery): Promise<MapperSearchOutcome> {
+export async function searchMapperIngredients(
+  query: MapperSearchQuery,
+): Promise<MapperSearchOutcome> {
   const client = backend.supabase;
   if (!client) return { kind: 'unavailable', reason: 'not_configured' };
 
@@ -249,7 +256,9 @@ export async function searchMapperIngredients(query: MapperSearchQuery): Promise
 
   let builder = client.from(DEMO_SEARCH_VIEW).select(MAPPER_SEARCH_COLUMNS.join(','));
   if (text !== '') {
-    builder = builder.or(ilikeOrFilter(['ingredient_name_display', 'ingredient_name_internal'], text));
+    builder = builder.or(
+      ilikeOrFilter(['ingredient_name_display', 'ingredient_name_internal'], text),
+    );
   }
   if (query.category) {
     builder = builder.eq('ingredient_category', query.category);

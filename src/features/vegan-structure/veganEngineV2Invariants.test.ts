@@ -241,7 +241,7 @@ describe('§26.9 / §26.14 — ProductBehavior and the Mapper base are untouched
       join(process.cwd(), 'docs/ingredients/validation/mapper_basement.csv'),
     );
     expect(createHash('sha256').update(csv).digest('hex')).toBe(
-      'b13f5db4affd9c3be5ccbe59b40920053197a3697a3fa1bd4a859406e8baed38',
+      '057375cd60cefe613892ff1d9f8f7eda880ff0eb06732f9229051fc37d8deca7',
     );
     // Nothing in the derived layer can write anywhere.
     expect(moduleCode).not.toMatch(/writeFileSync|fs\.write|INSERT INTO|\.update\(/);

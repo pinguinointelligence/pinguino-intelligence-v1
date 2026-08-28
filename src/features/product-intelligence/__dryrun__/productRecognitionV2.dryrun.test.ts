@@ -169,7 +169,7 @@ describe.runIf(existsSync(POLAND_FILE) && existsSync(ACCEPTED_OWNER_AUDIT))(
       const { rows } = runIntimportLocalIntelligence(parsed.candidates, {}, mapper);
 
       expect(rows).toHaveLength(820);
-      expect(mapperRows).toHaveLength(2088);
+      expect(mapperRows).toHaveLength(2089);
       expect(baselineRows).toHaveLength(820);
       expect(baselineByProduct.size).toBe(820);
       expect(countBy(baselineRows.map((row) => row.final_status ?? ''))).toMatchObject({
@@ -370,8 +370,8 @@ describe.runIf(existsSync(POLAND_FILE) && existsSync(ACCEPTED_OWNER_AUDIT))(
         previousBlocked: writeCsv('POLAND_820_PREVIOUS_258_TRANSITIONS.csv', previousBlocked),
         previousReview: writeCsv('POLAND_820_PREVIOUS_373_TRANSITIONS.csv', previousReview),
         toppingPoland: writeCsv('POLAND_820_TOPPING_ONLY.csv', toppingPoland),
-        mapperAudit: writeCsv('MAPPER_2088_ROLE_AUDIT.csv', mapperAudit),
-        toppingMapper: writeCsv('MAPPER_2088_TOPPING_ONLY.csv', toppingMapper),
+        mapperAudit: writeCsv('MAPPER_2089_ROLE_AUDIT.csv', mapperAudit),
+        toppingMapper: writeCsv('MAPPER_2089_TOPPING_ONLY.csv', toppingMapper),
       };
       const summary = {
         generatedAt: new Date().toISOString(),
@@ -436,7 +436,7 @@ describe.runIf(existsSync(POLAND_FILE) && existsSync(ACCEPTED_OWNER_AUDIT))(
       expect(Object.values(newCounts).reduce((sum, value) => sum + value, 0)).toBe(820);
       expect(Object.values(blockedCounts).reduce((sum, value) => sum + value, 0)).toBe(258);
       expect(Object.values(reviewCounts).reduce((sum, value) => sum + value, 0)).toBe(373);
-      expect(Object.values(mapperRoleCounts).reduce((sum, value) => sum + value, 0)).toBe(2088);
+      expect(Object.values(mapperRoleCounts).reduce((sum, value) => sum + value, 0)).toBe(2089);
       expect(dosage.gPerLFound).toBe(dosage.gPerLSuccessfullyNormalized);
       expect(suspiciousReady).toHaveLength(0);
       expect(createHash('sha256').update(readFileSync(POLAND_FILE)).digest('hex')).toBe(

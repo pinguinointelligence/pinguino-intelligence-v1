@@ -126,7 +126,7 @@ describe.runIf(existsSync(POLAND_FILE) && existsSync(OLD_AUDIT))(
 
       expect(rows).toHaveLength(820);
       expect(oldScores).toHaveLength(820);
-      expect(mapperRows).toHaveLength(2088);
+      expect(mapperRows).toHaveLength(2089);
       expect(Object.values(readiness).reduce((sum, value) => sum + value, 0)).toBe(820);
 
       for (const row of rows) {
@@ -150,9 +150,9 @@ describe.runIf(existsSync(POLAND_FILE) && existsSync(OLD_AUDIT))(
           row.productionAccuracy.criticalBlockers.length > 0,
       );
       expect(highAccuracyBlocked.length).toBeGreaterThan(0);
-      expect(highAccuracyBlocked.every((row) => classifyIntimportFinalResult(row) !== 'READY')).toBe(
-        true,
-      );
+      expect(
+        highAccuracyBlocked.every((row) => classifyIntimportFinalResult(row) !== 'READY'),
+      ).toBe(true);
 
       const lowAccuracyReadinessComplete = rows.filter(
         (row) =>

@@ -7,7 +7,7 @@ const migrationPath = path.join(
   ROOT,
   'supabase/migrations/20260813110400_product_behavior_classification_queue.sql',
 );
-const auditPath = path.join(ROOT, 'reports/MAPPER_2088_PRODUCT_BEHAVIOR_AUDIT.csv');
+const auditPath = path.join(ROOT, 'reports/MAPPER_2089_PRODUCT_BEHAVIOR_AUDIT.csv');
 const migration = fs.readFileSync(migrationPath, 'utf8');
 
 function parseCsv(text: string): Record<string, string>[] {
@@ -342,13 +342,9 @@ describe('product behavior classification v2 migration', () => {
       migration.indexOf(
         'create or replace function public.process_product_behavior_reclassification_queue_v1',
       ),
-      migration.indexOf(
-        'revoke all on function public.product_behavior_authority_fingerprint_v1',
-      ),
+      migration.indexOf('revoke all on function public.product_behavior_authority_fingerprint_v1'),
     );
-    const lock = worker.indexOf(
-      "'product-behavior:'||v_job.entity_kind||':'||v_job.entity_id",
-    );
+    const lock = worker.indexOf("'product-behavior:'||v_job.entity_kind||':'||v_job.entity_id");
     const currentFingerprintCheck = worker.indexOf(
       'public.product_behavior_entity_fingerprint_v1(v_job.entity_kind,v_job.entity_id)',
     );
@@ -392,17 +388,21 @@ describe('product behavior classification v2 migration', () => {
   it('replaces the narrower legacy audit-view signatures explicitly', () => {
     expect(migration).toContain('drop view if exists public.mapper_product_behavior_audit_v1;');
     expect(migration).toContain('drop view if exists public.catalog_product_behavior_audit_v1;');
-    expect(migration).toContain('create or replace view public.mapper_product_behavior_audit_v1 as');
-    expect(migration).toContain('create or replace view public.catalog_product_behavior_audit_v1 as');
+    expect(migration).toContain(
+      'create or replace view public.mapper_product_behavior_audit_v1 as',
+    );
+    expect(migration).toContain(
+      'create or replace view public.catalog_product_behavior_audit_v1 as',
+    );
   });
 });
 
 describe('exhaustive Mapper behavior audit', () => {
   const rows = parseCsv(fs.readFileSync(auditPath, 'utf8'));
 
-  it('contains exactly 2,088 uniquely classified Mapper rows', () => {
-    expect(rows).toHaveLength(2088);
-    expect(new Set(rows.map((row) => row.ingredient_id)).size).toBe(2088);
+  it('contains exactly 2,089 uniquely classified Mapper rows', () => {
+    expect(rows).toHaveLength(2089);
+    expect(new Set(rows.map((row) => row.ingredient_id)).size).toBe(2089);
     for (const row of rows) {
       expect(row.behavior_role).not.toBe('');
       expect(row.main_policy_status).not.toBe('');

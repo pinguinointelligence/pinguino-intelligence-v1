@@ -197,6 +197,15 @@ import {
   isOmittableUnusedLine,
 } from '@/features/practical-recipe/practicalRecipe';
 import { mainTechnicalLinearUpperBound } from './mainTechnicalLinearBound';
+import {
+  STARTER_PACK_RESCUE_PALETTE_VERSION,
+  isExactStarterPackRescueIngredient,
+  starterPackRescueLineId,
+  starterPackRescueProbeGrams,
+  starterPackRescueSeedGrams,
+  withStarterPackRescueCandidate,
+  type StarterPackRescueMapperId,
+} from './starterPackRescuePalette';
 
 /**
  * Internal SOLVER HOLDS applied to every search in this pipeline.
@@ -422,10 +431,7 @@ export function directionTargetFingerprint(input: RecipeInput): string {
  * produce the optimisation wording by construction.
  */
 export type PreviewOutcome =
-  | 'batch_rescale'
-  | 'engine_optimization'
-  | 'batch_rescale_and_optimization'
-  | 'no_verified_change';
+  'batch_rescale' | 'engine_optimization' | 'batch_rescale_and_optimization' | 'no_verified_change';
 
 export interface PreviewOutcomeClassification {
   outcome: PreviewOutcome;
@@ -622,6 +628,15 @@ export interface ConstraintPreview {
   };
   /** Exact identity swap; the Apply door re-derives every field. */
   substitution?: SubstitutionPreviewProof;
+  /** Owner-closed Recipe/Direction Rescue proof. The candidate is one exact
+   * Mapper identity, remains an unlocked Base line, and Apply deterministically
+   * rebuilds the same simulation before accepting it. */
+  starterPackRescue?: {
+    paletteVersion: typeof STARTER_PACK_RESCUE_PALETTE_VERSION;
+    mapperId: StarterPackRescueMapperId;
+    lineId: string;
+    seedGrams: number;
+  };
   /** Explicit user-requested removal; never created by normal optimization. */
   explicitStandardRemoval?: {
     lineId: string;
@@ -6058,7 +6073,9 @@ function buildSorbetDirectionCandidatePreview(params: {
         searchSorbetNearestDirectionCandidate({
           input: working,
           isAdjustable,
-          extraAdjustableLineIds: options.rescueSimulationLineIds,
+          extraAdjustableLineIds: options.rescueSimulationLineIds?.filter(
+            (lineId) => working.items.find((item) => item.id === lineId)?.lock_type === 'unlocked',
+          ),
         })?.candidate ?? null,
     },
   ];
@@ -6436,6 +6453,150 @@ export function buildOptimizePreview(
     calculateRecipe(nearest.preview.proposedInput),
   );
   return enforceTargetBatchInvariant(input, nearest);
+}
+
+/**
+ * Builds the SECOND, optional Starter Pack Preview from one exact closed-palette
+ * candidate. The normal solver has already run before callers reach this seam.
+ * The synthetic line exists only in the simulation input; this function rebases
+ * the successful result onto the untouched owner draft so Preview is the first
+ * visible state and Apply remains the only mutation door.
+ */
+export function buildStarterPackRescueCandidatePreview(
+  input: RecipeInput,
+  set: ConstraintSet,
+  mapperId: StarterPackRescueMapperId,
+  createdAt: string,
+  options: OptimizePreviewOptions = {},
+  prebuiltSimulation?: BuildPreviewResult,
+  seedGrams = starterPackRescueSeedGrams(mapperId, input),
+): BuildPreviewResult {
+  if (input.items.some((item) => canonicalIngredientId(item.ingredient) === mapperId)) {
+    return { ok: false, code: 'no_proposal' };
+  }
+  if (!starterPackRescueProbeGrams(mapperId, input).some((grams) => Object.is(grams, seedGrams))) {
+    return { ok: false, code: 'no_proposal' };
+  }
+  const simulatedInput = buildStarterPackRescueSimulationInput(input, set, mapperId, seedGrams);
+  if (simulatedInput === null) return { ok: false, code: 'no_proposal' };
+  const lineId = starterPackRescueLineId(mapperId);
+  const built =
+    prebuiltSimulation ??
+    buildOptimizePreview(simulatedInput, set, createdAt, {
+      ...options,
+      rescueSimulationLineIds: [lineId],
+    });
+  if (!built.ok) return built;
+  const exactSource =
+    built.preview.practicalization?.status === 'ready'
+      ? built.preview.practicalization.audit.exactInput
+      : built.preview.proposedInput;
+  const candidate = exactSource.items.find((item) => item.id === lineId);
+  if (
+    !candidate ||
+    candidate.planned_grams <= 0 ||
+    !Object.is(candidate.planned_grams, seedGrams) ||
+    candidate.lock_type !== 'grams' ||
+    !isExactStarterPackRescueIngredient(mapperId, candidate.ingredient)
+  ) {
+    return { ok: false, code: 'no_proposal' };
+  }
+  const exactInput: RecipeInput = {
+    ...exactSource,
+    items: exactSource.items.map((item) =>
+      item.id === lineId ? { ...item, lock_type: 'unlocked' as const } : item,
+    ),
+  };
+  const rebound = finishPreview(
+    'optimize',
+    `Starter Pack · ${candidate.ingredient.name}`,
+    input,
+    set,
+    exactInput,
+    set,
+    violationCount(calculateRecipe(input)),
+    built.preview.explanation,
+    createdAt,
+  );
+  const proposalSnapshots = options.productBehaviorSnapshots;
+  const baseSnapshots = proposalSnapshots
+    ? Object.fromEntries(
+        Object.entries(proposalSnapshots).filter(([candidateLineId]) => candidateLineId !== lineId),
+      )
+    : undefined;
+  const preview: ConstraintPreview = {
+    ...built.preview,
+    ...rebound,
+    titlePl: `Starter Pack · ${candidate.ingredient.name}`,
+    directionTargetUnreached:
+      rebound.directionAssessment?.active === true &&
+      rebound.directionAssessment.supportedAxisCount > 0 &&
+      !rebound.directionAssessment.reached,
+    starterPackRescue: {
+      paletteVersion: STARTER_PACK_RESCUE_PALETTE_VERSION,
+      mapperId,
+      lineId,
+      seedGrams,
+    },
+    ...(proposalSnapshots
+      ? {
+          baseProductBehaviorFingerprint: productBehaviorSnapshotFingerprint(baseSnapshots ?? {}),
+          productBehaviorFingerprint: productBehaviorSnapshotFingerprint(proposalSnapshots),
+        }
+      : {}),
+  };
+  const progress = assessDirectionCandidateProgress(input, preview.proposedInput);
+  if (progress.active && !progress.accepted) return { ok: false, code: 'no_proposal' };
+  return enforceTargetBatchInvariant(input, { ok: true, preview });
+}
+
+/** Shared hard-constraint read used by Rescue ranking. Apply still re-runs the
+ * canonical verifier inside `VerifiedApply.commit`; this grants no mutation. */
+export function starterPackRescueConstraintsPreserved(
+  set: ConstraintSet,
+  candidate: RecipeInput,
+): boolean {
+  return verifyConstraintsPreserved(set, candidate).ok;
+}
+
+/** Exact one-product simulation probe: the candidate amount, Main, user locks
+ * and established stabilizer doses remain held while the existing solver
+ * rebalances every other legal line. The internal probe lock is removed only
+ * when the successful candidate is rebased into the user-visible Preview. */
+export function buildStarterPackRescueSimulationInput(
+  input: RecipeInput,
+  set: ConstraintSet,
+  mapperId: StarterPackRescueMapperId,
+  seedGrams = starterPackRescueSeedGrams(mapperId, input),
+): RecipeInput | null {
+  if (!starterPackRescueProbeGrams(mapperId, input).some((grams) => Object.is(grams, seedGrams))) {
+    return null;
+  }
+  const staged = withStarterPackRescueCandidate(input, mapperId, seedGrams);
+  if (staged === null) return null;
+  const lineId = starterPackRescueLineId(mapperId);
+  const mainHolds = Object.fromEntries(
+    input.items
+      .filter((item) => item.lock_type === 'main')
+      .map((item) => [item.id, { mode: 'locked' as const, grams: item.planned_grams }]),
+  );
+  const seedSet = solverHolds(staged, {
+    byLineId: {
+      ...set.byLineId,
+      ...mainHolds,
+      [lineId]: { mode: 'locked', grams: seedGrams },
+    },
+  });
+  const balanced = rescaleBatchToTarget(staged, seedSet, input.target_batch_grams);
+  if (!balanced.ok) return null;
+  const candidate = balanced.input.items.find((item) => item.id === lineId);
+  if (!candidate || !Object.is(candidate.planned_grams, seedGrams)) return null;
+  return {
+    ...balanced.input,
+    items: balanced.input.items.map((item) =>
+      item.id === lineId ? { ...item, lock_type: 'grams' as const } : item,
+    ),
+  };
 }
 
 function buildOptimizePreviewWithDirection(
@@ -8172,8 +8333,7 @@ export type BlockedApply =
     };
 
 export type CommitPreviewResult =
-  | { ok: true; verified: VerifiedApply }
-  | ({ ok: false } & BlockedApply);
+  { ok: true; verified: VerifiedApply } | ({ ok: false } & BlockedApply);
 
 function productBehaviorIdentityViolation(
   input: RecipeInput,
@@ -8348,6 +8508,10 @@ function ingredientIdentityIntegrityViolations(
   }
 
   for (const added of preview.proposedInput.items.filter((item) => !currentIds.has(item.id))) {
+    const exactStarterPackRescue =
+      preview.starterPackRescue?.lineId === added.id &&
+      preview.starterPackRescue.mapperId === canonicalIngredientId(added.ingredient) &&
+      isExactStarterPackRescueIngredient(preview.starterPackRescue.mapperId, added.ingredient);
     const exactApproved = approvedFormulationToolboxIngredients(added.ingredient.id).some(
       (approved) =>
         canonicalIngredientId(approved) === canonicalIngredientId(added.ingredient) &&
@@ -8356,7 +8520,8 @@ function ingredientIdentityIntegrityViolations(
           substitutionIngredientFingerprint(normalizeIngredientIdentity(approved)) ===
             substitutionIngredientFingerprint(added.ingredient)),
     );
-    if (!exactApproved) violations.push(added.ingredient.name || added.id);
+    if (!exactApproved && !exactStarterPackRescue)
+      violations.push(added.ingredient.name || added.id);
   }
 
   return [...new Set(violations)];
@@ -8454,6 +8619,7 @@ export class VerifiedApply {
     } = {},
   ): CommitPreviewResult {
     const { prebuiltOptimizeRebuild, ...canonicalRebuildOptions } = rebuildOptions;
+    let verifiedOptimizeRebuild = prebuiltOptimizeRebuild;
     // Phase 3 monotonic guard: a preview built for an earlier draft revision
     // never applies, whatever the fingerprint says.
     if (
@@ -8805,7 +8971,16 @@ export class VerifiedApply {
             fixedLineIds: stabilizerFixedLineIds,
           }
         : { approvedFormulationSeed: formulationSeed },
-    );
+    ).filter((violation) => {
+      const proof = preview.starterPackRescue;
+      const line = exactCandidate.items.find((item) => item.id === violation.lineId);
+      return !(
+        proof?.mapperId === 'PI-ING-002114' &&
+        proof.lineId === violation.lineId &&
+        line !== undefined &&
+        isExactStarterPackRescueIngredient(proof.mapperId, line.ingredient)
+      );
+    });
     if (stabilizerViolations.length > 0) {
       const violations: ConstraintPreservationViolation[] = stabilizerViolations.map(
         (violation) => ({
@@ -9057,6 +9232,53 @@ export class VerifiedApply {
       }
       verifiedProductBehaviorSnapshots = structuredClone(proposalAuthorization.snapshots);
     }
+    if (preview.starterPackRescue !== undefined) {
+      const proof = preview.starterPackRescue;
+      const proposedLine = preview.proposedInput.items.find((item) => item.id === proof.lineId);
+      const proofShapeValid =
+        proof.paletteVersion === STARTER_PACK_RESCUE_PALETTE_VERSION &&
+        proof.lineId === starterPackRescueLineId(proof.mapperId) &&
+        starterPackRescueProbeGrams(proof.mapperId, current).some((grams) =>
+          Object.is(grams, proof.seedGrams),
+        ) &&
+        proposedLine !== undefined &&
+        proposedLine.planned_grams > 0 &&
+        proposedLine.actual_grams === null &&
+        proposedLine.lock_type === 'unlocked' &&
+        isExactStarterPackRescueIngredient(proof.mapperId, proposedLine.ingredient) &&
+        !current.items.some((item) => canonicalIngredientId(item.ingredient) === proof.mapperId);
+      const rebuilt = proofShapeValid
+        ? buildStarterPackRescueCandidatePreview(
+            current,
+            currentConstraints,
+            proof.mapperId,
+            preview.createdAt,
+            {
+              ...canonicalRebuildOptions,
+              excludedIngredientIds,
+              productBehaviorSnapshots: verifiedProductBehaviorSnapshots,
+              technicalOnlyMainLineIds,
+            },
+            prebuiltOptimizeRebuild,
+            proof.seedGrams,
+          )
+        : ({ ok: false, code: 'no_proposal' } as const);
+      const rebuiltMatches =
+        rebuilt.ok &&
+        workingStateFingerprint(rebuilt.preview.proposedInput, rebuilt.preview.nextConstraints) ===
+          workingStateFingerprint(preview.proposedInput, preview.nextConstraints) &&
+        JSON.stringify(rebuilt.preview.starterPackRescue) ===
+          JSON.stringify(preview.starterPackRescue);
+      if (!rebuiltMatches) {
+        return {
+          ok: false,
+          code: 'stale_preview',
+          messagePl:
+            'Apply zablokowany: propozycja Starter Pack nie odtwarza tej samej zweryfikowanej receptury.',
+        };
+      }
+      verifiedOptimizeRebuild = rebuilt;
+    }
     let mainIdentityBase = current;
     if (preview.kind === 'substitution') {
       const currentLine = substitution
@@ -9233,7 +9455,7 @@ export class VerifiedApply {
       preview.kind === 'optimize' && adjustableMainIntent && !mainHeldByExactDirection;
     if (mainHeldByExactDirection && adjustableMainIntent) {
       const rebuilt =
-        prebuiltOptimizeRebuild ??
+        verifiedOptimizeRebuild ??
         buildOptimizePreview(current, currentConstraints, preview.createdAt, {
           ...canonicalRebuildOptions,
           excludedIngredientIds,
@@ -9323,7 +9545,7 @@ export class VerifiedApply {
               technicalOnlyMainLineIds,
             },
           )
-        : (prebuiltOptimizeRebuild ??
+        : (verifiedOptimizeRebuild ??
           buildOptimizePreview(current, currentConstraints, preview.createdAt, {
             ...canonicalRebuildOptions,
             excludedIngredientIds,

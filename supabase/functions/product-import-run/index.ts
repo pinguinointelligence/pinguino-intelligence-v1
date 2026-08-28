@@ -122,7 +122,7 @@ Deno.serve(async (request) => {
       ? 403
       : /not found/i.test(message)
         ? 404
-        : /PI=2088|PR=0|blocked|eligible|conflict|drift/i.test(message)
+        : /PI=2089|PR=0|blocked|eligible|conflict|drift/i.test(message)
           ? 409
           : 400;
     return json({ error: message }, status);

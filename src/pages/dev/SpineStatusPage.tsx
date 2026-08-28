@@ -40,26 +40,113 @@ interface SpineModule {
 
 /** Condensed from the full evidence table in docs/PINGUINO_SPINE.md §6. */
 const MODULES: SpineModule[] = [
-  { module: 'Mapper Basement', status: 'done', note: '2,088 locked references (v1.0); read-only from the app; replacements only via approved human seed migration.' },
-  { module: 'Product Mapper', status: 'blocked', note: '69 products · 23 matched · 3 rejected · 43 awaiting team calibration (PAC/POD + owner picks).', to: '/dev/mapper-status' },
-  { module: 'Matching stack', status: 'done', note: 'Composition matcher + name-concept tiebreak + milk fat-band + coffee special-case; false-positive tested.', to: '/dev/mapper-review' },
-  { module: 'Reference proposals / calibration pack', status: 'blocked', note: '12 staged proposals unlock ~17 products; team fills PAC/POD, owner approves the insert.', to: '/dev/reference-proposals' },
-  { module: 'Studio “My Products”', status: 'done', note: 'Reference-linked engine handoff (PAC/POD resolved at calc time, never copied); math-equivalence proven.', to: '/dev/studio-picker-proof' },
-  { module: 'Base Engine', status: 'partial', note: '−11 °C calibrated, deterministic, ENGINE 0.4.0 / CONFIG 0.5.0 — frozen; −12/−13 arrive as regulator configs, never as duplicate engines.' },
-  { module: 'Optimizer (correction solver core)', status: 'partial', note: 'Deterministic candidates → exact grams → verify by full recalc; planning/actual-batch contexts; demo redaction at source. Profile-awareness pending.' },
-  { module: 'Product Profile Registry', status: 'partial', note: 'Pure layer DONE (src/spine): 4-profile registry + gate levels + correction families + locked alias normalization; unsupported types return structured warnings. Not wired into the app flow yet — by design.' },
-  { module: 'Recipe Intent', status: 'partial', note: 'Pure normalizeRecipeIntent() landed (src/spine): explicit input → saved defaults → system defaults, PL/EN aliases, flavor parser + safe routing (vegan/sorbet protected, protein/granita warned). Not wired into the app flow yet.' },
-  { module: 'Designer', status: 'partial', note: 'Pure RecipeDesignPlan landed (src/spine): registry-owned designer profiles, flavor/quality strategy, tier hero policy, optimizer constraints with disabled/advisory gates. Strategy only — no chemistry, no grams; not wired into the app flow yet.' },
-  { module: 'Temperature Regulator', status: 'partial', note: 'Pure config registry landed (src/spine): all 12 product×temperature settings + 14 golden fixtures transcribed verbatim from the four regulator docs; −11 is the zero-delta base. Evaluation layer and wiring pending.' },
-  { module: 'Integration Flow router', status: 'not_started', note: '16-step execution order locked; routes final / warning / tradeoff / impossible.' },
-  { module: 'User Flow (conversation)', status: 'not_started', note: 'Polish-first script locked — first question “Jakie lody dziś robimy?”; batch size before final generation.' },
-  { module: 'Account Access', status: 'partial', note: 'Demo/Pro hook + at-source redaction exist; AccessContext/capabilities contract types + demo/paid defaults landed (src/spine, unwired). Login/billing stay external.' },
-  { module: 'Intake / OCR', status: 'partial', note: 'Classifier + label OCR live: keyless LOCAL in-browser engine with per-field confidence + reviewed local draft at /dev/ocr-intake (never auto-saved). Drive/catalog import still planned.', to: '/dev/intake-hub' },
-  { module: 'Enrichment (reviewed merge)', status: 'done', note: 'Fill/agree/conflict/skip compare; nutrition-allowlist writes; never overwrites a PI-Verified product. Idle until a non-catalog product arrives.', to: '/dev/enrichment-preview' },
-  { module: 'Snapshots / audit trail', status: 'done', note: 'Append-only product snapshots with diff view.', to: '/dev/snapshot-audit' },
-  { module: 'Auth / plans / billing', status: 'partial', note: 'External by design — will feed the resolved AccessContext; Free Preview mode live.' },
-  { module: 'Labels / print / export', status: 'not_started', note: 'Destination placeholder only; Phase E of the roadmap.' },
-  { module: 'Franchise / SOP', status: 'not_started', note: 'Future phase; commercial planning doc only.' },
+  {
+    module: 'Mapper Basement',
+    status: 'done',
+    note: '2,089 owner-approved references (v1.0); read-only from the app; changes only via approved human seed migration.',
+  },
+  {
+    module: 'Product Mapper',
+    status: 'blocked',
+    note: '69 products · 23 matched · 3 rejected · 43 awaiting team calibration (PAC/POD + owner picks).',
+    to: '/dev/mapper-status',
+  },
+  {
+    module: 'Matching stack',
+    status: 'done',
+    note: 'Composition matcher + name-concept tiebreak + milk fat-band + coffee special-case; false-positive tested.',
+    to: '/dev/mapper-review',
+  },
+  {
+    module: 'Reference proposals / calibration pack',
+    status: 'blocked',
+    note: '12 staged proposals unlock ~17 products; team fills PAC/POD, owner approves the insert.',
+    to: '/dev/reference-proposals',
+  },
+  {
+    module: 'Studio “My Products”',
+    status: 'done',
+    note: 'Reference-linked engine handoff (PAC/POD resolved at calc time, never copied); math-equivalence proven.',
+    to: '/dev/studio-picker-proof',
+  },
+  {
+    module: 'Base Engine',
+    status: 'partial',
+    note: '−11 °C calibrated, deterministic, ENGINE 0.4.0 / CONFIG 0.5.0 — frozen; −12/−13 arrive as regulator configs, never as duplicate engines.',
+  },
+  {
+    module: 'Optimizer (correction solver core)',
+    status: 'partial',
+    note: 'Deterministic candidates → exact grams → verify by full recalc; planning/actual-batch contexts; demo redaction at source. Profile-awareness pending.',
+  },
+  {
+    module: 'Product Profile Registry',
+    status: 'partial',
+    note: 'Pure layer DONE (src/spine): 4-profile registry + gate levels + correction families + locked alias normalization; unsupported types return structured warnings. Not wired into the app flow yet — by design.',
+  },
+  {
+    module: 'Recipe Intent',
+    status: 'partial',
+    note: 'Pure normalizeRecipeIntent() landed (src/spine): explicit input → saved defaults → system defaults, PL/EN aliases, flavor parser + safe routing (vegan/sorbet protected, protein/granita warned). Not wired into the app flow yet.',
+  },
+  {
+    module: 'Designer',
+    status: 'partial',
+    note: 'Pure RecipeDesignPlan landed (src/spine): registry-owned designer profiles, flavor/quality strategy, tier hero policy, optimizer constraints with disabled/advisory gates. Strategy only — no chemistry, no grams; not wired into the app flow yet.',
+  },
+  {
+    module: 'Temperature Regulator',
+    status: 'partial',
+    note: 'Pure config registry landed (src/spine): all 12 product×temperature settings + 14 golden fixtures transcribed verbatim from the four regulator docs; −11 is the zero-delta base. Evaluation layer and wiring pending.',
+  },
+  {
+    module: 'Integration Flow router',
+    status: 'not_started',
+    note: '16-step execution order locked; routes final / warning / tradeoff / impossible.',
+  },
+  {
+    module: 'User Flow (conversation)',
+    status: 'not_started',
+    note: 'Polish-first script locked — first question “Jakie lody dziś robimy?”; batch size before final generation.',
+  },
+  {
+    module: 'Account Access',
+    status: 'partial',
+    note: 'Demo/Pro hook + at-source redaction exist; AccessContext/capabilities contract types + demo/paid defaults landed (src/spine, unwired). Login/billing stay external.',
+  },
+  {
+    module: 'Intake / OCR',
+    status: 'partial',
+    note: 'Classifier + label OCR live: keyless LOCAL in-browser engine with per-field confidence + reviewed local draft at /dev/ocr-intake (never auto-saved). Drive/catalog import still planned.',
+    to: '/dev/intake-hub',
+  },
+  {
+    module: 'Enrichment (reviewed merge)',
+    status: 'done',
+    note: 'Fill/agree/conflict/skip compare; nutrition-allowlist writes; never overwrites a PI-Verified product. Idle until a non-catalog product arrives.',
+    to: '/dev/enrichment-preview',
+  },
+  {
+    module: 'Snapshots / audit trail',
+    status: 'done',
+    note: 'Append-only product snapshots with diff view.',
+    to: '/dev/snapshot-audit',
+  },
+  {
+    module: 'Auth / plans / billing',
+    status: 'partial',
+    note: 'External by design — will feed the resolved AccessContext; Free Preview mode live.',
+  },
+  {
+    module: 'Labels / print / export',
+    status: 'not_started',
+    note: 'Destination placeholder only; Phase E of the roadmap.',
+  },
+  {
+    module: 'Franchise / SOP',
+    status: 'not_started',
+    note: 'Future phase; commercial planning doc only.',
+  },
 ];
 
 const DOCS = [
@@ -95,14 +182,20 @@ export function SpineStatusPage() {
 
       <div className="mt-6 space-y-3">
         {MODULES.map((m) => (
-          <div key={m.module} className="rounded-md border border-stone-200 bg-white px-4 py-3 text-sm">
+          <div
+            key={m.module}
+            className="rounded-md border border-stone-200 bg-white px-4 py-3 text-sm"
+          >
             <div className="flex items-baseline justify-between gap-3">
               <h2 className="font-medium">{m.module}</h2>
               <span className={STATUS_CLASS[m.status]}>{STATUS_LABEL[m.status]}</span>
             </div>
             <p className="mt-1 text-xs leading-relaxed text-stone-600">{m.note}</p>
             {m.to ? (
-              <Link to={m.to} className="mt-2 inline-block font-mono text-xs text-sky-700 underline">
+              <Link
+                to={m.to}
+                className="mt-2 inline-block font-mono text-xs text-sky-700 underline"
+              >
                 open {m.to} →
               </Link>
             ) : null}
@@ -128,7 +221,9 @@ export function SpineStatusPage() {
         <h2 className="font-medium">Governing docs</h2>
         <ul className="mt-1 space-y-1 text-xs leading-relaxed text-stone-600">
           {DOCS.map((d) => (
-            <li key={d} className="font-mono">{d}</li>
+            <li key={d} className="font-mono">
+              {d}
+            </li>
           ))}
         </ul>
       </div>

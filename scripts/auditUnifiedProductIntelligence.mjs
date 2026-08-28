@@ -5,10 +5,10 @@ import crypto from 'node:crypto';
 const root = process.cwd();
 const mapperPath = path.join(root, 'docs/ingredients/validation/mapper_basement.csv');
 const processPath = path.join(root, 'supabase/seed/mapper_process_metadata.csv');
-const reportCsv = path.join(root, 'reports/MAPPER_2088_PRODUCT_BEHAVIOR_AUDIT.csv');
-const reportMd = path.join(root, 'reports/MAPPER_2088_PRODUCT_BEHAVIOR_AUDIT.md');
-const EXPECTED_MAPPER_SHA256 = 'b13f5db4affd9c3be5ccbe59b40920053197a3697a3fa1bd4a859406e8baed38';
-const EXPECTED_PROCESS_SHA256 = 'c185d08ef89229001ffc56eceda0dbe55442e9abe0327d2b27742e40d8dbc9f4';
+const reportCsv = path.join(root, 'reports/MAPPER_2089_PRODUCT_BEHAVIOR_AUDIT.csv');
+const reportMd = path.join(root, 'reports/MAPPER_2089_PRODUCT_BEHAVIOR_AUDIT.md');
+const EXPECTED_MAPPER_SHA256 = '057375cd60cefe613892ff1d9f8f7eda880ff0eb06732f9229051fc37d8deca7';
+const EXPECTED_PROCESS_SHA256 = '44fd5302c7a2372bb69ba5abc592edd27f41e96c5de00ac2ca45ade1903ad6d6';
 
 function parseCsv(text) {
   const rows = [];
@@ -478,10 +478,10 @@ const processRows = parseCsv(processSource);
 const processById = new Map(processRows.map((row) => [row.ingredient_id, row]));
 const audit = mapper.map((row) => classify(row, processById.get(row.ingredient_id)));
 
-if (mapper.length !== 2088 || new Set(mapper.map((row) => row.ingredient_id)).size !== 2088) {
+if (mapper.length !== 2089 || new Set(mapper.map((row) => row.ingredient_id)).size !== 2089) {
   throw new Error(`Mapper exhaustiveness failed: rows=${mapper.length}`);
 }
-if (processRows.length !== 2088 || processById.size !== 2088) {
+if (processRows.length !== 2089 || processById.size !== 2089) {
   throw new Error(`Process exhaustiveness failed: rows=${processRows.length}`);
 }
 for (const row of mapper)
@@ -528,7 +528,7 @@ const listCounts = (value) =>
     .map(([key, count]) => `- ${key}: **${count}**`)
     .join('\n');
 
-const md = `# Mapper 2088 Product Behavior Audit
+const md = `# Mapper 2089 Product Behavior Audit
 
 Generated deterministically from the locked Mapper CSV and its immutable process companion. This report does not write to Mapper and does not create flavour science.
 
@@ -539,7 +539,7 @@ Generated deterministically from the locked Mapper CSV and its immutable process
 - Process rows joined: **${processById.size}**
 - Mapper SHA-256: \`${mapperHash}\` (pinned)
 - Process SHA-256: \`${processHash}\` (pinned)
-- Detailed exhaustive output: [MAPPER_2088_PRODUCT_BEHAVIOR_AUDIT.csv](./MAPPER_2088_PRODUCT_BEHAVIOR_AUDIT.csv)
+- Detailed exhaustive output: [MAPPER_2089_PRODUCT_BEHAVIOR_AUDIT.csv](./MAPPER_2089_PRODUCT_BEHAVIOR_AUDIT.csv)
 
 ## Behavior role (separate from policy coverage)
 
@@ -573,8 +573,8 @@ ${listCounts(processReasonCounts)}
 
 ## Science boundary
 
-- Exact governed Main coverage: **${policyStatusCounts.COVERED ?? 0} / 2088** identity bindings (profile applicability remains explicit per row).
-- Runtime role classification is exhaustive: **${audit.length} / 2088**.
+- Exact governed Main coverage: **${policyStatusCounts.COVERED ?? 0} / 2089** identity bindings (profile applicability remains explicit per row).
+- Runtime role classification is exhaustive: **${audit.length} / 2089**.
 - Automatic-Main unknowns without an exact reason: **${audit.filter((row) => row.behavior_role === 'UNKNOWN_REQUIRES_EVIDENCE' && row.exact_reason_codes === 'NONE').length}**.
 - The audit does not infer compound concentration, coffee retained mass, alcohol ABV or flavour intensity. Sorbet, Vegan and Protein policies are restricted to exact accepted template/calibration identities; every other form remains blocked with its exact missing-data or missing-science reason.
 `;

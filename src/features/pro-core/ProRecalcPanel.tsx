@@ -25,6 +25,7 @@ import {
   cancelPiRecalculation,
   createExplicitStandardRemovalPreviewWithServerAuthority,
   isUndoAvailable,
+  openStarterPackRescuePreviewWithServerAuthority,
   runPiRecalculationWithTerminal,
   unlockConstraintAndRecalculate,
   useConstraintStudioStore,
@@ -46,6 +47,8 @@ import { ConstraintPreviewCard } from '@/features/constraint-studio/ui/Constrain
 import type { RecipeInput } from '@/engine';
 import type { ConstraintSet } from '@/features/recipe-constraints';
 import type { RescueIngredientAdvice } from '@/features/constraint-studio/rescueIngredientAdvisor';
+import type { StarterPackDirectionRescueReport } from '@/features/constraint-studio/starterPackDirectionRescue';
+import { starterPackRescueWithNamePl } from '@/features/constraint-studio/starterPackRescuePalette';
 import {
   productBehaviorIssuesSupportWorkingCopyRefresh,
   refreshCurrentRecipeBehaviorWorkingCopy,
@@ -183,7 +186,10 @@ function RecalcDiagnosisView({
   onRemoveStandardAndPreview,
   terminal,
   rescueAdvice = null,
+  starterPackRescueReport = null,
+  starterPackRescuePending = false,
   onAddRescueIngredient,
+  onOpenStarterPackRescue,
 }: {
   issue: PreviewIssue;
   input: RecipeInput;
@@ -199,7 +205,10 @@ function RecalcDiagnosisView({
   onRemoveStandardAndPreview: (lineId: string) => void;
   terminal: RecalculationTerminalState;
   rescueAdvice?: RescueIngredientAdvice | null;
+  starterPackRescueReport?: StarterPackDirectionRescueReport | null;
+  starterPackRescuePending?: boolean;
   onAddRescueIngredient?: () => void;
+  onOpenStarterPackRescue?: () => void;
 }) {
   // "Already in band" is not a failure — keep the friendly note, no diagnosis table.
   if (issue.code === 'already_clean') {
@@ -458,7 +467,12 @@ function RecalcDiagnosisView({
         </div>
       ) : null}
 
-      {rescueAdvice ? (
+      <StarterPackRescueDecision
+        report={starterPackRescueReport}
+        pending={starterPackRescuePending}
+        onOpen={onOpenStarterPackRescue}
+      />
+      {!starterPackRescueReport && !starterPackRescuePending && rescueAdvice ? (
         <RescueAdviceHint advice={rescueAdvice ?? null} onAddIngredient={onAddRescueIngredient} />
       ) : null}
       <p className="text-xs text-ivory/60" data-testid="pro-recalc-unchanged">
@@ -472,6 +486,75 @@ function RecalcDiagnosisView({
       >
         Wróć do receptury
       </button>
+    </div>
+  );
+}
+
+export function StarterPackRescueDecision({
+  report,
+  pending,
+  onOpen,
+}: {
+  report: StarterPackDirectionRescueReport | null;
+  pending: boolean;
+  onOpen?: () => void;
+}) {
+  if (pending) {
+    return (
+      <div
+        className="rounded-md border border-ivory/15 bg-ivory/[0.05] px-3 py-3"
+        data-testid="starter-pack-rescue-working"
+      >
+        <p className="text-xs leading-relaxed text-ivory/75">
+          Sprawdzam pojedynczo produkty Gellatti Starter Pack…
+        </p>
+      </div>
+    );
+  }
+  if (!report) return null;
+  if (!report.best) {
+    return (
+      <div
+        className="rounded-md border border-ivory/15 bg-ivory/[0.05] px-3 py-3"
+        data-testid="starter-pack-rescue-none"
+      >
+        <p className="text-xs leading-relaxed text-ivory/75">
+          Z obecnych składników ani produktów Gellatti Starter Pack nie udało się osiągnąć wybranego
+          celu.
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div
+      className="rounded-md border border-ivory/15 bg-ivory/[0.05] px-3 py-3"
+      data-testid="starter-pack-rescue-decision"
+      data-ingredient={report.best.mapperId}
+    >
+      <p className="text-xs font-medium text-ivory">Opcja Gellatti Starter Pack</p>
+      {!report.best.targetReached ? (
+        <p className="mt-1 text-xs leading-relaxed text-ivory/75">
+          Z obecnych składników ani produktów Gellatti Starter Pack nie udało się osiągnąć wybranego
+          celu. Poniżej najbliższa bezpieczna opcja.
+        </p>
+      ) : null}
+      <p className="mt-1 text-xs leading-relaxed text-ivory/75">
+        Mogę spróbować dodać {report.best.namePl} i ponownie zbilansować recepturę.
+      </p>
+      <p className="mt-1 text-xs leading-relaxed text-ivory/65">
+        Wynik techniczny: {report.best.score ?? '—'}/10 · cel kierunku:{' '}
+        {report.best.targetReached ? 'osiągnięty' : 'nieosiągnięty'}
+      </p>
+      {onOpen ? (
+        <button
+          type="button"
+          onClick={onOpen}
+          data-testid="starter-pack-rescue-open-preview"
+          className="mt-2 min-h-11 rounded-lg bg-ivory px-4 py-2.5 text-sm font-medium text-shell"
+        >
+          Sprawdź z {starterPackRescueWithNamePl(report.best.mapperId)}
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -524,13 +607,19 @@ export function DirectionBestDecision({
   onAccept,
   onBack,
   rescueAdvice = null,
+  starterPackRescueReport = null,
+  starterPackRescuePending = false,
   onAddRescueIngredient,
+  onOpenStarterPackRescue,
 }: {
   candidate: import('@/features/constraint-studio/applyPipeline').ConstraintPreview;
   onAccept: () => void;
   onBack: () => void;
   rescueAdvice?: RescueIngredientAdvice | null;
+  starterPackRescueReport?: StarterPackDirectionRescueReport | null;
+  starterPackRescuePending?: boolean;
   onAddRescueIngredient?: () => void;
+  onOpenStarterPackRescue?: () => void;
 }) {
   const assessment = candidate.directionAssessment;
   const labels: Record<string, string> = {
@@ -565,13 +654,24 @@ export function DirectionBestDecision({
       <p className="text-xs text-ivory/65">
         Wszystkie natywne wymagania technologiczne pozostają ważne.
       </p>
-      <RescueAdviceHint advice={rescueAdvice} onAddIngredient={onAddRescueIngredient} />
+      <StarterPackRescueDecision
+        report={starterPackRescueReport}
+        pending={starterPackRescuePending}
+        onOpen={onOpenStarterPackRescue}
+      />
+      {!starterPackRescueReport && !starterPackRescuePending ? (
+        <RescueAdviceHint advice={rescueAdvice} onAddIngredient={onAddRescueIngredient} />
+      ) : null}
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
           onClick={onAccept}
           data-testid="direction-best-accept"
-          className="min-h-11 rounded-lg bg-ivory px-4 py-2.5 text-sm font-medium text-shell"
+          className={
+            starterPackRescueReport?.best
+              ? 'min-h-11 rounded-lg border border-ivory/20 px-4 py-2.5 text-sm font-medium text-ivory'
+              : 'min-h-11 rounded-lg bg-ivory px-4 py-2.5 text-sm font-medium text-shell'
+          }
         >
           Przelicz najlepiej możliwie
         </button>
@@ -656,6 +756,8 @@ export function ProRecalcPanel({
   const applyPending = useConstraintStudioStore((s) => s.applyPending);
   const directionBestCandidate = useConstraintStudioStore((s) => s.directionBestCandidate);
   const rescueAdvice = useConstraintStudioStore((s) => s.rescueAdvice);
+  const starterPackRescueReport = useConstraintStudioStore((s) => s.starterPackRescueReport);
+  const starterPackRescuePending = useConstraintStudioStore((s) => s.starterPackRescuePending);
   const previewIssue = useConstraintStudioStore((s) => s.previewIssue);
   const blocked = useConstraintStudioStore((s) => s.blocked);
   const history = useConstraintStudioStore((s) => s.history);
@@ -943,9 +1045,14 @@ export function ProRecalcPanel({
               }}
               terminal={recalculationTerminal}
               rescueAdvice={rescueAdvice}
+              starterPackRescueReport={starterPackRescueReport}
+              starterPackRescuePending={starterPackRescuePending}
               onAddRescueIngredient={() => {
                 store.cancelPreview();
                 openBaseProductPicker();
+              }}
+              onOpenStarterPackRescue={() => {
+                void openStarterPackRescuePreviewWithServerAuthority();
               }}
             />
           ) : null}
@@ -959,9 +1066,14 @@ export function ProRecalcPanel({
                 onClose();
               }}
               rescueAdvice={rescueAdvice}
+              starterPackRescueReport={starterPackRescueReport}
+              starterPackRescuePending={starterPackRescuePending}
               onAddRescueIngredient={() => {
                 store.cancelPreview();
                 openBaseProductPicker();
+              }}
+              onOpenStarterPackRescue={() => {
+                void openStarterPackRescuePreviewWithServerAuthority();
               }}
             />
           ) : null}

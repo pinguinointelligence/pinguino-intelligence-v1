@@ -3,7 +3,7 @@
  * VEGAN ENGINE v2 — coverage + no-blocking audit over the REAL Mapper base.
  *
  * Runs the production eligibility function and the production derived
- * classifier over all 2088 immutable Mapper rows. It reads the CSV; it never
+ * classifier over all 2089 owner-approved Mapper rows. It reads the CSV; it never
  * writes it, never adds a column and never retags a row.
  *
  * The gate this file exists for (owner §21):
@@ -85,14 +85,14 @@ describe('Vegan v2 Mapper coverage audit (read-only)', () => {
   const all = rows();
 
   it('recomputes current Vegan eligibility counts from the real Mapper base', () => {
-    expect(all).toHaveLength(2088);
+    expect(all).toHaveLength(2089);
     const counts: Record<string, number> = {};
     for (const row of all) {
       const { status } = eligibility(row);
       counts[status] = (counts[status] ?? 0) + 1;
     }
     console.log('VEGAN_ELIGIBILITY_COUNTS ' + JSON.stringify(counts));
-    expect(Object.values(counts).reduce((a, b) => a + b, 0)).toBe(2088);
+    expect(Object.values(counts).reduce((a, b) => a + b, 0)).toBe(2089);
     // The 18 fail-closed conflicts stay fail-closed — never guessed VERIFIED.
     expect(counts.VEGAN_CONFLICT).toBeGreaterThan(0);
   });

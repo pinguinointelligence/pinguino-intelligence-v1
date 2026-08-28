@@ -32,8 +32,7 @@ const grid = parseCsv(
 const header = grid[0]!;
 const rows = grid.slice(1).filter((row) => row.some((cell) => cell !== ''));
 const at = (row: string[], name: string): string => row[header.indexOf(name)] ?? '';
-const numberOrNull = (value: string): number | null =>
-  value.trim() === '' ? null : Number(value);
+const numberOrNull = (value: string): number | null => (value.trim() === '' ? null : Number(value));
 const boolean = (value: string): boolean => value.trim().toLowerCase() === 'true';
 const tri = (value: string): 'true' | 'false' | 'unknown' => {
   const normalized = value.trim().toLowerCase();
@@ -71,14 +70,12 @@ describe('Vegan eligibility — fail closed', () => {
 
   it('uses the explicit Vegan flag and Engine approval, not provenance status', () => {
     expect(assessMapperVeganEligibility(evidence()).status).toBe('VEGAN_VERIFIED');
-    expect(
-      assessMapperVeganEligibility(
-        evidence({ dairy_free: 'true' }),
-      ).status,
-    ).toBe('VEGAN_VERIFIED');
-    expect(
-      assessMapperVeganEligibility(evidence({ approved_for_engines: false })).status,
-    ).toBe('VEGAN_UNKNOWN');
+    expect(assessMapperVeganEligibility(evidence({ dairy_free: 'true' })).status).toBe(
+      'VEGAN_VERIFIED',
+    );
+    expect(assessMapperVeganEligibility(evidence({ approved_for_engines: false })).status).toBe(
+      'VEGAN_UNKNOWN',
+    );
   });
 
   it.each([
@@ -100,7 +97,11 @@ describe('Vegan eligibility — fail closed', () => {
     );
     expect(result.status).toBe('VEGAN_CONFLICT');
     expect(result.reasons).toEqual(
-      expect.arrayContaining(['verified_vegan_vs_animal_evidence', 'milk_fat_present', 'lactose_present']),
+      expect.arrayContaining([
+        'verified_vegan_vs_animal_evidence',
+        'milk_fat_present',
+        'lactose_present',
+      ]),
     );
   });
 
@@ -123,14 +124,30 @@ describe('Vegan eligibility — fail closed', () => {
       name: 'Mystery powder',
       category: 'other' as const,
       composition: {
-        water_percent: 0, solids_percent: 100, fat_percent: 0, protein_percent: 0,
-        carbohydrate_percent: 0, sugar_percent: 0, sucrose_percent: 0,
-        glucose_percent: 0, dextrose_percent: 0, fructose_percent: 0,
-        lactose_percent: 0, polyol_percent: 0, fiber_percent: 0, salt_percent: 0,
-        alcohol_percent: 0, kcal_per_100g: 0,
+        water_percent: 0,
+        solids_percent: 100,
+        fat_percent: 0,
+        protein_percent: 0,
+        carbohydrate_percent: 0,
+        sugar_percent: 0,
+        sucrose_percent: 0,
+        glucose_percent: 0,
+        dextrose_percent: 0,
+        fructose_percent: 0,
+        lactose_percent: 0,
+        polyol_percent: 0,
+        fiber_percent: 0,
+        salt_percent: 0,
+        alcohol_percent: 0,
+        kcal_per_100g: 0,
       },
-      pod_value: 0, pac_value: 0, npac_value: null, de_value: null,
-      cost_per_kg: null, confidence_score: 0, source_type: 'manual' as const,
+      pod_value: 0,
+      pac_value: 0,
+      npac_value: null,
+      de_value: null,
+      cost_per_kg: null,
+      confidence_score: 0,
+      source_type: 'manual' as const,
       is_verified: false,
     };
     expect(assessEngineIngredientVeganEligibility(unknown).status).toBe('VEGAN_UNKNOWN');
@@ -147,14 +164,30 @@ describe('Vegan eligibility — fail closed', () => {
       name: 'Contradictory product',
       category: 'other' as const,
       composition: {
-        water_percent: 100, solids_percent: 0, fat_percent: 0, protein_percent: 0,
-        carbohydrate_percent: 0, sugar_percent: 0, sucrose_percent: 0,
-        glucose_percent: 0, dextrose_percent: 0, fructose_percent: 0,
-        lactose_percent: 0, polyol_percent: 0, fiber_percent: 0, salt_percent: 0,
-        alcohol_percent: 0, kcal_per_100g: 0,
+        water_percent: 100,
+        solids_percent: 0,
+        fat_percent: 0,
+        protein_percent: 0,
+        carbohydrate_percent: 0,
+        sugar_percent: 0,
+        sucrose_percent: 0,
+        glucose_percent: 0,
+        dextrose_percent: 0,
+        fructose_percent: 0,
+        lactose_percent: 0,
+        polyol_percent: 0,
+        fiber_percent: 0,
+        salt_percent: 0,
+        alcohol_percent: 0,
+        kcal_per_100g: 0,
       },
-      pod_value: 0, pac_value: 0, npac_value: null, de_value: null,
-      cost_per_kg: null, confidence_score: 0, source_type: 'external_db' as const,
+      pod_value: 0,
+      pac_value: 0,
+      npac_value: null,
+      de_value: null,
+      cost_per_kg: null,
+      confidence_score: 0,
+      source_type: 'external_db' as const,
       is_verified: false,
       identity_provenance: 'private_product' as const,
       flags: {
@@ -177,28 +210,31 @@ describe('Vegan eligibility — fail closed', () => {
     for (const row of rows) {
       const status = assessMapperVeganEligibility(evidenceFromCsv(row)).status;
       counts[status] += 1;
-      if (status === 'VEGAN_CONFLICT') conflicts.push(`${at(row, 'ingredient_id')}:${at(row, 'ingredient_name_display')}`);
+      if (status === 'VEGAN_CONFLICT')
+        conflicts.push(`${at(row, 'ingredient_id')}:${at(row, 'ingredient_name_display')}`);
     }
-    expect(rows).toHaveLength(2088);
+    expect(rows).toHaveLength(2089);
     expect(counts).toEqual({
-      VEGAN_VERIFIED: 1275,
+      VEGAN_VERIFIED: 1276,
       VEGAN_FALSE: 784,
       VEGAN_UNKNOWN: 11,
       VEGAN_CONFLICT: 18,
     });
-    expect(conflicts.map((entry) => entry.split(':')[0])).toEqual(expect.arrayContaining([
-      'PI-ING-000045',
-      'PI-ING-000333',
-      'PI-ING-000606',
-      'PI-ING-000804',
-      'PI-ING-000856',
-      'PI-ING-001439',
-      'PI-ING-001441',
-      'PI-ING-001733',
-      'PI-ING-001778',
-      'PI-ING-002012',
-      'PI-ING-002014',
-    ]));
+    expect(conflicts.map((entry) => entry.split(':')[0])).toEqual(
+      expect.arrayContaining([
+        'PI-ING-000045',
+        'PI-ING-000333',
+        'PI-ING-000606',
+        'PI-ING-000804',
+        'PI-ING-000856',
+        'PI-ING-001439',
+        'PI-ING-001441',
+        'PI-ING-001733',
+        'PI-ING-001778',
+        'PI-ING-002012',
+        'PI-ING-002014',
+      ]),
+    );
     expect(conflicts).toHaveLength(18);
   });
 });

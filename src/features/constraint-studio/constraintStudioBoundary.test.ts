@@ -93,6 +93,39 @@ describe('constraint-studio boundary guard', () => {
     }
   });
 
+  it('keeps Starter Pack at Preview until explicit Apply and independently rebuilds its exact proof', () => {
+    const pipeline = readSource(join(FEATURE_DIR, 'applyPipeline.ts'));
+    const store = readSource(join(FEATURE_DIR, 'constraintStudioStore.ts'));
+    const openBoundary = store.slice(
+      store.indexOf('export async function openStarterPackRescuePreviewWithServerAuthority'),
+      store.indexOf('/** Terminal Apply wrapper'),
+    );
+    expect(openBoundary).toContain(
+      '.stageStarterPackRescuePreview(candidate, validation.snapshots)',
+    );
+    expect(openBoundary).toContain('toppings: []');
+    expect(openBoundary).not.toContain('.applyPreview(');
+    expect(openBoundary).not.toContain('commitPreview(');
+
+    const applyBoundary = store.slice(
+      store.indexOf('export async function applyPreviewWithServerAuthority'),
+    );
+    expect(applyBoundary).toContain('buildStarterPackRescueSimulationInput(');
+    expect(applyBoundary).toContain('preview.starterPackRescue.seedGrams');
+    expect(applyBoundary).toContain(
+      'toppings: preview.starterPackRescue ? [] : recipeAtStart.toppings',
+    );
+    expect(applyBoundary).toContain('rescueSimulationLineIds: [preview.starterPackRescue.lineId]');
+
+    const commitBoundary = pipeline.slice(pipeline.indexOf('static commit('));
+    expect(commitBoundary).toContain(
+      'proof.paletteVersion === STARTER_PACK_RESCUE_PALETTE_VERSION',
+    );
+    expect(commitBoundary).toContain('isExactStarterPackRescueIngredient(proof.mapperId');
+    expect(commitBoundary).toContain('buildStarterPackRescueCandidatePreview(');
+    expect(commitBoundary).toContain('workingStateFingerprint(rebuilt.preview.proposedInput');
+  });
+
   it('the feature stays inside the sanctioned seams (engine barrel only, no supabase)', () => {
     for (const file of FILES) {
       const source = readSource(file);
