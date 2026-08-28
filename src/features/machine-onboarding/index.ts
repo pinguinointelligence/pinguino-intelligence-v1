@@ -23,3 +23,4 @@ export { AutoConfigTransition } from './ui/AutoConfigTransition';
 export { MachineContextBar } from './ui/MachineContextBar';
 export { MachineProfileSection, type MachineSettingsSubmit } from './ui/MachineProfileSection';
 export { MachineAdjustBatchStep } from './ui/MachineAdjustBatchStep';
+export { RecipeCustomMachineDialog } from './ui/RecipeCustomMachineDialog';

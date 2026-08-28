@@ -42,6 +42,20 @@ describe('canonical machine registry cross-surface parity', () => {
       const production = machineEducationById(profile.id);
       expect(production?.sourceMachineId, `production: ${profile.id}`).toBe(profile.id);
       expect(production?.steps.length).toBeGreaterThan(0);
+      const instructions = production!.steps.join(' ').toLocaleLowerCase('pl');
+      if (profile.technology === 'compressor') {
+        expect(instructions, `compressor must not freeze bowl: ${profile.id}`).not.toMatch(
+          /zamro(?:ź|ż).*mis/,
+        );
+      }
+      if (profile.technology === 'frozen_bowl') {
+        expect(instructions, `frozen bowl must be pre-frozen: ${profile.id}`).toMatch(
+          /zamro(?:ź|ż).*mis/,
+        );
+      }
+      if (profile.technology === 'respin' || profile.technology === 'respin_soft') {
+        expect(production?.category, `respin routing: ${profile.id}`).toBe('frozen_container');
+      }
     }
     expect(new Set(onboardingProfiles.map((profile) => profile.id)).size).toBe(
       onboardingProfiles.length,

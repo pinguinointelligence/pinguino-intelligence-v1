@@ -71,7 +71,7 @@ import {
   productionRecipeLifecycleState,
   productionVersionFingerprint,
 } from './productionReadinessState';
-import { machineEducationById } from '@/features/education';
+import { machineEducationForSelection } from '@/features/education';
 import { carbonatedProductsForRecipe } from './productionDegassing';
 import { announceFriendlyLabMoment } from '@/components/shared/friendlyLabMoment';
 
@@ -846,7 +846,9 @@ export function useProductionWorkspace(enabled: boolean) {
   );
   const forecastResult = useMemo(() => calculateRecipe(forecastInput), [forecastInput]);
   const machineGuide =
-    recipe.machineKind === 'home' ? machineEducationById(recipe.machineId) : null;
+    recipe.machineKind === 'home'
+      ? machineEducationForSelection(recipe.machineId, recipe.machineTechnology)
+      : null;
   const rescue = useMemo(() => browserProductionRescueDecision(session), [session]);
   const rescueAuthorizationRunId =
     rescueAuthorization.status === 'preview'

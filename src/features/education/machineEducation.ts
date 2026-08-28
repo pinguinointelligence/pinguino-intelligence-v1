@@ -72,6 +72,18 @@ export function machineEducationById(machineId: string | null): MachineEducation
   return machineEducationForProfile(profile);
 }
 
+/** Canonical catalog guide, with a technology-based fallback only for a saved custom machine. */
+export function machineEducationForSelection(
+  machineId: string | null,
+  customTechnology: MachineTechnology | null,
+): MachineEducationGuide | null {
+  const canonical = machineEducationById(machineId);
+  if (canonical !== null) return canonical;
+  if (customTechnology === null) return null;
+  const category = machineEducationCategory(customTechnology);
+  return category === null ? null : genericMachineEducation(category);
+}
+
 export function genericMachineEducation(category: MachineEducationCategory): MachineEducationGuide {
   if (category === 'fresh_gelato') return FRESH_GELATO_EDUCATION;
   return {

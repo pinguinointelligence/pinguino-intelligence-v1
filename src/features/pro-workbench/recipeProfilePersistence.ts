@@ -19,6 +19,19 @@ type PersistedRecipeInput = RecipeInput & {
 
 const PRODUCT_TYPES = new Set(['gelato', 'sorbet', 'vegan', 'protein']);
 const MODES = new Set(['eco', 'classic', 'premium', 'signature']);
+const BATCH_SOURCES = new Set([
+  'MACHINE_DEFAULT',
+  'USER_OVERRIDE',
+  'PROFESSIONAL_USER_BATCH',
+  'CUSTOM_MACHINE_BATCH',
+]);
+const MACHINE_TECHNOLOGIES = new Set([
+  'respin',
+  'respin_soft',
+  'compressor',
+  'frozen_bowl',
+  'continuous_soft_serve',
+]);
 const PROFESSIONAL_SERVING_IDS = [
   'fresh',
   'temp_minus_11',
@@ -42,9 +55,11 @@ export function profileSnapshotFromState(
     mode: state.mode,
     formulationStrategy: state.formulation_strategy,
     targetBatchGrams: state.target_batch_grams,
+    batchSource: state.batch_source,
     machineKind: state.machineKind ?? 'professional',
     machineId: state.machineId,
     machineLabel: state.machineLabel ?? copy.proMachine.professionalLabel,
+    machineTechnology: state.machineTechnology,
     servingModeId,
     targetTemperatureC: state.target_temperature_c,
     machineCapacityGrams: state.machine_capacity_grams,
@@ -102,6 +117,9 @@ export function readRecipeProfileMetadata(input: RecipeInput): ProfileSettingsSn
     record.targetBatchGrams <= 0 ||
     (record.machineKind !== 'professional' && record.machineKind !== 'home') ||
     (record.machineId !== null && typeof record.machineId !== 'string') ||
+    (record.machineTechnology !== undefined &&
+      record.machineTechnology !== null &&
+      !MACHINE_TECHNOLOGIES.has(record.machineTechnology as string)) ||
     typeof record.machineLabel !== 'string' ||
     typeof record.servingModeId !== 'string' ||
     typeof record.targetTemperatureC !== 'number' ||
@@ -113,8 +131,16 @@ export function readRecipeProfileMetadata(input: RecipeInput): ProfileSettingsSn
   const canonicalTargets =
     normalizedDirectionIntents(record.directionIntents) ??
     normalizedDirectionIntents(record.directionTargets)!;
+  const batchSource = BATCH_SOURCES.has(record.batchSource as string)
+    ? (record.batchSource as ProfileSettingsSnapshot['batchSource'])
+    : record.machineKind === 'home'
+      ? typeof record.machineId === 'string' && record.machineId.startsWith('custom-')
+        ? 'CUSTOM_MACHINE_BATCH'
+        : 'MACHINE_DEFAULT'
+      : 'PROFESSIONAL_USER_BATCH';
   return {
     ...(record as unknown as ProfileSettingsSnapshot),
+    batchSource,
     directionTargets: canonicalTargets,
     directionIntents: canonicalTargets,
     ingredientUxByLineId: normalizedIngredientUx(record.ingredientUxByLineId),

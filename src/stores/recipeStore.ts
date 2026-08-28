@@ -91,6 +91,11 @@ import {
 } from '@/features/recipe-constraints';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { classifyProfileTransition } from '@/features/pro-workbench/profileCompatibility';
+import {
+  MACHINE_CATALOG,
+  deriveMachineSetup,
+  type MachineTechnology,
+} from '@/features/machine-catalog';
 
 type FlavorIntensity = NonNullable<RecipeGoals['flavor_intensity']>;
 
@@ -154,6 +159,36 @@ export type AddIngredientResult =
   | { status: 'added'; lineId: string; canonicalId: string }
   | { status: 'duplicate'; lineId: string; canonicalId: string };
 
+export type RecipeBatchSource =
+  | 'MACHINE_DEFAULT'
+  | 'USER_OVERRIDE'
+  | 'PROFESSIONAL_USER_BATCH'
+  | 'CUSTOM_MACHINE_BATCH';
+
+export const BATCH_RESIZE_TOLERANCE_GRAMS = 0.1;
+
+export type BatchResizeConflictReason =
+  | 'invalid_target'
+  | 'fixed_locks_exceed_target'
+  | 'no_scalable_mass'
+  | 'range_lock_conflict'
+  | 'batch_mismatch';
+
+export interface BatchResizeConflict {
+  readonly reason: BatchResizeConflictReason;
+  readonly targetGrams: number;
+  readonly actualGrams: number;
+  readonly lineId?: string;
+}
+
+export type BatchResizeResult =
+  | { readonly ok: true; readonly items: RecipeItem[] }
+  | { readonly ok: false; readonly conflict: BatchResizeConflict };
+
+export type BatchResizeWriteResult =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly conflict: BatchResizeConflict };
+
 export interface RecipeState {
   mode: ProductMode;
   formulation_strategy: FormulationStrategy;
@@ -167,6 +202,10 @@ export interface RecipeState {
   visibleProductType: VisibleProductType;
   target_temperature_c: number;
   target_batch_grams: number;
+  /** Explicit authority for the current target batch. */
+  batch_source: RecipeBatchSource;
+  /** Transient, explicit failure from the last rejected atomic resize. */
+  batchResizeConflict: BatchResizeConflict | null;
   machine_capacity_grams: number | null;
   /**
    * OWNER CURRENT-DRAFT P0 (Phase 8) — WHERE the capacity came from. The engine
@@ -261,6 +300,8 @@ export interface RecipeState {
   machineId: string | null;
   /** Display label ("Maszyna profesjonalna" or the Home machine name). */
   machineLabel: string | null;
+  /** Custom-machine Production routing; canonical catalog machines can re-resolve by id. */
+  machineTechnology: MachineTechnology | null;
   /** Unsaved-changes flag: true after any edit, false after a load or a successful save. */
   dirty: boolean;
   /** Verified whole-gram provenance restored from a saved recipe/version. It
@@ -312,7 +353,8 @@ export interface RecipeState {
     /** Canonical §17 percentages for lines whose stronger Engine role keeps
      * lock_type as Main/Required/already-added. */
     percentByLineId?: Readonly<Record<string, number>>,
-  ) => void;
+    source?: RecipeBatchSource,
+  ) => BatchResizeWriteResult;
   setMachineCapacity: (grams: number | null) => void;
   setFlavorIntensity: (value: FlavorIntensity) => void;
   setCostPriority: (value: CostPriority) => void;
@@ -452,10 +494,13 @@ export interface RecipeState {
     machineId: string | null;
     label: string;
     temperatureC: number;
+    machineTechnology?: MachineTechnology | null;
     batchGrams?: number | null;
     /** Home machines only: the machine's real usable capacity in grams. */
     capacityGrams?: number | null;
-  }) => void;
+    /** Explicit batch authority when this selection also changes the batch. */
+    batchSource?: RecipeBatchSource;
+  }) => BatchResizeWriteResult;
   resetToDemo: () => void;
 }
 
@@ -518,36 +563,144 @@ const moveWithin = <T extends { id: string }>(
 
 const ENGINE_KEPT_LOCKS: ReadonlySet<LockType> = new Set(['main', 'already_added', 'required']);
 
-/** Apply every durable percentage share to a new positive batch. Legacy
- * `lock_type: percent` rows without the sidecar still scale by their current
- * share while the previous batch is known. Physical actuals are immutable. */
-const resizePercentLockedItems = (
+/**
+ * The ONE recipe-batch resize authority used by both machine selection and
+ * manual Partia editing. It changes Base planned grams only:
+ *  - exact-gram and physically actualized rows stay fixed;
+ *  - percentage constraints keep their exact final-batch share;
+ *  - every other row (including Main/Required roles) receives one common
+ *    proportional factor, preserving identity and all ratios;
+ *  - toppings are outside this input and therefore cannot be resized here.
+ *
+ * A target that cannot coexist with locks is rejected before any store write.
+ */
+export const resizeRecipeBatch = (
   items: readonly RecipeItem[],
   previousBatchGrams: number,
   nextBatchGrams: number,
   percentByLineId?: Readonly<Record<string, number>>,
-): RecipeItem[] => {
-  if (!Number.isFinite(nextBatchGrams) || nextBatchGrams <= 0) return [...items];
+): BatchResizeResult => {
+  const currentSum = items.reduce((sum, item) => sum + item.planned_grams, 0);
+  if (!Number.isFinite(nextBatchGrams) || nextBatchGrams <= 0) {
+    return {
+      ok: false,
+      conflict: { reason: 'invalid_target', targetGrams: nextBatchGrams, actualGrams: currentSum },
+    };
+  }
   const previousBatchKnown = Number.isFinite(previousBatchGrams) && previousBatchGrams > 0;
-  const ratio = previousBatchKnown ? nextBatchGrams / previousBatchGrams : 1;
-  return items.map((item) => {
-    if (item.actual_grams !== null) return item;
-    const canonicalPercent = percentByLineId?.[item.id] ?? item.percent_constraint?.percent;
-    if (
-      canonicalPercent !== undefined &&
-      Number.isFinite(canonicalPercent) &&
-      canonicalPercent >= 0 &&
-      canonicalPercent <= 100
-    ) {
-      return {
-        ...item,
-        planned_grams: (nextBatchGrams * canonicalPercent) / 100,
-      };
+  const percentById = new Map<string, number>();
+  const fixedIds = new Set<string>();
+  const flexibleIds = new Set<string>();
+  let committed = 0;
+  let flexibleCurrent = 0;
+
+  for (const item of items) {
+    if (item.actual_grams !== null || item.grams_constraint !== undefined || item.lock_type === 'grams') {
+      fixedIds.add(item.id);
+      committed += item.planned_grams;
+      continue;
     }
-    return item.lock_type === 'percent' && previousBatchKnown
-      ? { ...item, planned_grams: item.planned_grams * ratio }
-      : item;
+    const canonicalPercent = percentByLineId?.[item.id] ?? item.percent_constraint?.percent;
+    const legacyPercent =
+      canonicalPercent === undefined && item.lock_type === 'percent' && previousBatchKnown
+        ? (item.planned_grams / previousBatchGrams) * 100
+        : canonicalPercent;
+    if (legacyPercent !== undefined) {
+      if (!Number.isFinite(legacyPercent) || legacyPercent < 0 || legacyPercent > 100) {
+        return {
+          ok: false,
+          conflict: {
+            reason: 'batch_mismatch',
+            targetGrams: nextBatchGrams,
+            actualGrams: currentSum,
+            lineId: item.id,
+          },
+        };
+      }
+      percentById.set(item.id, legacyPercent);
+      committed += (nextBatchGrams * legacyPercent) / 100;
+      continue;
+    }
+    flexibleIds.add(item.id);
+    flexibleCurrent += item.planned_grams;
+  }
+
+  const remaining = nextBatchGrams - committed;
+  if (remaining < -BATCH_RESIZE_TOLERANCE_GRAMS) {
+    return {
+      ok: false,
+      conflict: {
+        reason: 'fixed_locks_exceed_target',
+        targetGrams: nextBatchGrams,
+        actualGrams: committed,
+      },
+    };
+  }
+  if (flexibleIds.size === 0 && Math.abs(remaining) > BATCH_RESIZE_TOLERANCE_GRAMS) {
+    return {
+      ok: false,
+      conflict: {
+        reason: 'no_scalable_mass',
+        targetGrams: nextBatchGrams,
+        actualGrams: committed,
+      },
+    };
+  }
+  if (flexibleIds.size > 0 && flexibleCurrent <= 0 && remaining > BATCH_RESIZE_TOLERANCE_GRAMS) {
+    return {
+      ok: false,
+      conflict: {
+        reason: 'no_scalable_mass',
+        targetGrams: nextBatchGrams,
+        actualGrams: committed,
+      },
+    };
+  }
+
+  const flexibleFactor = flexibleCurrent > 0 ? Math.max(0, remaining) / flexibleCurrent : 0;
+  const resized = items.map((item) => {
+    if (fixedIds.has(item.id)) return item;
+    const percent = percentById.get(item.id);
+    const planned_grams =
+      percent === undefined
+        ? item.planned_grams * flexibleFactor
+        : (nextBatchGrams * percent) / 100;
+    if (item.range_constraint) {
+      const { min_grams, max_grams } = item.range_constraint;
+      if (
+        planned_grams < min_grams - BATCH_RESIZE_TOLERANCE_GRAMS ||
+        planned_grams > max_grams + BATCH_RESIZE_TOLERANCE_GRAMS
+      ) {
+        return null;
+      }
+    }
+    return { ...item, planned_grams };
   });
+  const rangeConflictIndex = resized.findIndex((item) => item === null);
+  if (rangeConflictIndex >= 0) {
+    return {
+      ok: false,
+      conflict: {
+        reason: 'range_lock_conflict',
+        targetGrams: nextBatchGrams,
+        actualGrams: currentSum,
+        lineId: items[rangeConflictIndex]?.id,
+      },
+    };
+  }
+  const nextItems = resized as RecipeItem[];
+  const nextSum = nextItems.reduce((sum, item) => sum + item.planned_grams, 0);
+  if (Math.abs(nextSum - nextBatchGrams) > BATCH_RESIZE_TOLERANCE_GRAMS) {
+    return {
+      ok: false,
+      conflict: {
+        reason: 'batch_mismatch',
+        targetGrams: nextBatchGrams,
+        actualGrams: nextSum,
+      },
+    };
+  }
+  return { ok: true, items: nextItems };
 };
 
 /** Snapshot of a preset as fresh store state (items cloned so edits never touch preset data). */
@@ -558,6 +711,8 @@ const fromPreset = (preset: DemoPreset) => ({
   visibleProductType: visibleTypeOf(preset.category),
   target_temperature_c: preset.target_temperature_c,
   target_batch_grams: preset.target_batch_grams,
+  batch_source: 'PROFESSIONAL_USER_BATCH' as const,
+  batchResizeConflict: null as BatchResizeConflict | null,
   machine_capacity_grams: preset.machine_capacity_grams,
   machine_capacity_source: (preset.machine_capacity_grams === null ? null : 'manual') as
     | 'machine'
@@ -595,6 +750,7 @@ const fromPreset = (preset: DemoPreset) => ({
   servingModeId: null,
   machineId: null,
   machineLabel: null,
+  machineTechnology: null,
   dirty: false,
   practicalRecipeAudit: null,
   savedProductionFingerprint: null,
@@ -603,6 +759,19 @@ const fromPreset = (preset: DemoPreset) => ({
 const profileOwnerKey = (): string => useAuthStore.getState().user?.id ?? 'local-device';
 const productDefaultsKey = (visible: VisibleProductType): string =>
   `${profileOwnerKey()}:${visible}`;
+
+const manualBatchSourceForState = (state: RecipeState): RecipeBatchSource => {
+  if (state.machineKind !== 'home') return 'PROFESSIONAL_USER_BATCH';
+  return state.machineId?.startsWith('custom-') ? 'CUSTOM_MACHINE_BATCH' : 'USER_OVERRIDE';
+};
+
+const canonicalMachineDefault = (
+  machineId: string | null,
+  productProfile: VisibleProductType,
+): number | null => {
+  const profile = MACHINE_CATALOG.find((candidate) => candidate.id === machineId);
+  return profile ? deriveMachineSetup(profile, productProfile).recommendedBatchGrams : null;
+};
 
 const profileFields = (
   profile: ProfileSettingsSnapshot,
@@ -615,6 +784,14 @@ const profileFields = (
   category: internalCategoryFor(profile.visibleProductType, items, currentCategory),
   target_temperature_c: profile.targetTemperatureC,
   target_batch_grams: profile.targetBatchGrams,
+  batch_source:
+    profile.batchSource ??
+    (profile.machineKind === 'home'
+      ? profile.machineId?.startsWith('custom-')
+        ? 'CUSTOM_MACHINE_BATCH'
+        : 'MACHINE_DEFAULT'
+      : 'PROFESSIONAL_USER_BATCH'),
+  batchResizeConflict: null,
   machine_capacity_grams: profile.machineKind === 'home' ? profile.machineCapacityGrams : null,
   machine_capacity_source: (profile.machineKind === 'home' && profile.machineCapacityGrams !== null
     ? 'machine'
@@ -623,6 +800,7 @@ const profileFields = (
   servingModeId: profile.servingModeId,
   machineId: profile.machineId,
   machineLabel: profile.machineLabel,
+  machineTechnology: profile.machineTechnology ?? null,
   direction_targets: { ...profile.directionTargets },
   // Owner P1-A: the neutral (0) selection is the CLEAN-MIDDLE INTENT, not the
   // absence of one. Gating activation on "some axis != 0" made Sweetness 0 opt
@@ -692,6 +870,7 @@ export function recipePersistPartialize(state: RecipeState) {
     visibleProductType: state.visibleProductType,
     target_temperature_c: state.target_temperature_c,
     target_batch_grams: state.target_batch_grams,
+    batch_source: state.batch_source,
     machine_capacity_grams: state.machine_capacity_grams,
     machine_capacity_source: state.machine_capacity_source,
     flavor_intensity: state.flavor_intensity,
@@ -720,6 +899,7 @@ export function recipePersistPartialize(state: RecipeState) {
     servingModeId: state.servingModeId,
     machineId: state.machineId,
     machineLabel: state.machineLabel,
+    machineTechnology: state.machineTechnology,
     dirty: state.dirty,
     practicalRecipeAudit: state.practicalRecipeAudit,
     savedProductionFingerprint: state.savedProductionFingerprint,
@@ -835,7 +1015,7 @@ export const useRecipeStore = create<RecipeState>()(
           // family. Cross-family changes must go through the confirmed native
           // starter route.
           if (!decision.supported || decision.kind === 'new_base_required') return {};
-          return {
+          const nextBase = {
             visibleProductType: visible,
             category: decision.nextCategory,
             productBehaviorSnapshots: requireProductBehaviorRevalidation(
@@ -850,6 +1030,26 @@ export const useRecipeStore = create<RecipeState>()(
             dirty: true,
             draftRevision: state.draftRevision + 1,
           };
+          if (state.batch_source !== 'MACHINE_DEFAULT' || state.machineKind !== 'home') {
+            return nextBase;
+          }
+          const machineDefault = canonicalMachineDefault(state.machineId, visible);
+          if (machineDefault === null) return nextBase;
+          const resized = resizeRecipeBatch(
+            state.items,
+            state.target_batch_grams,
+            machineDefault,
+          );
+          if (!resized.ok) return { batchResizeConflict: resized.conflict };
+          return {
+            ...nextBase,
+            target_batch_grams: machineDefault,
+            items: resized.items,
+            machine_capacity_grams: machineDefault,
+            machine_capacity_source: 'machine' as const,
+            batch_source: 'MACHINE_DEFAULT' as const,
+            batchResizeConflict: null,
+          };
         }),
       setServingMode: (servingModeId, temperatureC) =>
         set((state) => ({
@@ -858,7 +1058,7 @@ export const useRecipeStore = create<RecipeState>()(
           // A manual serving-mode choice keeps a professional machine route but clears a Home
           // route (a Home machine's mode is fixed by the machine — owner P0 route integrity).
           ...(state.machineKind === 'home'
-            ? { machineKind: null, machineId: null, machineLabel: null }
+            ? { machineKind: null, machineId: null, machineLabel: null, machineTechnology: null }
             : {}),
           productBehaviorSnapshots: requireProductBehaviorRevalidation(
             state.productBehaviorSnapshots,
@@ -876,6 +1076,7 @@ export const useRecipeStore = create<RecipeState>()(
           servingModeId: null,
           machineId: null,
           machineLabel: null,
+          machineTechnology: null,
           // A MACHINE-derived capacity cannot outlive the machine context it
           // came from; an explicit manual entry survives (owner Phase 8).
           machine_capacity_grams:
@@ -888,23 +1089,37 @@ export const useRecipeStore = create<RecipeState>()(
           dirty: true,
           draftRevision: state.draftRevision + 1,
         })),
-      setBatchGrams: (target_batch_grams, percentByLineId) =>
-        set((state) => {
-          return {
-            target_batch_grams,
-            // A percentage lock is a share of the FINAL batch, not a delayed solver hint.
-            // Keep its visible grams coherent at the same moment the user resizes the batch.
-            // Physical actuals are never rewritten by this planning control.
-            items: resizePercentLockedItems(
-              state.items,
-              state.target_batch_grams,
-              target_batch_grams,
-              percentByLineId,
-            ),
-            dirty: true,
-            draftRevision: state.draftRevision + 1,
-          };
-        }),
+      setBatchGrams: (target_batch_grams, percentByLineId, source) => {
+        const state = get();
+        const resized = resizeRecipeBatch(
+          state.items,
+          state.target_batch_grams,
+          target_batch_grams,
+          percentByLineId,
+        );
+        if (!resized.ok) {
+          set({ batchResizeConflict: resized.conflict });
+          return { ok: false, conflict: resized.conflict };
+        }
+        const batchSource = source ?? manualBatchSourceForState(state);
+        const customBatch = batchSource === 'CUSTOM_MACHINE_BATCH';
+        set({
+          target_batch_grams,
+          items: resized.items,
+          batch_source: batchSource,
+          batchResizeConflict: null,
+          ...(customBatch
+            ? {
+                machine_capacity_grams: target_batch_grams,
+                machine_capacity_source: 'machine' as const,
+              }
+            : {}),
+          dirty: true,
+          draftRevision: state.draftRevision + 1,
+        });
+        useRecipeProfileStore.getState().markRecalculationRequired();
+        return { ok: true };
+      },
       // An explicit user entry is legitimate provenance; clearing it removes
       // the limit entirely (owner CURRENT-DRAFT P0, Phase 8).
       setMachineCapacity: (machine_capacity_grams) =>
@@ -1894,6 +2109,8 @@ export const useRecipeStore = create<RecipeState>()(
                 visibleProductType: visibleTypeOf(input.category),
                 target_temperature_c: input.target_temperature_c,
                 target_batch_grams: input.target_batch_grams,
+                batch_source: 'PROFESSIONAL_USER_BATCH' as const,
+                batchResizeConflict: null,
                 machine_capacity_grams: input.machine_capacity_grams,
                 machine_capacity_source:
                   input.machine_capacity_grams === null ? null : ('manual' as const),
@@ -1901,6 +2118,7 @@ export const useRecipeStore = create<RecipeState>()(
                 servingModeId: null,
                 machineId: null,
                 machineLabel: null,
+                machineTechnology: null,
               }),
           formulation_strategy: normalizeFormulationStrategy(
             // Account defaults may configure machine/batch/profile context,
@@ -2051,6 +2269,14 @@ export const useRecipeStore = create<RecipeState>()(
           visibleProductType: starter.visibleProductType,
           target_temperature_c: starter.targetTemperatureC,
           target_batch_grams: starter.targetBatchGrams,
+          batch_source:
+            defaults?.batchSource ??
+            (defaults?.machineKind === 'home'
+              ? defaults.machineId?.startsWith('custom-')
+                ? 'CUSTOM_MACHINE_BATCH'
+                : 'MACHINE_DEFAULT'
+              : 'PROFESSIONAL_USER_BATCH'),
+          batchResizeConflict: null,
           machine_capacity_grams:
             defaults?.machineKind === 'home' ? defaults.machineCapacityGrams : null,
           machine_capacity_source:
@@ -2081,6 +2307,7 @@ export const useRecipeStore = create<RecipeState>()(
           servingModeId: defaults?.servingModeId ?? starter.servingModeId,
           machineId: defaults?.machineId ?? null,
           machineLabel: defaults?.machineLabel ?? null,
+          machineTechnology: defaults?.machineTechnology ?? null,
           dirty: false,
           draftRevision: state.draftRevision + 1,
           draftContextSeq: state.draftContextSeq + 1,
@@ -2167,16 +2394,22 @@ export const useRecipeStore = create<RecipeState>()(
                   servingModeId: state.servingModeId,
                   machineId: state.machineId,
                   machineLabel: state.machineLabel,
+                  machineTechnology: state.machineTechnology,
                   machine_capacity_grams: state.machine_capacity_grams,
                   machine_capacity_source: state.machine_capacity_source,
+                  batch_source: state.batch_source,
+                  batchResizeConflict: null,
                 }
               : {
                   machineKind: 'professional' as const,
                   servingModeId: starter.servingModeId,
                   machineId: null,
                   machineLabel: null,
+                  machineTechnology: null,
                   machine_capacity_grams: null,
                   machine_capacity_source: null,
+                  batch_source: 'PROFESSIONAL_USER_BATCH' as const,
+                  batchResizeConflict: null,
                 }),
             dirty: false,
             draftRevision: state.draftRevision + 1,
@@ -2205,32 +2438,57 @@ export const useRecipeStore = create<RecipeState>()(
       // catalogue states none). Previously this action left
       // `machine_capacity_grams` untouched, so a stale value could outlive the
       // machine that produced it and fire a capacity warning forever.
-      setMachineSelection: (sel) =>
-        set((state) => {
-          const targetBatchGrams =
-            sel.batchGrams != null ? sel.batchGrams : state.target_batch_grams;
-          return {
-            machineKind: sel.kind,
-            servingModeId: sel.servingModeId,
-            machineId: sel.machineId,
-            machineLabel: sel.label,
-            // Route to the existing supported cell — no Engine change, just the temperature input.
-            target_temperature_c: sel.temperatureC,
-            target_batch_grams: targetBatchGrams,
-            items:
-              sel.batchGrams != null
-                ? resizePercentLockedItems(state.items, state.target_batch_grams, targetBatchGrams)
-                : state.items,
-            machine_capacity_grams: sel.kind === 'home' ? (sel.capacityGrams ?? null) : null,
-            machine_capacity_source:
-              sel.kind === 'home' && sel.capacityGrams != null ? 'machine' : null,
-            productBehaviorSnapshots: requireProductBehaviorRevalidation(
-              state.productBehaviorSnapshots,
-            ),
-            dirty: true,
-            draftRevision: state.draftRevision + 1,
-          };
-        }),
+      setMachineSelection: (sel) => {
+        const state = get();
+        const targetBatchGrams = sel.batchGrams ?? state.target_batch_grams;
+        const resized =
+          sel.batchGrams == null
+            ? ({ ok: true, items: state.items } as const)
+            : resizeRecipeBatch(state.items, state.target_batch_grams, targetBatchGrams);
+        if (!resized.ok) {
+          set({ batchResizeConflict: resized.conflict });
+          return { ok: false, conflict: resized.conflict };
+        }
+        const batchSource =
+          sel.batchGrams == null
+            ? sel.kind === 'professional'
+              ? 'PROFESSIONAL_USER_BATCH'
+              : state.batch_source
+            : (sel.batchSource ??
+              (sel.kind === 'professional'
+                ? 'PROFESSIONAL_USER_BATCH'
+                : sel.machineId?.startsWith('custom-')
+                  ? 'CUSTOM_MACHINE_BATCH'
+                  : 'MACHINE_DEFAULT'));
+        set((current) => ({
+          machineKind: sel.kind,
+          servingModeId: sel.servingModeId,
+          machineId: sel.machineId,
+          machineLabel: sel.label,
+          machineTechnology:
+            sel.kind === 'home'
+              ? (sel.machineTechnology ??
+                MACHINE_CATALOG.find((profile) => profile.id === sel.machineId)?.technology ??
+                null)
+              : null,
+          // Route to the existing supported cell — no Engine change, just the temperature input.
+          target_temperature_c: sel.temperatureC,
+          target_batch_grams: targetBatchGrams,
+          items: resized.items,
+          batch_source: batchSource,
+          batchResizeConflict: null,
+          machine_capacity_grams: sel.kind === 'home' ? (sel.capacityGrams ?? null) : null,
+          machine_capacity_source:
+            sel.kind === 'home' && sel.capacityGrams != null ? 'machine' : null,
+          productBehaviorSnapshots: requireProductBehaviorRevalidation(
+            current.productBehaviorSnapshots,
+          ),
+          dirty: true,
+          draftRevision: current.draftRevision + 1,
+        }));
+        useRecipeProfileStore.getState().markRecalculationRequired();
+        return { ok: true };
+      },
       resetToDemo: () => {
         useIngredientTableUxStore.getState().reset();
         const base = fromPreset(DEFAULT_PRESET);

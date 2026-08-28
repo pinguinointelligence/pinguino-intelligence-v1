@@ -5,6 +5,9 @@ import { useIngredientTableUxStore } from '@/features/ingredient-builder/ingredi
 import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
 import type { VisibleProductType } from '@/features/studio/productType';
 import type { FormulationStrategy } from '@/features/formulation-strategy/strategy';
+import { MACHINE_CATALOG, deriveMachineSetup } from '@/features/machine-catalog';
+import { machineDisplayName } from '@/features/machine-onboarding';
+import { temperatureForMode } from '@/features/customer-flow/servingMode';
 import {
   isNewRecipeServingModeId,
   newRecipeStarterMaterialFingerprint,
@@ -54,6 +57,85 @@ export function startNewProRecipe(requestedVisible?: VisibleProductType): void {
   useConstraintStudioStore.getState().resetDraftSession();
   useConstraintStudioStore.setState({ proCoreRecipeId: null, lastSavedVersion: null });
   useProductionSessionStore.getState().clear();
+}
+
+/**
+ * Confirmed product-family change from the recipe settings surface. The native
+ * starter still performs the accepted full family reset, while this wrapper
+ * restores the recipe's machine/batch authority afterward:
+ *  - MACHINE_DEFAULT re-resolves for the new product profile;
+ *  - USER_OVERRIDE and custom/professional batches keep the user's grams.
+ */
+export function changeProRecipeProductType(next: VisibleProductType): void {
+  const previous = useRecipeStore.getState();
+  const machine = MACHINE_CATALOG.find((profile) => profile.id === previous.machineId) ?? null;
+  const prior = {
+    kind: previous.machineKind,
+    id: previous.machineId,
+    label: previous.machineLabel,
+    technology: previous.machineTechnology,
+    servingModeId: previous.servingModeId,
+    temperatureC: previous.target_temperature_c,
+    capacityGrams: previous.machine_capacity_grams,
+    batchGrams: previous.target_batch_grams,
+    batchSource: previous.batch_source,
+  } as const;
+
+  startNewProRecipe(next);
+  const recipe = useRecipeStore.getState();
+
+  if (prior.kind === 'home' && machine !== null) {
+    const setup = deriveMachineSetup(machine, next);
+    if (setup.resolvedVisibleMode === null || setup.recommendedBatchGrams === null) return;
+    const temperatureC = temperatureForMode(setup.resolvedVisibleMode);
+    if (temperatureC === null) return;
+    recipe.setMachineSelection({
+      kind: 'home',
+      servingModeId: setup.resolvedVisibleMode,
+      machineId: machine.id,
+      label: machineDisplayName(machine),
+      machineTechnology: machine.technology,
+      temperatureC,
+      batchGrams:
+        prior.batchSource === 'MACHINE_DEFAULT'
+          ? setup.recommendedBatchGrams
+          : prior.batchGrams,
+      capacityGrams: setup.recommendedBatchGrams,
+      batchSource: prior.batchSource,
+    });
+    return;
+  }
+
+  if (prior.kind === 'home' && prior.id?.startsWith('custom-')) {
+    recipe.setMachineSelection({
+      kind: 'home',
+      servingModeId: prior.servingModeId ?? 'fresh',
+      machineId: prior.id,
+      label: prior.label ?? 'Własna maszyna',
+      machineTechnology: prior.technology,
+      temperatureC: prior.temperatureC,
+      batchGrams: prior.batchGrams,
+      capacityGrams: prior.capacityGrams ?? prior.batchGrams,
+      batchSource: 'CUSTOM_MACHINE_BATCH',
+    });
+    return;
+  }
+
+  if (prior.kind === 'professional') {
+    recipe.setMachineSelection({
+      kind: 'professional',
+      servingModeId: prior.servingModeId ?? 'fresh',
+      machineId: null,
+      label: prior.label ?? 'Maszyna profesjonalna',
+      temperatureC: prior.temperatureC,
+      batchGrams: prior.batchGrams,
+      capacityGrams: null,
+      batchSource: 'PROFESSIONAL_USER_BATCH',
+    });
+    return;
+  }
+
+  recipe.setBatchGrams(prior.batchGrams, undefined, 'PROFESSIONAL_USER_BATCH');
 }
 
 export type NewRecipeStarterSettingsPatch = Partial<

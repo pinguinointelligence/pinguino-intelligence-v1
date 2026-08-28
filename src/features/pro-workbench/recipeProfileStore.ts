@@ -3,6 +3,8 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import type { ProductMode, RecipeDirectionTarget, RecipeDirectionTargets } from '@/engine';
 import type { VisibleProductType } from '@/features/studio/productType';
 import type { ProductDoseMeta } from '@/features/ingredient-builder/productDoseSuggestion';
+import type { RecipeBatchSource } from '@/stores/recipeStore';
+import type { MachineTechnology } from '@/features/machine-catalog';
 import {
   normalizeFormulationStrategy,
   type FormulationStrategy,
@@ -43,9 +45,12 @@ export interface ProfileSettingsSnapshot {
   mode: ProductMode;
   formulationStrategy?: FormulationStrategy;
   targetBatchGrams: number;
+  /** Explicit owner of the current recipe batch; optional only for legacy saves. */
+  batchSource?: RecipeBatchSource;
   machineKind: 'professional' | 'home';
   machineId: string | null;
   machineLabel: string;
+  machineTechnology?: MachineTechnology | null;
   servingModeId: string;
   targetTemperatureC: number;
   machineCapacityGrams: number | null;
@@ -64,8 +69,11 @@ export function profileSettingsSignature(settings: ProfileSettingsSnapshot): str
     settings.mode,
     normalizeFormulationStrategy(settings.formulationStrategy ?? settings.mode),
     settings.targetBatchGrams,
+    settings.batchSource ??
+      (settings.machineKind === 'home' ? 'MACHINE_DEFAULT' : 'PROFESSIONAL_USER_BATCH'),
     settings.machineKind,
     settings.machineId,
+    settings.machineTechnology ?? null,
     settings.servingModeId,
     settings.targetTemperatureC,
     settings.machineCapacityGrams,

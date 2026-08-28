@@ -381,27 +381,25 @@ describe('§17.1/§17.2 padlock', () => {
     },
   );
 
-  it('preserves the 1000 → 1200 percent contract through Preview, Apply and exact Undo', () => {
+  it('preserves the 1000 → 1200 percent contract while a proportional resize needs no Apply', () => {
     loadRecipe(overSweetStarter(130));
     useConstraintStudioStore.getState().togglePercentLock(SUCROSE);
     useRecipeStore.getState().setBatchGrams(1200);
-    const beforePreview = buildRecipeInput(useRecipeStore.getState());
+    const resized = buildRecipeInput(useRecipeStore.getState());
+
+    expect(resized.items.find((item) => item.id === SUCROSE)?.planned_grams).toBeCloseTo(156, 8);
+    expect(resized.items.reduce((sum, item) => sum + item.planned_grams, 0)).toBeCloseTo(1200, 8);
 
     useConstraintStudioStore.getState().createOptimizePreview();
-    const preview = useConstraintStudioStore.getState().preview;
-    expect(preview).not.toBeNull();
-    expect(
-      preview?.proposedInput.items.find((item) => item.id === SUCROSE)?.planned_grams,
-    ).toBeCloseTo(156, 8);
-
-    useConstraintStudioStore.getState().applyPreview();
-    const applied = buildRecipeInput(useRecipeStore.getState());
-    expect(applied.items.find((item) => item.id === SUCROSE)?.lock_type).toBe('percent');
-    expect(applied.items.find((item) => item.id === SUCROSE)?.planned_grams).toBeCloseTo(156, 8);
-    expect(applied.items.reduce((sum, item) => sum + item.planned_grams, 0)).toBeCloseTo(1200, 1);
-
-    useConstraintStudioStore.getState().undoLastApply();
-    expect(buildRecipeInput(useRecipeStore.getState())).toEqual(beforePreview);
+    expect(useConstraintStudioStore.getState().preview).toBeNull();
+    expect(useConstraintStudioStore.getState().previewIssue).toEqual({
+      ok: false,
+      code: 'already_clean',
+    });
+    expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual({
+      state: 'NO_CHANGE_NEEDED',
+    });
+    expect(buildRecipeInput(useRecipeStore.getState())).toEqual(resized);
   });
 
   it('preserves Required plus an exact-grams lock through Preview, Apply and Undo', () => {

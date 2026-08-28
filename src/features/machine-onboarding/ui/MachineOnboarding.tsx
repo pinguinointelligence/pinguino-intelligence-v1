@@ -87,6 +87,8 @@ interface MachineOnboardingProps {
    * keeps the neutral „Zapisz i przejdź dalej” (owner hotfix §3/§4).
    */
   submitLabel?: string;
+  /** Recipe selectors may enter directly through the existing custom-machine path. */
+  startWithCustom?: boolean;
 }
 
 /** Reverse of the §8.3 mapping — only for the three custom-supported technologies. */
@@ -118,6 +120,7 @@ export function MachineOnboarding({
   editCustomProfile = null,
   catalog = MACHINE_CATALOG,
   submitLabel = copy.settings.saveAndContinue,
+  startWithCustom = false,
 }: MachineOnboardingProps) {
   const [screen, setScreen] = useState<Screen>(() => {
     if (editCustomProfile !== null) {
@@ -126,7 +129,7 @@ export function MachineOnboarding({
         return { kind: 'custom', answer, initialValues: initialFormValues(editCustomProfile) };
       }
     }
-    return { kind: 'tiles' };
+    return startWithCustom ? { kind: 'behavior' } : { kind: 'tiles' };
   });
   const [search, setSearch] = useState('');
 

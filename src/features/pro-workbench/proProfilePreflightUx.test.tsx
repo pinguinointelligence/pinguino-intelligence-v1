@@ -52,6 +52,7 @@ const settings = () => ({
   mode: 'classic' as const,
   formulationStrategy: 'optimal' as const,
   targetBatchGrams: 1_000,
+  batchSource: 'PROFESSIONAL_USER_BATCH' as const,
   machineKind: 'professional' as const,
   machineId: null,
   machineLabel: 'Maszyna profesjonalna',
@@ -672,7 +673,7 @@ describe('profile hierarchy and compact preflight', () => {
     expect(card).toContain('store.setFormulationStrategy(strategy)');
     expect(card).toContain('requestNewRecipeProductTypeChange(next)');
     expect(card).toContain('setPendingBaseProfile(next)');
-    expect(card).toContain('startNewProRecipe(pendingBaseProfile)');
+    expect(card).toContain('changeProRecipeProductType(pendingBaseProfile)');
     expect(card).not.toContain('store.setVisibleProductType(next)');
     expect(card).not.toContain('classifyProfileTransition(');
     expect(card).toContain('store.setMachineSelection({');

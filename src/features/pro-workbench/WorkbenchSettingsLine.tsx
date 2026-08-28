@@ -13,7 +13,12 @@ import {
   planContainerSplit,
   type HomeMachineProfile,
 } from '@/features/machine-catalog';
-import { machineDisplayName } from '@/features/machine-onboarding/machineViews';
+import {
+  RecipeCustomMachineDialog,
+  effectiveDefaultBatchGrams,
+  machineDisplayName,
+  type MachineOnboardingCompletion,
+} from '@/features/machine-onboarding';
 import { ReadinessBadge } from '@/features/design-review/ReadinessMarker';
 import {
   profileSettingsSignature,
@@ -35,7 +40,7 @@ import { PRO_VISIBLE_PRODUCT_TYPES } from './profileCompatibility';
 import { NewRecipeConfirmationDialog } from '@/features/recipes/NewRecipeConfirmationDialog';
 import {
   requestNewRecipeProductTypeChange,
-  startNewProRecipe,
+  changeProRecipeProductType,
 } from '@/pages/destinations/startNewProRecipe';
 
 const g = copy.studio.goal;
@@ -131,6 +136,7 @@ export function WorkbenchSettingsLine({
   const confirmSettings = useRecipeProfileStore((state) => state.confirmSettings);
   const [unit, setUnit] = useState<BatchUnit>('g');
   const [pendingBaseProfile, setPendingBaseProfile] = useState<VisibleProductType | null>(null);
+  const [customMachineOpen, setCustomMachineOpen] = useState(false);
   const activeHomeMachines = useMemo(() => listActiveHomeMachines(MACHINE_CATALOG), []);
   const selectedHome =
     store.machineKind === 'home'
@@ -176,10 +182,12 @@ export function WorkbenchSettingsLine({
   const hardConflict =
     !Number.isFinite(store.target_batch_grams) ||
     store.target_batch_grams <= 0 ||
-    (store.machineKind === 'home' && selectedHome === null);
+    (store.machineKind === 'home' && selectedHome === null && !store.machineId?.startsWith('custom-')) ||
+    store.batchResizeConflict !== null;
 
   const activeServing = snapshot.servingModeId;
-  const machineValue = selectedHome?.id ?? 'professional';
+  const customSelected = store.machineKind === 'home' && store.machineId?.startsWith('custom-');
+  const machineValue = customSelected ? 'custom' : (selectedHome?.id ?? 'professional');
   const batchDisplay = fromGrams(store.target_batch_grams, unit, store.category);
   const batchMismatch = Math.abs(actualBatchG - store.target_batch_grams) > 0.1;
   const capacity = store.machineKind === 'home' ? store.machine_capacity_grams : null;
@@ -210,7 +218,7 @@ export function WorkbenchSettingsLine({
     );
 
   const selectHome = (profile: HomeMachineProfile) => {
-    const setup = deriveMachineSetup(profile);
+    const setup = deriveMachineSetup(profile, store.visibleProductType);
     if (setup.resolvedVisibleMode === null) return;
     const temp = temperatureForMode(setup.resolvedVisibleMode);
     if (temp === null) return;
@@ -219,12 +227,32 @@ export function WorkbenchSettingsLine({
       servingModeId: setup.resolvedVisibleMode,
       machineId: profile.id,
       label: machineDisplayName(profile),
+      machineTechnology: profile.technology,
       temperatureC: temp,
-      // Batch ownership stays in the canonical §17 resize path below so an
-      // older rehydrated Main/Required percent sidecar is honoured too.
-      batchGrams: null,
+      batchGrams: setup.recommendedBatchGrams,
       capacityGrams: setup.recommendedBatchGrams,
+      batchSource: 'MACHINE_DEFAULT',
     });
+  };
+
+  const selectCustom = (completion: MachineOnboardingCompletion) => {
+    const batchGrams = effectiveDefaultBatchGrams(completion.record);
+    const servingModeId = completion.derivation.resolvedVisibleMode;
+    if (batchGrams === null || servingModeId === null) return;
+    const temperatureC = temperatureForMode(servingModeId);
+    if (temperatureC === null) return;
+    store.setMachineSelection({
+      kind: 'home',
+      servingModeId,
+      machineId: completion.profile.id,
+      label: machineDisplayName(completion.profile),
+      machineTechnology: completion.profile.technology,
+      temperatureC,
+      batchGrams,
+      capacityGrams: batchGrams,
+      batchSource: 'CUSTOM_MACHINE_BATCH',
+    });
+    setCustomMachineOpen(false);
   };
 
   const changeProductType = (next: VisibleProductType) => {
@@ -346,14 +374,17 @@ export function WorkbenchSettingsLine({
           <LabeledSelect
             label="Maszyna"
             value={machineValue}
-            options={['professional', ...activeHomeMachines.map((profile) => profile.id)]}
+            options={['professional', ...activeHomeMachines.map((profile) => profile.id), 'custom']}
             labelOf={(id) =>
               id === 'professional'
                 ? professionalLabel
-                : machineDisplayName(activeHomeMachines.find((profile) => profile.id === id)!)
+                : id === 'custom'
+                  ? 'Własna maszyna'
+                  : machineDisplayName(activeHomeMachines.find((profile) => profile.id === id)!)
             }
             onChange={(id) => {
               if (id === 'professional') selectProfessional();
+              else if (id === 'custom') setCustomMachineOpen(true);
               else {
                 const profile = activeHomeMachines.find((candidate) => candidate.id === id);
                 if (profile) selectHome(profile);
@@ -393,6 +424,12 @@ export function WorkbenchSettingsLine({
                   }}
                 />
               )}
+              {store.batchResizeConflict !== null ? (
+                <p role="alert" className="text-status-error" data-testid="batch-resize-conflict">
+                  Nie można ustawić tej partii bez naruszenia blokad receptury. Zmień blokady lub
+                  wybierz inną ilość.
+                </p>
+              ) : null}
             </div>
           ) : (
             <LabeledSelect
@@ -566,7 +603,7 @@ export function WorkbenchSettingsLine({
         onCancel={() => setPendingBaseProfile(null)}
         onConfirm={() => {
           if (pendingBaseProfile === null) return;
-          startNewProRecipe(pendingBaseProfile);
+          changeProRecipeProductType(pendingBaseProfile);
           setPendingBaseProfile(null);
         }}
         title={`Zmienić typ receptury na ${pendingBaseProfile === null ? '' : g.productTypes[pendingBaseProfile]}?`}
@@ -582,6 +619,11 @@ export function WorkbenchSettingsLine({
             ? 'Utwórz nową wersję'
             : `Utwórz wersję ${g.productTypes[pendingBaseProfile]}`
         }
+      />
+      <RecipeCustomMachineDialog
+        open={customMachineOpen}
+        onClose={() => setCustomMachineOpen(false)}
+        onComplete={selectCustom}
       />
     </section>
   );

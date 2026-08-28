@@ -372,6 +372,7 @@ describe('saved percentage lock contract', () => {
       useRecipeStore.setState({ ...priorRecipe, items: [], target_batch_grams: 1000 });
       useConstraintStudioStore.getState().resetForTests();
       useRecipeStore.getState().addIngredient(findDemoIngredient('sucrose')!, 130);
+      useRecipeStore.getState().addIngredient(findDemoIngredient('milk_3_5')!, 870);
       const sucrose = useRecipeStore.getState().items[0]!;
       useConstraintStudioStore.getState().togglePercentLock(sucrose.id);
       useRecipeStore.getState().setBatchGrams(1200);
@@ -423,6 +424,7 @@ describe('saved percentage lock contract', () => {
         useRecipeStore.setState({ ...priorRecipe, items: [], target_batch_grams: 1000 });
         useConstraintStudioStore.getState().resetForTests();
         useRecipeStore.getState().addIngredient(findDemoIngredient('sucrose')!, 130);
+        useRecipeStore.getState().addIngredient(findDemoIngredient('milk_3_5')!, 870);
         const line = useRecipeStore.getState().items[0]!;
         useRecipeStore.getState().setLockType(line.id, role);
         useConstraintStudioStore.getState().togglePercentLock(line.id);
@@ -720,6 +722,7 @@ describe('saved percentage lock contract', () => {
       useRecipeStore.setState({ ...priorRecipe, items: [], target_batch_grams: 1000 });
       useConstraintStudioStore.getState().resetForTests();
       useRecipeStore.getState().addIngredient(findDemoIngredient('sucrose')!, 130);
+      useRecipeStore.getState().addIngredient(findDemoIngredient('milk_3_5')!, 870);
       const line = useRecipeStore.getState().items[0]!;
       useConstraintStudioStore.getState().togglePercentLock(line.id);
 

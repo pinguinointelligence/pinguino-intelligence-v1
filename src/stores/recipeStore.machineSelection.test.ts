@@ -74,6 +74,7 @@ describe('recipeStore.setMachineSelection (S4)', () => {
     (lockType) => {
       useRecipeStore.setState({ items: [], target_batch_grams: 1000 });
       useRecipeStore.getState().addIngredient(findDemoIngredient('sucrose')!, 130);
+      useRecipeStore.getState().addIngredient(findDemoIngredient('milk_3_5')!, 870);
       const line = useRecipeStore.getState().items[0]!;
       if (lockType === 'main') useRecipeStore.getState().setLockType(line.id, 'main');
       useRecipeStore.getState().setPercentLock(line.id, 13);

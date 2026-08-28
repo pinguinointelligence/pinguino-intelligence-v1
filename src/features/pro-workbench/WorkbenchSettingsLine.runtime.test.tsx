@@ -224,7 +224,7 @@ describe('WorkbenchSettingsLine deferred batch editing', () => {
   });
 
   it.each(ALL_PROFILE_TRANSITIONS)(
-    '%s → %s requires confirmation, preserves the source, and loads the exact native target',
+    '%s → %s requires confirmation, preserves the source, and scales the native target to the professional batch',
     async (sourceProfile, targetProfile) => {
       await act(async () => useRecipeStore.getState().startNewRecipe(sourceProfile));
       const sourceInput = structuredClone(buildRecipeInput(useRecipeStore.getState()));
@@ -276,6 +276,10 @@ describe('WorkbenchSettingsLine deferred batch editing', () => {
 
       const target = useRecipeStore.getState();
       const expected = NATIVE_PROFILE_STARTERS[targetProfile];
+      const expectedBase = Object.values(expected.grams).reduce((sum, grams) => sum + grams, 0);
+      const expectedGrams = Object.fromEntries(
+        Object.entries(expected.grams).map(([id, grams]) => [id, (grams * 1_000) / expectedBase]),
+      );
       expect(target.visibleProductType).toBe(targetProfile);
       expect(target.category).toBe(expected.category);
       expect(target.newRecipeStarterTemplateId).toBe(expected.templateId);
@@ -291,7 +295,9 @@ describe('WorkbenchSettingsLine deferred batch editing', () => {
             item.planned_grams,
           ]),
         ),
-      ).toEqual(expected.grams);
+      ).toEqual(expectedGrams);
+      expect(target.target_batch_grams).toBe(1_000);
+      expect(target.batch_source).toBe('PROFESSIONAL_USER_BATCH');
       expect(target.productBehaviorSnapshots).toEqual({});
       expect(target.compositionMigrationAmbiguities).toEqual([]);
       expect(useConstraintStudioStore.getState().preview).toBeNull();

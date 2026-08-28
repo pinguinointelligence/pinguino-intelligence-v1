@@ -17,7 +17,9 @@ import {
 import {
   MACHINE_PREFERENCE_SCHEMA_VERSION,
   buildMachinePreferenceRecord,
+  effectiveDefaultBatchGrams,
   parseMachinePreferenceRecord,
+  withUserDefaultBatch,
   type MachinePreferenceRecord,
 } from './preferenceContracts';
 import {
@@ -323,5 +325,28 @@ describe('userScopedMachineKey — per-account device isolation', () => {
     await homeStore.clear();
     expect(await homeStore.load()).toBeNull();
     expect(await proStore.load()).toEqual(machine);
+  });
+
+  it('persists a custom machine and its required batch without leaking it to another account', async () => {
+    const custom = buildCustomMachineProfile({
+      behaviorAnswerId: 'machine_cools_itself',
+      market: 'ES',
+      brand: 'Acme',
+    });
+    if (custom.outcome !== 'profile') throw new Error('expected profile');
+
+    const record = withUserDefaultBatch(buildFor(custom.profile, true), 700, NOW);
+    if (record === null) throw new Error('expected custom preference with a positive batch');
+
+    const storage = fakeStorage();
+    const ownerStore = localStorageMachinePreferenceStore(storage, userScopedMachineKey('owner'));
+    const otherStore = localStorageMachinePreferenceStore(storage, userScopedMachineKey('other'));
+
+    await ownerStore.save(record);
+    const reloaded = await ownerStore.load();
+    expect(reloaded?.selection.kind).toBe('custom');
+    expect(reloaded?.userDefaultBatchGrams).toBe(700);
+    expect(reloaded === null ? null : effectiveDefaultBatchGrams(reloaded)).toBe(700);
+    expect(await otherStore.load()).toBeNull();
   });
 });

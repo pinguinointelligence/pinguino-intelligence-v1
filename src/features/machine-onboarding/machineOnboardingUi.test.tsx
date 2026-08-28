@@ -149,6 +149,15 @@ describe('§8.4 custom form', () => {
     expect(html).toContain('disabled=""');
     expect(html).not.toContain('value="0"');
   });
+
+  it('recipe selectors enter through the existing friendly custom-machine behavior wizard', () => {
+    const html = render(<MachineOnboarding startWithCustom onComplete={noop} />);
+    expect(html).toContain(copy.behavior.title);
+    expect(html).toContain('Najpierw zamrażam całą mieszankę');
+    expect(html).toContain('Maszyna sama chłodzi mieszankę');
+    expect(html).toContain('Najpierw zamrażam tylko misę');
+    expect(html).not.toMatch(/respin|compressor|frozen_bowl/);
+  });
 });
 
 describe('§8.5 auto-config transition', () => {

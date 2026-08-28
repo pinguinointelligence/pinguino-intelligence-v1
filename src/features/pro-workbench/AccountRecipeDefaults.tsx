@@ -160,19 +160,24 @@ export function AccountRecipeDefaults() {
                   machineKind: 'professional',
                   machineId: null,
                   machineLabel: copy.proMachine.professionalLabel,
+                  machineTechnology: null,
                   machineCapacityGrams: null,
+                  batchSource: 'PROFESSIONAL_USER_BATCH',
                 });
                 return;
               }
               const machine = activeHomeMachines.find((item) => item.id === value);
               if (!machine) return;
-              const setup = deriveMachineSetup(machine);
+              const setup = deriveMachineSetup(machine, draft.visibleProductType);
               if (!setup.resolvedVisibleMode) return;
               patch({
                 machineKind: 'home',
                 machineId: machine.id,
                 machineLabel: machineDisplayName(machine),
+                machineTechnology: machine.technology,
                 machineCapacityGrams: setup.recommendedBatchGrams,
+                targetBatchGrams: setup.recommendedBatchGrams ?? draft.targetBatchGrams,
+                batchSource: 'MACHINE_DEFAULT',
                 servingModeId: setup.resolvedVisibleMode,
                 targetTemperatureC:
                   temperatureForMode(setup.resolvedVisibleMode) ?? draft.targetTemperatureC,
@@ -192,7 +197,13 @@ export function AccountRecipeDefaults() {
             min={1}
             className="mt-1 h-11 w-full rounded-[14px] border border-ink/12 bg-white px-3 font-mono text-sm text-ink"
             value={draft.targetBatchGrams}
-            onChange={(event) => patch({ targetBatchGrams: Math.max(1, event.currentTarget.valueAsNumber || 1) })}
+            onChange={(event) =>
+              patch({
+                targetBatchGrams: Math.max(1, event.currentTarget.valueAsNumber || 1),
+                batchSource:
+                  draft.machineKind === 'home' ? 'USER_OVERRIDE' : 'PROFESSIONAL_USER_BATCH',
+              })
+            }
           />
         </label>
         <label className="text-xs font-semibold text-stone-600">
