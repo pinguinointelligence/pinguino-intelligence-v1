@@ -219,9 +219,14 @@ function OperationalList({
       <h2 className="text-sm font-semibold text-ink">{title}</h2>
       <dl className="mt-3 divide-y divide-ink/10 border-y border-ink/10">
         {rows.map(([a, b]) => (
-          <div key={a} className="flex items-center justify-between gap-4 py-3 text-sm">
-            <dt className="text-stone-500">{a}</dt>
-            <dd className="font-mono text-right text-ink">{String(b)}</dd>
+          <div
+            key={a}
+            className="grid min-w-0 gap-1 py-3 text-sm sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] sm:items-start sm:gap-4"
+          >
+            <dt className="min-w-0 text-stone-500">{a}</dt>
+            <dd className="min-w-0 break-all font-mono text-left text-ink sm:text-right">
+              {String(b)}
+            </dd>
           </div>
         ))}
       </dl>
