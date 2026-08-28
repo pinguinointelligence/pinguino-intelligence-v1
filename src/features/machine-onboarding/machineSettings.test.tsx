@@ -18,6 +18,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import {
+  buildCustomMachineProfile,
   MACHINE_CATALOG_VERSION,
   NINJA_CREAMI_DELUXE_NC502EU,
   NINJA_CREAMI_SCOOP_SWIRL_NC7,
@@ -56,6 +57,24 @@ const deluxeRecord = (): MachinePreferenceRecord => {
     catalogVersion: MACHINE_CATALOG_VERSION,
   });
   if (record === null) throw new Error('expected a Deluxe record');
+  return record;
+};
+
+const customRecord = (): MachinePreferenceRecord => {
+  const custom = buildCustomMachineProfile({
+    behaviorAnswerId: 'freeze_mixture_first',
+    market: 'ES',
+    brand: 'Acme',
+    vesselCapacity: { value: 473, unit: 'ml' },
+  });
+  if (custom.outcome !== 'profile') throw new Error('expected a custom-machine profile');
+  const record = buildMachinePreferenceRecord({
+    profile: custom.profile,
+    isCustom: true,
+    setAt: NOW,
+    catalogVersion: MACHINE_CATALOG_VERSION,
+  });
+  if (record === null) throw new Error('expected a custom-machine record');
   return record;
 };
 
@@ -376,6 +395,31 @@ describe('owner test 12 — the settings screen always offers the next step', ()
 /* ------------------------------------------------------------------ */
 
 describe('owner test 13 — 706 ml is a model parameter, not a personal setting', () => {
+  it('never offers the catalog-only 95% container proposal to Własna maszyna', () => {
+    const view = buildMachineSettingsView(customRecord());
+    if (view === null) throw new Error('expected custom-machine settings');
+    expect(view.isCustomMachine).toBe(true);
+    expect(view.recommendedGrams).toBeNull();
+
+    const html = render(
+      <MachineProfileSection
+        view={view}
+        onSetUp={noop}
+        onChange={noop}
+        onSave={okSave}
+        onGoToRecipe={noop}
+        onEditCustom={noop}
+      />,
+    );
+    expect(html).toContain(copy.settings.customContainerBadge);
+    expect(html).toContain(copy.settings.adjustLead);
+    expect(html).not.toContain(copy.settings.userDefaultHint);
+    expect(html).not.toContain(copy.settings.restoreRecommended);
+    expect(html).not.toContain(copy.settings.useCustomContainer);
+    expect(html).not.toContain(copy.settings.customRecommendedHint);
+    expect(html).not.toContain('95%');
+  });
+
   it('the manufacturer figure is not editable and is offered only behind the explicit action', () => {
     const view = buildMachineSettingsView(deluxeRecord());
     expect(view?.container?.editable).toBe(false);

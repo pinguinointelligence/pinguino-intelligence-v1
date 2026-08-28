@@ -281,7 +281,12 @@ export function MachineProfileSection({
               }
               {...(batchError !== null
                 ? { error: batchError }
-                : { hint: copy.settings.userDefaultHint })}
+                : {
+                    hint:
+                      view.recommendedGrams === null
+                        ? copy.settings.adjustLead
+                        : copy.settings.userDefaultHint,
+                  })}
             />
           </div>
 
@@ -336,8 +341,11 @@ export function MachineProfileSection({
             </p>
           ) : null}
 
-          {/* The user's own container (§8) — the model's figure is never edited. */}
-          <div className="mt-5 border-t border-ink/10 pt-4">
+          {/* The user's own container (§8) is meaningful only for a known catalog
+              machine. A user-declared `Własna maszyna` already is the custom
+              machine and must never inherit the catalog-only 95% proposal. */}
+          {!view.isCustomMachine ? (
+            <div className="mt-5 border-t border-ink/10 pt-4">
             {!containerOpen ? (
               <TouchButton variant="quiet" onClick={() => setContainerOpen(true)}>
                 {copy.settings.useCustomContainer}
@@ -415,18 +423,17 @@ export function MachineProfileSection({
                 {copy.settings.invalidCapacity}
               </p>
             ) : null}
-          </div>
+            </div>
+          ) : null}
 
           {/* Actions (§2) — explicit save, explicit restore, explicit change. */}
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <TouchButton onClick={() => void submit()}>{copy.settings.save}</TouchButton>
-            <TouchButton
-              variant="secondary"
-              onClick={restore}
-              disabled={view.recommendedGrams === null}
-            >
-              {copy.settings.restoreRecommended}
-            </TouchButton>
+            {view.recommendedGrams !== null ? (
+              <TouchButton variant="secondary" onClick={restore}>
+                {copy.settings.restoreRecommended}
+              </TouchButton>
+            ) : null}
             {/* Owner §2/§7: „Zmień maszynę” is a SECONDARY action (not buried as a
               quiet link) and is always present for a saved machine. */}
             <TouchButton variant="secondary" onClick={onChange}>
