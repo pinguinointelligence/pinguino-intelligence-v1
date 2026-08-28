@@ -6,8 +6,8 @@
 @theme {
   /* Surfaces */
   --color-paper: #ffffff;
-  --color-ink: #101113;
-  --color-ink-soft: #1a1c20;
+  --color-ink: #191a1d;
+  --color-ink-soft: #25272b;
 
   /* Brand shell (Phase 6C) — global black AI-first surface + mega-menu layers */
   --color-shell: #1a1a1a;
@@ -25,13 +25,13 @@
      it stays a DARK elevated surface (graphite-raised) while `--color-ink` flips to
      ivory for text/actions. This is what prevents the ivory-on-ivory washout: surface
      fills must NEVER ride the text token. */
-  --color-charcoal: #101113;
+  --color-charcoal: #191a1d;
   /* Translucent ivory used for nav hover/active pills + hairlines on the shell */
   --color-shell-line: #efe9dc1f;
 
   /* Brand */
-  --color-ivory: #efe9dc;
-  --color-ivory-soft: #efe9dca3;
+  --color-ivory: #efe8dc;
+  --color-ivory-soft: #efe8dca3;
   /* Educational diagrams stay pale ivory even inside the light Pro theme,
      where the historical `ivory` text token is intentionally remapped to ink. */
   --color-education-ivory: #efe8dc;
@@ -46,6 +46,7 @@
   --color-pro-sage: #e8ece5;
   --color-pro-amber: #f2eadc;
   --color-pro-terracotta: #efe2dd;
+  --color-gellatti-orange: #f58a07;
 
   /* Status — desaturated, laboratory-grade (never bright) */
   --color-status-ideal: #6f7d63;

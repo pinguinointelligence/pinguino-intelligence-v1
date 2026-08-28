@@ -84,8 +84,9 @@ describe('canonical Pro header contract', () => {
     expect(dock).toContain('<WorkbenchActionBar');
     expect(page).not.toContain('<WorkbenchIntelligenceHeader');
     expect(page).not.toContain('variant="global"');
-    expect(logo).toContain("'/logo/gellattiLOGO.png'");
-    expect(logo).toContain('data-logo-source="/logo/gellattiLOGO.png"');
+    expect(logo).toContain("'/brand/gellatti-wordmark-graphite.svg'");
+    expect(logo).toContain('data-logo-source="/brand/gellatti-wordmark-graphite.svg"');
+    expect(logo).toContain('w-[120px]');
     expect(logo).toContain('w-[136px]');
     expect(logo).toContain('max-h-12');
   });
@@ -636,6 +637,8 @@ describe('profile hierarchy and compact preflight', () => {
     expect(conditionalAt).toBeGreaterThan(machineAt);
     expect(batchAt).toBeGreaterThan(conditionalAt);
     expect(strategyAt).toBeGreaterThan(batchAt);
+    expect(card).toContain("compact && 'order-2'");
+    expect(card).toContain("compact ? 'order-1'");
     expect(card).not.toContain('workbench-quality');
     expect(card).not.toContain('Więcej ustawień');
     expect(card).not.toContain('setCostPriority');
@@ -655,6 +658,8 @@ describe('profile hierarchy and compact preflight', () => {
     expect(card.indexOf('data-settings-cell="product-type"')).toBeLessThan(
       card.indexOf('data-settings-cell="confirmation"'),
     );
+    expect(card).toContain("compact ? 'order-1'");
+    expect(card).toContain("compact && 'order-2'");
     expect(card.indexOf('data-settings-cell="confirmation"')).toBeLessThan(
       card.indexOf('data-settings-cell="machine"'),
     );

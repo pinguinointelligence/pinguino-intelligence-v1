@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
-import { IvoryLogoMark } from '@/components/shared/IvoryLogoMark';
+import { OfficialProLogo } from '@/components/shared/OfficialProLogo';
 import { cn } from '@/lib/cn';
 import {
   color,
@@ -269,9 +269,12 @@ export function SubscriptionPage() {
   return (
     <div className="gellatti-application pro-studio-radius-system theme-pro-light min-h-[100dvh] w-full bg-paper text-ink">
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-5 py-6 sm:px-8">
-        <Link to="/" className={cn('flex items-center gap-3 rounded', focusRing)}>
-          <IvoryLogoMark size={24} tone="ink" />
-          <span className="text-base font-light tracking-wordmark">{landingCopy.brand.name}</span>
+        <Link
+          to="/"
+          aria-label={landingCopy.brand.name}
+          className={cn('flex items-center rounded', focusRing)}
+        >
+          <OfficialProLogo />
         </Link>
         <CustomerMenu showBrand={false} />
       </header>

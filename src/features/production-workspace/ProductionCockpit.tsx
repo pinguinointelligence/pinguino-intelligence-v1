@@ -50,7 +50,7 @@ function HeatInformationCard({ production }: { production: ProductionWorkspaceVi
   if (acknowledged) return null;
   return (
     <section
-      className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1.5 rounded-[12px] border border-[#d9c49a] bg-[#fbf8f1] px-3 py-2.5 text-ink"
+      className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1.5 rounded-[12px] border border-[#d9c49a] bg-[#fbf8f1] px-3 py-2.5 text-ink xl:hidden"
       role="status"
       data-testid="production-heat-information"
       data-acknowledged={acknowledged ? 'true' : 'false'}
@@ -339,6 +339,24 @@ export function ProductionCockpit({
             </p>
           ) : null}
         </section>
+        <section
+          className="rounded-[14px] border border-ink/10 bg-white px-4 py-3 shadow-pro-e0"
+          data-testid="production-ready-progress"
+        >
+          <strong className="block font-mono text-sm font-semibold tabular-nums text-ink">
+            0 / {production.plannedInput.items.length} składników
+          </strong>
+          <div
+            className="mt-1.5 h-1.5 max-w-48 overflow-hidden rounded-full bg-ink/8"
+            role="progressbar"
+            aria-label="Postęp ważenia składników"
+            aria-valuemin={0}
+            aria-valuemax={production.plannedInput.items.length}
+            aria-valuenow={0}
+          >
+            <span className="block h-full w-0 rounded-full bg-status-ideal" />
+          </div>
+        </section>
       </div>
     );
   }
@@ -594,15 +612,17 @@ export function ProductionCockpit({
               />
             </div>
           </div>
-          <span className="flex shrink-0 items-center gap-2 text-left">
-            <ScoreRing score={score.score} testId="production-score-ring" />
-            <span className="hidden sm:block">
-              <span className="block text-[11px] font-semibold text-ink">Przewidywany wynik</span>
-              <span className="mt-0.5 block max-w-32 text-[10px] leading-snug text-stone-600">
-                {score.label}
+          {score.score != null ? (
+            <span className="flex shrink-0 items-center gap-2 text-left">
+              <ScoreRing score={score.score} testId="production-score-ring" />
+              <span className="hidden sm:block">
+                <span className="block text-[11px] font-semibold text-ink">Przewidywany wynik</span>
+                <span className="mt-0.5 block max-w-32 text-[10px] leading-snug text-stone-600">
+                  {score.label}
+                </span>
               </span>
             </span>
-          </span>
+          ) : null}
         </div>
         <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.08em] text-stone-500">
           Bieżąca partia

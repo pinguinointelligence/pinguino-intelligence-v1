@@ -133,6 +133,26 @@ export function StabilityRisksIcon(props: PinguinoIconProps) {
   );
 }
 
+/** Nutrition summary — the approved V2.1 sprout mark. */
+export function NutritionSummaryIcon(props: PinguinoIconProps) {
+  return (
+    <Icon {...props} defaultTone="green">
+      <path d="M12 21v-7.3m0 0c-3.9.1-6.7-2-7-6 4-.3 6.9 1.7 7 6Zm0 0c3.9.1 6.7-2 7-6-4-.3-6.9 1.7-7 6Z" />
+    </Icon>
+  );
+}
+
+/** Recipe cost summary — the approved V2.1 precision target mark. */
+export function CostSummaryIcon(props: PinguinoIconProps) {
+  return (
+    <Icon {...props} defaultTone="green">
+      <circle cx="12" cy="12" r="8.7" />
+      <circle cx="12" cy="12" r="4.5" />
+      <circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none" />
+    </Icon>
+  );
+}
+
 /* ─────────────────────────────────────── ingredient category icons ── */
 
 /** Favorites — heart outline. */

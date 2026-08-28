@@ -148,7 +148,7 @@ describe('real Pro Monitor route', () => {
     expect(PANEL).not.toContain('data-testid="user-monitor-module-');
   });
 
-  it('shows PAC immediately and ice fraction as distinct secondary freezing information', () => {
+  it('shows PAC immediately and keeps ice fraction behind the existing disclosure', () => {
     const pod = RESULT.indicators.find((indicator) => indicator.key === 'pod')?.value ?? null;
     const format = (value: number | null | undefined) =>
       value == null
@@ -156,8 +156,9 @@ describe('real Pro Monitor route', () => {
         : value.toLocaleString('pl-PL', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
     expect(TEXT).toContain(format(pod));
     expect(TEXT).toContain(format(RESULT.npac_points));
+    const freezingStart = PANEL.indexOf('data-testid="monitor-module-freezing"');
     const freezing = PANEL.slice(
-      PANEL.indexOf('data-testid="monitor-module-freezing"'),
+      PANEL.lastIndexOf('<section', freezingStart),
       PANEL.indexOf('data-testid="monitor-module-water-solids"'),
     );
     const ice =
@@ -166,8 +167,9 @@ describe('real Pro Monitor route', () => {
     expect(freezing).toContain('data-secondary-metric="ice_fraction"');
     expect(visibleText(freezing)).toContain('PAC');
     expect(visibleText(freezing)).toContain(format(RESULT.pac_points));
-    expect(visibleText(freezing)).toContain('Frakcja lodu');
-    expect(visibleText(freezing)).toContain(format(ice));
+    expect(visibleText(freezing)).not.toContain('Frakcja lodu');
+    expect(visibleText(freezing)).not.toContain(format(ice));
+    expect(freezing).toContain('data-secondary-label="Frakcja lodu"');
     const model = readFileSync(new URL('./professionalMonitorModel.ts', import.meta.url), 'utf8');
     expect(model).toContain("classified(result, 'ice_fraction'");
     expect(model).toContain("classified(result, 'water'");

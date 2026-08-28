@@ -35,8 +35,10 @@ describe('Gellatti Visual System V2', () => {
     const production = read('features', 'production-workspace', 'ProductionActualControl.tsx');
     const tabs = read('features', 'pro-workbench', 'WorkbenchModuleTabs.tsx');
 
-    expect(direct).toContain("compact ? 'h-7 w-7'");
-    expect(direct).toContain("'size-11 lg:h-7 lg:w-7'");
+    expect(direct).toContain("compact ? 'h-8 w-7'");
+    expect(direct).toContain("'size-11 lg:h-8 lg:w-7'");
+    expect(direct).toContain("'h-8 w-[22px]'");
+    expect(direct).toContain("'w-[150px] grid-cols-[28px_72px_28px_22px]'");
     expect(direct).toContain("'w-[122px] grid-cols-[28px_66px_28px]'");
     expect(direct).toContain("'w-[176px] grid-cols-[44px_88px_44px]");
     expect(production).toContain('w-[226px] grid-cols-[176px_44px] gap-1.5');

@@ -31,9 +31,8 @@ const SEMANTIC_GLYPHS = ['❄', '◉', '⌘', '♧', '✣', '◆', '❤', '💧'
  * in the source — nothing is invented for them. Removing an entry from this
  * list is how a newly approved icon gets enforced.
  */
-const AWAITING_APPROVED_DESIGN: ReadonlyArray<{ file: string; glyph: string; concept: string }> = [
-  { file: 'RecipeProfilePanel.tsx', glyph: '♧', concept: 'nutrition (Wartości odżywcze)' },
-];
+const AWAITING_APPROVED_DESIGN: ReadonlyArray<{ file: string; glyph: string; concept: string }> =
+  [];
 
 describe('approved icon set', () => {
   const files = tsxFiles(join(SRC, 'features')).concat(tsxFiles(join(SRC, 'pages')));
@@ -97,8 +96,8 @@ describe('approved icon set', () => {
     expect(icons).toContain('strokeWidth={1.75}');
     expect(icons).toContain('strokeLinecap="round"');
     expect(icons).toContain('strokeLinejoin="round"');
-    // 15 approved marks, no more and no fewer.
-    expect(icons.match(/^export function \w+Icon\(/gm)).toHaveLength(15);
+    // 17 approved marks, including the V2.1 nutrition and cost summary pair.
+    expect(icons.match(/^export function \w+Icon\(/gm)).toHaveLength(17);
   });
 
   it('unapproved category marks are flagged, not silently invented', () => {

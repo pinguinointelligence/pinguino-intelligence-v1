@@ -59,11 +59,11 @@ const SERVING_OPTIONS: readonly { id: string; label: string }[] = [
 ];
 
 const compactSelect =
-  'h-11 min-w-0 rounded-[10px] border border-ink/12 bg-white px-3 text-[13px] text-ink shadow-pro-e0 transition-colors hover:border-ink/35 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#f58a07] lg:h-10 lg:text-xs';
+  'h-11 min-w-0 rounded-[10px] border border-ink/12 bg-white px-3 text-[13px] text-ink shadow-pro-e0 transition-colors hover:border-ink/35 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#f58a07] lg:h-[46px] lg:text-xs';
 const compactFinalSettingsCard = 'profile-settings-final-card min-w-0 rounded-[12px] border p-1.5';
 const compactFinalSettingsLabel = 'px-1 text-[10px] font-medium leading-tight text-stone-600';
 const compactSettingsHelper = 'px-1 text-[10px] leading-tight text-stone-600';
-const compactFinalSettingsControl = 'h-[52px] lg:h-10 2xl:h-[43px]';
+const compactFinalSettingsControl = 'h-11 lg:h-[46px]';
 
 function LabeledSelect<T extends string>({
   label,
@@ -97,7 +97,7 @@ function LabeledSelect<T extends string>({
         {label}
       </span>
       <select
-        className={cn(compactSelect, 'w-full', stacked && 'h-[52px] pt-4 lg:h-10 2xl:h-[43px]')}
+        className={cn(compactSelect, 'w-full', stacked && 'h-11 pt-4 lg:h-[46px]')}
         value={value}
         aria-label={label}
         data-testid={testid}
@@ -323,7 +323,7 @@ export function WorkbenchSettingsLine({
           compact ? 'profile-settings-grid grid grid-cols-2 items-stretch gap-2' : 'space-y-3',
         )}
       >
-        <div data-settings-cell="product-type">
+        <div className={cn(compact && 'order-2')} data-settings-cell="product-type">
           <LabeledSelect
             label={g.productTypeLabel}
             value={store.visibleProductType}
@@ -336,7 +336,7 @@ export function WorkbenchSettingsLine({
         </div>
 
         <div
-          className={cn('flex min-w-0 items-stretch', !compact && 'ml-[7.3rem]')}
+          className={cn('flex min-w-0 items-stretch', compact ? 'order-1' : 'ml-[7.3rem]')}
           data-testid="settings-grid-status"
           data-settings-cell="confirmation"
         >
@@ -351,8 +351,8 @@ export function WorkbenchSettingsLine({
               }}
               data-testid="profile-settings-confirm"
               className={cn(
-                'pro-focus-ring w-full rounded-[10px] bg-ink px-3 text-xs font-semibold text-white shadow-pro-sm disabled:cursor-not-allowed disabled:opacity-35',
-                compact ? 'h-[52px] lg:h-10 2xl:h-[43px]' : 'min-h-11',
+                'pro-focus-ring w-full rounded-[10px] border border-[#f58a07] bg-[#f58a07] px-3 text-xs font-semibold text-white shadow-pro-e0 disabled:cursor-not-allowed disabled:opacity-35',
+                compact ? 'h-11 lg:h-[46px]' : 'min-h-11',
               )}
             >
               Potwierdź ustawienia
@@ -360,8 +360,8 @@ export function WorkbenchSettingsLine({
           ) : (
             <span
               className={cn(
-                'inline-flex w-full items-center justify-center px-2 text-xs font-semibold text-status-ideal',
-                compact ? 'h-[52px] lg:h-10 2xl:h-[43px]' : 'min-h-11',
+                'inline-flex w-full items-center justify-center rounded-[10px] border border-status-ideal/25 bg-pro-sage/60 px-2 text-xs font-semibold text-status-ideal',
+                compact ? 'h-11 lg:h-[46px]' : 'min-h-11',
               )}
               data-testid="profile-settings-confirmed"
             >
@@ -370,7 +370,7 @@ export function WorkbenchSettingsLine({
           )}
         </div>
 
-        <div data-settings-cell="machine">
+        <div className={cn(compact && 'order-3')} data-settings-cell="machine">
           <LabeledSelect
             label="Maszyna"
             value={machineValue}
@@ -396,7 +396,7 @@ export function WorkbenchSettingsLine({
         </div>
 
         <div
-          className={cn(!compact && 'ml-[7.3rem]')}
+          className={cn(compact ? 'order-4' : 'ml-[7.3rem]')}
           data-testid="machine-conditional-settings"
           data-settings-cell="serving"
         >
@@ -445,7 +445,7 @@ export function WorkbenchSettingsLine({
         </div>
 
         {compact ? (
-          <div className="profile-settings-final-row col-span-full">
+          <div className="profile-settings-final-row order-5 col-span-full">
             <div
               className={cn(
                 compactFinalSettingsCard,

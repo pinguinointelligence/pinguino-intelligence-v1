@@ -122,21 +122,27 @@ export function MonitorLiveSummary({
                     Wybrano: {INTENT[intent]}
                   </span>
                 </span>
-                <MonitorRangeScale
-                  model={beforeScale}
-                  previewModel={afterScale}
-                  testId={`monitor-scale-${key}`}
-                  label={label}
-                />
-                <span className="monitor-value-column flex items-center justify-end gap-2 text-right">
-                  <span className="rounded-[8px] border border-ink/8 bg-stone-50 px-2 py-1 text-[10px] font-semibold text-ink">
-                    {key.toUpperCase()}
-                  </span>
-                  <span className="font-mono text-sm font-semibold tabular-nums text-ink">
-                    {before?.value == null ? '—' : formatMonitorValue(before.value)}
-                  </span>
+                <span
+                  className="monitor-badge justify-self-start rounded-[8px] border border-ink/8 bg-stone-50 px-2 py-1 text-[10px] font-semibold text-ink"
+                  data-monitor-badge={key.toUpperCase()}
+                >
+                  {key.toUpperCase()}
                 </span>
-                <span aria-hidden />
+                <div data-monitor-rail={key}>
+                  <MonitorRangeScale
+                    model={beforeScale}
+                    previewModel={afterScale}
+                    testId={`monitor-scale-${key}`}
+                    label={label}
+                  />
+                </div>
+                <span
+                  className="monitor-value-column text-right font-mono text-sm font-semibold tabular-nums text-ink"
+                  data-monitor-value={key}
+                >
+                  {before?.value == null ? '—' : formatMonitorValue(before.value)}
+                </span>
+                <span aria-hidden data-monitor-chevron="none" />
               </div>
             );
           })}

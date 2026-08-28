@@ -44,7 +44,7 @@ export function ProductionConfirmationAction({
   if (settled) {
     return (
       <span
-        className="grid size-7 place-items-center rounded-lg border border-status-ideal/25 bg-pro-sage text-sm font-semibold text-status-ideal"
+        className="grid h-8 w-7 place-items-center rounded-lg border border-status-ideal/25 bg-pro-sage text-sm font-semibold text-status-ideal"
         aria-label={`${ingredientName} — dodano`}
         data-production-confirmation="settled"
       >
@@ -71,7 +71,7 @@ export function ProductionConfirmationAction({
       onClick={onConfirm}
       disabled={disabled}
       className={cn(
-        'pro-focus-ring grid min-h-11 min-w-11 place-items-center rounded-xl border text-base font-semibold transition-colors lg:min-h-7 lg:min-w-7 lg:rounded-lg lg:text-sm',
+        'pro-focus-ring grid min-h-11 min-w-11 place-items-center rounded-xl border text-base font-semibold transition-colors lg:min-h-8 lg:min-w-7 lg:rounded-lg lg:text-sm',
         confirmed
           ? 'border-status-ideal/35 bg-white text-status-ideal enabled:hover:bg-pro-sage'
           : correctionMode

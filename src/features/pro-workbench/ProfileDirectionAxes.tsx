@@ -52,31 +52,37 @@ function RegulatorRow({
             onSet(2);
           }
         }}
-        className="mt-1 grid grid-cols-5 items-center justify-items-center gap-x-2 gap-y-1 min-[520px]:grid-cols-[minmax(68px,1fr)_repeat(5,36px)_minmax(68px,1fr)] min-[520px]:gap-2"
+        className="mt-1 grid grid-cols-2 items-center gap-x-3 gap-y-1 min-[520px]:grid-cols-[minmax(68px,1fr)_180px_minmax(68px,1fr)] min-[520px]:gap-2"
       >
-        <span className="col-span-2 row-start-2 justify-self-start text-[10px] leading-tight text-stone-600 min-[520px]:col-span-1 min-[520px]:row-auto">
+        <span className="row-start-2 justify-self-start text-[10px] leading-tight text-stone-600 min-[520px]:row-auto">
           {leftLabel}
         </span>
-        {DETENTS.map((detent) => (
-          <button
-            key={detent}
-            type="button"
-            role="radio"
-            aria-checked={position === detent}
-            aria-label={`${label}: ${detent > 0 ? `+${detent}` : detent}`}
-            disabled={disabled}
-            onClick={() => onSet(detent)}
-            className={cn(
-              'pro-focus-ring row-start-1 grid size-9 place-items-center rounded-full border font-mono text-xs font-semibold tabular-nums transition-colors disabled:opacity-35 min-[520px]:row-auto',
-              position === detent
-                ? 'border-[#f58a07] bg-[#f58a07] text-white shadow-pro-e1'
-                : 'border-ink/12 bg-white text-ink hover:border-[#f58a07]/60',
-            )}
-          >
-            {detent > 0 ? `+${detent}` : detent}
-          </button>
-        ))}
-        <span className="col-span-2 col-start-4 row-start-2 justify-self-end text-right text-[10px] leading-tight text-stone-600 min-[520px]:col-span-1 min-[520px]:col-start-auto min-[520px]:row-auto">
+        <span className="relative col-span-2 col-start-1 row-start-1 grid grid-cols-5 justify-items-center min-[520px]:col-span-1 min-[520px]:col-start-2">
+          <span
+            aria-hidden
+            className="absolute top-1/2 right-[18px] left-[18px] h-px -translate-y-1/2 bg-ink/16"
+          />
+          {DETENTS.map((detent) => (
+            <button
+              key={detent}
+              type="button"
+              role="radio"
+              aria-checked={position === detent}
+              aria-label={`${label}: ${detent > 0 ? `+${detent}` : detent}`}
+              disabled={disabled}
+              onClick={() => onSet(detent)}
+              className={cn(
+                'pro-focus-ring relative z-10 grid size-9 place-items-center rounded-full border font-mono text-xs font-semibold tabular-nums transition-colors disabled:opacity-35',
+                position === detent
+                  ? 'border-[#f58a07] bg-[#f58a07] text-white shadow-pro-e1'
+                  : 'border-ink/12 bg-white text-ink hover:border-[#f58a07]/60',
+              )}
+            >
+              {detent > 0 ? `+${detent}` : detent}
+            </button>
+          ))}
+        </span>
+        <span className="col-start-2 row-start-2 justify-self-end text-right text-[10px] leading-tight text-stone-600 min-[520px]:col-start-3 min-[520px]:row-auto">
           {rightLabel}
         </span>
       </div>

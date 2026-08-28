@@ -35,6 +35,7 @@ import { useRecipeProfileStore } from './recipeProfileStore';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { buildCurrentRecipeResultAuthority } from './currentRecipeResultAuthority';
 import { friendlyLabRecipeJourneyState } from './friendlyLabRecipeJourney';
+import { CostSummaryIcon, NutritionSummaryIcon } from '@/components/icons/PinguinoIcons';
 
 export type ProContextTab = 'recipe' | 'monitor' | 'production';
 export type CockpitTab = WorkbenchModuleTab;
@@ -90,14 +91,8 @@ function NutritionCostProfileGrid({
     >
       <summary className="pro-focus-ring flex min-h-16 cursor-pointer list-none items-center justify-between gap-4 px-4 py-3">
         <span className="flex min-w-0 flex-1 items-center gap-3">
-          {/* AWAITING APPROVED DESIGN — "nutrition" is not covered by the
-              approved reference sheet, so no icon is invented for it here. */}
-          <span
-            aria-hidden
-            data-icon-status="awaiting-approved-design"
-            className="text-xl text-[#18a83a]"
-          >
-            ♧
+          <span aria-hidden className="grid size-5 shrink-0 place-items-center text-status-ideal">
+            <NutritionSummaryIcon tone="current" className="size-5" />
           </span>
           <span>
             <strong className="block font-mono text-sm tabular-nums text-ink">
@@ -108,14 +103,8 @@ function NutritionCostProfileGrid({
         </span>
         <span className="h-9 w-px bg-ink/8" aria-hidden />
         <span className="flex min-w-0 flex-1 items-center gap-3">
-          {/* AWAITING APPROVED DESIGN — "cost" is not covered by the approved
-              reference sheet. */}
-          <span
-            aria-hidden
-            data-icon-status="awaiting-approved-design"
-            className="text-xl text-[#18a83a]"
-          >
-            ◎
+          <span aria-hidden className="grid size-5 shrink-0 place-items-center text-status-ideal">
+            <CostSummaryIcon tone="current" className="size-5" />
           </span>
           <span>
             <strong className="block font-mono text-sm tabular-nums text-ink">

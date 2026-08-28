@@ -68,18 +68,19 @@ describe('final Pro visual system', () => {
     expect(tokens).toContain('--color-nonproduction-pink');
   });
 
-  it('uses the exact owner-provided logo and removes the retired ice-circle tutorial', () => {
-    expect(sha256('public', 'logo', 'gellattiLOGO.png')).toBe(
-      'b1c85e5a47fb25ab296668e17a04f33df56d6701aba4525d2fd9ee6fd72b7721',
+  it('uses the exact owner-approved Gellatti wordmark and removes the retired ice-circle tutorial', () => {
+    expect(sha256('public', 'brand', 'gellatti-wordmark-graphite.svg')).toBe(
+      '4327226fb524ee172e8c04ef3bbc497e4da68ff7040bd243385e3247df393070',
     );
-    expect(existsSync(join(ROOT, 'public', 'logo', 'gellattiLOGO.png'))).toBe(true);
+    expect(existsSync(join(ROOT, 'public', 'brand', 'gellatti-wordmark-graphite.svg'))).toBe(true);
     const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
     const logo = read('components', 'shared', 'OfficialProLogo.tsx');
     const panel = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
     const education = read('features', 'education', 'ContextualEducationView.tsx');
     expect(page).toContain('brand={<OfficialProLogo />}');
-    expect(logo).toContain("'/logo/gellattiLOGO.png'");
-    expect(logo).toContain('data-logo-source="/logo/gellattiLOGO.png"');
+    expect(logo).toContain("'/brand/gellatti-wordmark-graphite.svg'");
+    expect(logo).toContain('data-logo-source="/brand/gellatti-wordmark-graphite.svg"');
+    expect(logo).not.toContain('gellattiLOGO.png');
     expect(panel).toContain('<ContextualEducationView');
     expect(education).not.toContain('ice-cockpit-bg.png');
     expect(education).not.toContain('education-ice-cockpit');
@@ -317,7 +318,7 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     expect(monitor).not.toContain('bg-[#b98555]/68');
     expect(monitor).not.toContain('band.bandMin.toFixed');
     expect(monitor).not.toContain('band.bandMax.toFixed');
-    expect(theme).toContain('minmax(8rem, 1.25fr) 6.75rem');
+    expect(theme).toContain('3.25rem minmax(7rem, 1.25fr) 6.75rem');
     expect(theme).not.toContain('minmax(5.5rem, auto)');
     expect(model).toContain('bandPosition');
     expect(diagnostic).not.toContain('a.window.minPercentOfTotalMix');
@@ -408,22 +409,16 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     expect(surface).not.toContain('overflow-x-auto');
   });
 
-  it('shows coherent Apply success through the one app-level desktop/mobile moment window', () => {
+  it('keeps transient Friendly Lab moments globally unmounted', () => {
     const app = read('app', 'App.tsx');
     const surface = read('features', 'studio', 'StudioEngineSurface.tsx');
     const profile = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
     const recipeCopy = read('features', 'pro-workbench', 'friendlyLabRecipeCopy.ts');
-    const viewport = read('components', 'shared', 'FriendlyLabMomentViewport.tsx');
-
-    expect(app).toContain('<FriendlyLabMomentViewport />');
+    expect(app).not.toContain('FriendlyLabMomentViewport');
     expect(profile).toContain('announceFriendlyLabMoment(');
     expect(profile).toContain("'apply-complete'");
     expect(surface).not.toContain("'gellatti:friendly-lab-apply-success'");
     expect(surface).not.toContain('mobile-friendly-lab-apply-success');
-    expect(viewport).toContain('data-moment-placement="top-center"');
-    expect(viewport).toContain('w-[calc(100vw-2rem)]');
-    expect(viewport).toContain('sm:w-[400px]');
-    expect(viewport).toContain('z-[60]');
     expect(recipeCopy).toContain("title: 'Perfetto. Receptura jest gotowa.'");
     expect(recipeCopy).not.toContain('description:');
     expect(recipeCopy).not.toContain('Aktualny balans jest już widoczny');

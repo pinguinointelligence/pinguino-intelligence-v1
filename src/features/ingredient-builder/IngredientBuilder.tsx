@@ -98,6 +98,7 @@ export function IngredientBuilder({
   layout = 'card',
   mode = 'recipe',
   production,
+  productionReadyPresentation = false,
   recipeActionDock,
 }: {
   items: EffectiveRecipeItem[];
@@ -107,6 +108,9 @@ export function IngredientBuilder({
   layout?: 'card' | 'workbench';
   mode?: IngredientTableMode;
   production?: ProductionWorkspaceView;
+  /** Desktop-only presentation bridge for the approved inline process reminder.
+   * Mobile keeps the current Production cockpit card and interaction model. */
+  productionReadyPresentation?: boolean;
   recipeActionDock?: ReactNode;
 }) {
   const queryClient = useQueryClient();
@@ -456,6 +460,26 @@ export function IngredientBuilder({
     const rightIndex = orderIndex.get(right.id) ?? Number.MAX_SAFE_INTEGER;
     return leftIndex === rightIndex ? 0 : leftIndex - rightIndex;
   });
+  const pendingHeatAdvisories =
+    productionReadyPresentation && production && !production.heatInformationAcknowledged
+      ? (production.heatInformation ?? [])
+      : [];
+  const heatReminderLineId =
+    orderedItems.find((item) =>
+      pendingHeatAdvisories.some((advisory) => {
+        const identities = [
+          item.id,
+          item.ingredient.id,
+          item.ingredient.canonical_ingredient_id,
+        ].filter((identity): identity is string => Boolean(identity));
+        const normalizedName = item.ingredient.name.trim().toLocaleUpperCase('pl-PL');
+        const advisoryName = advisory.productName?.trim().toLocaleUpperCase('pl-PL') ?? '';
+        return (
+          (advisory.productId !== null && identities.includes(advisory.productId)) ||
+          advisoryName.includes(normalizedName)
+        );
+      }),
+    )?.id ?? null;
   const activeProductionLineId =
     mode === 'production'
       ? nextProductionLineId(
@@ -576,6 +600,14 @@ export function IngredientBuilder({
         productionLine={productionLine}
         productionActions={productionActions}
         productionActive={item.id === activeProductionLineId}
+        productionProcessReminder={
+          item.id === heatReminderLineId && production
+            ? {
+                disabled: production.persistenceBusy,
+                onConfirm: () => void production.acknowledgeHeatInformation(),
+              }
+            : undefined
+        }
         canMoveUp={rowIndex > 0}
         canMoveDown={rowIndex < orderedItems.length - 1}
         changed={isLineChanged(item.id)}
@@ -934,15 +966,7 @@ export function IngredientBuilder({
         ) : (
           <>
             {items.length > 0 ? (
-              <div
-                className={
-                  mode === 'recipe'
-                    ? 'sr-only'
-                    : 'shrink-0'
-                }
-              >
-                {header}
-              </div>
+              <div className={mode === 'recipe' ? 'sr-only' : 'shrink-0'}>{header}</div>
             ) : null}
             <div className="min-h-0 flex-1 overflow-y-auto" data-testid="ingredient-rows-scroll">
               <div>

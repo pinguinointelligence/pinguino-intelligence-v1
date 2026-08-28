@@ -1264,6 +1264,7 @@ export function IngredientRow({
   productionLine,
   productionActions,
   productionActive = false,
+  productionProcessReminder,
   canMoveUp = false,
   canMoveDown = false,
   onDragStart,
@@ -1286,6 +1287,11 @@ export function IngredientRow({
   productionActions?: ProductionRowActions;
   /** Presentation-only marker for the one next physical weighing action. */
   productionActive?: boolean;
+  /** Desktop-only visual placement of the existing pre-start heat acknowledgement. */
+  productionProcessReminder?: {
+    disabled?: boolean;
+    onConfirm: () => void;
+  };
   canMoveUp?: boolean;
   canMoveDown?: boolean;
   onDragStart?: (lineId: string) => void;
@@ -1317,6 +1323,7 @@ export function IngredientRow({
           'border-status-error/20 bg-status-error/[0.045] hover:bg-status-error/[0.06]',
         mode === 'recipe' && changed && 'ingredient-line-changed',
         mode === 'production' && productionActive && 'production-line-active',
+        productionProcessReminder && 'xl:border-l-2 xl:border-l-[#f58a07] xl:bg-[#fffaf3]',
       )}
       data-ingredient-mode={mode}
       data-production-row-family={mode === 'production' ? 'recipe-table' : undefined}
@@ -1350,6 +1357,32 @@ export function IngredientRow({
           changed={changed}
         />
       )}
+      {mode === 'recipe' && productionProcessReminder ? (
+        <div
+          className="hidden items-center justify-between gap-3 border-t border-[#f58a07]/20 px-3 py-2 xl:flex"
+          data-testid="production-inline-process-reminder"
+        >
+          <span className="min-w-0">
+            <strong className="block text-xs font-semibold text-[#8a5b23]">
+              Pamiętaj o obróbce
+            </strong>
+            <span className="mt-0.5 block text-[10px] leading-snug text-stone-600">
+              Dla poniższych składników wskazana jest obróbka na ciepło:
+            </span>
+          </span>
+          <button
+            type="button"
+            onClick={productionProcessReminder.onConfirm}
+            disabled={productionProcessReminder.disabled}
+            aria-label="Potwierdź informację o obróbce"
+            className="gellatti-next-action-attention pro-focus-ring inline-flex h-8 shrink-0 items-center gap-1 rounded-[10px] border border-[#f58a07] bg-ink px-3 text-xs font-semibold text-white disabled:cursor-wait disabled:opacity-60"
+            data-testid="acknowledge-production-heat-information-inline"
+          >
+            <span aria-hidden>✓</span>
+            <span>OK</span>
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

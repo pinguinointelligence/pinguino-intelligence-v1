@@ -45,13 +45,14 @@ describe('D1 — no dead strip above the first ingredient', () => {
   });
 });
 
-describe('D2/D4/D5 — smaller housings, unchanged typography', () => {
-  it('the compact shell is 28 px and the segments with it', () => {
+describe('D2/D4/D5 — compact V2.1 housings, unchanged typography', () => {
+  it('the compact shell is 32 px with 28 px adjustment segments', () => {
     expect(control).toContain(
-      "compact ? 'h-7 w-7' : responsive ? 'size-11 lg:h-7 lg:w-7' : 'size-11'",
+      "compact ? 'h-8 w-7' : responsive ? 'size-11 lg:h-8 lg:w-7' : 'size-11'",
     );
-    expect(control).toContain("compact && 'h-7'");
-    expect(control).toContain("responsive && 'lg:h-7 lg:rounded-xl lg:shadow-none'");
+    expect(control).toContain("compact && 'h-8'");
+    expect(control).toContain("responsive && 'lg:h-8 lg:rounded-xl lg:shadow-none'");
+    expect(control).toContain("'h-8 w-[22px]'");
   });
 
   it('BOTH steppers actually request the compact density', () => {

@@ -180,7 +180,7 @@ describe('professional Monitor — final owner-approved information architecture
     expect(text).not.toContain('Przypnij');
   });
 
-  it('keeps PAC primary and ice fraction visibly secondary without duplicating PAC', () => {
+  it('keeps PAC primary and moves ice fraction into the existing expanded detail', () => {
     const input = starterMilkBase();
     const result = calculateRecipe(input);
     if (result.pac_points === null || result.ice_fraction_percent === null) {
@@ -215,9 +215,8 @@ describe('professional Monitor — final owner-approved information architecture
     expect(html).toContain('data-secondary-label="Frakcja lodu"');
     const text = textOf(html);
     expect(text).toMatch(new RegExp(`PAC\\s+${formatMonitorValue(result.pac_points)}`));
-    expect(text).toMatch(
-      new RegExp(`Frakcja lodu\\s+${formatMonitorValue(result.ice_fraction_percent)}\\s+%`),
-    );
+    expect(text).not.toContain('Frakcja lodu');
+    expect(html).toContain('data-monitor-badge="PAC"');
     expect(html).not.toContain('data-testid="monitor-metric-pac"');
   });
 

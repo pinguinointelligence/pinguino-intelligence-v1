@@ -54,7 +54,9 @@ describe('DirectNumberControl', () => {
 
     const source = readFileSync(new URL('./DirectNumberControl.tsx', import.meta.url), 'utf8');
     expect(source).toContain('if (!draftDirty.current)');
-    expect(source.indexOf('if (!draftDirty.current)')).toBeLessThan(source.indexOf('const parsed = Number(draft)'));
+    expect(source.indexOf('if (!draftDirty.current)')).toBeLessThan(
+      source.indexOf('const parsed = Number(draft)'),
+    );
   });
 
   it('renders minus, editable spinbutton, plus, keyboard metadata and no native number input', () => {
@@ -124,6 +126,7 @@ describe('DirectNumberControl', () => {
     expect(html).toContain('bg-stone-100');
     expect(html).toContain('data-testid="compact-percent-lock"');
     expect(html).toContain('aria-pressed="true"');
+    expect(html).not.toContain('>%</button>');
   });
 
   it('reserves exactly five whole-gram digits without expanding the topping control', () => {
@@ -163,6 +166,7 @@ describe('DirectNumberControl', () => {
     expect(html).toContain('px-1.5');
     expect(html).toContain('leading-none');
     expect(html).toContain('w-[114px] grid-cols-[28px_58px_28px]');
+    expect(html).toContain('h-8');
   });
 
   it('can keep touch targets comfortable while matching compact Recipe geometry on table widths', () => {
@@ -183,7 +187,7 @@ describe('DirectNumberControl', () => {
     expect(html).toContain('data-control-density="responsive"');
     expect(html).toContain('grid-cols-[44px_minmax(80px,1fr)_44px]');
     expect(html).toContain('lg:grid-cols-[28px_minmax(66px,1fr)_28px]');
-    expect(html).toContain('size-11 lg:h-7 lg:w-7');
+    expect(html).toContain('size-11 lg:h-8 lg:w-7');
     expect(html).toContain('text-xl lg:text-base');
     expect(html).toContain('text-sm lg:text-[13px]');
   });

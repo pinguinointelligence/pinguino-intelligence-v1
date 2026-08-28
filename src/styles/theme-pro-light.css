@@ -9,7 +9,7 @@
   color-scheme: light;
 
   --color-paper: #ffffff;
-  --color-ink: #101113;
+  --color-ink: #191a1d;
   --color-ink-soft: #25272b;
   --color-shell: #ffffff;
   --color-shell-raised: #f7f6f3;
@@ -59,7 +59,7 @@
 
 .monitor-summary-grid {
   grid-template-columns:
-    2rem minmax(7.5rem, 0.9fr) minmax(8rem, 1.25fr) 6.75rem
+    2rem minmax(6.75rem, 0.82fr) 3.25rem minmax(7rem, 1.25fr) 6.75rem
     1.25rem;
 }
 
@@ -73,7 +73,9 @@
 }
 
 .monitor-detail-grid {
-  grid-template-columns: minmax(0, 1fr) 6.75rem 1.25rem;
+  grid-template-columns:
+    2rem minmax(6.75rem, 0.82fr) 3.25rem minmax(7rem, 1.25fr) 6.75rem
+    1.25rem;
 }
 
 .monitor-module-row {
@@ -82,7 +84,7 @@
 
 @media (min-width: 1280px) and (max-height: 900px) {
   .monitor-module-row {
-    min-height: 3.5rem;
+    min-height: 4rem;
   }
 
   .monitor-module-row :where(.text-xl) {
@@ -162,7 +164,7 @@ body:has(details[open] [data-testid^='row-menu-']) [data-testid='design-review-o
 }
 
 .pro-focus-ring:focus-visible {
-  outline: 2px solid var(--color-gold);
+  outline: 2px solid var(--color-gellatti-orange);
   outline-offset: 3px;
 }
 
@@ -170,7 +172,7 @@ body:has(details[open] [data-testid^='row-menu-']) [data-testid='design-review-o
 .theme-pro-light
   [data-testid='pro-recalc-panel']
   :where(button, a, input, select, summary):focus-visible {
-  outline-color: var(--color-gold-soft);
+  outline-color: var(--color-gellatti-orange);
 }
 
 .pro-scroll-safe {
@@ -180,14 +182,14 @@ body:has(details[open] [data-testid^='row-menu-']) [data-testid='design-review-o
 }
 
 .theme-pro-light :where(button, a, input, select, summary):focus-visible {
-  outline: 2px solid var(--color-gold);
+  outline: 2px solid var(--color-gellatti-orange);
   outline-offset: 2px;
 }
 
 .profile-settings-final-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: auto 3.25rem auto;
+  grid-template-rows: auto 2.75rem auto;
   column-gap: 0.5rem;
 }
 
@@ -200,13 +202,13 @@ body:has(details[open] [data-testid^='row-menu-']) [data-testid='design-review-o
 
 @media (min-width: 1024px) {
   .profile-settings-final-row {
-    grid-template-rows: auto 2.5rem auto;
+    grid-template-rows: auto 2.875rem auto;
   }
 }
 
 @media (min-width: 1536px) {
   .profile-settings-final-row {
-    grid-template-rows: auto 2.6875rem auto;
+    grid-template-rows: auto 2.875rem auto;
   }
 }
 
@@ -222,37 +224,54 @@ body:has(details[open] [data-testid^='row-menu-']) [data-testid='design-review-o
 
   .profile-settings-final-card {
     grid-row: auto;
-    grid-template-rows: auto 3.25rem auto;
+    grid-template-rows: auto 2.75rem auto;
+  }
+
+  .profile-settings-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
 @container right-pane (max-width: 540px) {
-  .profile-settings-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .profile-nutrition-details {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .monitor-summary-grid {
-    grid-template-columns: 2rem minmax(0, 1fr) 6.75rem 1.25rem;
+    grid-template-columns: 2rem minmax(0, 1fr) 3.25rem 6.75rem 1.25rem;
     row-gap: 0.25rem;
   }
 
+  .monitor-detail-grid {
+    grid-template-columns: 2rem minmax(0, 1fr) 0 minmax(0, 1fr) 6.75rem 1.25rem;
+  }
+
   .monitor-summary-grid > :nth-child(3) {
-    grid-column: 2 / 5;
+    grid-column: 2;
     grid-row: 2;
   }
 
   .monitor-summary-grid > :nth-child(4) {
-    grid-column: 3;
-    grid-row: 1;
+    grid-column: 3 / 5;
+    grid-row: 2;
   }
 
   .monitor-summary-grid > :nth-child(5) {
     grid-column: 4;
     grid-row: 1;
+  }
+
+  .monitor-summary-grid > :nth-child(6) {
+    grid-column: 5;
+    grid-row: 1;
+  }
+
+  .monitor-summary-grid > [data-monitor-badge=''] + [data-monitor-rail] {
+    grid-column: 2 / 5;
+  }
+
+  .monitor-module-row {
+    min-height: 4.75rem;
   }
 
   [data-testid='profile-nutrition-cost-summary'] > summary {

@@ -85,7 +85,7 @@ describe('Production workspace touch-first UI', () => {
     expect(html).toContain('border-b border-ink/[0.075]');
     expect(html).toContain('data-control-density="responsive"');
     expect(html).toContain('data-control-capacity="10000g"');
-    expect(html).toContain('lg:min-h-7');
+    expect(html).toContain('lg:min-h-8');
     expect(html).toContain('potwierdź dodanie');
     expect(html).toContain('data-category-symbol=');
     expect(html).not.toContain('DO DODANIA');
@@ -429,6 +429,10 @@ describe('Production workspace touch-first UI', () => {
     );
     expect(html).toContain('data-testid="production-start-ready"');
     expect(html).toContain('data-testid="start-production-session"');
+    expect(html).toContain('data-testid="production-ready-progress"');
+    expect(html).toContain('0 / 6 składników');
+    expect(html).not.toContain('Przewidywany wynik');
+    expect(html).not.toContain('data-testid="production-score-ring"');
     expect(html).not.toContain('data-testid="production-actual-control"');
     const surface = readFileSync(
       resolve(import.meta.dirname, '..', 'studio', 'StudioEngineSurface.tsx'),
@@ -711,6 +715,33 @@ describe('Production workspace touch-first UI', () => {
     );
   });
 
+  it('places the positive heat acknowledgement on its desktop ingredient row without replacing the mobile card', () => {
+    const confirm = vi.fn();
+    const html = renderToStaticMarkup(
+      <IngredientRow
+        item={result.items[0]!}
+        totalBatchG={result.total_batch_g}
+        actions={recipeActions}
+        mode="recipe"
+        productionProcessReminder={{ disabled: false, onConfirm: confirm }}
+      />,
+    );
+
+    expect(html).toContain('data-testid="production-inline-process-reminder"');
+    expect(html).toContain('data-testid="acknowledge-production-heat-information-inline"');
+    expect(html).toContain('Pamiętaj o obróbce');
+    expect(html).toContain('hidden items-center');
+    expect(html).toContain('xl:flex');
+
+    const cockpitSource = readFileSync(
+      resolve(import.meta.dirname, 'ProductionCockpit.tsx'),
+      'utf8',
+    );
+    expect(cockpitSource).toContain('data-testid="production-heat-information"');
+    expect(cockpitSource).toContain('xl:hidden');
+    expect(cockpitSource).toContain('acknowledge-production-heat-information');
+  });
+
   it('renders one persisted degassing card and blocks Start until confirmation', () => {
     const render = (acknowledged: boolean) =>
       renderToStaticMarkup(
@@ -961,7 +992,7 @@ describe('Production workspace touch-first UI', () => {
     expect(html).toContain('data-production-state="completed"');
     expect(html).not.toContain('Gellattissimo! Partia gotowa.');
     const hook = readFileSync(resolve(import.meta.dirname, 'useProductionWorkspace.ts'), 'utf8');
-    expect(hook).toContain("announceFriendlyLabMoment(");
+    expect(hook).toContain('announceFriendlyLabMoment(');
     expect(hook).toContain("'production-complete'");
     expect(hook.indexOf('await repositoryState.repository.completeRun(')).toBeLessThan(
       hook.indexOf("'production-complete'"),

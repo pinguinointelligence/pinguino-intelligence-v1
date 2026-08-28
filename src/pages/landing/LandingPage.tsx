@@ -20,7 +20,7 @@
  */
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
-import { IvoryLogoMark } from '@/components/shared/IvoryLogoMark';
+import { OfficialProLogo } from '@/components/shared/OfficialProLogo';
 import { cn } from '@/lib/cn';
 import {
   color,
@@ -398,7 +398,7 @@ export function LandingPage() {
       <footer className="border-t border-ink/10">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-5 py-10 sm:flex-row sm:items-center sm:justify-between sm:px-8">
           <div className="flex items-center gap-3">
-            <IvoryLogoMark size={18} tone="ink" className="opacity-70" />
+            <OfficialProLogo className="opacity-70" />
             <span className={cn(type.caption, color.textMuted)}>{copy.footer.tagline}</span>
           </div>
           <nav aria-label="Stopka" className="flex flex-wrap items-center gap-x-6 gap-y-2">
@@ -429,16 +429,12 @@ export function LandingPage() {
 
 function Wordmark() {
   return (
-    <Link to="/" className={cn('flex items-center gap-3 rounded', focusRing)}>
-      <IvoryLogoMark size={26} tone="ink" />
-      <span className="leading-none">
-        <span className="block text-base font-light tracking-wordmark">{copy.brand.name}</span>
-        <span
-          className={cn('mt-1 block text-[0.55rem] font-light tracking-wordmark', color.textMuted)}
-        >
-          {copy.brand.sub}
-        </span>
-      </span>
+    <Link
+      to="/"
+      aria-label={copy.brand.name}
+      className={cn('flex items-center rounded', focusRing)}
+    >
+      <OfficialProLogo />
     </Link>
   );
 }

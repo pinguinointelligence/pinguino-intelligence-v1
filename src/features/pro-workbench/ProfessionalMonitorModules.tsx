@@ -161,16 +161,16 @@ function MetricDetail({ metric }: { metric: ProfessionalMonitorMetric }) {
       data-domain-status={metric.domainStatus}
       title={metric.tooltip}
     >
-      <span className="min-w-0 text-xs text-stone-600">{metric.label}</span>
+      <span className="col-start-2 col-end-5 min-w-0 text-xs text-stone-600">{metric.label}</span>
       <span
         className={cn(
-          'monitor-value-column text-right text-xs font-semibold leading-tight text-ink',
+          'monitor-value-column col-start-5 text-right text-xs font-semibold leading-tight text-ink',
           metric.displayText === undefined && 'font-mono tabular-nums',
         )}
       >
         {metricValueText(metric)}
       </span>
-      <span aria-hidden />
+      <span aria-hidden className="col-start-6" />
     </div>
   );
 }
@@ -241,7 +241,7 @@ export function ProfessionalMonitorModules({
         const summary = summaryFor(module);
         const previewSummary = previewModule ? summaryFor(previewModule) : null;
         const detailRows = [...module.primary, ...module.secondary].filter(
-          (metric) => metric.id !== summary.metric.id && metric.id !== summary.secondaryMetric?.id,
+          (metric) => metric.id !== summary.metric.id,
         );
         const open = expanded.includes(module.id);
         const hasDetails = detailRows.length > 0;
@@ -285,44 +285,40 @@ export function ProfessionalMonitorModules({
                 <strong className="block truncate text-sm font-semibold text-ink">
                   {module.title}
                 </strong>
-                <span className="mt-0.5 block truncate text-[10px] text-stone-600">
-                  {summary.metric.label}
-                </span>
+                {module.id !== 'freezing' ? (
+                  <span className="mt-0.5 block truncate text-[10px] text-stone-600">
+                    {summary.metric.label}
+                  </span>
+                ) : null}
               </span>
-              <MonitorRangeScale
-                model={summary.scaleMetric.scaleModel}
-                previewModel={previewSummary?.scaleMetric.scaleModel}
-                testId={`monitor-scale-${module.id}`}
-                label={module.title}
-              />
+              <span
+                className="monitor-badge justify-self-start rounded-[8px] border border-ink/8 bg-stone-50 px-2 py-1 text-[10px] font-semibold text-ink empty:border-0 empty:bg-transparent empty:p-0"
+                data-monitor-badge={module.id === 'freezing' ? summary.metric.label : ''}
+                aria-hidden={module.id !== 'freezing'}
+              >
+                {module.id === 'freezing' ? summary.metric.label : null}
+              </span>
+              <div data-monitor-rail={module.id}>
+                <MonitorRangeScale
+                  model={summary.scaleMetric.scaleModel}
+                  previewModel={previewSummary?.scaleMetric.scaleModel}
+                  testId={`monitor-scale-${module.id}`}
+                  label={module.title}
+                />
+              </div>
               <span
                 className={cn(
                   'monitor-value-column text-right text-sm font-semibold text-ink',
                   summary.metric.displayText === undefined && 'font-mono tabular-nums',
                 )}
+                data-monitor-value={module.id}
               >
-                {summary.secondaryMetric ? (
-                  <>
-                    <span className="flex items-baseline justify-end gap-1.5">
-                      <span className="rounded-[8px] border border-ink/8 bg-stone-50 px-1.5 py-0.5 font-sans text-[10px] font-semibold">
-                        {summary.metric.label}
-                      </span>
-                      <span>{metricValueText(summary.metric)}</span>
-                    </span>
-                    <span className="mt-0.5 block font-sans text-[10px] font-medium text-stone-600">
-                      {summary.secondaryMetric.label}{' '}
-                      <span className="font-mono tabular-nums">
-                        {metricValueText(summary.secondaryMetric)}
-                      </span>
-                    </span>
-                  </>
-                ) : (
-                  metricValueText(summary.metric)
-                )}
+                {metricValueText(summary.metric)}
               </span>
               {hasDetails ? (
                 <span
                   aria-hidden
+                  data-monitor-chevron={module.id}
                   className={cn(
                     'text-lg text-stone-600 transition-transform',
                     open && 'rotate-180',
@@ -331,7 +327,7 @@ export function ProfessionalMonitorModules({
                   ⌄
                 </span>
               ) : (
-                <span aria-hidden />
+                <span aria-hidden data-monitor-chevron="none" />
               )}
             </button>
             {open && hasDetails ? (

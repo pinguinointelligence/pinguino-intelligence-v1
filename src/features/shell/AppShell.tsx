@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
-import { IvoryLogoMark } from '@/components/shared/IvoryLogoMark';
+import { OfficialProLogo } from '@/components/shared/OfficialProLogo';
 import { copy } from '@/copy/en';
 import { DesignReviewOverlay } from '@/features/design-review/ReviewOverlay';
 import { proCoreCapabilitiesFor } from '@/features/pro-core/proCoreCapabilities';
@@ -34,8 +34,7 @@ export function AppShell({
   viewportLock = false,
 }: {
   actions?: ReactNode;
-  /** Optional page-owned official lockup. The default shell mark remains unchanged
-   * for routes outside an explicitly approved redesign scope. */
+  /** Optional page-owned lockup. The shared Gellatti wordmark is the default. */
   brand?: ReactNode;
   /** Route-controlled intelligence status and module tabs for the Pro workbench. */
   workbenchChrome?: ReactNode;
@@ -89,12 +88,7 @@ export function AppShell({
             aria-label={copy.shell.brand}
             className="flex min-w-0 items-center gap-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
           >
-            {brand ?? (
-              <>
-                <IvoryLogoMark size={22} tone="ink" />
-                <span className="text-sm font-light tracking-wordmark">{copy.shell.brand}</span>
-              </>
-            )}
+            {brand ?? <OfficialProLogo />}
           </Link>
           {viewportLock ? actions : null}
           <DesignReviewOverlay />

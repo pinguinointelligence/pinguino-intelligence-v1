@@ -12,10 +12,9 @@ describe('Recipe profile visual density contract', () => {
       'className="rounded-[16px] border border-ink/8 bg-white px-3 py-2 shadow-pro-e0"',
     );
     expect(axes).toContain('className="mt-1 grid');
-    expect(axes).toContain('grid-cols-5');
-    expect(axes).toContain(
-      'min-[520px]:grid-cols-[minmax(68px,1fr)_repeat(5,36px)_minmax(68px,1fr)]',
-    );
+    expect(axes).toContain('relative col-span-2');
+    expect(axes).toContain('grid grid-cols-5');
+    expect(axes).toContain('min-[520px]:grid-cols-[minmax(68px,1fr)_180px_minmax(68px,1fr)]');
     expect(axes).toContain(
       "'rounded-[18px] border border-ink/10 bg-white px-3 py-2.5 shadow-pro-e1'",
     );
@@ -36,7 +35,7 @@ describe('Recipe profile visual density contract', () => {
     expect(settings).toContain('className="mb-2 flex min-h-6 items-center"');
 
     expect(theme).toMatch(
-      /\.profile-settings-final-row\s*\{[\s\S]*?grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);[\s\S]*?grid-template-rows: auto 3\.25rem auto;/,
+      /\.profile-settings-final-row\s*\{[\s\S]*?grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);[\s\S]*?grid-template-rows: auto 2\.75rem auto;/,
     );
     expect(theme).toMatch(/\.profile-settings-final-card\s*\{[\s\S]*?grid-template-rows: subgrid;/);
     expect(theme).toMatch(
@@ -46,7 +45,7 @@ describe('Recipe profile visual density contract', () => {
       theme.indexOf('@container right-pane (max-width: 540px)'),
     );
     expect(theme).toMatch(
-      /@media \(min-width: 1024px\)[\s\S]*?\.profile-settings-final-row\s*\{[\s\S]*?grid-template-rows: auto 2\.5rem auto;/,
+      /@media \(min-width: 1024px\)[\s\S]*?\.profile-settings-final-row\s*\{[\s\S]*?grid-template-rows: auto 2\.875rem auto;/,
     );
   });
 

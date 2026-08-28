@@ -28,8 +28,8 @@ interface DirectNumberControlProps {
   /**
    * `compact` is the DESKTOP recipe-table density (owner 2026-08-24): the row
    * was dominated by its controls, leaving long catalog names truncated far too
-   * early. It shrinks the segments from 44 px to 28 px and tightens the value
-   * column, recovering ~90 px per row for the ingredient name.
+   * early. It keeps 28 px-wide adjustment segments inside the approved 32 px
+   * housing and tightens the value column without shrinking the numerals.
    *
    * It is deliberately NOT used on touch surfaces — the mobile sheet keeps the
    * comfortable 44 px targets.
@@ -47,22 +47,19 @@ interface DirectNumberControlProps {
   };
 }
 
-function LockGlyph({ locked }: { locked: boolean }) {
+function LockGlyph() {
   return (
     <svg
       aria-hidden
-      width="13"
-      height="13"
+      width="16"
+      height="16"
       viewBox="0 0 16 16"
       fill="none"
       stroke="currentColor"
       strokeWidth="1.5"
     >
       <rect x="3" y="7" width="10" height="7" rx="2" />
-      <path
-        d={locked ? 'M5.25 7V5a2.75 2.75 0 0 1 5.5 0v2' : 'M10.75 7V5a2.75 2.75 0 0 0-5.5 0'}
-        strokeLinecap="round"
-      />
+      <path d="M5.25 7V5a2.75 2.75 0 0 1 5.5 0v2" strokeLinecap="round" />
     </svg>
   );
 }
@@ -90,11 +87,16 @@ export function DirectNumberControl({
   const responsive = density === 'responsive';
   /**
    * Compact shrinks the HOUSING, not the typography (owner, 2026-08-24): the
-   * shell drops to 28 px while the value keeps its readable size, so rows get
+   * shell drops to 32 px while the value keeps its readable size, so rows get
    * shorter because the container tightened around the numbers rather than
    * because everything became tiny.
    */
-  const segment = compact ? 'h-7 w-7' : responsive ? 'size-11 lg:h-7 lg:w-7' : 'size-11';
+  const segment = compact ? 'h-8 w-7' : responsive ? 'size-11 lg:h-8 lg:w-7' : 'size-11';
+  const lockSegmentSize = compact
+    ? 'h-8 w-[22px]'
+    : responsive
+      ? 'size-11 lg:h-8 lg:w-[22px]'
+      : 'size-11';
   const accessibleValue = Number(value.toFixed(decimals));
   const valueRef = useRef(value);
   const [draft, setDraft] = useState(value.toFixed(decimals));
@@ -181,16 +183,16 @@ export function DirectNumberControl({
     <div
       className={cn(
         'grid min-w-0 max-w-full items-center overflow-hidden rounded-2xl border border-ink/12 bg-white shadow-pro-sm transition-[border-color,background-color,box-shadow] focus-within:border-ink/30 focus-within:shadow-pro-md',
-        compact && 'h-7',
-        responsive && 'lg:h-7 lg:rounded-xl lg:shadow-none',
+        compact && 'h-8',
+        responsive && 'lg:h-8 lg:rounded-xl lg:shadow-none',
         widthPreset === 'percent' &&
           (compact
             ? lockSegment
-              ? 'w-[142px] grid-cols-[28px_58px_28px_28px]'
+              ? 'w-[142px] grid-cols-[28px_64px_28px_22px]'
               : 'w-[114px] grid-cols-[28px_58px_28px]'
             : responsive
               ? lockSegment
-                ? 'w-[204px] grid-cols-[44px_72px_44px_44px] lg:w-[142px] lg:grid-cols-[28px_58px_28px_28px]'
+                ? 'w-[204px] grid-cols-[44px_72px_44px_44px] lg:w-[142px] lg:grid-cols-[28px_64px_28px_22px]'
                 : 'w-[160px] grid-cols-[44px_72px_44px] lg:w-[114px] lg:grid-cols-[28px_58px_28px]'
               : lockSegment
                 ? 'w-[204px] grid-cols-[44px_72px_44px_44px]'
@@ -198,11 +200,11 @@ export function DirectNumberControl({
         widthPreset === 'grams' &&
           (compact
             ? lockSegment
-              ? 'w-[150px] grid-cols-[28px_66px_28px_28px]'
+              ? 'w-[150px] grid-cols-[28px_72px_28px_22px]'
               : 'w-[122px] grid-cols-[28px_66px_28px]'
             : responsive
               ? lockSegment
-                ? 'w-[220px] grid-cols-[44px_88px_44px_44px] lg:w-[150px] lg:grid-cols-[28px_66px_28px_28px]'
+                ? 'w-[220px] grid-cols-[44px_88px_44px_44px] lg:w-[150px] lg:grid-cols-[28px_72px_28px_22px]'
                 : 'w-[176px] grid-cols-[44px_88px_44px] lg:w-[122px] lg:grid-cols-[28px_66px_28px]'
               : lockSegment
                 ? 'w-[220px] grid-cols-[44px_88px_44px_44px]'
@@ -257,7 +259,7 @@ export function DirectNumberControl({
             nudge(direction);
           }}
           className={cn(
-            'row-start-1 grid place-items-center font-light text-ink transition-colors hover:bg-stone-100 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-gold disabled:cursor-not-allowed disabled:text-stone-400',
+            'row-start-1 grid place-items-center font-light text-ink transition-colors hover:bg-stone-100 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#f58a07] disabled:cursor-not-allowed disabled:text-stone-400',
             segment,
             compact ? 'text-base' : responsive ? 'text-xl lg:text-base' : 'text-xl',
             direction > 0 && 'col-start-3',
@@ -379,17 +381,15 @@ export function DirectNumberControl({
           data-testid={lockSegment.testId}
           onClick={lockSegment.onToggle}
           className={cn(
-            'col-start-4 row-start-1 inline-flex items-center justify-center gap-0.5 border-l border-ink/18 font-mono font-semibold transition-colors focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-gold',
-            segment,
-            compact ? 'text-[9px]' : responsive ? 'text-[11px] lg:text-[9px]' : 'text-[11px]',
+            'col-start-4 row-start-1 inline-flex items-center justify-center border-l border-ink/18 transition-colors focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#f58a07]',
+            lockSegmentSize,
             lockSegment.pressed
               ? 'bg-stone-200 text-ink'
               : 'bg-white text-stone-500 hover:bg-stone-100 hover:text-ink',
             lockSegment.disabled && 'cursor-not-allowed opacity-35',
           )}
         >
-          <LockGlyph locked={lockSegment.pressed} />
-          <span aria-hidden>{lockSegment.suffix}</span>
+          <LockGlyph />
         </button>
       ) : null}
     </div>

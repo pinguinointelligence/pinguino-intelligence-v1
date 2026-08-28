@@ -442,6 +442,7 @@ export function StudioEngineSurface({
                   layout="workbench"
                   mode={productionActive ? 'production' : 'recipe'}
                   production={production}
+                  productionReadyPresentation={activeTab === 'production' && !productionActive}
                   recipeActionDock={recipeActionDock ?? undefined}
                 />
               </div>
