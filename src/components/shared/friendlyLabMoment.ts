@@ -17,7 +17,6 @@ export const FRIENDLY_LAB_MOMENTS: Readonly<Record<FriendlyLabMomentKind, Friend
   Object.freeze({
     'apply-complete': {
       title: FRIENDLY_LAB_APPLY_SUCCESS.title,
-      description: FRIENDLY_LAB_APPLY_SUCCESS.description,
       timing: 'informational',
     },
     'save-complete': {

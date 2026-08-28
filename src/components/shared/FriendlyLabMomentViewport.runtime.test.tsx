@@ -57,7 +57,7 @@ describe('Friendly Lab app-level moment window', () => {
     expect(card()?.getAttribute('aria-live')).toBe('polite');
     expect(layer?.dataset.momentKind).toBe('apply-complete');
     expect(card()?.dataset.motionPhase).toBe('entering');
-    expect(card()?.textContent).toContain('Perfetto. Receptura jest gotowa.');
+    expect(card()?.textContent).toBe('Perfetto. Receptura jest gotowa.');
 
     await act(async () => vi.advanceTimersByTimeAsync(20));
     expect(card()?.dataset.motionPhase).toBe('visible');
