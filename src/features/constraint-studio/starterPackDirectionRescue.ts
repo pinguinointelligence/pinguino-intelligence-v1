@@ -60,6 +60,14 @@ export interface StarterPackDirectionRescueReport {
   records: StarterPackRescueRecord[];
   best: StarterPackRescueRecord | null;
   totalRuntimeMs: number;
+  timing: {
+    candidatePreparationMs: number;
+    productBehaviorMs: number;
+    solverSearchMs: number;
+    practicalizationScoringMs: number;
+    finalVerificationMs: number;
+  };
+  budgetExhausted: boolean;
 }
 
 interface NormalDirectionResult {
@@ -150,12 +158,21 @@ export function buildStarterPackDirectionRescue(
   request: StarterPackDirectionRescueBuildInput,
 ): StarterPackDirectionRescueReport {
   const started = nowMs();
+  const timing = {
+    candidatePreparationMs: 0,
+    productBehaviorMs: 0,
+    solverSearchMs: 0,
+    practicalizationScoringMs: 0,
+    finalVerificationMs: 0,
+  };
   if (!shouldRunStarterPackDirectionRescue(request.input, request.normalResult)) {
     return {
       palette: STARTER_PACK_RESCUE_MAPPER_IDS,
       records: [],
       best: null,
       totalRuntimeMs: nowMs() - started,
+      timing,
+      budgetExhausted: false,
     };
   }
   const bands = requestedDirectionBands(request.input);
@@ -164,12 +181,14 @@ export function buildStarterPackDirectionRescue(
 
   for (const mapperId of STARTER_PACK_RESCUE_MAPPER_IDS) {
     const candidateStarted = nowMs();
+    const preparationStarted = nowMs();
     const ingredient = starterPackRescueIngredient(mapperId);
     const eligibility = starterPackRescueEligibility(
       mapperId,
       request.input.category,
       request.input,
     );
+    timing.candidatePreparationMs += nowMs() - preparationStarted;
     if (!eligibility.eligible || ingredient === null) {
       records.push({
         mapperId,
@@ -192,7 +211,10 @@ export function buildStarterPackDirectionRescue(
     }
     const probeRecords: StarterPackRescueRecord[] = [];
     for (const probeGrams of starterPackRescueProbeGrams(mapperId, request.input)) {
+      const probePreparationStarted = nowMs();
       const simulatedInput = withStarterPackRescueCandidate(request.input, mapperId, probeGrams)!;
+      timing.candidatePreparationMs += nowMs() - probePreparationStarted;
+      const solverStarted = nowMs();
       const result = request.evaluateCandidate
         ? request.evaluateCandidate({
             simulatedInput,
@@ -212,6 +234,7 @@ export function buildStarterPackDirectionRescue(
             undefined,
             probeGrams,
           );
+      timing.solverSearchMs += nowMs() - solverStarted;
       if (!result.ok) {
         probeRecords.push({
           mapperId,
@@ -234,9 +257,14 @@ export function buildStarterPackDirectionRescue(
       }
       const preview = result.preview;
       const output = preview.proposedInput;
+      const scoringStarted = nowMs();
       const recipeResult = calculateRecipe(output);
       const direction = assessRecipeDirection(output, recipeResult);
       const distance = directionDistance(output, bands, recipeResult);
+      const score = recipeFitForInput(output, recipeResult).score;
+      const totalRecipeMovement = recipeMovement(request.input, output);
+      timing.practicalizationScoringMs += nowMs() - scoringStarted;
+      const verificationStarted = nowMs();
       const constraintsPreserved = starterPackRescueConstraintsPreserved(request.set, output);
       const mainPreserved = verifyMainIngredientIdentity(
         request.input,
@@ -248,6 +276,7 @@ export function buildStarterPackDirectionRescue(
         detectViolations(recipeResult).length === 0 &&
         constraintsPreserved &&
         mainPreserved;
+      timing.finalVerificationMs += nowMs() - verificationStarted;
       const candidateLine = output.items.find(
         (item) => item.id === starterPackRescueLineId(mapperId),
       );
@@ -263,9 +292,9 @@ export function buildStarterPackDirectionRescue(
         targetReached: direction.reached,
         npac: recipeResult.npac_points,
         pod: recipeResult.pod_points,
-        score: recipeFitForInput(output, recipeResult).score,
+        score,
         bandDistance: distance.total,
-        totalRecipeMovement: recipeMovement(request.input, output),
+        totalRecipeMovement,
         hardGates: hardValid ? 'PASS' : 'FAIL',
         mainPreserved,
         runtimeMs: nowMs() - candidateStarted,
@@ -289,5 +318,7 @@ export function buildStarterPackDirectionRescue(
     records,
     best,
     totalRuntimeMs: nowMs() - started,
+    timing,
+    budgetExhausted: false,
   };
 }

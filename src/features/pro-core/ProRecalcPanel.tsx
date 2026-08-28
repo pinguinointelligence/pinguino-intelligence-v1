@@ -25,7 +25,9 @@ import {
   cancelPiRecalculation,
   createExplicitStandardRemovalPreviewWithServerAuthority,
   isUndoAvailable,
+  openDirectionFallbackPreviewWithServerAuthority,
   openStarterPackRescuePreviewWithServerAuthority,
+  requestStarterPackRescueWithServerAuthority,
   runPiRecalculationWithTerminal,
   unlockConstraintAndRecalculate,
   useConstraintStudioStore,
@@ -48,7 +50,7 @@ import type { RecipeInput } from '@/engine';
 import type { ConstraintSet } from '@/features/recipe-constraints';
 import type { RescueIngredientAdvice } from '@/features/constraint-studio/rescueIngredientAdvisor';
 import type { StarterPackDirectionRescueReport } from '@/features/constraint-studio/starterPackDirectionRescue';
-import { starterPackRescueWithNamePl } from '@/features/constraint-studio/starterPackRescuePalette';
+import type { DirectionFallbackReport } from '@/features/constraint-studio/directionFallback';
 import {
   productBehaviorIssuesSupportWorkingCopyRefresh,
   refreshCurrentRecipeBehaviorWorkingCopy,
@@ -503,11 +505,9 @@ export function StarterPackRescueDecision({
     return (
       <div
         className="rounded-md border border-ivory/15 bg-ivory/[0.05] px-3 py-3"
-        data-testid="starter-pack-rescue-working"
+        data-testid="direction-alternative-working"
       >
-        <p className="text-xs leading-relaxed text-ivory/75">
-          Sprawdzam pojedynczo produkty Gellatti Starter Pack…
-        </p>
+        <p className="text-xs leading-relaxed text-ivory/75">Sprawdzam inną możliwość…</p>
       </div>
     );
   }
@@ -516,11 +516,10 @@ export function StarterPackRescueDecision({
     return (
       <div
         className="rounded-md border border-ivory/15 bg-ivory/[0.05] px-3 py-3"
-        data-testid="starter-pack-rescue-none"
+        data-testid="direction-alternative-none"
       >
         <p className="text-xs leading-relaxed text-ivory/75">
-          Z obecnych składników ani produktów Gellatti Starter Pack nie udało się osiągnąć wybranego
-          celu.
+          Nie udało się znaleźć lepszego bezpiecznego wariantu.
         </p>
       </div>
     );
@@ -528,33 +527,171 @@ export function StarterPackRescueDecision({
   return (
     <div
       className="rounded-md border border-ivory/15 bg-ivory/[0.05] px-3 py-3"
-      data-testid="starter-pack-rescue-decision"
-      data-ingredient={report.best.mapperId}
+      data-testid="direction-alternative-decision"
     >
-      <p className="text-xs font-medium text-ivory">Opcja Gellatti Starter Pack</p>
-      {!report.best.targetReached ? (
-        <p className="mt-1 text-xs leading-relaxed text-ivory/75">
-          Z obecnych składników ani produktów Gellatti Starter Pack nie udało się osiągnąć wybranego
-          celu. Poniżej najbliższa bezpieczna opcja.
-        </p>
-      ) : null}
-      <p className="mt-1 text-xs leading-relaxed text-ivory/75">
-        Mogę spróbować dodać {report.best.namePl} i ponownie zbilansować recepturę.
-      </p>
-      <p className="mt-1 text-xs leading-relaxed text-ivory/65">
-        Wynik techniczny: {report.best.score ?? '—'}/10 · cel kierunku:{' '}
-        {report.best.targetReached ? 'osiągnięty' : 'nieosiągnięty'}
-      </p>
+      <p className="text-xs leading-relaxed text-ivory/75">Wymaga to zmiany receptury.</p>
       {onOpen ? (
         <button
           type="button"
           onClick={onOpen}
-          data-testid="starter-pack-rescue-open-preview"
+          data-testid="direction-alternative-open-preview"
           className="mt-2 min-h-11 rounded-lg bg-ivory px-4 py-2.5 text-sm font-medium text-shell"
         >
-          Sprawdź z {starterPackRescueWithNamePl(report.best.mapperId)}
+          Zobacz propozycję
         </button>
       ) : null}
+    </div>
+  );
+}
+
+const formatDirectionLevel = (level: number): string => (level > 0 ? `+${level}` : `${level}`);
+
+/** Final owner-approved compact decision surface. Internal ingredient-search
+ * concepts and ingredient names stay hidden until an exact Preview is opened. */
+export function DirectionFallbackDecision({
+  fallbackReport,
+  alternativeReport,
+  alternativePending,
+  onUseFallback,
+  onTryAlternative,
+  onOpenAlternative,
+  onBack,
+}: {
+  fallbackReport: DirectionFallbackReport;
+  alternativeReport: StarterPackDirectionRescueReport | null;
+  alternativePending: boolean;
+  onUseFallback: () => void;
+  onTryAlternative: () => void;
+  onOpenAlternative: () => void;
+  onBack: () => void;
+}) {
+  const requested = fallbackReport.requestedTargets;
+  const fallback = fallbackReport.best?.targets ?? null;
+  const axes = ['sweetness', 'softness', 'creaminess', 'flavor'] as const;
+  const changedAxis =
+    axes.find((axis) => fallback?.[axis] !== undefined && fallback[axis] !== requested[axis]) ??
+    axes.find((axis) => requested[axis] !== 0);
+  const requestedLevel = formatDirectionLevel(changedAxis ? requested[changedAxis] : 0);
+  const fallbackLevel =
+    changedAxis && fallback ? formatDirectionLevel(fallback[changedAxis]) : null;
+  const surface = 'space-y-3 rounded-md border border-nonprod/50 bg-nonprod/[0.06] px-4 py-4';
+  const primary = 'min-h-11 rounded-lg bg-ivory px-4 py-2.5 text-sm font-medium text-shell';
+  const secondary =
+    'min-h-11 rounded-lg border border-ivory/20 px-4 py-2.5 text-sm font-medium text-ivory';
+
+  if (alternativePending) {
+    return (
+      <div className={surface} data-testid="direction-fallback-decision">
+        <div>
+          <p className="text-sm font-medium text-ivory">Sprawdzam inną możliwość…</p>
+          <p className="mt-1 text-xs text-ivory/70">Receptura pozostaje bez zmian.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {fallbackLevel ? (
+            <button type="button" className={secondary} onClick={onUseFallback}>
+              Zostań przy {fallbackLevel}
+            </button>
+          ) : null}
+          <button type="button" className={secondary} onClick={onBack}>
+            Wróć
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (alternativeReport !== null) {
+    const alternative = alternativeReport.best;
+    if (!alternative) {
+      return (
+        <div className={surface} data-testid="direction-fallback-final">
+          <div>
+            <p className="text-sm font-medium text-ivory">
+              Poziomu {requestedLevel} nie da się osiągnąć dla tej receptury
+            </p>
+            <p className="mt-1 text-xs text-ivory/70">
+              {fallbackLevel
+                ? `Najbliższy bezpieczny poziom to ${fallbackLevel}.`
+                : 'Z obecną recepturą nie ma bezpiecznego wariantu.'}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {fallbackLevel ? (
+              <button type="button" className={primary} onClick={onUseFallback}>
+                Ustaw {fallbackLevel}
+              </button>
+            ) : null}
+            <button type="button" className={secondary} onClick={onBack}>
+              Wróć
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className={surface} data-testid="direction-fallback-alternative">
+        <div>
+          <p className="text-sm font-medium text-ivory">
+            {alternative.targetReached
+              ? `Można osiągnąć poziom ${requestedLevel}`
+              : `Można zbliżyć się bardziej do poziomu ${requestedLevel}`}
+          </p>
+          <p className="mt-1 text-xs text-ivory/70">Wymaga to zmiany receptury.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className={primary} onClick={onOpenAlternative}>
+            Zobacz propozycję
+          </button>
+          {fallbackLevel ? (
+            <button type="button" className={secondary} onClick={onUseFallback}>
+              Zostań przy {fallbackLevel}
+            </button>
+          ) : null}
+          <button type="button" className={secondary} onClick={onBack}>
+            Wróć
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={surface} data-testid="direction-fallback-decision">
+      <div>
+        <p className="text-sm font-medium text-ivory">
+          {fallbackLevel
+            ? `Nie da się osiągnąć poziomu ${requestedLevel}`
+            : 'Nie udało się osiągnąć wybranego poziomu'}
+        </p>
+        <p className="mt-1 text-xs text-ivory/70">
+          {fallbackLevel
+            ? `Najbliższy możliwy poziom to ${fallbackLevel}.`
+            : 'Z obecną recepturą nie ma bezpiecznego wariantu.'}
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {fallbackLevel ? (
+          <button
+            type="button"
+            className={primary}
+            data-testid="direction-fallback-use"
+            onClick={onUseFallback}
+          >
+            Ustaw {fallbackLevel}
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className={fallbackLevel ? secondary : primary}
+          data-testid="direction-fallback-try-alternative"
+          onClick={onTryAlternative}
+        >
+          Spróbuj inaczej
+        </button>
+        <button type="button" className={secondary} onClick={onBack}>
+          Wróć
+        </button>
+      </div>
     </div>
   );
 }
@@ -755,6 +892,7 @@ export function ProRecalcPanel({
   const preview = useConstraintStudioStore((s) => s.preview);
   const applyPending = useConstraintStudioStore((s) => s.applyPending);
   const directionBestCandidate = useConstraintStudioStore((s) => s.directionBestCandidate);
+  const directionFallbackReport = useConstraintStudioStore((s) => s.directionFallbackReport);
   const rescueAdvice = useConstraintStudioStore((s) => s.rescueAdvice);
   const starterPackRescueReport = useConstraintStudioStore((s) => s.starterPackRescueReport);
   const starterPackRescuePending = useConstraintStudioStore((s) => s.starterPackRescuePending);
@@ -895,6 +1033,27 @@ export function ProRecalcPanel({
   if (!open) return null;
   const customerPreviewOpen = preview !== null && recalculationTerminal?.state === 'PREVIEW_READY';
   const dialogLabel = customerPreviewOpen ? 'Gotowe. Sprawdź proponowaną korektę.' : r.title;
+  const previewCard = preview ? (
+    <ConstraintPreviewCard
+      preview={preview}
+      applyPending={applyPending}
+      showCloseControl
+      showTechnicalDetails={canViewTechnicalDetails}
+      onApply={() => {
+        void (async () => {
+          await applyPreviewWithServerAuthority();
+          // Close only after the same terminal server validation used by
+          // Constraint Studio. A stale/blocked preview stays visible.
+          const after = useConstraintStudioStore.getState();
+          if (after.preview === null && after.blocked === null) onClose();
+        })();
+      }}
+      onCancel={() => {
+        store.cancelPreview();
+        onClose();
+      }}
+    />
+  ) : null;
 
   // One-screen workbench (owner 2026-07-24): the recalculation is a COMPACT OVERLAY
   // (520–720 px), never a giant page section. Zastosuj closes the overlay — the
@@ -1027,7 +1186,28 @@ export function ProRecalcPanel({
             <BlockedApplyNotice blocked={blocked} onDismiss={store.dismissBlocked} />
           ) : null}
 
-          {previewIssue && recalculationTerminal ? (
+          {directionFallbackReport && !preview ? (
+            <DirectionFallbackDecision
+              fallbackReport={directionFallbackReport}
+              alternativeReport={starterPackRescueReport}
+              alternativePending={starterPackRescuePending}
+              onUseFallback={() => {
+                void openDirectionFallbackPreviewWithServerAuthority();
+              }}
+              onTryAlternative={() => {
+                void requestStarterPackRescueWithServerAuthority();
+              }}
+              onOpenAlternative={() => {
+                void openStarterPackRescuePreviewWithServerAuthority();
+              }}
+              onBack={() => {
+                store.cancelPreview();
+                onClose();
+              }}
+            />
+          ) : null}
+
+          {!directionFallbackReport && previewIssue && recalculationTerminal ? (
             <RecalcDiagnosisView
               issue={previewIssue}
               input={currentInput}
@@ -1057,7 +1237,9 @@ export function ProRecalcPanel({
             />
           ) : null}
 
-          {directionBestCandidate && recalculationTerminal?.state === 'PREVIEW_READY' ? (
+          {!directionFallbackReport &&
+          directionBestCandidate &&
+          recalculationTerminal?.state === 'PREVIEW_READY' ? (
             <DirectionBestDecision
               candidate={directionBestCandidate}
               onAccept={store.acceptBestDirectionCandidate}
@@ -1078,32 +1260,18 @@ export function ProRecalcPanel({
             />
           ) : null}
 
-          {preview && recalculationTerminal?.state === 'PREVIEW_READY' ? (
-            <FriendlyLabMessageMotion
-              timing="persistent"
-              role={undefined}
-              testId="pro-recalc-preview-motion"
-            >
-              <ConstraintPreviewCard
-                preview={preview}
-                applyPending={applyPending}
-                showCloseControl
-                showTechnicalDetails={canViewTechnicalDetails}
-                onApply={() => {
-                  void (async () => {
-                    await applyPreviewWithServerAuthority();
-                    // Close only after the same terminal server validation used by
-                    // Constraint Studio. A stale/blocked preview stays visible.
-                    const after = useConstraintStudioStore.getState();
-                    if (after.preview === null && after.blocked === null) onClose();
-                  })();
-                }}
-                onCancel={() => {
-                  store.cancelPreview();
-                  onClose();
-                }}
-              />
-            </FriendlyLabMessageMotion>
+          {preview && previewCard && recalculationTerminal?.state === 'PREVIEW_READY' ? (
+            preview.directionFallback || preview.starterPackRescue ? (
+              previewCard
+            ) : (
+              <FriendlyLabMessageMotion
+                timing="persistent"
+                role={undefined}
+                testId="pro-recalc-preview-motion"
+              >
+                {previewCard}
+              </FriendlyLabMessageMotion>
+            )
           ) : null}
 
           {!preview && recalculationTerminal === null && undoAvailable ? (

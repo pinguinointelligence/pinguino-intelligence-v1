@@ -126,6 +126,26 @@ describe('constraint-studio boundary guard', () => {
     expect(commitBoundary).toContain('workingStateFingerprint(rebuilt.preview.proposedInput');
   });
 
+  it('never launches Starter Pack during ordinary recalculation and keeps it behind an explicit action', () => {
+    const store = readSource(join(FEATURE_DIR, 'constraintStudioStore.ts'));
+    const recalculate = store.slice(
+      store.indexOf('export async function createOptimizePreviewWithServerAuthority'),
+      store.indexOf('/** Explicit Standard removal'),
+    );
+    expect(recalculate).not.toContain('computeStarterPackRescueWithServerAuthority(');
+    expect(store).toContain('export async function requestStarterPackRescueWithServerAuthority');
+    const explicit = store.slice(
+      store.indexOf('export async function requestStarterPackRescueWithServerAuthority'),
+      store.indexOf('/** Explicit “Sprawdź z …” boundary'),
+    );
+    expect(explicit).toContain('computeStarterPackRescueWithServerAuthority(');
+    expect(store).toContain('STARTER_PACK_RESCUE_RUNTIME_BUDGET_MS = 20_000');
+    expect(explicit).toContain('new AbortController()');
+    expect(explicit).toContain('controller.abort()');
+    expect(store).toContain('report.budgetExhausted = input.signal?.aborted === true');
+    expect(store).toContain('probes.map(async (probeGrams) => {');
+  });
+
   it('the feature stays inside the sanctioned seams (engine barrel only, no supabase)', () => {
     for (const file of FILES) {
       const source = readSource(file);

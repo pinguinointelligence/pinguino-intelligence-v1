@@ -46,6 +46,7 @@ export function computeOptimizePreviewRescueAdvice(
   request: OptimizePreviewComputationRequest,
   result: BuildPreviewResult,
 ): RescueIngredientAdvice | null {
+  if (request.options.skipRescueAssessment === true) return null;
   if ((request.options.rescueSimulationLineIds?.length ?? 0) > 0) return null;
   if (!optimizePreviewNeedsRescueAssessment(result)) return null;
   return assessRescueIngredientAdvice({

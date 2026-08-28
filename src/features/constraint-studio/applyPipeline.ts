@@ -29,6 +29,7 @@ import {
   type CorrectionProposal,
   type EngineIngredient,
   type RecipeDirectionTarget,
+  type RecipeDirectionTargets,
   type RecipeInput,
   type RecipeResult,
 } from '@/engine';
@@ -37,6 +38,7 @@ import {
   buildRecipeDirectionPlan,
   DEFAULT_RECIPE_DIRECTION_TARGETS,
   hasActiveExactDirectionObjective,
+  normalizeRecipeDirectionTargets,
   recipeDirectionViolations,
 } from '@/features/recipe-direction/recipeDirectionTargets';
 import {
@@ -206,6 +208,7 @@ import {
   withStarterPackRescueCandidate,
   type StarterPackRescueMapperId,
 } from './starterPackRescuePalette';
+import { directionFallbackTargetSequence } from './directionFallback';
 
 /**
  * Internal SOLVER HOLDS applied to every search in this pipeline.
@@ -265,6 +268,13 @@ export interface OptimizePreviewOptions extends FormulationOptions {
    * search so those probes do not recurse into the search themselves. Never set
    * by a caller. */
   directionNearestPass?: boolean;
+  /** Owner fallback orchestration: run exactly the selected level and do not
+   * launch sibling-level generation or the preference-stripped nearest retry.
+   * The caller owns the one-step-toward-zero sequence. */
+  directionFallbackPass?: boolean;
+  /** Owner UX: ingredient alternatives are user-triggered only. Normal exact
+   * and adjacent fallback runs therefore publish no automatic rescue advice. */
+  skipRescueAssessment?: boolean;
   /** INTERNAL. Set while a material-drift line is temporarily held at x_user
    * to generate an alternative candidate. It prevents nested soft-anchor
    * probes while retaining the independent Direction-neighborhood search. */
@@ -615,6 +625,15 @@ export interface ConstraintPreview {
    * the NEAREST legal executable recipe rather than an ACHIEVED target. Hard
    * constraints were never relaxed to produce it. */
   directionTargetUnreached?: boolean;
+  /** Exact owner-approved adjacent/neutral Direction choice. The requested
+   * target remains the base state; this target is written only by Apply. */
+  directionFallback?: {
+    requestedTargets: RecipeDirectionTargets;
+    fallbackTargets: RecipeDirectionTargets;
+    attemptIndex: number;
+  };
+  /** Pins a runtime Preview to the bounded exact-level search semantics. */
+  directionSearchMode?: 'bounded_exact';
   /** A current user lock fixes a value outside an authoritative hard boundary.
    * The only legal transition is this disclosed, separately authorized
    * Suggested Fix Preview. */
@@ -6177,7 +6196,9 @@ function improveDirectionNearestVector(
   options: OptimizePreviewOptions,
 ): RecipeInput {
   // Probe runs must not recurse into the search.
-  if (options.directionNearestPass === true) return working;
+  if (options.directionNearestPass === true || options.directionFallbackPass === true) {
+    return working;
+  }
   if (!hasActiveExactDirectionObjective(input)) return working;
   const requested = requestedDirectionBands(input);
   if (requested.length === 0) return working;
@@ -6385,6 +6406,10 @@ export function buildOptimizePreview(
   options: OptimizePreviewOptions = {},
 ): BuildPreviewResult {
   const direct = buildOptimizePreviewWithDirection(input, set, createdAt, options);
+  if (options.directionFallbackPass === true) {
+    if (direct.ok) direct.preview.directionSearchMode = 'bounded_exact';
+    return enforceTargetBatchInvariant(input, direct);
+  }
   if (
     direct.ok ||
     // An unreachable preference dead-ends in two distinct ways, and BOTH must
@@ -6453,6 +6478,100 @@ export function buildOptimizePreview(
     calculateRecipe(nearest.preview.proposedInput),
   );
   return enforceTargetBatchInvariant(input, nearest);
+}
+
+const sameDirectionTargets = (
+  left: RecipeDirectionTargets | undefined,
+  right: RecipeDirectionTargets,
+): boolean =>
+  left?.sweetness === right.sweetness &&
+  left.softness === right.softness &&
+  left.creaminess === right.creaminess &&
+  left.flavor === right.flavor;
+
+/** Pure target change used by the bounded owner fallback. Ingredient vectors,
+ * Main roles, locks and batch remain byte-identical until the Engine builds a
+ * Preview for this exact adjacent/neutral level. */
+export function buildDirectionFallbackInput(
+  input: RecipeInput,
+  fallbackTargets: RecipeDirectionTargets,
+): RecipeInput {
+  return {
+    ...input,
+    goals: {
+      ...input.goals,
+      direction_targets_active: true,
+      direction_targets: { ...fallbackTargets },
+    },
+  };
+}
+
+/**
+ * Rebase one independently verified fallback-level solve onto the untouched
+ * requested-level draft. The proposed recipe intentionally keeps the fallback
+ * goals: Apply writes them together with the verified grams; before Apply the
+ * base fingerprint remains the original request.
+ */
+export function buildDirectionFallbackCandidatePreview(
+  input: RecipeInput,
+  set: ConstraintSet,
+  fallbackTargets: RecipeDirectionTargets,
+  attemptIndex: number,
+  createdAt: string,
+  options: OptimizePreviewOptions = {},
+  prebuiltFallback?: BuildPreviewResult,
+): BuildPreviewResult {
+  const sequence = directionFallbackTargetSequence(input);
+  if (
+    !Number.isInteger(attemptIndex) ||
+    attemptIndex < 0 ||
+    attemptIndex >= sequence.length ||
+    !sameDirectionTargets(sequence[attemptIndex], fallbackTargets)
+  ) {
+    return { ok: false, code: 'no_proposal' };
+  }
+  const fallbackInput = buildDirectionFallbackInput(input, fallbackTargets);
+  const built =
+    prebuiltFallback ??
+    buildOptimizePreview(fallbackInput, set, createdAt, {
+      ...options,
+      directionFallbackPass: true,
+    });
+  if (!built.ok || built.preview.diagnosticOnly === true) return built;
+  if (
+    built.preview.directionAssessment?.active !== true ||
+    built.preview.directionAssessment.supportedAxisCount === 0 ||
+    built.preview.directionAssessment.reached !== true ||
+    !sameDirectionTargets(built.preview.proposedInput.goals?.direction_targets, fallbackTargets)
+  ) {
+    return { ok: false, code: 'no_proposal' };
+  }
+  const proposedResult = calculateRecipe(built.preview.proposedInput);
+  const hardValid =
+    detectViolations(proposedResult).length === 0 &&
+    !proposedResult.warnings.some((warning) => warning.severity === 'critical') &&
+    verifyConstraintsPreserved(set, built.preview.proposedInput).ok &&
+    verifyMainIngredientIdentity(input, built.preview.proposedInput, set.byLineId).ok &&
+    Math.abs(plannedSum(built.preview.proposedInput) - input.target_batch_grams) <=
+      BATCH_SUM_TOLERANCE_G;
+  if (!hardValid) return { ok: false, code: 'unsafe_proposal' };
+
+  return {
+    ok: true,
+    preview: {
+      ...built.preview,
+      baseFingerprint: workingStateFingerprint(input, set),
+      directionTargetUnreached: false,
+      directionSearchMode: 'bounded_exact',
+      directionFallback: {
+        requestedTargets: {
+          ...normalizeRecipeDirectionTargets(input.goals?.direction_targets),
+        },
+        fallbackTargets: { ...fallbackTargets },
+        attemptIndex,
+      },
+    },
+  };
 }
 
 /**
@@ -8193,6 +8312,12 @@ export interface AppliedPresentationSnapshot {
   preview: ConstraintPreview;
   terminal: RecalculationTerminalState;
   awaitingRecalculation: boolean;
+  /** Exact profile-store Direction mirrors captured before Apply. Recipe goals
+   * and pending UI intent can legitimately differ, so Undo restores both. */
+  directionProfile?: {
+    targets: RecipeDirectionTargets;
+    intents: RecipeDirectionTargets;
+  };
   baseFingerprint: string;
   proposedFingerprint: string;
   baseProductBehaviorFingerprint: string;
@@ -8459,13 +8584,40 @@ const violatedIngredientNames = (
  * a forged payload could validate grams under an easier profile and then write
  * those grams into the unchanged current profile.
  */
-function sameVerifiedRecipeContext(current: RecipeInput, proposed: RecipeInput): boolean {
+function sameVerifiedRecipeContext(
+  current: RecipeInput,
+  proposed: RecipeInput,
+  directionFallback?: ConstraintPreview['directionFallback'],
+): boolean {
+  const currentGoals = current.goals ?? {};
+  const proposedGoals = proposed.goals ?? {};
+  const goalsWithoutDirection = (goals: typeof currentGoals) =>
+    Object.fromEntries(
+      Object.entries(goals).filter(
+        ([key]) => key !== 'direction_targets' && key !== 'direction_targets_active',
+      ),
+    );
+  const currentGoalsWithoutDirection = goalsWithoutDirection(currentGoals);
+  const proposedGoalsWithoutDirection = goalsWithoutDirection(proposedGoals);
+  const fallbackSequence = directionFallback ? directionFallbackTargetSequence(current) : [];
+  const fallbackContextValid =
+    directionFallback !== undefined &&
+    current.goals?.direction_targets_active === true &&
+    sameDirectionTargets(current.goals.direction_targets, directionFallback.requestedTargets) &&
+    sameDirectionTargets(
+      fallbackSequence[directionFallback.attemptIndex],
+      directionFallback.fallbackTargets,
+    ) &&
+    proposed.goals?.direction_targets_active === true &&
+    sameDirectionTargets(proposed.goals.direction_targets, directionFallback.fallbackTargets) &&
+    JSON.stringify(currentGoalsWithoutDirection) === JSON.stringify(proposedGoalsWithoutDirection);
   return (
     proposed.mode === current.mode &&
     proposed.category === current.category &&
     Object.is(proposed.target_temperature_c, current.target_temperature_c) &&
     Object.is(proposed.machine_capacity_grams, current.machine_capacity_grams) &&
-    JSON.stringify(proposed.goals ?? null) === JSON.stringify(current.goals ?? null)
+    (JSON.stringify(proposed.goals ?? null) === JSON.stringify(current.goals ?? null) ||
+      fallbackContextValid)
   );
 }
 
@@ -8642,11 +8794,17 @@ export class VerifiedApply {
     ) {
       return { ok: false, code: 'stale_preview', messagePl: copy.blocked.stale };
     }
-    if (!sameVerifiedRecipeContext(current, preview.proposedInput)) {
+    if (!sameVerifiedRecipeContext(current, preview.proposedInput, preview.directionFallback)) {
       return { ok: false, code: 'stale_preview', messagePl: copy.blocked.stale };
     }
     if (preview.kind === 'optimize') {
-      const directionProgress = assessDirectionCandidateProgress(current, preview.proposedInput);
+      const directionIdentity = preview.directionFallback
+        ? buildDirectionFallbackInput(current, preview.directionFallback.fallbackTargets)
+        : current;
+      const directionProgress = assessDirectionCandidateProgress(
+        directionIdentity,
+        preview.proposedInput,
+      );
       if (directionProgress.active && !directionProgress.accepted) {
         return {
           ok: false,
@@ -8738,7 +8896,7 @@ export class VerifiedApply {
       const audit = preview.practicalization.audit;
       if (
         audit.modelVersion !== PRACTICAL_RECIPE_MODEL_VERSION ||
-        !sameVerifiedRecipeContext(current, audit.exactInput)
+        !sameVerifiedRecipeContext(current, audit.exactInput, preview.directionFallback)
       ) {
         practicalizationRecheckFailure = {
           ok: false,
@@ -9231,6 +9389,37 @@ export class VerifiedApply {
         return { ok: false, code: 'stale_preview', messagePl: copy.blocked.stale };
       }
       verifiedProductBehaviorSnapshots = structuredClone(proposalAuthorization.snapshots);
+    }
+    if (preview.directionFallback !== undefined) {
+      const proof = preview.directionFallback;
+      const rebuilt = buildDirectionFallbackCandidatePreview(
+        current,
+        currentConstraints,
+        proof.fallbackTargets,
+        proof.attemptIndex,
+        preview.createdAt,
+        {
+          ...canonicalRebuildOptions,
+          excludedIngredientIds,
+          productBehaviorSnapshots: verifiedProductBehaviorSnapshots,
+          technicalOnlyMainLineIds,
+        },
+        prebuiltOptimizeRebuild,
+      );
+      const rebuiltMatches =
+        rebuilt.ok &&
+        JSON.stringify(rebuilt.preview.directionFallback) === JSON.stringify(proof) &&
+        workingStateFingerprint(rebuilt.preview.proposedInput, rebuilt.preview.nextConstraints) ===
+          workingStateFingerprint(preview.proposedInput, preview.nextConstraints);
+      if (!rebuiltMatches) {
+        return {
+          ok: false,
+          code: 'stale_preview',
+          messagePl:
+            'Apply zablokowany: osiągalny poziom Direction nie odtwarza tej samej zweryfikowanej receptury.',
+        };
+      }
+      verifiedOptimizeRebuild = rebuilt;
     }
     if (preview.starterPackRescue !== undefined) {
       const proof = preview.starterPackRescue;

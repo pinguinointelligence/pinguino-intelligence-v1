@@ -1,12 +1,18 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import type { RecipeInput } from '@/engine';
+import { calculateRecipe, type RecipeInput } from '@/engine';
 import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import { parseCsv } from '@/lib/csv';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
-import { buildOptimizePreview, buildStarterPackRescueSimulationInput } from './applyPipeline';
+import {
+  buildDirectionFallbackCandidatePreview,
+  buildOptimizePreview,
+  buildStarterPackRescueSimulationInput,
+  commitPreview,
+} from './applyPipeline';
+import { buildDirectionFallback } from './directionFallback';
 import {
   STARTER_PACK_RESCUE_MAPPER_IDS,
   buildStarterPackDirectionRescue,
@@ -325,5 +331,62 @@ describe('Starter Pack Direction Rescue V1 gates', () => {
         .filter((record) => record.reason === 'already_present')
         .map((record) => record.mapperId),
     ).toEqual(['PI-ING-000494', 'PI-ING-000270']);
+  });
+
+  it('runs the exact owner Hardness -2 fixture through fast adjacent Direction before optional ingredients', () => {
+    const input = ownerHardnessMinusTwo();
+    const before = structuredClone(input);
+    const exactStarted = performance.now();
+    const normalResult = buildOptimizePreview(input, NONE, AT, {
+      directionFallbackPass: true,
+      skipRescueAssessment: true,
+    });
+    const exactRuntimeMs = performance.now() - exactStarted;
+    const report = buildDirectionFallback({
+      input,
+      set: NONE,
+      createdAt: AT,
+      normalResult,
+      evaluateCandidate: ({ targets, attemptIndex }) =>
+        buildDirectionFallbackCandidatePreview(input, NONE, targets, attemptIndex, AT, {
+          directionFallbackPass: true,
+          skipRescueAssessment: true,
+        }),
+    });
+    console.log(
+      'DIRECTION_FALLBACK_OWNER_MATRIX',
+      JSON.stringify({
+        exactRuntimeMs,
+        exactReached: normalResult.ok && normalResult.preview.directionAssessment?.reached === true,
+        attempts: report.attempts.map((attempt) => ({
+          hardness: attempt.targets.softness,
+          reached: attempt.targetReached,
+          runtimeMs: attempt.runtimeMs,
+          score: attempt.preview?.directionAssessment?.score ?? null,
+          npac: attempt.preview ? calculateRecipe(attempt.preview.proposedInput).npac_points : null,
+          pod: attempt.preview ? calculateRecipe(attempt.preview.proposedInput).pod_points : null,
+        })),
+        totalRuntimeMs: report.totalRuntimeMs,
+      }),
+    );
+    expect(input).toEqual(before);
+    expect(normalResult).toMatchObject({ ok: false, code: 'no_proposal' });
+    expect(report.attempts).toHaveLength(1);
+    expect(report.best?.targets.softness).toBe(-1);
+    expect(report.best?.targetReached).toBe(true);
+    expect(report.best?.preview?.directionAssessment?.score).toBe(10);
+    expect(exactRuntimeMs + report.totalRuntimeMs).toBeLessThan(15_000);
+    const applied = commitPreview(
+      input,
+      NONE,
+      report.best!.preview!,
+      AT,
+      'owner-direction-fallback-apply',
+    );
+    expect(applied.ok).toBe(true);
+    if (applied.ok) {
+      expect(applied.verified.input.goals?.direction_targets?.softness).toBe(-1);
+      expect(applied.verified.input.items).toEqual(report.best!.preview!.proposedInput.items);
+    }
   });
 });

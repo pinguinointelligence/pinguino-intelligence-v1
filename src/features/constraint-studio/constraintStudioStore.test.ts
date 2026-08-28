@@ -24,7 +24,7 @@ import { useRecipeStore } from '@/stores/recipeStore';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { optimizePreviewRequiresApply, useConstraintStudioStore } from './constraintStudioStore';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
-import type { ConstraintPreview } from './applyPipeline';
+import { buildDirectionFallbackCandidatePreview, type ConstraintPreview } from './applyPipeline';
 import { ownerSameInputRecipe } from '@/features/formulation/__fixtures__/ownerSameInputFixture';
 import { useIngredientChangeStore } from '@/features/ingredient-builder/ingredientChangeStore';
 
@@ -537,10 +537,61 @@ describe('§17.1/§17.2 padlock', () => {
 });
 
 describe('§19 apply through the store', () => {
+  it('keeps fallback Direction untouched through Ustaw/Cancel, then changes it only with verified Apply and restores it on Undo', () => {
+    const base = starterMilkBase();
+    loadRecipe({
+      ...base,
+      goals: {
+        ...base.goals,
+        direction_targets_active: true,
+        direction_targets: { sweetness: 0, softness: -2, creaminess: 0, flavor: 0 },
+      },
+    });
+    const draft = buildRecipeInput(useRecipeStore.getState());
+    const snapshots = useRecipeStore.getState().productBehaviorSnapshots;
+    const fallbackTargets = { sweetness: 0, softness: -1, creaminess: 0, flavor: 0 } as const;
+    const built = buildDirectionFallbackCandidatePreview(
+      draft,
+      { byLineId: {} },
+      fallbackTargets,
+      0,
+      '2026-08-28T12:30:00.000Z',
+      {
+        directionFallbackPass: true,
+        skipRescueAssessment: true,
+        productBehaviorSnapshots: snapshots,
+      },
+    );
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    const beforeItems = structuredClone(useRecipeStore.getState().items);
+
+    useConstraintStudioStore.getState().stageDirectionFallbackPreview(built.preview, snapshots);
+    expect(useConstraintStudioStore.getState().preview).not.toBeNull();
+    expect(useRecipeStore.getState().direction_targets.softness).toBe(-2);
+    expect(useRecipeStore.getState().items).toEqual(beforeItems);
+
+    useConstraintStudioStore.getState().cancelPreview();
+    expect(useRecipeStore.getState().direction_targets.softness).toBe(-2);
+    expect(useRecipeStore.getState().items).toEqual(beforeItems);
+
+    useConstraintStudioStore.getState().stageDirectionFallbackPreview(built.preview, snapshots);
+    useConstraintStudioStore.getState().applyPreview();
+    expect(useConstraintStudioStore.getState().blocked).toBeNull();
+    expect(useRecipeStore.getState().direction_targets.softness).toBe(-1);
+    expect(useConstraintStudioStore.getState().history).toHaveLength(1);
+
+    useConstraintStudioStore.getState().undoLastApply();
+    expect(useRecipeStore.getState().direction_targets.softness).toBe(-2);
+    expect(useRecipeStore.getState().items).toEqual(beforeItems);
+  });
+
   it('Cancel clears Preview markers; save keeps applied evidence; reopen clears the session', () => {
     loadAddFixScenario();
     useConstraintStudioStore.getState().createOptimizePreview();
-    expect(useIngredientChangeStore.getState().changedByLastRecalculation.length).toBeGreaterThan(0);
+    expect(useIngredientChangeStore.getState().changedByLastRecalculation.length).toBeGreaterThan(
+      0,
+    );
 
     useConstraintStudioStore.getState().cancelPreview();
     expect([...useIngredientChangeStore.getState().changedByLastRecalculation]).toEqual([]);

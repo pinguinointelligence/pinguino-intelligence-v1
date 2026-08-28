@@ -125,6 +125,8 @@ import {
   buildBatchRescalePreview,
   bindProductBehaviorToPreview,
   buildExplicitStandardRemovalPreview,
+  buildDirectionFallbackCandidatePreview,
+  buildDirectionFallbackInput,
   buildOptimizePreview,
   buildStarterPackRescueCandidatePreview,
   buildStarterPackRescueSimulationInput,
@@ -160,10 +162,17 @@ import {
   type StarterPackDirectionRescueReport,
 } from './starterPackDirectionRescue';
 import {
+  buildDirectionFallback,
+  directionFallbackTargetSequence,
+  shouldRunDirectionFallback,
+  type DirectionFallbackReport,
+} from './directionFallback';
+import {
   STARTER_PACK_RESCUE_MAPPER_IDS,
   starterPackRescueEligibility,
   starterPackRescueLineId,
   starterPackRescueProbeGrams,
+  type StarterPackRescueMapperId,
 } from './starterPackRescuePalette';
 
 export type RecalculationTerminalState = PipelineRecalculationTerminalState;
@@ -561,6 +570,9 @@ export interface ConstraintStudioState {
   suggestedFixAuthorization: SuggestedFixSessionAuthorization | null;
   /** Candidate is hidden until the user explicitly chooses the compromise. */
   directionBestCandidate: ConstraintPreview | null;
+  /** Fast, same-ingredient adjacent/neutral Direction result. Hidden until the
+   * exact requested level has failed; its Preview requires explicit “Ustaw”. */
+  directionFallbackReport: DirectionFallbackReport | null;
   /** Owner 2026-08-22 — simulation-proven rescue ingredient hint (never an
    * auto-add): present only when the exact Direction target is not reached
    * with the current ingredients AND one approved candidate materially helps. */
@@ -616,6 +628,10 @@ export interface ConstraintStudioState {
     prebuilt?: PrebuiltOptimizePreview,
   ) => void;
   acceptBestDirectionCandidate: () => void;
+  stageDirectionFallbackPreview: (
+    preview: ConstraintPreview,
+    proposedSnapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>,
+  ) => void;
   stageStarterPackRescuePreview: (
     preview: ConstraintPreview,
     proposedSnapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>,
@@ -663,6 +679,7 @@ const INITIAL = {
   explicitStandardRemovalConsent: null,
   suggestedFixAuthorization: null,
   directionBestCandidate: null,
+  directionFallbackReport: null as DirectionFallbackReport | null,
   rescueAdvice: null as RescueIngredientAdvice | null,
   starterPackRescueReport: null as StarterPackDirectionRescueReport | null,
   starterPackRescuePending: false,
@@ -687,6 +704,7 @@ const CLEAR_STAGED = {
   explicitStandardRemovalConsent: null,
   suggestedFixAuthorization: null,
   directionBestCandidate: null,
+  directionFallbackReport: null,
   rescueAdvice: null,
   starterPackRescueReport: null,
   starterPackRescuePending: false,
@@ -780,7 +798,7 @@ let activePiAbortGeneration = 0;
  * Thirty seconds preserves hard preemption while giving the measured browser
  * runtime headroom; no solver limit or culinary rule is changed.
  */
-export const PI_RECALCULATION_DEADLINE_MS = 30_000;
+export const PI_RECALCULATION_DEADLINE_MS = 20_000;
 
 const isCurrentPiRun = (generation: number): boolean => generation === activePiRunGeneration;
 
@@ -1352,6 +1370,59 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         });
       },
 
+      stageDirectionFallbackPreview: (candidate, proposedSnapshots) => {
+        const draft = selectCanonicalDraft();
+        const currentSnapshots = useRecipeStore.getState().productBehaviorSnapshots;
+        if (
+          candidate.directionFallback === undefined ||
+          workingStateFingerprint(draft.input, draft.constraints) !== candidate.baseFingerprint
+        ) {
+          set({ ...CLEAR_STAGED });
+          return;
+        }
+        const bound = bindProductBehaviorToPreview(
+          { ok: true, preview: structuredClone(candidate) },
+          proposedSnapshots,
+          currentSnapshots,
+          useRecipeStore.getState().ownerReviewGate?.technicalOnlyMainLineIds ?? [],
+        );
+        if (!bound.ok) {
+          set({ preview: null, previewIssue: bound, blocked: null });
+          return;
+        }
+        bound.preview.baseDraftRevision = draft.revision;
+        publishRecalculationMarker(draft.input, bound.preview.proposedInput);
+        set({
+          preview: bound.preview,
+          previewIssue: null,
+          directionBestCandidate: null,
+          directionFallbackReport: null,
+          rescueAdvice: null,
+          starterPackRescueReport: null,
+          starterPackRescuePending: false,
+          directionConsent: null,
+          proposalProductBehaviorAuthorization: {
+            baseFingerprint: bound.preview.baseFingerprint,
+            proposedFingerprint: workingStateFingerprint(
+              bound.preview.proposedInput,
+              bound.preview.nextConstraints,
+            ),
+            baseProductBehaviorFingerprint: productBehaviorSnapshotFingerprint(currentSnapshots),
+            proposedProductBehaviorFingerprint:
+              productBehaviorSnapshotFingerprint(proposedSnapshots),
+            snapshots: structuredClone(
+              Object.fromEntries(
+                Object.entries(proposedSnapshots).filter(
+                  (entry): entry is [string, ProductBehaviorSnapshot] => entry[1] !== undefined,
+                ),
+              ),
+            ),
+          },
+          blocked: null,
+          recalculationTerminal: { state: 'PREVIEW_READY' },
+        });
+      },
+
       stageStarterPackRescuePreview: (candidate, proposedSnapshots) => {
         const draft = selectCanonicalDraft();
         const currentSnapshots = useRecipeStore.getState().productBehaviorSnapshots;
@@ -1385,7 +1456,9 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         set({
           preview: bound.preview,
           directionBestCandidate: null,
+          directionFallbackReport: null,
           rescueAdvice: null,
+          starterPackRescueReport: null,
           starterPackRescuePending: false,
           directionConsent: needsDirectionConsent
             ? {
@@ -1732,7 +1805,8 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           return;
         }
         const terminalBeforeApply = get().recalculationTerminal;
-        const awaitingBeforeApply = useRecipeProfileStore.getState().awaitingRecalculation;
+        const profileBeforeApply = useRecipeProfileStore.getState();
+        const awaitingBeforeApply = profileBeforeApply.awaitingRecalculation;
         const practicalAuditBeforeApply = useRecipeStore.getState().practicalRecipeAudit;
         // The Apply gate consumes the SAME canonical draft selector (FAILURE 1) +
         // the monotonic revision (Phase 3) — the door itself re-checks both.
@@ -1775,13 +1849,18 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         // (owner P0 Apply data integrity): per-line validation, independent batch
         // recompute, atomic write, read-back verification with rollback. A failed
         // write keeps the Preview available for retry and names the exact line.
-        const written = useRecipeStore
-          .getState()
-          .applyVerifiedRecipeInput(
-            outcome.verified.input,
-            outcome.verified.productBehaviorSnapshots,
-            options?.deferCurrentResult ? { acknowledgeRecalculation: false } : undefined,
-          );
+        const written = useRecipeStore.getState().applyVerifiedRecipeInput(
+          outcome.verified.input,
+          outcome.verified.productBehaviorSnapshots,
+          options?.deferCurrentResult || preview.directionFallback
+            ? {
+                ...(options?.deferCurrentResult ? { acknowledgeRecalculation: false } : {}),
+                ...(preview.directionFallback
+                  ? { directionTargets: preview.directionFallback.fallbackTargets }
+                  : {}),
+              }
+            : undefined,
+        );
         if (!written.ok) {
           set({
             blocked: {
@@ -1816,6 +1895,10 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
                 preview: structuredClone(preview),
                 terminal: structuredClone(terminalBeforeApply),
                 awaitingRecalculation: awaitingBeforeApply,
+                directionProfile: {
+                  targets: { ...profileBeforeApply.directionTargets },
+                  intents: { ...profileBeforeApply.directionIntents },
+                },
                 baseFingerprint: workingStateFingerprint(
                   outcome.verified.record.before.input,
                   outcome.verified.record.before.constraints,
@@ -1889,6 +1972,12 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         useRecipeStore.setState((state) => ({
           items: snapshot.items.map((item) => ({ ...item })),
           target_batch_grams: snapshot.target_batch_grams,
+          ...(snapshot.goals?.direction_targets
+            ? {
+                direction_targets: { ...snapshot.goals.direction_targets },
+                direction_targets_active: snapshot.goals.direction_targets_active === true,
+              }
+            : {}),
           // Owner P0 (complete Undo): exclusions return with the snapshot — no
           // stale excluded IDs survive, no page refresh is ever needed.
           excludedIngredientIds: [...last.before.excludedIngredientIds],
@@ -1900,6 +1989,18 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           // Phase 3: the undo restore is itself a material edit (monotonic).
           draftRevision: state.draftRevision + 1,
         }));
+        const directionProfile = last.before.presentation?.directionProfile;
+        if (directionProfile) {
+          useRecipeProfileStore.setState({
+            directionTargets: { ...directionProfile.targets },
+            directionIntents: { ...directionProfile.intents },
+          });
+        } else if (
+          last.before.presentation?.preview.directionFallback &&
+          snapshot.goals?.direction_targets
+        ) {
+          useRecipeProfileStore.getState().setDirectionTargets(snapshot.goals.direction_targets);
+        }
         clearRecalculationMarker();
         abortActivePiWorker();
         const generation = (activePiRunGeneration += 1);
@@ -2619,6 +2720,75 @@ async function restoreScorePresentationAfterUndo(
   }
 }
 
+async function computeDirectionFallbackWithServerAuthority(input: {
+  generation: number;
+  signal?: AbortSignal;
+  draft: CanonicalDraft;
+  normalResult: BuildPreviewResult;
+  createdAt: string;
+  baseSnapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
+  technicalOnlyMainLineIds: readonly string[];
+}): Promise<DirectionFallbackReport | null> {
+  if (!shouldRunDirectionFallback(input.draft.input, input.normalResult)) return null;
+  const trials = new Map<number, BuildPreviewResult>();
+  const commonOptions = {
+    excludedIngredientIds: input.draft.excludedIngredientIds,
+    unavailableMainIngredientIds: input.draft.unavailableMainIngredientIds,
+    effectivePriceOverrides: useCustomerPriceStore.getState().overridesByCanonicalId,
+    requirePracticalPreview: true,
+    productBehaviorSnapshots: input.baseSnapshots,
+    technicalOnlyMainLineIds: input.technicalOnlyMainLineIds,
+    directionFallbackPass: true,
+    skipRescueAssessment: true,
+  } as const;
+
+  for (const [attemptIndex, targets] of directionFallbackTargetSequence(
+    input.draft.input,
+  ).entries()) {
+    if (input.signal?.aborted) break;
+    const fallbackInput = buildDirectionFallbackInput(input.draft.input, targets);
+    try {
+      const computation = await runOptimizePreviewOffMainThread(
+        {
+          input: fallbackInput,
+          constraints: input.draft.constraints,
+          createdAt: input.createdAt,
+          options: commonOptions,
+        },
+        input.signal,
+      );
+      const rebound = buildDirectionFallbackCandidatePreview(
+        input.draft.input,
+        input.draft.constraints,
+        targets,
+        attemptIndex,
+        input.createdAt,
+        commonOptions,
+        computation.result,
+      );
+      trials.set(attemptIndex, rebound);
+      if (rebound.ok && rebound.preview.directionAssessment?.reached === true) break;
+    } catch {
+      trials.set(attemptIndex, { ok: false, code: 'no_proposal' });
+      if (input.signal?.aborted) break;
+    }
+  }
+  if (
+    !isCurrentPiRun(input.generation) ||
+    useRecipeStore.getState().draftRevision !== input.draft.revision
+  ) {
+    return null;
+  }
+  return buildDirectionFallback({
+    input: input.draft.input,
+    set: input.draft.constraints,
+    createdAt: input.createdAt,
+    normalResult: input.normalResult,
+    evaluateCandidate: ({ attemptIndex }) =>
+      trials.get(attemptIndex) ?? { ok: false, code: 'no_proposal' },
+  });
+}
+
 async function computeStarterPackRescueWithServerAuthority(input: {
   generation: number;
   signal?: AbortSignal;
@@ -2628,6 +2798,7 @@ async function computeStarterPackRescueWithServerAuthority(input: {
   baseSnapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
   technicalOnlyMainLineIds: readonly string[];
 }): Promise<void> {
+  const runtimeStarted = performance.now();
   if (!shouldRunStarterPackDirectionRescue(input.draft.input, input.normalResult)) {
     useConstraintStudioStore.setState({
       starterPackRescueReport: null,
@@ -2647,15 +2818,25 @@ async function computeStarterPackRescueWithServerAuthority(input: {
     technicalOnlyMainLineIds: input.technicalOnlyMainLineIds,
   } as const;
   const trials = new Map<string, BuildPreviewResult>();
+  const candidateRuntimeMs = new Map<StarterPackRescueMapperId, number>();
+  let candidatePreparationMs = 0;
+  let productBehaviorMs = 0;
+  let solverSearchMs = 0;
 
   await Promise.all(
     STARTER_PACK_RESCUE_MAPPER_IDS.map(async (mapperId) => {
+      const candidateStarted = performance.now();
+      const preparationStarted = performance.now();
       const eligibility = starterPackRescueEligibility(
         mapperId,
         input.draft.input.category,
         input.draft.input,
       );
-      if (!eligibility.eligible) return;
+      if (!eligibility.eligible) {
+        candidatePreparationMs += performance.now() - preparationStarted;
+        candidateRuntimeMs.set(mapperId, performance.now() - candidateStarted);
+        return;
+      }
       const probes = starterPackRescueProbeGrams(mapperId, input.draft.input);
       const simulatedInput = buildStarterPackRescueSimulationInput(
         input.draft.input,
@@ -2663,13 +2844,19 @@ async function computeStarterPackRescueWithServerAuthority(input: {
         mapperId,
         probes[0],
       );
-      if (simulatedInput === null) return;
+      candidatePreparationMs += performance.now() - preparationStarted;
+      if (simulatedInput === null) {
+        candidateRuntimeMs.set(mapperId, performance.now() - candidateStarted);
+        return;
+      }
+      const productBehaviorStarted = performance.now();
       const authority = await currentRecipeAuthorityReady({
         recipe: simulatedInput,
         toppings: [],
         snapshots: input.baseSnapshots,
         technicalOnlyMainLineIds: input.technicalOnlyMainLineIds,
       });
+      productBehaviorMs += performance.now() - productBehaviorStarted;
       if (!authority.ready) {
         for (const probeGrams of probes) {
           trials.set(`${mapperId}:${probeGrams}`, {
@@ -2684,45 +2871,57 @@ async function computeStarterPackRescueWithServerAuthority(input: {
             })),
           });
         }
+        candidateRuntimeMs.set(mapperId, performance.now() - candidateStarted);
         return;
       }
-      for (const probeGrams of probes) {
-        const probeInput = buildStarterPackRescueSimulationInput(
-          input.draft.input,
-          input.draft.constraints,
-          mapperId,
-          probeGrams,
-        );
-        if (probeInput === null) continue;
-        try {
-          const computation = await runOptimizePreviewOffMainThread(
-            {
-              input: probeInput,
-              constraints: input.draft.constraints,
-              createdAt: input.createdAt,
-              options: {
-                ...commonOptions,
-                productBehaviorSnapshots: authority.snapshots,
-                rescueSimulationLineIds: [starterPackRescueLineId(mapperId)],
-              },
-            },
-            input.signal,
-          );
-          const rebound = buildStarterPackRescueCandidatePreview(
+      // The closed gram probes are independent. Concurrent workers remove
+      // redundant wall-clock serialization without changing a probe, ranking
+      // rule, or the final full-authority verification.
+      await Promise.all(
+        probes.map(async (probeGrams) => {
+          if (input.signal?.aborted) return;
+          const probeInput = buildStarterPackRescueSimulationInput(
             input.draft.input,
             input.draft.constraints,
             mapperId,
-            input.createdAt,
-            { ...commonOptions, productBehaviorSnapshots: authority.snapshots },
-            computation.result,
             probeGrams,
           );
-          trials.set(`${mapperId}:${probeGrams}`, rebound);
-          if (rebound.ok && rebound.preview.directionAssessment?.reached === true) break;
-        } catch {
-          trials.set(`${mapperId}:${probeGrams}`, { ok: false, code: 'no_proposal' });
-        }
-      }
+          if (probeInput === null) return;
+          const solverStarted = performance.now();
+          try {
+            const computation = await runOptimizePreviewOffMainThread(
+              {
+                input: probeInput,
+                constraints: input.draft.constraints,
+                createdAt: input.createdAt,
+                options: {
+                  ...commonOptions,
+                  productBehaviorSnapshots: authority.snapshots,
+                  rescueSimulationLineIds: [starterPackRescueLineId(mapperId)],
+                },
+              },
+              input.signal,
+            );
+            const rebound = buildStarterPackRescueCandidatePreview(
+              input.draft.input,
+              input.draft.constraints,
+              mapperId,
+              input.createdAt,
+              { ...commonOptions, productBehaviorSnapshots: authority.snapshots },
+              computation.result,
+              probeGrams,
+            );
+            trials.set(`${mapperId}:${probeGrams}`, rebound);
+          } catch {
+            // Aborted/failed probes are not verified candidates. Their wall
+            // time still belongs to the bounded solver/search stage.
+            trials.set(`${mapperId}:${probeGrams}`, { ok: false, code: 'no_proposal' });
+          } finally {
+            solverSearchMs += performance.now() - solverStarted;
+          }
+        }),
+      );
+      candidateRuntimeMs.set(mapperId, performance.now() - candidateStarted);
     }),
   );
 
@@ -2743,6 +2942,14 @@ async function computeStarterPackRescueWithServerAuthority(input: {
         code: 'no_proposal',
       },
   });
+  report.timing.candidatePreparationMs += candidatePreparationMs;
+  report.timing.productBehaviorMs += productBehaviorMs;
+  report.timing.solverSearchMs += solverSearchMs;
+  report.totalRuntimeMs = performance.now() - runtimeStarted;
+  for (const record of report.records) {
+    record.runtimeMs = candidateRuntimeMs.get(record.mapperId) ?? record.runtimeMs;
+  }
+  report.budgetExhausted = input.signal?.aborted === true;
   useConstraintStudioStore.setState({
     starterPackRescueReport: report,
     starterPackRescuePending: false,
@@ -2848,26 +3055,8 @@ export async function createOptimizePreviewWithServerAuthority(
     requirePracticalPreview: true,
     productBehaviorSnapshots: validation.snapshots,
     technicalOnlyMainLineIds,
-  };
-  let publishedResult: BuildPreviewResult | null = null;
-  let deferredRescueAdvice: RescueIngredientAdvice | null | undefined;
-  const publishDeferredRescueAdvice = (advice: RescueIngredientAdvice | null): void => {
-    if (publishedResult === null) {
-      deferredRescueAdvice = advice;
-      return;
-    }
-    if (
-      !isCurrentPiRun(ownedGeneration) ||
-      useRecipeStore.getState().draftRevision !== draft.revision
-    ) {
-      return;
-    }
-    const state = useConstraintStudioStore.getState();
-    const samePublishedResult = publishedResult.ok
-      ? state.preview?.baseFingerprint === publishedResult.preview.baseFingerprint ||
-        state.directionBestCandidate?.baseFingerprint === publishedResult.preview.baseFingerprint
-      : state.previewIssue?.code === publishedResult.code;
-    if (samePublishedResult) useConstraintStudioStore.setState({ rescueAdvice: advice });
+    directionFallbackPass: true,
+    skipRescueAssessment: true,
   };
   const computation = await runOptimizePreviewOffMainThread(
     {
@@ -2877,10 +3066,17 @@ export async function createOptimizePreviewWithServerAuthority(
       options: optimizeOptions,
     },
     signal,
-    undefined,
-    publishDeferredRescueAdvice,
   );
   const rawProposal = computation.result;
+  const fallbackReport = await computeDirectionFallbackWithServerAuthority({
+    generation: ownedGeneration,
+    signal,
+    draft,
+    normalResult: rawProposal,
+    createdAt: optimizeCreatedAt,
+    baseSnapshots: validation.snapshots,
+    technicalOnlyMainLineIds,
+  });
   let proposedSnapshots: Record<string, ProductBehaviorSnapshot> | undefined;
   if (rawProposal.ok) {
     const proposedAuthority = await currentRecipeAuthorityReady({
@@ -2960,19 +3156,14 @@ export async function createOptimizePreviewWithServerAuthority(
     ...computation,
     createdAt: optimizeCreatedAt,
   });
-  publishedResult = rawProposal;
-  if (deferredRescueAdvice !== undefined) {
-    publishDeferredRescueAdvice(deferredRescueAdvice);
+  if (fallbackReport !== null) {
+    useConstraintStudioStore.setState({
+      directionFallbackReport: fallbackReport,
+      rescueAdvice: null,
+      starterPackRescueReport: null,
+      starterPackRescuePending: false,
+    });
   }
-  await computeStarterPackRescueWithServerAuthority({
-    generation: ownedGeneration,
-    signal,
-    draft,
-    normalResult: rawProposal,
-    createdAt: optimizeCreatedAt,
-    baseSnapshots: validation.snapshots,
-    technicalOnlyMainLineIds,
-  });
   if (useConstraintStudioStore.getState().recalculationTerminal?.state !== 'NO_CHANGE_NEEDED') {
     return;
   }
@@ -3352,6 +3543,109 @@ export async function createSubstitutionPreviewWithServerAuthority(input: {
     );
 }
 
+/** “Ustaw …” only prepares Preview. It never writes Direction or grams. */
+export async function openDirectionFallbackPreviewWithServerAuthority(): Promise<void> {
+  const session = useConstraintStudioStore.getState();
+  const candidate = session.directionFallbackReport?.best?.preview;
+  if (!candidate?.directionFallback) return;
+  const draft = selectCanonicalDraft();
+  if (workingStateFingerprint(draft.input, draft.constraints) !== candidate.baseFingerprint) {
+    useConstraintStudioStore.setState({ ...CLEAR_STAGED });
+    return;
+  }
+  const recipeState = useRecipeStore.getState();
+  const validation = await currentRecipeAuthorityReady({
+    recipe: candidate.proposedInput,
+    toppings: recipeState.toppings,
+    snapshots: recipeState.productBehaviorSnapshots,
+    technicalOnlyMainLineIds: recipeState.ownerReviewGate?.technicalOnlyMainLineIds,
+  });
+  if (useRecipeStore.getState().draftRevision !== draft.revision) {
+    useConstraintStudioStore.setState({ ...CLEAR_STAGED });
+    return;
+  }
+  if (!validation.ready) {
+    useConstraintStudioStore.setState({
+      blocked: {
+        code: 'apply_validation_failed',
+        messagePl:
+          'Nie udało się potwierdzić aktualnych danych produktów. Receptura pozostała bez zmian.',
+      },
+    });
+    return;
+  }
+  useConstraintStudioStore
+    .getState()
+    .stageDirectionFallbackPreview(candidate, validation.snapshots);
+}
+
+export const STARTER_PACK_RESCUE_RUNTIME_BUDGET_MS = 20_000;
+
+/** The only customer-triggered entry into the deeper alternative search. */
+export async function requestStarterPackRescueWithServerAuthority(): Promise<void> {
+  const session = useConstraintStudioStore.getState();
+  if (
+    session.directionFallbackReport === null ||
+    session.starterPackRescuePending ||
+    session.starterPackRescueReport !== null
+  ) {
+    return;
+  }
+  const draft = selectCanonicalDraft();
+  const recipeState = useRecipeStore.getState();
+  const validation = await currentRecipeAuthorityReady({
+    recipe: draft.input,
+    toppings: recipeState.toppings,
+    snapshots: recipeState.productBehaviorSnapshots,
+    technicalOnlyMainLineIds: recipeState.ownerReviewGate?.technicalOnlyMainLineIds,
+  });
+  if (!validation.ready || useRecipeStore.getState().draftRevision !== draft.revision) {
+    useConstraintStudioStore.setState({
+      starterPackRescuePending: false,
+      blocked: {
+        code: 'apply_validation_failed',
+        messagePl:
+          'Nie udało się potwierdzić aktualnych danych produktów. Receptura pozostała bez zmian.',
+      },
+    });
+    return;
+  }
+  const controller = new AbortController();
+  const deadline = setTimeout(() => controller.abort(), STARTER_PACK_RESCUE_RUNTIME_BUDGET_MS);
+  useConstraintStudioStore.setState({ starterPackRescuePending: true, blocked: null });
+  try {
+    await computeStarterPackRescueWithServerAuthority({
+      generation: activePiRunGeneration,
+      signal: controller.signal,
+      draft,
+      normalResult: session.directionBestCandidate
+        ? { ok: true, preview: session.directionBestCandidate }
+        : { ok: false, code: 'no_proposal' },
+      createdAt: nowIso(),
+      baseSnapshots: validation.snapshots,
+      technicalOnlyMainLineIds: recipeState.ownerReviewGate?.technicalOnlyMainLineIds ?? [],
+    });
+  } finally {
+    clearTimeout(deadline);
+    if (
+      useRecipeStore.getState().draftRevision === draft.revision &&
+      useConstraintStudioStore.getState().starterPackRescuePending
+    ) {
+      const report = buildStarterPackDirectionRescue({
+        input: draft.input,
+        set: draft.constraints,
+        createdAt: nowIso(),
+        normalResult: { ok: false, code: 'no_proposal' },
+        evaluateCandidate: () => ({ ok: false, code: 'no_proposal' }),
+      });
+      useConstraintStudioStore.setState({
+        starterPackRescueReport: report,
+        starterPackRescuePending: false,
+      });
+    }
+  }
+}
+
 /** Explicit “Sprawdź z …” boundary. It opens the already Engine-proven SECOND
  * Preview only after the exact proposal receives fresh server authority. The
  * draft is not written here. */
@@ -3457,7 +3751,8 @@ export async function applyPreviewWithServerAuthority(
     let prebuiltOptimizeRebuild: BuildPreviewResult | undefined;
     if (
       session.explicitStandardRemovalConsent === null &&
-      optimizePreviewApplyRequiresCanonicalRebuild(draft.input, draft.constraints, preview)
+      (preview.directionFallback !== undefined ||
+        optimizePreviewApplyRequiresCanonicalRebuild(draft.input, draft.constraints, preview))
     ) {
       const rescueSimulationInput = preview.starterPackRescue
         ? buildStarterPackRescueSimulationInput(
@@ -3471,8 +3766,11 @@ export async function applyPreviewWithServerAuthority(
         publishStale();
         return;
       }
+      const directionFallbackInput = preview.directionFallback
+        ? buildDirectionFallbackInput(draft.input, preview.directionFallback.fallbackTargets)
+        : null;
       const computation = await runtime.runOptimizePreview({
-        input: rescueSimulationInput ?? draft.input,
+        input: rescueSimulationInput ?? directionFallbackInput ?? draft.input,
         constraints: draft.constraints,
         createdAt: preview.createdAt,
         options: {
@@ -3485,6 +3783,11 @@ export async function applyPreviewWithServerAuthority(
           ...(preview.starterPackRescue
             ? { rescueSimulationLineIds: [preview.starterPackRescue.lineId] }
             : {}),
+          ...((preview.directionFallback !== undefined ||
+            preview.directionSearchMode === 'bounded_exact') && {
+            directionFallbackPass: true,
+            skipRescueAssessment: true,
+          }),
         },
       });
       if (useConstraintStudioStore.getState().preview !== preview) return;

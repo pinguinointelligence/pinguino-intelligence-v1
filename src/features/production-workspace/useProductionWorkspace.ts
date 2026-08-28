@@ -4,6 +4,7 @@ import {
   ENGINE_VERSION,
   calculateRecipe,
   proposeCorrections,
+  type RecipeInput,
   type TargetMetric,
 } from '@/engine';
 import { useAuthStore } from '@/stores/authStore';
@@ -64,9 +65,11 @@ import type {
   ProductionRun,
 } from '@/features/pro-core/productionContracts';
 import type {
+  ProductBehaviorSnapshot,
   ProductProcessReadiness,
   ProductProcessReadinessDetail,
 } from '@/features/product-intelligence';
+import { productProcessInformation } from '@/features/product-intelligence';
 import {
   productionRecipeLifecycleState,
   productionVersionFingerprint,
@@ -302,10 +305,7 @@ export const durableRescueRequiresReconciliation = (
   Boolean(remote.rescue && local && remote.rescue.revision !== local.durableRescueRevision);
 
 export type DurableProductionRecoveryRelation =
-  | 'missing_remote'
-  | 'new_rescue'
-  | 'new_actual'
-  | 'same';
+  'missing_remote' | 'new_rescue' | 'new_actual' | 'same';
 
 class MissingDurableProductionRunError extends Error {
   constructor() {
@@ -356,6 +356,7 @@ export type ProductionPrerequisiteCode =
   | 'preview_not_applied'
   | 'saved_version_required'
   | 'product_authority_required'
+  | 'process_authority_required'
   | 'whole_grams_required'
   | 'server_validation_pending'
   | 'server_validation_failed'
@@ -364,11 +365,22 @@ export type ProductionPrerequisiteCode =
   | 'stale_source'
   | 'owner_mismatch';
 
+/** Bounded scope: only a newly accepted Direction alternative line carries
+ * this extra Production requirement. Existing recipes keep the accepted
+ * process-information policy unchanged. */
+export function missingDirectionAlternativeProcessLines(
+  recipe: RecipeInput,
+  snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>,
+): RecipeInput['items'] {
+  return recipe.items.filter(
+    (item) =>
+      item.id.startsWith('starter-pack-rescue:') &&
+      productProcessInformation(snapshots[item.id]) === 'unknown',
+  );
+}
+
 export type ProductionPrerequisiteAction =
-  | 'open_preview'
-  | 'recalculate'
-  | 'return_to_recipe'
-  | 'archive_stale_session';
+  'open_preview' | 'recalculate' | 'return_to_recipe' | 'archive_stale_session';
 
 export type ProductionPrerequisite = {
   code: ProductionPrerequisiteCode;
@@ -605,6 +617,14 @@ export function useProductionWorkspace(enabled: boolean) {
     (behaviorServerGate.key === behaviorValidationKey && behaviorServerGate.ready);
   const behaviorServerMessage =
     behaviorServerGate.key === behaviorValidationKey ? behaviorServerGate.message : null;
+  const missingAlternativeProcessLines = useMemo(
+    () =>
+      missingDirectionAlternativeProcessLines(
+        plannedInput,
+        plannedComposition.behaviorSnapshots ?? {},
+      ),
+    [plannedComposition.behaviorSnapshots, plannedInput],
+  );
 
   useEffect(() => {
     if (
@@ -816,6 +836,17 @@ export function useProductionWorkspace(enabled: boolean) {
                     : 'Potwierdzamy aktualną recepturę',
                   behaviorServerMessage ??
                     'Trwa bezpieczna weryfikacja produktów dla bieżącej receptury wykonawczej.',
+                  'return_to_recipe',
+                  'Wróć do receptury',
+                )
+              : null) ??
+            (practicalGate.ready && missingAlternativeProcessLines.length > 0
+              ? prerequisite(
+                  'process_authority_required',
+                  'Brakuje danych procesu',
+                  `Produkcja wymaga potwierdzonej informacji o procesie dla: ${missingAlternativeProcessLines
+                    .map((item) => item.ingredient.name)
+                    .join(', ')}.`,
                   'return_to_recipe',
                   'Wróć do receptury',
                 )

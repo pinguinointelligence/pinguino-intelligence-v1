@@ -373,7 +373,11 @@ export interface RecipeState {
   applyVerifiedRecipeInput: (
     input: RecipeInput,
     productBehaviorSnapshots?: Readonly<Record<string, ProductBehaviorSnapshot>>,
-    options?: { acknowledgeRecalculation?: boolean },
+    options?: {
+      acknowledgeRecalculation?: boolean;
+      /** Explicit Direction fallback accepted through Preview → Apply. */
+      directionTargets?: RecipeDirectionTargets;
+    },
   ) =>
     | { ok: true }
     | { ok: false; code: 'invalid_line'; lineName: string }
@@ -715,9 +719,7 @@ const fromPreset = (preset: DemoPreset) => ({
   batchResizeConflict: null as BatchResizeConflict | null,
   machine_capacity_grams: preset.machine_capacity_grams,
   machine_capacity_source: (preset.machine_capacity_grams === null ? null : 'manual') as
-    | 'machine'
-    | 'manual'
-    | null,
+    'machine' | 'manual' | null,
   flavor_intensity: preset.flavor_intensity,
   cost_priority: preset.cost_priority,
   direction_targets: { ...DEFAULT_DIRECTION_TARGETS },
@@ -1222,6 +1224,8 @@ export const useRecipeStore = create<RecipeState>()(
         const priorProductBehaviorSnapshots = prior.productBehaviorSnapshots;
         const priorMigrationAmbiguities = prior.compositionMigrationAmbiguities;
         const priorBatch = prior.target_batch_grams;
+        const priorDirectionTargets = prior.direction_targets;
+        const priorDirectionActive = prior.direction_targets_active;
         const nextItems = sortedBaseItems(
           input.items.map((item) => normalizeRecipeItemIdentity({ ...item })),
         );
@@ -1271,6 +1275,12 @@ export const useRecipeStore = create<RecipeState>()(
           productBehaviorSnapshots: nextProductBehaviorSnapshots,
           compositionMigrationAmbiguities: priorMigrationAmbiguities,
           target_batch_grams: input.target_batch_grams,
+          ...(options?.directionTargets
+            ? {
+                direction_targets: { ...options.directionTargets },
+                direction_targets_active: true,
+              }
+            : {}),
           dirty: true,
           draftRevision: state.draftRevision + 1,
         }));
@@ -1283,7 +1293,9 @@ export const useRecipeStore = create<RecipeState>()(
               item.id === nextItems[index]!.id &&
               Object.is(item.planned_grams, nextItems[index]!.planned_grams),
           ) &&
-          (hasActuals || Math.abs(writtenSum - input.target_batch_grams) <= 0.1);
+          (hasActuals || Math.abs(writtenSum - input.target_batch_grams) <= 0.1) &&
+          (options?.directionTargets === undefined ||
+            JSON.stringify(written.direction_targets) === JSON.stringify(options.directionTargets));
         if (!intact) {
           // Rollback is itself a material write — the revision stays monotonic.
           set((state) => ({
@@ -1293,9 +1305,14 @@ export const useRecipeStore = create<RecipeState>()(
             productBehaviorSnapshots: priorProductBehaviorSnapshots,
             compositionMigrationAmbiguities: priorMigrationAmbiguities,
             target_batch_grams: priorBatch,
+            direction_targets: priorDirectionTargets,
+            direction_targets_active: priorDirectionActive,
             draftRevision: state.draftRevision + 1,
           }));
           return { ok: false, code: 'write_verification_failed' };
+        }
+        if (options?.directionTargets) {
+          useRecipeProfileStore.getState().setDirectionTargets(options.directionTargets);
         }
         if (options?.acknowledgeRecalculation === false) {
           useRecipeProfileStore.getState().markRecalculationRequired();
