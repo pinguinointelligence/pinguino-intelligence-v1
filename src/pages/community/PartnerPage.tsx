@@ -2,7 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
+import { ApplicationState } from '@/components/shared/ApplicationState';
 import { Button } from '@/components/ui/Button';
+import {
+  applicationCompactClasses,
+  applicationSecondaryClasses,
+} from '@/components/ui/applicationControlStyles';
 import { customerErrorMessage } from '@/copy/customerError';
 import { cn } from '@/lib/cn';
 import {
@@ -658,9 +663,13 @@ export function PartnerPage() {
               type="button"
               onClick={() => setParams({ section: id })}
               aria-current={section === id ? 'page' : undefined}
-              className={cn(
-                'pro-focus-ring flex min-h-11 w-full items-center border-b border-ink/10 px-2 text-left text-xs font-semibold uppercase tracking-[0.08em]',
-                section === id ? 'bg-ink px-3 text-white' : 'text-stone-600 hover:text-ink',
+              className={applicationCompactClasses(
+                cn(
+                  'w-full justify-start border-x-0 border-t-0 px-3 text-left xl:border-x xl:border-t',
+                  section === id
+                    ? '!border-ink !bg-ink !text-white hover:!border-ink'
+                    : 'text-stone-600',
+                ),
               )}
             >
               {label}
@@ -669,28 +678,29 @@ export function PartnerPage() {
         </nav>
         <main className="min-w-0">
           {query.isPending ? (
-            <p className="text-sm text-stone-500">Wczytuję tryb Partner…</p>
+            <ApplicationState kind="loading" title="Wczytuję tryb Partner…" />
           ) : null}
           {query.isError ? (
-            <p className="text-sm text-status-error">
-              Nie udało się odczytać bezpiecznego panelu Partner.
-            </p>
+            <ApplicationState
+              kind="error"
+              title="Nie udało się odczytać bezpiecznego panelu Partner."
+            />
           ) : null}
           {data && !data.ok ? (
-            <div className="border border-ink/10 p-6">
-              <h2 className="text-xl font-semibold text-ink">Tryb Partner niedostępny</h2>
-              <p className="mt-3 text-sm text-stone-600">
-                {data.reason === 'partner_not_active'
+            <ApplicationState
+              kind="empty"
+              title="Tryb Partner niedostępny"
+              body={
+                data.reason === 'partner_not_active'
                   ? 'Status Partnera nie jest aktywny. Historia finansowa pozostaje zachowana.'
-                  : 'Konto nie ma zaproszonej i zatwierdzonej roli Partner.'}
-              </p>
-              <Link
-                to="/home"
-                className="mt-5 inline-block text-sm font-semibold text-ink underline"
-              >
-                Wróć do Home
-              </Link>
-            </div>
+                  : 'Konto nie ma zaproszonej i zatwierdzonej roli Partner.'
+              }
+              action={
+                <Link to="/home" className={applicationSecondaryClasses()}>
+                  Wróć do Home
+                </Link>
+              }
+            />
           ) : (
             content
           )}

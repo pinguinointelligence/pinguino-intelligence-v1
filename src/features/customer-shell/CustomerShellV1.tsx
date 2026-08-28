@@ -235,7 +235,10 @@ function ShellRoot({ persona, children }: { persona: CustomerPersona; children: 
     // `data-persona` is the machine-checkable trace of the ENTITLEMENT-derived
     // persona (never a hardcode): tests assert it flips with the access store,
     // and staging QA can verify the signed-in plan without exposing any number.
-    <div data-persona={persona} className="min-h-[100dvh] w-full bg-paper">
+    <div
+      data-persona={persona}
+      className="gellatti-application pro-studio-radius-system theme-pro-light min-h-[100dvh] w-full bg-paper"
+    >
       {children}
     </div>
   );

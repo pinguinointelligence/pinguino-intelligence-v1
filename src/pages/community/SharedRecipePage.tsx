@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
+import { ApplicationState } from '@/components/shared/ApplicationState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { Card } from '@/components/ui/Card';
@@ -74,8 +75,8 @@ export function SharedRecipePage() {
 
   if (state === null) {
     return (
-      <DestinationSurface title="…">
-        <p className="text-sm text-stone-400">…</p>
+      <DestinationSurface title={copy.share.dialogTitle}>
+        <ApplicationState kind="loading" title="Otwieram udostępnioną recepturę…" />
       </DestinationSurface>
     );
   }
@@ -136,9 +137,7 @@ export function SharedRecipePage() {
         <aside className="flex flex-col gap-6">
           {entitled ? null : access.isSignedIn ? (
             <UnlockCta
-              target={
-                token ? { kind: 'share', token } : { kind: 'recipes' }
-              }
+              target={token ? { kind: 'share', token } : { kind: 'recipes' }}
               isSignedIn
               benefits={unlockBenefits(access.tier)}
             />
@@ -157,18 +156,14 @@ export function SharedRecipePage() {
                 <button
                   type="button"
                   className={buttonClasses('primary')}
-                  onClick={() =>
-                    navigate(withContinuation('/account', { kind: 'share', token }))
-                  }
+                  onClick={() => navigate(withContinuation('/account', { kind: 'share', token }))}
                 >
                   {copy.actions.createAccount}
                 </button>
                 <button
                   type="button"
                   className={buttonClasses('ghost')}
-                  onClick={() =>
-                    navigate(withContinuation('/account', { kind: 'share', token }))
-                  }
+                  onClick={() => navigate(withContinuation('/account', { kind: 'share', token }))}
                 >
                   {copy.actions.signIn}
                 </button>

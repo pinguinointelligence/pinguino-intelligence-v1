@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { AppShell } from '@/features/shell/AppShell';
+import { APP_SHELL_MAX_WIDTH_CLASS } from '@/features/shell/shellGeometry';
 import { Button } from '@/components/ui/Button';
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import { StatusChip } from '@/components/shared/StatusChip';
@@ -52,8 +53,13 @@ export function AdminWorkspacePage() {
   const { section } = useParams();
   const active = validSection(section);
   return (
-    <AppShell maxWidthClass="max-w-[1600px]">
-      <div className="gellatti-admin mx-auto grid max-w-[1600px] lg:grid-cols-[190px_minmax(0,1fr)]">
+    <AppShell>
+      <div
+        className={cn(
+          'gellatti-admin mx-auto grid w-full lg:grid-cols-[190px_minmax(0,1fr)]',
+          APP_SHELL_MAX_WIDTH_CLASS,
+        )}
+      >
         <aside className="min-w-0 border-b border-ink/10 bg-pro-warm-raised px-3 py-3 lg:min-h-[calc(100vh-82px)] lg:border-r-0 lg:border-b-0 lg:bg-pro-graphite lg:px-3 lg:py-5 lg:text-white">
           <p className="px-2 text-xs font-semibold text-ink lg:text-white">Gellatti Operations</p>
           <p className="mt-1 px-2 text-[10px] text-stone-500 lg:text-white/55">

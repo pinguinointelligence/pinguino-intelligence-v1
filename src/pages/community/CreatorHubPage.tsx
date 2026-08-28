@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
+import { ApplicationState } from '@/components/shared/ApplicationState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import { Card } from '@/components/ui/Card';
@@ -61,7 +62,9 @@ export function CreatorHubPage() {
   return (
     <DestinationSurface eyebrow="GELLATTI" title={copy.roles.creator}>
       <div className="flex flex-col gap-10">
-        {data === null ? <p className="text-sm text-stone-400">…</p> : null}
+        {data === null ? (
+          <ApplicationState kind="loading" title="Wczytuję przestrzeń twórcy…" />
+        ) : null}
 
         {data !== null && !hasProfile ? (
           <>
@@ -127,9 +130,7 @@ export function CreatorHubPage() {
             </section>
 
             <section>
-              <CreatorProfileForm
-                initial={{ handle: data.handle, isPublic: data.is_public }}
-              />
+              <CreatorProfileForm initial={{ handle: data.handle, isPublic: data.is_public }} />
             </section>
           </>
         ) : null}

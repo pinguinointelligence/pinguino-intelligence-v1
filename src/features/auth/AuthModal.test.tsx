@@ -88,6 +88,13 @@ describe('AuthModal — post-OAuth-redirect notices', () => {
 });
 
 describe('AuthModal — Google button UX (icon, accessibility, idle state)', () => {
+  it('uses the shared modal contract with real dialog semantics', () => {
+    const html = render();
+    expect(html).toContain('role="dialog"');
+    expect(html).toContain('aria-modal="true"');
+    expect(html).toContain('data-testid="auth-modal"');
+  });
+
   it('carries the Google icon (inline svg) and an explicit accessible label', () => {
     h.auth.available = true;
     const html = render();

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { SectionLabel } from '@/components/shared/SectionLabel';
+import { ApplicationState } from '@/components/shared/ApplicationState';
+import { EmptyState } from '@/components/shared/EmptyState';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { copy } from '@/copy/en';
 import { AppShell } from '@/features/shell/AppShell';
@@ -184,9 +186,9 @@ export function MyRecipesContent() {
           </button>
         </div>
       ) : recipesQuery.isLoading ? (
-        <p className="mt-6 text-sm text-stone-500">{r.loading}</p>
+        <ApplicationState className="mt-6" kind="loading" title={r.loading} />
       ) : rows.length === 0 ? (
-        <p className="mt-6 text-sm leading-relaxed text-stone-500">{r.empty}</p>
+        <EmptyState className="mt-6" title={r.empty} />
       ) : (
         <>
           {openError ? (

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useParams } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
+import { ApplicationState } from '@/components/shared/ApplicationState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useAccess } from '@/access/useAccess';
 import { communityCopy } from '@/copy/community';
@@ -67,8 +68,8 @@ export function PublicRecipePage() {
 
   if (resource.status === 'loading') {
     return (
-      <DestinationSurface title="…">
-        <p className="text-sm text-stone-400">…</p>
+      <DestinationSurface eyebrow={copy.nav.community} title="Receptura Community">
+        <ApplicationState kind="loading" title="Wczytuję recepturę…" />
       </DestinationSurface>
     );
   }

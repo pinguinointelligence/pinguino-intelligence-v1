@@ -201,7 +201,7 @@ function LandingMonitorPreview() {
 
 export function LandingPage() {
   return (
-    <div className="min-h-[100dvh] w-full scroll-smooth bg-paper text-ink motion-reduce:scroll-auto">
+    <div className="gellatti-application pro-studio-radius-system theme-pro-light min-h-[100dvh] w-full scroll-smooth bg-paper text-ink motion-reduce:scroll-auto">
       {/* Top bar (owner hotfix §2/§3): the SAME global menu the rest of the app
           uses — the landing had no hamburger, so a visitor could not reach the
           machine profile, plans or sign-in from here at all. The header's own

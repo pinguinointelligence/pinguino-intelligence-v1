@@ -1,6 +1,8 @@
 import { Link } from 'react-router';
+import { ApplicationState } from '@/components/shared/ApplicationState';
+import { DestinationSurface } from '@/components/shared/DestinationSurface';
+import { applicationSecondaryClasses } from '@/components/ui/applicationControlStyles';
 import { copy } from '@/copy/en';
-import { AppShell } from '@/features/shell/AppShell';
 
 const { notFound, notFoundV2 } = copy;
 
@@ -12,18 +14,18 @@ const { notFound, notFoundV2 } = copy;
 export function NotFoundPage() {
   return (
     <div className="pro-studio-radius-system theme-pro-light">
-      <AppShell>
-        <div className="flex min-h-[70vh] flex-col items-center justify-center px-[var(--pro-mobile-gutter)] text-center sm:px-6">
-          <p className="font-mono text-xs text-stone-400">{notFound.code}</p>
-          <h1 className="mt-4 text-3xl font-light tracking-tight">{notFoundV2.headline}</h1>
-          <Link
-            to="/"
-            className="mt-10 text-sm text-stone-600 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-ink"
-          >
-            {notFound.back}
-          </Link>
-        </div>
-      </AppShell>
+      <DestinationSurface eyebrow={notFound.code} title={notFoundV2.headline}>
+        <ApplicationState
+          kind="empty"
+          title="Ta strona nie istnieje"
+          body="Adres mógł się zmienić albo link jest niepełny. Nawigacja Gellatti pozostaje dostępna powyżej."
+          action={
+            <Link to="/" className={applicationSecondaryClasses()}>
+              {notFound.back}
+            </Link>
+          }
+        />
+      </DestinationSurface>
     </div>
   );
 }

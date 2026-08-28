@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useParams } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
+import { ApplicationState } from '@/components/shared/ApplicationState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import { communityCopy } from '@/copy/community';
@@ -49,8 +50,8 @@ export function CreatorProfilePage() {
 
   if (resource.status === 'loading') {
     return (
-      <DestinationSurface title="…">
-        <p className="text-sm text-stone-400">…</p>
+      <DestinationSurface title={copy.roles.creator}>
+        <ApplicationState kind="loading" title="Wczytuję profil twórcy…" />
       </DestinationSurface>
     );
   }
@@ -65,7 +66,10 @@ export function CreatorProfilePage() {
   const { creator, metrics, publications } = profile;
 
   return (
-    <DestinationSurface eyebrow={`@${creator.display_handle ?? handle}`} title={creator.display_name}>
+    <DestinationSurface
+      eyebrow={`@${creator.display_handle ?? handle}`}
+      title={creator.display_name}
+    >
       <div className="flex flex-col gap-10">
         <div className="flex flex-col gap-3">
           {creator.bio ? (

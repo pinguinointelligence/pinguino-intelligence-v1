@@ -1,12 +1,13 @@
 import { useSearchParams } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
+import { ApplicationState } from '@/components/shared/ApplicationState';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { applicationCompactClasses } from '@/components/ui/applicationControlStyles';
 import { communityCopy } from '@/copy/community';
 import { CommunityRecipeCard } from '@/features/community/ui/CommunityRecipeCard';
 import { CreatorCard } from '@/features/community/ui/CreatorCard';
 import { useAsyncResource } from '@/features/community/ui/useAsyncResource';
 import { RANKING_WINDOWS, type RankingWindow } from '@/features/community/domain/ranking';
-import { cn } from '@/lib/cn';
 import {
   topCreators,
   topRecipes,
@@ -64,9 +65,10 @@ export function TopHundredPage() {
                 type="button"
                 aria-current={board === key ? 'page' : undefined}
                 onClick={() => setParams({ board: key, window: window_ })}
-                className={cn(
-                  'rounded-sm px-3 py-2 text-xs tracking-label uppercase transition-colors',
-                  board === key ? 'bg-ink text-paper' : 'text-stone-500 hover:text-ink',
+                className={applicationCompactClasses(
+                  board === key
+                    ? '!border-ink !bg-ink !text-white hover:!border-ink'
+                    : 'text-stone-600',
                 )}
               >
                 {label}
@@ -82,9 +84,10 @@ export function TopHundredPage() {
                   type="button"
                   aria-current={option === window_ ? 'page' : undefined}
                   onClick={() => setParams({ board, window: option })}
-                  className={cn(
-                    'rounded-sm px-3 py-2 text-xs tracking-label uppercase transition-colors',
-                    option === window_ ? 'bg-ink text-paper' : 'text-stone-500 hover:text-ink',
+                  className={applicationCompactClasses(
+                    option === window_
+                      ? '!border-ink !bg-ink !text-white hover:!border-ink'
+                      : 'text-stone-600',
                   )}
                 >
                   {labels[option]}
@@ -95,8 +98,10 @@ export function TopHundredPage() {
         </div>
 
         {board === 'recipes' ? (
-          recipes.status !== 'ready' ? (
-            <p className="text-sm text-stone-400">…</p>
+          recipes.status === 'failed' ? (
+            <ApplicationState kind="error" title="Nie udało się wczytać rankingu receptur." />
+          ) : recipes.status === 'loading' ? (
+            <ApplicationState kind="loading" title="Wczytuję ranking receptur…" />
           ) : recipes.data.length === 0 ? (
             <EmptyState title={copy.empty.top100} />
           ) : (
@@ -108,8 +113,10 @@ export function TopHundredPage() {
               ))}
             </ol>
           )
-        ) : creators.status !== 'ready' ? (
-          <p className="text-sm text-stone-400">…</p>
+        ) : creators.status === 'failed' ? (
+          <ApplicationState kind="error" title="Nie udało się wczytać rankingu twórców." />
+        ) : creators.status === 'loading' ? (
+          <ApplicationState kind="loading" title="Wczytuję ranking twórców…" />
         ) : creators.data.length === 0 ? (
           <EmptyState title={copy.empty.top100} />
         ) : (

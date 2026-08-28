@@ -35,6 +35,7 @@ import {
 import { selectMachinePreferenceStore } from '@/services/machinePreference/machinePreferenceSelector';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { PageHeading } from '@/components/shared/PageHeading';
+import { ApplicationState } from '@/components/shared/ApplicationState';
 
 type PageMode = 'view' | 'onboarding' | 'edit_custom';
 
@@ -108,7 +109,7 @@ export function MachineProfilePage() {
   );
 
   if (preference.status === 'loading') {
-    return shell(null);
+    return shell(<ApplicationState kind="loading" title="Wczytuję ustawienia maszyny…" />);
   }
 
   if (mode === 'onboarding' || mode === 'edit_custom') {

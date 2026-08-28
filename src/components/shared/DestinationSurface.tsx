@@ -10,6 +10,7 @@ import {
   APP_PAGE_WORKSPACE,
 } from '@/features/shell/shellGeometry';
 import { PAGE_HEADING_CONTENT_GAP, PageHeading } from '@/components/shared/PageHeading';
+import { StatusChip } from '@/components/shared/StatusChip';
 
 /**
  * Reusable premium destination surface. Destinations render under the ONE canonical
@@ -82,9 +83,9 @@ export function ComingSoonRow({ label, description }: { label: string; descripti
           <p className="mt-1 text-xs leading-relaxed text-ivory/40">{description}</p>
         ) : null}
       </div>
-      <span className="mt-0.5 shrink-0 rounded border border-ivory/15 px-2 py-0.5 text-[0.6rem] font-medium tracking-[0.08em] text-ivory/45 uppercase">
+      <StatusChip status="locked" className="mt-0.5 shrink-0">
         {copy.nav.comingSoon}
-      </span>
+      </StatusChip>
     </div>
   );
 }

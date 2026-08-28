@@ -22,6 +22,7 @@ export function DialogShell({
   onClose,
   placement = 'center',
   panelClassName,
+  dismissOnBackdrop = false,
 }: {
   label: string;
   testId: string;
@@ -29,6 +30,7 @@ export function DialogShell({
   onClose: () => void;
   placement?: 'center' | 'bottom' | 'responsive';
   panelClassName?: string;
+  dismissOnBackdrop?: boolean;
 }) {
   const dialogRef = useRef<HTMLElement>(null);
   const onCloseRef = useRef(onClose);
@@ -86,6 +88,9 @@ export function DialogShell({
       data-testid={testId}
       data-placement={placement}
       data-overlay-scope="viewport"
+      onMouseDown={(event) => {
+        if (dismissOnBackdrop && event.target === event.currentTarget) onCloseRef.current();
+      }}
     >
       <section
         ref={dialogRef}

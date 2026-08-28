@@ -62,7 +62,7 @@ export function AppShell({
   return (
     <div
       className={cn(
-        'min-h-screen bg-paper text-ink',
+        'gellatti-application pro-studio-radius-system theme-pro-light min-h-screen bg-paper text-ink',
         viewportLock && 'xl:flex xl:h-dvh xl:min-h-0 xl:flex-col xl:overflow-hidden',
       )}
     >

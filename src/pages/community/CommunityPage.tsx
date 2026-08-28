@@ -1,12 +1,16 @@
 import { useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
+import { ApplicationState } from '@/components/shared/ApplicationState';
 import { EmptyState } from '@/components/shared/EmptyState';
+import {
+  applicationCompactClasses,
+  applicationFieldClasses,
+} from '@/components/ui/applicationControlStyles';
 import { communityCopy } from '@/copy/community';
 import { CommunityRecipeCard } from '@/features/community/ui/CommunityRecipeCard';
 import { useAsyncResource } from '@/features/community/ui/useAsyncResource';
 import { RANKING_WINDOWS, type RankingWindow } from '@/features/community/domain/ranking';
-import { cn } from '@/lib/cn';
 import { listCommunity, searchCommunity, type CommunityCard } from '@/services/community';
 
 /**
@@ -53,11 +57,10 @@ export function CommunityPage() {
                 type="button"
                 aria-current={option === window_ ? 'page' : undefined}
                 onClick={() => setParams({ window: option })}
-                className={cn(
-                  'rounded-sm px-3 py-2 text-xs tracking-label uppercase transition-colors',
+                className={applicationCompactClasses(
                   option === window_
-                    ? 'bg-ink text-paper'
-                    : 'text-stone-500 hover:text-ink',
+                    ? '!border-ink !bg-ink !text-white hover:!border-ink'
+                    : 'text-stone-600',
                 )}
               >
                 {labels[option]}
@@ -75,15 +78,15 @@ export function CommunityPage() {
                 const value = event.target.value;
                 setParams(value.trim() ? { q: value } : { window: window_ });
               }}
-              className="w-56 rounded-sm border border-ink/15 bg-paper px-3 py-2 text-sm text-ink"
+              className={applicationFieldClasses('w-56 bg-paper')}
             />
           </label>
         </div>
 
         {resource.status === 'failed' ? (
-          <EmptyState title="Nie udało się wczytać Community." />
+          <ApplicationState kind="error" title="Nie udało się wczytać Community." />
         ) : resource.status === 'loading' ? (
-          <p className="text-sm text-stone-400">…</p>
+          <ApplicationState kind="loading" title="Wczytuję Community…" />
         ) : resource.data.length === 0 ? (
           <EmptyState title={copy.empty.community} body={copy.empty.firstCreator} />
         ) : (

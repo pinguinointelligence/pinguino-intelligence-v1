@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { buttonClasses } from '@/components/ui/buttonStyles';
+import { ApplicationState } from '@/components/shared/ApplicationState';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/shared/EmptyState';
+import {
+  applicationCompactClasses,
+  applicationSecondaryClasses,
+} from '@/components/ui/applicationControlStyles';
 import { communityCopy } from '@/copy/community';
 import { receivedSharePath } from '@/features/community/domain/shareUrls';
 import { cn } from '@/lib/cn';
@@ -81,9 +85,8 @@ export function SharedWithMePanel({ className }: { className?: string }) {
             type="button"
             aria-current={view === key ? 'page' : undefined}
             onClick={() => setView(key)}
-            className={cn(
-              'rounded-sm px-3 py-2 text-xs tracking-label uppercase transition-colors',
-              view === key ? 'bg-ink text-paper' : 'text-stone-500 hover:text-ink',
+            className={applicationCompactClasses(
+              view === key ? '!border-ink !bg-ink !text-white hover:!border-ink' : 'text-stone-600',
             )}
           >
             {label}
@@ -93,7 +96,7 @@ export function SharedWithMePanel({ className }: { className?: string }) {
 
       {view === 'received' ? (
         received === null ? (
-          <p className="text-sm text-stone-400">…</p>
+          <ApplicationState kind="loading" title="Wczytuję udostępnione receptury…" />
         ) : received.length === 0 ? (
           <EmptyState title={copy.empty.received} />
         ) : (
@@ -132,13 +135,13 @@ export function SharedWithMePanel({ className }: { className?: string }) {
                         route resolves by membership instead (§12). */}
                     <Link
                       to={receivedSharePath(share.share_link_id)}
-                      className={buttonClasses('ghost', 'sm')}
+                      className={applicationSecondaryClasses()}
                     >
                       {copy.actions.view}
                     </Link>
                     <button
                       type="button"
-                      className={buttonClasses('ghost', 'sm')}
+                      className={applicationSecondaryClasses()}
                       onClick={() => remove(share.share_link_id)}
                     >
                       {copy.actions.removeFromReceived}
@@ -150,7 +153,7 @@ export function SharedWithMePanel({ className }: { className?: string }) {
           </ul>
         )
       ) : sent === null ? (
-        <p className="text-sm text-stone-400">…</p>
+        <ApplicationState kind="loading" title="Wczytuję wysłane linki…" />
       ) : sent.length === 0 ? (
         <EmptyState title={copy.empty.sent} />
       ) : (
@@ -175,7 +178,7 @@ export function SharedWithMePanel({ className }: { className?: string }) {
                 {share.status === 'active' ? (
                   <button
                     type="button"
-                    className={buttonClasses('ghost', 'sm')}
+                    className={applicationSecondaryClasses()}
                     onClick={() => revoke(share.share_link_id)}
                   >
                     {copy.actions.revokeLink}

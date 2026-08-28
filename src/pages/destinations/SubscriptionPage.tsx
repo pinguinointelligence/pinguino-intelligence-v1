@@ -267,7 +267,7 @@ export function SubscriptionPage() {
   };
 
   return (
-    <div className="min-h-[100dvh] w-full bg-paper text-ink">
+    <div className="gellatti-application pro-studio-radius-system theme-pro-light min-h-[100dvh] w-full bg-paper text-ink">
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-5 py-6 sm:px-8">
         <Link to="/" className={cn('flex items-center gap-3 rounded', focusRing)}>
           <IvoryLogoMark size={24} tone="ink" />

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { applicationFieldClasses } from '@/components/ui/applicationControlStyles';
+import { DialogShell } from '@/components/ui/DialogShell';
 import { copy } from '@/copy/en';
 import { cn } from '@/lib/cn';
 import { useAuthStore } from '@/stores/authStore';
@@ -62,144 +63,142 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-6">
-      <button
-        type="button"
-        aria-label={a.close}
-        className="absolute inset-0 h-full w-full bg-ink/30"
-        onClick={onClose}
-      />
-      <div className="relative w-full max-w-sm rounded-xl border border-ink/10 bg-paper p-5 shadow-pro-e2 sm:p-6">
-        <p className="text-xs font-semibold text-stone-500">{copy.brand.name}</p>
-        <h2 className="mt-2 text-xl font-semibold tracking-[-0.02em] text-ink">
-          {mode === 'signin' ? a.titleSignIn : a.titleSignUp}
-        </h2>
+    <DialogShell
+      label={mode === 'signin' ? a.titleSignIn : a.titleSignUp}
+      testId="auth-modal"
+      onClose={onClose}
+      dismissOnBackdrop
+      panelClassName="!w-full !max-w-sm !rounded-[var(--radius-pro-studio)] !p-5 sm:!p-6"
+    >
+      <p className="text-xs font-semibold text-stone-500">{copy.brand.name}</p>
+      <h2 className="mt-2 text-xl font-semibold tracking-[-0.02em] text-ink">
+        {mode === 'signin' ? a.titleSignIn : a.titleSignUp}
+      </h2>
 
-        {!available ? (
-          <>
-            <p className="mt-4 text-sm leading-relaxed text-stone-500">{a.unavailable}</p>
+      {!available ? (
+        <>
+          <p className="mt-4 text-sm leading-relaxed text-stone-500">{a.unavailable}</p>
+          <button
+            type="button"
+            className={cn(buttonClasses('ghost', 'sm'), 'mt-5 w-full max-sm:min-h-11')}
+            onClick={onClose}
+          >
+            {a.close}
+          </button>
+        </>
+      ) : (
+        <>
+          {notice ? (
+            <p
+              className={cn(
+                'mt-4 text-xs leading-relaxed',
+                notice.kind === 'oauth-cancelled' ? 'text-stone-600' : 'text-status-risky',
+              )}
+            >
+              {notice.kind === 'oauth-cancelled' ? a.googleCancelled : a.googleFailed}
+            </p>
+          ) : null}
+          <form className="mt-5 space-y-4" onSubmit={submit}>
+            <label className="block">
+              <span className="text-xs font-semibold text-stone-500">{a.email}</span>
+              <input
+                type="email"
+                required
+                autoComplete="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                className={fieldClass}
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs font-semibold text-stone-500">{a.password}</span>
+              <input
+                type="password"
+                required
+                autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                className={fieldClass}
+              />
+            </label>
+
+            {error ? <p className="text-xs leading-relaxed text-status-risky">{error}</p> : null}
+            {info ? <p className="text-xs leading-relaxed text-stone-600">{info}</p> : null}
+
+            <button
+              type="submit"
+              disabled={busy || googleBusy}
+              className={cn(
+                buttonClasses('primary', 'sm'),
+                'w-full max-sm:min-h-11',
+                (busy || googleBusy) && 'opacity-50',
+              )}
+            >
+              {busy ? a.busy : mode === 'signin' ? a.submitSignIn : a.submitSignUp}
+            </button>
+          </form>
+
+          <div className="mt-5 flex items-center gap-3" aria-hidden="true">
+            <span className="h-px flex-1 bg-ink/10" />
+            <span className="text-xs text-stone-400">{a.orDivider}</span>
+            <span className="h-px flex-1 bg-ink/10" />
+          </div>
+          <button
+            type="button"
+            disabled={busy || googleBusy}
+            aria-label={a.continueWithGoogle}
+            aria-busy={googleBusy}
+            className={cn(
+              buttonClasses('ghost', 'sm'),
+              'mt-4 flex w-full items-center justify-center gap-2 max-sm:min-h-11',
+              (busy || googleBusy) && 'opacity-50',
+            )}
+            onClick={continueWithGoogle}
+          >
+            {/* Official multi-colour Google "G" mark (inline, no external asset). */}
+            <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+              <path
+                fill="#EA4335"
+                d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
+              />
+              <path
+                fill="#4285F4"
+                d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
+              />
+              <path
+                fill="#34A853"
+                d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
+              />
+            </svg>
+            <span>{googleBusy ? a.googleRedirecting : a.continueWithGoogle}</span>
+          </button>
+
+          <div className="mt-4 flex items-center justify-between">
             <button
               type="button"
-              className={cn(buttonClasses('ghost', 'sm'), 'mt-5 w-full max-sm:min-h-11')}
+              className="text-xs text-stone-500 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-ink"
+              onClick={() => {
+                setMode((current) => (current === 'signin' ? 'signup' : 'signin'));
+                setError(null);
+                setInfo(null);
+              }}
+            >
+              {mode === 'signin' ? a.toSignUp : a.toSignIn}
+            </button>
+            <button
+              type="button"
+              className="text-xs text-stone-400 transition-colors hover:text-ink"
               onClick={onClose}
             >
               {a.close}
             </button>
-          </>
-        ) : (
-          <>
-            {notice ? (
-              <p
-                className={cn(
-                  'mt-4 text-xs leading-relaxed',
-                  notice.kind === 'oauth-cancelled' ? 'text-stone-600' : 'text-status-risky',
-                )}
-              >
-                {notice.kind === 'oauth-cancelled' ? a.googleCancelled : a.googleFailed}
-              </p>
-            ) : null}
-            <form className="mt-5 space-y-4" onSubmit={submit}>
-              <label className="block">
-                <span className="text-xs font-semibold text-stone-500">{a.email}</span>
-                <input
-                  type="email"
-                  required
-                  autoComplete="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  className={fieldClass}
-                />
-              </label>
-              <label className="block">
-                <span className="text-xs font-semibold text-stone-500">{a.password}</span>
-                <input
-                  type="password"
-                  required
-                  autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  className={fieldClass}
-                />
-              </label>
-
-              {error ? <p className="text-xs leading-relaxed text-status-risky">{error}</p> : null}
-              {info ? <p className="text-xs leading-relaxed text-stone-600">{info}</p> : null}
-
-              <button
-                type="submit"
-                disabled={busy || googleBusy}
-                className={cn(
-                  buttonClasses('primary', 'sm'),
-                  'w-full max-sm:min-h-11',
-                  (busy || googleBusy) && 'opacity-50',
-                )}
-              >
-                {busy ? a.busy : mode === 'signin' ? a.submitSignIn : a.submitSignUp}
-              </button>
-            </form>
-
-            <div className="mt-5 flex items-center gap-3" aria-hidden="true">
-              <span className="h-px flex-1 bg-ink/10" />
-              <span className="text-xs text-stone-400">{a.orDivider}</span>
-              <span className="h-px flex-1 bg-ink/10" />
-            </div>
-            <button
-              type="button"
-              disabled={busy || googleBusy}
-              aria-label={a.continueWithGoogle}
-              aria-busy={googleBusy}
-              className={cn(
-                buttonClasses('ghost', 'sm'),
-                'mt-4 flex w-full items-center justify-center gap-2 max-sm:min-h-11',
-                (busy || googleBusy) && 'opacity-50',
-              )}
-              onClick={continueWithGoogle}
-            >
-              {/* Official multi-colour Google "G" mark (inline, no external asset). */}
-              <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
-                <path
-                  fill="#EA4335"
-                  d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
-                />
-                <path
-                  fill="#4285F4"
-                  d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
-                />
-              </svg>
-              <span>{googleBusy ? a.googleRedirecting : a.continueWithGoogle}</span>
-            </button>
-
-            <div className="mt-4 flex items-center justify-between">
-              <button
-                type="button"
-                className="text-xs text-stone-500 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-ink"
-                onClick={() => {
-                  setMode((current) => (current === 'signin' ? 'signup' : 'signin'));
-                  setError(null);
-                  setInfo(null);
-                }}
-              >
-                {mode === 'signin' ? a.toSignUp : a.toSignIn}
-              </button>
-              <button
-                type="button"
-                className="text-xs text-stone-400 transition-colors hover:text-ink"
-                onClick={onClose}
-              >
-                {a.close}
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
+          </div>
+        </>
+      )}
+    </DialogShell>
   );
 }

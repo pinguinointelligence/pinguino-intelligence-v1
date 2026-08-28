@@ -69,11 +69,7 @@ describe('Gellatti Visual System V2', () => {
   it('uses V2 master-detail architecture only where it is contextual', () => {
     const catalog = read('features', 'global-catalog', 'GlobalCatalogSearchPanel.tsx');
     const admin = read('pages', 'admin', 'AdminWorkspacePage.tsx');
-    const adminReanalysis = read(
-      'features',
-      'admin',
-      'AdminProductCapabilityReanalysisDetail.tsx',
-    );
+    const adminReanalysis = read('features', 'admin', 'AdminProductCapabilityReanalysisDetail.tsx');
     const appShell = read('features', 'shell', 'AppShell.tsx');
 
     expect(catalog).toContain('lg:grid-cols-[minmax(340px,0.85fr)_minmax(420px,1.15fr)]');
@@ -83,5 +79,41 @@ describe('Gellatti Visual System V2', () => {
     expect(adminReanalysis).toContain('<aside className="min-w-0 space-y-5">');
     expect(admin).toContain('xl:grid-cols-[330px_minmax(0,1fr)]');
     expect(appShell).not.toContain('190px_minmax');
+  });
+
+  it('mounts the approved production-workbench visual scope at every application root', () => {
+    const appShell = read('features', 'shell', 'AppShell.tsx');
+    const landing = read('pages', 'landing', 'LandingPage.tsx');
+    const customer = read('features', 'customer-shell', 'CustomerShellV1.tsx');
+    const subscription = read('pages', 'destinations', 'SubscriptionPage.tsx');
+
+    for (const source of [appShell, landing, customer, subscription]) {
+      expect(source).toContain('gellatti-application');
+      expect(source).toContain('pro-studio-radius-system');
+      expect(source).toContain('theme-pro-light');
+    }
+  });
+
+  it('uses one shared state family instead of naked loading copy on routed pages', () => {
+    const state = read('components', 'shared', 'ApplicationState.tsx');
+    const adminGuard = read('features', 'admin', 'AdminRouteGuard.tsx');
+    const partner = read('pages', 'community', 'PartnerPublicRoute.tsx');
+
+    expect(state).toContain("kind: 'loading' | 'empty' | 'stale' | 'error'");
+    expect(state).toContain('aria-busy');
+    expect(adminGuard).toContain('<ApplicationState');
+    expect(adminGuard).toContain('<DestinationSurface');
+    expect(partner).toContain('<ApplicationState');
+    expect(partner).toContain('<DestinationSurface');
+  });
+
+  it('routes authentication through the canonical accessible dialog primitive', () => {
+    const auth = read('features', 'auth', 'AuthModal.tsx');
+    const dialog = read('components', 'ui', 'DialogShell.tsx');
+
+    expect(auth).toContain('<DialogShell');
+    expect(dialog).toContain('role="dialog"');
+    expect(dialog).toContain('aria-modal="true"');
+    expect(dialog).toContain("event.key === 'Escape'");
   });
 });
