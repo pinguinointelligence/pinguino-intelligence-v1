@@ -162,7 +162,7 @@ export function ManualProductPage() {
           <label>
             <span className="text-sm font-semibold">Opakowanie</span>
             <input
-              placeholder="np. 250 g"
+              placeholder="Np. 250 g"
               className={field}
               value={values.packageSize}
               onChange={(e) => update('packageSize', e.currentTarget.value)}
@@ -219,7 +219,7 @@ export function ManualProductPage() {
               onChange={(e) => update('ingredientsText', e.currentTarget.value)}
             />
             <span className="mt-1 block text-xs text-stone-500">
-              Przepisz wykaz składników z opakowania.
+              Przepisz wykaz składników z opakowania
             </span>
           </label>
           <label>

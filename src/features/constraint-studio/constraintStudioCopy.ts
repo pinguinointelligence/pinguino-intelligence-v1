@@ -39,16 +39,16 @@ const METRIC_LABELS_PL: Record<string, string> = {
   pod: 'słodycz (POD)',
   pac: 'PAC',
   npac: 'NPAC',
-  fat: 'tłuszcz',
-  total_solids: 'sucha masa',
-  water: 'woda',
-  ice_fraction: 'udział lodu',
-  lactose: 'laktoza',
-  lactose_sandiness_risk: 'ryzyko piaszczystości (laktoza)',
-  aerating_protein: 'białko napowietrzające',
-  protein_in_solids: 'białko w suchej masie',
-  alcohol: 'alkohol',
-  sugars_in_solids: 'cukry w suchej masie',
+  fat: 'Tłuszcz',
+  total_solids: 'Sucha masa',
+  water: 'Woda',
+  ice_fraction: 'Udział lodu',
+  lactose: 'Laktoza',
+  lactose_sandiness_risk: 'Ryzyko piaszczystości (laktoza)',
+  aerating_protein: 'Białko napowietrzające',
+  protein_in_solids: 'Białko w suchej masie',
+  alcohol: 'Alkohol',
+  sugars_in_solids: 'Cukry w suchej masie',
 };
 
 const metricLabelPl = (metric: string): string => METRIC_LABELS_PL[metric] ?? metric;
@@ -70,8 +70,8 @@ export const constraintStudioCopy = {
     rangeBadge: 'Zakres (analiza)',
     lockedTitle: (grams: string) =>
       `Gramatura zablokowana: ${grams}. Dopasowanie nie może jej zmienić.`,
-    aiTitle: 'Gellatti może zmienić ten składnik przy dopasowaniu receptury.',
-    actualsTitle: 'Odważony składnik jest już niezmienny — blokada nie jest potrzebna.',
+    aiTitle: 'Gellatti może zmienić ten składnik przy dopasowaniu receptury',
+    actualsTitle: 'Odważony składnik jest już niezmienny — blokada nie jest potrzebna',
     lockedInputTitle: 'Odblokuj kłódkę, aby edytować gramaturę.',
   },
 
@@ -95,11 +95,11 @@ export const constraintStudioCopy = {
       batch_rescale: 'Zmiana partii',
       suggested_fix: 'Sugerowana korekta blokady',
     },
-    unchangedLocked: 'bez zmian · zablokowane',
-    unchanged: 'bez zmian',
-    lockChanged: 'nowa wartość blokady',
-    added: 'nowy składnik',
-    removed: 'usunięty',
+    unchangedLocked: 'Bez zmian · zablokowane',
+    unchanged: 'Bez zmian',
+    lockChanged: 'Nowa wartość blokady',
+    added: 'Nowy składnik',
+    removed: 'Usunięty',
     batchLine: (before: string, after: string) => `Partia: ${before} → ${after}`,
     outOfBandDelta: (before: number, after: number) =>
       `Parametry poza optymalnym zakresem: ${before} → ${after}`,
@@ -127,8 +127,8 @@ export const constraintStudioCopy = {
        batch reconciliation. It is NEVER called a technical improvement. */
     batchReconciledHeading: 'Wyrównanie partii',
     batchReconciledNote: (before: string, target: string) =>
-      `Receptura ważyła ${before} przy celu partii ${target} — wyrównaliśmy ją dokładnie do celu. ` +
-      `Nie potwierdzono dalszej poprawy technicznej: proporcje składników pozostają twoje.`,
+      `Receptura ważyła ${before} przy celu ${target}. Wyrównaliśmy masę do celu bez ` +
+      `zmiany Twoich proporcji; nie potwierdzono dodatkowej poprawy technicznej.`,
     /* ── OWNER FINAL INTEGRATION ADDENDUM item 4 (2026-07-25) ──────────────
        „Batch reconciliation is NOT formulation improvement." The heading a
        preview wears is computed TRUSTLESSLY from the before/after inputs
@@ -151,8 +151,8 @@ export const constraintStudioCopy = {
          said „proporcje pozostają twoje" while proposing 595 → 486 g milk and
          180 → 267 g cream). It states what actually happened instead. */
       rescaleChangedCompositionNote: (before: string, after: string) =>
-        `Zmieniono masę partii: ${before} → ${after}. Zbilansowaliśmy recepturę, zachowując ` +
-        `wskazane składniki i ograniczenia — proporcje składników uległy zmianie. ` +
+        `Masa partii zmieniła się: ${before} → ${after}. Receptura została zbilansowana ` +
+        `z zachowaniem wskazanych składników i ograniczeń; proporcje uległy zmianie. ` +
         `Nie potwierdzono poprawy technicznej.`,
       /* Only a REAL engine-verified gain may use this sentence. */
       optimizationNote: (violationsBefore: number, violationsAfter: number) =>
@@ -200,14 +200,14 @@ export const constraintStudioCopy = {
        fixed point, never a global optimum — so the honest statement is that
        the search stopped on its own budget, not on a proof. */
     diagnosticIterationCap:
-      'Obliczenia zatrzymały się na limicie prób — sprawdzanie nie zostało zakończone, ' +
-      'więc tego wyniku nie można uznać za recepturę. Ten podgląd służy wyłącznie diagnozie.',
+      'Osiągnięto limit prób, więc wynik nie został w pełni zweryfikowany. Ten ' +
+      'podgląd służy tylko do diagnozy.',
     /* OWNER ADDENDUM item 2 — non-approved formulation provenance. */
     diagnosticReferenceDerived: (templateId: string) =>
-      `Ta propozycja pochodzi z receptury referencyjnej (${templateId}), która nie jest ` +
-      'zatwierdzona naukowo. Dane referencyjne służą wyłącznie diagnostyce — nie można ich ' +
-      'zastosować jako receptury produkcyjnej. Wybierz zatwierdzony profil produktu albo ' +
-      'wpisz własne gramatury i przelicz ponownie.',
+      `Propozycja pochodzi z niezatwierdzonej receptury referencyjnej (${templateId}). Służy tylko do ` +
+      'diagnozy i nie można jej zastosować produkcyjnie. Wybierz zatwierdzony profil albo ' +
+      'wpisz własne gramatury i przelicz ' +
+      'ponownie.',
     diagnosticBatchMismatch: (sum: string, target: string) =>
       `Suma propozycji (${sum}) nie zgadza się z celem partii (${target}). ` +
       'Podgląd jest wyłącznie diagnostyczny i nie może zostać zastosowany.',
@@ -222,8 +222,8 @@ export const constraintStudioCopy = {
   blocked: {
     title: 'Zmian nie zastosowano',
     constraintsViolated: (names: readonly string[]) =>
-      `Kontrola blokad zatrzymała tę operację: propozycja zmieniłaby zablokowane gramatury` +
-      `${names.length > 0 ? ` (${listPl(names)})` : ''}. Receptura nie została zmieniona. ` +
+      `Propozycja zmieniłaby zablokowane gramatury` +
+      `${names.length > 0 ? ` (${listPl(names)})` : ''}. Receptura pozostała bez zmian. ` +
       'Odblokuj składnik albo utwórz nowy podgląd.',
     stale:
       'Receptura lub blokady zmieniły się od utworzenia tego podglądu. Podgląd został ' +
@@ -259,20 +259,20 @@ export const constraintStudioCopy = {
     /* ACCEPTANCE ADDENDUM (1): an iteration-capped result is never applicable.
        Owner addendum item 3 — honest wording (see preview.diagnosticIterationCap). */
     iterationCapDiagnostic:
-      'Obliczenia zatrzymały się na limicie prób — sprawdzanie nie zostało zakończone, ' +
-      'więc tego wyniku nie można zastosować jako receptury. Podgląd ma charakter wyłącznie ' +
-      'diagnostyczny. Receptura nie została zmieniona.',
+      'Osiągnięto limit prób, więc wyniku nie można zastosować. Podgląd jest tylko ' +
+      'diagnostyczny; receptura pozostała bez ' +
+      'zmian.',
     /* OWNER ADDENDUM item 2 — the reference-derived provenance refusal. */
     referenceDerivedProvenance: (templateId: string) =>
-      `Ta propozycja pochodzi z receptury referencyjnej (${templateId}), która nie jest ` +
-      'zatwierdzona naukowo, więc nie może zostać zastosowana jako receptura produkcyjna. ' +
-      'Wybierz zatwierdzony profil produktu albo wpisz własne gramatury i przelicz ponownie. ' +
-      'Receptura nie została zmieniona.',
+      `Propozycja pochodzi z niezatwierdzonej receptury referencyjnej (${templateId}), więc nie można ` +
+      'jej zastosować produkcyjnie. Wybierz zatwierdzony profil albo wpisz własne gramatury ' +
+      'i przelicz ' +
+      'ponownie.',
     /* ACCEPTANCE ADDENDUM (3): hard-native residual violations block Apply. */
     hardResiduals: (metrics: readonly string[]) =>
-      `Proponowana receptura narusza zatwierdzone zakresy technologiczne (natywne): ` +
-      `${listPl(metrics.map(metricLabelPl))}. Podgląd ma charakter wyłącznie diagnostyczny — ` +
-      'nie można go zastosować. Receptura nie została zmieniona.',
+      `Propozycja narusza zatwierdzone zakresy technologiczne: ` +
+      `${listPl(metrics.map(metricLabelPl))}. Podgląd jest tylko diagnostyczny i nie ` +
+      'można go zastosować. Receptura pozostała bez zmian.',
     dismiss: 'Rozumiem',
   },
 
@@ -283,7 +283,7 @@ export const constraintStudioCopy = {
       `${name}. Receptura nie została zmieniona.`,
     batchMismatch: (sum: number, target: number) =>
       `Nie można zastosować podglądu: suma składników (${formatGramsPl(sum)}) nie zgadza się ` +
-      `z docelową masą partii (${formatGramsPl(target)}). Receptura nie została zmieniona.`,
+      `z masą partii (${formatGramsPl(target)}). Receptura pozostała bez zmian.`,
     writeFailed:
       'Zapis receptury nie powiódł się i został wycofany. Receptura nie została zmieniona. ' +
       'Spróbuj ponownie.',
@@ -305,8 +305,8 @@ export const constraintStudioCopy = {
     unsafeProposal: 'Gellatti nie utworzyło bezpiecznej receptury. Propozycja została odrzucona.',
     /* Owner P0 (full formulation): honest unsupported profile × temperature. */
     unsupportedProfile:
-      'Ten profil produktu nie ma jeszcze zatwierdzonej receptury bazowej dla wybranej ' +
-      'temperatury serwowania. Gellatti nie układa receptur bez zatwierdzonego punktu wyjścia.',
+      'Dla tego profilu i temperatury nie ma jeszcze zatwierdzonej receptury bazowej. ' +
+      'Gellatti nie układa receptur bez zatwierdzonego punktu wyjścia. Wybierz inną konfigurację.',
     invalidConstraints: 'Blokady są nieprawidłowe względem bieżącej receptury.',
     lineMissing: 'Ten składnik nie znajduje się już w recepturze.',
     rescaleInvalid: 'Nowa partia musi być liczbą nieujemną.',
@@ -365,8 +365,8 @@ export const constraintStudioCopy = {
     templateSimilarityLabel: 'Zgodność ze wzorcem referencyjnym',
     calibration: {
       category_fallback:
-        'Status kalibracji: profil oceniany według zakresów zastępczych (fallback profilu) — ' +
-        'kalibracja naukowa tego profilu jest w toku; odchylenia w tych zakresach nie blokują receptury.',
+        'Profil korzysta tymczasowo z zakresów zastępczych, ponieważ jego kalibracja naukowa ' +
+        'jest jeszcze w toku. Odchylenia w tych zakresach nie blokują receptury.',
       temperature_fallback:
         'Status kalibracji: temperatura oceniana według najbliższej skalibrowanej celi — ' +
         'odchylenia w tych zakresach nie blokują receptury.',
@@ -398,7 +398,7 @@ export const constraintStudioCopy = {
     temperatureMismatch:
       'Nie można przeliczyć receptury, ponieważ wybrana temperatura i aktywny profil produktu ' +
       'są niespójne.',
-    incomplete: 'Receptura jest niekompletna — dodaj składniki i ustaw partię, aby przeliczyć.',
+    incomplete: 'Receptura jest niekompletna — dodaj składniki i ustaw partię, aby przeliczyć',
     notEngineReady: (names: readonly string[]) =>
       `Składniki bez pełnych danych: ${listPl(names)}. Uzupełnij je, aby przeliczyć recepturę.`,
     verificationFailed: 'Kontrola bezpieczeństwa zatrzymała propozycję.',
@@ -406,8 +406,8 @@ export const constraintStudioCopy = {
     unchanged: 'Receptura nie została zmieniona.',
     /** Poured actuals put the solver in add-only rescue mode (§15) — say it. */
     pouredNote: (count: number) =>
-      `${count} skł. ma już odważone rzeczywiste gramatury — obowiązuje tryb ratowania partii ` +
-      '(można tylko dodawać, nigdy zmniejszać).',
+      `${count} składników ma już odważone ilości. W korekcie partii można tylko dodawać ` +
+      '— nie zmniejszać.',
     lockTable: {
       heading: 'Zweryfikowany stan blokad',
       colIngredient: 'Składnik',
@@ -415,7 +415,7 @@ export const constraintStudioCopy = {
       colLock: 'Blokada',
       colSource: 'Źródło',
       state: {
-        unlocked: 'AI może zmieniać',
+        unlocked: 'Gellatti może zmieniać',
         grams: 'Zablokowana gramatura',
         range: 'Zakres (analiza)',
         main: 'Główny · Gellatti może zmieniać grupowo',
@@ -424,11 +424,11 @@ export const constraintStudioCopy = {
         poured: 'Odważony (rzeczywisty)',
       },
       source: {
-        user_padlock: 'kłódka użytkownika (ta sesja)',
-        saved_recipe: 'z zapisanej receptury',
-        main_role: 'rola i proporcja Główna',
+        user_padlock: 'Kłódka użytkownika (ta sesja)',
+        saved_recipe: 'Z zapisanej receptury',
+        main_role: 'Rola i proporcja Główna',
         engine_lock: 'ustawienie receptury',
-        poured_actual: 'ratowanie partii / produkcja',
+        poured_actual: 'Ratowanie partii / produkcja',
         none: '—',
       },
     },
@@ -463,7 +463,7 @@ export const constraintStudioCopy = {
     /** §18.4 group — spec wording. */
     groupLead: 'Zablokowane składniki wspólnie uniemożliwiają osiągnięcie optymalnego zakresu:',
     groupPaths:
-      'Możliwe ścieżki: odblokuj jeden z nich, zmień zakres, zwiększ batch albo zaakceptuj wynik ' +
+      'Możliwe ścieżki: odblokuj jeden z nich, zmień zakres, zwiększ partię albo zaakceptuj wynik ' +
       'poza optimum.',
     evidence: 'Zweryfikowany zestaw zmian (wymaga odblokowania):',
     evidenceAdd: (name: string, grams: string) => `dodaj ${name}: ${grams}`,
@@ -471,7 +471,7 @@ export const constraintStudioCopy = {
     /** §18.5 fallback — spec sentence VERBATIM. Never accompanied by numbers. */
     noReliableBound:
       'Przy obecnych blokadach nie znaleziono rozwiązania w optymalnym zakresie. ' +
-      'Odblokuj jeden z zaznaczonych składników lub zmień batch.',
+      'Odblokuj zaznaczony składnik, zmień zakres albo zwiększ partię.',
     markedIngredients: (names: readonly string[]) => `Zaznaczone składniki: ${listPl(names)}.`,
     invalid: 'Blokady są nieprawidłowe względem bieżącej receptury.',
     violationsIntro: 'Poza optymalnym zakresem:',
@@ -483,7 +483,7 @@ export const constraintStudioCopy = {
     empty: 'Brak zastosowanych zmian w tej sesji.',
     undo: 'Cofnij ostatnią zmianę',
     undoUnavailable:
-      'Receptura zmieniła się od tej operacji — cofnięcie przywróciłoby nieaktualny stan.',
+      'Receptura zmieniła się od tej operacji — cofnięcie przywróciłoby nieaktualny stan',
     explain: 'Dlaczego?',
     contextLine: (temperature: string) => `Temperatura serwowania: ${temperature}`,
     outOfBand: (before: number, after: number) =>

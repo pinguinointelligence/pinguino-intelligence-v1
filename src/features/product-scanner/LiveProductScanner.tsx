@@ -572,7 +572,7 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
             >
               {assets.length === 0 ? (
                 <p className="py-4 text-center text-xs leading-5 text-stone-500">
-                  Na komputerze możesz też przeciągnąć zdjęcie tutaj.
+                  Na komputerze możesz też przeciągnąć zdjęcie tutaj
                 </p>
               ) : (
                 <div className="grid grid-cols-3 gap-2">
@@ -751,7 +751,7 @@ export function LiveProductScanner({ onResolved, resolveLabel, intro }: LiveProd
             </span>
             <div>
               <h2 className="text-2xl font-semibold leading-tight tracking-[-0.03em] text-ink sm:text-3xl">
-                Gotowe. Produkt jest w Twoim katalogu.
+                Produkt dodany do Twojego katalogu.
               </h2>
               <p className="mt-2 text-sm leading-6 text-stone-600">
                 Możesz od razu użyć go w recepturze albo zeskanować kolejny.

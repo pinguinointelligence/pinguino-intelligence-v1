@@ -9,6 +9,7 @@
  */
 import type { RecipeVersion } from '@/features/pro-core/recipeContracts';
 import {
+  scaleMessagePl,
   scaleRecipeVersion,
   type ScaleOptions,
   type ScaleResult,
@@ -78,7 +79,7 @@ export class InMemoryProduction {
       throw new Error('This plan does not include Production Mode.');
     }
     const scaled = scaleRecipeVersion(input.version, input.target, input.scaleOptions);
-    if (!scaled.ok) throw new Error(scaled.message);
+    if (!scaled.ok) throw new Error(scaleMessagePl(scaled.message));
     const baseRun = buildProductionRun({
       ownerUserId: input.ownerUserId,
       scaled,
@@ -165,7 +166,7 @@ export class InMemoryProduction {
           type: 'rescue_applied',
           at,
           by: run.ownerUserId,
-          detail: 'In-memory BATCH_RESCUE candidate accepted',
+          detail: 'Zaakceptowano kandydat korekty partii w pamięci',
           amendment: { recipeInput, productComposition, acceptedAt: at, revision },
         },
       ],

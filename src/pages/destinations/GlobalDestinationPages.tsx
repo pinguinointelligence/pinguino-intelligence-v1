@@ -65,8 +65,8 @@ export function ShopPage() {
     >
       <div className="border-y border-ink/10 py-8">
         <p className="max-w-xl text-sm leading-relaxed text-stone-600">
-          Katalog zakupowy nie jest jeszcze połączony z tym wydaniem. Nawigacja i własność sklepu są
-          już jednoznaczne; aplikacja nie pokazuje fikcyjnych produktów ani cen.
+          Katalog zakupowy nie jest jeszcze dostępny w tej wersji. Gellatti nie pokazuje fikcyjnych produktów
+          ani cen.
         </p>
       </div>
     </DestinationSurface>
@@ -108,7 +108,7 @@ export function ProductsHubPage() {
     >
       {!capabilities.canSaveRecipe ? (
         <p className="border-y border-ink/10 py-8 text-sm text-stone-600">
-          Katalog produktów otwiera się w planach Home i Pro. Wybierz plan, aby dodać własne produkty.
+          Katalog produktów otwiera się w planach Home i Pro. Wybierz plan, aby dodać własne produkty
         </p>
       ) : (
         <>
@@ -141,7 +141,7 @@ export function ProductsHubPage() {
                 <span>
                   <strong className="block font-medium">Import administracyjny</strong>
                   <span className="mt-1 block text-xs text-stone-500">
-                    Kontrolowana ścieżka back-office dostępna tylko w trybie Admin
+                    Kontrolowana ścieżka administracyjna dostępna tylko w trybie Admin
                   </span>
                 </span>
                 <span aria-hidden>→</span>
@@ -234,7 +234,7 @@ export function ProductionHubPage() {
     >
       {!capabilities.canUseProductionMode ? (
         <p className="border-y border-ink/10 py-8 text-sm text-stone-600">
-          Produkcja jest dostępna w planie Pro.
+          Produkcja jest dostępna w planie Pro
         </p>
       ) : (
         <>
@@ -297,7 +297,7 @@ export function ProductionHubPage() {
               ) : (
                 <>
                   <p className="mt-2 max-w-xl text-sm text-stone-600">
-                    Otwórz recepturę i przejdź do jej zakładki Produkcja, aby rozpocząć nową partię.
+                    Otwórz recepturę i przejdź do jej zakładki Produkcja, aby rozpocząć nową partię
                   </p>
                   <Link to="/pro/recipe" className={cn(buttonClasses('primary', 'md'), 'mt-6')}>
                     Otwórz Gellatti Pro
@@ -462,7 +462,7 @@ export function LabelsHubPage() {
           <div>
             <h2 className="text-xl font-semibold text-ink">Etykieta zakończonej partii</h2>
             <p className="mt-1 text-sm text-stone-500">
-              Dane etykiety pochodzą wyłącznie z zatwierdzonego wyniku tej partii.
+              Dane etykiety pochodzą wyłącznie z zatwierdzonego wyniku tej partii
             </p>
           </div>
           {history.length > 0 ? (
@@ -522,7 +522,7 @@ export function AccountSettingsPage() {
     >
       {status !== 'authed' && !import.meta.env.DEV ? (
         <p className="border-y border-ink/10 py-8 text-sm text-stone-600">
-          Zaloguj się, aby zarządzać kontem.
+          Zaloguj się, aby zarządzać kontem
         </p>
       ) : (
         <div className="divide-y divide-ink/10 border-y border-ink/10">

@@ -74,7 +74,7 @@ export function useLegacyRecipeBehaviorRevalidation(enabled = true): void {
     void Promise.all(lines.map(async ({ lineId, base, topping }) => {
       const ingredient = base?.ingredient ?? topping?.ingredient;
       const lineName = ingredient?.name ?? lineId;
-      if (!ingredient) return { lineId, lineName, error: 'brak składnika w zapisanej linii' };
+      if (!ingredient) return { lineId, lineName, error: 'Brak składnika w zapisanej linii' };
       const storedSnapshot = initial.productBehaviorSnapshots[lineId];
       const historicalSource =
         storedSnapshot?.sharedFacts && initial.savedRecipeId && initial.currentVersionId
@@ -115,16 +115,16 @@ export function useLegacyRecipeBehaviorRevalidation(enabled = true): void {
           },
         })
         .catch((error: unknown) => ({
-          error: error instanceof Error ? error.message : 'resolver produktu jest niedostępny',
+          error: error instanceof Error ? error.message : 'Rozpoznawanie produktu jest niedostępne',
         }));
-      if (cancelled) return { lineId, lineName, error: 'rozwiązywanie przerwane' };
-      if (!resolved) return { lineId, lineName, error: 'resolver produktu nie zwrócił wyniku' };
+      if (cancelled) return { lineId, lineName, error: 'Rozwiązywanie przerwane' };
+      if (!resolved) return { lineId, lineName, error: 'Nie udało się rozpoznać produktu' };
       if ('error' in resolved) return { lineId, lineName, error: resolved.error };
       if (resolved.state !== 'eligible') {
         return {
           lineId,
           lineName,
-          error: resolved.blockReasons.join(', ') || 'brak aktualnego bindingu produktu',
+          error: resolved.blockReasons.join(', ') || 'Brak aktualnego bindingu produktu',
         };
       }
       const preserveFrozen = historicalSource !== null && storedSnapshot !== undefined;
@@ -135,7 +135,7 @@ export function useLegacyRecipeBehaviorRevalidation(enabled = true): void {
         return {
           lineId,
           lineName,
-          error: `brak aktywnego Mapper row ${resolved.mapperIngredientId ?? mapperIngredientId ?? lineId}`,
+          error: `Brak aktywnego wpisu Mapper: ${resolved.mapperIngredientId ?? mapperIngredientId ?? lineId}`,
         };
       }
       const currentSnapshot = snapshotServerResolvedProductBehavior({

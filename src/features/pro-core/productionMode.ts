@@ -89,7 +89,7 @@ export function buildProductionRun(input: BuildRunInput): ProductionRun {
     type: 'created',
     at: input.createdAt,
     by: input.by,
-    detail: `Planned from recipe version ${scaled.recipeVersionNumber} at ${scaled.canonicalTotalG} g`,
+    detail: `Plan z wersji receptury ${scaled.recipeVersionNumber} · ${scaled.canonicalTotalG} g`,
     amendment: null,
   };
   return {
@@ -265,7 +265,7 @@ export function recordActual(run: ProductionRun, input: RecordActualInput): Prod
     type: 'actual_recorded',
     at: input.at,
     by: input.by,
-    detail: 'Actual production values recorded',
+    detail: 'Zapisano rzeczywiste wartości produkcji',
     amendment: null,
   };
   return { ...run, actual, updatedAt: input.at, events: [...run.events, event] };

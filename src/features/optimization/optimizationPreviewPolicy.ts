@@ -57,7 +57,7 @@ export const OPTIMIZATION_RECOMMENDATION: Readonly<Record<string, string>> = {
   tradeoff: 'Korekta poprawia recepturę, ale część celów pozostaje poza zakresem.',
   impossible: 'Przy obecnych ustawieniach nie ma bezpiecznej korekty.',
   blocked: 'Tego produktu lub temperatury nie można teraz rzetelnie ocenić.',
-  no_action_needed: 'Receptura jest już w zakresie — korekta nie jest potrzebna.',
+  no_action_needed: 'Receptura jest już w zakresie — korekta nie jest potrzebna',
 };
 
 export const recommendationFor = (decision: string): string =>

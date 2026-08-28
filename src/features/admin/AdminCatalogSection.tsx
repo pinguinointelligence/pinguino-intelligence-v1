@@ -32,7 +32,7 @@ export function AdminCatalogSection() {
     mutationFn: (
       kind: 'ADD_MARKET' | 'REMOVE_MARKET' | 'PUBLISH' | 'UNPUBLISH' | 'RETIRE' | 'MERGE_DUPLICATE',
     ) => {
-      if (!selected) throw new Error('Wybierz produkt.');
+      if (!selected) throw new Error('Wybierz produkt');
       return adminCatalogAction(selected.id, kind, {
         market,
         reason,
@@ -101,7 +101,7 @@ export function AdminCatalogSection() {
                   <td className="px-3 py-4">
                     <strong className="text-ink">{product.name ?? '—'}</strong>
                     <span className="mt-1 block text-stone-500">
-                      {product.brand ?? 'bez marki'}
+                      {product.brand ?? 'Bez marki'}
                     </span>
                   </td>
                   <td className="px-3 py-4 font-mono">{product.ean ?? '—'}</td>

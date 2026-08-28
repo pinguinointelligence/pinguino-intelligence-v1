@@ -85,10 +85,10 @@ export const MATCH_SCORE_NO_DATA_LABEL = 'Brak wystarczających danych do oceny'
 /** Tooltip contract (§15.2): 10/10 is honest fit-to-goal, NOT a laboratory guarantee. */
 export const MATCH_SCORE_TOOLTIPS: Readonly<Record<MatchScoreTooltipKey, string>> = Object.freeze({
   'recipe-score.match.tooltip':
-    'Dopasowanie receptury ocenia, jak dobrze wynik odpowiada produktowi, trybowi i założeniom. ' +
-    '10/10 oznacza bardzo dobre dopasowanie do celu — nie jest gwarancją laboratoryjną.',
+    'Wynik receptury pokazuje, jak dobrze receptura pasuje do wybranego produktu, trybu ' +
+    'i ustawień. 10/10 oznacza bardzo dobre dopasowanie, nie gwarancję laboratoryjną',
   'recipe-score.match.tooltip.no-data':
-    'Za mało danych, aby ocenić dopasowanie receptury. Uzupełnij składniki i gramatury, aby otrzymać ocenę.',
+    'Za mało danych, aby ocenić dopasowanie receptury. Uzupełnij składniki i gramatury, aby otrzymać ocenę',
 });
 
 const clampToScale = (value: number): TenPointScore =>

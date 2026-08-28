@@ -268,7 +268,7 @@ export function WorkbenchIntelligenceHeader({
           className="grid size-12 shrink-0 place-items-center rounded-[12px] bg-[#101113] font-mono text-lg font-semibold text-white shadow-pro-e1"
           data-testid="workbench-ai-mark"
         >
-          AI
+          Gellatti
         </span>
       </button>
     </div>

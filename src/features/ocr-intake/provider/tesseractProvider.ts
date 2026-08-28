@@ -80,7 +80,7 @@ export class TesseractOcrProvider implements OcrProvider {
         ok: false,
         failure: {
           kind: 'engine_error',
-          message: `image is ${mb} MB — the local OCR engine's limit is ${limitMb} MB (downscale before retrying).`,
+          message: `Obraz ma ${mb} MB. Lokalny OCR obsługuje maks. ${limitMb} MB — zmniejsz obraz i spróbuj ponownie.`,
         },
       };
     }

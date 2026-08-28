@@ -49,7 +49,7 @@ const COPY: Record<ScannerErrorCode, string> = {
   analysis_failed:
     'Hmm, nie udało się pewnie odczytać etykiety. Dodaj wyraźniejsze zdjęcie i spróbuj ponownie.',
   analysis_incomplete:
-    'Prawie gotowe. Brakuje jednego potwierdzenia — dodaj wskazane ujęcie i ponów analizę.',
+    'Brakuje jednego potwierdzenia. Dodaj wskazane ujęcie i ponów analizę.',
   save_failed:
     'Analiza jest bezpieczna na ekranie, ale produktu nie zapisaliśmy. Spróbuj ponownie za chwilę.',
   save_not_ready:
@@ -57,7 +57,7 @@ const COPY: Record<ScannerErrorCode, string> = {
   quota_reached: 'Limit analiz lub zapisów został wykorzystany. Spróbuj ponownie później.',
   auth_required: 'Zaloguj się ponownie, aby dokończyć skanowanie produktu.',
   connection: 'Nie mamy teraz połączenia. Sprawdź sieć i spróbuj ponownie.',
-  unavailable: 'Skaner potrzebuje chwili. Spróbuj ponownie za moment.',
+  unavailable: 'Skaner potrzebuje chwili. Spróbuj ponownie za moment',
 };
 
 /** Server error codes → the user-facing category. Anything unlisted falls back per stage. */

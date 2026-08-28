@@ -23,7 +23,7 @@ export function LegacyRecipeReferenceNotice({
       eyebrow="Receptura historyczna"
       title={
         issues.length === 1
-          ? '1 historyczny produkt wymaga sprawdzenia'
+          ? '1 Historyczny produkt wymaga sprawdzenia'
           : `${issues.length} historycznych produktów wymaga sprawdzenia`
       }
       description="Nie możemy jednoznacznie połączyć tej pozycji ze starej wersji receptury z aktualnym katalogiem."

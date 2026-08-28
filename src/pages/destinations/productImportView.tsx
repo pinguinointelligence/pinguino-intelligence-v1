@@ -155,7 +155,7 @@ export function RedFlagPreview({ rows }: { rows: IntakeRedFlagRow[] }) {
     <div>
       <SectionLabel tone="ivory">Sygnały do wewnętrznego przeglądu</SectionLabel>
       {rows.length === 0 ? (
-        <p className="mt-3 text-sm text-ivory/40">Brak sygnałów wymagających przeglądu.</p>
+        <p className="mt-3 text-sm text-ivory/40">Brak sygnałów wymagających przeglądu</p>
       ) : (
         <ul className="mt-3 divide-y divide-ivory/10">
           {rows.map((row) => (
@@ -493,9 +493,9 @@ export function IntimportLocalIntelligenceView({
           className="text-sm leading-relaxed text-ivory/60"
           data-testid="intimport-value-readiness"
         >
-          Kompletne liczby mogą nadal zawierać wartości oszacowane. Gotowość do obliczeń wymaga
-          także odpowiedniej dokładności produktu, rozwiązanych danych fizycznych i zatwierdzonego
-          sposobu użycia. Brak zatwierdzenia blokuje produkt.
+          Kompletne dane mogą zawierać wartości oszacowane. Produkt jest gotowy do obliczeń
+          dopiero po potwierdzeniu dokładności, danych fizycznych i sposobu użycia.
+          Brak zatwierdzenia blokuje produkt.
         </p>
       ) : null}
 

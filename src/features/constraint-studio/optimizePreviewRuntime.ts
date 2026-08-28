@@ -56,7 +56,7 @@ export type OptimizePreviewWorkerFactory = () => OptimizePreviewWorkerLike;
 let requestSequence = 0;
 
 const abortError = (): DOMException =>
-  new DOMException('Optimize preview was cancelled.', 'AbortError');
+  new DOMException('Anulowano podgląd przeliczenia.', 'AbortError');
 
 const defaultWorker = (): OptimizePreviewWorkerLike =>
   new OptimizePreviewWorker({

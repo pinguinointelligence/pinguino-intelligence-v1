@@ -163,7 +163,7 @@ export function renderFdaNutritionFacts(data: MasterLabelData): string {
         : `<tr class="indent-${row.indent ?? 0}"><th>${row.italic ? '<i>' : ''}${escapeHtml(row.label)}${row.italic ? '</i>' : ''} <span>${escapeHtml(row.amount)}</span></th><td>${row.dv === undefined ? '' : `${row.dv}%`}</td></tr>`;
     })
     .join('');
-  const servingText = textFor(facts.servingDescription, 'en') || '2/3 cup';
+  const servingText = textFor(facts.servingDescription, 'en') || '2/3 szklanki';
   const servings = roundUsServingsPerContainer(facts.servingsPerContainer ?? 0);
   const servingsLine =
     servings === '1' ? '1 serving per container' : `About ${servings} servings per container`;

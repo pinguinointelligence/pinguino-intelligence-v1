@@ -51,7 +51,7 @@ export function SubstitutionSheet({
         </TouchButton>
       }
     >
-      <ul role="radiogroup" aria-label={`Substitutes for ${ingredientName}`} className="flex flex-col gap-2">
+      <ul role="radiogroup" aria-label={`Zamienniki dla ${ingredientName}`} className="flex flex-col gap-2">
         {options.map((opt) => {
           const active = opt.id === selectedId;
           return (

@@ -178,9 +178,9 @@ export interface CreateGate {
  * toward the limit (only distinct recipe aggregates do).
  */
 export function canCreateNewRecipe(currentRecipeCount: number, caps: RecipeCapabilities): CreateGate {
-  if (!caps.canSaveRecipe) return { allowed: false, reason: 'This plan cannot save recipes.' };
+  if (!caps.canSaveRecipe) return { allowed: false, reason: 'Ten plan nie pozwala zapisywać receptur.' };
   if (caps.maxSavedRecipes !== null && currentRecipeCount >= caps.maxSavedRecipes) {
-    return { allowed: false, reason: `Saved-recipe limit reached (${caps.maxSavedRecipes}). Update or version your existing recipe instead.` };
+    return { allowed: false, reason: `Osiągnięto limit zapisanych receptur (${caps.maxSavedRecipes}). Zaktualizuj istniejącą recepturę lub zapisz nową wersję.` };
   }
   return { allowed: true, reason: 'ok' };
 }

@@ -32,7 +32,7 @@ export function FlavorChip({ label, onRemove, selected = false, className }: Fla
         <button
           type="button"
           onClick={onRemove}
-          aria-label={`Remove ${label}`}
+          aria-label={`Usuń ${label}`}
           className={cn(
             'grid h-7 w-7 shrink-0 place-items-center rounded-full',
             selected ? 'text-paper/80 hover:bg-paper/15' : 'text-stone-500 hover:bg-ink/10',

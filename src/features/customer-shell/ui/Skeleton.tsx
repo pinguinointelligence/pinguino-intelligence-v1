@@ -30,7 +30,7 @@ export function ReadyRecipeCardSkeleton({ className }: { className?: string }) {
     <div
       className={cn('flex flex-col overflow-hidden border border-ink/10', radius.card, className)}
       role="status"
-      aria-label="Loading recipe"
+      aria-label="Ładowanie receptury…"
     >
       <Skeleton rounded="rounded-none" className="w-full" />
       <div className="flex flex-col gap-2 p-4">
@@ -44,7 +44,7 @@ export function ReadyRecipeCardSkeleton({ className }: { className?: string }) {
 /** A stack of ingredient-row skeletons for a recipe detail view. */
 export function IngredientListSkeleton({ rows = 5 }: { rows?: number }) {
   return (
-    <div role="status" aria-label="Loading ingredients" className="divide-y divide-ink/10">
+    <div role="status" aria-label="Ładowanie składników…" className="divide-y divide-ink/10">
       {Array.from({ length: rows }, (_, i) => (
         <div key={i} className="flex items-center justify-between gap-3 py-4">
           <Skeleton className="h-4 w-2/5" />

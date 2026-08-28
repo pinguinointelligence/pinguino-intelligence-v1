@@ -66,7 +66,7 @@ export function AccountProductMarkets() {
           <h2 id="product-markets-heading" className="text-sm font-semibold text-ink">Produkty w wyszukiwarce</h2>
           <p className="mt-1 max-w-2xl text-xs leading-relaxed text-stone-600">
             Wybierz kraje sprzedaży SKU. Kraj pochodzenia pozostaje osobnym faktem produktu,
-            a Ulubione są widoczne niezależnie od tego filtra.
+            a Ulubione są widoczne niezależnie od tego filtra
           </p>
         </div>
         <button
@@ -149,7 +149,7 @@ export function AccountProductMarkets() {
       <p className="mt-4 text-xs text-stone-500">
         Aktywny zakres: {form.defaultScope === 'global'
           ? 'wszystkie kraje'
-          : selected.length > 0 ? selected.join(' + ') : 'brak wybranych krajów'}.
+          : selected.length > 0 ? selected.join(' + ') : 'brak wybranych krajów'}
       </p>
       {mutation.isError ? <p className="mt-3 text-xs text-status-error" role="alert">Nie udało się zapisać krajów.</p> : null}
       {saved.isError || countries.isError ? <p className="mt-3 text-xs text-status-error" role="alert">Nie udało się odczytać ustawień. Formularz pozostaje zablokowany.</p> : null}

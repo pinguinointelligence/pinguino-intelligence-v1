@@ -13,22 +13,22 @@ import {
 import { customerErrorMessage } from '@/copy/customerError';
 
 const labels: Readonly<Record<string, string>> = {
-  FRONT_PHOTO: 'czytelne zdjęcie przodu opakowania',
+  FRONT_PHOTO: 'Czytelne zdjęcie przodu opakowania',
   BARCODE_OR_EAN: 'zdjęcie kodu kreskowego lub numer EAN',
-  PRODUCT_NAME: 'pełna nazwa produktu',
-  BRAND: 'marka',
+  PRODUCT_NAME: 'Pełna nazwa produktu',
+  BRAND: 'Marka',
   VARIANT: 'wariant produktu',
-  NET_QUANTITY: 'masa lub objętość netto',
-  INGREDIENTS: 'pełny skład produktu',
-  NUTRITION_TABLE: 'pełna tabela wartości odżywczych',
+  NET_QUANTITY: 'Masa lub objętość netto',
+  INGREDIENTS: 'Pełny skład produktu',
+  NUTRITION_TABLE: 'Pełna tabela wartości odżywczych',
   ALLERGEN_INFORMATION: 'informacja o alergenach',
-  MANUFACTURER: 'producent',
-  COUNTRY_OF_ORIGIN: 'kraj pochodzenia',
-  MARKET_AVAILABILITY: 'kraj, w którym produkt jest dostępny',
-  PROFESSIONAL_DOSAGE: 'profesjonalne dozowanie',
-  USAGE_INSTRUCTIONS: 'instrukcja użycia',
+  MANUFACTURER: 'Producent',
+  COUNTRY_OF_ORIGIN: 'Kraj pochodzenia',
+  MARKET_AVAILABILITY: 'Kraj, w którym produkt jest dostępny',
+  PROFESSIONAL_DOSAGE: 'Profesjonalne dozowanie',
+  USAGE_INSTRUCTIONS: 'Instrukcja użycia',
   TECHNICAL_DOCUMENT: 'dokument techniczny',
-  OTHER: 'inna informacja wskazana przez Admina',
+  OTHER: 'Inna informacja wskazana przez Admina',
 };
 
 const fileEligible = new Set([
@@ -283,7 +283,7 @@ export function ProductRequestAccountSections() {
               <RequestRow key={request.id} request={request} archived={false} />
             ))}
             {!active.isPending && sortedActive.length === 0 ? (
-              <p className="py-5 text-sm text-stone-500">Brak aktywnych zgłoszeń.</p>
+              <p className="py-5 text-sm text-stone-500">Brak aktywnych zgłoszeń</p>
             ) : null}
           </div>
         </div>
@@ -296,7 +296,7 @@ export function ProductRequestAccountSections() {
               <RequestRow key={request.id} request={request} archived />
             ))}
             {!archived.isPending && (archived.data?.length ?? 0) === 0 ? (
-              <p className="py-5 text-sm text-stone-500">Archiwum jest puste.</p>
+              <p className="py-5 text-sm text-stone-500">Archiwum jest puste</p>
             ) : null}
           </div>
         </div>
@@ -318,7 +318,7 @@ export function ProductRequestAccountSections() {
               </Link>
             ))}
             {!contributed.isPending && (contributed.data?.length ?? 0) === 0 ? (
-              <p className="py-5 text-sm text-stone-500">Jeszcze żadnego.</p>
+              <p className="py-5 text-sm text-stone-500">Jeszcze żadnego</p>
             ) : null}
           </div>
         </div>

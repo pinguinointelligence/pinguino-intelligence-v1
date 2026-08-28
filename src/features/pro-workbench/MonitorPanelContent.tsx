@@ -263,7 +263,7 @@ export function MonitorPanelContent({
           title={
             legacyInspection
               ? 'Podgląd historyczny'
-              : 'Monitor wymaga ponownej walidacji danych produktów użytych w tej recepturze.'
+              : 'Monitor wymaga ponownej walidacji danych produktów użytych w tej recepturze'
           }
           description={
             legacyInspection

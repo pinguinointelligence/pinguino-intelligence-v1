@@ -234,7 +234,7 @@ export const MARKET_PROFILES: Readonly<Record<MarketProfileCode, MarketProfile>>
   },
   AU_NZ: {
     code: 'AU_NZ',
-    label: 'Australia / New Zealand',
+    label: 'Australia / Nowa Zelandia',
     jurisdiction: 'Australia / New Zealand combined superset',
     flag: 'AU/NZ',
     consumerLayout: 'au_nz_nip',

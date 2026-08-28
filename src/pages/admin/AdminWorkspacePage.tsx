@@ -235,15 +235,15 @@ function OperationalList({
 }
 
 const REQUEST_TABS: readonly (readonly [ProductRequestStatus | 'ALL', string])[] = [
-  ['SUBMITTED', 'New'],
+  ['SUBMITTED', 'Nowe'],
   ['ADMIN_REVIEW', 'In review'],
-  ['NEEDS_INFO', 'Waiting for user'],
+  ['NEEDS_INFO', 'Oczekuje na użytkownika'],
   ['RESUBMITTED', 'Resubmitted'],
-  ['APPROVED', 'Approved'],
+  ['APPROVED', 'Zatwierdzone'],
   ['REJECTED', 'Rejected'],
   ['DUPLICATE', 'Duplicate'],
   ['USER_CANCELED', 'Canceled'],
-  ['ALL', 'All'],
+  ['ALL', 'Wszystkie'],
 ];
 function ProductRequests() {
   const [status, setStatus] = useState<ProductRequestStatus | 'ALL'>(() =>
@@ -728,7 +728,7 @@ function RequestDetail({
                 </ul>
               ) : (
                 <p className="mt-2 text-xs text-stone-500">
-                  Wybierz co najmniej jedno pole lub dodaj wyjaśnienie.
+                  Wybierz co najmniej jedno pole lub dodaj wyjaśnienie
                 </p>
               )}
               {note.trim() ? (
@@ -793,7 +793,7 @@ function RequestDetail({
             {error ? <ErrorBox message={error} /> : null}
             {approval?.kind === 'approval_not_ready' ? (
               <div className="mt-4 border border-amber-300 bg-amber-50 p-3 text-xs">
-                <strong>Produkt nie został utworzony.</strong>
+                <strong>Produkt nie został utworzony</strong>
                 <pre className="mt-2 whitespace-pre-wrap">{JSON.stringify(approval, null, 2)}</pre>
               </div>
             ) : null}
@@ -941,7 +941,7 @@ function CatalogCandidates({ request }: { request: AdminProductAddRequest }) {
         ))}
         {(query.data?.length ?? 0) === 0 ? (
           <p className="py-4 text-xs text-stone-500">
-            Brak exact kandydata w zatwierdzonym katalogu.
+            Brak exact kandydata w zatwierdzonym katalogu
           </p>
         ) : null}
       </div>
@@ -981,7 +981,7 @@ function EvidencePanel({ request }: { request: AdminProductAddRequest }) {
                     e.storagePath ??
                     e.source_url ??
                     e.sourceUrl ??
-                    'szczegóły dowodu',
+                    'Szczegóły dowodu',
                 )}
               </p>
               <p className="mt-2 text-xs text-stone-500">
@@ -1002,7 +1002,7 @@ function EvidencePanel({ request }: { request: AdminProductAddRequest }) {
           ))
         ) : (
           <p className="text-sm text-stone-500">
-            Brak plików; dostępny jest raw Scanner result i historia ekstrakcji.
+            Brak plików. Dostępny jest surowy wynik skanera i historia ekstrakcji.
           </p>
         )}
       </div>
@@ -1098,7 +1098,7 @@ function GenericTable({ rows }: { rows: Array<Record<string, unknown>> }) {
           ))}
         </tbody>
       </table>
-      {rows.length === 0 ? <p className="py-8 text-sm text-stone-500">Brak rekordów.</p> : null}
+      {rows.length === 0 ? <p className="py-8 text-sm text-stone-500">Brak rekordów</p> : null}
     </div>
   );
 }
@@ -1166,7 +1166,7 @@ function OperationRecords({
         <GenericTable rows={rows} />
       ) : (
         <p className="mt-3 border-y border-ink/10 py-4 text-xs text-stone-500">
-          Brak rekordów w trwałym rejestrze.
+          Brak rekordów w trwałym rejestrze
         </p>
       )}
     </section>

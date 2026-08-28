@@ -315,7 +315,7 @@ export function PiMonitorSection({
            calculated — only the interactive tuning awaits approval. Calm note,
            never an error tone; the exact owner copy. */
         <p className="mt-3 rounded-xl border border-ink/10 bg-ink/[0.03] px-4 py-3 text-[13px] leading-relaxed text-stone-600">
-          {TUNING_NOT_APPROVED_COPY} Receptura nie została zmieniona.
+          {TUNING_NOT_APPROVED_COPY} Receptura nie została zmieniona
         </p>
       ) : recipeInput === null ? (
         <p className="mt-3 rounded-xl border border-ink/10 bg-ink/[0.03] px-4 py-3 text-[13px] leading-relaxed text-stone-600">

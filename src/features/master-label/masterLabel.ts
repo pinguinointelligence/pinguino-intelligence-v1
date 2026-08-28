@@ -1090,7 +1090,7 @@ export function buildLabelPreflight(data: MasterLabelData): LabelPreflight {
           : regulatoryProfileVerified
             ? `Renderer regulacyjny ${profile.rendererVersion} jest aktywny.`
             : (profile.externalAssetRequirement ??
-              'Profil nie ma kompletnej oficjalnej authority.'),
+              'Profil nie ma kompletnego potwierdzonego źródła danych.'),
     },
     {
       field: 'languages',
@@ -1124,7 +1124,7 @@ export function buildLabelPreflight(data: MasterLabelData): LabelPreflight {
                 ? 'Produkt potwierdzony jako żywność niebędąca napojem; unijna deklaracja % vol nie ma zastosowania.'
                 : data.alcoholDeclarationReviewed && data.alcoholByVolumePercent !== null
                   ? `Potwierdzono ${data.alcoholByVolumePercent}% vol.`
-                  : 'Produkt zawiera alkohol: rozstrzygnij beverage/non-beverage; dla napoju >1,2% podaj authority % vol. System nie przelicza ABV z gramów.',
+                  : 'Produkt zawiera alkohol. Określ, czy to napój; dla napoju >1,2% podaj potwierdzone % obj. ABV nie jest wyliczane z gramów.',
           },
         ]
       : []),
@@ -1180,7 +1180,7 @@ export function buildLabelPreflight(data: MasterLabelData): LabelPreflight {
         !retail || contextReady
           ? 'Wybrano wymagany kontekst profilu.'
           : data.market === 'UK'
-            ? 'Wybierz Wielką Brytanię albo Irlandię Północną oraz właściwy kontekst żywności opakowanej lub PPDS.'
+            ? 'Wybierz Wielką Brytanię albo Irlandię Północną oraz właściwy kontekst żywności opakowanej lub PPDS'
             : data.market === 'EU'
               ? 'Podaj dwuliterowy kod docelowego państwa członkowskiego i potwierdź właściwe języki.'
               : 'Potwierdź kontekst sprzedaży FDA.',

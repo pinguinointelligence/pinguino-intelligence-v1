@@ -2,13 +2,13 @@
 export function productProfileStatusLabelPl(status: string | null | undefined): string {
   switch (status) {
     case 'PI Calculated':
-      return 'Profil obliczony przez Gellatti';
+      return 'Obliczone';
     case 'PI Generated':
-      return 'Profil przygotowany przez Gellatti';
+      return 'Wygenerowane';
     case 'Manual Adjusted':
       return 'Profil uzupełniony ręcznie';
     case 'PI Verified':
-      return 'Profil zweryfikowany';
+      return 'Zweryfikowane';
     default:
       return status ?? '';
   }

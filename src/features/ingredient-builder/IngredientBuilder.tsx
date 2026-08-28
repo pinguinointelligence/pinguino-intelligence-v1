@@ -373,11 +373,11 @@ export function IngredientBuilder({
     },
     moveUp: (lineId) => {
       moveBaseItem(lineId, -1);
-      setReorderNotice(baseReorderNotice(lineId, 'przesunięto wyżej'));
+      setReorderNotice(baseReorderNotice(lineId, 'Przesunięto wyżej'));
     },
     moveDown: (lineId) => {
       moveBaseItem(lineId, 1);
-      setReorderNotice(baseReorderNotice(lineId, 'przesunięto niżej'));
+      setReorderNotice(baseReorderNotice(lineId, 'Przesunięto niżej'));
     },
   };
 
@@ -423,8 +423,8 @@ export function IngredientBuilder({
         data-testid="production-table-header"
         data-table-family="recipe"
       >
-        Składnik. Plan i Odchylenie są podawane tylko wtedy, gdy faktyczna ilość różni się od
-        planu. Kontrolka Faktycznie zawiera zmniejszanie, gramy, zwiększanie i potwierdzenie.
+        Plan i Odchylenie są widoczne tylko wtedy, gdy faktyczna ilość różni się od planu.
+        W polu Faktycznie możesz zmniejszyć, zwiększyć, wpisać gramy i potwierdzić wartość.
       </div>
     ) : (
       <div className={`${ROW_GRID} px-3 py-2`} data-testid="recipe-table-header">
@@ -908,7 +908,7 @@ export function IngredientBuilder({
               className="mt-2"
               title={
                 compositionRoleIssues.length === 1
-                  ? '1 historyczny wpis wymaga decyzji'
+                  ? '1 Historyczny wpis wymaga decyzji'
                   : `${compositionRoleIssues.length} historycznych wpisów wymaga decyzji`
               }
               variant="attention"

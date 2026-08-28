@@ -96,14 +96,14 @@ export function validateLabelImage(meta: {
   sizeBytes: number | null;
 }): LabelImageValidation {
   if (!isAcceptedLabelImage(meta.mime, meta.filename)) {
-    return { ok: false, reason: `"${meta.filename}" is not a supported label image — use PNG, JPEG or WebP.` };
+    return { ok: false, reason: `„${meta.filename}” nie jest obsługiwanym obrazem etykiety. Użyj PNG, JPEG lub WebP.` };
   }
   if (meta.sizeBytes !== null && meta.sizeBytes > MAX_LABEL_IMAGE_BYTES) {
     const mb = (meta.sizeBytes / (1024 * 1024)).toFixed(1);
-    return { ok: false, reason: `image is ${mb} MB — the limit is ${MAX_LABEL_IMAGE_BYTES / (1024 * 1024)} MB.` };
+    return { ok: false, reason: `Obraz ma ${mb} MB. Limit to ${MAX_LABEL_IMAGE_BYTES / (1024 * 1024)} MB.` };
   }
   if (meta.sizeBytes !== null && meta.sizeBytes === 0) {
-    return { ok: false, reason: 'the file is empty (0 bytes).' };
+    return { ok: false, reason: 'The file is empty (0 bytes).' };
   }
   return { ok: true, reason: null };
 }
@@ -223,7 +223,7 @@ export function startLabelOcr(image: OcrImageInput, options: OcrEngineOptions = 
         return {
           status: 'failed',
           reason: 'unreadable_image',
-          message: 'No readable label text found in this image (too blurry, dark, or not a text label).',
+          message: 'Nie znaleziono czytelnego tekstu na etykiecie. Zrób wyraźniejsze zdjęcie w dobrym świetle.',
         };
       }
       const richLines = richLinesFromPage(data);
@@ -256,7 +256,7 @@ export function startLabelOcr(image: OcrImageInput, options: OcrEngineOptions = 
     return {
       status: 'failed',
       reason: 'engine_error',
-      message: `The OCR engine failed after ${maxAttempts} attempts: ${lastError}`,
+      message: `OCR nie zakończył analizy po ${maxAttempts} próbach: ${lastError}`,
     };
   })();
 

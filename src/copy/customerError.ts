@@ -108,7 +108,7 @@ const COPY: Readonly<Record<CustomerErrorCode, CustomerErrorCopy>> = {
   },
   SCANNER_ANALYSIS_FAILED: {
     title: 'Nie udało się odczytać etykiety',
-    message: 'Dodaj wyraźniejsze zdjęcie i spróbuj ponownie.',
+    message: 'Dodaj wyraźniejsze zdjęcie i spróbuj ponownie',
   },
   SCANNER_SAVE_FAILED: {
     title: 'Nie udało się zapisać produktu',

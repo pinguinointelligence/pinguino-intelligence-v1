@@ -270,13 +270,13 @@ function nutritionRows(data: MasterLabelData): PdfNutritionRow[] {
         label: 'Energy',
         value: `${Math.round(data.regulatoryNutrition.energyKjPer100g ?? source.kcal * 4.184)} kJ / ${Math.round(source.kcal)} kcal`,
       },
-      { label: 'Fat', value: `${source.fat_g.toFixed(1)} g` },
-      { label: 'of which saturates', value: `${source.saturated_fat_g.toFixed(1)} g`, indent: 1 },
-      { label: 'Carbohydrate', value: `${source.carbohydrate_g.toFixed(1)} g` },
-      { label: 'of which sugars', value: `${source.sugars_g.toFixed(1)} g`, indent: 1 },
+      { label: 'Tłuszcz', value: `${source.fat_g.toFixed(1)} g` },
+      { label: 'Of which saturates', value: `${source.saturated_fat_g.toFixed(1)} g`, indent: 1 },
+      { label: 'Węglowodany', value: `${source.carbohydrate_g.toFixed(1)} g` },
+      { label: 'Of which sugars', value: `${source.sugars_g.toFixed(1)} g`, indent: 1 },
     ];
     if (source.fiber_g !== null)
-      rows.push({ label: 'Fibre', value: `${source.fiber_g.toFixed(1)} g` });
+      rows.push({ label: 'Błonnik', value: `${source.fiber_g.toFixed(1)} g` });
     rows.push({ label: 'Protein', value: `${source.protein_g.toFixed(1)} g` });
     rows.push({ label: 'Salt', value: `${source.salt_g.toFixed(2)} g` });
     return rows;

@@ -127,7 +127,7 @@ export function assessLabelGeometry(input: LabelGeometryInput): LabelGeometryRes
     nutritionHeightMm,
     reason: fits
       ? `Zawartość mieści się przy ${baseFontPt.toFixed(2)} pt (x-height ${xHeightMm.toFixed(2)} mm).`
-      : 'Ten format jest za mały dla tej etykiety. Wybierz większy rozmiar.',
+      : 'Ten format jest za mały dla tej etykiety. Wybierz większy rozmiar',
   };
 }
 

@@ -41,13 +41,13 @@ export type TechnicalFitTooltipKey =
 export const TECHNICAL_FIT_TOOLTIPS: Readonly<Record<TechnicalFitTooltipKey, string>> =
   Object.freeze({
     'recipe-score.technical.tooltip':
-      'Dopasowanie techniczne ocenia wyłącznie zgodność receptury z zatwierdzonymi zakresami ' +
-      'technologicznymi. 10/10 oznacza, że wszystkie natywne zatwierdzone zakresy są w normie. ' +
-      'Koszt i profil smakowy są osobnymi wymiarami i nigdy nie wpływają na tę ocenę. ' +
-      'Nie jest to gwarancja laboratoryjna.',
+      'Dopasowanie techniczne ocenia zgodność z zatwierdzonymi zakresami technologicznymi. 10/10 ' +
+      'oznacza, że wszystkie potwierdzone zakresy są w normie. Koszt i profil ' +
+      'smakowy są oceniane osobno. Nie jest to gwarancja ' +
+      'laboratoryjna.',
     'recipe-score.technical.tooltip.no-data':
       'Za mało danych, aby ocenić dopasowanie techniczne. Uzupełnij składniki i gramatury, ' +
-      'aby otrzymać ocenę.',
+      'aby otrzymać ocenę',
   });
 
 export interface TechnicalFitPresentation {

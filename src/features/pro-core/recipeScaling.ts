@@ -75,6 +75,20 @@ export interface ScaleOptions {
   displayDecimals?: number;
 }
 
+const SCALE_MESSAGE_PL: Readonly<Record<string, string>> = Object.freeze({
+  'Scaling to a volume needs an explicit density (g/ml). No density was supplied, so no volume was assumed.':
+    'Skalowanie do objętości wymaga podania gęstości (g/ml). Nie podano gęstości, więc objętość nie została przyjęta.',
+  'Scaling to portions needs an explicit portion weight (g) or yield. None was supplied, so no yield was assumed.':
+    'Skalowanie do porcji wymaga masy porcji (g) lub wydajności. Nie podano żadnej z tych wartości.',
+  'Target batch weight must be greater than zero.':
+    'Masa docelowej partii musi być większa od zera.',
+  'Cannot scale a recipe with zero total mass.':
+    'Nie można skalować receptury o zerowej masie całkowitej.',
+});
+
+/** Presentation-only copy for a scale refusal. The ScaleResult contract remains unchanged. */
+export const scaleMessagePl = (message: string): string => SCALE_MESSAGE_PL[message] ?? message;
+
 /**
  * Distribute `targetUnits` (an integer) across `sources` proportionally, returning integer unit
  * counts whose sum is EXACTLY `targetUnits`. Deterministic largest-remainder (Hamilton) method:

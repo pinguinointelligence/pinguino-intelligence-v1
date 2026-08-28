@@ -97,6 +97,13 @@ describe('§8.3 behavior question', () => {
 });
 
 describe('§8.4 custom form', () => {
+  it('uses the owner-approved honest custom-machine lead without promising 95%', () => {
+    expect(copy.custom.lead).toBe(
+      'Podaj tylko to, co wiesz. Dla własnej maszyny wpisz wsad samodzielnie — możesz go później zmienić.',
+    );
+    expect(copy.custom.lead).not.toContain('95%');
+  });
+
   it('renders the spec fields; the vessel-only note appears only when relevant', () => {
     const html = render(
       <CustomMachineForm

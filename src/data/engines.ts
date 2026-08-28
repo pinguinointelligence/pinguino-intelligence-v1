@@ -63,3 +63,16 @@ export const ACTIVE_ENGINE: EngineProfile = ENGINES.find((engine) => engine.stat
 
 export const findEngine = (id: string): EngineProfile | undefined =>
   ENGINES.find((engine) => engine.id === id);
+
+const ENGINE_DISPLAY_LABEL_PL: Readonly<Record<string, string>> = Object.freeze({
+  '−11°C Engine': '−11°C · obliczenia',
+  '−12°C Engine': '−12°C · obliczenia',
+  '−13°C Engine': '−13°C · obliczenia',
+  'Fresh Engine': 'Bieżące obliczenia',
+});
+
+/** Presentation-only Polish wording. The persisted/runtime engine label stays unchanged. */
+export const engineDisplayLabelPl = (engine: Pick<EngineProfile, 'label'> | string): string => {
+  const contractLabel = typeof engine === 'string' ? engine : engine.label;
+  return ENGINE_DISPLAY_LABEL_PL[contractLabel] ?? contractLabel;
+};

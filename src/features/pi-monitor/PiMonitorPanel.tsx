@@ -83,7 +83,7 @@ function AxisControlRow({ reading, step, onIntentChange }: AxisControlRowProps) 
           })}
         </div>
       ) : (
-        <p className="mt-2 text-[12px] text-ivory/40">Ten wskaźnik nie dotyczy tego produktu.</p>
+        <p className="mt-2 text-[12px] text-ivory/40">Ten wskaźnik nie dotyczy tego produktu</p>
       )}
     </div>
   );

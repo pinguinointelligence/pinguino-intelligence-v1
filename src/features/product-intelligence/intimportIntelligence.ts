@@ -634,7 +634,7 @@ export function assessIntimportProduct(
     sweetnessPath: workingValues?.sweetnessPath ?? {
       kind: 'unresolved',
       resolved: false,
-      reason: 'brak profilu roboczego',
+      reason: 'Brak profilu roboczego',
     },
     behavior: productBehaviorAuthority,
   });
@@ -867,7 +867,7 @@ function productionAccuracyOf(
     sweetnessPath: values?.sweetnessPath ?? {
       kind: 'unresolved',
       resolved: false,
-      reason: 'brak profilu roboczego',
+      reason: 'Brak profilu roboczego',
     },
     behavior,
   });

@@ -390,7 +390,7 @@ export function setManualEan(session: ProductIntakeSession, raw: string | null):
   }
   const warnings =
     normalized.length < 8
-      ? [...session.warnings, `manual EAN "${normalized}" has only ${normalized.length} digits (looks short)`]
+      ? [...session.warnings, `Manual EAN "${normalized}" has only ${normalized.length} digits (looks short)`]
       : session.warnings;
   return { ...session, manualEan: normalized, warnings };
 }
@@ -414,8 +414,8 @@ export function rerunExtraction(session: ProductIntakeSession): ProductIntakeSes
   const edits = session.fields.filter((f) => f.reviewStatus === 'edited').length;
   const confirmations = session.fields.filter((f) => f.reviewStatus === 'confirmed').length;
   const warning =
-    `re-running extraction replaced ${session.fields.length} reviewed field(s) and DISCARDED ` +
-    `${edits} manual edit(s) and ${confirmations} confirmation(s) from the previous review`;
+    `Ponowna analiza zastąpiła ${session.fields.length} sprawdzonych pól i usunęła ` +
+    `${edits} ręcznych zmian oraz ${confirmations} potwierdzeń z poprzedniego przeglądu.`;
   const next = transition(session, 'extracting', 'rerunExtraction');
   return { ...next, fields: [], duplicate: null, warnings: [...session.warnings, warning] };
 }

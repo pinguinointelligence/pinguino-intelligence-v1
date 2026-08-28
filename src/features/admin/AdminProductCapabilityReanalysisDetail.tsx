@@ -26,7 +26,7 @@ const requestedCopy = (
 const contextCopy = (
   context: AdminProductCapabilityReanalysisQueueRequest['attemptedContext'],
 ): string =>
-  context === 'INGREDIENT_PICKER' ? 'wyszukano w Dodaj składnik' : 'wyszukano w Dodaj topping';
+  context === 'INGREDIENT_PICKER' ? 'Wyszukano w Dodaj składnik' : 'Wyszukano w Dodaj topping';
 
 const currentCapabilityEnabled = (
   request: AdminProductCapabilityReanalysisQueueRequest,

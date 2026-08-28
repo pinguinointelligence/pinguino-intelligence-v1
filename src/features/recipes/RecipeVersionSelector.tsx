@@ -102,7 +102,7 @@ export function RecipeVersionSelector({
                     isSelected ? 'bg-education-ivory/55' : ''
                   }`}
                 >
-                  <span className="text-ink">v{version.versionNumber}</span>
+                  <span className="text-ink">V{version.versionNumber}</span>
                   <span className="text-stone-500">·</span>
                   <span className="text-stone-600">
                     {formatSavedRecipeDate(version.createdAt)}

@@ -450,7 +450,7 @@ export function ProductImportPage() {
         startedRun = await startIntimportRun({
           mode: ownerClassifiedMode ? 'STANDARD' : 'CLEAN_OWNER_REIMPORT',
           label: ownerClassifiedMode
-            ? 'Polska — owner semantic Product Intelligence'
+            ? 'Polska — semantyczne dane produktu do przeglądu właściciela'
             : 'Polska — clean owner reimport',
           fileName: fileInfo?.name ?? null,
           sourceFingerprint: await productImportSourceFingerprint(csvText),
@@ -522,11 +522,11 @@ export function ProductImportPage() {
   const onRollbackImport = async () => {
     if (!importRun || !['CANCELLED', 'COMPLETED', 'FAILED'].includes(importRun.status)) return;
     const confirmed = window.confirm(
-      `Cofnąć import ${importRun.id}?\n\n` +
-        `Utworzone: ${importRun.created}\nPonownie użyte: ${importRun.reused}\n` +
-        `Zaktualizowane: ${importRun.updated}\nDo weryfikacji: ${importRun.review}\n` +
-        `Pominięte: ${importRun.skipped}\nBłędy: ${importRun.failed}\n\n` +
-        'Wycofanie usunie wyłącznie zmiany przypisane do tego importu. Główna baza składników pozostanie bez zmian.',
+      `Cofnąć import ${importRun.id}? ` +
+        `Utworzone ${importRun.created} · użyte ponownie ${importRun.reused}` +
+        ` · zaktualizowane ${importRun.updated} · do weryfikacji ${importRun.review}` +
+        ` · pominięte ${importRun.skipped} · błędy ${importRun.failed}` +
+        '. Cofnięcie usunie tylko zmiany z tego importu; główna baza składników pozostanie bez zmian.',
     );
     if (!confirmed) return;
     setRollbackBusy(true);
@@ -622,7 +622,7 @@ export function ProductImportPage() {
           </div>
           <details className="mt-6 border-t border-ivory/10 pt-4">
             <summary className="cursor-pointer list-none text-xs tracking-label text-ivory/50 uppercase transition-colors hover:text-ivory/80">
-              lub wklej dane CSV
+              Lub wklej dane CSV
             </summary>
             <textarea
               value={csvText}
@@ -798,11 +798,10 @@ export function ProductImportPage() {
           {runError ? <p className="mt-4 text-sm text-status-risky">{runError}</p> : null}
           {importPlan ? (
             <p className="text-xs text-[#8a7f6d]">
-              Product Intelligence: przeanalizowano {importPlan.total} —{' '}
-              {importPlan.productProfileReady} gotowych na poziomie profilu produktu,{' '}
-              {importPlan.review} do uzupełnienia. Użycie tych produktów w recepturach wymaga
-              osobnego zatwierdzenia danych produktu. Bez informacji o dawkowaniu producenta:{' '}
-              {importPlan.dosageUnproven} (informacyjnie — nie blokuje).
+              Analiza produktów: {importPlan.total} łącznie · {importPlan.productProfileReady} gotowych
+              na poziomie profilu · {importPlan.review} do uzupełnienia. Użycie w recepturze wymaga
+              osobnego potwierdzenia danych. Bez danych dawkowania producenta:{' '}
+              {importPlan.dosageUnproven} (informacyjnie, nie blokuje).
             </p>
           ) : null}
           {importResult ? (

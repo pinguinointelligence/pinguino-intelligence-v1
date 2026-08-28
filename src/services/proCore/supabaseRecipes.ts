@@ -419,7 +419,8 @@ export class SupabaseRecipes {
       if (!isUniqueViolation(error)) throw new Error(error.message);
       // A concurrent writer took this version_number — recompute and try the next one.
     }
-    throw new Error(`could not append a new recipe version (last error: ${lastMessage})`);
+    const displayMessage = lastMessage === 'unknown error' ? 'Unknown error' : lastMessage;
+    throw new Error(`could not append a new recipe version (last error: ${displayMessage})`);
   }
 
   /** Advance the MUTABLE aggregate to a newly-appended latest version (never touches history). */

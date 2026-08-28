@@ -38,7 +38,7 @@ describe('IngredientPicker — My Products', () => {
     expect(html).toMatch(/Moje produkty/);
     expect(text(html)).toContain('Nata para montar');
     expect(text(html)).toContain('PR-ING-000010');
-    expect(text(html)).toMatch(/Profil przygotowany przez Gellatti/);
+    expect(text(html)).toMatch(/Wygenerowane/);
     expect(text(html)).toMatch(/Profil oparty na zatwierdzonym wzorcu/);
     expect(text(html)).toMatch(/parametry technologiczne nie były mierzone niezależnie/);
     expect(html).not.toMatch(/%/); // no internal confidence percentage shown

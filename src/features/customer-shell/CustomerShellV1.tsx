@@ -677,10 +677,10 @@ export function CustomerShellV1() {
                   <div className="py-3">
                     <h3 className="text-sm font-semibold text-ink">Zeskanuj produkt</h3>
                     <p className="mt-1 text-xs leading-5 text-stone-600">
-                      Dodaj składnik lub topping do swojego katalogu.
+                      Dodaj składnik lub topping do swojego katalogu
                     </p>
                     <Link to="/products/scan" className={applicationQuietClasses('mt-2')}>
-                      Otwórz Scanner
+                      Otwórz Skaner
                     </Link>
                   </div>
                   <div className="py-3">

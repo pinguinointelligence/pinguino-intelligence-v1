@@ -89,7 +89,7 @@ export function MonitorScoreHeader({
         // The live score describes the current formula. It is deliberately NOT a
         // claim that the recipe has been recalculated or verified.
         <p className="mt-2 text-[10px] leading-snug text-stone-500" data-testid="monitor-score-stale-note">
-          Ocena bieżącej receptury. Oczekuje na przeliczenie.
+          Ocena bieżącej receptury. Oczekuje na przeliczenie
         </p>
       ) : null}
     </div>

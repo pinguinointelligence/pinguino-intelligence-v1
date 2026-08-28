@@ -42,7 +42,7 @@ export const REVIEW_ITEMS: readonly ReviewItem[] = [
     label: 'Gotowe receptury — angielskie treści + dekoracyjne kafelki',
     functionNote: 'Hub „Gotowe receptury”: link do Moich receptur + kafelki-zapowiedzi.',
     reason:
-      'Angielskie copy (copy.nav.recipes) na ścieżce klienta; dekoracyjne kafelki wyglądają jak klikalne.',
+      'Angielskie teksty na ścieżce klienta; dekoracyjne kafelki wyglądają jak klikalne.',
     suggestion: 'keep',
     ownerDecision: 'pending',
   },
@@ -58,7 +58,7 @@ export const REVIEW_ITEMS: readonly ReviewItem[] = [
   {
     id: 'RV-04',
     route: '/work-with-us',
-    label: 'Work With Us — angielskie treści',
+    label: 'Współpraca — angielskie treści',
     functionNote: 'Cztery oferty współpracy + kontakt mailowy.',
     reason: 'Angielskie copy na ścieżce klienta.',
     suggestion: 'keep',
@@ -67,7 +67,7 @@ export const REVIEW_ITEMS: readonly ReviewItem[] = [
   {
     id: 'RV-05',
     route: '/create-ingredient',
-    label: 'Create Ingredient — strona zapowiedzi (angielska)',
+    label: 'Utwórz składnik — strona zapowiedzi',
     functionNote: 'Destynacja „własny składnik”: wiersze „Coming soon”.',
     reason: 'Angielskie copy; zapowiedzi bez akcji.',
     suggestion: 'keep',
@@ -125,7 +125,7 @@ export const REVIEW_ITEMS: readonly ReviewItem[] = [
   {
     id: 'RV-11',
     route: '/',
-    label: 'ShellLayout + HomePage — stary czarny „AI Home” (nieroutowany)',
+    label: 'ShellLayout + HomePage — stary czarny „Gellatti Home” (nieroutowany)',
     functionNote: 'Legacy shell AI-first; HomePage odłączony od tras decyzją właściciela.',
     reason: 'Utrzymywany kod bez trasy — decyzja właściciela o dalszym losie.',
     suggestion: 'remove-later',

@@ -78,7 +78,7 @@ export const ASSISTANT_QUESTIONS: readonly AssistantQuestion[] = [
     choices: [
       { value: 'standard_gelato', label: 'Gelato' },
       { value: 'sorbet', label: 'Sorbet' },
-      { value: 'vegan_gelato', label: 'Vegan Gelato' },
+      { value: 'vegan_gelato', label: 'Wegańskiej Gelato' },
       { value: 'chocolate_gelato', label: 'Chocolate Gelato' },
     ],
   },
@@ -151,7 +151,7 @@ export const ASSISTANT_QUESTIONS: readonly AssistantQuestion[] = [
     required: false,
     choices: [
       { value: 'lactose_free', label: 'Bez laktozy' },
-      { value: 'vegan', label: 'Vegan' },
+      { value: 'vegan', label: 'Wegańskiej' },
       { value: 'no_alcohol', label: 'Bez alkoholu' },
       { value: 'no_nuts', label: 'Bez orzechów' },
       { value: 'other', label: 'Inne' },

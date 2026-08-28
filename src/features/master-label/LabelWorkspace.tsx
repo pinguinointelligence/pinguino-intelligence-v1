@@ -456,7 +456,7 @@ export function LabelWorkspace({
                     </span>
                   </div>
                   <p className="mt-1 text-sm text-stone-500">
-                    Wybrany rynek wyznacza wymagane dane i układ wydruku.
+                    Wybrany rynek wyznacza wymagane dane i układ wydruku
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -572,7 +572,7 @@ export function LabelWorkspace({
                     unit="€"
                   />
                 </dl>
-                <p className="mt-3 text-[11px] text-stone-500">Dane wewnętrzne · poza wydrukiem.</p>
+                <p className="mt-3 text-[11px] text-stone-500">Dane wewnętrzne · poza wydrukiem</p>
               </OverviewCard>
               <OverviewCard title="Baza techniczna">
                 <dl className="space-y-2 text-xs">
@@ -587,7 +587,7 @@ export function LabelWorkspace({
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-ink/10 bg-white px-4 py-3">
               <p className="text-xs text-stone-600">
                 {saved
-                  ? `Gotowe. Etykieta partii zapisana · ${new Date(saved.createdAt).toLocaleString('pl-PL')}`
+                  ? `Etykieta partii zapisana · ${new Date(saved.createdAt).toLocaleString('pl-PL')}`
                   : 'Finalny zapis zachowa rynek, treść, LOT i logo dla tej partii.'}
               </p>
               {saved ? null : (
@@ -1115,7 +1115,7 @@ function CompactRunLabelSettings({
               {MARKET_CODES.map((code) => (
                 <option key={code} value={code}>
                   {MARKET_PROFILES[code].label}
-                  {code === 'WORLD' ? ' — informational only' : ''}
+                  {code === 'WORLD' ? ' — tylko informacyjnie' : ''}
                 </option>
               ))}
             </select>
@@ -1128,7 +1128,7 @@ function CompactRunLabelSettings({
           ) : null}
           {draft.market === 'WORLD' ? (
             <p className="mt-2 rounded-[10px] border border-[#9b5f55]/30 bg-[#fff7f5] px-3 py-2 text-xs font-semibold text-[#7e4037]">
-              INTERNAL / INFORMATIONAL LABEL · NOT VALIDATED FOR RETAIL SALE
+              ETYKIETA WEWNĘTRZNA / INFORMACYJNA · NIEZWERYFIKOWANA DO SPRZEDAŻY DETALICZNEJ
             </p>
           ) : null}
           <label className="mt-3 block text-xs font-medium text-stone-600">
@@ -1373,7 +1373,7 @@ export function LegacyRunLabelSettings({
             </h2>
             <p className="mt-1 text-sm leading-relaxed text-stone-600">
               Konfiguracja wydruku i opcjonalnych elementów. Obowiązkowe dane uzupełnia się w kroku
-              1.
+              1
             </p>
           </div>
           <span className="rounded-full border border-ink/10 bg-white px-2.5 py-1 text-xs font-semibold text-ink">
@@ -1774,7 +1774,7 @@ function CompactRunLabelEditor({
         </div>
         {draft.market === 'WORLD' ? (
           <div className="mt-4 rounded-[12px] border border-[#9b5f55]/35 bg-[#fff7f5] px-3 py-2 text-xs font-semibold text-[#7e4037]">
-            INTERNAL / INFORMATIONAL LABEL · NOT VALIDATED FOR RETAIL SALE
+            ETYKIETA WEWNĘTRZNA / INFORMACYJNA · NIEZWERYFIKOWANA DO SPRZEDAŻY DETALICZNEJ
           </div>
         ) : null}
       </header>
@@ -2145,8 +2145,8 @@ function CompactRunLabelEditor({
               </label>
             ) : (
               <p className="text-xs leading-relaxed text-[#7e4037]">
-                Brakuje potwierdzonej authority składników. Nie można jej zastąpić potwierdzeniem w
-                tym ekranie.
+                Brakuje potwierdzonych danych źródłowych składników. Nie można ich zastąpić potwierdzeniem
+                na tym ekranie.
               </p>
             )}
           </MissingDataCard>
@@ -2307,7 +2307,7 @@ function MissingOperatorFields({
   return (
     <MissingDataCard
       field="operator"
-      title={needsDistributor ? 'Dostawca Australia / New Zealand' : 'Dane firmy odpowiedzialnej'}
+      title={needsDistributor ? 'Dostawca · Australia / Nowa Zelandia' : 'Dane firmy odpowiedzialnej'}
     >
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-xs font-medium text-stone-600">
@@ -2959,7 +2959,7 @@ export function LegacyRunLabelEditor({
                     },
                   })
                 }
-                placeholder="np. ES, PL, DE"
+                placeholder="Np. ES, PL, DE"
                 className={SETTINGS_INPUT_CLASS}
               />
             </label>
@@ -3010,7 +3010,7 @@ export function LegacyRunLabelEditor({
               >
                 <option value="unresolved">Wybierz kraj</option>
                 <option value="AU">Australia</option>
-                <option value="NZ">New Zealand</option>
+                <option value="NZ">Nowa Zelandia</option>
               </select>
             </label>
           ) : null}
@@ -3443,7 +3443,7 @@ export function LegacyRunLabelEditor({
                 </label>
                 <p className="text-[11px] text-stone-500">
                   Partia produkcyjna: {draft.actualBatchQuantityG ?? '—'} g. Etykieta używa
-                  wyłącznie wybranego fillu opakowania.
+                  wyłącznie wybranego fillu opakowania
                 </p>
               </div>
             </RequiredSettingsField>
@@ -3708,7 +3708,7 @@ export function LegacyRunLabelEditor({
                   })
                 }
               />
-              Potwierdzam kompletność tłumaczeń w wymaganych językach.
+              Potwierdzam kompletność tłumaczeń w wymaganych językach
             </label>
             <label className="flex min-h-12 items-center gap-3 rounded-[12px] border border-ink/10 bg-white px-3 text-xs text-ink">
               <input
@@ -3725,7 +3725,7 @@ export function LegacyRunLabelEditor({
                   })
                 }
               />
-              Potwierdzam kolejność składników i przegląd QUID.
+              Potwierdzam kolejność składników i przegląd QUID
             </label>
             <label className="flex min-h-12 items-center gap-3 rounded-[12px] border border-ink/10 bg-white px-3 text-xs text-ink">
               <input
@@ -3742,7 +3742,7 @@ export function LegacyRunLabelEditor({
                   })
                 }
               />
-              Potwierdzam kontekst sprzedaży i wymagania szczególne rynku.
+              Potwierdzam kontekst sprzedaży i wymagania szczególne rynku
             </label>
             <RequiredSettingsField field="ingredients" missing={missing('ingredients')}>
               <IngredientAuthorityFields value={draft} onChange={setDraft} />
@@ -4146,7 +4146,7 @@ function OptionalFieldSettings({
     <fieldset className="mt-4" data-testid="label-field-settings">
       <legend className="text-sm font-semibold text-ink">Pola etykiety</legend>
       <p className="mt-1 text-xs text-stone-500">
-        Wymagane pola profilu {profile.label} są zawsze aktywne.
+        Wymagane pola profilu {profile.label} są zawsze aktywne
       </p>
       <div className="mt-3 flex flex-wrap gap-1.5" data-testid="required-label-fields">
         {profile.requiredFields.map((field) => (

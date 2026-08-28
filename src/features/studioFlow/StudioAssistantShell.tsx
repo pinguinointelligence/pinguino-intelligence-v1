@@ -280,7 +280,7 @@ export function StudioAssistantShell({ initialUi }: StudioAssistantShellProps = 
             </div>
           ) : (
             <div className="space-y-1.5 rounded border border-ivory/10 bg-black/20 p-2.5">
-              <p className="text-xs text-ivory/70">Wszystkie pytania przejrzane.</p>
+              <p className="text-xs text-ivory/70">Wszystkie pytania przejrzane</p>
               <div className="flex flex-wrap gap-1.5">
                 <button type="button" onClick={back} className={buttonCls}>
                   Wstecz
@@ -311,7 +311,7 @@ export function StudioAssistantShell({ initialUi }: StudioAssistantShellProps = 
                 <dd>{draft.intent.servingTemperatureC}°C</dd>
                 <dt className="text-ivory/60">Partia</dt>
                 <dd>
-                  {draft.batchSizeG !== null ? `${draft.batchSizeG} g` : 'ustawisz w recepturze'}
+                  {draft.batchSizeG !== null ? `${draft.batchSizeG} g` : 'Ustawisz w recepturze'}
                 </dd>
                 <dt className="text-ivory/60">Smak</dt>
                 <dd>{draft.intent.flavorText ?? '—'}</dd>

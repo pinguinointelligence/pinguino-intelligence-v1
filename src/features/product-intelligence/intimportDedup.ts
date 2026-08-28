@@ -169,8 +169,8 @@ function strongKeyDisagreement(
 
 const KEY_LABEL: Record<'ean' | 'manufacturer_code' | 'source_product_id', string> = {
   ean: 'EAN',
-  manufacturer_code: 'kod producenta',
-  source_product_id: 'Product ID źródła',
+  manufacturer_code: 'Kod producenta',
+  source_product_id: 'ID produktu źródłowego',
 };
 
 export interface IntimportDedupOptions {
@@ -210,7 +210,7 @@ export function planIntimportDedup(
       displayName: candidate.displayName,
       identity,
       classification: 'NEW_CANONICAL_PRODUCT',
-      reason: 'nowy produkt kanoniczny',
+      reason: 'Nowy produkt kanoniczny',
       relatedRowIndex: null,
       forceDistinct: false,
     };

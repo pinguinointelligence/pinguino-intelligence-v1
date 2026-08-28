@@ -105,7 +105,7 @@ export function AdminCommunitySection() {
           </article>
         ))}
         {(query.data?.length ?? 0) === 0 ? (
-          <p className="py-8 text-sm text-stone-500">Brak raportów moderacyjnych.</p>
+          <p className="py-8 text-sm text-stone-500">Brak raportów moderacyjnych</p>
         ) : null}
       </div>
       {mutation.isError ? (

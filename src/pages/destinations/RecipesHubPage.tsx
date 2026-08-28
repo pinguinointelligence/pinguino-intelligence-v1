@@ -431,7 +431,7 @@ function InspirationView({ persona }: { persona: RecipePersona }) {
           <option value="all">Wszystkie typy</option>
           <option value="gelato">Gelato</option>
           <option value="sorbet">Sorbet</option>
-          <option value="vegan">Vegan</option>
+          <option value="vegan">Wegańskiej</option>
           <option value="protein">Proteinowe</option>
         </select>
       </label>
@@ -464,7 +464,7 @@ function ExecutableOwnerReviewView({
   onOpenTemplate: (href: string) => void;
 }) {
   const templates = EXECUTABLE_RECIPE_TEMPLATES.filter((template) => template.library === library);
-  const title = library === 'lost_legendary' ? 'Polska · Lost & Legendary' : 'Fantasy · Batch 1';
+  const title = library === 'lost_legendary' ? 'Polska · Lost & Legendary' : 'Fantasy · Partia 1';
   return (
     <section aria-labelledby={`${library}-executable-heading`}>
       <p className="text-xs font-semibold tracking-[0.14em] text-stone-500 uppercase">
@@ -477,9 +477,9 @@ function ExecutableOwnerReviewView({
         {title}
       </h2>
       <p className="mt-3 max-w-2xl text-sm leading-relaxed text-stone-600">
-        Przegląd receptury bazowej jest oddzielony od gotowości produkcyjnej i etykietowej.
-        Kompletna baza może być otwierana i edytowana w Pro, a brak procesu lub dodatku po produkcji
-        nadal blokuje produkcję, etykietę i publikację.
+        Gotowość receptury bazowej jest oceniana osobno od Produkcji i Etykiety.
+        Bazę można edytować w Pro, ale brak procesu lub dodatku po produkcji nadal blokuje Produkcję, Etykietę
+        i publikację.
       </p>
       <OwnerReviewFrame enabled>
         <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

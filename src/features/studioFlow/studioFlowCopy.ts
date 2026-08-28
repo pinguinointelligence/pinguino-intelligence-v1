@@ -129,27 +129,27 @@ const PL: StudioFlowCopy = {
     recipe_in_range: {
       title: 'Receptura w zakresie',
       body: 'Kluczowe wskaźniki mieszczą się w pasmach dla wybranego profilu i temperatury serwowania. Nie ma nic do poprawiania.',
-      nextAction: 'Możesz pracować dalej albo zmienić założenia i przeliczyć ponownie.',
+      nextAction: 'Możesz pracować dalej albo zmienić założenia i przeliczyć ponownie',
     },
     recipe_optimized: {
       title: 'Korekta zweryfikowana',
       body: 'Silnik znalazł korektę i potwierdził ją pełnym ponownym przeliczeniem. To nadal podgląd — receptura nie została zmieniona.',
-      nextAction: 'Przejrzyj propozycję. Nic nie jest nakładane na recepturę automatycznie.',
+      nextAction: 'Przejrzyj propozycję. Nic nie jest nakładane na recepturę automatycznie',
     },
     recipe_tradeoff: {
       title: 'Kompromis — poprawa częściowa',
       body: 'Korekta poprawia recepturę, ale część wskaźników zostaje poza zakresem. Uczciwie: to kompromis, nie pełna naprawa.',
-      nextAction: 'Sprawdź, które wskaźniki zostają poza pasmem, zanim zdecydujesz.',
+      nextAction: 'Sprawdź, które wskaźniki zostają poza pasmem, zanim zdecydujesz',
     },
     recipe_impossible: {
       title: 'Brak bezpiecznej korekty',
       body: 'Przy obecnych ograniczeniach nie znaleźliśmy bezpiecznej korekty. Nie zgadujemy i nie wymuszamy liczb.',
-      nextAction: 'Zmień założenia — składniki, styl albo temperaturę — i przelicz ponownie.',
+      nextAction: 'Zmień założenia — składniki, styl albo temperaturę — i przelicz ponownie',
     },
     recipe_blocked: {
       title: 'Zatrzymane — brak danych lub profil nieobsługiwany',
       body: 'Silnik zatrzymał się uczciwie: brakuje danych albo ten profil/temperatura nie są jeszcze obsługiwane. Nic nie liczymy na ślepo.',
-      nextAction: 'Uzupełnij brakujące dane albo wybierz obsługiwany profil produktu.',
+      nextAction: 'Uzupełnij brakujące dane albo wybierz obsługiwany profil produktu',
     },
     batch_rescue_guidance: {
       title: 'Ratowanie realnej partii (IF9)',
@@ -159,12 +159,12 @@ const PL: StudioFlowCopy = {
     stock_shortage_guidance: {
       title: 'Brak surowca (IF10)',
       body: 'Podaj, czego brakuje i ile masz. Zamiennik nigdy nie jest podstawiany po cichu, a stany magazynowe nie są ani odczytywane, ani nigdzie zapisywane.',
-      nextAction: 'Policz realny stan i wybierz świadomie jedną z opcji decyzji.',
+      nextAction: 'Policz realny stan i wybierz świadomie jedną z opcji decyzji',
     },
     verified_substitute_guidance: {
       title: 'Zweryfikowany zamiennik',
       body: 'Dokładne przeliczenie zamiennika wymaga skalibrowanego wpisu z katalogu referencyjnego. Składu zamiennika nie można wpisać ręcznie.',
-      nextAction: 'Bez zweryfikowanego składu dostępne są tylko bezpieczne opcje bez liczb.',
+      nextAction: 'Bez zweryfikowanego składu dostępne są tylko bezpieczne opcje bez liczb',
     },
     missing_data: {
       title: 'Brakuje danych',
@@ -183,7 +183,7 @@ const PL: StudioFlowCopy = {
     saveAvailable:
       'Możesz zapisać zaakceptowaną korektę jako osobny, niezmienialny wpis audytowy — na wyraźne kliknięcie, nigdy automatycznie.',
     saveVsApply:
-      'Zapis korekty to NIE zmiana receptury: powstaje osobny wpis audytowy, a receptura pozostaje nietknięta. Nakładanie korekty na recepturę to osobna, przyszła funkcja.',
+      'Zapis korekty nie zmienia receptury. Powstaje osobny wpis audytowy; nałożenie korekty na recepturę będzie osobną funkcją.',
   },
   disclaimers: {
     previewOnly: 'Podgląd — nic nie zapisuje się i nic nie jest nakładane automatycznie.',
@@ -213,7 +213,7 @@ const PL: StudioFlowCopy = {
       needsInfo: 'Podaj wielkość batcha, aby przygotować szkic bazy.',
       notSupported:
         'Dla tego profilu nie ma jeszcze bezpiecznego punktu wyjścia. Zacznij recepturę ręcznie w Gellatti Pro — nie zgadujemy składu.',
-      flavorManual: 'Dodaj składnik smakowy ręcznie — nie zgadujemy jego składu.',
+      flavorManual: 'Dodaj składnik smakowy ręcznie — nie zgadujemy jego składu',
       optimizationRecommended:
         'Baza jest poza zakresem w części wskaźników — możesz uruchomić podgląd optymalizacji.',
       inBand: 'Baza mieści się w zakresach dla wybranego profilu i temperatury.',
@@ -224,7 +224,7 @@ const PL: StudioFlowCopy = {
           'Zastosowanie przeniesie do Gellatti Pro składniki, profil produktu i temperaturę serwowania — bez zapisu.',
         replaceWarningTitle: 'W Gellatti Pro jest już szkic receptury',
         replaceWarningBody:
-          'Zastosowanie zastąpi obecny szkic w Gellatti Pro. Poprzedni stan zachowamy do jednego cofnięcia — nic nie zostanie zapisane.',
+          'Zastosowanie zmian zastąpi bieżący szkic w Gellatti Pro. Poprzedni stan będzie dostępny do jednego cofnięcia; nic nie zostanie zapisane automatycznie.',
         confirmCta: 'Zastąp szkic w Gellatti Pro',
         cancelCta: 'Anuluj',
         appliedNote: 'Szkic przeniesiony do Gellatti Pro — nic nie zostało zapisane.',

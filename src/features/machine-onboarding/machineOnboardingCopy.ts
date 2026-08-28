@@ -16,17 +16,17 @@ export const machineOnboardingCopy = {
     title: 'Jakiej maszyny używasz?',
     lead: 'Wybierz urządzenie, a Gellatti dopasuje sposób przygotowania i właściwą ilość.',
     searchLabel: 'Szukaj maszyny',
-    searchPlaceholder: 'np. Ninja, KitchenAid, NC302…',
-    searchNoResults: 'Brak maszyn pasujących do wyszukiwania. Wybierz „Własna maszyna”.',
+    searchPlaceholder: 'Np. Ninja, KitchenAid, NC302…',
+    searchNoResults: 'Brak maszyn pasujących do wyszukiwania. Wybierz „Nie widzę mojej maszyny”',
   },
 
   /* ----------------------------------------------------------- §8.2 tiles ----- */
   tiles: {
     /** Honest short note on families that cannot be selected yet. */
-    unavailableNote: 'w trakcie weryfikacji pojemności',
+    unavailableNote: 'W trakcie weryfikacji pojemności',
     /** ARIA hint for a disabled tile. */
     unavailableAria:
-      'Ta maszyna jest w trakcie weryfikacji pojemności i nie można jej jeszcze wybrać.',
+      'Ta maszyna jest w trakcie weryfikacji pojemności i nie można jej jeszcze wybrać',
     /** Model disambiguation sub-screen (§8.2: only when capacity/technology differs). */
     disambiguation: {
       title: 'Który model?',
@@ -46,9 +46,9 @@ export const machineOnboardingCopy = {
   unsupported: {
     title: 'Ta maszyna nie jest jeszcze wspierana w Home',
     body:
-      'Maszyny, które chłodzą płynną bazę i wydają miękkie lody z dozownika, to urządzenia o innym ' +
-      'trybie pracy niż profile domowe Gellatti. Nie podstawimy w zamian innego profilu po cichu — ' +
-      'wsparcie dla tych maszyn pojawi się osobno.',
+      'Maszyny dozujące miękkie lody pracują inaczej niż profile domowe Gellatti. Nie podstawimy innego profilu automatycznie ' +
+      '— wsparcie dla tych maszyn będzie dostępne ' +
+      'osobno.',
     back: 'Wybierz inną maszynę',
   },
 
@@ -56,7 +56,7 @@ export const machineOnboardingCopy = {
   custom: {
     title: 'Własna maszyna',
     lead:
-      'Podaj to, co znasz — nic nie zgadujemy. W kolejnym kroku wpiszesz własny wsad na cykl.',
+      'Podaj tylko to, co wiesz. Dla własnej maszyny wpisz wsad samodzielnie — możesz go później zmienić.',
     cycleBatchLabel: 'Mój wsad na cykl',
     noCycleRecommendation: 'Zalecany wsad na cykl: —',
     brandLabel: 'Marka (opcjonalnie)',
@@ -78,8 +78,8 @@ export const machineOnboardingCopy = {
      * po stronie danych): a total bowl volume is never turned into a batch.
      */
     vesselOnlyBowlNote:
-      'Znasz tylko pojemność całkowitą misy, więc przyjmiemy ostrożne ustawienie i oznaczymy je ' +
-      'do edycji. Ilość wsadu ustalisz samodzielnie — z całkowitej pojemności misy nie wyliczamy wsadu.',
+      'Znasz tylko całkowitą pojemność misy. Przyjmiemy ostrożne ustawienie do edycji, ale wsad ' +
+      'ustawisz samodzielnie — nie wyliczamy go z samej pojemności misy.',
     /** A declared tub still does not invent a gram value for a custom machine. */
     vesselOnlyRespinNote:
       'Znasz tylko pojemność pojemnika. Własny wsad na cykl wpiszesz samodzielnie — nie ' +
@@ -159,7 +159,7 @@ export const machineOnboardingCopy = {
     overridePrefix: 'Maszyna dla tej receptury:',
     /** Small line under an override: „Domyślna maszyna: X”. */
     defaultPrefix: 'Domyślna maszyna:',
-    vessel: (ml: number): string => `pojemnik ${ml} ml`,
+    vessel: (ml: number): string => `Pojemnik ${ml} ml`,
     /** The recipe-scope change — never touches the profile. */
     changeForRecipe: 'Zmień dla tej receptury',
     changeForRecipeAria: 'Zmień maszynę tylko dla tej receptury',
@@ -238,8 +238,8 @@ export const machineOnboardingCopy = {
     useCustomContainer: 'Używam innego pojemnika',
     customContainerTitle: 'Twój pojemnik',
     customContainerLead:
-      'Pojemność podana przez producenta dotyczy modelu, dlatego jej nie zmieniamy. Jeśli używasz ' +
-      'innego pojemnika, podaj jego dane — oznaczymy profil jako Twoją własną konfigurację.',
+      'Pojemność producenta pozostaje przypisana do modelu. Jeśli używasz innego pojemnika, podaj jego ' +
+      'dane — profil zostanie zapisany jako Twoja konfiguracja.',
     customCapacityFieldLabel: 'Pojemność Twojego pojemnika',
     customRecommendedFieldLabel: 'Zalecany wsad dla Twojego pojemnika',
     customRecommendedHint: 'Proponujemy 95% podanej pojemności — możesz zmienić.',
@@ -268,5 +268,5 @@ export function pluralPojemniki(n: number): string {
   const mod10 = n % 10;
   const mod100 = n % 100;
   if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return 'pojemniki';
-  return 'pojemników';
+  return 'Pojemników';
 }

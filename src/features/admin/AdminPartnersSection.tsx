@@ -145,7 +145,7 @@ export function AdminPartnersSection() {
               className={field}
               type="email"
               required
-              placeholder="partner@example.com"
+              placeholder="Partner@example.com"
               value={invite.email}
               onChange={(event) => setInvite({ ...invite, email: event.currentTarget.value })}
             />
@@ -358,7 +358,7 @@ export function AdminPartnersSection() {
                             })
                           }
                         >
-                          {code.status === 'blocked' ? 'włącz' : 'wyłącz'}
+                          {code.status === 'blocked' ? 'Włącz' : 'Wyłącz'}
                         </button>
                       </span>
                     ))}
@@ -381,7 +381,7 @@ export function AdminPartnersSection() {
                             })
                           }
                         >
-                          {link.status === 'BLOCKED' ? 'włącz' : 'wyłącz'}
+                          {link.status === 'BLOCKED' ? 'Włącz' : 'Wyłącz'}
                         </button>
                       </span>
                     ))}

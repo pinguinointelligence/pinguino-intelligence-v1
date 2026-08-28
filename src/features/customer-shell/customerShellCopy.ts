@@ -58,7 +58,7 @@ export const customerShellCopy = {
      */
     leadMore: 'Chcesz dodać jeszcze jeden smak?',
     addLabel: 'Dodaj smak',
-    addPlaceholder: 'np. bazylia',
+    addPlaceholder: 'Np. bazylia',
     addButton: 'Dodaj',
     empty: 'Jeszcze nie widzę smaku. Dodaj go poniżej i ruszamy dalej.',
   },
@@ -69,7 +69,7 @@ export const customerShellCopy = {
     // Owner hotfix §6: the customer picks a KIND OF ICE CREAM, not a "base" —
     // „Jaki to rodzaj?” / „Wybierz bazę” was engineer language.
     title: 'Jaki rodzaj lodów chcesz przygotować?',
-    lead: 'Wybierz rodzaj receptury.',
+    lead: 'Wybierz rodzaj receptury',
     /** Keyed by the copy KEYS emitted by productTypeQuestion(). */
     byKey: {
       'customer_flow.product_type.gelato': {
@@ -113,7 +113,7 @@ export const customerShellCopy = {
   proteinGap: {
     label: 'Jeszcze nie teraz',
     title: 'Proteinowe nie jest jeszcze wspierane',
-    body: 'Baza proteinowa nie ma jeszcze zweryfikowanego profilu, więc nie stworzymy z niej receptury. Nie podstawimy w zamian gelato po cichu — wybierz jedną z pozostałych baz poniżej.',
+    body: 'Profil Protein nie ma jeszcze zweryfikowanej bazy. Wybierz inną bazę — Gellatti nie zastąpi jej automatycznie Gelato.',
   },
 
   /* --------------------------------------------------------- Device / serving -- */
@@ -164,7 +164,7 @@ export const customerShellCopy = {
       firm13: { label: 'Twardsze', secondary: 'około −13°C' },
       deep18: { label: 'Zamrażarka', secondary: 'około −18°C' },
       displayFresh: { label: 'Witryna / świeże', secondary: 'podanie na bieżąco' },
-      custom: { label: 'Własne', secondary: 'ustawię samodzielnie' },
+      custom: { label: 'Własne', secondary: 'Ustawię samodzielnie' },
     },
   },
 
@@ -194,7 +194,7 @@ export const customerShellCopy = {
     lead: 'Podano tylko objętość w ml, a jej nie zamieniamy po cichu na gramy. Podaj wagę wsadu w gramach — zapytamy tylko raz.',
     officialCapacityLabel: 'Pojemność pojemnika',
     inputLabel: 'Waga wsadu (g)',
-    inputPlaceholder: 'np. 700',
+    inputPlaceholder: 'Np. 700',
     confirm: 'Zatwierdź',
     hint: 'Podaj wartość w gramach.',
   },
@@ -212,16 +212,16 @@ export const customerShellCopy = {
       custom: 'Własna',
     },
     customLabel: 'Własna ilość (g)',
-    customPlaceholder: 'np. 2500',
+    customPlaceholder: 'Np. 2500',
     customConfirm: 'Ustaw',
     resolvedLabel: 'Ustalona ilość',
     selectedLabel: 'Wybrana ilość',
     change: 'Zmień ilość',
     source: {
-      user: 'wybrana przez Ciebie',
-      text: 'rozpoznana z Twojego zdania',
-      mode_ninja: 'zatwierdzona masa trybu Ninja',
-      none: 'jeszcze nieustalona',
+      user: 'Wybrana przez Ciebie',
+      text: 'Rozpoznana z Twojego zdania',
+      mode_ninja: 'Zatwierdzona masa trybu Ninja',
+      none: 'Jeszcze nieustalona',
     },
   },
 
@@ -229,7 +229,7 @@ export const customerShellCopy = {
   path: {
     label: 'Dalej',
     title: 'Jak chcesz działać?',
-    lead: 'Obie drogi są równorzędne — wybierz, co wolisz.',
+    lead: 'Obie drogi są równorzędne — wybierz, co wolisz',
     newRecipe: 'Stwórz nową recepturę',
     readyRecipe: 'Pokaż pasujące gotowe receptury',
   },
@@ -285,17 +285,17 @@ export const customerShellCopy = {
     deviceLabel: 'Urządzenie',
     servingLabel: 'Podanie',
     modeLabel: 'Tryb',
-    modeNone: 'nie wybrano',
+    modeNone: 'Nie wybrano',
     batchLabel: 'Ilość',
     ingredientsTitle: 'Składniki',
-    deviceNone: 'nie wybrano',
-    servingNone: 'nie wybrano',
+    deviceNone: 'Nie wybrano',
+    servingNone: 'Nie wybrano',
     /** Compact locked stand-in label for Demo base lines (no gram number). */
     lockedInPlans: 'Ilość w Home i Pro',
     /** Honest right-side requirement labels for lines with no safe dose yet. */
     resolutionLabels: {
-      needs_ingredient: 'wymaga wyboru składnika',
-      needs_dose: 'wymaga potwierdzenia dawki',
+      needs_ingredient: 'Wymaga wyboru składnika',
+      needs_dose: 'Wymaga potwierdzenia dawki',
     } as Record<string, string>,
     /** Friendly, TAPPABLE call-to-action per unresolved line kind. */
     resolutionCta: {
@@ -305,9 +305,9 @@ export const customerShellCopy = {
     /** Friendly "almost ready" status — never claims a fully calculated recipe. */
     needsRefinementPrefix: 'Receptura jest prawie gotowa — doprecyzuj intensywność',
     needsRefinementNoun: {
-      one: 'składnika',
-      few: 'składników',
-      many: 'składników',
+      one: 'Składnika',
+      few: 'Składników',
+      many: 'Składników',
     },
     fullyResolvedNote: 'Wszystkie składniki są wstępnie rozpisane.',
     /** Readable Polish names for base recipe lines, keyed by engine + structure id. */
@@ -349,7 +349,7 @@ export const customerShellCopy = {
       readyRecalc: 'Gotowa do przeliczenia',
       needsProductsPrefix: 'Wymaga wyboru',
       /** Plural of „produkt” (1 / 2–4 / 5+). */
-      productNoun: { one: 'produktu', few: 'produktów', many: 'produktów' },
+      productNoun: { one: 'Produktu', few: 'Produktów', many: 'Produktów' },
       /** Required-products guidance: „Wybierz konkretne produkty dla N składników, aby …”. */
       needsProductsGuidancePrefix: 'Wybierz konkretne produkty dla',
       needsProductsGuidanceSuffix: ', aby dokładnie przeliczyć recepturę.',
@@ -368,17 +368,17 @@ export const customerShellCopy = {
     title: 'Zapisz recepturę',
     lead: 'Zapisana receptura czeka w „Moich recepturach” — wrócisz do niej i zapiszesz kolejną wersję.',
     nameLabel: 'Nazwa receptury',
-    namePlaceholder: 'np. Gelato waniliowe',
+    namePlaceholder: 'Np. Gelato waniliowe',
     nameRequired: 'Podaj nazwę receptury.',
     noteLabel: 'Notatka do wersji (opcjonalnie)',
     noteToggle: 'Dodaj notatkę',
     create: 'Zapisz recepturę',
     saving: 'Zapisuję…',
-    savedCreated: 'Gotowe. Receptura czeka w „Moich recepturach”.',
-    savedVersion: 'Gotowe. Nowa wersja czeka w „Moich recepturach”.',
+    savedCreated: 'Receptura jest w „Moich recepturach”.',
+    savedVersion: 'Nowa wersja jest w „Moich recepturach”.',
     openMyRecipes: 'Otwórz „Moje receptury”',
     /** The Home aggregate limit — stated plainly, with the action that IS allowed. */
-    homeLimitTitle: (title: string) => `Plan Home przechowuje jedną recepturę: „${title}”.`,
+    homeLimitTitle: (title: string) => `Plan Home przechowuje jedną recepturę: „${title}”`,
     homeLimitLead:
       'Kolejne wersje tej receptury zapiszesz bez ograniczeń. Osobne receptury bez limitu ma plan Pro.',
     versionButton: (n: number) => `Zapisz jako wersję ${n}`,
@@ -404,9 +404,9 @@ export const customerShellCopy = {
     },
     advanced: 'Ustawienia zaawansowane',
     advancedNote:
-      'Twój wybór zapisujemy jako preferencję smaku — nie zamieniamy go po cichu na gramy. Dokładną ilość wyliczymy dopiero, gdy pojawi się zweryfikowana reguła dla tego smaku, albo gdy podasz ilość ręcznie w planie Home lub Pro.',
+      'Ten wybór zapisujemy jako preferencję smaku, nie jako gramaturę. Dokładną ilość wyliczymy po zweryfikowaniu reguły dla tego smaku albo po ręcznym wpisaniu ilości w Home lub Pro.',
     manualLabel: 'Ręczna ilość (g)',
-    manualPlaceholder: 'np. 20',
+    manualPlaceholder: 'Np. 20',
     manualConfirm: 'Ustaw ręcznie',
     manualSetPrefix: 'Ustawiono ręcznie',
     close: 'Gotowe',
@@ -481,7 +481,7 @@ export const customerShellCopy = {
     liveError: 'Nie udało się przeszukać katalogu. Spróbuj ponownie.',
     liveRetry: 'Spróbuj ponownie',
     liveUnavailable:
-      'Katalog składników na żywo nie jest jeszcze dostępny w tym środowisku. To nie jest pusty wynik — spróbuj ponownie za chwilę.',
+      'Katalog składników na żywo nie jest jeszcze dostępny w tym środowisku. To nie jest pusty wynik — spróbuj ponownie za chwilę',
     /** Honest readiness on a Mapper row (the exact check runs po wyborze). */
     ingredientEngineApproved: 'Gotowy do obliczeń',
     ingredientNeedsVerification: 'Do weryfikacji po wyborze',
@@ -506,9 +506,9 @@ export const customerShellCopy = {
     /** Substitution / not-having. */
     substituteTitle: 'Zastąp składnik',
     substituteLabel: 'Czym zastąpić?',
-    substitutePlaceholder: 'np. rum zamiast whisky',
+    substitutePlaceholder: 'Np. rum zamiast whisky',
     substituteConfirm: 'Zastąp',
-    substituteRecorded: 'Gotowe. Uwzględnimy tę zamianę przy następnym przeliczeniu.',
+    substituteRecorded: 'Uwzględnimy tę zamianę przy następnym przeliczeniu.',
     dontHaveRecorded:
       'Zanotowaliśmy, że nie masz tego składnika — możesz go zastąpić albo pominąć.',
     /** Scan / manual add delegation (no live persistence in this environment). */
@@ -519,7 +519,7 @@ export const customerShellCopy = {
     intakeDevLink: 'Otwórz dodawanie produktu (dev)',
     /** Explanation for "Po co jest ten składnik?". */
     whyBody:
-      'Ten składnik buduje wskazany smak. Wybierz konkretny produkt, aby dokładnie przeliczyć recepturę bez zgadywania składu.',
+      'Ten składnik buduje wskazany smak. Wybierz konkretny produkt, aby dokładnie przeliczyć recepturę bez zgadywania składu',
   },
 
   /* ------------------------------------------------------------- Monitor PI -- */

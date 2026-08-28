@@ -69,13 +69,13 @@ export interface IngredientFormDef {
 
 /** The offered forms, in stable display order. NONE carries a dose. */
 export const INGREDIENT_FORMS: readonly IngredientFormDef[] = [
-  { id: 'swieza', label: 'świeża' },
-  { id: 'mrozona', label: 'mrożona' },
-  { id: 'puree', label: 'puree' },
-  { id: 'pasta', label: 'pasta' },
-  { id: 'suszona', label: 'suszona' },
-  { id: 'ekstrakt', label: 'ekstrakt' },
-  { id: 'napar', label: 'napar' },
+  { id: 'swieza', label: 'Świeża' },
+  { id: 'mrozona', label: 'Mrożona' },
+  { id: 'puree', label: 'Puree' },
+  { id: 'pasta', label: 'Pasta' },
+  { id: 'suszona', label: 'Suszona' },
+  { id: 'ekstrakt', label: 'Ekstrakt' },
+  { id: 'napar', label: 'Napar' },
 ];
 
 const FORM_IDS: ReadonlySet<string> = new Set(INGREDIENT_FORMS.map((f) => f.id));

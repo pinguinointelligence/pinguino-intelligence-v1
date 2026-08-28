@@ -17,11 +17,11 @@ import { REVIEW_ITEMS, reviewItemsForPath, type ReviewItem } from './reviewItems
 
 const SUGGESTION_LABEL: Record<ReviewItem['suggestion'], string> = {
   keep: 'zachować',
-  rename: 'zmienić nazwę',
+  rename: 'Zmienić nazwę',
   merge: 'scalić',
   relocate: 'przenieść',
   'hide-by-capability': 'ukryć wg uprawnień',
-  'remove-later': 'usunąć później (decyzja właściciela)',
+  'remove-later': 'Usunąć później (decyzja właściciela)',
 };
 
 function ReviewRow({ item, current }: { item: ReviewItem; current: boolean }) {

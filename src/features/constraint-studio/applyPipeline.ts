@@ -1643,7 +1643,7 @@ function mainSafePreview(
         issues,
         substitutions,
         messagePl:
-          'Receptura Wegańska zawiera składniki bez potwierdzonej zgodności Vegan: ' +
+          'Receptura wegańska zawiera składniki bez potwierdzonej zgodności: ' +
           issues.map((issue) => `${issue.ingredientName} [${issue.status}]`).join(', ') +
           '. Gellatti nie usunie ich ani nie zastąpi bez Twojej zgody.' +
           veganSubstitutionMessagePl(substitutions),
@@ -5538,7 +5538,7 @@ function buildFormulationPreviewInternal(
       messagePl:
         `Brakuje składnika w twardej roli technologicznej: ` +
         `${built.proposal.missingHardRoles.join(', ')}. ` +
-        `Dodaj zatwierdzony składnik tej roli, aby ułożyć recepturę.`,
+        `Dodaj zatwierdzony składnik tej roli, aby ułożyć recepturę`,
       roleTrace: built.proposal.roleTrace,
     };
   }
@@ -6734,7 +6734,7 @@ function buildOptimizePreviewWithDirection(
         issues,
         substitutions,
         messagePl:
-          'Receptura Wegańska zawiera składniki wymagające usunięcia lub zatwierdzonego zamiennika: ' +
+          'Receptura wegańska zawiera składniki wymagające usunięcia lub zatwierdzonego zamiennika: ' +
           issues.map((issue) => `${issue.ingredientName} [${issue.status}]`).join(', ') +
           '. Składniki Główne pozostają bez zmian.' +
           veganSubstitutionMessagePl(substitutions),
@@ -6748,8 +6748,8 @@ function buildOptimizePreviewWithDirection(
       code: 'main_ingredient_unavailable',
       ingredientIds,
       messagePl:
-        `Składnik Główny (${ingredientIds.join(', ')}) jest oznaczony jako niedostępny. ` +
-        'Gellatti nie usunie go bez Twojej zgody. Wybierz zatwierdzony zamiennik albo przywróć składnik.',
+        `Składnik Główny (${ingredientIds.join(', ')}) jest niedostępny. Gellatti nie ` +
+        'usunie go bez Twojej zgody. Wybierz zatwierdzony zamiennik albo przywróć składnik.',
     };
   }
   // OWNER P0 (full formulation) — deterministic MODE ROUTER first: a new/
@@ -6786,8 +6786,8 @@ function buildOptimizePreviewWithDirection(
       lineIds: mainIntent.map((line) => line.lineId),
       ingredientNames: mainIntent.map((line) => line.ingredientName),
       messagePl:
-        `Składniki Główne ważą ${mainTotal.toFixed(1)} g, więcej niż docelowa partia ` +
-        `${input.target_batch_grams.toFixed(1)} g. Gellatti nie zmniejszyło ilości składników definiujących recepturę bez Twojej zgody.`,
+        `Składniki Główne ważą ${mainTotal.toFixed(1)} g, więcej niż masa partii ` +
+        `${input.target_batch_grams.toFixed(1)} g. Gellatti nie zmieniło ich ilości bez Twojej zgody.`,
     };
   }
   // The exact current gram vector is the null hypothesis when the user has not
@@ -8493,7 +8493,7 @@ function productBehaviorIdentityViolation(
     : {
         code: 'product_behavior_identity_mismatch',
         lineIds,
-        messagePl: 'Snapshot zachowania produktu nie odpowiada aktualnej tożsamości składnika.',
+        messagePl: 'Dane zachowania produktu nie odpowiadają aktualnej tożsamości składnika.',
       };
 }
 
@@ -8903,7 +8903,7 @@ export class VerifiedApply {
           code: 'practicalization_invalid',
           reason: 'model_or_context_mismatch',
           messagePl:
-            'Apply zablokowany: kandydat pełnych gramów nie odpowiada bieżącej recepturze.',
+            'Nie można zastosować zmian: propozycja pełnych gramów nie odpowiada bieżącej recepturze.',
         };
       }
       const rederived = practicalizeRecipeCandidate(
@@ -8921,7 +8921,7 @@ export class VerifiedApply {
           code: 'practicalization_invalid',
           reason: rederived.ok ? 'candidate_fingerprint_mismatch' : rederived.code,
           messagePl:
-            'Apply zablokowany: nie udało się ponownie potwierdzić tej samej receptury w pełnych gramach.',
+            'Nie można zastosować zmian: nie udało się ponownie potwierdzić tej samej receptury w pełnych gramach.',
         };
       }
       exactCandidate = audit.exactInput;
@@ -8984,7 +8984,7 @@ export class VerifiedApply {
         ok: false,
         code: 'ingredient_identity_violated',
         messagePl:
-          'Apply zablokowany: propozycja zmienia tożsamość lub profil składnika bez zatwierdzonego źródła Mapper/toolbox.',
+          'Nie można zastosować zmian: propozycja zmienia tożsamość lub profil składnika bez zatwierdzonego źródła danych produktu.',
         lineNames: identityViolations,
       };
     }
@@ -8997,7 +8997,7 @@ export class VerifiedApply {
         ok: false,
         code: 'physical_actual_violated',
         messagePl:
-          'Apply zablokowany: Preview nie może zmieniać ilości ani tożsamości materiału już znajdującego się w naczyniu.',
+          'Nie można zastosować zmian: podgląd nie może zmieniać ilości ani tożsamości materiału już znajdującego się w naczyniu.',
         lineNames: physicalActualViolations,
       };
     }
@@ -9235,7 +9235,7 @@ export class VerifiedApply {
             ok: false,
             code: 'direction_consent_required',
             messagePl:
-              'Apply zablokowany: najbliższy bezpieczny profil wymaga jawnego potwierdzenia użytkownika.',
+              'Nie można zastosować zmian: najbliższy bezpieczny wynik wymaga Twojego potwierdzenia.',
           };
         }
       }
@@ -9256,7 +9256,7 @@ export class VerifiedApply {
           ok: false,
           code: 'vegan_ingredients_invalid',
           messagePl:
-            'Apply zablokowany: receptura Wegańska zawiera składniki bez potwierdzonej zgodności Vegan: ' +
+            'Nie można zastosować zmian: receptura wegańska zawiera składniki bez potwierdzonej zgodności: ' +
             veganIssues.map((issue) => `${issue.ingredientName} [${issue.status}]`).join(', '),
           issues: veganIssues,
         };
@@ -9266,7 +9266,7 @@ export class VerifiedApply {
         return {
           ok: false,
           code: 'vegan_profile_constraint_invalid',
-          messagePl: `Apply zablokowany: ${veganProfileConstraintMessagePl(profileIssues)}`,
+          messagePl: `Nie można zastosować zmian: ${veganProfileConstraintMessagePl(profileIssues)}`,
           issues: profileIssues,
         };
       }
@@ -9329,7 +9329,7 @@ export class VerifiedApply {
         ok: false,
         code: 'constraints_violated',
         messagePl:
-          'Apply zablokowany: dodatni składnik Standard nie może zostać usunięty bez jawnej zgody: ' +
+          'Nie można zastosować zmian: dodatni składnik Standard nie może zostać usunięty bez Twojej zgody: ' +
           names.join(', '),
         violations: positivePresenceViolations,
       };
@@ -9518,7 +9518,7 @@ export class VerifiedApply {
           ok: false,
           code: 'main_identity_violated',
           messagePl:
-            'Apply zablokowany: zamiennik nie ma aktualnego potwierdzenia z katalogu Mapper.',
+            'Nie można zastosować zmian: zamiennik nie ma aktualnego potwierdzenia w katalogu produktów.',
           violations: [],
         };
       }
@@ -9538,7 +9538,7 @@ export class VerifiedApply {
             ok: false,
             code: 'main_identity_violated',
             messagePl:
-              'Apply zablokowany: zamiana składnika Głównego wymaga jawnego potwierdzenia zmiany smaku.',
+              'Nie można zastosować zmian: zamiana składnika Głównego wymaga potwierdzenia zmiany smaku.',
             violations: [],
           };
         }
@@ -9617,7 +9617,7 @@ export class VerifiedApply {
           violations,
           messagePl:
             violations[0]?.messagePl ??
-            'Apply zablokowany: receptura nie spełnia pełnej weryfikacji profilu.',
+            'Nie można zastosować zmian: receptura nie przechodzi pełnej weryfikacji profilu.',
         };
       }
     }
@@ -9666,7 +9666,7 @@ export class VerifiedApply {
           ok: false,
           code: 'main_identity_violated',
           messagePl:
-            'Apply zablokowany: propozycja nie odtwarza dokładnie zweryfikowanego poziomu składnika Głównego.',
+            'Nie można zastosować zmian: propozycja nie odtwarza dokładnie zweryfikowanego poziomu składnika Głównego.',
           violations: [],
         };
       }
@@ -9713,7 +9713,7 @@ export class VerifiedApply {
           ok: false,
           code: 'main_identity_violated',
           messagePl:
-            'Apply zablokowany: nie udało się ponownie potwierdzić dowodu maksymalizacji lub ograniczonego wyniku BEST składnika Głównego.',
+            'Nie można zastosować zmian: nie udało się ponownie potwierdzić najlepszego dostępnego wyniku dla składnika Głównego.',
           violations: [],
         };
       }
@@ -9765,7 +9765,7 @@ export class VerifiedApply {
           ok: false,
           code: 'main_identity_violated',
           messagePl:
-            'Apply zablokowany: propozycja nie odtwarza dokładnie zweryfikowanego poziomu składnika Głównego.',
+            'Nie można zastosować zmian: propozycja nie odtwarza dokładnie zweryfikowanego poziomu składnika Głównego.',
           violations: [],
         };
       }
@@ -9781,7 +9781,7 @@ export class VerifiedApply {
           ok: false,
           code: 'eco_flavour_floor_violated',
           messagePl:
-            'Apply zablokowany: propozycja ECO narusza tożsamość składnika smakowego lub proporcję grupy Głównej.',
+            'Nie można zastosować zmian: propozycja ECO narusza tożsamość składnika smakowego lub proporcję grupy Głównej.',
           violations: flavour.violations,
         };
       }
@@ -10010,7 +10010,7 @@ export class VerifiedApply {
           ok: false,
           code: 'unsafe_proposal',
           messagePl:
-            'Apply zablokowany: kandydat Protein nie spełnia deklaracji „wysoka zawartość białka” w natywnie bezpiecznej recepturze.',
+            'Nie można zastosować zmian: propozycja profilu Protein nie spełnia deklaracji „wysoka zawartość białka” w bezpiecznej recepturze.',
           violationsBefore: detectViolations(calculateRecipe(current)).length,
           violationsAfter: detectViolations(calculateRecipe(preview.proposedInput)).length,
         };
@@ -10069,7 +10069,7 @@ export class VerifiedApply {
         code: 'practicalization_invalid',
         reason: 'missing_proof',
         messagePl:
-          'Apply zablokowany: Preview nie zawiera zweryfikowanej receptury wykonawczej w pełnych gramach.',
+          'Nie można zastosować zmian: podgląd nie zawiera zweryfikowanej receptury wykonawczej w pełnych gramach.',
       };
     }
 

@@ -31,53 +31,53 @@ const FRIENDLY_LABELS: Readonly<Record<string, string>> = {
   increase_pod: 'zwiększ POD',
   decrease_pod: 'zmniejsz POD',
   reduce_pod: 'zmniejsz POD',
-  increase_solids: 'zwiększ części stałe',
-  decrease_solids: 'zmniejsz części stałe',
-  increase_water: 'zwiększ wodę',
-  decrease_water: 'zmniejsz wodę',
-  increase_fat: 'zwiększ tłuszcz',
-  decrease_fat: 'zmniejsz tłuszcz',
-  increase_ice_fraction: 'zwiększ udział lodu',
-  decrease_ice_fraction: 'zmniejsz udział lodu',
-  reduce_lactose_sanding: 'ogranicz krystalizację laktozy',
-  increase_aerating_protein: 'zwiększ białko wspierające napowietrzenie',
-  adjust_fruit_ratio: 'dopasuj udział owoców',
-  adjust_plant_base_ratio: 'dopasuj bazę roślinną',
-  adjust_chocolate_ratio: 'dopasuj udział czekolady',
-  adjust_cocoa_fat_balance: 'dopasuj równowagę kakao i tłuszczu',
-  restore_stabilizer: 'przywróć stabilizator',
-  milk: 'mleko',
-  cream: 'śmietanka',
-  skimmed_milk_powder: 'odtłuszczone mleko w proszku',
-  sucrose: 'sacharoza',
-  dextrose: 'dekstroza',
-  inulin_fiber: 'inulina lub błonnik',
-  stabilizer: 'stabilizator',
-  water: 'woda',
-  fruit: 'owoce',
-  hero_flavor_ingredient: 'główny składnik smakowy',
-  oat_drink: 'napój owsiany',
-  soy_drink: 'napój sojowy',
-  almond_drink: 'napój migdałowy',
-  rice_drink: 'napój ryżowy',
-  coconut_milk_cream: 'mleczko lub śmietanka kokosowa',
-  plant_fat: 'tłuszcz roślinny',
-  plant_protein: 'białko roślinne',
-  whey_protein_concentrate: 'koncentrat białka serwatkowego',
-  milk_protein_concentrate: 'koncentrat białek mleka',
-  high_protein_dairy: 'wysokobiałkowy produkt mleczny',
-  dark_chocolate: 'ciemna czekolada',
-  milk_chocolate: 'czekolada mleczna',
-  cocoa_powder: 'kakao',
-  cocoa_mass: 'miazga kakaowa',
-  cocoa_butter: 'masło kakaowe',
-  chocolate_paste: 'pasta czekoladowa',
+  increase_solids: 'Zwiększ części stałe',
+  decrease_solids: 'Zmniejsz części stałe',
+  increase_water: 'Zwiększ wodę',
+  decrease_water: 'Zmniejsz wodę',
+  increase_fat: 'Zwiększ tłuszcz',
+  decrease_fat: 'Zmniejsz tłuszcz',
+  increase_ice_fraction: 'Zwiększ udział lodu',
+  decrease_ice_fraction: 'Zmniejsz udział lodu',
+  reduce_lactose_sanding: 'Ogranicz krystalizację laktozy',
+  increase_aerating_protein: 'Zwiększ białko wspierające napowietrzenie',
+  adjust_fruit_ratio: 'Dopasuj udział owoców',
+  adjust_plant_base_ratio: 'Dopasuj bazę roślinną',
+  adjust_chocolate_ratio: 'Dopasuj udział czekolady',
+  adjust_cocoa_fat_balance: 'Dopasuj równowagę kakao i tłuszczu',
+  restore_stabilizer: 'Przywróć stabilizator',
+  milk: 'Mleko',
+  cream: 'Śmietanka',
+  skimmed_milk_powder: 'Odtłuszczone mleko w proszku',
+  sucrose: 'Sacharoza',
+  dextrose: 'Dekstroza',
+  inulin_fiber: 'Inulina lub błonnik',
+  stabilizer: 'Stabilizator',
+  water: 'Woda',
+  fruit: 'Owoce',
+  hero_flavor_ingredient: 'Główny składnik smakowy',
+  oat_drink: 'Napój owsiany',
+  soy_drink: 'Napój sojowy',
+  almond_drink: 'Napój migdałowy',
+  rice_drink: 'Napój ryżowy',
+  coconut_milk_cream: 'Mleczko lub śmietanka kokosowa',
+  plant_fat: 'Tłuszcz roślinny',
+  plant_protein: 'Białko roślinne',
+  whey_protein_concentrate: 'Koncentrat białka serwatkowego',
+  milk_protein_concentrate: 'Koncentrat białek mleka',
+  high_protein_dairy: 'Wysokobiałkowy produkt mleczny',
+  dark_chocolate: 'Ciemna czekolada',
+  milk_chocolate: 'Czekolada mleczna',
+  cocoa_powder: 'Kakao',
+  cocoa_mass: 'Miazga kakaowa',
+  cocoa_butter: 'Masło kakaowe',
+  chocolate_paste: 'Pasta czekoladowa',
   npac: 'NPAC',
   pod: 'POD',
-  ice_fraction: 'udział lodu',
-  total_solids: 'części stałe',
-  fat: 'tłuszcz',
-  lactose: 'laktoza',
+  ice_fraction: 'Udział lodu',
+  total_solids: 'Części stałe',
+  fat: 'Tłuszcz',
+  lactose: 'Laktoza',
 };
 const humanize = (value: string): string => FRIENDLY_LABELS[value] ?? 'zmiana receptury';
 const PROFILE_LABEL: Readonly<Record<string, string>> = {
@@ -324,8 +324,8 @@ export function OptimizationPreviewPanel({
             <div>solver target injection: blocked ({view.solverTargetInjection.blockedReason})</div>
           )}
           <div>
-            gram solve · engine-seeded {view.engineSeededSolve.decision} (
-            {view.engineSeededSolve.proposedAdjustments.length}g-actions)
+            rozwiązanie gramów · start z obliczeń {view.engineSeededSolve.decision} (
+            {view.engineSeededSolve.proposedAdjustments.length} działań w g)
             {view.regulatorShadowSolve.active
               ? ` → regulator-shadow ${view.regulatorShadowSolve.decision} (${view.regulatorShadowSolve.proposedAdjustments.length}g-actions)${view.solveComparison.correctionDiffers ? ' · DIFFERS' : ' · same'}${view.solveComparison.regulatorShadowImproved ? ' · improves' : ''}`
               : ` · regulator-shadow blocked (${view.regulatorShadowSolve.blockedReason})`}
@@ -344,7 +344,7 @@ export function OptimizationPreviewPanel({
           {view.hardBlockers.length > 0 ? (
             <div className="text-rose-300/70">blockers: {view.hardBlockers.join(', ')}</div>
           ) : null}
-          {view.warnings.length > 0 ? <div>warnings: {view.warnings.join(', ')}</div> : null}
+          {view.warnings.length > 0 ? <div>Warnings: {view.warnings.join(', ')}</div> : null}
         </div>
       ) : null}
     </Card>

@@ -2288,10 +2288,10 @@ export function serverBehaviorPreviewIssue(
       issue.reasons.every((reason) => reason === 'recipe_changed_during_validation'),
   );
   const action = recipeChanged
-    ? 'Uruchom przeliczenie ponownie dla bieżącej receptury.'
+    ? 'Uruchom przeliczenie ponownie dla bieżącej receptury'
     : priceOnly
-      ? 'Odśwież prywatne ceny i uruchom przeliczenie ponownie.'
-      : 'Odśwież dane produktu albo wybierz jego aktualną wersję.';
+      ? 'Odśwież prywatne ceny i uruchom przeliczenie ponownie'
+      : 'Odśwież dane produktu albo wybierz jego aktualną wersję';
   const serverUnavailable = issues.every(
     (issue) =>
       issue.reasons.length > 0 &&
@@ -2671,7 +2671,7 @@ async function restoreScorePresentationAfterUndo(
       recalculationTerminal: {
         state: 'BLOCKED_WITH_EXACT_ACTION',
         code: 'product_behavior_invalid',
-        messagePl: 'Receptura zmieniła się podczas przywracania Preview. Przelicz ją ponownie.',
+        messagePl: 'Receptura zmieniła się podczas przywracania podglądu. Przelicz ją ponownie.',
         action: 'return_to_recipe',
       },
     });
@@ -3343,7 +3343,7 @@ export async function runPiRecalculationWithTerminal(
         recalculationTerminal: {
           state: 'ERROR',
           messagePl:
-            'Przeliczenie zakończyło się bez wyniku. Wróć do receptury i spróbuj ponownie.',
+            'Przeliczenie zakończyło się bez wyniku. Wróć do receptury i spróbuj ponownie',
         },
       });
     }
@@ -3720,7 +3720,7 @@ export async function applyPreviewWithServerAuthority(
       blocked: {
         code: 'stale_preview',
         messagePl:
-          'Apply zablokowany: klasyfikacja produktu zmieniła się. Uruchom ponowne Preview.',
+          'Nie można zastosować zmian: klasyfikacja produktu się zmieniła. Utwórz nowy podgląd.',
       },
     });
   };
@@ -3881,7 +3881,7 @@ export async function applyPreviewWithServerAuthority(
       blocked: {
         code: 'apply_validation_failed',
         messagePl:
-          'Apply zablokowany: nie udało się zakończyć ponownej walidacji Preview. Uruchom ponowne Preview.',
+          'Nie można zastosować zmian: ponowna weryfikacja podglądu nie została zakończona. Utwórz nowy podgląd.',
       },
     });
   } finally {

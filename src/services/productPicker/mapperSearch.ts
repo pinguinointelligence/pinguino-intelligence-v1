@@ -273,7 +273,7 @@ export async function searchMapperIngredients(
   if (error) {
     if (isAborted(error, query.signal)) return { kind: 'aborted' };
     if (isViewMissing(error)) return { kind: 'unavailable', reason: 'view_missing' };
-    return { kind: 'error', message: error.message ?? 'search failed' };
+    return { kind: 'error', message: error.message ?? 'Search failed' };
   }
 
   const raw = (data ?? []) as unknown as Record<string, unknown>[];
@@ -327,7 +327,7 @@ export async function fetchIngredientEngineValues(
     if (isAborted(error, signal)) return { kind: 'aborted' };
     if (isUnauthorized(error)) return { kind: 'unauthorized' };
     if (isViewMissing(error)) return { kind: 'unavailable', reason: 'view_missing' };
-    return { kind: 'error', message: error.message ?? 'engine values fetch failed' };
+    return { kind: 'error', message: error.message ?? 'Nie udało się pobrać wartości obliczeniowych.' };
   }
   if (!data) return { kind: 'not_found' };
 

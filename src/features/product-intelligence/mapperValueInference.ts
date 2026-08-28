@@ -928,7 +928,7 @@ export function moistureCohortProfile(
       min: 0,
       max: 0,
       narrow: false,
-      reason: 'brak danych o wodzie',
+      reason: 'Brak danych o wodzie',
     };
   }
   const mid = median(values);

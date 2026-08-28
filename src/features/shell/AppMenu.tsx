@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { IvoryLogoMark } from '@/components/shared/IvoryLogoMark';
 import { copy } from '@/copy/en';
-import { ACTIVE_ENGINE } from '@/data/engines';
+import { ACTIVE_ENGINE, engineDisplayLabelPl } from '@/data/engines';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { cn } from '@/lib/cn';
 import { useAuthStore } from '@/stores/authStore';
@@ -150,7 +150,7 @@ export function AppMenu({ onNew, tone = 'ink' }: { onNew?: () => void; tone?: 'i
             <div className="mt-3 flex items-center justify-between border-t border-ink/5 pt-3 text-xs text-stone-500">
               <span>{m.activeEngine}</span>
               <span className={cn('font-mono text-ink')}>
-                {ACTIVE_ENGINE.label.replace(/ Engine$/, '')}
+                {engineDisplayLabelPl(ACTIVE_ENGINE)}
               </span>
             </div>
           </nav>

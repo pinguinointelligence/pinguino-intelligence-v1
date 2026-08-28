@@ -185,7 +185,7 @@ function AdminNotifications({ items }: { items: DurableNotification[] }) {
                 Włącz dźwięk sprzedaży
               </Button>
             ) : (
-              <p className="mt-3 text-xs text-status-ideal">Dźwięk odblokowany w tej sesji.</p>
+              <p className="mt-3 text-xs text-status-ideal">Dźwięk odblokowany w tej sesji</p>
             )}
           </header>
           <div className="max-h-[65vh] divide-y divide-ink/10 overflow-y-auto">
@@ -232,7 +232,7 @@ function AdminNotifications({ items }: { items: DurableNotification[] }) {
               </article>
             ))}
             {items.length === 0 ? (
-              <p className="p-5 text-sm text-stone-500">Brak powiadomień.</p>
+              <p className="p-5 text-sm text-stone-500">Brak powiadomień</p>
             ) : null}
           </div>
         </aside>

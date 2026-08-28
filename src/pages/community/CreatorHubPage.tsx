@@ -89,7 +89,7 @@ export function CreatorHubPage() {
                 <Link to="/partner" className="text-ink underline-offset-4 hover:underline">
                   {copy.partner.dashboardTitle}
                 </Link>{' '}
-                to osobna sekcja.
+                to osobna sekcja
               </p>
             </section>
 
@@ -105,7 +105,7 @@ export function CreatorHubPage() {
                         <div className="min-w-0">
                           <p className="truncate font-medium text-ink">{publication.title}</p>
                           <p className="mt-1 text-sm text-stone-500 tabular-nums">
-                            v{publication.version_number} · {publication.unique_makers}{' '}
+                            V{publication.version_number} · {publication.unique_makers}{' '}
                             {copy.metrics.makers} · {publication.remix_count} {copy.metrics.remixes}
                           </p>
                         </div>

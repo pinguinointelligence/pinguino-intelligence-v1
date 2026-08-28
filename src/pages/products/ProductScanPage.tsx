@@ -85,30 +85,30 @@ const sha256 = async (bytes: Uint8Array): Promise<string> => {
 };
 
 const MISSING_FIELD_LABELS: Record<string, string> = {
-  product_name: 'czytelna nazwa produktu',
-  product_identity: 'czytelna nazwa produktu',
-  brand_or_unbranded: 'marka albo oznaczenie produktu bez marki',
-  net_quantity: 'masa lub objętość opakowania',
-  net_quantity_unit: 'masa lub objętość opakowania z jednostką',
-  market: 'rynek sprzedaży',
-  market_of_sale: 'rynek sprzedaży',
+  product_name: 'Czytelna nazwa produktu',
+  product_identity: 'Czytelna nazwa produktu',
+  brand_or_unbranded: 'Marka albo oznaczenie produktu bez marki',
+  net_quantity: 'Masa lub objętość opakowania',
+  net_quantity_unit: 'Masa lub objętość opakowania z jednostką',
+  market: 'Rynek sprzedaży',
+  market_of_sale: 'Rynek sprzedaży',
   nutrition_basis: 'podstawa tabeli odżywczej',
-  nutrition_energyKcal: 'energia',
-  nutrition_fat: 'tłuszcz',
-  nutrition_carbohydrate: 'węglowodany',
-  nutrition_protein: 'białko',
-  nutrition_salt: 'sól',
-  ingredients_text: 'czytelny wykaz składników',
+  nutrition_energyKcal: 'Energia',
+  nutrition_fat: 'Tłuszcz',
+  nutrition_carbohydrate: 'Węglowodany',
+  nutrition_protein: 'Białko',
+  nutrition_salt: 'Sól',
+  ingredients_text: 'Czytelny wykaz składników',
   allergens_text: 'czytelna informacja o alergenach',
   ean_gtin_check_digit: 'nieprawidłowa suma kontrolna EAN/GTIN',
-  nutrition_saturated_fat: 'nieprawidłowa wartość tłuszczów nasyconych',
-  nutrition_sugars: 'nieprawidłowa wartość cukrów',
-  nutrition_sugars_gt_carbohydrate: 'cukry przekraczają węglowodany',
-  nutrition_fibre: 'nieprawidłowa wartość błonnika',
-  nutrition_macro_mass_conflict: 'suma składników odżywczych przekracza 100 g',
-  nutrition_energy_macro_conflict: 'energia jest sprzeczna z makroskładnikami',
+  nutrition_saturated_fat: 'Nieprawidłowa wartość tłuszczów nasyconych',
+  nutrition_sugars: 'Nieprawidłowa wartość cukrów',
+  nutrition_sugars_gt_carbohydrate: 'Cukry przekraczają węglowodany',
+  nutrition_fibre: 'Nieprawidłowa wartość błonnika',
+  nutrition_macro_mass_conflict: 'Suma składników odżywczych przekracza 100 g',
+  nutrition_energy_macro_conflict: 'Energia jest sprzeczna z makroskładnikami',
   front_package_image: 'zdjęcie przodu opakowania',
-  nutrition_image: 'zdjęcie tabeli odżywczej',
+  nutrition_image: 'Zdjęcie tabeli odżywczej',
 };
 
 const missingFieldLabel = (value: string): string =>
@@ -524,9 +524,8 @@ export function ProductScanPage() {
         Dodaj produkt ze zdjęć etykiety
       </h1>
       <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600">
-        OCR działa lokalnie. Po Twoim przeglądzie bezpieczne publiczne fakty są automatycznie
-        zgłaszane do wspólnego katalogu. Cena, dostawca, notatki i stan magazynowy nigdy nie są
-        publikowane.
+        OCR działa lokalnie. Po Twoim przeglądzie do wspólnego katalogu trafiają tylko
+        bezpieczne, publiczne fakty. Cena, dostawca, notatki i stan magazynowy pozostają prywatne.
       </p>
 
       {!session ? (
@@ -608,7 +607,7 @@ export function ProductScanPage() {
                 </p>
                 <h2 className="text-xl font-semibold">Sprawdź odczytane dane</h2>
                 <p className="mt-1 text-xs text-stone-600">
-                  Brak wartości pozostaje brakiem — nigdy zerem.
+                  Brak wartości pozostaje brakiem — nigdy zerem
                 </p>
               </div>
             </div>
@@ -628,7 +627,7 @@ export function ProductScanPage() {
                 className="mt-1 min-h-11 w-full rounded-xl border border-ink/15 px-3 text-sm sm:max-w-xs"
                 value={scanMarket}
                 onChange={(event) => setScanMarket(event.currentTarget.value)}
-                placeholder="np. Polska"
+                placeholder="Np. Polska"
               />
             </label>
             <label className="mt-4 block text-xs font-medium text-stone-600">
@@ -637,7 +636,7 @@ export function ProductScanPage() {
                 className="mt-1 min-h-11 w-full rounded-xl border border-ink/15 px-3 text-sm sm:max-w-xs"
                 value={scanRetailer}
                 onChange={(event) => setScanRetailer(event.currentTarget.value)}
-                placeholder="np. Lidl, REWE, Mercadona"
+                placeholder="Np. Lidl, REWE, Mercadona"
               />
             </label>
             <label className="mt-4 flex min-h-11 max-w-xs items-center gap-3 rounded-xl border border-ink/10 px-3 text-sm text-ink">
@@ -716,7 +715,7 @@ export function ProductScanPage() {
                     <textarea
                       value={duplicateDifference}
                       onChange={(event) => setDuplicateDifference(event.currentTarget.value)}
-                      placeholder="np. inna masa, skład lub kod EAN"
+                      placeholder="Np. inna masa, skład lub kod EAN"
                       className="mt-1 min-h-20 w-full rounded-xl border border-ink/15 bg-white p-3 text-sm"
                     />
                   </label>
@@ -872,7 +871,7 @@ export function ProductScanPage() {
                   <textarea
                     value={duplicateDifference}
                     onChange={(event) => setDuplicateDifference(event.currentTarget.value)}
-                    placeholder="np. inny EAN, masa, skład, wartości lub rynek"
+                    placeholder="Np. inny EAN, masa, skład, wartości lub rynek"
                     className="pro-focus-ring mt-1 min-h-20 w-full rounded-xl border border-ink/15 bg-white p-3 text-sm"
                   />
                 </label>
@@ -996,7 +995,7 @@ export function ProductScanPage() {
                     <textarea
                       value={duplicateDifference}
                       onChange={(event) => setDuplicateDifference(event.currentTarget.value)}
-                      placeholder="np. inny EAN, masa opakowania, skład, wartości odżywcze lub rynek"
+                      placeholder="Np. inny EAN, masa opakowania, skład, wartości odżywcze lub rynek"
                       className="pro-focus-ring mt-1 min-h-20 w-full rounded-xl border border-ink/15 bg-white p-3 text-sm"
                     />
                   </label>

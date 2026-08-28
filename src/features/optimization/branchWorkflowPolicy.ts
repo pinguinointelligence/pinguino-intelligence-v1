@@ -67,12 +67,12 @@ export function branchWorkflowDisplayPolicy(
 /** Safe, number-free status labels. `partial_improvement` is NEVER "rescued". */
 export const BRANCH_STATUS_LABEL: Readonly<Record<string, string>> = {
   calculated: 'verified',
-  partial_improvement: 'partial improvement — not fully rescued',
-  not_attempted: 'guidance only — no numbers attempted',
+  partial_improvement: 'Partial improvement — not fully rescued',
+  not_attempted: 'Tylko wskazówka — bez wyliczania wartości',
   blocked_missing_data: 'blocked — data missing',
   unsafe: 'blocked — safety',
-  verification_failed: 'verification failed — no numbers shown',
-  not_supported: 'not supported',
+  verification_failed: 'Verification failed — no numbers shown',
+  not_supported: 'Not supported',
 };
 
 export const branchStatusLabel = (status: string): string =>

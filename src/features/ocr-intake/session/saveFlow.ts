@@ -440,7 +440,7 @@ export async function saveIntakeSession(
     return {
       session: failed,
       flow,
-      result: { kind: 'failed', error: candidate.skipReason ?? 'no usable identity' },
+      result: { kind: 'failed', error: candidate.skipReason ?? 'Nie udało się rozpoznać produktu.' },
     };
   }
 

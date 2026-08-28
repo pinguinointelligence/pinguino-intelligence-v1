@@ -292,7 +292,7 @@ export function previewOptimization(args: OptimizationPreviewInput): Optimizatio
 
   return {
     id: args.id ?? 'live',
-    label: args.label ?? 'Live Studio recipe',
+    label: args.label ?? 'Bieżąca receptura Studio',
     intendedDecision: args.intendedDecision ?? 'live',
     productProfile: intent.productProfile,
     servingTemperatureC: intent.servingTemperatureC,

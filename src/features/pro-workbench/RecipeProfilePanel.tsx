@@ -141,12 +141,12 @@ function NutritionCostProfileGrid({
             />
             <CompactMetricRow label="Tłuszcz" value={grams(nutrition?.fat_g)} />
             <CompactMetricRow
-              label="w tym kwasy nasycone"
+              label="W tym kwasy nasycone"
               value={grams(nutrition?.saturated_fat_g)}
               muted
             />
             <CompactMetricRow label="Węglowodany" value={grams(nutrition?.carbohydrate_g)} />
-            <CompactMetricRow label="w tym cukry" value={grams(nutrition?.sugars_g)} muted />
+            <CompactMetricRow label="W tym cukry" value={grams(nutrition?.sugars_g)} muted />
             <CompactMetricRow label="Białko" value={grams(nutrition?.protein_g)} />
             <CompactMetricRow label="Sól" value={grams(nutrition?.salt_g, 2)} />
             <CompactMetricRow label="Błonnik" value={grams(nutrition?.fiber_g)} />

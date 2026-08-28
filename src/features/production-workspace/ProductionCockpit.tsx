@@ -690,7 +690,7 @@ export function ProductionCockpit({
           </p>
           <h3 className="mt-1 text-sm font-semibold text-ink">Partia odbiega od planu</h3>
           <p className="mt-1 text-xs leading-relaxed text-stone-600">
-            Potwierdzonych ilości nie cofniemy. Wybierz bezpieczny sposób dalszej pracy.
+            Potwierdzonych ilości nie cofniemy. Wybierz bezpieczny sposób dalszej pracy
           </p>
           <div className="mt-3 grid gap-3" data-testid="production-decision-list">
             {visibleDecisionOptions.map((option) => {
@@ -838,9 +838,9 @@ export function ProductionCockpit({
                 Nie mamy bezpiecznej korekty dla tej partii
               </p>
               <p className="mt-1 text-[11px] leading-relaxed text-stone-600">
-                Jeśli któraś liczba została wpisana błędnie, użyj „popraw zapis” w jej wierszu.
-                Jeśli ilości w naczyniu są prawidłowe, przerwij tę partię i rozpocznij nową — nie
-                dodawaj materiału bez autoryzowanego planu.
+                Jeśli wartość jest błędna, wybierz „Popraw zapis” w jej wierszu. Jeśli ilości
+                w naczyniu są prawidłowe, przerwij partię i rozpocznij nową — nie dodawaj składników bez
+                zatwierdzonego planu.
               </p>
               <button
                 type="button"
@@ -951,7 +951,7 @@ export function ProductionCockpit({
                 Etap 2
               </p>
               <h3 className="mt-1 text-sm font-semibold text-ink">Toppingi po produkcji</h3>
-              <p className="mt-1 text-xs text-stone-600">Nie uruchamiają korekty bazy.</p>
+              <p className="mt-1 text-xs text-stone-600">Nie uruchamiają korekty bazy</p>
             </div>
             <span className="font-mono text-sm tabular-nums text-ink">
               {toppingProgress?.confirmedCount ?? 0}/{toppingProgress?.totalCount ?? 0}
@@ -1070,7 +1070,7 @@ export function ProductionCockpit({
               </div>
             </div>
             <p className="mt-4 text-xs leading-relaxed text-stone-600">
-              Zaakceptowałeś kontynuację bez korekty.
+              Zaakceptowałeś kontynuację bez korekty
             </p>
             <div className="mt-5 grid gap-2 sm:grid-cols-2">
               <button

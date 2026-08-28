@@ -215,7 +215,7 @@ export function parseNumeric(raw: string | null | undefined): {
   if (hasComma && hasDot) {
     return {
       value: null,
-      warning: `ambiguous number "${raw}" (mixed "," and "." separators) ignored`,
+      warning: `Niejednoznaczna liczba „${raw}” (mieszane separatory „,” i „.”) — pominięto`,
     };
   }
   let normalized = s;
@@ -225,12 +225,12 @@ export function parseNumeric(raw: string | null | undefined): {
     } else {
       return {
         value: null,
-        warning: `ambiguous number "${raw}" (unclear thousands/decimal comma) ignored`,
+        warning: `Niejednoznaczna liczba „${raw}” (niejasny separator tysięcy/dziesiętny) — pominięto`,
       };
     }
   }
   const n = Number(normalized);
-  if (!Number.isFinite(n)) return { value: null, warning: `non-numeric value "${raw}" ignored` };
+  if (!Number.isFinite(n)) return { value: null, warning: `Pominięto nienumeryczną wartość „${raw}”` };
   return { value: n, warning: null };
 }
 
@@ -246,7 +246,7 @@ export function parseProductBoolean(raw: string | null | undefined): {
   if (['true', 'yes', 'y', '1'].includes(s)) return { value: 'true', warning: null };
   if (['false', 'no', 'n', '0'].includes(s)) return { value: 'false', warning: null };
   if (['unknown', '?', 'na', 'n/a'].includes(s)) return { value: 'unknown', warning: null };
-  return { value: null, warning: `unrecognized boolean value "${raw}" ignored` };
+  return { value: null, warning: `Pominięto nierozpoznaną wartość logiczną „${raw}”` };
 }
 
 /** Assign a mapped value to a (compile-time-valid) ProductInsert field. */

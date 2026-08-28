@@ -37,11 +37,11 @@ export function duplicateFactDifferences(
   existing: DuplicateComparisonFacts,
 ): string[] {
   const labels: Array<[keyof DuplicateComparisonFacts, string]> = [
-    ['name', 'nazwa'],
-    ['brand', 'marka'],
-    ['package', 'opakowanie'],
-    ['market', 'rynek'],
-    ['ean', 'EAN/GTIN'],
+    ['name', 'Nazwa'],
+    ['brand', 'Marka'],
+    ['package', 'Opakowanie'],
+    ['market', 'Rynek'],
+    ['ean', 'EAN'],
   ];
   return labels.flatMap(([key, label]) => {
     const next = clean(scanned[key]);

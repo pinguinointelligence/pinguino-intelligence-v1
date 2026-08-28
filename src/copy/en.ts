@@ -39,8 +39,8 @@ export const copy = {
     unlockCta: 'Poznaj Gellatti Pro',
     prompts: {
       exactGrams: 'Dokładne gramatury korekty są dostępne w Gellatti Pro.',
-      exactAmount: 'Gellatti Pro obliczy dokładną ilość do dodania.',
-      labelExport: 'Eksport etykiety jest dostępny w Gellatti Pro.',
+      exactAmount: 'Gellatti Pro obliczy dokładną ilość do dodania',
+      labelExport: 'Eksport etykiety jest dostępny w Gellatti Pro',
     },
   },
   landing: {
@@ -142,7 +142,7 @@ export const copy = {
       ingredient: 'Dodaj składnik',
     },
     start: {
-      blurb: 'Wróć do swojego miejsca pracy.',
+      blurb: 'Wróć do swojego miejsca pracy',
       talk: 'Wróć do rozmowy',
       new: 'Nowa receptura',
       continue: 'Kontynuuj ostatnią recepturę',
@@ -167,7 +167,7 @@ export const copy = {
       recent: 'Ostatnio dodane',
       gelato: 'Gelato',
       sorbet: 'Sorbet',
-      vegan: 'Vegan',
+      vegan: 'Wegańskiej',
       protein: 'Protein',
       startFrom: 'Zacznij od receptury',
       browse: 'Przeglądaj',
@@ -177,7 +177,7 @@ export const copy = {
         eyebrow: 'BIBLIOTEKA SMAKU',
         question: 'Co chcesz zrobić?',
         intro:
-          'Wybierz wyjątkowy kierunek albo zacznij od składnika. Do edytora przejdziesz bez katalogowego labiryntu.',
+          'Wybierz wyjątkowy kierunek albo zacznij od składnika. Do edytora przejdziesz bez katalogowego labiryntu',
         lostTitle: 'Lost & Legendary',
         lostBody:
           'Udokumentowane smaki regionalne i zanikające — tylko wtedy, gdy da się je odtworzyć uczciwie.',
@@ -185,7 +185,7 @@ export const copy = {
         naturalBody: 'Nowoczesne smaki premium oparte na prawdziwych, jakościowych składnikach.',
         inspirationTitle: 'Znajdź inspirację',
         inspirationBody:
-          '2 500 kierunków smakowych zebranych w czytelne rodziny — nie gotowe receptury.',
+          '2 500 Kierunków smakowych zebranych w czytelne rodziny — nie gotowe receptury.',
         countries: 'Wybierz kraj',
         ingredient: 'Zacznij od składnika',
         recommended: 'Polecane',
@@ -306,13 +306,13 @@ export const copy = {
     },
     ingredient: {
       title: 'Dodaj składnik',
-      blurb: 'Dodaj własny składnik z opisu lub zdjęcia etykiety.',
+      blurb: 'Dodaj własny składnik z opisu lub zdjęcia etykiety',
       describe: 'Opisz produkt',
       photo: 'Dodaj zdjęcie etykiety',
       camera: 'Zrób zdjęcie',
       review: 'Sprawdź odczytane dane',
       add: 'Dodaj do składników',
-      note: 'Dodaj własny składnik z opisu lub zdjęcia etykiety. Skanowanie i odczyt danych są dostępne w Gellatti Pro.',
+      note: 'Dodaj własny składnik z opisu lub zdjęcia etykiety. Skanowanie i odczyt danych są dostępne w Gellatti Pro',
     },
   },
   /** Reusable placeholder surface for not-yet-built nav destinations (Phase 6C, Slice 1). */
@@ -336,7 +336,7 @@ export const copy = {
     checkEmail: 'Jeszcze jeden krok: otwórz wiadomość i potwierdź adres e-mail.',
     unavailable: 'Logowanie jest chwilowo niedostępne.',
     close: 'Zamknij',
-    orDivider: 'lub',
+    orDivider: 'Lub',
     continueWithGoogle: 'Kontynuuj z Google',
     googleRedirecting: 'Łączymy z Google…',
     googleCancelled: 'Logowanie przez Google zostało anulowane. Niczego nie zmieniliśmy.',
@@ -386,7 +386,7 @@ export const copy = {
     saveAs: 'Zapisz jako nową',
     saveTitle: 'Zapisz recepturę',
     nameLabel: 'Nazwa receptury',
-    namePlaceholder: 'np. Baza mleczna',
+    namePlaceholder: 'Np. Baza mleczna',
     descriptionLabel: 'Notatka (opcjonalnie)',
     saving: 'Zapisywanie…',
     cancel: 'Anuluj',
@@ -414,7 +414,7 @@ export const copy = {
     versionSelector: {
       current: 'Aktualna',
       trigger: (name: string, version: number) =>
-        `Wersja receptury ${name}: v${version}. Wybierz wersję do otwarcia.`,
+        `Wersja receptury ${name}: v${version}. Wybierz wersję do otwarcia`,
       list: (name: string) => `Wersje receptury ${name}`,
       openFailed: (version: number) =>
         `Nie udało się otworzyć wersji v${version}. Spróbuj ponownie — nie otwieramy w zamian innej wersji.`,
@@ -425,7 +425,7 @@ export const copy = {
       heading: (version: number, date: string | null) =>
         `Wersja v${version}${date ? ` · ${date}` : ''}`,
       body: (latest: number) =>
-        `— podgląd historii. Najnowsza wersja to v${latest}. Zapis nie nadpisze tej wersji; utworzy nową.`,
+        `— podgląd historii. Najnowsza wersja to v${latest}. Zapis utworzy nową wersję; tej wersji nie nadpisze.`,
       restore: 'Przywróć tę wersję',
       restoring: 'Przywracam…',
       restoreFailed: 'Nie udało się przywrócić wersji.',
@@ -435,7 +435,7 @@ export const copy = {
       createTitle: 'Zapisz recepturę',
       versionTitle: 'Zapisz nową wersję',
       nameLabel: 'Nazwa receptury',
-      namePlaceholder: 'np. Baza mleczna',
+      namePlaceholder: 'Np. Baza mleczna',
       firstNoteLabel: 'Notatka do pierwszej wersji (opcjonalnie)',
       changeNoteLabel: 'Opis zmian (opcjonalnie)',
       createButton: 'Zapisz recepturę',
@@ -456,19 +456,19 @@ export const copy = {
   proCore: {
     title: 'Historia wersji',
     blurb:
-      'Historia wersji zapisuje się automatycznie przy każdym zapisie. Możesz przywrócić starszą wersję — powstaje wtedy nowa, najnowsza wersja (historia nie jest nadpisywana).',
+      'Każdy zapis tworzy nową wersję. Przywrócenie starszej wersji również tworzy nową wersję — historia nie jest nadpisywana.',
     devPersona: 'Persona (dev):',
     backendUnavailable:
       'Historia wersji wymaga skonfigurowanego zaplecza. Niedostępna w tej wersji aplikacji.',
     localMode:
       'Tryb lokalny — wersje są trzymane tylko w pamięci i nie są trwałe (odświeżenie je czyści).',
     /** Shown when no recipe is open — versions are per-recipe, never a global list (S2 UX). */
-    openToSeeVersions: 'Otwórz recepturę z „Moje receptury”, aby zobaczyć jej historię wersji.',
+    openToSeeVersions: 'Otwórz recepturę z „Moje receptury”, aby zobaczyć jej historię wersji',
     currentRecipe: 'Receptura:',
     restoreLabel: 'Przywróć',
     historyHeading: 'Historia wersji',
     archived: 'zarchiwizowana',
-    fromVersion: 'z',
+    fromVersion: 'Z',
     // legacy keys (no longer surfaced; the save flow moved to the top-right canonical dialog)
     demoCannotSave: 'Ten plan nie może zapisywać receptur.',
     saveDraftAsRecipe: 'Zapisz bieżący szkic jako recepturę',
@@ -476,7 +476,7 @@ export const copy = {
     restoreV1: 'Przywróć v1 → nowa wersja',
     recipesHeading: 'Receptury',
     noRecipes: 'Brak zapisanych receptur.',
-    selectRecipe: 'Wybierz recepturę, aby zobaczyć jej wersje.',
+    selectRecipe: 'Wybierz recepturę, aby zobaczyć jej wersje',
     draftTitlePrefix: 'Szkic receptury',
   },
   /** Gellatti Pro workspace (/pro) — kanoniczne polskie copy. */
@@ -508,8 +508,8 @@ export const copy = {
     /** Owner P0 UX repair (2026-07-24) — truthful note after the /pro/recipe restructure
      * (the Monitor lives in the workbar drawer + the secondary section). ADDITIVE key. */
     monitorNoteDrawer:
-      'Monitor receptury otwiera się przyciskiem „Monitor" na pasku narzędzi w zakładce Receptura. ' +
-      'Pełne moduły Monitora znajdziesz tam również w sekcji „Analiza i moduły dodatkowe".',
+      'Monitor otworzysz z zakładki Receptura. Pełne moduły są dostępne w sekcji „Analiza ' +
+      'i moduły dodatkowe”.',
     soon: {
       production: 'Plan, wykonanie i odchylenia produkcji pojawią się w kolejnym etapie.',
       history: 'Historia produkcji pojawi się w kolejnym etapie.',
@@ -528,7 +528,7 @@ export const copy = {
       signedOut: 'Niezalogowano',
     },
     machineNote:
-      'Profesjonalna klasa maszyn (Maszyna profesjonalna na pierwszym miejscu, dalej temperatury serwowania) pojawi się w kolejnym etapie. Na teraz zarządzaj zapisaną maszyną tutaj.',
+      'Klasa profesjonalna pojawi się w kolejnym etapie. Na razie zarządzaj zapisaną maszyną tutaj.',
     openMachine: 'Otwórz ustawienia maszyny',
     devPersona: 'Persona (dev):',
   },
@@ -554,14 +554,14 @@ export const copy = {
       request: 'Poproś o ponowną analizę',
       existing: 'Prośba o ponowną analizę została już wysłana.',
       failed: 'Nie udało się wysłać prośby. Spróbuj ponownie.',
-      openIngredientManually: 'Otwórz „Dodaj składnik”, aby użyć tego produktu w recepturze.',
-      openToppingManually: 'Otwórz „Dodaj topping”, aby użyć tego produktu po produkcji.',
+      openIngredientManually: 'Otwórz „Dodaj składnik”, aby użyć tego produktu w recepturze',
+      openToppingManually: 'Otwórz „Dodaj topping”, aby użyć tego produktu po produkcji',
     },
   },
   /** Gellatti Pro sticky top workbar — primary actions always visible. */
   proWorkbar: {
     nameLabel: 'Nazwa receptury',
-    namePlaceholder: 'np. Pistachio Dream',
+    namePlaceholder: 'Np. Pistachio Dream',
     saveNew: 'Zapisz recepturę',
     saveVersion: (v: number) => `Zapisz nową wersję (v${v})`,
     addNote: 'Dodaj notatkę',
@@ -575,7 +575,7 @@ export const copy = {
     archive: 'Archiwizuj recepturę',
     confirm: 'Zapisz',
     cancel: 'Anuluj',
-    restoredFrom: (v: number) => `przywrócono z v${v}`,
+    restoredFrom: (v: number) => `Przywrócono z v${v}`,
     pendingRecalc: 'Zmiany oczekują na przeliczenie',
     status: {
       newUnsaved: 'Niezapisane',
@@ -617,7 +617,7 @@ export const copy = {
       actualBatch: 'Aktualna partia',
       nutritionTitle: 'Kalorie',
       costTitle: 'Koszt',
-      per100g: 'na 100 g',
+      per100g: 'Na 100 g',
       totalBatchCost: 'Koszt partii',
       unavailable: 'Brak danych',
       productionPending: 'Widok produkcji pojawi się wkrótce.',
@@ -662,7 +662,7 @@ export const copy = {
         category:
           'Źródło: zakresy zastępcze profilu (kalibracja naukowa tego profilu jest w toku).',
         temperature: 'Źródło: najbliższa skalibrowana cela temperatury.',
-        estimated: 'Źródło: zakresy szacunkowe (status „estimated").',
+        estimated: 'Źródło: zakresy szacunkowe (status „szacowane”).',
       },
       provisionalReason:
         'Część wskaźników nie ma natywnie zatwierdzonego zakresu dla tego profilu i tej temperatury.',
@@ -709,7 +709,7 @@ export const copy = {
       setDefault: 'Ustaw również jako domyślną',
       recommended: (g: number) => `Zalecany wsad: ${g} g`,
       userSetsBatch: 'Wsad ustalasz samodzielnie.',
-      savedDefault: 'Perfetto. Domyślna maszyna została zapisana.',
+      savedDefault: 'Domyślna maszyna została zapisana.',
     },
     other: {
       heading: 'Inne urządzenia',
@@ -812,17 +812,17 @@ export const copy = {
       visibleType: 'Typ widoczny',
       internalProfile: 'Profil wewnętrzny',
       detected: 'Wykryte klasyfikacje',
-      class: { chocolate: 'czekolada', fruit: 'owoce', nut: 'orzechy', alcohol: 'alkohol' },
+      class: { chocolate: 'Czekolada', fruit: 'Owoce', nut: 'Orzechy', alcohol: 'Alkohol' },
       qualityTier: 'Poziom jakości',
       servingMode: 'Tryb serwowania',
       internalTemp: 'Temperatura wewnętrzna',
       bandCell: 'Cela TARGET_BANDS',
-      fallbackFlag: 'Fallback profilu/temp.',
+      fallbackFlag: 'Zakres zastępczy profilu/temperatury',
       batch: 'Partia',
       ingredientCount: 'Liczba składników',
       unresolved: 'Nieuzupełnione składniki',
       activeLocks: 'Aktywne blokady',
-      engineVersion: 'Wersja Engine',
+      engineVersion: 'Wersja obliczeń',
       configVersion: 'CONFIG_VERSION',
       optimizerResult: 'Wynik optymalizatora',
       verifyResult: 'Weryfikacja ograniczeń',
@@ -835,57 +835,57 @@ export const copy = {
       addedByPi: 'Dodane przez Gellatti',
       excluded: 'Wykluczone składniki',
       rejectionCode: 'Kod odrzucenia',
-      notRun: 'nie uruchomiono',
-      optimizer: { hasProposals: 'są propozycje', noProposal: 'brak propozycji' },
+      notRun: 'Nie uruchomiono',
+      optimizer: { hasProposals: 'Są propozycje', noProposal: 'Brak propozycji' },
       verify: {
-        idle: 'brak zastosowania',
-        previewStaged: 'podgląd przygotowany',
-        blocked: 'zablokowano (verify)',
+        idle: 'Brak zastosowania',
+        previewStaged: 'Podgląd przygotowany',
+        blocked: 'Zablokowano (verify)',
       },
-      yes: 'tak',
-      no: 'nie',
+      yes: 'Tak',
+      no: 'Nie',
       none: '—',
       /* Owner P0 NIGHTLY (Agent A, A9) — formulation QA rows. ADD-only keys. */
       bandSource: 'Źródło zakresów',
-      bandSourceNative: 'natywne (zatwierdzone)',
-      bandSourceCategoryFallback: 'fallback profilu (prowizoryczne)',
-      bandSourceTemperatureFallback: 'fallback temperatury (prowizoryczne)',
+      bandSourceNative: 'Natywne (zatwierdzone)',
+      bandSourceCategoryFallback: 'Zakres zastępczy profilu (tymczasowy)',
+      bandSourceTemperatureFallback: 'Zakres zastępczy temperatury (tymczasowy)',
       roleTrace: 'Ślad ról (rola→wynik)',
-      solverRuns: 'Solver lokalny (uruchomienia)',
-      fallbackInvoked: 'Fallback wzorca użyty',
+      solverRuns: 'Lokalne obliczenia (uruchomienia)',
+      fallbackInvoked: 'Użyto zakresu zastępczego',
       finalClassification: 'Klasyfikacja końcowa',
-      classificationPreview: 'podgląd przygotowany',
+      classificationPreview: 'Podgląd przygotowany',
       // Owner addendum item 3 (2026-07-25): the solver proves a LOCAL fixed
       // point, never a global optimum — the label says "found", not "best".
-      classificationBestSafe: 'najlepszy znaleziony bezpieczny wynik (best-safe)',
-      classificationIdle: 'nie uruchomiono',
+      classificationBestSafe: 'Najlepszy znaleziony bezpieczny wynik',
+      classificationIdle: 'Nie uruchomiono',
       hardViolations: 'Twarde naruszenia (natywne zakresy)',
       softViolations: 'Miękkie naruszenia (zakresy prowizoryczne)',
       /* Owner P0 NIGHTLY (live-state/opt/stabilizer agent) — ADD-only keys. */
       iterationCount: 'Iteracje optymalizatora',
-      iterationCapReached: 'osiągnięto limit',
+      iterationCapReached: 'Osiągnięto limit',
       iterationTrajectory: 'Trajektoria naruszeń (rundy)',
       iterationStop: 'Kod zatrzymania optymalizatora',
       stabilizerDosage: 'Dawka stabilizatora',
       stabilizerDosageProvenance: 'Dawka stabilizatora — pochodzenie',
-      stabilizerWithinWindow: 'w oknie',
+      stabilizerWithinWindow: 'W oknie',
       stabilizerBelowWindow: 'PONIŻEJ okna',
       stabilizerAboveWindow: 'POWYŻEJ okna',
-      stabilizerNoWindow: 'brak zatwierdzonego okna dawkowania',
+      stabilizerNoWindow: 'Brak zatwierdzonego okna dawkowania',
       stabilizerSeedUnresolved:
-        'seed wzorca (template-controlled) — wzorzec reference_derived; dawka nierozstrzygnięta naukowo dla tego profilu',
-      stabilizerSeedApproved: 'seed wzorca (template-controlled, zatwierdzony wzorzec)',
-      stabilizerUserDraft: 'wartość bieżącego szkicu użytkownika',
-      monitorRevision: 'Rewizja Monitor/Engine',
+        'Seed wzorca (template-controlled) — wzorzec reference_derived; dawka nierozstrzygnięta naukowo dla tego profilu',
+      stabilizerSeedApproved: 'Seed wzorca (template-controlled, zatwierdzony wzorzec)',
+      stabilizerUserDraft: 'Wartość bieżącego szkicu użytkownika',
+      monitorRevision: 'Rewizja Monitora i obliczeń',
       formulationRevision: 'Rewizja formulacji',
       identityTable: 'Tożsamość i stan linii',
       identityLine: 'Linia',
       identityCanonical: 'Kanoniczne ID',
-      identityProduct: 'Product ID',
+      identityProduct: 'ID produktu',
       identitySource: 'Źródło',
       identityVisible: 'Widoczne g',
       identityEffective: 'Efektywne g',
-      identityEngine: 'Engine g',
+      identityEngine: 'Obliczenia · g',
       identityRevision: 'Rewizja',
     },
     /** Collapsed „Narzędzia zaawansowane" section — the secondary QA/diagnostic tools. */
@@ -899,8 +899,8 @@ export const copy = {
     optimization: {
       title: 'Podgląd optymalizacji',
       note:
-        'Tylko podgląd — nic nie jest zapisywane, a korekty nie są stosowane automatycznie. ' +
-        'Zakresy obliczeń uwzględniają temperaturę serwowania; dodatkowe porównanie pozostaje dostępne.',
+        'To tylko podgląd — nic nie jest zapisywane ani stosowane automatycznie. Obliczenia uwzględniają ' +
+        'temperaturę serwowania; dodatkowe porównanie pozostaje dostępne.',
       proOnly: 'Dokładne gramatury są dostępne w Gellatti Pro.',
       run: 'Podgląd optymalizacji',
     },
@@ -995,14 +995,14 @@ export const copy = {
       modeFocus: { eco: 'Koszt', classic: 'Balans', premium: 'Konsystencja', signature: 'Smak' },
       /** INTERNAL Engine classifications (diagnostic only — never a primary selector). */
       categories: {
-        milk_gelato: 'mleczne',
-        fruit_gelato: 'owocowe',
-        nut_gelato: 'orzechowe',
-        chocolate_gelato: 'czekoladowe',
-        alcohol_gelato: 'alkoholowe',
+        milk_gelato: 'Mleczne',
+        fruit_gelato: 'Owocowe',
+        nut_gelato: 'Orzechowe',
+        chocolate_gelato: 'Czekoladowe',
+        alcohol_gelato: 'Alkoholowe',
         sorbet: 'sorbet',
-        vegan_gelato: 'wegańskie',
-        custom: 'własne',
+        vegan_gelato: 'Wegańskie',
+        custom: 'Własne',
       },
       /** Serving mode — Świeże/−11/−12/−13 (ONE state drives workbar/Engine/Monitor/solver). */
       servingLabel: 'Tryb serwowania',
@@ -1035,7 +1035,7 @@ export const copy = {
        * flavor/cost are separate labeled dimensions below, never blended in.
        * Supersedes the §15.1 „Dopasowanie receptury" headline. */
       eyebrow: 'Dopasowanie techniczne',
-      modeSuffix: 'tryb',
+      modeSuffix: 'Tryb',
       empty: 'Dodaj składniki, aby ocenić recepturę.',
       /* Owner P0 (score truthfulness) — assessment coverage, never a hidden gap. */
       coverage: (assessed: number, total: number) => `Oceniono ${assessed} z ${total} obszarów.`,
@@ -1068,9 +1068,9 @@ export const copy = {
       /** Honest empty-state exit (AUDIT #2 dead-end rule): a no-results search
        * always offers a way back to the full list. */
       clearSearch: 'Wyczyść wyszukiwanie',
-      resultUnitOne: 'składnik',
-      resultUnitMany: 'składników',
-      resultFoundSuffix: 'znaleziono',
+      resultUnitOne: 'Składnik',
+      resultUnitMany: 'Składników',
+      resultFoundSuffix: 'Znaleziono',
       loadingLibrary: 'Ładowanie biblioteki składników…',
       fallbackNote: 'Biblioteka jest chwilowo niedostępna — pokazujemy składniki przykładowe.',
       planned: 'Planowane',
@@ -1234,20 +1234,20 @@ export const copy = {
       nutritionTitle: 'Na 100 g',
       kcal: 'Energia',
       fat: 'Tłuszcz',
-      saturated: 'w tym nasycone',
+      saturated: 'W tym nasycone',
       carbs: 'Węglowodany',
-      sugars: 'w tym cukry',
+      sugars: 'W tym cukry',
       protein: 'Białko',
       salt: 'Sól',
       fiber: 'Błonnik',
       alcohol: 'Alkohol',
-      unavailable: 'Dodaj składniki, aby zobaczyć wartości.',
+      unavailable: 'Dodaj składniki, aby zobaczyć wartości',
       costTitle: 'Koszt',
       costPerKg: 'Na kg',
       serving60: 'Na 60 g',
       serving70: 'Na 70 g',
       serving80: 'Na 80 g',
-      costIncomplete: 'Dodaj ceny składników, aby obliczyć pełny koszt.',
+      costIncomplete: 'Dodaj ceny składników, aby obliczyć pełny koszt',
       /** Owner P0 UX repair (2026-07-24): the HONEST empty state when no ingredient
        * prices exist — never a blank box (ADDITIVE key). */
       costEmpty: 'Brak cen składników — dodaj ceny, aby zobaczyć koszt.',

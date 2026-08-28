@@ -147,7 +147,7 @@ function Codes({ data }: { data: PartnerWorkspace }) {
           <input
             value={code}
             onChange={(event) => setCode(event.currentTarget.value.toLowerCase())}
-            placeholder="kasia1234"
+            placeholder="Kasia1234"
             className="pro-focus-ring mt-2 min-h-11 w-full border border-ink/15 bg-white px-3 font-mono text-sm"
           />
         </label>
@@ -219,7 +219,7 @@ function CodeRow({ item, onArchive }: { item: PartnerCodeAnalytics; onArchive: (
       <td className="px-3 py-4">
         <strong className="font-mono text-ink">{item.code}</strong>
         <span className="mt-1 block text-[10px] text-stone-500">
-          {item.label ?? 'bez etykiety'}
+          {item.label ?? 'Bez etykiety'}
         </span>
       </td>
       <td className="px-3 py-4">{item.status}</td>
@@ -385,7 +385,7 @@ function ContentLinks({ data }: { data: PartnerWorkspace }) {
           );
         })}
         {(data.links?.length ?? 0) === 0 ? (
-          <p className="py-5 text-sm text-stone-500">Brak wygenerowanych linków.</p>
+          <p className="py-5 text-sm text-stone-500">Brak wygenerowanych linków</p>
         ) : null}
       </div>
     </>
@@ -612,7 +612,7 @@ function Settings({ data }: { data: PartnerWorkspace }) {
       />
       <dl className="mt-6 divide-y divide-ink/10 border-y border-ink/10">
         {[
-          ['Partner ID', data.partner?.id],
+          ['ID Partnera', data.partner?.id],
           ['Status', data.partner?.status],
           ['Tier', data.partner?.tier],
           ['Public slug', data.profile?.slug],

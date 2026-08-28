@@ -515,7 +515,7 @@ export async function runIntimportEnrichment(
       if (intelligence.route === 'EXISTING') {
         results.push(
           settle(row, intelligence.assessment.confidence, {
-            webSkippedReason: 'istniejący produkt kanoniczny — brak potrzeby wyszukiwania',
+            webSkippedReason: 'Istniejący produkt kanoniczny — brak potrzeby wyszukiwania',
           }),
         );
       } else if (
@@ -533,14 +533,14 @@ export async function runIntimportEnrichment(
       } else if (intelligence.enrichmentTargets.length === 0) {
         results.push(
           settle(row, intelligence.assessment.confidence, {
-            webSkippedReason: 'brak pól, które wyszukiwanie mogłoby uzupełnić',
+            webSkippedReason: 'Brak pól, które wyszukiwanie mogłoby uzupełnić',
           }),
         );
       } else if (capExhausted()) {
         capReached = true;
         results.push(
           settle(row, intelligence.assessment.confidence, {
-            webSkippedReason: 'osiągnięto limit wywołań/kosztu importu',
+            webSkippedReason: 'Osiągnięto limit wywołań/kosztu importu',
           }),
         );
       } else {
@@ -610,7 +610,7 @@ export async function runIntimportEnrichment(
             assessment,
             webAttempted: true,
             webSkippedReason: serverCapReached
-              ? 'osiągnięto serwerowy limit wywołań importu'
+              ? 'Osiągnięto serwerowy limit wywołań importu'
               : null,
             callsUsed: productCalls,
             cacheHit: productCacheHit,

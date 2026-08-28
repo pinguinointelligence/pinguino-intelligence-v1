@@ -24,7 +24,7 @@ export const landingCopy = {
   hero: {
     eyebrow: 'Inteligentne receptury lodów',
     headline: 'Idealna receptura. Dopasowana do Twojej maszyny lub temperatury.',
-    subline: 'Wybierz smak, urządzenie, temperaturę i ilość. Gellatti poprowadzi Cię dalej.',
+    subline: 'Wybierz smak, urządzenie, temperaturę i ilość. Gellatti poprowadzi Cię dalej',
     ctaPrimary: 'Stwórz recepturę',
     ctaSecondary: 'Zobacz, jak działa',
   },
@@ -132,18 +132,18 @@ export const landingCopy = {
   subscription: {
     eyebrow: 'Plany',
     title: 'Home czy Pro?',
-    lead: 'Wybierz plan, który pasuje do Twojego sposobu pracy.',
+    lead: 'Wybierz plan, który pasuje do Twojego sposobu pracy',
     whatUnlocks:
-      'Bezpłatny podgląd pokazuje wynik i Monitor receptury bez dokładnych gramatur. Home i Pro to płatne plany: odblokowują dokładne ilości oraz zapis receptur, a Pro dodaje narzędzia pracowni i produkcję.',
+      'Bezpłatny podgląd pokazuje wynik i Monitor bez dokładnych gramatur. Home odblokowuje dokładne ilości i zapis, a Pro dodatkowo narzędzia pracowni i Produkcję.',
     homeBadge: 'Plan Home',
     proBadge: 'Plan Pro',
     homeCta: 'Wybierz Home',
     proCta: 'Przejdź na Pro',
-    orYearly: 'albo',
+    orYearly: 'Albo',
     demoNote:
       'Chcesz najpierw zobaczyć, jak to działa? Bezpłatny podgląd pokazuje prawdziwe obliczenia i Monitor receptury — bez dokładnych gramatur.',
     demoCta: 'Wypróbuj bezpłatnie',
-    billingNote: 'Bezpieczna płatność online. Anulujesz w dowolnym momencie.',
+    billingNote: 'Bezpieczna płatność online. Anulujesz w dowolnym momencie',
     billingUnavailable: 'Logowanie jest chwilowo niedostępne. Spróbuj ponownie później.',
     checkout: {
       cycleLabel: 'Rozliczenie',
@@ -187,7 +187,7 @@ export const landingCopy = {
       },
       {
         q: 'Czym różni się Home od Pro?',
-        a: 'Home prowadzi przez proste decyzje i czytelny podgląd receptury. Pro pozwala wybrać temperaturę serwowania i pokazuje pełniejsze dane techniczne. Oba plany korzystają z tych samych sprawdzonych obliczeń.',
+        a: 'Home prowadzi przez prosty podgląd i podstawowe decyzje. Pro dodaje temperaturę serwowania i pełniejsze dane techniczne. Oba plany korzystają z tych samych obliczeń.',
       },
       {
         q: 'Czy zobaczę dokładne gramatury?',
@@ -203,7 +203,7 @@ export const landingCopy = {
   /* ----------------------------------------------------------- Final CTA -- */
   finalCta: {
     title: 'Zacznij od pierwszej receptury',
-    body: 'Opisz swoje lody własnymi słowami — Gellatti poprowadzi Cię dalej.',
+    body: 'Opisz swoje lody własnymi słowami — Gellatti poprowadzi Cię dalej',
     cta: 'Stwórz recepturę',
   },
 

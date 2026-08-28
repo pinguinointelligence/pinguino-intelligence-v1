@@ -43,14 +43,14 @@ export function AdminInvitesSection() {
           required
           value={email}
           onChange={(event) => setEmail(event.currentTarget.value)}
-          placeholder="exact@email.com"
+          placeholder="Exact@email.com"
         />
         <Button type="submit">Utwórz kod</Button>
       </form>
       {issued ? (
         <div className="mt-4 max-w-xl border border-status-ideal/30 bg-status-ideal/5 p-4">
           <p className="text-xs text-stone-600">
-            Skopiuj teraz dla {issued.email}. Nie będzie ponownie dostępny.
+            Skopiuj teraz dla {issued.email}. Nie będzie ponownie dostępny
           </p>
           <strong className="mt-2 block font-mono text-xl tracking-[0.12em]">{issued.code}</strong>
           <p className="mt-2 text-xs text-stone-500">

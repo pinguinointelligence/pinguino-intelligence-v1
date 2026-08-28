@@ -160,14 +160,14 @@ export function monitorScaleGeometry(model: MonitorScaleModel): MonitorScaleGeom
 export const monitorScaleStatusText = (status: MonitorScaleStatus): string => {
   switch (status) {
     case 'in_range':
-      return 'w zakresie';
+      return 'W zakresie';
     case 'below':
-      return 'poniżej zakresu';
+      return 'Poniżej zakresu';
     case 'below_safe':
-      return 'poniżej zakresu — bezpiecznie';
+      return 'Poniżej zakresu — bezpiecznie';
     case 'above':
-      return 'powyżej zakresu';
+      return 'Powyżej zakresu';
     default:
-      return 'brak danych';
+      return 'Brak danych';
   }
 };

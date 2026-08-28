@@ -39,15 +39,15 @@ const DEFECT_LABELS: Record<string, string> = {
   ingredients_text: 'deklaracja składników',
   allergens_text: 'deklaracja alergenów',
   nutrition_energyKcal: 'wartość energetyczna',
-  nutrition_fat: 'tłuszcz',
-  nutrition_carbohydrate: 'węglowodany',
-  nutrition_protein: 'białko',
-  nutrition_salt: 'sól',
-  net_quantity_unit: 'ilość netto i jednostka',
-  market_of_sale: 'rynek sprzedaży',
+  nutrition_fat: 'Tłuszcz',
+  nutrition_carbohydrate: 'Węglowodany',
+  nutrition_protein: 'Białko',
+  nutrition_salt: 'Sól',
+  net_quantity_unit: 'Ilość netto i jednostka',
+  market_of_sale: 'Rynek sprzedaży',
 };
 
-const defectLabel = (value: string): string => DEFECT_LABELS[value] ?? 'nieopisane pole danych';
+const defectLabel = (value: string): string => DEFECT_LABELS[value] ?? 'Nieopisane pole danych';
 
 const exactPickerSubject = (
   hit: CatalogProductSearchHit,
@@ -92,7 +92,7 @@ export function productPickerVerificationView(
           hit,
           scope,
           'mappedIngredientId',
-          'Wybierz dokładne powiązanie danych produktu.',
+          'Wybierz dokładne powiązanie danych produktu',
         ),
       };
     }
@@ -111,10 +111,10 @@ export function productPickerVerificationView(
           : exactPickerBlock(
               hit,
               scope,
-              'module eligibility',
+              'Module eligibility',
               hit.blockedReason
                 ? `Powód serwera: ${hit.blockedReason}. Wybierz kwalifikowany produkt.`
-                : 'Wybierz kwalifikowany produkt.',
+                : 'Wybierz kwalifikowany produkt',
             ),
       };
     }
@@ -164,7 +164,7 @@ export function productPickerVerificationView(
           defects.length > 0 ? defects.join(', ') : 'TOPPING eligibility',
           hit.blockedReason
             ? `Powód serwera: ${hit.blockedReason}. Uzupełnij dane albo wybierz inny produkt.`
-            : 'Uzupełnij dane albo wybierz inny produkt.',
+            : 'Uzupełnij dane albo wybierz inny produkt',
         ),
       };
     }
@@ -198,7 +198,7 @@ export function productPickerVerificationView(
       reason: exactPickerBlock(
         hit,
         scope,
-        'product-owned profile / mappedIngredientId',
+        'Profil produktu / mappedIngredientId',
         'Utwórz gotowy profil produktu albo wybierz dokładne powiązanie danych.',
       ),
     };
@@ -209,7 +209,7 @@ export function productPickerVerificationView(
       reason: exactPickerBlock(
         hit,
         scope,
-        'approved_for_base / profile eligibility',
+        'zatwierdzone dla bazy / zgodność z profilem',
         hit.blockedReason
           ? `Powód serwera: ${hit.blockedReason}. Zmień produkt lub profil.`
           : 'Zmień produkt lub profil.',

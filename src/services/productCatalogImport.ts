@@ -257,7 +257,7 @@ export async function importProductCatalog(
     if (stopAfter > 0 && repeatedFailures >= stopAfter) {
       const handled = summary.rowResults.length;
       summary.stopped = {
-        reason: lastFailure ?? 'powtarzający się błąd zapisu',
+        reason: lastFailure ?? 'Powtarzający się błąd zapisu',
         afterRowIndex: candidate.rowIndex,
         remaining: candidates.length - handled,
       };

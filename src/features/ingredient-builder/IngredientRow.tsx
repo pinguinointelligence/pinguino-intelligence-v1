@@ -729,7 +729,7 @@ function RecipeRow({
               {role === 'addition' ? (
                 <span
                   aria-label="Dawny Dodatek — wymaga decyzji"
-                  title="Historyczna rola nie potwierdza, że produkt był dodawany po produkcji. Wybierz Główny lub Standardowy."
+                  title="Historyczna rola nie potwierdza, że produkt był dodawany po produkcji. Wybierz Główny lub Standardowy"
                   className="shrink-0 rounded-lg border border-attention/30 bg-attention/[0.08] px-2 py-1 text-xs font-semibold text-attention"
                 >
                   Dawny Dodatek · decyzja

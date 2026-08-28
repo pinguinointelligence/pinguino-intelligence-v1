@@ -267,7 +267,7 @@ export function sweetnessPathOf(
     return {
       kind: 'trivially_zero',
       resolved: true,
-      reason: 'brak cukrow i polioli oraz brak semantycznej przeslanki alkoholu — moce sa zerowe',
+      reason: 'Brak cukrow i polioli oraz brak semantycznej przeslanki alkoholu — moce sa zerowe',
     };
   }
   const verifiedSpectrum = SUGAR_SPECTRUM_FIELDS.map((field) => fields[field]).filter(
@@ -279,7 +279,7 @@ export function sweetnessPathOf(
       return {
         kind: 'sugar_spectrum',
         resolved: true,
-        reason: `zweryfikowane widmo cukrow pokrywa ${named.toFixed(1)} z ${sugars.toFixed(1)} g`,
+        reason: `Zweryfikowane widmo cukrow pokrywa ${named.toFixed(1)} z ${sugars.toFixed(1)} g`,
       };
     }
   }
@@ -338,8 +338,8 @@ export function sweetnessPathOf(
       kind: profilePowers ? 'stored' : 'unknown_non_material',
       resolved: true,
       reason:
-        `pozostala niepewnosc nie jest materialna: POD Δmax ${materiality.maxPodEffect}, ` +
-        `NPAC Δmax ${materiality.maxNpacEffect}, tolerancja Engine ` +
+        `Pozostała niepewność nie jest istotna: POD Δmax ${materiality.maxPodEffect}, ` +
+        `NPAC Δmax ${materiality.maxNpacEffect}, tolerancja obliczeń ` +
         `${materiality.engineAcceptanceTolerance}`,
       materiality,
     };
@@ -348,8 +348,8 @@ export function sweetnessPathOf(
     kind: 'unresolved',
     resolved: false,
     reason:
-      `pozostala niepewnosc jest materialna: POD Δmax ${materiality.maxPodEffect}, ` +
-      `NPAC Δmax ${materiality.maxNpacEffect}, tolerancja Engine ` +
+      `Pozostała niepewność jest istotna: POD Δmax ${materiality.maxPodEffect}, ` +
+      `NPAC Δmax ${materiality.maxNpacEffect}, tolerancja obliczeń ` +
       `${materiality.engineAcceptanceTolerance}`,
     materiality,
   };

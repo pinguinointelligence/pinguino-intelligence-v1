@@ -27,7 +27,7 @@ export function AdminUsersSection() {
     mutationFn: (
       kind: 'SUSPEND' | 'REACTIVATE' | 'GRANT_COMPLIMENTARY' | 'REVOKE_COMPLIMENTARY',
     ) => {
-      if (!selected) throw new Error('Wybierz użytkownika.');
+      if (!selected) throw new Error('Wybierz użytkownika');
       const activeAdminGrant = Array.isArray(selected.entitlements)
         ? (selected.entitlements.find((item: unknown) => {
             const value = item as Record<string, unknown>;
@@ -170,7 +170,7 @@ export function AdminUsersSection() {
             </div>
           ) : (
             <p className="mt-4 text-sm text-stone-500">
-              Wybierz konto. Każda zmiana wymaga powodu i roli SUPPORT.
+              Wybierz konto. Każda zmiana wymaga powodu i roli SUPPORT
             </p>
           )}
         </aside>

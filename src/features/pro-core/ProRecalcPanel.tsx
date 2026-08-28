@@ -235,7 +235,7 @@ function RecalcDiagnosisView({
       <div className="space-y-3" data-testid="pro-recalc-standard-removal-required">
         <div className="space-y-1">
           <p className="text-sm font-semibold text-ivory">
-            Ten składnik trzeba usunąć albo zmienić.
+            Ten składnik trzeba usunąć albo zmienić
           </p>
           <p className="text-sm leading-relaxed text-ivory/85">{issue.messagePl}</p>
         </div>
@@ -304,7 +304,7 @@ function RecalcDiagnosisView({
         {productBehaviorRefreshable && issue.code === 'product_behavior_invalid' ? (
           <div className="space-y-1" data-testid="pro-recalc-product-behavior-refresh-copy">
             <p className="text-sm leading-relaxed text-ivory/90">
-              Dane produktów w tej wersji są nieaktualne.
+              Dane produktów w tej wersji są nieaktualne
             </p>
             <p className="text-xs leading-relaxed text-ivory/70">
               Dotyczy:{' '}
@@ -721,9 +721,9 @@ export function RescueAdviceHint({
       </p>
       <p className="mt-1 text-xs leading-relaxed text-ivory/70">{advice.reasonPl}</p>
       <p className="mt-1 text-xs leading-relaxed text-ivory/70">
-        Gellatti nie doda tego składnika automatycznie. Wróć do receptury, wybierz „Dodaj składnik”,
-        dodaj zweryfikowany produkt i przelicz recepturę ponownie — nowy podgląd musi nadal
-        potwierdzić twardość, zamrożenie, ciała stałe oraz wszystkie bezpieczne zakresy.
+        Gellatti nie doda tego składnika automatycznie. Wróć do Receptury, wybierz „Dodaj składnik”
+        i dodaj zweryfikowany produkt. Następnie przelicz ponownie — podgląd musi potwierdzić twardość,
+        zamrożenie, ciała stałe i wszystkie bezpieczne zakresy.
       </p>
       {onAddIngredient ? (
         <button
@@ -773,7 +773,7 @@ export function DirectionBestDecision({
     >
       <div>
         <p className="text-sm font-medium text-ivory">
-          Nie mogę osiągnąć dokładnie wybranego celu.
+          Nie mogę osiągnąć dokładnie wybranego celu
         </p>
         <p className="mt-1 text-xs text-ivory/70">
           Najbliższy poprawny wynik: {assessment?.score ?? 9}/10
@@ -789,7 +789,7 @@ export function DirectionBestDecision({
         </div>
       ) : null}
       <p className="text-xs text-ivory/65">
-        Wszystkie natywne wymagania technologiczne pozostają ważne.
+        Wszystkie natywne wymagania technologiczne pozostają ważne
       </p>
       <StarterPackRescueDecision
         report={starterPackRescueReport}
@@ -1032,7 +1032,7 @@ export function ProRecalcPanel({
 
   if (!open) return null;
   const customerPreviewOpen = preview !== null && recalculationTerminal?.state === 'PREVIEW_READY';
-  const dialogLabel = customerPreviewOpen ? 'Gotowe. Sprawdź proponowaną korektę.' : r.title;
+  const dialogLabel = customerPreviewOpen ? 'Sprawdź proponowaną korektę.' : r.title;
   const previewCard = preview ? (
     <ConstraintPreviewCard
       preview={preview}

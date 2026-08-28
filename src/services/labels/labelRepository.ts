@@ -320,10 +320,10 @@ export function supabaseLabelRepository(client: SupabaseClient): LabelRepository
       const owner = await requireUserId();
       const preflight = buildLabelPreflight(label);
       if (!preflight.readyForSystemPrint || preflight.printReadiness === 'NOT_READY') {
-        throw new Error('Print-ready Label preflight required before immutable snapshot save.');
+        throw new Error('Przed zapisaniem etykiety potwierdź dane wymagane do druku');
       }
       if (!label.packageQuantity) {
-        throw new Error('Confirmed package quantity required before immutable snapshot save.');
+        throw new Error('Przed zapisaniem etykiety potwierdź ilość w opakowaniu.');
       }
       const profile = marketProfile(label.market);
       const frozenLabel: MasterLabelData = {
@@ -348,7 +348,7 @@ export function supabaseLabelRepository(client: SupabaseClient): LabelRepository
       });
       if (error) throw new Error(error.message);
       if (typeof snapshotId !== 'string') {
-        throw new Error('Nie otrzymano identyfikatora snapshotu etykiety.');
+        throw new Error('Nie otrzymano identyfikatora snapshotu etykiety');
       }
       const saved = await repository.getRunLabelSnapshotById(snapshotId);
       if (!saved || saved.ownerUserId !== owner) {
@@ -450,21 +450,21 @@ export function inMemoryLabelRepository(ownerUserId = 'owner-review-local'): Lab
       const key = memoryRunKey(ownerUserId, label.sourceCompletionSessionId);
       const completed = memoryCompleted.get(key);
       if (!completed) {
-        throw new Error('Owned completed Production snapshot required.');
+        throw new Error('Wymagany jest ukończony zapis Produkcji należący do tego konta');
       }
       const ingredientMass = label.ingredients.reduce(
         (total, ingredient) => total + ingredient.actualGrams,
         0,
       );
       if (Math.abs(ingredientMass - completed.actualFinalMassG) > 0.000_001) {
-        throw new Error('Label ingredients must come from the completed ACTUAL batch.');
+        throw new Error('Składniki etykiety muszą pochodzić z ukończonej partii ACTUAL');
       }
       const preflight = buildLabelPreflight(label);
       if (!preflight.readyForSystemPrint || preflight.printReadiness === 'NOT_READY') {
-        throw new Error('Print-ready Label preflight required before immutable snapshot save.');
+        throw new Error('Przed zapisaniem etykiety potwierdź dane wymagane do druku');
       }
       if (!label.packageQuantity) {
-        throw new Error('Confirmed package quantity required before immutable snapshot save.');
+        throw new Error('Przed zapisaniem etykiety potwierdź ilość w opakowaniu.');
       }
       const profile = memoryProfiles.get(ownerUserId) ?? defaultAccountLabelProfile(ownerUserId);
       const frozenLabel: MasterLabelData = {

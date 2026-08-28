@@ -167,7 +167,7 @@ export function buildResearchPlan(input: ResearchPlanInput): ResearchPlan {
       kind: 'OFFICIAL_DOMAIN_SEARCH',
       url: null,
       allowedDomains: [officialDomain],
-      reason: `wyszukiwanie ograniczone do oficjalnej domeny (${officialDomain})`,
+      reason: `Wyszukiwanie ograniczone do oficjalnej domeny (${officialDomain})`,
     });
   } else if (officialDomain) {
     // The owner's URL may be a catalogue page rather than this exact product;
@@ -176,7 +176,7 @@ export function buildResearchPlan(input: ResearchPlanInput): ResearchPlan {
       kind: 'OFFICIAL_DOMAIN_SEARCH',
       url: null,
       allowedDomains: [officialDomain],
-      reason: `wyszukiwanie dokładnego produktu w obrębie oficjalnej domeny (${officialDomain})`,
+      reason: `Wyszukiwanie dokładnego produktu w obrębie oficjalnej domeny (${officialDomain})`,
     });
   }
 
@@ -196,7 +196,7 @@ export function buildResearchPlan(input: ResearchPlanInput): ResearchPlan {
       kind: 'RETAILER_SEARCH',
       url: input.knownSourceUrl,
       allowedDomains: primary.domain ? [primary.domain] : [],
-      reason: `źródło podane przez właściciela (${primary.authority.toLowerCase()})`,
+      reason: `Źródło podane przez właściciela (${primary.authority.toLowerCase()})`,
     });
   }
 
@@ -204,14 +204,14 @@ export function buildResearchPlan(input: ResearchPlanInput): ResearchPlan {
     kind: 'RETAILER_SEARCH',
     url: null,
     allowedDomains: [...RETAILERS],
-    reason: 'wyszukiwanie u rozpoznanych sprzedawców',
+    reason: 'Wyszukiwanie u rozpoznanych sprzedawców',
   });
 
   steps.push({
     kind: 'OPEN_WEB_SEARCH',
     url: null,
     allowedDomains: [],
-    reason: 'ostateczność — otwarte wyszukiwanie',
+    reason: 'Ostateczność — otwarte wyszukiwanie',
   });
 
   return {

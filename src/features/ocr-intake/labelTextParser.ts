@@ -209,15 +209,15 @@ export function normalizeNumberToken(raw: string): { value: number | null; warni
   const hasComma = compact.includes(',');
   const hasDot = compact.includes('.');
   if (hasComma && hasDot) {
-    return { value: null, warning: `ambiguous number "${raw}" (mixed "," and ".") — left empty` };
+    return { value: null, warning: `Niejednoznaczna liczba „${raw}” (jednocześnie „,” i „.”) — pole pozostawiono puste` };
   }
   let normalized = compact;
   if (hasComma) {
     if (/^\d+,\d+$/.test(compact)) normalized = compact.replace(',', '.');
-    else return { value: null, warning: `ambiguous number "${raw}" (unclear comma) — left empty` };
+    else return { value: null, warning: `Niejednoznaczna liczba „${raw}” (niejasny przecinek) — pole pozostawiono puste` };
   }
   const n = Number(normalized);
-  if (!Number.isFinite(n)) return { value: null, warning: `unreadable number "${raw}" — left empty` };
+  if (!Number.isFinite(n)) return { value: null, warning: `Nieczytelna liczba „${raw}” — pole pozostawiono puste` };
   return { value: n, warning: null };
 }
 
@@ -498,20 +498,20 @@ const eanChecksumValid = (digits: string): boolean => {
 export function normalizeEanCode(raw: string): NormalizedEan {
   const digits = raw.replace(/[\s-]+/g, '');
   if (!/^\d+$/.test(digits) || digits.length === 0) {
-    return { digits, normalized: null, warning: `"${raw}" is not a digit sequence — not an EAN` };
+    return { digits, normalized: null, warning: `„${raw}” nie jest ciągiem cyfr — to nie jest EAN.` };
   }
   if (digits.length === 13 || digits.length === 8) {
     if (eanChecksumValid(digits)) return { digits, normalized: digits, warning: null };
     return {
       digits,
       normalized: null,
-      warning: `"${digits}" fails the EAN-${digits.length} checksum — raw digits kept, verify manually`,
+      warning: `„${digits}” nie przechodzi sumy kontrolnej EAN-${digits.length}. Zachowano cyfry — sprawdź kod ręcznie.`,
     };
   }
   return {
     digits,
     normalized: null,
-    warning: `"${digits}" is ${digits.length} digits — not EAN-8/EAN-13, checksum not verifiable`,
+    warning: `„${digits}” ma ${digits.length} cyfr. To nie jest EAN-8 ani EAN-13, więc nie można sprawdzić sumy kontrolnej.`,
   };
 }
 

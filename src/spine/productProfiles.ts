@@ -203,7 +203,7 @@ const sorbetProfile: ProductProfileDefinition = {
 
 const veganGelatoProfile: ProductProfileDefinition = {
   id: 'vegan_gelato',
-  label: 'Vegan Gelato',
+  label: 'Wegańskiej Gelato',
   designer: 'vegan_designer',
   optimizer: 'vegan_optimizer',
   temperatureRegulator: 'vegan_gelato_temperature_regulator',

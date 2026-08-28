@@ -36,7 +36,7 @@ export function BranchWorkflowPreviewPanel({
   preview: BranchRecalculationPreview;
   policy: BranchWorkflowDisplayPolicy;
 }) {
-  const branchLabel = preview.branch === 'actual_batch_rescue' ? 'Actual Batch Rescue' : 'Stock Shortage';
+  const branchLabel = preview.branch === 'actual_batch_rescue' ? 'Korekta rzeczywistej partii' : 'Stock Shortage';
   const branchResult = preview.batchRescue ?? preview.stockShortage;
   const menu = branchResult?.nextUserDecisionOptions ?? [];
   const menuLimitedReason = preview.stockShortage?.menuLimitedReason ?? null;
@@ -46,7 +46,7 @@ export function BranchWorkflowPreviewPanel({
 
   return (
     <Card padding="lg">
-      <SectionLabel>{branchLabel} · preview</SectionLabel>
+      <SectionLabel>{branchLabel} · podgląd</SectionLabel>
 
       <div className="mt-3 flex items-baseline justify-between gap-3">
         <span className="text-sm font-medium text-ivory">{humanize(preview.routeDecision)}</span>
@@ -57,7 +57,7 @@ export function BranchWorkflowPreviewPanel({
 
       {/* Hard display rules — always visible, every tier. */}
       <p className="mt-2 text-[11px] leading-relaxed text-ivory/60">
-        Preview only — nothing is applied. No inventory is changed. No recipe is saved.
+        To tylko podgląd — nic nie zostanie zastosowane, zapisane ani odjęte z zapasów.
       </p>
 
       {preview.exactStatusReason ? (
@@ -67,7 +67,7 @@ export function BranchWorkflowPreviewPanel({
       {/* The locked user-decision menu — safe in every tier (names, no numbers). */}
       {menu.length > 0 ? (
         <div className="mt-3 border-t border-ivory/10 pt-3">
-          <p className="font-mono text-[11px] text-ivory/60">your decision (nothing runs until a later slice):</p>
+          <p className="font-mono text-[11px] text-ivory/60">Twoja decyzja (na tym etapie nic nie zostanie uruchomione):</p>
           <p className="mt-1 text-xs leading-relaxed text-ivory/60">{menu.map(humanize).join(' · ')}</p>
         </div>
       ) : menuLimitedReason ? (
@@ -77,21 +77,21 @@ export function BranchWorkflowPreviewPanel({
       {/* Pro: VERIFIED exact numbers only. */}
       {policy.showExactGrams && verified && preview.exactActions.length > 0 && !preview.substitution ? (
         <p className="mt-3 font-mono text-[11px] text-sky-300/80">
-          verified add-only:{' '}
+          Zweryfikowane tylko dodawanie:{' '}
           {preview.exactActions.map((a) => `${a.type} ${a.ingredient} ${a.grams.toFixed(1)}g`).join(', ')}
         </p>
       ) : null}
       {policy.showExactGrams && verified && preview.substitution ? (
         <p className="mt-3 font-mono text-[11px] text-sky-300/80">
-          verified substitute ({humanize(preview.substitution.verification)}): keep{' '}
-          {preview.substitution.originalIngredientName} {preview.substitution.availableOriginalG.toFixed(1)}g +{' '}
-          {preview.substitution.substituteName} {preview.substitution.substituteG.toFixed(1)}g ·{' '}
+          Zweryfikowana zamiana ({humanize(preview.substitution.verification)}): pozostaw{' '}
+          {preview.substitution.originalIngredientName} {preview.substitution.availableOriginalG.toFixed(1)} g +{' '}
+          {preview.substitution.substituteName} {preview.substitution.substituteG.toFixed(1)} g ·{' '}
           {preview.substitution.verdict}
         </p>
       ) : null}
       {policy.showScaleFactor && verified && preview.scaleFactor !== null ? (
         <p className="mt-3 font-mono text-[11px] text-sky-300/80">
-          verified scale-down: ×{preview.scaleFactor.toFixed(3)} (all composition percentages preserved)
+          Verified scale-down: ×{preview.scaleFactor.toFixed(3)} (all composition percentages preserved)
         </p>
       ) : null}
       {policy.showBeforeAfterMetrics && preview.beforeMetrics && preview.afterMetrics ? (
@@ -114,17 +114,17 @@ export function BranchWorkflowPreviewPanel({
       {/* Safe codes — every tier. */}
       {measurements.length > 0 ? (
         <p className="mt-3 font-mono text-[11px] text-amber-300/70">
-          required next: {measurements.map(humanize).join(', ')}
+          Wymagane dalej: {measurements.map(humanize).join(', ')}
         </p>
       ) : null}
       {allWarnings.length > 0 ? (
-        <p className="mt-2 font-mono text-[11px] text-ivory/60">warnings: {allWarnings.map(humanize).join(', ')}</p>
+        <p className="mt-2 font-mono text-[11px] text-ivory/60">Warnings: {allWarnings.map(humanize).join(', ')}</p>
       ) : null}
 
       {/* Redacted tiers: the upgrade affordance instead of numbers. */}
       {!policy.showExactGrams ? (
         <p className="mt-3 text-[11px] leading-relaxed text-ivory/60">
-          Exact verified grams and ratios are available on Pro.
+          Dokładne zweryfikowane gramatury i proporcje są dostępne w Pro.
         </p>
       ) : null}
 
@@ -137,13 +137,13 @@ export function BranchWorkflowPreviewPanel({
           {preview.singleShotReason ? <div>single-shot: {preview.singleShotReason}</div> : null}
           {preview.multiStep ? (
             <div>
-              multi-step: {preview.multiStep.status} · steps {preview.multiStep.steps.length}/{preview.multiStep.maxSteps} ·
+              Multi-step: {preview.multiStep.status} · steps {preview.multiStep.steps.length}/{preview.multiStep.maxSteps} ·
               stop {preview.multiStep.stopReason}
             </div>
           ) : null}
           {preview.multiLever ? (
             <div>
-              multi-lever: {preview.multiLever.status} · steps {preview.multiLever.steps.length}/
+              Multi-lever: {preview.multiLever.status} · steps {preview.multiLever.steps.length}/
               {preview.multiLever.maxSteps} · stop {preview.multiLever.stopReason}
               {preview.multiLever.residualGates.length ? ` · residual ${preview.multiLever.residualGates.join(',')}` : ''}
             </div>

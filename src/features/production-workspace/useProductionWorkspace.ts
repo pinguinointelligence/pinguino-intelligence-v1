@@ -57,6 +57,7 @@ import {
   isProductionRescueAuthorizationRefreshError,
   isProductionRescueOptionUnavailableError,
   PRODUCTION_RESCUE_AUTHORITY_NAMESPACE,
+  productionRescueErrorMessagePl,
   productionRescueOptionUnavailableDetails,
 } from '@/services/proCore/supabaseProduction';
 import { metricLabel } from '@/features/pi-panel/indicatorView';
@@ -151,7 +152,7 @@ export const rescueOptionUnavailableMessage = (
   error: unknown,
 ): string => {
   if (!isProductionRescueOptionUnavailableError(error)) {
-    return 'Nie udało się obliczyć tej opcji.';
+    return productionRescueErrorMessagePl(error);
   }
   const target = Number.isInteger(originalTargetG)
     ? originalTargetG.toFixed(0)

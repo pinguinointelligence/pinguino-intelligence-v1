@@ -107,7 +107,7 @@ export function validatePlausibility(input: ProductFieldTruthMap): PlausibilityO
     involved: readonly WorkingNumericField[],
     detail: string,
   ): void => {
-    const reason = `wycofane przez regułę spójności: ${detail}`;
+    const reason = `Wycofane przez regułę spójności: ${detail}`;
     const result = withdrawEstimates(fields, involved, reason);
     fields = result.fields;
     if (result.withdrawn.length === 0) contradictedByDeclaration = true;

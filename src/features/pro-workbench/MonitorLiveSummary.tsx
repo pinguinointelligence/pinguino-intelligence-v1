@@ -78,7 +78,7 @@ export function MonitorLiveSummary({
       <div data-testid="monitor-direction-evidence">
         <div className="mb-3 px-1">
           <h2 className="text-base font-semibold text-ink">Monitor receptury</h2>
-          <p className="mt-0.5 text-xs text-stone-600">Bieżący wynik dla wybranych ustawień.</p>
+          <p className="mt-0.5 text-xs text-stone-600">Bieżący wynik dla wybranych ustawień</p>
         </div>
         <MonitorScoreHeader
           comparison={monitorScoreComparison({ input, result, previewInput, previewResult })}

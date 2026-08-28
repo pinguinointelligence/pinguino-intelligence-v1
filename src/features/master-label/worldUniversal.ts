@@ -1,8 +1,8 @@
 import { escapeHtml } from './renderers/shared';
 
 export const WORLD_INFORMATIONAL_WARNING_LINES = [
-  'INTERNAL / INFORMATIONAL LABEL',
-  'NOT VALIDATED FOR RETAIL SALE',
+  'ETYKIETA WEWNĘTRZNA / INFORMACYJNA',
+  'NIEZWERYFIKOWANE DO SPRZEDAŻY DETALICZNEJ',
 ] as const;
 
 export function worldInformationalWarningHtml(): string {

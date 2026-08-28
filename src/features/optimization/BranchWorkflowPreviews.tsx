@@ -148,7 +148,7 @@ export function BranchWorkflowPreviews({
   return (
     <div className="space-y-3 border-t border-ivory/10 pt-6">
       <div className="flex flex-col gap-1">
-        <SectionLabel>Batch rescue &amp; stock shortage</SectionLabel>
+        <SectionLabel>Korekta partii i brak składnika</SectionLabel>
         <p className="text-xs leading-relaxed text-ivory/60">
           Preview only — nothing is applied. No inventory is changed. No recipe is saved. Decisions and any
           verified numbers come from the real engine with regulator verification; missing measurements block
@@ -158,13 +158,13 @@ export function BranchWorkflowPreviews({
 
       {!policy.canRunWorkflows ? (
         <p className="text-[11px] leading-relaxed text-ivory/60">
-          Batch rescue and stock shortage previews are available on Pro.
+          Podgląd korekty partii i braków składników jest dostępny w Pro.
         </p>
       ) : (
         <>
           {/* IF9 — Actual Batch Rescue (measured inputs, local state only) */}
           <div className="space-y-2 rounded-lg border border-ivory/10 bg-black/20 p-3">
-            <p className={labelCls}>Actual batch rescue — what did you observe?</p>
+            <p className={labelCls}>Korekta rzeczywistej partii — co zaobserwowałeś?</p>
             <select className={inputCls} value={problem} onChange={(e) => setProblem(e.target.value as BatchRescueProblem)}>
               {RESCUE_PROBLEMS.map((p) => (
                 <option key={p.value} value={p.value}>
@@ -174,51 +174,51 @@ export function BranchWorkflowPreviews({
             </select>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <p className={labelCls}>measured batch (g)</p>
-                <input className={inputCls} inputMode="decimal" placeholder="weigh it" value={measuredBatchG} onChange={(e) => setMeasuredBatchG(e.target.value)} />
+                <p className={labelCls}>Zmierzona masa partii (g)</p>
+                <input className={inputCls} inputMode="decimal" placeholder="Weigh it" value={measuredBatchG} onChange={(e) => setMeasuredBatchG(e.target.value)} />
               </div>
               <div>
                 <p className={labelCls}>observed serving °C</p>
-                <input className={inputCls} inputMode="decimal" placeholder="optional" value={observedTempC} onChange={(e) => setObservedTempC(e.target.value)} />
+                <input className={inputCls} inputMode="decimal" placeholder="Optional" value={observedTempC} onChange={(e) => setObservedTempC(e.target.value)} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-1.5">
-              <Check label="already frozen" checked={frozen} onChange={setFrozen} />
-              <Check label="can reprocess" checked={canReprocess} onChange={setCanReprocess} />
-              <Check label="liquid addition ok" checked={liquidOk} onChange={setLiquidOk} />
-              <Check label="dry addition ok" checked={dryOk} onChange={setDryOk} />
+              <Check label="Already frozen" checked={frozen} onChange={setFrozen} />
+              <Check label="Can reprocess" checked={canReprocess} onChange={setCanReprocess} />
+              <Check label="Liquid addition ok" checked={liquidOk} onChange={setLiquidOk} />
+              <Check label="Dry addition ok" checked={dryOk} onChange={setDryOk} />
             </div>
             <Check label="food-safety concern (contamination)" checked={foodSafety} onChange={setFoodSafety} />
             <button type="button" onClick={runRescuePreview} className={buttonCls}>
-              Preview actual batch rescue
+              Podgląd korekty partii
             </button>
           </div>
 
           {/* IF10 — Stock Shortage (stock inputs, local state only; no substitutes declarable) */}
           <div className="space-y-2 rounded-lg border border-ivory/10 bg-black/20 p-3">
-            <p className={labelCls}>Stock shortage — which line is short?</p>
+            <p className={labelCls}>Brak składnika — którego produktu brakuje?</p>
             <select className={inputCls} value={shortLineId} onChange={(e) => setShortLineId(e.target.value)}>
               {recipe.items.map((i) => (
                 <option key={i.id} value={i.id}>
-                  {i.ingredient.name} · needs {i.planned_grams.toFixed(0)} g
+                  {i.ingredient.name} · potrzeba {i.planned_grams.toFixed(0)} g
                 </option>
               ))}
             </select>
             <div>
               <p className={labelCls}>available in stock (g)</p>
-              <input className={inputCls} inputMode="decimal" placeholder="count it" value={availableG} onChange={(e) => setAvailableG(e.target.value)} />
+              <input className={inputCls} inputMode="decimal" placeholder="Count it" value={availableG} onChange={(e) => setAvailableG(e.target.value)} />
             </div>
             <div className="grid grid-cols-2 gap-1.5">
-              <Check label="may scale batch down" checked={canScaleDown} onChange={setCanScaleDown} />
-              <Check label="may reformulate" checked={canReformulate} onChange={setCanReformulate} />
-              <Check label="can buy / wait" checked={purchasePossible} onChange={setPurchasePossible} />
+              <Check label="Można zmniejszyć masę partii" checked={canScaleDown} onChange={setCanScaleDown} />
+              <Check label="May reformulate" checked={canReformulate} onChange={setCanReformulate} />
+              <Check label="Can buy / wait" checked={purchasePossible} onChange={setPurchasePossible} />
             </div>
             <p className="text-[10px] leading-relaxed text-ivory/60">
-              Verified substitute preview requires a calibrated substitute from the reference catalog —
+              Verified substitute podgląd requires a calibrated substitute from the reference catalog —
               substitutes can never be typed in by hand.
             </p>
             <button type="button" onClick={runShortagePreview} className={buttonCls}>
-              Preview stock shortage
+              Podgląd braku składnika
             </button>
           </div>
 

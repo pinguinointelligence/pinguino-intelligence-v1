@@ -32,10 +32,10 @@ function directionSummary(preview: ConstraintPreview): string | null {
   const targets = preview.proposedInput.goals.direction_targets;
   if (!targets) return null;
   const labels = [
-    targets.sweetness < 0 ? 'mniej słodkie' : targets.sweetness > 0 ? 'bardziej słodkie' : null,
+    targets.sweetness < 0 ? 'Mniej słodkie' : targets.sweetness > 0 ? 'Bardziej słodkie' : null,
     // Historical field name; the sign follows the visible Twardość control:
     // negative = softer, positive = firmer.
-    targets.softness < 0 ? 'miększe' : targets.softness > 0 ? 'twardsze' : null,
+    targets.softness < 0 ? 'Miększe' : targets.softness > 0 ? 'Twardsze' : null,
   ].filter((label): label is string => label !== null);
   return labels.length > 0 ? labels.join(' · ') : 'środek wybranego profilu';
 }
@@ -193,19 +193,19 @@ export function ConstraintPreviewCard({
       : preview.directionAssessment?.reached
         ? 'Receptura spełnia wybrany profil.'
         : changedLines.length > 0
-          ? 'Gotowe. Sprawdź korektę i zastosuj ją, jeśli Ci odpowiada.'
+          ? 'Sprawdź korektę i zastosuj ją, jeśli Ci odpowiada.'
           : 'Receptura nie wymaga zmian.';
   const mainCount = preview.proposedInput.items.filter((item) => item.lock_type === 'main').length;
 
   return (
     <section
-      aria-label="Gotowe. Sprawdź proponowaną korektę."
+      aria-label="Sprawdź proponowaną korektę."
       className="rounded-[14px] border border-black/10 bg-white px-3 py-3 text-black [--color-charcoal:#191a1d] [--color-ivory:#202124] [--color-shell:#f5f3ee] [color-scheme:light] sm:px-4 sm:py-4"
       data-testid="preview-customer-view"
     >
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-base font-semibold leading-tight text-black sm:text-lg">
-          Gotowe. Sprawdź proponowaną korektę.
+          Sprawdź proponowaną korektę.
         </h2>
         <div className="flex shrink-0 items-center gap-2">
           <span className="hidden rounded-full border border-black/10 bg-stone-100 px-2.5 py-1 text-[0.625rem] font-semibold tracking-[0.08em] text-black/65 uppercase sm:inline-flex">
@@ -252,7 +252,7 @@ export function ConstraintPreviewCard({
             </span>
             {mainCount > 0 ? (
               <span className="rounded-full border border-gold-soft/45 bg-white/80 px-2 py-0.5 text-[11px] font-medium text-black/65">
-                {mainCount} {mainCount === 1 ? 'składnik główny' : 'składniki główne'}
+                {mainCount} {mainCount === 1 ? 'Składnik główny' : 'Składniki główne'}
               </span>
             ) : null}
           </div>
@@ -365,14 +365,14 @@ export function ConstraintPreviewCard({
                     : 'Blokada wymusza twardo nieprawidłową recepturę:'}
                 </span>{' '}
                 {preview.safetyLockConflict.ingredientName} ma blokadę{' '}
-                {formatGramsPl(preview.safetyLockConflict.beforeGrams)}. Ten podgląd proponuje
-                jawnie zmianę blokady na {formatGramsPl(preview.safetyLockConflict.requiredGrams)} —{' '}
+                {formatGramsPl(preview.safetyLockConflict.beforeGrams)}. Podgląd proponuje zmianę
+                blokady na {formatGramsPl(preview.safetyLockConflict.requiredGrams)} —{' '}
                 {preview.safetyLockConflict.reason === 'constraint_feasibility'
                   ? 'wartość potwierdzoną przez zatwierdzone reguły obliczeń'
                   : preview.safetyLockConflict.boundary === 'maximum'
                     ? 'zatwierdzone maksimum'
                     : 'zatwierdzone minimum'}
-                . Nic nie zmieni się bez użycia „Zastosuj zmiany”.
+                . Nic nie zmieni się bez „Zastosuj zmiany”.
               </div>
             ) : null}
 
@@ -488,7 +488,7 @@ export function ConstraintPreviewCard({
                     ? diagnostic
                       ? 'Kierunek osiągnięty tylko w podglądzie diagnostycznym. Receptura nadal nie jest gotowa do zastosowania.'
                       : score === 10
-                        ? 'Gellattissimo! Wybrany profil osiągnięty.'
+                        ? 'Wybrany profil został osiągnięty.'
                         : 'Wybrany profil osiągnięty.'
                     : 'Najbliższy bezpieczny profil — zaakceptowany świadomie przed tym podglądem.'}
                 </p>

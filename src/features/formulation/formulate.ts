@@ -424,24 +424,24 @@ export interface FormulationProposal {
 }
 
 const ROLE_LABEL_PL: Record<FunctionalRole, string> = {
-  primary_liquid: 'baza mleczna',
-  dairy_fat: 'tłuszcz mleczny',
-  milk_solids: 'sucha masa mleczna',
+  primary_liquid: 'Baza mleczna',
+  dairy_fat: 'Tłuszcz mleczny',
+  milk_solids: 'Sucha masa mleczna',
   sweetener_sucrose: 'cukier podstawowy',
-  sugar_freezing_control: 'cukier kontrolujący zamarzanie',
-  fiber_body: 'błonnik / pełnia',
-  stabilizer: 'stabilizator',
-  salt_modifier: 'sól',
-  fruit: 'owoc',
-  chocolate_cocoa: 'czekolada i kakao',
-  nut_paste: 'pasta orzechowa',
-  alcohol: 'alkohol',
-  plant_liquid: 'baza roślinna',
-  plant_fat: 'tłuszcz roślinny',
-  protein_source: 'źródło białka',
-  water: 'woda',
-  egg: 'jaja',
-  flavor_other: 'składnik smakowy',
+  sugar_freezing_control: 'Cukier kontrolujący zamarzanie',
+  fiber_body: 'Błonnik / pełnia',
+  stabilizer: 'Stabilizator',
+  salt_modifier: 'Sól',
+  fruit: 'Owoc',
+  chocolate_cocoa: 'Czekolada i kakao',
+  nut_paste: 'Pasta orzechowa',
+  alcohol: 'Alkohol',
+  plant_liquid: 'Baza roślinna',
+  plant_fat: 'Tłuszcz roślinny',
+  protein_source: 'Źródło białka',
+  water: 'Woda',
+  egg: 'Jaja',
+  flavor_other: 'Składnik smakowy',
 };
 
 const toolboxIngredient = (id: string) =>
@@ -573,8 +573,8 @@ export function buildFormulationProposal(
       code: 'main_ingredient_unavailable',
       ingredientIds,
       messagePl:
-        `Składnik Główny (${ingredientIds.join(', ')}) jest oznaczony jako niedostępny. ` +
-        'Gellatti nie usunie składnika, który definiuje recepturę. Dodaj zatwierdzony zamiennik lub przywróć składnik.',
+        `Składnik Główny (${ingredientIds.join(', ')}) jest niedostępny. Gellatti nie ` +
+        'usunie składnika definiującego recepturę. Dodaj zatwierdzony zamiennik albo przywróć składnik.',
     };
   }
   const excluded = new Set(options.excludedIngredientIds ?? []);
@@ -1087,10 +1087,10 @@ export function buildFormulationProposal(
       code: 'missing_required_role',
       role: flavourGap.role,
       messagePl:
-        `Składnik „${flavourGap.name}" (rola „${ROLE_LABEL_PL[flavourGap.role]}") ma 0 g, ` +
-        `a zatwierdzona receptura bazowa ${template.templateId} nie zawiera tej roli — ` +
-        `Gellatti nie zgaduje ilości składnika smakowego. Wpisz ilość, ` +
-        `a reszta receptury zostanie dopasowana wokół niej.`,
+        `Składnik „${flavourGap.name}” (rola „${ROLE_LABEL_PL[flavourGap.role]}”) ma 0 g, ` +
+        `a zatwierdzona baza ${template.templateId} nie określa tej roli. Gellatti ` +
+        `nie zgaduje ilości składnika smakowego. Wpisz ilość ręcznie; ` +
+        `Gellatti dopasuje resztę receptury.`,
       roleTrace,
     };
   }

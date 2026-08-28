@@ -25,6 +25,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/client';
 import type { RecipeVersion } from '@/features/pro-core/recipeContracts';
 import {
+  scaleMessagePl,
   scaleRecipeVersion,
   type ScaleOptions,
   type ScaleResult,
@@ -404,6 +405,18 @@ export const isProductionRescueOptionUnavailableError = (error: unknown): boolea
       .replace(/[^a-z0-9]+/g, '_')
       .includes('stable_rescue_option_stale'));
 
+/** Presentation-only mapping; authorization/error protocol strings remain unchanged. */
+export const productionRescueErrorMessagePl = (error: unknown): string => {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes('Production Rescue option is unavailable.')) {
+    return 'Korekta partii jest teraz niedostępna.';
+  }
+  if (message.includes('Production Rescue authorization failed.')) {
+    return 'Nie udało się potwierdzić dostępu do korekty partii.';
+  }
+  return 'Nie udało się potwierdzić dostępu do korekty partii.';
+};
+
 export const productionRescueOptionUnavailableDetails = (
   error: unknown,
 ): { reasonCode: string | null; violationMetrics: string[] } | null =>
@@ -634,7 +647,7 @@ export function supabaseProductionRepository(
       }
       const owner = await uid();
       const scaled = scaleRecipeVersion(args.version, args.target, args.scaleOptions);
-      if (!scaled.ok) throw new ProductionPersistenceError(scaled.message);
+      if (!scaled.ok) throw new ProductionPersistenceError(scaleMessagePl(scaled.message));
 
       // Build the domain run (status draft) from the EXACT immutable version, then persist it.
       const run = buildProductionRun({
@@ -679,7 +692,7 @@ export function supabaseProductionRepository(
       }
       const owner = await uid();
       const scaled = scaleRecipeVersion(args.version, args.target, args.scaleOptions);
-      if (!scaled.ok) throw new ProductionPersistenceError(scaled.message);
+      if (!scaled.ok) throw new ProductionPersistenceError(scaleMessagePl(scaled.message));
       const run = buildProductionRun({
         ownerUserId: owner,
         scaled,

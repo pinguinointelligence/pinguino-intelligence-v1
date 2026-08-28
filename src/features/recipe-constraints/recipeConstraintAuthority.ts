@@ -124,7 +124,7 @@ export function evaluateRecipeConstraintAuthority(
       code: 'critical_warning',
       lineIds: recipe.items.map((item) => item.id),
       metric: warning.code,
-      messagePl: `Krytyczne ostrzeżenie Engine: ${warning.code}.`,
+      messagePl: `Krytyczne ostrzeżenie obliczeń: ${warning.code}.`,
     });
   }
 
@@ -162,8 +162,8 @@ export function evaluateRecipeConstraintAuthority(
       code: 'protein_claim_unmet',
       lineIds: recipe.items.map((item) => item.id),
       messagePl:
-        `Profil Protein wymaga deklaracji „wysoka zawartość białka” (min. 20% energii z białka); ` +
-        `kandydat ma ${protein.qualification.energySharePercent?.toFixed(0)}% energii z białka ` +
+        `Profil Protein wymaga min. 20% energii z białka. Kandydat ` +
+        `ma ${protein.qualification.energySharePercent?.toFixed(0)}% energii z białka ` +
         `przy ${protein.actualPercent?.toFixed(1)}% białka w masie.`,
     });
   }

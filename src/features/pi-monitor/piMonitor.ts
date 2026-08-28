@@ -341,10 +341,10 @@ export function recalculateWithPi(input: RecalculateWithPiInput): PiRecalculatio
 
 function axisNames(ids: PiAxisId[]): string {
   const LABELS: Record<PiAxisId, string> = {
-    slodycz: 'słodycz',
-    miekkosc_twardosc: 'twardość',
-    kremowosc_tluszcz: 'kremowość',
-    pelnia_body: 'pełnię',
+    slodycz: 'Słodycz',
+    miekkosc_twardosc: 'Twardość',
+    kremowosc_tluszcz: 'Kremowość',
+    pelnia_body: 'Pełnię',
   };
   return ids.map((id) => LABELS[id]).join(', ');
 }

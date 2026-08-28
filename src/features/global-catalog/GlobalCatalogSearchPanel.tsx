@@ -312,7 +312,7 @@ export function GlobalCatalogSearchPanel() {
             );
           })}
           {catalog.isSettled && resultCount === 0 ? (
-            <p className="px-3 py-6 text-sm text-stone-600">Brak pasujących produktów.</p>
+            <p className="px-3 py-6 text-sm text-stone-600">Brak pasujących produktów</p>
           ) : null}
           {hits.length > visibleLimit || catalog.hasMore ? (
             <div className="border-t border-ink/8 p-3">
@@ -410,7 +410,7 @@ export function GlobalCatalogSearchPanel() {
               </div>
             </>
           ) : (
-            <p className="py-6 text-sm text-stone-500">Wybierz produkt, aby zobaczyć szczegóły.</p>
+            <p className="py-6 text-sm text-stone-500">Wybierz produkt, aby zobaczyć szczegóły</p>
           )}
         </aside>
       </div>

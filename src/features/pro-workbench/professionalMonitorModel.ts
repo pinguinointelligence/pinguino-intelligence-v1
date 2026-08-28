@@ -61,7 +61,7 @@ const TOOLTIP = {
   proteinInSolids: 'Udział białka w suchej części mieszanki.',
   lactoseRisk: 'Wskaźnik ryzyka wyczuwalnej krystalizacji laktozy podczas przechowywania.',
   stabilizer:
-    'Ilość stabilizatora w bieżącej recepturze względem zatwierdzonego profilu składnika.',
+    'Ilość stabilizatora w bieżącej recepturze względem zatwierdzonego profilu składnika',
   stability: 'Semantyczny stan zachowania przy zamrażaniu, bez powtarzania surowej wartości NPAC.',
   serving: 'Temperatura użyta do bieżącej oceny technologicznej.',
   fiber: 'Łączna ilość błonnika w całej partii.',
@@ -79,7 +79,7 @@ const TOOLTIP = {
  * milk-anchor estimate. Anchor-calibrated profiles keep their accepted wording.
  */
 const SORBET_ICE_TOOLTIP =
-  'Udział masy lodu w całej mieszance (masa lodu / masa całej mieszanki) w temperaturze serwowania. Wpływa na twardość i odczucie lodu.';
+  'Udział masy lodu w całej mieszance (masa lodu / masa całej mieszanki) w temperaturze serwowania. Wpływa na twardość i odczucie lodu';
 
 const iceTooltip = (category: ProductCategory): string =>
   category === 'sorbet' ? SORBET_ICE_TOOLTIP : TOOLTIP.ice;

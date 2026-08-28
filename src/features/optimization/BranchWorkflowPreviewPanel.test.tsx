@@ -69,25 +69,25 @@ describe('BranchWorkflowPreviewPanel — redaction (Demo/Free vs Pro vs DEV)', (
     const html = renderPanel(rescuePartial(), demo);
     expect(html).not.toContain('212');
     expect(/dextrose/i.test(html)).toBe(false);
-    expect(visibleText(html)).toMatch(/available on Pro/);
+    expect(visibleText(html)).toMatch(/Dokładne zweryfikowane gramatury i proporcje są dostępne w Pro/);
   });
 
   it('Demo/Free never see the exact IF10 scale factor', () => {
     const html = renderPanel(shortageCalculated(), demo);
     expect(html).not.toContain('0.720');
-    expect(visibleText(html)).toMatch(/available on Pro/);
+    expect(visibleText(html)).toMatch(/Dokładne zweryfikowane gramatury i proporcje są dostępne w Pro/);
   });
 
   it('Pro sees the VERIFIED IF9 add-only grams', () => {
     const t = visibleText(renderPanel(rescuePartial(), pro));
-    expect(t).toMatch(/verified add-only/);
+    expect(t).toMatch(/Zweryfikowane tylko dodawanie/);
     expect(t).toMatch(/add Dextrose 212\.3g/);
-    expect(t).not.toMatch(/available on Pro/);
+    expect(t).not.toMatch(/są dostępne w Pro/);
   });
 
   it('Pro sees the VERIFIED IF10 scale-down ratio', () => {
     const t = visibleText(renderPanel(shortageCalculated(), pro));
-    expect(t).toMatch(/verified scale-down: ×0\.720/);
+    expect(t).toMatch(/Verified scale-down: ×0\.720/);
     expect(t).toMatch(/composition percentages preserved/);
   });
 
@@ -96,21 +96,21 @@ describe('BranchWorkflowPreviewPanel — redaction (Demo/Free vs Pro vs DEV)', (
     expect(/raspberry/i.test(html)).toBe(false);
     expect(html).not.toContain('360');
     expect(html).not.toContain('240');
-    expect(visibleText(html)).toMatch(/available on Pro/);
+    expect(visibleText(html)).toMatch(/Dokładne zweryfikowane gramatury i proporcje są dostępne w Pro/);
   });
 
   it('Pro sees the verified substitute split with provenance and verdict', () => {
     const t = visibleText(renderPanel(substituteCalculated(), pro));
-    expect(t).toMatch(/verified substitute \(verified reference\)/);
-    expect(t).toMatch(/keep Strawberry 240\.0g/);
-    expect(t).toMatch(/Raspberry puree 360\.0g/);
+    expect(t).toMatch(/Zweryfikowana zamiana \(verified reference\)/);
+    expect(t).toMatch(/pozostaw Strawberry 240\.0 g/);
+    expect(t).toMatch(/Raspberry puree 360\.0 g/);
     expect(t).toMatch(/hero ingredient substitution changes product identity/);
   });
 
   it('DEV shows the debug trace but STILL respects demo redaction', () => {
     const html = renderPanel(rescuePartial(), devDemo);
     expect(html).toContain('DEV trace');
-    expect(html).toContain('multi-lever');
+    expect(html).toContain('Multi-lever');
     expect(html).toContain('verification_failed');
     expect(html).not.toContain('212'); // additive trace, no redaction upgrade
     expect(/dextrose/i.test(html)).toBe(false);
@@ -122,7 +122,7 @@ describe('BranchWorkflowPreviewPanel — honest labels and hard display rules', 
     const preview = rescuePartial();
     expect(preview.exactStatus).toBe('partial_improvement'); // the real Slice 20 outcome
     const t = visibleText(renderPanel(preview, pro));
-    expect(t).toMatch(/partial improvement — not fully rescued/);
+    expect(t).toMatch(/Partial improvement — not fully rescued/);
     expect(branchStatusLabel('partial_improvement')).not.toBe('verified');
     // every "rescued" occurrence is inside an explicit "not fully rescued" phrase
     expect(t.replace(/not fully rescued/g, '')).not.toMatch(/rescued/);
@@ -155,9 +155,9 @@ describe('BranchWorkflowPreviewPanel — honest labels and hard display rules', 
   it('always shows the preview-only / no-inventory / no-save disclaimers', () => {
     for (const policy of [demo, pro, devDemo]) {
       const t = visibleText(renderPanel(rescuePartial(), policy));
-      expect(t).toMatch(/Preview only — nothing is applied/);
-      expect(t).toMatch(/No inventory is changed/);
-      expect(t).toMatch(/No recipe is saved/);
+      expect(t).toMatch(
+        /To tylko podgląd — nic nie zostanie zastosowane, zapisane ani odjęte z zapasów/,
+      );
     }
   });
 
@@ -182,21 +182,21 @@ describe('BranchWorkflowPreviews — Studio section (paid gate + explicit click)
   it('Demo/Free see the section + upgrade affordance, but NO runnable workflow buttons', () => {
     const html = renderSection({ exactCorrectionGrams: false, technicalView: false });
     const t = visibleText(html);
-    expect(t).toMatch(/Batch rescue/);
-    expect(t).toMatch(/available on Pro/);
+    expect(t).toMatch(/Korekta partii i brak składnika/);
+    expect(t).toMatch(/Podgląd korekty partii i braków składników jest dostępny w Pro/);
     expect(html.includes('<button')).toBe(false);
   });
 
   it('Pro sees the two explicit preview buttons and the local measurement inputs', () => {
     const html = renderSection({ exactCorrectionGrams: true, technicalView: true });
     const t = visibleText(html);
-    expect(t).toMatch(/Preview actual batch rescue/);
-    expect(t).toMatch(/Preview stock shortage/);
-    expect(t).toMatch(/measured batch \(g\)/);
+    expect(t).toMatch(/Podgląd korekty partii/);
+    expect(t).toMatch(/Podgląd braku składnika/);
+    expect(t).toMatch(/Zmierzona masa partii \(g\)/);
     expect(t).toMatch(/available in stock \(g\)/);
     // explicit-click only: no panel output on initial render
-    expect(t).not.toMatch(/your decision/);
-    expect(t).not.toMatch(/· preview/);
+    expect(t).not.toMatch(/Twoja decyzja/);
+    expect(t).not.toMatch(/· podgląd/);
   });
 
   it('the ONLY buttons are the two preview triggers — nothing apply/save-shaped', () => {
@@ -204,7 +204,7 @@ describe('BranchWorkflowPreviews — Studio section (paid gate + explicit click)
     const buttons = html.match(/<button[^>]*>[\s\S]*?<\/button>/g) ?? [];
     expect(buttons).toHaveLength(2);
     for (const b of buttons) {
-      expect(/Preview/.test(b)).toBe(true);
+      expect(/Podgląd/.test(b)).toBe(true);
       expect(/apply|save|update/i.test(b)).toBe(false);
     }
   });

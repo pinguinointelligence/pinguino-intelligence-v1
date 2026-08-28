@@ -67,9 +67,9 @@ export interface StatusDecision {
 }
 
 const REFERENCE_LINKED_WARNING =
-  'Profile values are linked from a reference ingredient, not an independent measurement of this product.';
+  'Wartości profilu pochodzą ze składnika referencyjnego, a nie z niezależnego pomiaru tego produktu.';
 const PENDING_VERIFICATION_WARNING =
-  'Pending verification — this product needs manual review before it can be verified.';
+  'Wymaga weryfikacji — produkt musi zostać sprawdzony przed zatwierdzeniem.';
 
 function decide(
   recommended_status: ProductStatus,

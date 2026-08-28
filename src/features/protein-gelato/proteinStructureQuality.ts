@@ -165,9 +165,9 @@ export function assessProteinStructure(
       code: 'protein_excess_over_claim',
       scored: true,
       messagePl:
-        `Receptura ma ${proteinPercent.toFixed(1)}% białka, a do deklaracji „wysoka zawartość białka” ` +
-        `wystarcza ${(qualification.requiredPercent ?? 0).toFixed(1)}%. Nadmiar ${excessPp.toFixed(1)} pp ` +
-        `nie poprawia produktu — w badaniach obniża napowietrzenie i zwiększa twardość.`,
+        `Receptura ma ${proteinPercent.toFixed(1)}% białka; do deklaracji „wysoka zawartość białka” ` +
+        `wystarcza ${(qualification.requiredPercent ?? 0).toFixed(1)}%. Dodatkowe ${excessPp.toFixed(1)} pp ` +
+        `nie poprawia wyniku i może pogorszyć napowietrzenie oraz twardość.`,
     });
   }
 
@@ -180,9 +180,9 @@ export function assessProteinStructure(
       code: 'protein_beyond_controlled_evidence',
       scored: true,
       messagePl:
-        `${proteinPercent.toFixed(1)}% białka wykracza poza wszystkie kontrolowane badania ` +
-        `mrożonych deserów (maksimum ${PROTEIN_EVIDENCE_WINDOW.evidenceCeilingPercent}%). ` +
-        `Zachowanie struktury w tym zakresie nie jest zweryfikowane.`,
+        `${proteinPercent.toFixed(1)}% białka przekracza zakres potwierdzony w badaniach ` +
+        `(do ${PROTEIN_EVIDENCE_WINDOW.evidenceCeilingPercent}%). ` +
+        `Struktura w tym zakresie nie jest zweryfikowana.`,
     });
   }
 
@@ -200,9 +200,9 @@ export function assessProteinStructure(
       code: 'lactose_load_over_approved_sanding_band',
       scored: true,
       messagePl:
-        `Laktoza ${lactosePercent.toFixed(1)}% przekracza zatwierdzony zakres ryzyka piaszczystości ` +
-        `(maks. ${PROTEIN_LACTOSE_QUALITY.approvedSandingRiskMaxPercent}%). Źródło białka wnosi dużo laktozy — ` +
-        `źródło o wyższej czystości dostarczy to samo białko przy mniejszym ryzyku.`,
+        `Laktoza ${lactosePercent.toFixed(1)}% przekracza zatwierdzony limit ryzyka piaszczystości ` +
+        `(${PROTEIN_LACTOSE_QUALITY.approvedSandingRiskMaxPercent}%). Czystsze źródło białka może zmniejszyć ryzyko ` +
+        `przy tej samej ilości białka.`,
     });
   }
 
@@ -230,9 +230,9 @@ export function assessProteinStructure(
       code: 'protein_to_fat_outside_evidence_envelope',
       scored: false,
       messagePl:
-        `Stosunek białko:tłuszcz ${proteinToFat.toFixed(2)} leży poza zakresem badanych receptur ` +
-        `(${PROTEIN_FAT_EVIDENCE_ENVELOPE.proteinToFatFloor}-${PROTEIN_FAT_EVIDENCE_ENVELOPE.proteinToFatCeiling}). ` +
-        `Brak kontrolowanej serii białko:tłuszcz, więc jest to wyłącznie informacja.`,
+        `Stosunek białka do tłuszczu ${proteinToFat.toFixed(2)} jest poza zbadanym ` +
+        `zakresem ${PROTEIN_FAT_EVIDENCE_ENVELOPE.proteinToFatFloor}–${PROTEIN_FAT_EVIDENCE_ENVELOPE.proteinToFatCeiling}. ` +
+        `To informacja, nie warunek blokujący.`,
     });
   }
   // Whey/casein is DIRECTIONALLY CONTESTED between IJFP 2025 (casein-dominant

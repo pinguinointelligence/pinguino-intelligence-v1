@@ -138,7 +138,7 @@ export function AdminCustomerAddedProductsSection() {
               )}
             </div>
           ) : (
-            <p className="mt-4 text-sm text-stone-500">Wybierz produkt z kolejki.</p>
+            <p className="mt-4 text-sm text-stone-500">Wybierz produkt z kolejki</p>
           )}
         </aside>
       </div>
