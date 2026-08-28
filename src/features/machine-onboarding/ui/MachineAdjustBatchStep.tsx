@@ -27,6 +27,8 @@ interface MachineAdjustBatchStepProps {
   estimatedNote?: string | null;
   /** Label of the primary action (context-dependent — see the onboarding props). */
   submitLabel: string;
+  /** Custom machines require a positive user-entered cycle batch; empty is incomplete. */
+  customBatchRequired?: boolean;
   /** The user's own default, or null = follow the recommendation. */
   onSubmit: (userDefaultGrams: number | null) => void;
 }
@@ -37,6 +39,7 @@ export function MachineAdjustBatchStep({
   recommendedGrams,
   estimatedNote = null,
   submitLabel,
+  customBatchRequired = false,
   onSubmit,
 }: MachineAdjustBatchStepProps) {
   const [text, setText] = useState(recommendedGrams !== null ? formatGrams(recommendedGrams) : '');
@@ -53,7 +56,7 @@ export function MachineAdjustBatchStep({
 
   const submit = () => {
     const value = parseGramsInput(text);
-    if (value === 'invalid') {
+    if (value === 'invalid' || (customBatchRequired && value === null)) {
       setError(copy.settings.invalidBatch);
       return;
     }
@@ -63,7 +66,9 @@ export function MachineAdjustBatchStep({
 
   return (
     <section aria-label={copy.settings.adjustTitle}>
-      <h1 className={cn(type.title, color.textPrimary)}>{copy.settings.adjustTitle}</h1>
+      <h1 className={cn(type.title, color.textPrimary)}>
+        {customBatchRequired ? copy.custom.title : copy.settings.adjustTitle}
+      </h1>
       <p className={cn('mt-2 max-w-prose', type.secondary, color.textSecondary)}>
         {copy.settings.adjustLead}
       </p>
@@ -84,7 +89,7 @@ export function MachineAdjustBatchStep({
           </p>
         ) : (
           <p className={cn('mt-1 max-w-prose', type.secondary, color.textSecondary)}>
-            {copy.settings.noRecommendation}
+            {customBatchRequired ? copy.custom.noCycleRecommendation : copy.settings.noRecommendation}
           </p>
         )}
         {estimatedNote !== null ? (
@@ -94,7 +99,7 @@ export function MachineAdjustBatchStep({
 
       <div className="mt-5">
         <TextField
-          label={copy.settings.userDefaultLabel}
+          label={customBatchRequired ? copy.custom.cycleBatchLabel : copy.settings.userDefaultLabel}
           inputMode="decimal"
           value={text}
           onChange={(e) => {
@@ -141,7 +146,11 @@ export function MachineAdjustBatchStep({
       ) : null}
 
       <div className="mt-6">
-        <TouchButton size="lg" onClick={submit}>
+        <TouchButton
+          size="lg"
+          onClick={submit}
+          disabled={customBatchRequired && currentGrams === null}
+        >
           {submitLabel}
         </TouchButton>
       </div>

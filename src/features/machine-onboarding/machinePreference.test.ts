@@ -87,7 +87,7 @@ describe('buildMachinePreferenceRecord — §8.6 fields, honest batch', () => {
     expect(record.catalogVersion).toBe(MACHINE_CATALOG_VERSION);
   });
 
-  it('KitchenAid saves the official-max-mix-derived grams; Magimix saves an honest none', () => {
+  it('KitchenAid and Magimix save their canonical derived Gelato defaults', () => {
     expect(buildFor(KITCHENAID_5KSMICM).defaultBatch).toEqual({
       kind: 'grams',
       grams: 1330,
@@ -96,7 +96,14 @@ describe('buildMachinePreferenceRecord — §8.6 fields, honest batch', () => {
       ruleVersion: HOME_BATCH_RULE_VERSION,
       estimated: false,
     });
-    expect(buildFor(MAGIMIX_GELATO_EXPERT).defaultBatch).toEqual({ kind: 'none' });
+    expect(buildFor(MAGIMIX_GELATO_EXPERT).defaultBatch).toEqual({
+      kind: 'grams',
+      grams: 950,
+      source: 'product_working_capacity_ml',
+      safetyFactorApplied: 0.95,
+      ruleVersion: HOME_BATCH_RULE_VERSION,
+      estimated: false,
+    });
   });
 
   it('a conflicted machine saves NO grams (never an invented number)', () => {
@@ -116,7 +123,7 @@ describe('buildMachinePreferenceRecord — §8.6 fields, honest batch', () => {
     expect(buildFor(NINJA_CREAMI_NC302EU).defaultBatch).toMatchObject({ kind: 'grams', grams: 450 });
   });
 
-  it('a custom machine embeds the user_declared profile and the ESTIMATED derived grams', () => {
+  it('a custom machine embeds the user_declared profile with an empty cycle batch', () => {
     const custom = buildCustomMachineProfile({
       behaviorAnswerId: 'freeze_mixture_first',
       market: 'ES',
@@ -128,14 +135,8 @@ describe('buildMachinePreferenceRecord — §8.6 fields, honest batch', () => {
     expect(record.selection.kind).toBe('custom');
     if (record.selection.kind !== 'custom') throw new Error('expected custom');
     expect(record.selection.customProfile.specificationSource).toBe('user_declared');
-    expect(record.defaultBatch).toEqual({
-      kind: 'grams',
-      grams: 450,
-      source: 'respin_vessel_ml',
-      safetyFactorApplied: 0.95,
-      ruleVersion: HOME_BATCH_RULE_VERSION,
-      estimated: true,
-    });
+    expect(record.defaultBatch).toEqual({ kind: 'none' });
+    expect(record.userDefaultBatchGrams).toBeNull();
   });
 });
 

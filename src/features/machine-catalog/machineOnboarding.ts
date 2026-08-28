@@ -102,7 +102,7 @@ export const MACHINE_ONBOARDING_TILES: readonly MachineOnboardingTile[] = [
   },
   {
     id: 'tile-not-listed',
-    label: 'Nie widzę mojej maszyny',
+    label: 'Własna maszyna',
     kind: 'not_listed',
     catalogIds: [],
   },

@@ -45,6 +45,21 @@ export function machineDisplayName(profile: HomeMachineProfile): string {
   return `${profile.brand} ${profile.family}`.trim();
 }
 
+/**
+ * Canonical manufacturer capacity shown in machine details. This is a volume
+ * fact only; it never participates in gram math here. Prefer the physical
+ * vessel when stated, then the manufacturer's liquid/working/program figure.
+ */
+export function machineManufacturerCapacityMl(profile: HomeMachineProfile): number | null {
+  return (
+    profile.capacity.vesselCapacityMl ??
+    profile.capacity.maximumLiquidMixMl ??
+    profile.capacity.workingCapacityMl ??
+    profile.capacity.finishedProductCapacityMl ??
+    null
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* §8.2 tiles                                                          */
 /* ------------------------------------------------------------------ */

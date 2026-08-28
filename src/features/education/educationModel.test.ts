@@ -265,11 +265,9 @@ describe('machine guide uses canonical catalog data', () => {
   });
 
   it('never displays provisional timing as verified', () => {
-    const withProvisionalHours = MACHINE_CATALOG.find(
-      (profile) => profile.preFreezeMinimumHours != null,
-    );
-    expect(withProvisionalHours).toBeDefined();
-    expect(machineEducationForProfile(withProvisionalHours!)?.timing.status).toBe('missing');
+    const base = MACHINE_CATALOG.find((profile) => profile.preFreezeMinimumHours != null)!;
+    const provisional: HomeMachineProfile = { ...base, specificationStatus: 'provisional' };
+    expect(machineEducationForProfile(provisional)?.timing.status).toBe('missing');
   });
 
   it('shows timing only for a verified exact profile', () => {

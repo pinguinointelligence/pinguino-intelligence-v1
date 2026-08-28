@@ -64,7 +64,7 @@ describe('§8.2 tile views — honesty', () => {
       'Cuisinart ICE-100',
       'KitchenAid Ice Cream Maker',
       'Cuisinart z misą chłodzoną',
-      'Nie widzę mojej maszyny',
+      'Własna maszyna',
     ]);
     expect(views[views.length - 1]?.selectable).toBe(true);
   });
@@ -125,7 +125,7 @@ describe('§8.2 search', () => {
 
   it('matches by label, brand and model code; keeps the escape tile visible', () => {
     const byModel = searchMachineTiles(views, 'nc302');
-    expect(byModel.map((v) => v.label)).toEqual(['Ninja CREAMi', 'Nie widzę mojej maszyny']);
+    expect(byModel.map((v) => v.label)).toEqual(['Ninja CREAMi', 'Własna maszyna']);
 
     const byBrand = searchMachineTiles(views, 'kitchen');
     expect(byBrand.map((v) => v.label)).toContain('KitchenAid Ice Cream Maker');
@@ -196,7 +196,7 @@ describe('batch presentation — owner framing, honest none', () => {
     expect(kitchenAid).toMatchObject({ kind: 'pinguino_grams', text: '1330 g' });
   });
 
-  it('user-declared capacity carries the honest ESTIMATED note', () => {
+  it('user-declared capacity waits for the user cycle batch', () => {
     const custom = buildCustomMachineProfile({
       behaviorAnswerId: 'freeze_mixture_first',
       market: 'ES',
@@ -204,12 +204,7 @@ describe('batch presentation — owner framing, honest none', () => {
     });
     if (custom.outcome !== 'profile') throw new Error('expected profile');
     const presentation = presentBatchSuggestion(deriveMachineSetup(custom.profile));
-    expect(presentation).toEqual({
-      kind: 'pinguino_grams',
-      label: 'Zalecany wsad Gellatti',
-      text: '450 g',
-      note: copy.batch.estimatedNote,
-    });
+    expect(presentation).toEqual({ kind: 'user_choice', text: copy.batch.userChoiceNote });
   });
 
   it('a conflicted machine presents the honest verification note (probe; real records derive)', () => {
@@ -230,9 +225,9 @@ describe('batch presentation — owner framing, honest none', () => {
     expect(real).toMatchObject({ kind: 'pinguino_grams', label: copy.batch.recommendedLabel });
   });
 
-  it('a bowl-only machine presents the honest user-choice note', () => {
+  it('Magimix presents its canonical Gelato working batch', () => {
     const p = presentBatchSuggestion(deriveMachineSetup(MAGIMIX_GELATO_EXPERT));
-    expect(p).toEqual({ kind: 'user_choice', text: copy.batch.userChoiceNote });
+    expect(p).toMatchObject({ kind: 'pinguino_grams', text: '950 g' });
   });
 });
 
@@ -288,8 +283,13 @@ describe('§8.5 auto-config lines — honest amount variant', () => {
     ]);
   });
 
-  it('no trustworthy amount → the honest user-choice line (never a fake claim)', () => {
-    const lines = autoConfigLines(deriveMachineSetup(MAGIMIX_GELATO_EXPERT));
+  it('a custom machine has no trustworthy amount until its user cycle batch is entered', () => {
+    const custom = buildCustomMachineProfile({
+      behaviorAnswerId: 'machine_cools_itself',
+      market: 'ES',
+    });
+    if (custom.outcome !== 'profile') throw new Error('expected profile');
+    const lines = autoConfigLines(deriveMachineSetup(custom.profile));
     expect(lines[1]).toBe(copy.autoConfig.amountUserChoice);
     expect(lines).not.toContain(copy.autoConfig.amountSet);
   });

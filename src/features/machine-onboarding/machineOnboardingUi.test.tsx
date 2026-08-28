@@ -27,6 +27,7 @@ import { CustomMachineForm } from './ui/CustomMachineForm';
 import { AutoConfigTransition } from './ui/AutoConfigTransition';
 import { MachineContextBar } from './ui/MachineContextBar';
 import { MachineProfileSection } from './ui/MachineProfileSection';
+import { MachineAdjustBatchStep } from './ui/MachineAdjustBatchStep';
 
 const render = (el: ReactElement) => renderToStaticMarkup(el);
 const noop = () => undefined;
@@ -67,7 +68,7 @@ describe('§8.1/§8.2 first screen', () => {
       'Cuisinart ICE-100',
       'KitchenAid Ice Cream Maker',
       'Cuisinart z misą chłodzoną',
-      'Nie widzę mojej maszyny',
+      'Własna maszyna',
     ]) {
       expect(html).toContain(label.replace('&', '&amp;'));
     }
@@ -128,6 +129,25 @@ describe('§8.4 custom form', () => {
       />,
     );
     expect(html).toContain(copy.custom.vesselOnlyBowlNote);
+  });
+
+  it('custom cycle batch starts empty, shows no fake recommendation and cannot confirm', () => {
+    const html = render(
+      <MachineAdjustBatchStep
+        machineName="Własna maszyna"
+        containerMl={null}
+        recommendedGrams={null}
+        customBatchRequired
+        submitLabel="Zapisz"
+        onSubmit={noop}
+      />,
+    );
+    expect(html).toContain('Własna maszyna');
+    expect(html).toContain('Mój wsad na cykl');
+    expect(html).toContain('Zalecany wsad na cykl: —');
+    expect(html).toContain('value=""');
+    expect(html).toContain('disabled=""');
+    expect(html).not.toContain('value="0"');
   });
 });
 

@@ -372,7 +372,7 @@ export function WorkbenchSettingsLine({
           {!showsProfessionalServing(store.machineKind) ? (
             <div className="space-y-0.5 text-xs text-stone-600">
               <p data-testid="home-machine-capacity">
-                Pojemność jednego cyklu:{' '}
+                Zalecany wsad na cykl:{' '}
                 <strong className="font-mono text-ink">
                   {capacity === null ? '—' : `${capacity.toLocaleString('pl-PL')} g`}
                 </strong>

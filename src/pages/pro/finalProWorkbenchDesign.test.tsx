@@ -296,7 +296,7 @@ describe('profile semantics and readiness', () => {
     const settings = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
     expect(settings).toContain("store.machineKind === 'home'");
     expect(settings).toContain('home-machine-capacity');
-    expect(settings).toContain('Pojemność jednego cyklu');
+    expect(settings).toContain('Zalecany wsad na cykl');
     expect(settings).toContain('testid="workbench-serving"');
   });
 });

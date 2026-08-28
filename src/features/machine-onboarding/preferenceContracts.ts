@@ -304,6 +304,7 @@ const BATCH_SOURCES: ReadonlySet<string> = new Set([
   'manufacturer_max_mix_grams',
   'maximum_liquid_mix_ml',
   'working_capacity_ml',
+  'product_working_capacity_ml',
   'respin_vessel_ml',
   'confirmed_vessel_ml',
 ]);

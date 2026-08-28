@@ -32,7 +32,7 @@
  * factor change alters ONLY this recommendation, never engine math for a
  * recipe at the same final grams (default-neutrality pinning).
  */
-import type { HomeMachineProfile } from './types';
+import type { HomeMachineProfile, MachineBatchProductProfile } from './types';
 
 /** The configurable Home safety factor (owner value 0.95 = 5% margin). */
 export const HOME_CONTAINER_SAFETY_FACTOR = 0.95;
@@ -50,6 +50,7 @@ export type RecommendedBatchSource =
   | 'manufacturer_max_mix_grams' // rule 1 — grams used directly
   | 'maximum_liquid_mix_ml' // rule 2 — official max liquid mix / MAX FILL × factor
   | 'working_capacity_ml' // rule 2 — official working capacity × factor
+  | 'product_working_capacity_ml' // rule 2 — selected manufacturer program × factor
   | 'respin_vessel_ml' // legacy-compatible rule 2b name for re-spin tubs
   | 'confirmed_vessel_ml'; // rule 2b — explicitly approved operating vessel × factor
 
@@ -93,6 +94,7 @@ function positive(value: number | null | undefined): number | null {
 export function recommendMachineBatch(
   profile: HomeMachineProfile,
   config: HomeBatchRuleConfig = DEFAULT_HOME_BATCH_RULE,
+  productProfile: MachineBatchProductProfile = 'gelato',
 ): RecommendedBatch | null {
   const estimated = profile.specificationSource === 'user_declared';
   const factorGrams = (ml: number, source: RecommendedBatchSource): RecommendedBatch => ({
@@ -102,6 +104,11 @@ export function recommendMachineBatch(
     ruleVersion: config.ruleVersion,
     estimated,
   });
+
+  // Custom machines have no manufacturer-backed Gellatti default. Their
+  // user-scoped cycle batch starts EMPTY and is stored separately after the
+  // user enters a positive gram value.
+  if (profile.specificationSource === 'user_declared') return null;
 
   // Rule 1 — official max mix in grams: used directly, never converted.
   const maxMixGrams = positive(profile.capacity.manufacturerMaxMixGrams);
@@ -113,6 +120,16 @@ export function recommendMachineBatch(
       ruleVersion: config.ruleVersion,
       estimated,
     };
+  }
+
+  // Rule 2 — an explicit manufacturer program capacity is the narrowest
+  // authority and therefore wins for the selected product profile.
+  const productWorkingMl = positive(
+    profile.productWorkingCapacities?.find((entry) => entry.productProfile === productProfile)
+      ?.workingCapacityMl,
+  );
+  if (productWorkingMl !== null) {
+    return factorGrams(productWorkingMl, 'product_working_capacity_ml');
   }
 
   // Rule 2 — official max liquid mix / MAX FILL in ml.

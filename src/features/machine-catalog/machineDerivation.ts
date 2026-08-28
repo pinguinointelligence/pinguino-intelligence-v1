@@ -25,6 +25,7 @@ import type {
   HomeMachineProfile,
   HomeVisibleModeId,
   MachineTechnology,
+  MachineBatchProductProfile,
   PreFreezeTarget,
 } from './types';
 import { isHomeSupportedTechnology, visibleModeForTechnology } from './technologyMode';
@@ -62,6 +63,8 @@ export type HomeBatchSuggestion =
         | 'machine_not_home_supported'
         /** The usable-capacity figure is under an OPEN source conflict (§9.3). */
         | 'capacity_conflict_unresolved'
+        /** A custom machine waits for the user's positive cycle batch. */
+        | 'custom_batch_required'
         /** Nothing rule-eligible (bowl-only, program/finished volumes, or unstated). */
         | 'no_confirmed_usable_capacity';
     };
@@ -99,9 +102,12 @@ export interface MachineDerivation {
  * output routes to an EXISTING mode and carries capacity/UX facts only — no
  * recipe parameter is produced or altered here (owner rule / §10.1).
  */
-export function deriveMachineSetup(profile: HomeMachineProfile): MachineDerivation {
+export function deriveMachineSetup(
+  profile: HomeMachineProfile,
+  productProfile: MachineBatchProductProfile = 'gelato',
+): MachineDerivation {
   const mode = visibleModeForTechnology(profile.technology);
-  const recommended = recommendMachineBatch(profile);
+  const recommended = recommendMachineBatch(profile, undefined, productProfile);
   const base = {
     recommendedBatchGrams: recommended?.grams ?? null,
     workingCapacityMl: profile.capacity.workingCapacityMl,
@@ -126,9 +132,12 @@ export function deriveMachineSetup(profile: HomeMachineProfile): MachineDerivati
       resolvedVisibleMode: mode,
       batchSuggestion: {
         kind: 'none',
-        reason: vesselFigureConflicted(profile)
-          ? 'capacity_conflict_unresolved'
-          : 'no_confirmed_usable_capacity',
+        reason:
+          profile.specificationSource === 'user_declared'
+            ? 'custom_batch_required'
+            : vesselFigureConflicted(profile)
+              ? 'capacity_conflict_unresolved'
+              : 'no_confirmed_usable_capacity',
       },
     };
   }

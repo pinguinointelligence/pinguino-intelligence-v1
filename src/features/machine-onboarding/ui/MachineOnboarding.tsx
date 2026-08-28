@@ -34,6 +34,7 @@ import {
   autoConfigLines,
   buildMachineTileViews,
   machineDisplayName,
+  machineManufacturerCapacityMl,
   presentBatchSuggestion,
   searchMachineTiles,
   type MachineTileView,
@@ -221,10 +222,11 @@ export function MachineOnboarding({
     return (
       <MachineAdjustBatchStep
         machineName={machineDisplayName(screen.profile)}
-        containerMl={screen.profile.capacity.vesselCapacityMl}
+        containerMl={machineManufacturerCapacityMl(screen.profile)}
         recommendedGrams={recommendedBatchGramsOf(screen.record)}
         estimatedNote={batch.kind === 'pinguino_grams' ? batch.note : null}
         submitLabel={submitLabel}
+        customBatchRequired={screen.isCustom}
         onSubmit={(grams) => finishAdjust(screen.profile, screen.record, grams)}
       />
     );
@@ -310,8 +312,8 @@ export function MachineOnboarding({
             <SelectableCard
               key={profile.id}
               title={machineDisplayName(profile)}
-              {...(profile.capacity.vesselCapacityMl !== null
-                ? { description: copy.contextBar.vessel(profile.capacity.vesselCapacityMl) }
+              {...(machineManufacturerCapacityMl(profile) !== null
+                ? { description: copy.contextBar.vessel(machineManufacturerCapacityMl(profile)!) }
                 : {})}
               onSelect={() => startConfiguring(profile, false)}
             />

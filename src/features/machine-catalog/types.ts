@@ -37,9 +37,9 @@ export type MachineTechnology =
 
 /**
  * Honest provenance status of a specification record (§9.2/§9.3).
- *  - `verified`            — re-confirmed in the official manual of the exact
- *                            model AND market. Nothing in the Annex-A seed pass
- *                            is allowed to carry this status.
+ *  - `verified`            — re-confirmed in current official manufacturer
+ *                            evidence for the exact supported model/family and
+ *                            market; every asserted fact is named in evidence.
  *  - `provisional`         — seeded from an official source, pending manual
  *                            re-confirmation per model + market.
  *  - `needs_review`        — data missing or not yet confirmed at all.
@@ -69,6 +69,24 @@ export type PreFreezeTarget = 'mixture' | 'bowl' | 'none';
 
 /** How the finished product is served (§9.2). */
 export type MachineServingStyle = 'scoop' | 'soft' | 'both';
+
+/**
+ * Product profile used by the machine working-batch authority. The four
+ * customer-visible recipe profiles are canonical today; `frozen_drink` is a
+ * deliberately separate future program so normal Sorbet can never be treated
+ * as a beverage merely to obtain a larger machine fill.
+ */
+export type MachineBatchProductProfile =
+  | 'gelato'
+  | 'sorbet'
+  | 'vegan'
+  | 'protein'
+  | 'frozen_drink';
+
+export interface MachineProductWorkingCapacity {
+  readonly productProfile: MachineBatchProductProfile;
+  readonly workingCapacityMl: number;
+}
 
 /**
  * A manufacturer-stated capacity for ONE product program (Annex A: e.g.
@@ -202,6 +220,12 @@ export interface HomeMachineProfile {
    */
   readonly resolvedVisibleMode: HomeVisibleModeId;
   readonly capacity: MachineCapacity;
+  /**
+   * Manufacturer working/cycle capacities that differ by product program.
+   * The shared Home rule converts the selected value to Gellatti grams; UI
+   * components never own this mapping.
+   */
+  readonly productWorkingCapacities?: readonly MachineProductWorkingCapacity[];
   /** Eligibility for the shared 95% Home fill rule from a confirmed operating vessel. */
   readonly recommendedBatchBasis?: 'confirmed_vessel_capacity';
   readonly requiresPreFreeze: boolean;

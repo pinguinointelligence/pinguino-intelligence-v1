@@ -108,7 +108,7 @@ const EXPECTED_ROWS: readonly ExpectedRow[] = [
     market: 'EU/ES',
     technology: 'respin',
     mode: 'ninja_gelato',
-    status: 'provisional',
+    status: 'verified',
     active: true,
   },
   {
@@ -116,7 +116,7 @@ const EXPECTED_ROWS: readonly ExpectedRow[] = [
     market: 'EU/ES',
     technology: 'respin',
     mode: 'ninja_gelato',
-    status: 'provisional',
+    status: 'verified',
     active: true,
   },
   {
@@ -124,7 +124,7 @@ const EXPECTED_ROWS: readonly ExpectedRow[] = [
     market: 'EU/ES',
     technology: 'respin_soft',
     mode: 'ninja_swirl',
-    status: 'provisional',
+    status: 'verified',
     active: true,
   },
   {
@@ -132,7 +132,7 @@ const EXPECTED_ROWS: readonly ExpectedRow[] = [
     market: 'ES',
     technology: 'compressor',
     mode: 'fresh',
-    status: 'provisional',
+    status: 'verified',
     active: true,
   },
   {
@@ -140,31 +140,31 @@ const EXPECTED_ROWS: readonly ExpectedRow[] = [
     market: 'EU',
     technology: 'compressor',
     mode: 'fresh',
-    status: 'provisional',
+    status: 'verified',
     active: true,
   },
   {
     profile: CUISINART_ICE100E,
-    market: 'EU',
+    market: 'EU/UK',
     technology: 'compressor',
     mode: 'fresh',
-    status: 'provisional',
+    status: 'verified',
     active: true,
   },
   {
     profile: CUISINART_ICE21E,
-    market: 'EU',
+    market: 'EU/UK',
     technology: 'frozen_bowl',
     mode: 'fresh',
-    status: 'provisional',
+    status: 'verified',
     active: true,
   },
   {
     profile: CUISINART_ICE30BCE,
-    market: 'EU',
+    market: 'EU/UK',
     technology: 'frozen_bowl',
     mode: 'fresh',
-    status: 'provisional',
+    status: 'verified',
     active: true,
   },
   {
@@ -172,7 +172,7 @@ const EXPECTED_ROWS: readonly ExpectedRow[] = [
     market: 'UK/EU',
     technology: 'frozen_bowl',
     mode: 'fresh',
-    status: 'provisional',
+    status: 'verified',
     active: true,
   },
   {
@@ -211,17 +211,19 @@ describe('Annex A seed catalog — model → technology → mode → status', ()
     }
   });
 
-  it('only Sage is verified from exact current official product + manual evidence', () => {
-    expect(MACHINE_CATALOG.filter((profile) => profile.specificationStatus === 'verified')).toEqual(
-      [SAGE_SMART_SCOOP_BCI600],
-    );
-    expect(SAGE_SMART_SCOOP_BCI600.specificationVerifiedAt).toBe('2026-08-28');
+  it('all ten supported records carry current official evidence and are operationally complete', () => {
+    expect(MACHINE_CATALOG.every((profile) => profile.specificationStatus === 'verified')).toBe(true);
+    for (const profile of MACHINE_CATALOG) {
+      expect(profile.specificationVerifiedAt).toBe('2026-08-28');
+      expect(profile.specificationEvidence?.length).toBeGreaterThan(0);
+      expect(deriveMachineSetup(profile).recommendedBatchGrams).not.toBeNull();
+    }
   });
 
   it('the catalog is versioned', () => {
     expect(MACHINE_CATALOG_VERSION).toMatch(/^\d{4}-\d{2}-\d{2}\.\d+$/);
     expect(MACHINE_CATALOG_META.version).toBe(MACHINE_CATALOG_VERSION);
-    expect(MACHINE_CATALOG_META.verifiedOnline).toBe(false);
+    expect(MACHINE_CATALOG_META.verifiedOnline).toBe(true);
   });
 });
 
@@ -230,25 +232,25 @@ describe('Annex A capacities — exact numbers, per §9.1 field, never guessed',
   // CLOSED — figures pinned to the product pages, no blocking sourceConflicts
   // entries, disputes never user-facing. The former conflict-evidence tests are
   // replaced by these activation pins (owner tests 1–2).
-  it('Ninja NC302EU: owner-pinned 473 ml × 2 → ACTIVE provisional, no blocking conflict', () => {
+  it('Ninja NC302EU: owner-pinned 473 ml × 2 → ACTIVE verified, no blocking conflict', () => {
     const c = NINJA_CREAMI_NC302EU.capacity;
     expect(c.vesselCapacityMl).toBe(473);
     expect(c.vesselCount).toBe(2);
     expect(c.maxFillDefinedByManufacturer).toBe(true); // Annex A: "Używaj MAX FILL"
     expect(NINJA_CREAMI_NC302EU.sourceConflicts ?? []).toEqual([]);
     expect(vesselFigureConflicted(NINJA_CREAMI_NC302EU)).toBe(false);
-    expect(NINJA_CREAMI_NC302EU.specificationStatus).toBe('provisional');
+    expect(NINJA_CREAMI_NC302EU.specificationStatus).toBe('verified');
     expect(NINJA_CREAMI_NC302EU.active).toBe(true);
     expect(NINJA_CREAMI_NC302EU.preFreezeTarget).toBe('mixture');
   });
 
-  it('Ninja Deluxe NC502EU: owner-pinned 706 ml × 2 → ACTIVE provisional, no blocking conflict', () => {
+  it('Ninja Deluxe NC502EU: owner-pinned 706 ml × 2 → ACTIVE verified, no blocking conflict', () => {
     const c = NINJA_CREAMI_DELUXE_NC502EU.capacity;
     expect(c.vesselCapacityMl).toBe(706);
     expect(c.vesselCount).toBe(2);
     expect(NINJA_CREAMI_DELUXE_NC502EU.sourceConflicts ?? []).toEqual([]);
     expect(vesselFigureConflicted(NINJA_CREAMI_DELUXE_NC502EU)).toBe(false);
-    expect(NINJA_CREAMI_DELUXE_NC502EU.specificationStatus).toBe('provisional');
+    expect(NINJA_CREAMI_DELUXE_NC502EU.specificationStatus).toBe('verified');
     expect(NINJA_CREAMI_DELUXE_NC502EU.active).toBe(true);
   });
 
@@ -271,27 +273,30 @@ describe('Annex A capacities — exact numbers, per §9.1 field, never guessed',
     expect(c.maximumLiquidMixMl).toBeNull();
   });
 
-  it('Magimix Gelato Expert: 2 l bowls are NOT a working capacity; programs 1.0 l / 1.3 l', () => {
+  it('Magimix Gelato Expert separates 2 l bowls from 1.0 l / 1.3 l working programs', () => {
     const c = MAGIMIX_GELATO_EXPERT.capacity;
     expect(c.vesselCapacityMl).toBe(2000);
-    expect(c.workingCapacityMl).toBeNull(); // Annex A warning — never conflated
+    expect(c.workingCapacityMl).toBe(1000);
     expect(c.perProgram).toEqual([
       { program: 'ice_cream', capacityMl: 1000 },
       { program: 'sorbet_granita', capacityMl: 1300 },
     ]);
   });
 
-  it('Cuisinart ICE100E: 1.5 l FINISHED dessert; max liquid mix left null to verify', () => {
+  it('Cuisinart ICE100E: verified 1.5 l frozen-dessert working capacity', () => {
     const c = CUISINART_ICE100E.capacity;
     expect(c.finishedProductCapacityMl).toBe(1500);
+    expect(c.workingCapacityMl).toBe(1500);
     expect(c.maximumLiquidMixMl).toBeNull();
   });
 
   it('Cuisinart frozen bowls: ICE21E 1.4 l, ICE30BCE 2.0 l (~12 h pre-freeze), bowl pre-freeze', () => {
     expect(CUISINART_ICE21E.capacity.vesselCapacityMl).toBe(1400);
+    expect(CUISINART_ICE21E.capacity.workingCapacityMl).toBe(1400);
     expect(CUISINART_ICE21E.preFreezeTarget).toBe('bowl');
-    expect(CUISINART_ICE21E.preFreezeMinimumHours).toBeNull(); // not stated
+    expect(CUISINART_ICE21E.preFreezeMinimumHours).toBe(12);
     expect(CUISINART_ICE30BCE.capacity.vesselCapacityMl).toBe(2000);
+    expect(CUISINART_ICE30BCE.capacity.workingCapacityMl).toBe(2000);
     expect(CUISINART_ICE30BCE.preFreezeMinimumHours).toBe(12);
   });
 
@@ -514,14 +519,13 @@ describe('owner Home batch rule — 0.95 factor over CONFIRMED usable capacity',
     });
   });
 
-  it('OWNER TEST 7 — a physical bowl volume is NEVER auto-treated as working capacity', () => {
-    // Magimix: 2 l physical bowls, no official working/max-fill figure →
-    // no recommendation (and certainly not 2000 × 0.95 = 1900).
-    expect(recommendMachineBatch(MAGIMIX_GELATO_EXPERT)).toBeNull();
-    expect(deriveMachineSetup(MAGIMIX_GELATO_EXPERT).recommendedBatchGrams).toBeNull();
-    // Frozen bowls likewise: the bowl figure is not a mix quantity.
-    expect(recommendMachineBatch(CUISINART_ICE21E)).toBeNull();
-    expect(recommendMachineBatch(CUISINART_ICE30BCE)).toBeNull();
+  it('OWNER TEST 7 — a physical bowl volume alone is never a batch source', () => {
+    const bowlOnly: HomeMachineProfile = {
+      ...CUISINART_ICE30BCE,
+      id: 'probe-bowl-only',
+      capacity: { ...CUISINART_ICE30BCE.capacity, workingCapacityMl: null },
+    };
+    expect(recommendMachineBatch(bowlOnly)).toBeNull();
   });
 
   it('a CONFLICTED tub figure never produces a number (rule preserved on a probe)', () => {
@@ -576,13 +580,28 @@ describe('owner Home batch rule — 0.95 factor over CONFIRMED usable capacity',
     });
   });
 
-  it('program/finished volumes are never batch sources (Moulinex and ICE-100 → none)', () => {
-    for (const profile of [MOULINEX_FREEZI_MJ803AF0, CUISINART_ICE100E]) {
-      expect(recommendMachineBatch(profile)).toBeNull();
-      expect(deriveMachineSetup(profile).batchSuggestion).toEqual({
-        kind: 'none',
-        reason: 'no_confirmed_usable_capacity',
-      });
+  it('all approved normal-product defaults come from canonical working-capacity authority', () => {
+    expect(MACHINE_CATALOG.map((profile) => [profile.displayName, deriveMachineSetup(profile).recommendedBatchGrams])).toEqual([
+      ['Ninja CREAMi', 450],
+      ['Ninja CREAMi Deluxe', 670],
+      ['Ninja CREAMi Scoop & Swirl', 460],
+      ['Moulinex Freezi', 950],
+      ['Sage Smart Scoop', 950],
+      ['Magimix Gelato Expert', 950],
+      ['Cuisinart ICE-100', 1430],
+      ['KitchenAid Ice Cream Maker', 1330],
+      ['Cuisinart ICE-21', 1330],
+      ['Cuisinart ICE-30', 1900],
+    ]);
+  });
+
+  it('resolves the batch by machine + visible product profile without treating Sorbet as a drink', () => {
+    for (const productType of ['gelato', 'vegan', 'protein'] as const) {
+      expect(deriveMachineSetup(MAGIMIX_GELATO_EXPERT, productType).recommendedBatchGrams).toBe(950);
+    }
+    expect(deriveMachineSetup(MAGIMIX_GELATO_EXPERT, 'sorbet').recommendedBatchGrams).toBe(1240);
+    for (const productType of ['gelato', 'sorbet', 'vegan', 'protein'] as const) {
+      expect(deriveMachineSetup(MOULINEX_FREEZI_MJ803AF0, productType).recommendedBatchGrams).toBe(950);
     }
   });
 

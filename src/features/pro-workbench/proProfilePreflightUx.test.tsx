@@ -647,7 +647,7 @@ describe('profile hierarchy and compact preflight', () => {
     expect(card.match(/Potwierdź ustawienia/g)).toHaveLength(1);
     expect(card).toContain('testid="workbench-serving"');
     expect(card).toContain('data-testid="home-machine-capacity"');
-    expect(card).toContain('Pojemność jednego cyklu');
+    expect(card).toContain('Zalecany wsad na cykl');
     expect(card).toContain('data-testid="profile-batch-combined"');
     expect(card).toContain('data-testid="settings-grid-status"');
     expect(card).not.toContain('data-testid="settings-header-status"');

@@ -14,7 +14,11 @@
  */
 import { HOME_CONTAINER_SAFETY_FACTOR, roundToNearest10 } from '@/features/machine-catalog';
 import { machineOnboardingCopy as copy } from './machineOnboardingCopy';
-import { machineDisplayName, resolvePreferenceProfile } from './machineViews';
+import {
+  machineDisplayName,
+  machineManufacturerCapacityMl,
+  resolvePreferenceProfile,
+} from './machineViews';
 import {
   effectiveDefaultBatchGrams,
   recommendedBatchGramsOf,
@@ -79,10 +83,10 @@ export function buildMachineSettingsView(
           capacityMl: ownContainer.capacityMl,
           editable: true,
         }
-      : profile.capacity.vesselCapacityMl !== null
+      : machineManufacturerCapacityMl(profile) !== null
         ? {
             label: copy.settings.manufacturerCapacityLabel,
-            capacityMl: profile.capacity.vesselCapacityMl,
+            capacityMl: machineManufacturerCapacityMl(profile)!,
             // A known model's figure is never edited in place (§8).
             editable: false,
           }

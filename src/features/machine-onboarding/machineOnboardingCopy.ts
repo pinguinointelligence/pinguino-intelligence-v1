@@ -17,7 +17,7 @@ export const machineOnboardingCopy = {
     lead: 'Wybierz urządzenie, a Gellatti dopasuje sposób przygotowania i właściwą ilość.',
     searchLabel: 'Szukaj maszyny',
     searchPlaceholder: 'np. Ninja, KitchenAid, NC302…',
-    searchNoResults: 'Brak maszyn pasujących do wyszukiwania. Wybierz „Nie widzę mojej maszyny”.',
+    searchNoResults: 'Brak maszyn pasujących do wyszukiwania. Wybierz „Własna maszyna”.',
   },
 
   /* ----------------------------------------------------------- §8.2 tiles ----- */
@@ -54,10 +54,11 @@ export const machineOnboardingCopy = {
 
   /* -------------------------------------------------- §8.4 custom machine ----- */
   custom: {
-    title: 'Opowiedz nam o swojej maszynie',
+    title: 'Własna maszyna',
     lead:
-      'Podaj to, co znasz — nic nie zgadujemy. Jeśli dane na to pozwolą, zaproponujemy ostrożny ' +
-      'wsad (95% potwierdzonej pojemności) jako wartość szacunkową, którą możesz zmienić.',
+      'Podaj to, co znasz — nic nie zgadujemy. W kolejnym kroku wpiszesz własny wsad na cykl.',
+    cycleBatchLabel: 'Mój wsad na cykl',
+    noCycleRecommendation: 'Zalecany wsad na cykl: —',
     brandLabel: 'Marka (opcjonalnie)',
     modelLabel: 'Model (opcjonalnie)',
     vesselLabel: 'Pojemność pojemnika lub misy',
@@ -79,10 +80,10 @@ export const machineOnboardingCopy = {
     vesselOnlyBowlNote:
       'Znasz tylko pojemność całkowitą misy, więc przyjmiemy ostrożne ustawienie i oznaczymy je ' +
       'do edycji. Ilość wsadu ustalisz samodzielnie — z całkowitej pojemności misy nie wyliczamy wsadu.',
-    /** Re-spin tubs: the declared tub figure yields an ESTIMATED recommendation. */
+    /** A declared tub still does not invent a gram value for a custom machine. */
     vesselOnlyRespinNote:
-      'Znasz tylko pojemność pojemnika — zaproponujemy ostrożny wsad szacunkowy (95% tej ' +
-      'pojemności). Wartość pozostaje do edycji.',
+      'Znasz tylko pojemność pojemnika. Własny wsad na cykl wpiszesz samodzielnie — nie ' +
+      'przeliczamy zadeklarowanej objętości na gramy.',
     invalidVolume: 'Podaj dodatnią liczbę.',
   },
 
@@ -198,7 +199,7 @@ export const machineOnboardingCopy = {
     change: 'Zmień maszynę',
     editCustom: 'Edytuj dane maszyny',
     savedAt: 'Zapisano',
-    customName: 'Twoja maszyna',
+    customName: 'Własna maszyna',
     /** The §8.4 vessel-only fallback stays visibly flagged and editable. */
     vesselOnlyFlag: 'Ustawienie ostrożne — znamy tylko pojemność całkowitą. Możesz je edytować.',
   },
