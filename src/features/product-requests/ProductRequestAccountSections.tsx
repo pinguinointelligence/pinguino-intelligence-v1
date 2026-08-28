@@ -11,6 +11,7 @@ import {
   type MyProductRequest,
 } from '@/services/productRequests';
 import { customerErrorMessage } from '@/copy/customerError';
+import { productRequestStatusLabel } from './productRequestStatusDisplay';
 
 const labels: Readonly<Record<string, string>> = {
   FRONT_PHOTO: 'Czytelne zdjęcie przodu opakowania',
@@ -180,7 +181,7 @@ function RequestRow({ request, archived }: { request: MyProductRequest; archived
             {request.name || 'Produkt bez rozpoznanej nazwy'}
           </strong>
           <span className="mt-1 block font-mono text-[11px] text-stone-500">
-            #{request.requestNumber} · {request.status} ·{' '}
+            #{request.requestNumber} · {productRequestStatusLabel(request.status)} ·{' '}
             {new Date(request.updatedAt).toLocaleDateString('pl-PL')}
           </span>
         </span>
