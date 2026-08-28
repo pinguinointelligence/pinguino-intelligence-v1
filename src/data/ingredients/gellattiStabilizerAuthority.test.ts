@@ -16,6 +16,8 @@ import {
 const BASE_SHA = '7edd90ea14299f3af47364a6dc119cc2b0970179';
 const MAPPER_PATH = 'docs/ingredients/validation/mapper_basement.csv';
 const PROCESS_PATH = 'supabase/seed/mapper_process_metadata.csv';
+const MAPPER_MIGRATION_PATH =
+  'supabase/migrations/20260828170000_mapper_basement_2089_gellatti_stabilizer.sql';
 const AUTHORITY_MIGRATION_PATH =
   'supabase/migrations/20260828170200_gellatti_stabilizer_product_authority.sql';
 const RUNTIME_GUARD_MIGRATION_PATH =
@@ -29,6 +31,19 @@ const row = (id: string) => records.find((record) => record[index.get('ingredien
 const value = (record: string[], field: string) => record[index.get(field)!] ?? '';
 
 describe('owner-authorized canonical Gellatti Stabilizer row', () => {
+  it('uses the accepted transaction-local ingest authority for canonical Product writes', () => {
+    const migration = readFileSync(resolve(process.cwd(), MAPPER_MIGRATION_PATH), 'utf8');
+    const ingestContext = migration.indexOf(
+      "select set_config('app.canonical_product_ingest','v1',true);",
+    );
+    const productInsert = migration.indexOf('insert into public.products(');
+
+    expect(ingestContext).toBeGreaterThan(-1);
+    expect(ingestContext).toBeLessThan(productInsert);
+    expect(migration).not.toMatch(/disable\s+trigger/i);
+    expect(migration).not.toContain('drop trigger canonical_product');
+  });
+
   it('expands Mapper 2088 → 2089 with exactly one new identity', () => {
     expect(records).toHaveLength(2_089);
     expect(new Set(records.map((record) => value(record, 'ingredient_id'))).size).toBe(2_089);

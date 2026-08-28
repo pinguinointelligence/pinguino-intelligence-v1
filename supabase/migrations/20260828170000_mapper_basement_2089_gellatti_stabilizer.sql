@@ -99,6 +99,11 @@ on conflict (ingredient_id) do update set
 -- The canonical Product root is the same Mapper identity, not a parallel
 -- Overlay. The deterministic UUID contract is identical to the accepted
 -- canonical-product backfill.
+-- This transaction is the governed Mapper ingest authority. Keep the accepted
+-- canonical write guard enabled and enter its transaction-local ingest context
+-- instead of bypassing or disabling the guard.
+select set_config('app.canonical_product_ingest','v1',true);
+
 insert into public.products(
   id,owner_user_id,created_by,brand,ean_code,barcode,product_name_internal,
   product_name_display,product_category,product_subcategory,country,status,source_type,
