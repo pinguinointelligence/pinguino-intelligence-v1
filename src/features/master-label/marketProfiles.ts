@@ -80,7 +80,7 @@ export const MARKET_PROFILE_ORDER: readonly MarketProfileCode[] = [
 ];
 
 export const marketAvailabilityLabel = (profile: MarketProfile): string =>
-  profile.code === 'WORLD' ? 'Gotowa do druku · informacyjna' : 'Profil regulacyjny';
+  profile.code === 'WORLD' ? 'Tylko wewnętrzna / informacyjna' : 'Profil regulacyjny';
 
 const REGULATORY_REQUIRED: readonly MasterLabelFieldId[] = [
   'product_name',
@@ -107,6 +107,8 @@ const REGULATORY_OPTIONAL: readonly MasterLabelFieldId[] = [
   'internal_article_id',
   'batch_id',
 ];
+
+const AU_NZ_REQUIRED: readonly MasterLabelFieldId[] = [...REGULATORY_REQUIRED, 'origin'];
 
 const WORLD_REQUIRED: readonly MasterLabelFieldId[] = [
   'product_name',
@@ -233,19 +235,22 @@ export const MARKET_PROFILES: Readonly<Record<MarketProfileCode, MarketProfile>>
   AU_NZ: {
     code: 'AU_NZ',
     label: 'Australia / New Zealand',
-    jurisdiction: 'Australia or New Zealand context required',
+    jurisdiction: 'Australia / New Zealand combined superset',
     flag: 'AU/NZ',
     consumerLayout: 'au_nz_nip',
     status: 'REGULATORY_VERIFIED',
-    version: 'FSANZ-Code-current-2026-08-25',
-    checkedAt: '2026-08-25',
-    requiredFields: REGULATORY_REQUIRED,
+    version: 'FSANZ-AU-NZ-union-current-2026-08-28',
+    checkedAt: '2026-08-28',
+    requiredFields: AU_NZ_REQUIRED,
     optionalFields: REGULATORY_OPTIONAL,
     sourceUrls: [
       'https://www.foodstandards.gov.au/consumer/labelling/panels',
       'https://www.foodstandards.gov.au/business/labelling/allergen-labelling',
       'https://www.foodstandards.gov.au/consumer/labelling/ingredients',
       'https://www.foodstandards.gov.au/consumer/labelling/dates',
+      'https://www.legislation.gov.au/F2016L00528/latest',
+      'https://www.mpi.govt.nz/food-business/labelling-composition-food-drinks/food-and-drink-labelling-and-composition-rules',
+      'https://www.mpi.govt.nz/food-safety-home/how-read-food-labels',
     ],
     requiredLanguages: ['en'],
     minimumTypography: { xHeightMm: 0, minimumPointSize: 6 },

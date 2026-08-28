@@ -331,10 +331,21 @@ describe('Master Label — one actual-batch source model', () => {
     expect(actual.ingredients[0]!.percent).not.toBe(planned.ingredients[0]!.percent);
     expect(actual.nutritionSource).not.toEqual(planned.nutritionSource);
     expect(actual.sourceCompletionSessionId).toBe('run-label');
-    expect(planned.netQuantityG).toBeNull();
-    expect(actual.netQuantityG).toBeNull();
+    expect(planned.netQuantityG).toBe(1000);
+    expect(actual.netQuantityG).toBe(1020);
     expect(planned.actualBatchQuantityG).toBe(1000);
     expect(actual.actualBatchQuantityG).toBe(1020);
+    expect(actual.packageQuantity).toMatchObject({
+      value: 1020,
+      unit: 'g',
+      netWeightG: 1020,
+      source: 'measured_fill',
+    });
+    expect(actual.storageInstructions).toMatchObject({
+      es: expect.stringContaining('-18'),
+      en: expect.stringContaining('-18'),
+    });
+    expect(actual.allergens.reviewedByUser).toBe(true);
   });
 
   it('uses actual toppings and legal mass order independently from manual UI order', () => {
@@ -615,6 +626,36 @@ describe('Master Label — one actual-batch source model', () => {
       consumerLayout: 'uk_declaration',
     });
     expect(Object.keys(MARKET_PROFILES)).toEqual(['EU', 'UK', 'US', 'CA', 'AU_NZ', 'WORLD']);
+  });
+
+  it('keeps one AU/NZ profile and applies the union without asking for a country', () => {
+    const profile = marketProfile('AU_NZ');
+    expect(profile.label).toBe('Australia / New Zealand');
+    expect(profile.requiredFields).toContain('origin');
+    expect(profile.jurisdiction).not.toMatch(/or New Zealand|country required/i);
+
+    const baseline = printable(build());
+    const shared: MasterLabelData = {
+      ...baseline,
+      market: 'AU_NZ',
+      marketProfileVersion: profile.version,
+      labelLanguages: ['en'],
+      productName: { en: 'Milk gelato' },
+      legalProductName: { en: 'Frozen dairy dessert' },
+      storageInstructions: { en: 'Keep frozen at -18°C or below.' },
+      origin: { en: '' },
+      jurisdictionContext: {
+        ...baseline.jurisdictionContext!,
+        auNzCountry: 'unresolved',
+      },
+    };
+    const unresolved = buildLabelPreflight(shared);
+    expect(unresolved.items).toContainEqual(
+      expect.objectContaining({ field: 'origin', status: 'missing' }),
+    );
+    expect(unresolved.items).not.toContainEqual(
+      expect.objectContaining({ field: 'jurisdiction_context', status: 'missing' }),
+    );
   });
 
   it('separates customer label note from the internal production note', () => {

@@ -185,12 +185,12 @@ describe('LabelWorkspace unified actual-run surface', () => {
 
     await act(async () => {
       fill('legal_product_name', ['Lody mleczne']);
-      fill('net_quantity', ['500']);
       fill('operator', ['Gellatti Laboratory', '1 Test Street', 'ES']);
-      fill('storage', ['Przechowywać w temperaturze -18°C']);
       fill('date_mark', ['2027-02-27']);
-      const context = intake.querySelector<HTMLInputElement>('input[placeholder="np. ES, PL, DE"]');
-      if (context) setInputValue(context, 'ES');
+      const context = intake.querySelector<HTMLSelectElement>(
+        '[data-label-field="jurisdiction_context"] select',
+      );
+      if (context) setSelectValue(context, 'PL');
       const nutrition = intake.querySelector<HTMLElement>('[data-label-field="market_nutrition"]');
       const energy = ['EU', 'UK', 'AU_NZ'].includes(intake.getAttribute('data-label-market') ?? '')
         ? [...(nutrition?.querySelectorAll<HTMLInputElement>('input[type="number"]') ?? [])].find(
@@ -200,28 +200,9 @@ describe('LabelWorkspace unified actual-run surface', () => {
       if (energy) setInputValue(energy, '900');
       const authority = nutrition?.querySelector<HTMLSelectElement>('select');
       if (authority) setSelectValue(authority, 'market_factors');
-      for (const [labelText, value] of [
-        ['Pochodzenie', 'Hiszpania'],
-        ['Nota dla klienta', 'Wyprodukowano dla Gellatti'],
-      ] as const) {
-        const optional = [...intake.querySelectorAll('label')].find(
-          (candidate) =>
-            candidate.textContent?.trim().startsWith(labelText) &&
-            [...candidate.querySelectorAll<HTMLInputElement>('input')].some(
-              (input) => input.type === 'text',
-            ),
-        );
-        const input = [...(optional?.querySelectorAll<HTMLInputElement>('input') ?? [])].find(
-          (candidate) => candidate.type === 'text',
-        );
-        if (input) setInputValue(input, value);
-      }
     });
 
     for (const text of [
-      'Potwierdzam kompletność tłumaczeń',
-      'Potwierdzam kolejność składników',
-      'Potwierdzam kontekst sprzedaży',
       'Potwierdzam przegląd danych alergenowych',
       'Sprawdziłem dane etykiety przed wydrukiem',
     ]) {
@@ -235,7 +216,9 @@ describe('LabelWorkspace unified actual-run surface', () => {
 
     const workspace = host.querySelector('[data-testid="label-workspace"]')!;
     const intake = workspace.querySelector('[data-testid="label-data-intake"]')!;
-    const continueButton = button('Pokaż etykietę') as HTMLButtonElement;
+    const continueButton = intake.querySelector<HTMLButtonElement>(
+      '[data-testid="show-label-preview"]',
+    )!;
 
     expect(workspace.getAttribute('data-active-label-view')).toBe('data');
     expect(workspace.querySelectorAll('[data-testid^="label-workspace-dot-"]')).toHaveLength(3);
@@ -244,14 +227,26 @@ describe('LabelWorkspace unified actual-run surface', () => {
         ...workspace.querySelectorAll<HTMLButtonElement>('[data-testid^="label-workspace-dot-"]'),
       ].map((dot) => dot.getAttribute('aria-label')),
     ).toEqual(['Dane do etykiety', 'Etykieta', 'Ustawienia etykiety']);
-    expect(intake.textContent).toContain('Uzupełnij wszystko przed podglądem');
-    expect(intake.textContent).toContain('Wszystkie są dostępne na tym ekranie');
+    expect(intake.textContent).toContain('Dokończ etykietę');
+    expect(intake.textContent).not.toContain('Pokaż brakujące');
+    expect(intake.textContent).not.toContain('Ustawienia drukarki');
+    expect(intake.textContent).not.toContain('Jurysdykcja / profil');
+    expect(intake.textContent).toContain('Gelato faktyczne');
+    expect(intake.textContent).toContain('Składniki');
+    expect(intake.textContent).toContain('GOTOWE');
     expect(intake.querySelector('[data-label-field="legal_product_name"]')).not.toBeNull();
-    expect(intake.querySelector('[data-label-field="storage"]')).not.toBeNull();
+    expect(intake.querySelector('[data-label-field="storage"]')).toBeNull();
     expect(intake.querySelector('[data-label-field="date_mark"]')).not.toBeNull();
-    expect(intake.querySelector('[data-label-field="allergens"]')).not.toBeNull();
-    expect(intake.querySelector('[data-label-field="market_nutrition"]')).not.toBeNull();
+    expect(intake.querySelector('[data-label-field="allergens"]')).toBeNull();
+    expect(intake.querySelector('[data-label-field="market_nutrition"]')).toBeNull();
+    const wholeBatch = intake.querySelector<HTMLInputElement>(
+      '[data-testid="whole-batch-package-mass"]',
+    );
+    expect(wholeBatch?.value).toBe(String(completedSnapshot().actualFinalMassG));
+    expect(intake.textContent).toContain('Cała partia = jedno opakowanie');
+    expect(intake.textContent).toContain('Dzielę na kilka opakowań');
     expect(continueButton.disabled).toBe(true);
+    expect(continueButton.textContent).toMatch(/^Uzupełnij \d+ p/);
     expect(
       workspace.querySelector<HTMLButtonElement>('[data-testid="label-workspace-dot-settings"]')
         ?.disabled,
@@ -260,6 +255,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
     await completeRequiredLabelData();
 
     expect(continueButton.disabled).toBe(false);
+    expect(continueButton.textContent).toBe('Pokaż etykietę');
     await act(async () => continueButton.click());
 
     expect(workspace.getAttribute('data-active-label-view')).toBe('label');
@@ -281,7 +277,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(settings.querySelector('[data-label-field]')).toBeNull();
     expect(settings.textContent).toContain('Profil, format i drukarka');
     expect(button('Zastosuj ustawienia')).not.toBeUndefined();
-    await act(async () => button('Wróć do etykiety')!.click());
+    await act(async () => button('Wstecz')!.click());
     expect(workspace.getAttribute('data-active-label-view')).toBe('label');
     expect(workspace.querySelector('[data-testid="label-consumer-preview"]')).not.toBeNull();
   });
@@ -312,12 +308,14 @@ describe('LabelWorkspace unified actual-run surface', () => {
     const sourceInput = intake.querySelector<HTMLInputElement>(
       '[data-label-nutrition-source="saturated_fat_g"]',
     )!;
-    const continueButton = button('Pokaż etykietę') as HTMLButtonElement;
+    const continueButton = intake.querySelector<HTMLButtonElement>(
+      '[data-testid="show-label-preview"]',
+    )!;
 
     expect(sourceInput).not.toBeNull();
     expect(sourceInput.disabled).toBe(false);
     expect(continueButton.disabled).toBe(true);
-    expect(intake.textContent).toContain('Brakującą wartość wpisz wyłącznie');
+    expect(intake.textContent).toContain('Tylko pola, których nie ma');
 
     await act(async () => setInputValue(sourceInput, '3.4'));
 
@@ -327,6 +325,27 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(host.querySelector('[data-testid="label-consumer-preview"]')?.textContent).toContain(
       '3.4 g',
     );
+  });
+
+  it('serves one AU/NZ superset intake with no country split and required origin', async () => {
+    await renderWorkspace('data', {
+      profileOverrides: {
+        market: 'AU_NZ',
+        uiLanguage: 'en',
+        labelLanguages: ['en'],
+      },
+    });
+
+    const intake = host.querySelector('[data-testid="label-data-intake"]')!;
+    expect(intake.getAttribute('data-label-market')).toBe('AU_NZ');
+    expect(intake.textContent).toContain('Australia / New Zealand');
+    expect(intake.textContent).not.toContain('AU/NZ sub-context');
+    expect(intake.textContent).not.toContain('Wybierz Australię');
+    expect(intake.querySelector('[data-label-field="jurisdiction_context"]')).toBeNull();
+    expect(intake.querySelector('[data-label-field="origin"]')).not.toBeNull();
+    expect(
+      intake.querySelector<HTMLInputElement>('[data-testid="whole-batch-package-mass"]')?.value,
+    ).toBe(String(completedSnapshot().actualFinalMassG));
   });
 
   it('shows one market-driven preview with ACTUAL overview outside the print boundary', async () => {
@@ -395,35 +414,36 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(host.querySelector('[data-testid="label-run-editor"]')).toBeNull();
     expect(editor?.querySelector('[role="dialog"]')).toBeNull();
     expect(editor?.innerHTML).toContain('min-h-11');
-    expect(editor?.textContent).toContain('Jurysdykcja / profil');
-    expect(editor?.textContent).toContain('Zapisz konfigurację jako domyślną');
+    expect(editor?.textContent).toContain('Rynek sprzedaży');
+    expect(editor?.textContent).toContain('Zapamiętaj jako domyślne');
     expect(editor?.textContent).toContain('Kopie');
     expect(editor?.textContent).not.toContain('LOT · nadawany automatycznie');
     expect(editor?.textContent).not.toContain('Energia według zasad rynku');
     expect(editor?.textContent).not.toContain('Uzupełnij wymagane pola');
     expect(editor?.querySelector('[data-label-field]')).toBeNull();
-    expect(editor?.textContent).toContain('Wymagane pola profilu European Union są zawsze aktywne');
-    expect(editor?.querySelector('[data-testid="optional-label-fields"] input')).not.toBeNull();
+    expect(editor?.textContent).not.toContain('Wymagane pola profilu');
+    expect(editor?.querySelector('[data-testid="optional-label-fields"]')).toBeNull();
+    expect(editor?.textContent).not.toContain('Marka / nazwa firmy');
+    expect(editor?.textContent).not.toContain('Operator');
 
-    const us = [...editor!.querySelectorAll('button')].find((button) =>
-      button.textContent?.startsWith('United States'),
+    const market = editor!.querySelector<HTMLSelectElement>('[data-testid="label-market-select"]')!;
+    expect([...market.options].map((option) => option.value)).toEqual([
+      'EU',
+      'UK',
+      'US',
+      'CA',
+      'AU_NZ',
+      'WORLD',
+    ]);
+    expect([...market.options].filter((option) => option.text.includes('Australia'))).toHaveLength(
+      1,
     );
-    expect(us?.getAttribute('aria-disabled')).toBeNull();
-    const canada = [...editor!.querySelectorAll('button')].find((button) =>
-      button.textContent?.startsWith('Canada'),
-    );
-    await act(async () => canada!.click());
-    expect(editor?.querySelector('[data-market-active="true"]')?.textContent).toContain('Canada');
-    const uk = [...editor!.querySelectorAll('button')].find((button) =>
-      button.textContent?.startsWith('United Kingdom'),
-    );
-    await act(async () => uk!.click());
+    await act(async () => setSelectValue(market, 'CA'));
+    expect(market.value).toBe('CA');
+    await act(async () => setSelectValue(market, 'UK'));
     const apply = button('Zastosuj ustawienia') as HTMLButtonElement;
     expect(apply.disabled).toBe(false);
-    expect(
-      host.querySelector('[data-testid="label-settings-view"] [data-market-active="true"]')
-        ?.textContent,
-    ).toContain('United Kingdom');
+    expect(market.value).toBe('UK');
     await act(async () => apply.click());
     expect(host.querySelector('[data-active-label-view="data"]')).not.toBeNull();
     expect(
@@ -434,83 +454,48 @@ describe('LabelWorkspace unified actual-run surface', () => {
     ).toBe(true);
   });
 
-  it('keeps Step 3 configuration-only and does not persist an unapplied optional toggle', async () => {
+  it('keeps Step 3 configuration-only and does not persist an unapplied market change', async () => {
     const repository = await renderWorkspace('settings');
     await completeRequiredLabelData();
     await act(async () => button('Pokaż etykietę')!.click());
     await act(async () => button('Ustawienia')!.click());
 
     const editor = host.querySelector('[data-testid="label-settings-view"]')!;
-    expect(editor.querySelector('[data-testid="required-label-fields"] input')).toBeNull();
     expect(editor.querySelector('[data-label-field]')).toBeNull();
-    const originLabel = [
-      ...editor.querySelectorAll('[data-testid="optional-label-fields"] label'),
-    ].find((label) => label.textContent?.includes('Pochodzenie'))!;
-    const originToggle = originLabel.querySelector('input')!;
-    expect(originToggle.checked).toBe(true);
-    await act(async () => originToggle.click());
-    expect(originToggle.checked).toBe(false);
-    await act(async () => originToggle.click());
-    expect(originToggle.checked).toBe(true);
-    await act(async () => originToggle.click());
-
-    expect((await repository.getAccountProfile())?.enabledOptionalFields).toContain('origin');
-    await act(async () => button('Wróć do etykiety')!.click());
+    expect(editor.textContent).not.toContain('Pochodzenie');
+    expect(editor.textContent).not.toContain('GTIN');
+    const market = editor.querySelector<HTMLSelectElement>('[data-testid="label-market-select"]')!;
+    await act(async () => setSelectValue(market, 'WORLD'));
+    expect(market.value).toBe('WORLD');
+    expect((await repository.getAccountProfile())?.market).toBe('EU');
+    await act(async () => button('Wstecz')!.click());
     expect(host.querySelector('[data-active-label-view="label"]')).not.toBeNull();
-    expect((await repository.getAccountProfile())?.enabledOptionalFields).toContain('origin');
+    expect((await repository.getAccountProfile())?.market).toBe('EU');
   });
 
   it('marks every preflight-missing required field in Step 1 and updates the one live count', async () => {
     await renderWorkspace('data');
     const settings = host.querySelector('[data-testid="label-data-intake"]')!;
-    const missingCount = () =>
-      settings.querySelector('[data-testid="label-data-missing-count"]')?.textContent ?? '';
     const missingFields = () => settings.querySelectorAll('[data-missing-required="true"]');
 
-    expect(missingCount()).toContain('Uzupełnij wymagane pola');
-    expect(missingCount()).toMatch(/brakuje \d+ pozycji/i);
-    expect(missingFields()).toHaveLength(6);
+    expect(settings.querySelector('[data-testid="show-label-preview"]')?.textContent).toBe(
+      'Uzupełnij 5 pól',
+    );
+    expect(missingFields()).toHaveLength(5);
     expect(
       [...missingFields()].map((field) => field.getAttribute('data-label-field')).sort(),
     ).toEqual([
-      'allergens',
+      'acknowledgement',
       'date_mark',
+      'jurisdiction_context',
       'legal_product_name',
-      'net_quantity',
       'operator',
-      'storage',
     ]);
-
-    const fill = async (field: string, values: string[]) => {
-      const inputs = [
-        ...settings.querySelectorAll<HTMLInputElement>(`[data-label-field="${field}"] input`),
-      ].filter((input) => input.type !== 'checkbox');
-      await act(async () => {
-        inputs.forEach((input, index) => setInputValue(input, values[index] ?? values[0]!));
-      });
-    };
-
-    await fill('legal_product_name', ['Ice cream']);
-    await fill('net_quantity', ['500']);
-    await act(async () =>
-      settings.querySelector<HTMLInputElement>('[data-label-field="allergens"] input')!.click(),
-    );
-    await fill('operator', ['Gellatti Laboratory', '1 Test Street', 'ES']);
-    await fill('storage', ['Keep frozen']);
-    await fill('date_mark', ['2026-09-24']);
-    const nutrition = settings.querySelector<HTMLElement>('[data-label-field="market_nutrition"]')!;
-    await act(async () => setInputValue(nutrition.querySelector('input')!, '900'));
-    await act(async () => {
-      const authority = settings.querySelector<HTMLSelectElement>(
-        '[data-label-field="market_nutrition"] select',
-      )!;
-      const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set;
-      setter?.call(authority, 'market_factors');
-      authority.dispatchEvent(new Event('change', { bubbles: true }));
-    });
-
+    await completeRequiredLabelData();
     expect([...missingFields()].map((field) => field.getAttribute('data-label-field'))).toEqual([]);
-    expect(missingCount()).not.toMatch(/brakuje 14 pozycji/i);
+    expect(settings.querySelector('[data-testid="show-label-preview"]')?.textContent).toBe(
+      'Pokaż etykietę',
+    );
   });
 
   it('opens Step 3 from the primary CTA and preserves valid settings on direct return', async () => {
@@ -561,28 +546,13 @@ describe('LabelWorkspace unified actual-run surface', () => {
     });
 
     let settings = host.querySelector('[data-testid="label-data-intake"]')!;
-    const fillRequired = async (field: string, value: string) => {
-      const input = settings.querySelector<HTMLInputElement>(
-        `[data-label-field="${field}"] input`,
-      )!;
-      await act(async () => setInputValue(input, value));
-    };
-    await fillRequired('net_quantity', '500');
-    await fillRequired('storage', 'Keep frozen');
-    await act(async () =>
-      settings.querySelector<HTMLInputElement>('[data-label-field="allergens"] input')!.click(),
-    );
     const acknowledgement = [
       ...settings.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'),
     ].find((input) => input.parentElement?.textContent?.includes('Sprawdziłem dane etykiety'))!;
     await act(async () => acknowledgement.click());
 
     const showLabel = button('Pokaż etykietę') as HTMLButtonElement;
-    expect(
-      [...settings.querySelectorAll('[data-missing-required="true"]')].map((field) =>
-        field.getAttribute('data-label-field'),
-      ),
-    ).toEqual([]);
+    expect([...settings.querySelectorAll('[data-missing-required="true"]')]).toHaveLength(0);
     expect(showLabel.disabled).toBe(false);
     await act(async () => {
       showLabel.click();
@@ -636,10 +606,9 @@ describe('LabelWorkspace unified actual-run surface', () => {
     await renderWorkspace('settings');
     const workspace = host.querySelector('[data-testid="label-workspace"]')!;
     expect(workspace.getAttribute('data-active-label-view')).toBe('data');
-    expect(
-      workspace.querySelector('[data-testid="label-data-intake"] [data-market-active="true"]')
-        ?.textContent,
-    ).toContain('European Union');
+    expect(workspace.querySelector('[data-testid="label-data-intake"]')?.textContent).toContain(
+      'European Union',
+    );
 
     await swipe(workspace, 260, 130);
     expect(workspace.getAttribute('data-active-label-view')).toBe('data');

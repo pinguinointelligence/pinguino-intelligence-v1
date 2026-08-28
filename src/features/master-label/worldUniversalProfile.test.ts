@@ -31,6 +31,8 @@ describe('WORLD / UNIVERSAL label profile', () => {
     expect(html).not.toContain('Valeur nutritive');
     expect(html).not.toContain('canada-fop');
     expect(html).not.toContain('% Daily Value');
+    expect(html).toContain('INTERNAL / INFORMATIONAL LABEL');
+    expect(html).toContain('NOT VALIDATED FOR RETAIL SALE');
   });
 
   it('prints only real optional machine codes and never invents a GTIN', () => {

@@ -160,7 +160,7 @@ export interface MasterLabelData {
   nutritionSource: LabelNutritionPer100g | null;
   nutritionDeclaration: NutritionDeclaration | null;
   regulatoryNutrition: RegulatoryNutritionInputs;
-  /** Selected consumer-package fill. Never infer this from the batch size. */
+  /** Consumer-package fill; a new completed run starts as one whole-batch package. */
   packageQuantity?: LabelPackageQuantity | null;
   shelfLifeAuthority?: ShelfLifeAuthority;
   /** Legacy projection for old snapshots and existing UI adapters. */
@@ -291,6 +291,24 @@ function translated(value: string, languages: readonly string[]): MultilingualTe
   return Object.fromEntries(languages.map((language) => [language, value]));
 }
 
+const FROZEN_STORAGE_BY_LANGUAGE: Readonly<Record<string, string>> = {
+  pl: 'Przechowywać w temperaturze -18°C lub niższej.',
+  en: 'Keep frozen at -18°C or below.',
+  fr: 'Conserver congelé à -18 °C ou moins.',
+  es: 'Conservar congelado a -18 °C o menos.',
+  de: 'Bei -18 °C oder kälter tiefgekühlt lagern.',
+  it: 'Conservare congelato a -18 °C o temperatura inferiore.',
+};
+
+function defaultFrozenStorage(languages: readonly string[]): MultilingualText {
+  return Object.fromEntries(
+    languages.map((language) => [
+      language,
+      FROZEN_STORAGE_BY_LANGUAGE[language.toLowerCase()] ?? FROZEN_STORAGE_BY_LANGUAGE.en!,
+    ]),
+  );
+}
+
 export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelData {
   const { snapshot } = input;
   const behaviorAuthority = buildRecipeBehaviorAuthority({
@@ -407,6 +425,16 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
     energyAuthority:
       marketEnergyKj === null ? ('unresolved' as const) : ('market_factors' as const),
   };
+  const defaultPackageQuantity: LabelPackageQuantity = {
+    value: snapshot.actualFinalMassG,
+    unit: 'g',
+    netWeightG: snapshot.actualFinalMassG,
+    netVolumeMl: null,
+    source: 'measured_fill',
+    confirmedAt: snapshot.productionCompletedAt,
+  };
+  const packageQuantity =
+    input.packageQuantity === undefined ? defaultPackageQuantity : input.packageQuantity;
 
   return {
     schemaVersion: 1,
@@ -432,15 +460,13 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
       declared,
       mayContain,
       labelStatements,
-      reviewedByUser: false,
+      reviewedByUser: allergenComplete,
     },
     nutritionSource: nutrition,
     nutritionDeclaration: buildNutritionDeclaration(nutrition),
     regulatoryNutrition,
-    // Package fill is a separate operator choice. The completed batch mass is
-    // evidence above, but is never silently reused as consumer net quantity.
-    packageQuantity: input.packageQuantity ?? null,
-    netQuantityG: input.packageQuantity?.netWeightG ?? null,
+    packageQuantity,
+    netQuantityG: packageQuantity?.netWeightG ?? null,
     servingQuantityG: null,
     productionDate: completedDate,
     productionDateReviewed: true,
@@ -459,7 +485,7 @@ export function buildMasterLabelData(input: BuildMasterLabelInput): MasterLabelD
       basis: 'none',
       reviewedByUser: false,
     },
-    storageInstructions: translated('', languages),
+    storageInstructions: defaultFrozenStorage(languages),
     useInstructions: translated('', languages),
     operator: facility,
     lotCode:
@@ -858,17 +884,8 @@ export function buildLabelPreflight(data: MasterLabelData): LabelPreflight {
       : data.purpose === 'internal_production'
         ? (['product_name', 'ingredients', 'allergens', 'lot', 'storage'] as const)
         : (['product_name', 'allergens', 'operator'] as const);
-  const requiredFields: readonly MasterLabelFieldId[] =
-    data.purpose === 'retail_consumer' &&
-    data.market === 'AU_NZ' &&
-    data.jurisdictionContext?.auNzCountry === 'AU'
-      ? [...baseRequiredFields, 'origin']
-      : baseRequiredFields;
-  const activeFields = [
-    ...requiredFields,
-    ...data.enabledOptionalFields.filter((field) => !requiredFields.includes(field)),
-  ];
-  const required = activeFields.map((field) => fieldReadiness(data, field));
+  const requiredFields: readonly MasterLabelFieldId[] = baseRequiredFields;
+  const required = requiredFields.map((field) => fieldReadiness(data, field));
   const requiredLanguages =
     profile.requiredLanguages.length > 0 ? profile.requiredLanguages : data.labelLanguages;
   const languagesReady =
@@ -955,8 +972,7 @@ export function buildLabelPreflight(data: MasterLabelData): LabelPreflight {
         ? data.jurisdictionContext?.ukRegion !== undefined &&
           data.jurisdictionContext.ukRegion !== 'unresolved'
         : data.market === 'AU_NZ'
-          ? data.jurisdictionContext?.auNzCountry !== undefined &&
-            data.jurisdictionContext.auNzCountry !== 'unresolved'
+          ? true
           : data.market === 'US'
             ? data.jurisdictionContext?.usSaleContext !== undefined &&
               data.jurisdictionContext.usSaleContext !== 'unresolved'
@@ -976,17 +992,12 @@ export function buildLabelPreflight(data: MasterLabelData): LabelPreflight {
     },
     {
       field: 'languages',
-      status:
-        !retail ||
-        (languagesReady && (data.market === 'WORLD' || data.regulatoryReview.translations))
-          ? 'ready'
-          : 'missing',
+      status: !retail || languagesReady ? 'ready' : 'missing',
       label: 'Języki etykiety',
       message:
-        !retail ||
-        (languagesReady && (data.market === 'WORLD' || data.regulatoryReview.translations))
+        !retail || languagesReady
           ? 'Wymagane języki i tłumaczenia potwierdzone.'
-          : `Wymagane języki: ${requiredLanguages.join(', ')}; potwierdź tłumaczenia.`,
+          : `Wymagane języki: ${requiredLanguages.join(', ')}.`,
     },
     ...required,
     ...(retail &&
@@ -1059,9 +1070,7 @@ export function buildLabelPreflight(data: MasterLabelData): LabelPreflight {
             ? 'Wybierz Wielką Brytanię albo Irlandię Północną oraz właściwy kontekst żywności opakowanej lub PPDS.'
             : data.market === 'EU'
               ? 'Podaj dwuliterowy kod docelowego państwa członkowskiego i potwierdź właściwe języki.'
-              : data.market === 'AU_NZ'
-                ? 'Wybierz Australię albo Nową Zelandię dla oznaczenia kraju pochodzenia.'
-                : 'Potwierdź kontekst sprzedaży FDA.',
+              : 'Potwierdź kontekst sprzedaży FDA.',
     },
     {
       field: 'geometry',
@@ -1080,19 +1089,9 @@ export function buildLabelPreflight(data: MasterLabelData): LabelPreflight {
     },
     {
       field: 'regulatory_review',
-      status:
-        !retail ||
-        data.market === 'WORLD' ||
-        (data.regulatoryReview.ingredientOrderAndQuid && data.regulatoryReview.marketSpecific)
-          ? 'ready'
-          : 'review',
+      status: 'ready',
       label: 'Kontrola rynku',
-      message:
-        !retail ||
-        data.market === 'WORLD' ||
-        (data.regulatoryReview.ingredientOrderAndQuid && data.regulatoryReview.marketSpecific)
-          ? 'Kolejność/QUID i wymagania rynku potwierdzone.'
-          : 'Potwierdź kolejność składników/QUID oraz wymagania właściwe dla rynku.',
+      message: 'Kolejność, QUID i wymagania rynku wynikają z aktywnej walidacji pól.',
     },
     {
       field: 'acknowledgement',

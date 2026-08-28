@@ -160,9 +160,8 @@ export const storageHtml = (
     .join('');
 
 export const originHtml = (data: MasterLabelData, languages: readonly string[]): string => {
-  const requiredForAustralia =
-    data.market === 'AU_NZ' && data.jurisdictionContext?.auNzCountry === 'AU';
-  if (!requiredForAustralia && !data.enabledOptionalFields.includes('origin')) return '';
+  const requiredForSharedAuNz = data.market === 'AU_NZ';
+  if (!requiredForSharedAuNz && !data.enabledOptionalFields.includes('origin')) return '';
   const origin = primaryText(data.origin, languages);
   return origin ? `<p class="origin"><strong>Origin:</strong> ${escapeHtml(origin)}</p>` : '';
 };
