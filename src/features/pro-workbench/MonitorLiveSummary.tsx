@@ -47,14 +47,19 @@ export function MonitorLiveSummary({
   const recipe = useRecipeStore();
   const intents = useRecipeProfileStore((state) => state.directionIntents);
   const awaitingRecalculation = useRecipeProfileStore((state) => state.awaitingRecalculation);
+  const activeDraftIdentity = useRecipeProfileStore((state) => state.activeDraftIdentity);
   const confirmedSignature = useRecipeProfileStore((state) => state.confirmedSignature);
+  const confirmedDraftIdentity = useRecipeProfileStore((state) => state.confirmedDraftIdentity);
   const confirmedContextSeq = useRecipeProfileStore((state) => state.confirmedContextSeq);
   const currentSignature = profileSettingsSignature(
     profileSnapshotFromState(recipe, recipe.direction_targets, intents),
-    recipe.draftContextSeq,
   );
   const confirmed =
-    confirmedSignature === currentSignature && confirmedContextSeq === recipe.draftContextSeq;
+    activeDraftIdentity !== null &&
+    confirmedDraftIdentity === activeDraftIdentity &&
+    confirmedSignature === currentSignature &&
+    (activeDraftIdentity.startsWith('["saved-recipe",') ||
+      confirmedContextSeq === recipe.draftContextSeq);
 
   return (
     <section data-testid="monitor-live-summary">

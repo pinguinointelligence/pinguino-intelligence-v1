@@ -17,6 +17,7 @@ import { machineDisplayName } from '@/features/machine-onboarding/machineViews';
 import { ReadinessBadge } from '@/features/design-review/ReadinessMarker';
 import {
   profileSettingsSignature,
+  savedRecipeProfileDraftIdentity,
   showsProfessionalServing,
   useRecipeProfileStore,
 } from './recipeProfileStore';
@@ -121,9 +122,12 @@ export function WorkbenchSettingsLine({
   const directionTargets = store.direction_targets;
   const directionIntents = useRecipeProfileStore((state) => state.directionIntents);
   const openedContextSeq = useRecipeProfileStore((state) => state.openedContextSeq);
+  const activeDraftIdentity = useRecipeProfileStore((state) => state.activeDraftIdentity);
   const confirmedSignature = useRecipeProfileStore((state) => state.confirmedSignature);
+  const confirmedDraftIdentity = useRecipeProfileStore((state) => state.confirmedDraftIdentity);
   const confirmedContextSeq = useRecipeProfileStore((state) => state.confirmedContextSeq);
   const openDraft = useRecipeProfileStore((state) => state.openDraft);
+  const rebindDraftIdentity = useRecipeProfileStore((state) => state.rebindDraftIdentity);
   const confirmSettings = useRecipeProfileStore((state) => state.confirmSettings);
   const [unit, setUnit] = useState<BatchUnit>('g');
   const [pendingBaseProfile, setPendingBaseProfile] = useState<VisibleProductType | null>(null);
@@ -133,16 +137,42 @@ export function WorkbenchSettingsLine({
       ? (activeHomeMachines.find((profile) => profile.id === store.machineId) ?? null)
       : null;
 
+  const exactSavedRecipeIdentity = savedRecipeProfileDraftIdentity(store);
   useEffect(() => {
-    if (openedContextSeq !== store.draftContextSeq) {
-      openDraft(store.draftContextSeq, directionTargets);
+    if (openedContextSeq !== store.draftContextSeq || activeDraftIdentity === null) {
+      openDraft(
+        store.draftContextSeq,
+        directionTargets,
+        directionIntents,
+        exactSavedRecipeIdentity,
+      );
+    } else if (
+      exactSavedRecipeIdentity !== null &&
+      activeDraftIdentity !== exactSavedRecipeIdentity
+    ) {
+      // Saving an already-confirmed unsaved draft gives it an immutable
+      // recipe/version identity without changing its settings authority.
+      rebindDraftIdentity(exactSavedRecipeIdentity);
     }
-  }, [directionTargets, openDraft, openedContextSeq, store.draftContextSeq]);
+  }, [
+    activeDraftIdentity,
+    directionIntents,
+    directionTargets,
+    exactSavedRecipeIdentity,
+    openDraft,
+    openedContextSeq,
+    rebindDraftIdentity,
+    store.draftContextSeq,
+  ]);
 
   const snapshot = profileSnapshotFromState(store, directionTargets, directionIntents);
-  const signature = profileSettingsSignature(snapshot, store.draftContextSeq);
+  const signature = profileSettingsSignature(snapshot);
   const confirmed =
-    confirmedSignature === signature && confirmedContextSeq === store.draftContextSeq;
+    activeDraftIdentity !== null &&
+    confirmedDraftIdentity === activeDraftIdentity &&
+    confirmedSignature === signature &&
+    (activeDraftIdentity.startsWith('["saved-recipe",') ||
+      confirmedContextSeq === store.draftContextSeq);
   const hardConflict =
     !Number.isFinite(store.target_batch_grams) ||
     store.target_batch_grams <= 0 ||
@@ -286,7 +316,11 @@ export function WorkbenchSettingsLine({
             <button
               type="button"
               disabled={hardConflict}
-              onClick={() => confirmSettings(signature, store.draftContextSeq)}
+              onClick={() => {
+                if (activeDraftIdentity !== null) {
+                  confirmSettings(signature, activeDraftIdentity, store.draftContextSeq);
+                }
+              }}
               data-testid="profile-settings-confirm"
               className={cn(
                 'pro-focus-ring w-full rounded-[10px] bg-ink px-3 text-xs font-semibold text-white shadow-pro-sm disabled:cursor-not-allowed disabled:opacity-35',

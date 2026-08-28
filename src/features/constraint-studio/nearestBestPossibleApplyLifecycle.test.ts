@@ -228,6 +228,11 @@ const expectSuccessfulApply = (displayed: ConstraintPreview, expectedScore: numb
     loading: state.applyPending,
   });
   expect(currentAuthority.ready).toBe(true);
+  expect(useRecipeProfileStore.getState().calculatedRecipeAuthority).toMatchObject({
+    draftIdentity: useRecipeProfileStore.getState().activeDraftIdentity,
+    recipeFingerprint: currentAuthority.recipeFingerprint,
+    behaviorFingerprint: currentAuthority.behaviorFingerprint,
+  });
   const behaviorAuthority = buildRecipeBehaviorAuthority({
     items: currentInput.items,
     toppings: recipeState.toppings,

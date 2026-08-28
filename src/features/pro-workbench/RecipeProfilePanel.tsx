@@ -19,7 +19,6 @@ import { MonitorPanelContent } from './MonitorPanelContent';
 import { ProductionCockpit } from '@/features/production-workspace/ProductionCockpit';
 import type { ProductionWorkspaceView } from '@/features/production-workspace/useProductionWorkspace';
 import { WorkbenchModuleTabs, type WorkbenchModuleTab } from './WorkbenchModuleTabs';
-import { LockedPIPreview } from '@/features/studio/locked/LockedPIPreview';
 import {
   calculateFinalProduct,
   type ProductLabelNutritionPer100g,
@@ -189,6 +188,11 @@ function ProfileContent({
   const savedRecipeId = useRecipeStore((state) => state.savedRecipeId);
   const hasNewRecipeStarter = useRecipeStore((state) => state.newRecipeStarterKey !== null);
   const awaitingRecalculation = useRecipeProfileStore((state) => state.awaitingRecalculation);
+  const activeDraftIdentity = useRecipeProfileStore((state) => state.activeDraftIdentity);
+  const calculatedRecipeAuthority = useRecipeProfileStore(
+    (state) => state.calculatedRecipeAuthority,
+  );
+  const recordCalculatedRecipe = useRecipeProfileStore((state) => state.recordCalculatedRecipe);
   const applyPending = useConstraintStudioStore((state) => state.applyPending);
   const applyBlocked = useConstraintStudioStore((state) => state.blocked);
   const appliedHistoryCount = useConstraintStudioStore((state) => state.history.length);
@@ -201,12 +205,37 @@ function ProfileContent({
     () => buildRecipeBehaviorAuthority({ items: input.items, snapshots }),
     [input.items, snapshots],
   );
+  const baseSnapshots = useMemo(() => {
+    const requiredLineIds = new Set(baseAuthority.requiredLineIds);
+    return Object.fromEntries(
+      Object.entries(snapshots).filter(([lineId]) => requiredLineIds.has(lineId)),
+    );
+  }, [baseAuthority.requiredLineIds, snapshots]);
   const legacyInspection = recipeBehaviorLegacyInspection(baseAuthority, savedRecipeId);
   const finalAuthority = useMemo(
     () => buildRecipeBehaviorAuthority({ items: input.items, toppings, snapshots }),
     [input.items, snapshots, toppings],
   );
-  const currentResultAuthority = useMemo(
+  const baseCurrentResultAuthority = useMemo(
+    () =>
+      buildCurrentRecipeResultAuthority({
+        recipe: input,
+        toppings: [],
+        snapshots: baseSnapshots,
+        draftRevision,
+        awaitingRecalculation,
+        loading: applyPending || recalculationTerminal?.state === 'WORKING',
+      }),
+    [
+      applyPending,
+      awaitingRecalculation,
+      baseSnapshots,
+      draftRevision,
+      input,
+      recalculationTerminal,
+    ],
+  );
+  const finalCurrentResultAuthority = useMemo(
     () =>
       buildCurrentRecipeResultAuthority({
         recipe: input,
@@ -227,14 +256,50 @@ function ProfileContent({
     ],
   );
   const finalLegacyInspection = recipeBehaviorLegacyInspection(finalAuthority, savedRecipeId);
-  const currentResultReady = currentResultAuthority.ready && !finalLegacyInspection;
+  const calculatedForDraft =
+    activeDraftIdentity !== null &&
+    calculatedRecipeAuthority?.draftIdentity === activeDraftIdentity;
+  const calculatedAuthorityCurrent =
+    calculatedForDraft &&
+    calculatedRecipeAuthority?.recipeFingerprint === baseCurrentResultAuthority.recipeFingerprint &&
+    calculatedRecipeAuthority?.behaviorFingerprint ===
+      baseCurrentResultAuthority.behaviorFingerprint;
+  const completedWithoutApply =
+    recalculationTerminal?.state === 'NO_CHANGE_NEEDED' ||
+    recalculationTerminal?.state === 'BEST_ACHIEVABLE';
+  const shouldRecordCalculatedRecipe =
+    activeDraftIdentity !== null &&
+    baseCurrentResultAuthority.ready &&
+    (calculatedAuthorityCurrent ||
+      !hasNewRecipeStarter ||
+      appliedHistoryCount > 0 ||
+      completedWithoutApply);
+  useEffect(() => {
+    if (!shouldRecordCalculatedRecipe || activeDraftIdentity === null) return;
+    if (calculatedAuthorityCurrent) return;
+    recordCalculatedRecipe({
+      draftIdentity: activeDraftIdentity,
+      recipeFingerprint: baseCurrentResultAuthority.recipeFingerprint,
+      behaviorFingerprint: baseCurrentResultAuthority.behaviorFingerprint,
+    });
+  }, [
+    activeDraftIdentity,
+    baseCurrentResultAuthority.behaviorFingerprint,
+    baseCurrentResultAuthority.recipeFingerprint,
+    calculatedAuthorityCurrent,
+    recordCalculatedRecipe,
+    shouldRecordCalculatedRecipe,
+  ]);
+  const currentResultReady = baseCurrentResultAuthority.ready && !legacyInspection;
   const journeyState = friendlyLabRecipeJourneyState({
-    currentResultAuthority,
+    currentResultAuthority: baseCurrentResultAuthority,
     awaitingRecalculation,
     hasNewRecipeStarter,
     appliedHistoryCount,
     recalculationTerminal,
     legacyInspection: Boolean(legacyInspection),
+    calculatedForDraft,
+    calculatedAuthorityCurrent,
   });
   const friendlyCurrentResultReady = journeyState === 'CURRENT' && currentResultReady;
   const previousApplyPending = useRef(applyPending);
@@ -251,10 +316,7 @@ function ProfileContent({
     }
     if (!applyPending && friendlyCurrentResultReady && applySuccessAwaitingCurrent.current) {
       applySuccessAwaitingCurrent.current = false;
-      announceFriendlyLabMoment(
-        'apply-complete',
-        `apply:${draftRevision}:${appliedHistoryCount}`,
-      );
+      announceFriendlyLabMoment('apply-complete', `apply:${draftRevision}:${appliedHistoryCount}`);
     }
     previousApplyPending.current = applyPending;
   }, [appliedHistoryCount, applyBlocked, applyPending, draftRevision, friendlyCurrentResultReady]);
@@ -267,14 +329,15 @@ function ProfileContent({
           : result,
     [baseAuthority, friendlyCurrentResultReady, input, legacyInspection, result],
   );
-  const profileReadable = friendlyCurrentResultReady || legacyInspection;
-  const finalSummaryReadable = friendlyCurrentResultReady || finalLegacyInspection;
+  const finalCurrentResultReady =
+    friendlyCurrentResultReady && finalCurrentResultAuthority.ready && !finalLegacyInspection;
+  const finalSummaryReadable = finalCurrentResultReady || finalLegacyInspection;
   const finalProduct = useMemo(() => {
     if (!finalSummaryReadable) return null;
-    const finalInput = friendlyCurrentResultReady
+    const finalInput = finalCurrentResultReady
       ? recipeInputFromFrozenBehavior(input, finalAuthority, 'nutrition')
       : input;
-    const finalToppings = friendlyCurrentResultReady
+    const finalToppings = finalCurrentResultReady
       ? recipeToppingsFromFrozenBehavior(toppings, finalAuthority, 'nutrition')
       : toppings;
     return calculateFinalProduct(
@@ -285,8 +348,8 @@ function ProfileContent({
   }, [
     customerPrices,
     finalAuthority,
+    finalCurrentResultReady,
     finalSummaryReadable,
-    friendlyCurrentResultReady,
     input,
     toppings,
   ]);
@@ -294,8 +357,8 @@ function ProfileContent({
     <div
       className="w-full min-w-0 p-3"
       data-testid="pro-context-recipe"
-      data-current-result-state={currentResultAuthority.state}
-      data-current-result-revision={currentResultAuthority.draftRevision}
+      data-current-result-state={baseCurrentResultAuthority.state}
+      data-current-result-revision={baseCurrentResultAuthority.draftRevision}
       data-friendly-lab-recipe-state={journeyState}
     >
       {legacyInspection ? (
@@ -312,46 +375,7 @@ function ProfileContent({
         data-testid="profile-desktop-grid"
         data-profile-layout="stacked"
       >
-        {profileReadable ? (
-          <ProfileDirectionAxes result={frozenNutritionResult} className="min-w-0" />
-        ) : journeyState === 'INITIAL' ? (
-          <WorkflowNotice
-            eyebrow="Wskaźniki receptury"
-            title="Jeszcze nie liczyliśmy tej receptury."
-            description="Dodaj składniki i wybierz Przelicz — pokażemy Ci, jak wygląda jej balans."
-            variant="neutral"
-            testId="friendly-lab-recipe-initial"
-          />
-        ) : journeyState === 'WORKING' ? (
-          <div className="min-w-0 space-y-2" data-testid="friendly-lab-recipe-working">
-            <WorkflowNotice
-              eyebrow="Wskaźniki receptury"
-              title="Liczymy balans receptury…"
-              description="Wynik pojawi się, gdy sprawdzimy całą recepturę."
-              variant="neutral"
-            />
-            <div aria-busy="true" data-testid="friendly-lab-recipe-working-skeleton">
-              <LockedPIPreview />
-            </div>
-          </div>
-        ) : journeyState === 'STALE' ? (
-          <WorkflowNotice
-            eyebrow="Wskaźniki receptury"
-            title="Receptura się zmieniła."
-            description="Wybierz Przelicz, aby odświeżyć balans."
-            variant="attention"
-            testId="friendly-lab-recipe-stale"
-          />
-        ) : (
-          <WorkflowNotice
-            eyebrow="Wskaźniki receptury"
-            title="Nie możemy jeszcze pokazać aktualnego balansu."
-            description="Sprawdź komunikat przy Przelicz i wykonaj wskazany krok."
-            variant="blocking"
-            role="alert"
-            testId="friendly-lab-recipe-blocked"
-          />
-        )}
+        <ProfileDirectionAxes result={frozenNutritionResult} className="min-w-0" />
         <WorkbenchSettingsLine actualBatchG={result.total_batch_g} className="min-w-0" compact />
         {recipeBar ? <div className="min-w-0">{recipeBar}</div> : null}
         <NutritionCostProfileGrid

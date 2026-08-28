@@ -68,7 +68,12 @@ export function buildCurrentRecipeResultAuthority(
     ...new Set(blockedModules.flatMap((module) => moduleGates[module].blockedLineIds)),
   ].sort();
   const recipeFingerprint = practicalRecipeInputFingerprint(input.recipe);
-  const behaviorFingerprint = productBehaviorSnapshotFingerprint(input.snapshots);
+  const requiredLineIds = new Set(authority.requiredLineIds);
+  const behaviorFingerprint = productBehaviorSnapshotFingerprint(
+    Object.fromEntries(
+      Object.entries(input.snapshots).filter(([lineId]) => requiredLineIds.has(lineId)),
+    ),
+  );
   const resultReference = JSON.stringify({
     draftRevision: input.draftRevision,
     recipeFingerprint,

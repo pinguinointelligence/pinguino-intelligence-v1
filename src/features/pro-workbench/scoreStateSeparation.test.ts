@@ -33,7 +33,12 @@ describe('recipe footer keeps the formal calculation state machine', () => {
     expect(header).toContain("journeyState !== 'CURRENT'");
     expect(header).toContain("journeyState === 'CURRENT'");
     const journey = readFileSync(new URL('./friendlyLabRecipeJourney.ts', import.meta.url), 'utf8');
-    expect(journey).toContain("if (input.awaitingRecalculation) return 'STALE';");
+    expect(journey).toContain(
+      "if (input.awaitingRecalculation || input.calculatedForDraft) return 'STALE';",
+    );
+    expect(journey).toContain(
+      "if (input.calculatedForDraft && !input.calculatedAuthorityCurrent) return 'STALE';",
+    );
     expect(journey).toContain("if (firstRunStillOpen) return 'INITIAL';");
     const currentAuthority = readFileSync(
       new URL('./currentRecipeResultAuthority.ts', import.meta.url),

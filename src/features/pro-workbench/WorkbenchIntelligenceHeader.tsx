@@ -1,5 +1,5 @@
 import { calculateRecipe, type RecipeInput, type RecipeResult } from '@/engine';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useRecipeProfileStore } from './recipeProfileStore';
 import {
@@ -29,7 +29,6 @@ export function WorkbenchIntelligenceHeader({
 }) {
   const match = monitorScoreView(result, input).match;
   const snapshots = useRecipeStore((state) => state.productBehaviorSnapshots);
-  const toppings = useRecipeStore((state) => state.toppings);
   const draftRevision = useRecipeStore((state) => state.draftRevision);
   const savedRecipeId = useRecipeStore((state) => state.savedRecipeId);
   const hasNewRecipeStarter = useRecipeStore((state) => state.newRecipeStarterKey !== null);
@@ -39,18 +38,29 @@ export function WorkbenchIntelligenceHeader({
   const appliedHistoryCount = useConstraintStudioStore((state) => state.history.length);
   const applyPending = useConstraintStudioStore((state) => state.applyPending);
   const awaitingRecalculation = useRecipeProfileStore((state) => state.awaitingRecalculation);
+  const activeDraftIdentity = useRecipeProfileStore((state) => state.activeDraftIdentity);
+  const calculatedRecipeAuthority = useRecipeProfileStore(
+    (state) => state.calculatedRecipeAuthority,
+  );
+  const recordCalculatedRecipe = useRecipeProfileStore((state) => state.recordCalculatedRecipe);
   const authority = useMemo(
     // Score currentness belongs to the technical Base. Post-production
     // toppings change final mass/cost only and cannot stale this authority.
     () => buildRecipeBehaviorAuthority({ items: input.items, snapshots }),
     [input.items, snapshots],
   );
+  const baseSnapshots = useMemo(() => {
+    const requiredLineIds = new Set(authority.requiredLineIds);
+    return Object.fromEntries(
+      Object.entries(snapshots).filter(([lineId]) => requiredLineIds.has(lineId)),
+    );
+  }, [authority.requiredLineIds, snapshots]);
   const currentResultAuthority = useMemo(
     () =>
       buildCurrentRecipeResultAuthority({
         recipe: input,
-        toppings,
-        snapshots,
+        toppings: [],
+        snapshots: baseSnapshots,
         draftRevision,
         awaitingRecalculation,
         loading: applyPending || recalculationTerminal?.state === 'WORKING',
@@ -58,14 +68,46 @@ export function WorkbenchIntelligenceHeader({
     [
       applyPending,
       awaitingRecalculation,
+      baseSnapshots,
       draftRevision,
       input,
       recalculationTerminal,
-      snapshots,
-      toppings,
     ],
   );
   const legacyInspection = recipeBehaviorLegacyInspection(authority, savedRecipeId);
+  const calculatedForDraft =
+    activeDraftIdentity !== null &&
+    calculatedRecipeAuthority?.draftIdentity === activeDraftIdentity;
+  const calculatedAuthorityCurrent =
+    calculatedForDraft &&
+    calculatedRecipeAuthority?.recipeFingerprint === currentResultAuthority.recipeFingerprint &&
+    calculatedRecipeAuthority?.behaviorFingerprint === currentResultAuthority.behaviorFingerprint;
+  const completedWithoutApply =
+    recalculationTerminal?.state === 'NO_CHANGE_NEEDED' ||
+    recalculationTerminal?.state === 'BEST_ACHIEVABLE';
+  const shouldRecordCalculatedRecipe =
+    activeDraftIdentity !== null &&
+    currentResultAuthority.ready &&
+    (calculatedAuthorityCurrent ||
+      !hasNewRecipeStarter ||
+      appliedHistoryCount > 0 ||
+      completedWithoutApply);
+  useEffect(() => {
+    if (!shouldRecordCalculatedRecipe || activeDraftIdentity === null) return;
+    if (calculatedAuthorityCurrent) return;
+    recordCalculatedRecipe({
+      draftIdentity: activeDraftIdentity,
+      recipeFingerprint: currentResultAuthority.recipeFingerprint,
+      behaviorFingerprint: currentResultAuthority.behaviorFingerprint,
+    });
+  }, [
+    activeDraftIdentity,
+    calculatedAuthorityCurrent,
+    currentResultAuthority.behaviorFingerprint,
+    currentResultAuthority.recipeFingerprint,
+    recordCalculatedRecipe,
+    shouldRecordCalculatedRecipe,
+  ]);
   const journeyState = friendlyLabRecipeJourneyState({
     currentResultAuthority,
     awaitingRecalculation,
@@ -73,6 +115,8 @@ export function WorkbenchIntelligenceHeader({
     appliedHistoryCount,
     recalculationTerminal,
     legacyInspection: Boolean(legacyInspection),
+    calculatedForDraft,
+    calculatedAuthorityCurrent,
   });
   const hasRecipe = result.total_batch_g > 0;
   const previewInput =
@@ -145,7 +189,11 @@ export function WorkbenchIntelligenceHeader({
                 {working ? 'Przeliczanie…' : 'Przelicz'}
               </strong>
               <span className="block text-[10px] text-white/85">
-                {working ? 'Gellatti przygotowuje wynik' : 'Zaktualizuj wynik receptury'}
+                {working
+                  ? 'Gellatti przygotowuje wynik'
+                  : journeyState === 'STALE'
+                    ? 'Receptura się zmieniła.'
+                    : 'Zaktualizuj wynik receptury'}
               </span>
             </span>
           </button>
@@ -199,9 +247,11 @@ export function WorkbenchIntelligenceHeader({
                     ? 'Przeliczanie…'
                     : legacyInspection
                       ? 'Podgląd historyczny'
-                      : hasRecipe
-                        ? 'Oczekuje na przeliczenie'
-                        : 'Brak danych'}
+                      : journeyState === 'STALE'
+                        ? 'Receptura się zmieniła.'
+                        : hasRecipe
+                          ? 'Oczekuje na przeliczenie'
+                          : 'Brak danych'}
             </strong>
           </span>
           <span className="mt-0.5 block truncate text-[10px] text-stone-600">

@@ -27,6 +27,8 @@ describe('Friendly Lab Recipe journey presentation state', () => {
         appliedHistoryCount: 0,
         recalculationTerminal: null,
         legacyInspection: false,
+        calculatedForDraft: false,
+        calculatedAuthorityCurrent: false,
       }),
     ).toBe('INITIAL');
   });
@@ -40,6 +42,8 @@ describe('Friendly Lab Recipe journey presentation state', () => {
         appliedHistoryCount: 0,
         recalculationTerminal: { state: 'WORKING' },
         legacyInspection: false,
+        calculatedForDraft: true,
+        calculatedAuthorityCurrent: false,
       }),
     ).toBe('WORKING');
   });
@@ -53,6 +57,8 @@ describe('Friendly Lab Recipe journey presentation state', () => {
         appliedHistoryCount: 0,
         recalculationTerminal: { state: 'NO_CHANGE_NEEDED' },
         legacyInspection: false,
+        calculatedForDraft: false,
+        calculatedAuthorityCurrent: false,
       }),
     ).toBe('CURRENT');
   });
@@ -66,6 +72,8 @@ describe('Friendly Lab Recipe journey presentation state', () => {
         appliedHistoryCount: 0,
         recalculationTerminal: null,
         legacyInspection: false,
+        calculatedForDraft: true,
+        calculatedAuthorityCurrent: false,
       }),
     ).toBe('STALE');
 
@@ -80,7 +88,24 @@ describe('Friendly Lab Recipe journey presentation state', () => {
           messagePl: 'Nie udało się przeliczyć receptury.',
         },
         legacyInspection: false,
+        calculatedForDraft: false,
+        calculatedAuthorityCurrent: false,
       }),
     ).toBe('BLOCKED');
+  });
+
+  it('never misclassifies an edited previously-calculated starter as INITIAL', () => {
+    expect(
+      friendlyLabRecipeJourneyState({
+        currentResultAuthority: authority({ state: 'STALE', ready: false }),
+        awaitingRecalculation: true,
+        hasNewRecipeStarter: true,
+        appliedHistoryCount: 0,
+        recalculationTerminal: null,
+        legacyInspection: false,
+        calculatedForDraft: true,
+        calculatedAuthorityCurrent: false,
+      }),
+    ).toBe('STALE');
   });
 });

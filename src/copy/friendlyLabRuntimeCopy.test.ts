@@ -71,7 +71,6 @@ describe('Gellatti Friendly Lab — material runtime copy', () => {
       'Jeszcze nie widzę smaku. Dodaj go poniżej i ruszamy dalej.',
       'Gotowe. Produkt jest w Twoim katalogu.',
       'Jeszcze jeden krok. Potwierdź ustawienia, a potem przeliczymy recepturę.',
-      'Jeszcze nie liczyliśmy tej receptury.',
       'Liczymy balans receptury…',
       'Gotowe. Sprawdź proponowaną korektę.',
       'Perfetto. Receptura jest gotowa.',

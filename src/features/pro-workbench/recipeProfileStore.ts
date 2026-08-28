@@ -51,18 +51,15 @@ export interface ProfileSettingsSnapshot {
   machineCapacityGrams: number | null;
   directionTargets: DirectionTargets;
   directionIntents?: DirectionIntents;
-  ingredientUxByLineId?: Readonly<
-    Record<string, PersistedIngredientUxMeta>
-  >;
+  ingredientUxByLineId?: Readonly<Record<string, PersistedIngredientUxMeta>>;
 }
 
-/** Material preflight signature. Ingredient grams and direction targets are deliberately absent. */
-export function profileSettingsSignature(
-  settings: ProfileSettingsSnapshot,
-  draftContextSeq: number,
-): string {
+/** Material preflight signature. Draft identity, ingredient grams and direction
+ * targets are deliberately separate/absent so a saved recipe can prove the
+ * same settings after an exact reopen even when its transient context sequence
+ * has advanced. */
+export function profileSettingsSignature(settings: ProfileSettingsSnapshot): string {
   return JSON.stringify([
-    draftContextSeq,
     settings.visibleProductType,
     settings.mode,
     normalizeFormulationStrategy(settings.formulationStrategy ?? settings.mode),
@@ -75,22 +72,55 @@ export function profileSettingsSignature(
   ]);
 }
 
+export interface SavedRecipeProfileIdentity {
+  savedRecipeId: string | null;
+  currentVersionId: string | null;
+  currentVersionNumber: number | null;
+}
+
+/** Immutable saved-recipe/version identity used by Profile confirmation and
+ * calculated-result authority. An unsaved draft receives its own generated
+ * identity in `openDraft`; a context sequence is never the identity by itself. */
+export function savedRecipeProfileDraftIdentity(recipe: SavedRecipeProfileIdentity): string | null {
+  if (recipe.savedRecipeId === null) return null;
+  const versionIdentity =
+    recipe.currentVersionId ??
+    (recipe.currentVersionNumber === null ? 'unversioned' : `v${recipe.currentVersionNumber}`);
+  return JSON.stringify(['saved-recipe', recipe.savedRecipeId, versionIdentity]);
+}
+
+export interface CalculatedRecipeAuthority {
+  draftIdentity: string;
+  recipeFingerprint: string;
+  behaviorFingerprint: string;
+}
+
 export interface RecipeProfileState {
   directionTargets: DirectionTargets;
   directionIntents: DirectionIntents;
   awaitingRecalculation: boolean;
   openedContextSeq: number | null;
+  activeDraftIdentity: string | null;
   confirmedSignature: string | null;
+  confirmedDraftIdentity: string | null;
   confirmedContextSeq: number | null;
+  calculatedRecipeAuthority: CalculatedRecipeAuthority | null;
   defaultsByOwner: Record<string, ProfileSettingsSnapshot>;
-  openDraft: (contextSeq: number, targets?: DirectionTargets, intents?: DirectionIntents) => void;
+  openDraft: (
+    contextSeq: number,
+    targets?: DirectionTargets,
+    intents?: DirectionIntents,
+    exactSavedRecipeIdentity?: string | null,
+  ) => void;
+  rebindDraftIdentity: (identity: string) => void;
   moveAxisTarget: (axis: AdjustableAxisId, delta: -1 | 1) => void;
   moveAxisIntent: (axis: AdjustableAxisId, delta: number) => void;
   setDirectionTargets: (targets: DirectionTargets) => void;
   markRecalculationRequired: () => void;
   acknowledgeRecalculation: () => void;
-  confirmSettings: (signature: string, contextSeq: number) => void;
-  isConfirmed: (signature: string, contextSeq: number) => boolean;
+  confirmSettings: (signature: string, draftIdentity: string, contextSeq: number) => void;
+  isConfirmed: (signature: string, draftIdentity: string, contextSeq: number) => boolean;
+  recordCalculatedRecipe: (authority: CalculatedRecipeAuthority) => void;
   saveDefaults: (ownerKey: string, settings: ProfileSettingsSnapshot) => void;
   replaceDefaultsForOwner: (
     ownerUserId: string,
@@ -111,6 +141,21 @@ const intentsFromTargets = (targets: DirectionTargets): DirectionIntents => ({
   flavor: targets.flavor,
 });
 
+let generatedDraftIdentityCounter = 0;
+const createUnsavedDraftIdentity = (): string => {
+  const randomIdentity = globalThis.crypto?.randomUUID?.();
+  if (randomIdentity) return JSON.stringify(['unsaved-draft', randomIdentity]);
+  generatedDraftIdentityCounter += 1;
+  return JSON.stringify(['unsaved-draft', Date.now(), generatedDraftIdentityCounter]);
+};
+
+const confirmationContextMatches = (
+  draftIdentity: string,
+  confirmedContextSeq: number | null,
+  currentContextSeq: number,
+): boolean =>
+  draftIdentity.startsWith('["saved-recipe",') || confirmedContextSeq === currentContextSeq;
+
 export const useRecipeProfileStore = create<RecipeProfileState>()(
   persist(
     (set, get) => ({
@@ -118,27 +163,51 @@ export const useRecipeProfileStore = create<RecipeProfileState>()(
       directionIntents: DEFAULT_DIRECTION_INTENTS,
       awaitingRecalculation: false,
       openedContextSeq: null,
+      activeDraftIdentity: null,
       confirmedSignature: null,
+      confirmedDraftIdentity: null,
       confirmedContextSeq: null,
+      calculatedRecipeAuthority: null,
       defaultsByOwner: {},
 
       openDraft: (
         openedContextSeq,
         targets = DEFAULT_DIRECTION_TARGETS,
         intents = intentsFromTargets(targets),
+        exactSavedRecipeIdentity = null,
       ) =>
-        set(() => {
+        set((state) => {
           // Before five-step targets became canonical, saved/default metadata
           // could contain sign-only targets plus an exact five-detent mirror.
           // Prefer that exact mirror once, then keep both fields identical.
           const canonical = { ...intents };
+          const activeDraftIdentity =
+            exactSavedRecipeIdentity ??
+            (state.openedContextSeq === openedContextSeq ? state.activeDraftIdentity : null) ??
+            createUnsavedDraftIdentity();
           return {
             directionTargets: canonical,
             directionIntents: canonical,
             awaitingRecalculation: false,
             openedContextSeq,
-            confirmedSignature: null,
-            confirmedContextSeq: null,
+            activeDraftIdentity,
+          };
+        }),
+
+      rebindDraftIdentity: (activeDraftIdentity) =>
+        set((state) => {
+          const previousIdentity = state.activeDraftIdentity;
+          if (previousIdentity === activeDraftIdentity) return state;
+          return {
+            activeDraftIdentity,
+            confirmedDraftIdentity:
+              state.confirmedDraftIdentity === previousIdentity
+                ? activeDraftIdentity
+                : state.confirmedDraftIdentity,
+            calculatedRecipeAuthority:
+              state.calculatedRecipeAuthority?.draftIdentity === previousIdentity
+                ? { ...state.calculatedRecipeAuthority, draftIdentity: activeDraftIdentity }
+                : state.calculatedRecipeAuthority,
           };
         }),
 
@@ -178,13 +247,25 @@ export const useRecipeProfileStore = create<RecipeProfileState>()(
 
       acknowledgeRecalculation: () => set({ awaitingRecalculation: false }),
 
-      confirmSettings: (confirmedSignature, confirmedContextSeq) =>
-        set({ confirmedSignature, confirmedContextSeq }),
+      confirmSettings: (confirmedSignature, confirmedDraftIdentity, confirmedContextSeq) =>
+        set({ confirmedSignature, confirmedDraftIdentity, confirmedContextSeq }),
 
-      isConfirmed: (signature, contextSeq) => {
+      isConfirmed: (signature, draftIdentity, contextSeq) => {
         const state = get();
-        return state.confirmedSignature === signature && state.confirmedContextSeq === contextSeq;
+        return (
+          state.activeDraftIdentity === draftIdentity &&
+          state.confirmedDraftIdentity === draftIdentity &&
+          state.confirmedSignature === signature &&
+          confirmationContextMatches(draftIdentity, state.confirmedContextSeq, contextSeq)
+        );
       },
+
+      recordCalculatedRecipe: (calculatedRecipeAuthority) =>
+        set((state) =>
+          state.activeDraftIdentity === calculatedRecipeAuthority.draftIdentity
+            ? { calculatedRecipeAuthority }
+            : state,
+        ),
 
       saveDefaults: (ownerKey, settings) =>
         set((state) => ({
@@ -193,8 +274,8 @@ export const useRecipeProfileStore = create<RecipeProfileState>()(
             [ownerKey]: (() => {
               const canonical = settings.directionIntents ?? settings.directionTargets;
               return {
-              ...settings,
-              formulationStrategy: normalizeFormulationStrategy(settings.formulationStrategy),
+                ...settings,
+                formulationStrategy: normalizeFormulationStrategy(settings.formulationStrategy),
                 directionTargets: { ...canonical },
                 directionIntents: { ...canonical },
               };
@@ -243,8 +324,11 @@ export const useRecipeProfileStore = create<RecipeProfileState>()(
           directionIntents: DEFAULT_DIRECTION_INTENTS,
           awaitingRecalculation: false,
           openedContextSeq: null,
+          activeDraftIdentity: null,
           confirmedSignature: null,
+          confirmedDraftIdentity: null,
           confirmedContextSeq: null,
+          calculatedRecipeAuthority: null,
           defaultsByOwner: {},
         }),
     }),
@@ -267,5 +351,10 @@ export function recipeProfilePersistPartialize(state: RecipeProfileState) {
     directionIntents: state.directionIntents,
     awaitingRecalculation: state.awaitingRecalculation,
     openedContextSeq: state.openedContextSeq,
+    activeDraftIdentity: state.activeDraftIdentity,
+    confirmedSignature: state.confirmedSignature,
+    confirmedDraftIdentity: state.confirmedDraftIdentity,
+    confirmedContextSeq: state.confirmedContextSeq,
+    calculatedRecipeAuthority: state.calculatedRecipeAuthority,
   };
 }

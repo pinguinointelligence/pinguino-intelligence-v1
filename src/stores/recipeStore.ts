@@ -41,6 +41,7 @@ import { readRecipeProfileMetadata } from '@/features/pro-workbench/recipeProfil
 import { useIngredientTableUxStore } from '@/features/ingredient-builder/ingredientTableUxStore';
 import {
   DEFAULT_DIRECTION_TARGETS,
+  savedRecipeProfileDraftIdentity,
   type ProfileSettingsSnapshot,
   useRecipeProfileStore,
 } from '@/features/pro-workbench/recipeProfileStore';
@@ -1970,7 +1971,12 @@ export const useRecipeStore = create<RecipeState>()(
         useIngredientTableUxStore.getState().hydrateRecipeMeta(profile?.ingredientUxByLineId ?? {});
         useRecipeProfileStore
           .getState()
-          .openDraft(opened.draftContextSeq, opened.direction_targets, profile?.directionIntents);
+          .openDraft(
+            opened.draftContextSeq,
+            opened.direction_targets,
+            profile?.directionIntents,
+            savedRecipeProfileDraftIdentity(opened),
+          );
         if (legacyUnusedLineIds.size > 0) {
           useRecipeProfileStore.getState().markRecalculationRequired();
         }
@@ -1983,7 +1989,7 @@ export const useRecipeStore = create<RecipeState>()(
         practicalRecipeAudit,
         versionId = null,
         savedProductionFingerprint = null,
-      ) =>
+      ) => {
         set({
           savedRecipeId: id,
           savedRecipeName: name,
@@ -1997,7 +2003,12 @@ export const useRecipeStore = create<RecipeState>()(
           newRecipeStarterMaterialFingerprint: null,
           ...(practicalRecipeAudit === undefined ? {} : { practicalRecipeAudit }),
           savedProductionFingerprint,
-        }),
+        });
+        const savedIdentity = savedRecipeProfileDraftIdentity(useRecipeStore.getState());
+        if (savedIdentity !== null) {
+          useRecipeProfileStore.getState().rebindDraftIdentity(savedIdentity);
+        }
+      },
       acknowledgePracticalRecipeAudit: (practicalRecipeAudit) =>
         set({ practicalRecipeAudit: structuredClone(practicalRecipeAudit) }),
       startNewRecipe: (requestedVisible) => {

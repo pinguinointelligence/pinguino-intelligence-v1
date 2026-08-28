@@ -416,7 +416,7 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     const viewport = read('components', 'shared', 'FriendlyLabMomentViewport.tsx');
 
     expect(app).toContain('<FriendlyLabMomentViewport />');
-    expect(profile).toContain("announceFriendlyLabMoment(");
+    expect(profile).toContain('announceFriendlyLabMoment(');
     expect(profile).toContain("'apply-complete'");
     expect(surface).not.toContain("'gellatti:friendly-lab-apply-success'");
     expect(surface).not.toContain('mobile-friendly-lab-apply-success');
@@ -425,6 +425,8 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     expect(viewport).toContain('sm:w-[400px]');
     expect(viewport).toContain('z-[60]');
     expect(recipeCopy).toContain("title: 'Perfetto. Receptura jest gotowa.'");
+    expect(recipeCopy).not.toContain('description:');
+    expect(recipeCopy).not.toContain('Aktualny balans jest już widoczny');
   });
 
   it('treats the mobile cockpit as a real modal with keyboard and scroll containment', () => {

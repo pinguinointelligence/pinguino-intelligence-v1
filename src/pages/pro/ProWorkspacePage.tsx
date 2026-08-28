@@ -430,8 +430,11 @@ export function ProWorkspacePage() {
         recipe.direction_targets,
         profile.directionIntents,
       );
-      const signature = profileSettingsSignature(snapshot, recipe.draftContextSeq);
-      if (!profile.isConfirmed(signature, recipe.draftContextSeq)) {
+      const signature = profileSettingsSignature(snapshot);
+      if (
+        profile.activeDraftIdentity === null ||
+        !profile.isConfirmed(signature, profile.activeDraftIdentity, recipe.draftContextSeq)
+      ) {
         useConstraintStudioStore.setState({
           recalculationTerminal: { state: 'SETTINGS_CONFIRMATION_REQUIRED' },
         });

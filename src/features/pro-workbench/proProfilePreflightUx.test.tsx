@@ -98,13 +98,15 @@ describe('canonical Pro header contract', () => {
     expect(read('features', 'pro-core', 'ProRecalcPanel.tsx')).toContain(
       'pinguino:profile-settings-required',
     );
-    expect(page).toContain('profile.isConfirmed(signature, recipe.draftContextSeq)');
+    expect(page).toContain(
+      'profile.isConfirmed(signature, profile.activeDraftIdentity, recipe.draftContextSeq)',
+    );
     expect(page).not.toContain('copy.proWorkbar.pendingRecalc');
   });
 });
 
 describe('profile hierarchy and compact preflight', () => {
-  it('renders honest INITIAL, WORKING, STALE and BLOCKED Recipe states in the real panel', async () => {
+  it('keeps frozen controls mounted while INITIAL, WORKING, STALE and BLOCKED stay out of permanent cards', async () => {
     const input = starterMilkBase();
     const result = calculateRecipe(input);
     const host = document.createElement('div');
@@ -148,25 +150,40 @@ describe('profile hierarchy and compact preflight', () => {
 
     try {
       await act(async () => root.render(renderPanel()));
-      expect(host.querySelector('[data-testid="friendly-lab-recipe-initial"]')).not.toBeNull();
-      expect(host.textContent).toContain('Jeszcze nie liczyliśmy tej receptury.');
-      expect(host.textContent).not.toContain('Podgląd receptury');
+      expect(
+        host
+          .querySelector('[data-testid="pro-context-recipe"]')
+          ?.getAttribute('data-friendly-lab-recipe-state'),
+      ).toBe('INITIAL');
+      expect(host.querySelector('[data-testid="profile-direction-axes"]')).not.toBeNull();
+      expect(host.querySelector('[data-testid="friendly-lab-recipe-initial"]')).toBeNull();
+      expect(host.textContent).not.toContain('Jeszcze nie liczyliśmy tej receptury.');
 
       await act(async () => {
         useRecipeProfileStore.getState().markRecalculationRequired();
         useConstraintStudioStore.setState({ recalculationTerminal: { state: 'WORKING' } });
         root.render(renderPanel());
       });
-      expect(host.querySelector('[data-testid="friendly-lab-recipe-working"]')).not.toBeNull();
-      expect(host.textContent).toContain('Liczymy balans receptury…');
+      expect(
+        host
+          .querySelector('[data-testid="pro-context-recipe"]')
+          ?.getAttribute('data-friendly-lab-recipe-state'),
+      ).toBe('WORKING');
+      expect(host.querySelector('[data-testid="profile-direction-axes"]')).not.toBeNull();
+      expect(host.querySelector('[data-testid="friendly-lab-recipe-working"]')).toBeNull();
 
       await act(async () => {
         useRecipeStore.setState({ newRecipeStarterKey: null });
         useConstraintStudioStore.setState({ recalculationTerminal: null });
         root.render(renderPanel());
       });
-      expect(host.querySelector('[data-testid="friendly-lab-recipe-stale"]')).not.toBeNull();
-      expect(host.textContent).toContain('Receptura się zmieniła.');
+      expect(
+        host
+          .querySelector('[data-testid="pro-context-recipe"]')
+          ?.getAttribute('data-friendly-lab-recipe-state'),
+      ).toBe('STALE');
+      expect(host.querySelector('[data-testid="profile-direction-axes"]')).not.toBeNull();
+      expect(host.querySelector('[data-testid="friendly-lab-recipe-stale"]')).toBeNull();
 
       await act(async () => {
         useRecipeProfileStore.getState().acknowledgeRecalculation();
@@ -188,8 +205,13 @@ describe('profile hierarchy and compact preflight', () => {
         });
         root.render(renderPanel());
       });
-      expect(host.querySelector('[data-testid="friendly-lab-recipe-blocked"]')).not.toBeNull();
-      expect(host.textContent).toContain('Nie możemy jeszcze pokazać aktualnego balansu.');
+      expect(
+        host
+          .querySelector('[data-testid="pro-context-recipe"]')
+          ?.getAttribute('data-friendly-lab-recipe-state'),
+      ).toBe('BLOCKED');
+      expect(host.querySelector('[data-testid="profile-direction-axes"]')).not.toBeNull();
+      expect(host.querySelector('[data-testid="friendly-lab-recipe-blocked"]')).toBeNull();
 
       await act(async () => {
         useRecipeStore.setState({ productBehaviorSnapshots: productBehaviorTestSnapshots(input) });
@@ -583,16 +605,17 @@ describe('profile hierarchy and compact preflight', () => {
 describe('preflight and recipe-specific persistence', () => {
   it('confirms one material signature and invalidates on material settings only', () => {
     const store = useRecipeProfileStore.getState();
-    const signature = profileSettingsSignature(settings(), 7);
+    const signature = profileSettingsSignature(settings());
     store.openDraft(7, DEFAULT_DIRECTION_TARGETS);
-    expect(useRecipeProfileStore.getState().isConfirmed(signature, 7)).toBe(false);
-    store.confirmSettings(signature, 7);
-    expect(useRecipeProfileStore.getState().isConfirmed(signature, 7)).toBe(true);
-    const changed = profileSettingsSignature({ ...settings(), targetBatchGrams: 1_200 }, 7);
-    expect(useRecipeProfileStore.getState().isConfirmed(changed, 7)).toBe(false);
+    const identity = useRecipeProfileStore.getState().activeDraftIdentity!;
+    expect(useRecipeProfileStore.getState().isConfirmed(signature, identity, 7)).toBe(false);
+    store.confirmSettings(signature, identity, 7);
+    expect(useRecipeProfileStore.getState().isConfirmed(signature, identity, 7)).toBe(true);
+    const changed = profileSettingsSignature({ ...settings(), targetBatchGrams: 1_200 });
+    expect(useRecipeProfileStore.getState().isConfirmed(changed, identity, 7)).toBe(false);
 
     useRecipeStore.getState().setPlannedGrams(useRecipeStore.getState().items[0]!.id, 111);
-    expect(useRecipeProfileStore.getState().isConfirmed(signature, 7)).toBe(true);
+    expect(useRecipeProfileStore.getState().isConfirmed(signature, identity, 7)).toBe(true);
   });
 
   it('round-trips saved profile settings and direction targets without changing Engine fields', () => {

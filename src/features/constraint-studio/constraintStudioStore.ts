@@ -309,6 +309,32 @@ export function selectCanonicalDraft(): CanonicalDraft {
   };
 }
 
+/** Publish the durable identity of a calculation only after the existing
+ * canonical current-result gate is fully ready. This stores fingerprints, not
+ * computed numbers, and deliberately scopes ProductBehavior to the technical
+ * Base so post-process toppings cannot invalidate its score/Monitor. */
+function establishCurrentRecipeCalculation(): void {
+  const profile = useRecipeProfileStore.getState();
+  profile.acknowledgeRecalculation();
+  if (profile.activeDraftIdentity === null) return;
+  const draft = selectCanonicalDraft();
+  const recipe = useRecipeStore.getState();
+  const authority = buildCurrentRecipeResultAuthority({
+    recipe: draft.input,
+    toppings: [],
+    snapshots: recipe.productBehaviorSnapshots,
+    draftRevision: recipe.draftRevision,
+    awaitingRecalculation: false,
+    loading: false,
+  });
+  if (!authority.ready) return;
+  profile.recordCalculatedRecipe({
+    draftIdentity: profile.activeDraftIdentity,
+    recipeFingerprint: authority.recipeFingerprint,
+    behaviorFingerprint: authority.behaviorFingerprint,
+  });
+}
+
 /**
  * Deterministic serialization of the FORMULATION-MATERIAL draft fields (the
  * owner Phase 1 equality contract): items (id, grams, actuals, lock), §17
@@ -1196,7 +1222,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           result.preview.diagnosticOnly !== true &&
           !optimizePreviewRequiresApply(result.preview, draft.constraints, draft.input)
         ) {
-          useRecipeProfileStore.getState().acknowledgeRecalculation();
+          establishCurrentRecipeCalculation();
           set({
             preview: null,
             directionBestCandidate: null,
@@ -1248,7 +1274,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           );
         } else {
           if (result.code === 'already_clean' || result.code === 'best_safe_result') {
-            useRecipeProfileStore.getState().acknowledgeRecalculation();
+            establishCurrentRecipeCalculation();
           }
           set({
             preview: null,
@@ -2368,7 +2394,7 @@ const finishUndoWithCurrentRecipeScore = (
   // intentionally not stored; it proves the Engine can finish the current
   // recipe calculation before presentation is marked ready.
   calculateRecipe(current.input);
-  useRecipeProfileStore.getState().acknowledgeRecalculation();
+  establishCurrentRecipeCalculation();
   useConstraintStudioStore.setState({
     ...CLEAR_STAGED,
     recalculationTerminal: { state: 'NO_CHANGE_NEEDED' },
@@ -2490,7 +2516,7 @@ async function restoreScorePresentationAfterUndo(
   if (presentation.awaitingRecalculation) {
     useRecipeProfileStore.getState().markRecalculationRequired();
   } else {
-    useRecipeProfileStore.getState().acknowledgeRecalculation();
+    establishCurrentRecipeCalculation();
   }
 }
 
@@ -2756,7 +2782,7 @@ export async function createOptimizePreviewWithServerAuthority(
     toppings: synchronizedNoChangeState.toppings,
     snapshots: synchronizedNoChangeState.productBehaviorSnapshots,
   });
-  useRecipeProfileStore.getState().acknowledgeRecalculation();
+  establishCurrentRecipeCalculation();
 
   // A no-change result has no Apply button, so it cannot inherit the normal
   // Apply pipeline's practical-recipe audit. Recreate that authority only at
@@ -3249,7 +3275,7 @@ export async function applyPreviewWithServerAuthority(
     // Resolve every numerical consumer from this same applied revision before
     // promotion. These calls store no duplicate numbers; the UI recomputes from
     // the same canonical input/frozen facts through its normal selectors.
-    useRecipeProfileStore.getState().acknowledgeRecalculation();
+    establishCurrentRecipeCalculation();
     useConstraintStudioStore.setState({ applyPending: false, blocked: null });
   } catch {
     const current = useConstraintStudioStore.getState();

@@ -144,17 +144,23 @@ export function MonitorPanelContent({
     () => recipeBehaviorModuleGate(behaviorAuthority, 'MONITOR'),
     [behaviorAuthority],
   );
+  const baseBehaviorSnapshots = useMemo(() => {
+    const requiredLineIds = new Set(behaviorAuthority.requiredLineIds);
+    return Object.fromEntries(
+      Object.entries(behaviorSnapshots).filter(([lineId]) => requiredLineIds.has(lineId)),
+    );
+  }, [behaviorAuthority.requiredLineIds, behaviorSnapshots]);
   const currentResultAuthority = useMemo(
     () =>
       buildCurrentRecipeResultAuthority({
         recipe: input,
-        toppings,
-        snapshots: behaviorSnapshots,
+        toppings: [],
+        snapshots: baseBehaviorSnapshots,
         draftRevision,
         awaitingRecalculation,
         loading: applyPending,
       }),
-    [applyPending, awaitingRecalculation, behaviorSnapshots, draftRevision, input, toppings],
+    [applyPending, awaitingRecalculation, baseBehaviorSnapshots, draftRevision, input],
   );
   const legacyInspection = recipeBehaviorLegacyInspection(behaviorAuthority, savedRecipeId);
   useMonitorRecipeBehaviorRefresh({
