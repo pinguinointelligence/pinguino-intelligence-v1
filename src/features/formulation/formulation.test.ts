@@ -368,7 +368,7 @@ describe('Phase 18 — sorbet + vegan (tests 22/23)', () => {
     expect(result.code).toBe('missing_required_role');
     if (result.code !== 'missing_required_role') return;
     expect(result.role).toBe('fruit');
-    expect(result.messagePl).toContain('owoc');
+    expect(result.messagePl).toContain('Owoc');
   });
 
   it('vegan −13 and −11 use verified Mapper plant ingredients with no dairy fallback', () => {

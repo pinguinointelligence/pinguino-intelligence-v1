@@ -203,7 +203,7 @@ describe('MonitorRangeScale — authoritative normalized geometry', () => {
     );
 
     expect(html).toContain(
-      'aria-label="Stabilność i ryzyka: poniżej zakresu — bezpiecznie; Podgląd: powyżej zakresu"',
+      'aria-label="Stabilność i ryzyka: Poniżej zakresu — bezpiecznie; Podgląd: Powyżej zakresu"',
     );
     expect(html).toContain('data-testid="monitor-scale-lactose-risk-accepted"');
     expect(html).toContain('data-testid="monitor-scale-lactose-risk-actual"');
@@ -225,7 +225,7 @@ describe('MonitorRangeScale — authoritative normalized geometry', () => {
       />,
     );
 
-    expect(html).toContain('aria-label="Stabilność i ryzyka: powyżej zakresu"');
+    expect(html).toContain('aria-label="Stabilność i ryzyka: Powyżej zakresu"');
     expect(html).toContain('data-testid="monitor-scale-lactose-risk-high-outside-segment"');
     expect(html).not.toContain('5–9');
     expect(html).not.toContain('5-9');
@@ -297,7 +297,7 @@ describe('MonitorRangeScale — authoritative normalized geometry', () => {
     const html = renderToStaticMarkup(
       <MonitorRangeScale model={scale} testId="monitor-scale-npac" label="Twardość" />,
     );
-    expect(html).toContain('aria-label="Twardość: w zakresie"');
+    expect(html).toContain('aria-label="Twardość: W zakresie"');
     expect(html).not.toContain('33–42');
     expect(html).not.toContain('33-42');
   });

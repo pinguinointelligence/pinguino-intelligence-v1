@@ -37,13 +37,13 @@ describe('parseNumeric — honest numbers (real 0 vs missing)', () => {
   });
   it('ambiguous comma-grouping or mixed separators -> null + warning (no guess)', () => {
     expect(parseNumeric('1,234').value).toBeNull();
-    expect(parseNumeric('1,234').warning).toMatch(/ambiguous/);
+    expect(parseNumeric('1,234').warning).toMatch(/Niejednoznaczna/);
     expect(parseNumeric('1.234,5').value).toBeNull();
-    expect(parseNumeric('1.234,5').warning).toMatch(/ambiguous/);
+    expect(parseNumeric('1.234,5').warning).toMatch(/Niejednoznaczna/);
   });
   it('garbage -> null + warning (never a fake 0)', () => {
     expect(parseNumeric('abc').value).toBeNull();
-    expect(parseNumeric('abc').warning).toMatch(/non-numeric/);
+    expect(parseNumeric('abc').warning).toMatch(/nienumeryczną/);
   });
 });
 
@@ -57,7 +57,7 @@ describe('parseProductBoolean — tri-state', () => {
   it('blank -> null; unrecognized -> null + warning', () => {
     expect(parseProductBoolean('').value).toBeNull();
     expect(parseProductBoolean('maybe').value).toBeNull();
-    expect(parseProductBoolean('maybe').warning).toMatch(/unrecognized/);
+    expect(parseProductBoolean('maybe').warning).toMatch(/nierozpoznaną/);
   });
 });
 

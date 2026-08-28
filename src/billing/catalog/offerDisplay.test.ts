@@ -102,8 +102,8 @@ describe('Home is never presented as free', () => {
     for (const key of ['homeBadge', 'homeCta', 'proBadge', 'proCta']) {
       expect(String(sub[key])).not.toMatch(FORBIDDEN);
     }
-    // The explainer states Home/Pro are paid; the free wording refers only to the preview.
-    expect(String(sub.whatUnlocks)).toMatch(/płatne/i);
+    // The free wording refers only to the preview; Home/Pro are described as unlocks.
+    expect(String(sub.whatUnlocks)).toMatch(/Home odblokowuje/);
     expect(String(sub.whatUnlocks)).not.toMatch(/home\s+(jest\s+)?(darmow|bezpłatn)/i);
     expect(String(sub.demoCta)).toMatch(/bezpłatn/i);
   });

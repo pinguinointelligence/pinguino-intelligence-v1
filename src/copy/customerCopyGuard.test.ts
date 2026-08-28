@@ -109,7 +109,7 @@ describe('customer copy guard', () => {
     expect(formatEntries(violations)).toBe('');
   });
 
-  it('allows only the four approved Italian success moments', () => {
+  it('allows only the two remaining approved Italian success moments', () => {
     const italian = entries.filter((entry) =>
       /\b(?:Mamma mia|Perfetto|Andiamo|Gellattissimo|Bellissimo)\b/i.test(entry.text),
     );
@@ -117,14 +117,6 @@ describe('customer copy guard', () => {
       {
         file: 'src/components/shared/friendlyLabMoment.ts',
         text: 'Gellattissimo! Partia gotowa.',
-      },
-      {
-        file: 'src/copy/en.ts',
-        text: 'Perfetto. Domyślna maszyna została zapisana.',
-      },
-      {
-        file: 'src/features/constraint-studio/ui/ConstraintPreviewCard.tsx',
-        text: 'Gellattissimo! Wybrany profil osiągnięty.',
       },
       {
         file: 'src/features/pro-workbench/friendlyLabRecipeCopy.ts',

@@ -68,7 +68,7 @@ describe('confirmation gating', () => {
     expect(canConfirmReview(s)).toBe(false);
     const blocked = buildDraftCandidate(s);
     expect(blocked.ok).toBe(false);
-    if (!blocked.ok) expect(blocked.reason).toMatch(/confirm every flagged field/);
+    if (!blocked.ok) expect(blocked.reason).toMatch(/potwierdź każde oznaczone pole/);
   });
 
   it('an explicit edit counts as confirmation of that field', () => {
@@ -153,7 +153,7 @@ describe('buildDraftCandidate — the EXISTING intake draft contract', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.candidate.insert.fat_percent).toBeUndefined();
-    expect(result.candidate.warnings.join(' ')).toMatch(/non-numeric|ambiguous/);
+    expect(result.candidate.warnings.join(' ')).toMatch(/nienumeryczną|Niejednoznaczna/);
   });
 
   it('unknown/serving-only basis blocks per-100 numeric mapping (honest, flagged)', () => {

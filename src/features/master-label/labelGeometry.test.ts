@@ -26,7 +26,7 @@ describe('content-aware physical label preflight', () => {
     const geometry = preflight.items.find((item) => item.field === 'geometry');
     expect(geometry).toMatchObject({ status: 'missing' });
     expect(geometry?.message).toContain(
-      'Ten format jest za mały dla tej etykiety. Wybierz większy rozmiar.',
+      'Ten format jest za mały dla tej etykiety. Wybierz większy rozmiar',
     );
     expect(preflight.geometry.baseFontPt).toBeGreaterThanOrEqual(
       minimumBaseFontPt('EU', long.availableDisplaySurfaceCm2),

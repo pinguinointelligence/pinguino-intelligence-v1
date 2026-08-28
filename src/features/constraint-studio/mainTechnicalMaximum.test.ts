@@ -898,7 +898,7 @@ describe(
       if (!result.ok && result.code === 'main_ratio_conflict') {
         expect(result.messagePl).toContain('1200.0 g');
         expect(result.messagePl).toContain('1000.0 g');
-        expect(result.messagePl).toContain('nie zmniejszyło');
+        expect(result.messagePl).toContain('nie zmieniło ich ilości');
       }
     });
 

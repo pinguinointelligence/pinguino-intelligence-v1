@@ -99,10 +99,10 @@ describe('global catalog normalization and deterministic verification', () => {
       market: 'Spain',
       ean: '87654321',
     }, existing)).toEqual([
-      'marka: Brand A -> Brand B',
-      'opakowanie: 500 g -> 750 g',
-      'rynek: brak danych -> Spain',
-      'EAN/GTIN: 12345678 -> 87654321',
+      'Marka: Brand A -> Brand B',
+      'Opakowanie: 500 g -> 750 g',
+      'Rynek: brak danych -> Spain',
+      'EAN: 12345678 -> 87654321',
     ]);
   });
   it('normalizes Unicode, package units and multilingual canonical families', () => {

@@ -69,13 +69,13 @@ describe('Gellatti Friendly Lab — material runtime copy', () => {
   it('uses Human → Truth → Next Step on the mandatory served-proof surfaces', () => {
     const expected = [
       'Jeszcze nie widzę smaku. Dodaj go poniżej i ruszamy dalej.',
-      'Gotowe. Produkt jest w Twoim katalogu.',
+      'Produkt dodany do Twojego katalogu.',
       'Jeszcze jeden krok. Potwierdź ustawienia, a potem przeliczymy recepturę.',
       'Liczymy balans receptury…',
-      'Gotowe. Sprawdź proponowaną korektę.',
+      'Sprawdź proponowaną korektę.',
       'Perfetto. Receptura jest gotowa.',
       'Gotowe. Receptura zapisana.',
-      'Gotowe. Sprawdź korektę i zastosuj ją, jeśli Ci odpowiada.',
+      'Sprawdź korektę i zastosuj ją, jeśli Ci odpowiada.',
       'Wszystko gotowe do rozpoczęcia partii',
       'Partia odbiega od planu',
       'Gellattissimo! Partia gotowa.',
@@ -104,7 +104,7 @@ describe('Gellatti Friendly Lab — material runtime copy', () => {
     expect(violations).toEqual([]);
   });
 
-  it('reserves Italian accents for the three approved positive moments', () => {
+  it('reserves Italian accents for the two remaining approved positive moments', () => {
     const italian = literals.filter(({ text }) =>
       /\b(?:Mamma mia|Perfetto|Andiamo|Gellattissimo|Bellissimo)\b/i.test(text),
     );
@@ -116,10 +116,6 @@ describe('Gellatti Friendly Lab — material runtime copy', () => {
       {
         file: 'features/pro-workbench/friendlyLabRecipeCopy.ts',
         text: 'Perfetto. Receptura jest gotowa.',
-      },
-      {
-        file: 'features/constraint-studio/ui/ConstraintPreviewCard.tsx',
-        text: 'Gellattissimo! Wybrany profil osiągnięty.',
       },
     ]);
   });

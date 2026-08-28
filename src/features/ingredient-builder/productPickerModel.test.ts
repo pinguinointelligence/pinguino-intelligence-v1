@@ -106,7 +106,7 @@ describe('per-row catalog → Mapper verification status', () => {
     expect(missingBinding.status).toBe('WYMAGA POWIĄZANIA');
     expect(missingBinding.reason).toContain('ID catalog-product');
     expect(missingBinding.reason).toContain('wersja product-version');
-    expect(missingBinding.reason).toContain('pole product-owned profile / mappedIngredientId');
+    expect(missingBinding.reason).toContain('Profil produktu / mappedIngredientId');
     expect(missingBinding.reason).toContain('Utwórz gotowy profil produktu');
 
     const incomplete = productPickerVerificationView(

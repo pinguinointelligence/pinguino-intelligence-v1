@@ -135,7 +135,7 @@ describe('RecipeVersionSelector — open list', () => {
     await click('recipe-version-selector-QA');
 
     const rows = options();
-    expect(rows.map((o) => o.textContent?.match(/^v\d+/)?.[0])).toEqual(['v3', 'v2', 'v1']);
+    expect(rows.map((o) => o.textContent?.match(/^V\d+/)?.[0])).toEqual(['V3', 'V2', 'V1']);
 
     // Real immutable timestamps, not the parent's updated_at.
     expect(rows[0]!.textContent).toContain(formatSavedRecipeDate(HISTORY[0]!.createdAt));
@@ -150,7 +150,7 @@ describe('RecipeVersionSelector — open list', () => {
     await click('recipe-version-selector-One');
     const rows = options();
     expect(rows).toHaveLength(1);
-    expect(rows[0]!.textContent).toContain('v1');
+    expect(rows[0]!.textContent).toContain('V1');
     expect(rows[0]!.textContent).toContain('Aktualna');
   });
 

@@ -371,7 +371,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
 
     const intake = host.querySelector('[data-testid="label-data-intake"]')!;
     expect(intake.getAttribute('data-label-market')).toBe('AU_NZ');
-    expect(intake.textContent).toContain('Australia / New Zealand');
+    expect(intake.textContent).toContain('Australia / Nowa Zelandia');
     expect(intake.textContent).not.toContain('AU/NZ sub-context');
     expect(intake.textContent).not.toContain('Wybierz Australię');
     expect(intake.querySelector('[data-label-field="jurisdiction_context"]')).toBeNull();

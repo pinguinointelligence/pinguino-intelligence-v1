@@ -67,7 +67,7 @@ describe('compact PI preview presentation', () => {
       );
     });
 
-    expect(host.textContent).toContain('Gotowe. Sprawdź proponowaną korektę');
+    expect(host.textContent).toContain('Sprawdź proponowaną korektę');
     expect(host.querySelector('[data-testid="preview-customer-view"]')?.className).toContain(
       '[--color-ivory:#202124]',
     );
@@ -118,7 +118,7 @@ describe('compact PI preview presentation', () => {
     expect(details?.open).toBe(false);
     expect(details?.textContent).toContain('Szczegóły techniczne');
     expect(details?.textContent).toContain('Suma przed:');
-    expect(host.textContent).toContain('Gotowe. Sprawdź proponowaną korektę');
+    expect(host.textContent).toContain('Sprawdź proponowaną korektę');
   });
 
   it('maps Apply pending to a visible terminal-progress control while Back stays available', async () => {

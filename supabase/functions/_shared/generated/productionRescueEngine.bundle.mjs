@@ -4836,8 +4836,8 @@ const MATCH_SCORE_LABELS = Object.freeze({
 const MATCH_SCORE_NO_DATA_LABEL = "Brak wystarczających danych do oceny";
 /** Tooltip contract (§15.2): 10/10 is honest fit-to-goal, NOT a laboratory guarantee. */
 const MATCH_SCORE_TOOLTIPS = Object.freeze({
-	"recipe-score.match.tooltip": "Dopasowanie receptury ocenia, jak dobrze wynik odpowiada produktowi, trybowi i założeniom. 10/10 oznacza bardzo dobre dopasowanie do celu — nie jest gwarancją laboratoryjną.",
-	"recipe-score.match.tooltip.no-data": "Za mało danych, aby ocenić dopasowanie receptury. Uzupełnij składniki i gramatury, aby otrzymać ocenę."
+	"recipe-score.match.tooltip": "Wynik receptury pokazuje, jak dobrze receptura pasuje do wybranego produktu, trybu i ustawień. 10/10 oznacza bardzo dobre dopasowanie, nie gwarancję laboratoryjną",
+	"recipe-score.match.tooltip.no-data": "Za mało danych, aby ocenić dopasowanie receptury. Uzupełnij składniki i gramatury, aby otrzymać ocenę"
 });
 
 //#endregion
@@ -4874,8 +4874,8 @@ const TECHNICAL_FIT_DISPLAY_NAME = "Dopasowanie techniczne";
 /** The exact provisional-profile qualifier (kept from the frozen contract). */
 const TECHNICAL_FIT_PROVISIONAL_LABEL = "Ocena częściowa / prowizoryczna";
 const TECHNICAL_FIT_TOOLTIPS = Object.freeze({
-	"recipe-score.technical.tooltip": "Dopasowanie techniczne ocenia wyłącznie zgodność receptury z zatwierdzonymi zakresami technologicznymi. 10/10 oznacza, że wszystkie natywne zatwierdzone zakresy są w normie. Koszt i profil smakowy są osobnymi wymiarami i nigdy nie wpływają na tę ocenę. Nie jest to gwarancja laboratoryjna.",
-	"recipe-score.technical.tooltip.no-data": "Za mało danych, aby ocenić dopasowanie techniczne. Uzupełnij składniki i gramatury, aby otrzymać ocenę."
+	"recipe-score.technical.tooltip": "Dopasowanie techniczne ocenia zgodność z zatwierdzonymi zakresami technologicznymi. 10/10 oznacza, że wszystkie potwierdzone zakresy są w normie. Koszt i profil smakowy są oceniane osobno. Nie jest to gwarancja laboratoryjna.",
+	"recipe-score.technical.tooltip.no-data": "Za mało danych, aby ocenić dopasowanie techniczne. Uzupełnij składniki i gramatury, aby otrzymać ocenę"
 });
 const clampToScale = (value) => Math.min(10, Math.max(1, value));
 /**
@@ -6719,21 +6719,21 @@ function assessProteinStructure(input, result = calculateRecipe(input), qualific
 	if (proteinExcess > 0) warnings.push({
 		code: "protein_excess_over_claim",
 		scored: true,
-		messagePl: `Receptura ma ${proteinPercent.toFixed(1)}% białka, a do deklaracji „wysoka zawartość białka” wystarcza ${(qualification.requiredPercent ?? 0).toFixed(1)}%. Nadmiar ${excessPp.toFixed(1)} pp nie poprawia produktu — w badaniach obniża napowietrzenie i zwiększa twardość.`
+		messagePl: `Receptura ma ${proteinPercent.toFixed(1)}% białka; do deklaracji „wysoka zawartość białka” wystarcza ${(qualification.requiredPercent ?? 0).toFixed(1)}%. Dodatkowe ${excessPp.toFixed(1)} pp nie poprawia wyniku i może pogorszyć napowietrzenie oraz twardość.`
 	});
 	const beyondControlledEvidence = proteinPercent > PROTEIN_EVIDENCE_WINDOW.evidenceCeilingPercent + 1e-9;
 	const beyondEvidence = beyondControlledEvidence ? BEYOND_EVIDENCE_PENALTY : 0;
 	if (beyondControlledEvidence) warnings.push({
 		code: "protein_beyond_controlled_evidence",
 		scored: true,
-		messagePl: `${proteinPercent.toFixed(1)}% białka wykracza poza wszystkie kontrolowane badania mrożonych deserów (maksimum ${PROTEIN_EVIDENCE_WINDOW.evidenceCeilingPercent}%). Zachowanie struktury w tym zakresie nie jest zweryfikowane.`
+		messagePl: `${proteinPercent.toFixed(1)}% białka przekracza zakres potwierdzony w badaniach (do ${PROTEIN_EVIDENCE_WINDOW.evidenceCeilingPercent}%). Struktura w tym zakresie nie jest zweryfikowana.`
 	});
 	const lactoseOver = Math.max(0, lactosePercent - PROTEIN_LACTOSE_QUALITY.approvedSandingRiskMaxPercent);
 	const lactoseLoad = lactoseOver > 1e-9 ? clamp(1 + Math.floor(lactoseOver / LACTOSE_PENALTY_STEP_PP), 1, MAX_LACTOSE_PENALTY) : 0;
 	if (lactoseLoad > 0) warnings.push({
 		code: "lactose_load_over_approved_sanding_band",
 		scored: true,
-		messagePl: `Laktoza ${lactosePercent.toFixed(1)}% przekracza zatwierdzony zakres ryzyka piaszczystości (maks. ${PROTEIN_LACTOSE_QUALITY.approvedSandingRiskMaxPercent}%). Źródło białka wnosi dużo laktozy — źródło o wyższej czystości dostarczy to samo białko przy mniejszym ryzyku.`
+		messagePl: `Laktoza ${lactosePercent.toFixed(1)}% przekracza zatwierdzony limit ryzyka piaszczystości (${PROTEIN_LACTOSE_QUALITY.approvedSandingRiskMaxPercent}%). Czystsze źródło białka może zmniejszyć ryzyko przy tej samej ilości białka.`
 	});
 	if (fatPercent < PROTEIN_FAT_EVIDENCE_ENVELOPE.fatFloorPercent || fatPercent > PROTEIN_FAT_EVIDENCE_ENVELOPE.fatCeilingPercent) warnings.push({
 		code: "fat_outside_evidence_envelope",
@@ -6744,7 +6744,7 @@ function assessProteinStructure(input, result = calculateRecipe(input), qualific
 	if (proteinToFat !== null && (proteinToFat < PROTEIN_FAT_EVIDENCE_ENVELOPE.proteinToFatFloor || proteinToFat > PROTEIN_FAT_EVIDENCE_ENVELOPE.proteinToFatCeiling)) warnings.push({
 		code: "protein_to_fat_outside_evidence_envelope",
 		scored: false,
-		messagePl: `Stosunek białko:tłuszcz ${proteinToFat.toFixed(2)} leży poza zakresem badanych receptur (${PROTEIN_FAT_EVIDENCE_ENVELOPE.proteinToFatFloor}-${PROTEIN_FAT_EVIDENCE_ENVELOPE.proteinToFatCeiling}). Brak kontrolowanej serii białko:tłuszcz, więc jest to wyłącznie informacja.`
+		messagePl: `Stosunek białka do tłuszczu ${proteinToFat.toFixed(2)} jest poza zbadanym zakresem ${PROTEIN_FAT_EVIDENCE_ENVELOPE.proteinToFatFloor}–${PROTEIN_FAT_EVIDENCE_ENVELOPE.proteinToFatCeiling}. To informacja, nie warunek blokujący.`
 	});
 	if (sourceProfile.wheyCaseinClass === "whey_dominant" && proteinPercent > 6) warnings.push({
 		code: "whey_dominant_aeration_risk",
@@ -6902,7 +6902,7 @@ function evaluateRecipeConstraintAuthority(input) {
 		code: "critical_warning",
 		lineIds: recipe.items.map((item) => item.id),
 		metric: warning.code,
-		messagePl: `Krytyczne ostrzeżenie Engine: ${warning.code}.`
+		messagePl: `Krytyczne ostrzeżenie obliczeń: ${warning.code}.`
 	});
 	if (recipe.category === "vegan_gelato") {
 		const eligibility = veganRecipeEligibilityIssues(recipe.items);
@@ -6925,7 +6925,7 @@ function evaluateRecipeConstraintAuthority(input) {
 		source: "profile",
 		code: "protein_claim_unmet",
 		lineIds: recipe.items.map((item) => item.id),
-		messagePl: `Profil Protein wymaga deklaracji „wysoka zawartość białka” (min. 20% energii z białka); kandydat ma ${protein.qualification.energySharePercent?.toFixed(0)}% energii z białka przy ${protein.actualPercent?.toFixed(1)}% białka w masie.`
+		messagePl: `Profil Protein wymaga min. 20% energii z białka. Kandydat ma ${protein.qualification.energySharePercent?.toFixed(0)}% energii z białka przy ${protein.actualPercent?.toFixed(1)}% białka w masie.`
 	});
 	const stabilizerSystem = assessGelatoStabilizerSystem(recipe);
 	const sorbetStabilizerSystem = assessSorbetStabilizerSystem(recipe);
@@ -8474,6 +8474,12 @@ function assessProductionRescue(session) {
 
 //#endregion
 //#region src/features/pro-core/recipeScaling.ts
+const SCALE_MESSAGE_PL = Object.freeze({
+	"Scaling to a volume needs an explicit density (g/ml). No density was supplied, so no volume was assumed.": "Skalowanie do objętości wymaga podania gęstości (g/ml). Nie podano gęstości, więc objętość nie została przyjęta.",
+	"Scaling to portions needs an explicit portion weight (g) or yield. None was supplied, so no yield was assumed.": "Skalowanie do porcji wymaga masy porcji (g) lub wydajności. Nie podano żadnej z tych wartości.",
+	"Target batch weight must be greater than zero.": "Masa docelowej partii musi być większa od zera.",
+	"Cannot scale a recipe with zero total mass.": "Nie można skalować receptury o zerowej masie całkowitej."
+});
 /**
 * Distribute `targetUnits` (an integer) across `sources` proportionally, returning integer unit
 * counts whose sum is EXACTLY `targetUnits`. Deterministic largest-remainder (Hamilton) method:

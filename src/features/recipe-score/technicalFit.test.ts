@@ -161,8 +161,8 @@ describe('recipeTechnicalFit — honest no-data + presentation hygiene', () => {
     const fit = recipeTechnicalFit(nativeInRangeResult());
     expect(fit.display).toMatch(/^(10|[1-9])\/10$/);
     expect(fit.ariaText).not.toContain('%');
-    expect(TECHNICAL_FIT_TOOLTIPS[fit.tooltipKey]).toContain('wszystkie natywne zatwierdzone zakresy');
-    expect(TECHNICAL_FIT_TOOLTIPS[fit.tooltipKey]).toContain('osobnymi wymiarami');
+    expect(TECHNICAL_FIT_TOOLTIPS[fit.tooltipKey]).toContain('wszystkie potwierdzone zakresy są w normie');
+    expect(TECHNICAL_FIT_TOOLTIPS[fit.tooltipKey]).toContain('są oceniane osobno');
     expect(TECHNICAL_FIT_TOOLTIPS[fit.tooltipKey]).toContain('Nie jest to gwarancja laboratoryjna');
     expect(TECHNICAL_FIT_DISPLAY_NAME).toBe('Dopasowanie techniczne');
   });

@@ -254,7 +254,7 @@ describe('Main flavour priority lexicographic objective', () => {
       technicalOnlyMainLineIds(input),
     );
     expect(committed).toMatchObject({ ok: false, code: 'main_identity_violated' });
-    if (!committed.ok) expect(committed.messagePl).toMatch(/maksymalizac/i);
+    if (!committed.ok) expect(committed.messagePl).toMatch(/najlepszego dostępnego wyniku dla składnika Głównego/i);
   });
 
   it.each([

@@ -6029,7 +6029,7 @@
       "iterations": null,
       "stopReason": "missing_required_role",
       "outcome": "missing_required_role",
-      "outcomeDetail": "missing_required_role: sweetener_sucrose — Brakuje składnika w twardej roli technologicznej: sweetener_sucrose. Dodaj zatwierdzony składnik tej roli, aby ułożyć recepturę.",
+      "outcomeDetail": "missing_required_role: sweetener_sucrose — Brakuje składnika w twardej roli technologicznej: sweetener_sucrose. Dodaj zatwierdzony składnik tej roli, aby ułożyć recepturę",
       "finalLines": null,
       "batchTotalG": 350,
       "metrics": {

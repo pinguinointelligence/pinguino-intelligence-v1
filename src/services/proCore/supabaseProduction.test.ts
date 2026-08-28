@@ -942,7 +942,7 @@ describe('supabaseProduction — createRun persists the frozen plan from an EXAC
         by: U1,
         meta: { thermalMode: 'HEAT_CAPABLE' },
       }),
-    ).rejects.toThrow(/density/i);
+    ).rejects.toThrow(/gęstości/i);
     expect(store.tables.production_runs).toHaveLength(0);
   });
 

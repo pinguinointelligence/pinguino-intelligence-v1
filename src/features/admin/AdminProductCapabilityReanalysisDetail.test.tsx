@@ -113,7 +113,7 @@ describe('AdminProductCapabilityReanalysisDetail', () => {
       'Obecnie',
       'Topping',
       'Sprawdź, czy produkt może działać również jako składnik',
-      'wyszukano w Dodaj składnik',
+      'Wyszukano w Dodaj składnik',
       'pro@pro.com',
       'scan-session-uuid',
       '7f4b5acc-28c7-4ed6-92e7-c8e3847d2276',

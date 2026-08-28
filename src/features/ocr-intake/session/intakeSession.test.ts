@@ -448,10 +448,10 @@ describe('rerun extraction (deliberate, never silent)', () => {
     expect(rerun.fields).toEqual([]);
     expect(rerun.duplicate).toBeNull();
     const warning = rerun.warnings.at(-1) ?? '';
-    expect(warning).toMatch(/DISCARDED/);
-    expect(warning).toMatch(/1 manual edit/);
-    expect(warning).toMatch(/1 confirmation/);
-    expect(warning).toMatch(/3 reviewed field/);
+    expect(warning).toMatch(/zastąpiła/);
+    expect(warning).toMatch(/1 ręcznych zmian/);
+    expect(warning).toMatch(/1 potwierdzeń/);
+    expect(warning).toMatch(/3 sprawdzonych pól/);
   });
 
   it('rerunExtraction is review-only', () => {

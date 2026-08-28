@@ -58,7 +58,7 @@ describe('TesseractOcrProvider — contract failures (no engine start)', () => {
     });
     expect(r.ok).toBe(false);
     if (!r.ok && r.failure.kind === 'engine_error') {
-      expect(r.failure.message).toMatch(/limit is 10 MB/);
+      expect(r.failure.message).toMatch(/maks\. 10 MB/);
     } else {
       throw new Error('expected engine_error');
     }

@@ -37,7 +37,7 @@ describe('customer OCR global-catalog entry', () => {
     const html = render();
     expect(html).toContain('Dodaj produkt ze zdjęć etykiety');
     expect(html).toContain('multiple=""');
-    expect(html).toContain('Cena, dostawca, notatki i stan magazynowy nigdy nie są publikowane');
+    expect(html).toContain('Cena, dostawca, notatki i stan magazynowy pozostają prywatne');
     expect(SOURCE).toContain('Ten produkt jest jawnie bez marki');
     expect(SOURCE).toContain('explicitlyUnbranded,');
     expect(SOURCE).not.toMatch(/opt.?in|zgadzam się na publikację/i);

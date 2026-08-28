@@ -108,7 +108,7 @@ describe('InMemoryProduction — plan from an EXACT immutable version', () => {
         capabilities: PRO,
         by: 'u1',
       }),
-    ).toThrow(/density/i);
+    ).toThrow(/gęstości/i);
     // the pure preview surfaces the same refusal without throwing
     expect(svc.scale(v, { kind: 'volume_ml', ml: 5000 })).toMatchObject({
       ok: false,

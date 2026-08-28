@@ -175,8 +175,8 @@ describe('addendum item 2 — reference-derived provenance can never commit', ()
     if (outcome.ok) return;
     expect(outcome.code).toBe('reference_derived_provenance');
     expect(outcome.messagePl).toContain('fruit_gelato_ref_v1');
-    expect(outcome.messagePl).toContain('nie jest zatwierdzona naukowo');
-    expect(outcome.messagePl).toContain('Receptura nie została zmieniona.');
+    expect(outcome.messagePl).toContain('niezatwierdzonej receptury referencyjnej');
+    expect(outcome.messagePl).toContain('nie można jej zastosować produkcyjnie');
   });
 
   it('an unknown template id is not approved either (never a silent pass)', () => {
@@ -188,9 +188,9 @@ describe('addendum item 2 — reference-derived provenance can never commit', ()
     // The card renders the honest explanation + next step for this reason code.
     expect(
       constraintStudioCopy.preview.diagnosticReferenceDerived('fruit_gelato_ref_v1'),
-    ).toContain('wyłącznie diagnostyce');
+    ).toContain('Służy tylko do diagnozy');
     expect(constraintStudioCopy.preview.diagnosticReferenceDerived('X')).toContain(
-      'Wybierz zatwierdzony profil produktu',
+      'Wybierz zatwierdzony profil',
     );
     const card = read('features', 'constraint-studio', 'ui', 'ConstraintPreviewCard.tsx');
     expect(card).toContain('diagnosticReferenceDerived');

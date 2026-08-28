@@ -143,7 +143,7 @@ describe('professional Monitor acceptance contract', () => {
     );
     expect(partialHtml).toContain('data-testid="monitor-behavior-revalidation"');
     expect(partialHtml).toContain(
-      'Monitor wymaga ponownej walidacji danych produktów użytych w tej recepturze.',
+      'Monitor wymaga ponownej walidacji danych produktów użytych w tej recepturze',
     );
     expect(partialHtml).not.toContain('Brak zatwierdzonego uprawnienia MONITOR dla:');
     for (const lineId of Object.keys(completeSnapshots)) {

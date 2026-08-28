@@ -36,12 +36,12 @@ describe('validateLabelImage (no OCR run)', () => {
   it('rejects unsupported formats, oversized and empty files with honest reasons', () => {
     const pdf = validateLabelImage({ filename: 'doc.pdf', mime: 'application/pdf', sizeBytes: 1000 });
     expect(pdf.ok).toBe(false);
-    expect(pdf.reason).toMatch(/PNG, JPEG or WebP/);
+    expect(pdf.reason).toMatch(/PNG, JPEG lub WebP/);
     const heic = validateLabelImage({ filename: 'scan.heic', mime: 'image/heic', sizeBytes: 1000 });
     expect(heic.ok).toBe(false);
     const big = validateLabelImage({ filename: 'a.png', mime: 'image/png', sizeBytes: MAX_LABEL_IMAGE_BYTES + 1 });
     expect(big.ok).toBe(false);
-    expect(big.reason).toMatch(/limit/);
+    expect(big.reason).toMatch(/Limit/);
     expect(validateLabelImage({ filename: 'a.png', mime: 'image/png', sizeBytes: 0 }).ok).toBe(false);
   });
 });
@@ -121,7 +121,7 @@ describe('REAL OCR on fixture images (tesseract.js in Node, offline langdata)', 
       expect(r.status).toBe('failed');
       if (r.status !== 'failed') return;
       expect(r.reason).toBe('unreadable_image');
-      expect(r.message).toMatch(/No readable label text/);
+      expect(r.message).toMatch(/Nie znaleziono czytelnego tekstu/);
     },
   );
 

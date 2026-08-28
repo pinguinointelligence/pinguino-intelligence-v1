@@ -156,7 +156,7 @@ describe('recipeMatchScore — presentation hygiene', () => {
   it('tooltip contract: the scored tooltip states 10/10 is not a laboratory guarantee', () => {
     const result = recipeMatchScore(scores(100));
     expect(result.tooltipKey).toBe('recipe-score.match.tooltip');
-    expect(MATCH_SCORE_TOOLTIPS[result.tooltipKey]).toContain('nie jest gwarancją laboratoryjną');
+    expect(MATCH_SCORE_TOOLTIPS[result.tooltipKey]).toContain('nie gwarancję laboratoryjną');
   });
 
   it('aria text carries both the number and the verbal label (§21.5)', () => {

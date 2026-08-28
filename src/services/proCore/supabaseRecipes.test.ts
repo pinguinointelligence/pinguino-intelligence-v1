@@ -467,12 +467,12 @@ describe('supabase RecipesRepository adapter (fake client)', () => {
     const { repo } = seed();
     await expect(
       repo.createRecipe({ ownerUserId: 'user-1', title: 'D', recipeInput: input(1000, [item('a', 'Milk', 1000)]), trace: TRACE, by: 'user-1', capabilities: DEMO }),
-    ).rejects.toThrow(/cannot save/i);
+    ).rejects.toThrow(/nie pozwala zapisywać/i);
 
     const { recipe } = await repo.createRecipe({ ownerUserId: 'user-1', title: 'Home', recipeInput: input(1000, [item('a', 'Milk', 1000)]), trace: TRACE, by: 'user-1', capabilities: HOME });
     await expect(
       repo.createRecipe({ ownerUserId: 'user-1', title: 'Second', recipeInput: input(500, [item('a', 'Milk', 500)]), trace: TRACE, by: 'user-1', capabilities: HOME }),
-    ).rejects.toThrow(/limit reached/i);
+    ).rejects.toThrow(/Osiągnięto limit/i);
     // but versioning the existing recipe is allowed
     const v2 = await repo.saveNewVersion(recipe.recipeId, input(1100, [item('a', 'Milk', 1100)]), TRACE, 'user-1');
     expect(v2.versionNumber).toBe(2);
@@ -654,7 +654,7 @@ describe('E1: transactional first save (RPC when available, documented fallback 
     const { db, repo } = seed(true);
     await expect(
       repo.createRecipe({ ownerUserId: 'user-1', title: 'D', recipeInput: input(1000, [item('a', 'Milk', 1000)]), trace: TRACE, by: 'user-1', capabilities: DEMO }),
-    ).rejects.toThrow(/cannot save/i);
+    ).rejects.toThrow(/nie pozwala zapisywać/i);
     expect(db.saved_recipes).toHaveLength(0);
     expect(db.recipe_versions).toHaveLength(0);
   });

@@ -95,7 +95,7 @@ describe('OverallScoreCard — „Dopasowanie techniczne" headline (ADDENDUM 2)'
   it('carries the a11y number+verdict and the technical tooltip (10/10 = all native bands)', () => {
     const html = renderToStaticMarkup(<OverallScoreCard result={realResult()} mode="classic" />);
     expect(html).toMatch(/aria-label="Dopasowanie techniczne: ([1-9]|10) na 10 — /);
-    expect(html).toContain('wszystkie natywne zatwierdzone zakresy');
+    expect(html).toContain('wszystkie potwierdzone zakresy są w normie');
     expect(html).toContain('Nie jest to gwarancja laboratoryjna');
   });
 

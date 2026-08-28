@@ -55,9 +55,9 @@ describe('mapRecipeToAxes — direction vs the golden range (reused bands)', () 
     const by = (id: string) => axes.find((a) => a.id === id)!;
     expect(by('slodycz').position).toBe('w_zakresie'); // pod 15 in [12,17]
     expect(by('miekkosc_twardosc').position).toBe('powyzej_zakresu'); // ice 60 > 54.5
-    expect(by('miekkosc_twardosc').directionCopy).toBe('twardsze niż zakres');
+    expect(by('miekkosc_twardosc').directionCopy).toBe('Twardsze niż zakres');
     expect(by('kremowosc_tluszcz').position).toBe('ponizej_zakresu'); // fat 3 < 5
-    expect(by('kremowosc_tluszcz').directionCopy).toBe('mniej tłuszczu niż zakres');
+    expect(by('kremowosc_tluszcz').directionCopy).toBe('Mniej tłuszczu niż zakres');
     expect(by('pelnia_body').position).toBe('powyzej_zakresu'); // solids 50 > 45
   });
 
@@ -94,7 +94,7 @@ describe('mapRecipeToAxes — direction vs the golden range (reused bands)', () 
     const fatAxis = axes.find((a) => a.id === 'kremowosc_tluszcz')!;
     expect(fatAxis.applicable).toBe(false);
     expect(fatAxis.position).toBeNull();
-    expect(fatAxis.directionCopy).toBe('nie dotyczy tego produktu');
+    expect(fatAxis.directionCopy).toBe('Nie dotyczy tego produktu');
   });
 });
 

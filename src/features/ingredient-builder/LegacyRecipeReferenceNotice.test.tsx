@@ -36,7 +36,7 @@ describe('LegacyRecipeReferenceNotice', () => {
       ),
     );
 
-    expect(host.textContent).toContain('1 historyczny produkt wymaga sprawdzenia');
+    expect(host.textContent).toContain('1 Historyczny produkt wymaga sprawdzenia');
     expect(host.textContent).toContain(items[0]!.ingredient.name);
     expect(host.textContent).not.toContain('550e8400');
     expect(host.textContent).not.toContain('PI-ING-000405');

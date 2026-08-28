@@ -299,8 +299,8 @@ describe('addendum1 — iteration_cap is NEVER an applicable recipe (T9)', () =>
     expect(outcome.ok).toBe(false);
     if (outcome.ok) return;
     expect(outcome.code).toBe('iteration_cap_diagnostic');
-    expect(outcome.messagePl).toContain('limicie prób');
-    expect(outcome.messagePl).toContain('Receptura nie została zmieniona.');
+    expect(outcome.messagePl).toContain('limit prób');
+    expect(outcome.messagePl).toContain('Podgląd jest tylko diagnostyczny');
   });
 
   // CURRENT-DRAFT OPTIMIZATION P0 (owner, 2026-07-25) — DELIBERATE expectation
@@ -454,9 +454,9 @@ describe('addendum3 — hard-native residuals block Apply at the door', () => {
     expect(outcome.code).toBe('hard_residual_violations');
     if (outcome.code !== 'hard_residual_violations') return;
     expect(outcome.hardMetrics).toContain('ice_fraction');
-    expect(outcome.messagePl).toContain('udział lodu');
+    expect(outcome.messagePl).toContain('Udział lodu');
     expect(outcome.messagePl).toContain('diagnostyczny');
-    expect(outcome.messagePl).toContain('Receptura nie została zmieniona.');
+    expect(outcome.messagePl).toContain('nie można go zastosować');
   });
 
   it('T19 (sorbet from strawberry): the native ice residual is REPAIRED, not laundered', () => {

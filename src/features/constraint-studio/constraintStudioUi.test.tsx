@@ -104,7 +104,7 @@ describe('renderConstraintExplanationPl', () => {
     const sentence = renderConstraintExplanationPl({ kind: 'no_reliable_bound' });
     expect(sentence).toBe(
       'Przy obecnych blokadach nie znaleziono rozwiązania w optymalnym zakresie. ' +
-        'Odblokuj jeden z zaznaczonych składników lub zmień batch.',
+        'Odblokuj zaznaczony składnik, zmień zakres albo zwiększ partię.',
     );
     expect(/\d/.test(sentence)).toBe(false);
   });
@@ -255,7 +255,7 @@ describe('ConstraintPreviewCard (§19.1)', () => {
   );
 
   it('renders the compact customer header and disables Apply when the proposal misses its batch target', () => {
-    expect(customerHtml).toContain('Gotowe. Sprawdź proponowaną korektę');
+    expect(customerHtml).toContain('Sprawdź proponowaną korektę');
     expect(customerHtml).toContain('data-testid="preview-summary"');
     expect(customerHtml).toContain('data-testid="preview-apply-disabled"');
     expect(customerHtml).toContain(copy.preview.applyDisabledDiagnostic);
@@ -296,7 +296,7 @@ describe('ConstraintPreviewCard (§19.1)', () => {
     expect(customerHtml).toContain('82 g');
     expect(customerHtml).toContain('74 g');
     expect(customerHtml).toContain('−8 g');
-    expect(customerHtml).toContain('nowy składnik');
+    expect(customerHtml).toContain('Nowy składnik');
     expect(customerHtml).toContain('Pokaż bez zmian');
     expect(customerHtml).not.toContain('bez zmian · zablokowane');
     expect(customerHtml).not.toContain('Mleko');
@@ -346,8 +346,8 @@ describe('ConstraintPreviewCard (§19.1)', () => {
     expect(directedHtml).toContain('Mleko A');
     expect(directedHtml).toContain('Mleko B');
     expect(directedHtml).toContain('data-testid="preview-direction-reason"');
-    expect(directedHtml).toContain('mniej słodkie');
-    expect(directedHtml).toContain('twardsze');
+    expect(directedHtml).toContain('Mniej słodkie');
+    expect(directedHtml).toContain('Twardsze');
     expect(directedHtml).not.toContain('targetBand');
   });
 
@@ -373,7 +373,7 @@ describe('ConstraintPreviewCard (§19.1)', () => {
     expect(rendered).toContain('Blokada przekracza zatwierdzony zakres systemu stabilizatora');
     expect(rendered).toContain('55 g');
     expect(rendered).toContain('10 g');
-    expect(rendered).toContain('Nic nie zmieni się bez użycia „Zastosuj zmiany”');
+    expect(rendered).toContain('Nic nie zmieni się bez „Zastosuj zmiany”.');
   });
 
   it('discloses an Engine-verified hard-constraint lock transition without calling it dosage', () => {
@@ -398,7 +398,7 @@ describe('ConstraintPreviewCard (§19.1)', () => {
     expect(rendered).toContain('Blokada wymusza twardo nieprawidłową recepturę');
     expect(rendered).toContain('zatwierdzone reguły obliczeń');
     expect(rendered).not.toContain('zakres systemu stabilizatora');
-    expect(rendered).toContain('Nic nie zmieni się bez użycia „Zastosuj zmiany”');
+    expect(rendered).toContain('Nic nie zmieni się bez „Zastosuj zmiany”.');
   });
 
   it.each([
@@ -549,9 +549,9 @@ describe('BlockedApplyNotice', () => {
     );
     expect(html).toContain('role="alert"');
     expect(html).toContain('Zmian nie zastosowano');
-    expect(html).toContain('Kontrola blokad zatrzymała tę operację');
+    expect(html).toContain('Propozycja zmieniłaby zablokowane gramatury');
     expect(html).toContain('Mleko');
-    expect(html).toContain('Receptura nie została zmieniona');
+    expect(html).toContain('Receptura pozostała bez zmian');
     expect(html).toContain('Rozumiem');
   });
 });
@@ -618,7 +618,7 @@ describe('FeasibilityNotice (§18)', () => {
     );
     expect(html).toContain(
       'Przy obecnych blokadach nie znaleziono rozwiązania w optymalnym zakresie. ' +
-        'Odblokuj jeden z zaznaczonych składników lub zmień batch.',
+        'Odblokuj zaznaczony składnik, zmień zakres albo zwiększ partię.',
     );
     expect(html).toContain('Zaznaczone składniki: Sucrose.');
     expect(html).not.toContain('i przelicz'); // no fabricated „ustaw X g”
@@ -649,7 +649,7 @@ describe('FeasibilityNotice (§18)', () => {
     );
     expect(html).toContain('wspólnie uniemożliwiają osiągnięcie optymalnego zakresu');
     expect(html).toContain('Sucrose i Dextrose');
-    expect(html).toContain('odblokuj jeden z nich, zmień zakres, zwiększ batch');
+    expect(html).toContain('odblokuj jeden z nich, zmień zakres, zwiększ partię');
     expect(html).toContain('zmniejsz Sucrose o 42,5 g');
   });
 });

@@ -21,8 +21,8 @@
     "productionSessionSchema": 2
   },
   "bundle": {
-    "bytes": 334324,
-    "sha256": "124e3af7c98264b4f4a0935fa16fb4ab169f6afa92090f73082945cf8a5e04ff",
+    "bytes": 334760,
+    "sha256": "7bbff6d99371f4e4caa7f7ab5be13f53e1881f4d7858152665ff8b472ea68426",
     "externalImports": 0,
     "dynamicImports": 0
   },
@@ -165,7 +165,7 @@
     },
     {
       "path": "src/features/pro-core/recipeScaling.ts",
-      "sha256": "727b9c03c1c912c2913fc065e47a593184947534221d0303aef5d7dd4adbce96"
+      "sha256": "587d640c4a2d18098c7752715bed96cb0455dfa48fb62a1880924dfcacdfae25"
     },
     {
       "path": "src/features/product-intelligence/mainCapability.ts",
@@ -217,7 +217,7 @@
     },
     {
       "path": "src/features/protein-gelato/proteinStructureQuality.ts",
-      "sha256": "68e1f3c4ef01b267d0de8e0b6dccbc868350dab1e8620dcc457bb23fd131661e"
+      "sha256": "6dd2d218920ed266a942f9421a3f16066f71ee5c2d73267b5bd3579a4d2bc614"
     },
     {
       "path": "src/features/recipe-composition/finalProduct.ts",
@@ -241,7 +241,7 @@
     },
     {
       "path": "src/features/recipe-constraints/recipeConstraintAuthority.ts",
-      "sha256": "7b60212e650375726b68d38da575d5de7f29270371214e23bd53bb11f5cb08ba"
+      "sha256": "d69e060c1c7a7e911aaf0693316bff6cb2435b07578fc52d8630bf7c821c098b"
     },
     {
       "path": "src/features/recipe-constraints/sorbetStabilizerSystemAuthority.ts",
@@ -257,16 +257,16 @@
     },
     {
       "path": "src/features/recipe-score/recipeMatchScore.ts",
-      "sha256": "753c3614953633949916f8d3a94eff264991b38cdbcee1c8ab4ada3375069f0f"
+      "sha256": "4f3ed00a8f7aaaafa812c0c7cb5e74e70f517196965df7e69c44ffe2b13973f9"
     },
     {
       "path": "src/features/recipe-score/technicalFit.ts",
-      "sha256": "95ae22ff69f66f6e9236f85a2d1ef9f7158a285ddd7cdbc6c614d227a538087a"
+      "sha256": "bc520a820acfdd218255148c465be760589e95ed27a60a889342b505ce2ec715"
     },
     {
       "path": "src/spine/temperatureRegulator.ts",
       "sha256": "a2207c9c4e9431daa728d6b03fe1b9c4a4a3ba3403a0c056f2808c0759a455c8"
     }
   ],
-  "sourceClosureSha256": "2a70c67dcb0a2858a7dea465f569eccc50420b20e76bfa9ff1a0a1e6423f2c2f"
+  "sourceClosureSha256": "1b60cbdf060dba85423fe513df387ab2eec306722d29c51d973675c6bbf14da3"
 }

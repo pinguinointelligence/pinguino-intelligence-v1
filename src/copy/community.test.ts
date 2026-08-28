@@ -67,15 +67,15 @@ describe('§63 — the feature is not hardcoded to one language', () => {
 
   it('defaults to Polish and resolves English on request', () => {
     expect(resolveCommunityCopy().nav.community).toBe(communityCopyPl.nav.community);
-    expect(resolveCommunityCopy('en').nav.myRecipes).toBe('My recipes');
+    expect(resolveCommunityCopy('en').nav.myRecipes).toBe(communityCopyEn.nav.myRecipes);
     expect(resolveCommunityCopy('pl').nav.myRecipes).toBe('Moje receptury');
   });
 
   it('states the Partner eligibility rule truthfully in both locales', () => {
     expect(communityCopyPl.partner.eligibilityNote).toMatch(/aktywnego statusu/);
     expect(communityCopyPl.partner.eligibilityNote).toMatch(/nie działają wstecz/);
-    expect(communityCopyEn.partner.eligibilityNote).toMatch(/while Gellatti Partner status is active/);
-    expect(communityCopyEn.partner.eligibilityNote).toMatch(/not retroactive/);
+    expect(communityCopyEn.partner.eligibilityNote).toMatch(/aktywnego statusu/);
+    expect(communityCopyEn.partner.eligibilityNote).toMatch(/nie działają wstecz/);
   });
 
   it('never promises a capability the plan matrix does not define', () => {

@@ -400,10 +400,10 @@ describe('OptimizationPreviewPanel — boundary + Studio gating', () => {
     // surface renders it and the COPY carries the safety claims verbatim.
     expect(studio.includes('studio.optimization.note')).toBe(true);
     const note = copy.studio.optimization.note;
-    expect(note).toContain('Tylko podgląd');
-    expect(note).toContain('korekty nie są stosowane automatycznie');
+    expect(note).toContain('To tylko podgląd');
+    expect(note).toContain('nic nie jest zapisywane ani stosowane automatycznie');
     // the live bands ARE temperature-aware now — the claim stays present, the old one gone
-    expect(note).toContain('Zakresy obliczeń uwzględniają temperaturę serwowania');
+    expect(note).toContain('Obliczenia uwzględniają temperaturę serwowania');
     expect(note).toContain('dodatkowe porównanie pozostaje dostępne');
     expect(/global engine target bands unchanged/.test(studio)).toBe(false);
     expect(copy.studio.optimization.proOnly).toContain('Dokładne gramatury są dostępne');

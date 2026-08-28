@@ -290,7 +290,7 @@ describe('commitPreview — THE door (§17.2 hard guarantee)', () => {
     expect(outcome.ok).toBe(false);
     if (outcome.ok) return;
     expect(outcome.code).toBe('hard_residual_violations');
-    expect(outcome.messagePl).toContain('Receptura nie została zmieniona.');
+    expect(outcome.messagePl).toContain('Receptura pozostała bez zmian.');
   });
 
   it('BLOCKS a forged proposal that moves a locked line — Polish message, no state produced', () => {
@@ -317,9 +317,9 @@ describe('commitPreview — THE door (§17.2 hard guarantee)', () => {
     if (outcome.code !== 'constraints_violated') return;
     expect(outcome.violations[0]?.code).toBe('locked_grams_changed');
     const sucroseName = input.items.find((item) => item.id === SUCROSE)?.ingredient.name ?? '';
-    expect(outcome.messagePl).toContain('Kontrola blokad zatrzymała');
+    expect(outcome.messagePl).toContain('Propozycja zmieniłaby zablokowane gramatury');
     expect(outcome.messagePl).toContain(sucroseName);
-    expect(outcome.messagePl).toContain('Receptura nie została zmieniona');
+    expect(outcome.messagePl).toContain('Receptura pozostała bez zmian');
   });
 
   it('BLOCKS even a 0.1 g drift on a locked line (§17.2 „nawet o 0,1 g”)', () => {

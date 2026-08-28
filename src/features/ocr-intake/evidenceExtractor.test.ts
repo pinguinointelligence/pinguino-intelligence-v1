@@ -219,7 +219,7 @@ describe('extractEvidence — locked field rules', () => {
     const ean = field(out, 'ean_code');
     expect(ean.candidates[0]?.extractedRaw).toBe('8480000610927');
     expect(ean.candidates[0]?.normalized).toBeNull();
-    expect(ean.candidates[0]?.warnings.join(' ')).toMatch(/checksum/);
+    expect(ean.candidates[0]?.warnings.join(' ')).toMatch(/sumy kontrolnej/);
     expect(ean.reviewStatus).toBe('needs_confirmation');
   });
 

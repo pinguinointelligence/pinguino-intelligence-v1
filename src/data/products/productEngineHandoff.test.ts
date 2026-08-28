@@ -40,7 +40,7 @@ describe('prepareProductEngineIngredient — confirmed match borrows the referen
     expect(h.ingredient?.source_type).toBe('external_db');
     expect(h.provenance).toBe('reference_linked');
     expect(h.not_independently_measured).toBe(true);
-    expect(h.warnings.join(' ')).toMatch(/not an independent measurement/i);
+    expect(h.warnings.join(' ')).toMatch(/nie są niezależnym pomiarem/i);
   });
 
   it('emits no npac_value and no raw OCR/catalog text into the engine ingredient', () => {

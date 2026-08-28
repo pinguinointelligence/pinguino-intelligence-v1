@@ -180,7 +180,7 @@ describe('PI visible terminal contract', () => {
     });
     expect(useConstraintStudioStore.getState().recalculationTerminal).toEqual({
       state: 'ERROR',
-      messagePl: 'Przeliczenie zakończyło się bez wyniku. Wróć do receptury i spróbuj ponownie.',
+      messagePl: 'Przeliczenie zakończyło się bez wyniku. Wróć do receptury i spróbuj ponownie',
     });
     expect(document.body.textContent).toContain('Przeliczenie zakończyło się bez wyniku.');
     expect(document.body.textContent).not.toContain('Stara odmowa produktu.');
@@ -411,7 +411,7 @@ describe('PI visible terminal contract', () => {
     expect(document.body.textContent).toContain(line.ingredient.name);
     expect(document.body.textContent).toContain('900 g');
     expect(document.body.textContent).toContain('639 g');
-    expect(document.body.textContent).toContain('udział lodu');
+    expect(document.body.textContent).toContain('Udział lodu');
     expect(document.body.textContent).toContain('Odblokuj i pokaż podgląd');
     expect(document.body.textContent).toContain('Wróć do receptury');
   });
@@ -620,7 +620,7 @@ describe('PI visible terminal contract', () => {
     });
     await renderPanel();
 
-    expect(document.body.textContent).toContain('Dane produktów w tej wersji są nieaktualne.');
+    expect(document.body.textContent).toContain('Dane produktów w tej wersji są nieaktualne');
     expect(document.body.textContent).toContain('Historyczna wersja pozostanie bez zmian.');
     expect(document.body.textContent).toContain(lines[0]!.ingredient.name);
     expect(document.body.textContent).toContain(lines[1]!.ingredient.name);

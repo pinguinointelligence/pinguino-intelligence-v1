@@ -288,7 +288,7 @@ describe('in-memory adapter', () => {
     });
 
   it('Demo cannot save (never receives a save-capable exact payload)', () => {
-    expect(() => create(DEMO)).toThrow(/cannot save/i);
+    expect(() => create(DEMO)).toThrow(/nie pozwala zapisywać/i);
   });
 
   it('Home is limited to one recipe aggregate; versioning the existing one still works', () => {
@@ -302,7 +302,7 @@ describe('in-memory adapter', () => {
         by: 'u1',
         capabilities: HOME,
       }),
-    ).toThrow(/limit reached/i);
+    ).toThrow(/Osiągnięto limit/i);
     // but a new VERSION of the existing recipe is allowed
     const v2 = svc.saveNewVersion(
       recipe.recipeId,

@@ -665,7 +665,7 @@ describe('Master Label — one actual-batch source model', () => {
 
   it('keeps one AU/NZ profile and applies the union without asking for a country', () => {
     const profile = marketProfile('AU_NZ');
-    expect(profile.label).toBe('Australia / New Zealand');
+    expect(profile.label).toBe('Australia / Nowa Zelandia');
     expect(profile.requiredFields).toContain('origin');
     expect(profile.jurisdiction).not.toMatch(/or New Zealand|country required/i);
 

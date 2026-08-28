@@ -213,7 +213,7 @@ describe('Moje receptury — WERSJA selector', () => {
   it('lists v3 → v2 → v1 with their own immutable dates', async () => {
     await click(`recipe-version-selector-${ROW.name}`);
     const rows = [...host.querySelectorAll('[role="option"]')];
-    expect(rows.map((o) => o.textContent?.match(/^v\d+/)?.[0])).toEqual(['v3', 'v2', 'v1']);
+    expect(rows.map((o) => o.textContent?.match(/^V\d+/)?.[0])).toEqual(['V3', 'V2', 'V1']);
     expect(rows[2]!.textContent).toContain('23.08.2026'); // v1: 22.08 UTC = 23.08 local
     expect(rows.filter((o) => o.textContent?.includes('Aktualna'))).toHaveLength(1);
   });

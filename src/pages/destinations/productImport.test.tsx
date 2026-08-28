@@ -340,7 +340,7 @@ describe('ProductImportPage — render smoke', () => {
       resolve(process.cwd(), 'src/pages/destinations/ProductImportPage.tsx'),
       'utf8',
     );
-    expect(source).toContain('Product Intelligence: przeanalizowano {importPlan.total}');
+    expect(source).toContain('Analiza produktów: {importPlan.total} łącznie');
     expect(source).not.toContain('{importPlan.total} zapisanych do katalogu');
   });
 });

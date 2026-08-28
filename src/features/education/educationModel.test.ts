@@ -212,7 +212,7 @@ describe('contextual education selection', () => {
 
 describe('beginner and ingredient content integrity', () => {
   it('starts the sugar lesson with the required beginner explanation', () => {
-    expect(educationCopy.sugar.title).toBe('Cukier nie tylko słodzi.');
+    expect(educationCopy.sugar.title).toBe('Cukier nie tylko słodzi');
     expect(educationCopy.sugar.intro).toBe('Cukier wpływa także na to, ile wody zamarza.');
     expect(educationCopy.sugar.rows[0]?.name).toBe('Zwykły cukier (sacharoza)');
     expect(educationCopy.sugar.technicalCopy).toContain('POD');
@@ -285,7 +285,7 @@ describe('machine guide uses canonical catalog data', () => {
   });
 
   it('keeps Fresh Gelato heat-neutral and timing-unknown', () => {
-    expect(FRESH_GELATO_EDUCATION.steps).toContain('wykonaj proces, jeśli jest wymagany');
+    expect(FRESH_GELATO_EDUCATION.steps).toContain('Wykonaj proces, jeśli jest wymagany');
     expect(FRESH_GELATO_EDUCATION.timing.status).toBe('missing');
     expect(JSON.stringify(FRESH_GELATO_EDUCATION).toLowerCase()).not.toContain('pasteurisation');
   });

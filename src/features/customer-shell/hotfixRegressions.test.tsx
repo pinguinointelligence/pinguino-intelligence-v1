@@ -74,7 +74,7 @@ describe('§4 — the home field starts the flow on Enter', () => {
 describe("§6 — the kind step speaks the customer's language", () => {
   it('asks about a KIND OF ICE CREAM and never about a „baza”', () => {
     expect(copy.productType.title).toBe('Jaki rodzaj lodów chcesz przygotować?');
-    expect(copy.productType.lead).toBe('Wybierz rodzaj receptury.');
+    expect(copy.productType.lead).toBe('Wybierz rodzaj receptury');
     expect(copy.productType.title).not.toMatch(/rodzaj\?$/);
     expect(copy.productType.lead).not.toMatch(/baz[ęy]/i);
   });

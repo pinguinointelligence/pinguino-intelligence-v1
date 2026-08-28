@@ -97,7 +97,7 @@ describe('identity preflight', () => {
       row({ id: 'B', name: 'NOCCIOLA', technical: 'Kod producenta: P1244 | Linia: Trilogy' }),
     ]);
     expect(plan.rows[1]!.classification).toBe('IDENTITY_COLLISION_RESOLVED_AS_DISTINCT');
-    expect(plan.rows[1]!.reason).toContain('kod producenta');
+    expect(plan.rows[1]!.reason).toContain('Kod producenta');
   });
 
   it('calls two rows an exact duplicate only when a STRONG key agrees', () => {
