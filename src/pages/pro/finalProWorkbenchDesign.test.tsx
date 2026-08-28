@@ -408,18 +408,23 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     expect(surface).not.toContain('overflow-x-auto');
   });
 
-  it('keeps coherent Apply success visible in the normal 390 px document flow', () => {
+  it('shows coherent Apply success through the one app-level desktop/mobile moment window', () => {
+    const app = read('app', 'App.tsx');
     const surface = read('features', 'studio', 'StudioEngineSurface.tsx');
     const profile = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
     const recipeCopy = read('features', 'pro-workbench', 'friendlyLabRecipeCopy.ts');
+    const viewport = read('components', 'shared', 'FriendlyLabMomentViewport.tsx');
 
-    expect(profile).toContain("new CustomEvent('gellatti:friendly-lab-apply-success')");
-    expect(surface).toContain("'gellatti:friendly-lab-apply-success'");
-    expect(surface).toContain('testId="mobile-friendly-lab-apply-success"');
-    expect(surface).toContain('timing="important"');
-    expect(surface).toContain('FRIENDLY_LAB_APPLY_SUCCESS.title');
+    expect(app).toContain('<FriendlyLabMomentViewport />');
+    expect(profile).toContain("announceFriendlyLabMoment(");
+    expect(profile).toContain("'apply-complete'");
+    expect(surface).not.toContain("'gellatti:friendly-lab-apply-success'");
+    expect(surface).not.toContain('mobile-friendly-lab-apply-success');
+    expect(viewport).toContain('data-moment-placement="top-center"');
+    expect(viewport).toContain('w-[calc(100vw-2rem)]');
+    expect(viewport).toContain('sm:w-[400px]');
+    expect(viewport).toContain('z-[60]');
     expect(recipeCopy).toContain("title: 'Perfetto. Receptura jest gotowa.'");
-    expect(surface).toContain('xl:hidden');
   });
 
   it('treats the mobile cockpit as a real modal with keyboard and scroll containment', () => {

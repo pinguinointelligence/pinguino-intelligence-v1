@@ -40,7 +40,7 @@ import {
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/cn';
 import { WorkflowNotice } from '@/components/shared/WorkflowNotice';
-import { FriendlyLabMessageMotion } from '@/components/shared/FriendlyLabMessageMotion';
+import { announceFriendlyLabMoment } from '@/components/shared/friendlyLabMoment';
 import {
   PRINTER_PROFILES,
   normalizePrinterSettings,
@@ -414,6 +414,13 @@ export function LabelWorkspace({
   const printBlockedReason =
     unresolved[0]?.message ?? activeMarket.externalAssetRequirement ?? 'Uzupełnij wymagane dane.';
   const percentages = snapshot.finalResult.percentages;
+  const announceReadyTransition = (next: MasterLabelData) => {
+    const nextReady = buildLabelPreflight(next).readyForSystemPrint;
+    if (!labelDataReady && nextReady) {
+      announceFriendlyLabMoment('label-ready', `label:${next.masterLabelId}:ready`);
+    }
+    return nextReady;
+  };
 
   return (
     <div
@@ -506,17 +513,7 @@ export function LabelWorkspace({
                   </Button>
                 </div>
               </header>
-              {preflight?.readyForSystemPrint ? (
-                <FriendlyLabMessageMotion
-                  timing="informational"
-                  className="border-b border-ink/10 bg-[#f7f5f0] px-4 py-3"
-                  testId="label-print-ready-message"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                    <span className="text-status-success">✓ Gotowe. Etykieta czeka na druk.</span>
-                  </div>
-                </FriendlyLabMessageMotion>
-              ) : (
+              {!preflight?.readyForSystemPrint ? (
                 <div
                   className="border-b border-ink/10 bg-[#f7f5f0] px-4 py-3"
                   role="status"
@@ -537,7 +534,7 @@ export function LabelWorkspace({
                     </button>
                   </div>
                 </div>
-              )}
+              ) : null}
               <div className="border-b border-ink/10 bg-white px-4 py-3 text-[11px] text-stone-600">
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                   <strong className="text-ink">
@@ -608,6 +605,7 @@ export function LabelWorkspace({
           <CompactRunLabelEditor
             label={label}
             onSave={async (next) => {
+              announceReadyTransition(next);
               setLabel(next);
               setTransitionDirection('forward');
               setActiveView('label');
@@ -624,9 +622,10 @@ export function LabelWorkspace({
               setError(null);
               try {
                 if (saveAsDefault) await persistProfile(profileFromLabel(profile, next));
+                const nextReady = announceReadyTransition(next);
                 setLabel(next);
                 setTransitionDirection('forward');
-                setActiveView(buildLabelPreflight(next).readyForSystemPrint ? 'label' : 'data');
+                setActiveView(nextReady ? 'label' : 'data');
               } catch (caught) {
                 setError(customerErrorMessage(caught, 'labels', 'LABEL_SAVE_FAILED'));
               } finally {

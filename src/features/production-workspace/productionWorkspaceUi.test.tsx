@@ -959,9 +959,13 @@ describe('Production workspace touch-first UI', () => {
 
     const html = renderToStaticMarkup(<ProductionWorkspaceHeader production={view} />);
     expect(html).toContain('data-production-state="completed"');
-    expect(html).toContain('Gellattissimo! Partia gotowa.');
-    expect(html).toContain('data-friendly-lab-timing="important"');
-    expect(html).toContain('data-motion-phase="entering"');
+    expect(html).not.toContain('Gellattissimo! Partia gotowa.');
+    const hook = readFileSync(resolve(import.meta.dirname, 'useProductionWorkspace.ts'), 'utf8');
+    expect(hook).toContain("announceFriendlyLabMoment(");
+    expect(hook).toContain("'production-complete'");
+    expect(hook.indexOf('await repositoryState.repository.completeRun(')).toBeLessThan(
+      hook.indexOf("'production-complete'"),
+    );
     expect(html).not.toContain('production-workspace-instructions');
     expect(html).not.toContain('production-workspace-progress');
     expect(html).not.toContain('składników');

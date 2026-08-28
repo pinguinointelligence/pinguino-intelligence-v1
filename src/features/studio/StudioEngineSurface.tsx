@@ -23,15 +23,12 @@ import { LockedCalculatorPreview } from '@/features/studio/locked/LockedCalculat
 import { ReviewMarkedModule } from '@/features/design-review/ReviewMarkedModule';
 import { ProReviewZone, type ReviewInventoryRow } from '@/features/pro-workbench/ProReviewZone';
 import { RecipeProfilePanel, type CockpitTab } from '@/features/pro-workbench/RecipeProfilePanel';
-import { FRIENDLY_LAB_APPLY_SUCCESS } from '@/features/pro-workbench/friendlyLabRecipeCopy';
 import type { LabelWorkspaceView } from '@/features/master-label/LabelWorkspace';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
 import { WorkbenchRecipeActionDock } from '@/features/pro-workbench/WorkbenchRecipeActionDock';
 import { WorkbenchModuleTabs } from '@/features/pro-workbench/WorkbenchModuleTabs';
 import { useProductionWorkspace } from '@/features/production-workspace/useProductionWorkspace';
 import { ProductionWorkspaceHeader } from '@/features/production-workspace/ProductionWorkspaceHeader';
-import { FriendlyLabMessageMotion } from '@/components/shared/FriendlyLabMessageMotion';
-import { WorkflowNotice } from '@/components/shared/WorkflowNotice';
 import {
   collapsedMobileCockpitRoute,
   MOBILE_COCKPIT_QUERY,
@@ -216,7 +213,6 @@ export function StudioEngineSurface({
     collapseRef.current = collapseMobileCockpit;
   });
   const [mobileViewport, setMobileViewport] = useState(false);
-  const [mobileApplySuccessKey, setMobileApplySuccessKey] = useState(0);
   const cockpitTriggerRef = useRef<HTMLButtonElement | null>(null);
   const cockpitPanelRef = useRef<HTMLElement | null>(null);
   const previousProductionSessionIdRef = useRef(production.session?.sessionId ?? null);
@@ -250,13 +246,6 @@ export function StudioEngineSurface({
     sync();
     query.addEventListener('change', sync);
     return () => query.removeEventListener('change', sync);
-  }, []);
-
-  useEffect(() => {
-    const showApplySuccess = () => setMobileApplySuccessKey((key) => key + 1);
-    window.addEventListener('gellatti:friendly-lab-apply-success', showApplySuccess);
-    return () =>
-      window.removeEventListener('gellatti:friendly-lab-apply-success', showApplySuccess);
   }, []);
 
   useEffect(() => {
@@ -423,20 +412,6 @@ export function StudioEngineSurface({
       >
         {activeTab === 'production' && production.session ? (
           <ProductionWorkspaceHeader production={production} />
-        ) : null}
-        {mobileApplySuccessKey > 0 ? (
-          <FriendlyLabMessageMotion
-            key={mobileApplySuccessKey}
-            timing="important"
-            className="shrink-0 px-[var(--pro-mobile-gutter)] pt-2 xl:hidden"
-            testId="mobile-friendly-lab-apply-success"
-          >
-            <WorkflowNotice
-              title={FRIENDLY_LAB_APPLY_SUCCESS.title}
-              description={FRIENDLY_LAB_APPLY_SUCCESS.description}
-              variant="neutral"
-            />
-          </FriendlyLabMessageMotion>
         ) : null}
         {/* Main split — editor (60–65 %) | LIVE Monitor PI (35–40 %). */}
         <div className="min-h-0 flex-1 xl:grid xl:h-full xl:grid-cols-[minmax(0,1.62fr)_minmax(400px,1fr)] xl:gap-[var(--pro-workbench-gap)] xl:pt-2 xl:pb-3">

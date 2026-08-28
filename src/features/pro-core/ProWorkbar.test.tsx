@@ -14,6 +14,10 @@ import { createRoot } from 'react-dom/client';
 import { act } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { copy } from '@/copy/en';
+import {
+  FRIENDLY_LAB_MOMENT_EVENT,
+  type FriendlyLabMomentEventDetail,
+} from '@/components/shared/friendlyLabMoment';
 
 interface MockRecipeState {
   savedRecipeId: string | null;
@@ -188,6 +192,10 @@ describe('ProWorkbar (sticky top workbar)', () => {
     const host = document.createElement('div');
     document.body.appendChild(host);
     const root = createRoot(host);
+    const moments: FriendlyLabMomentEventDetail[] = [];
+    const onMoment = (event: Event) =>
+      moments.push((event as CustomEvent<FriendlyLabMomentEventDetail>).detail);
+    window.addEventListener(FRIENDLY_LAB_MOMENT_EVENT, onMoment);
     try {
       await act(async () => root.render(<ProWorkbar variant="panel" />));
       const button = host.querySelector<HTMLButtonElement>('[data-testid="pro-workbar-save"]');
@@ -196,9 +204,11 @@ describe('ProWorkbar (sticky top workbar)', () => {
         button!.click();
         await Promise.resolve();
       });
-      expect(host.querySelector('[data-testid="pro-workbar-save-success"]')).not.toBeNull();
-      expect(host.textContent).toContain('Gotowe. Receptura zapisana.');
+      expect(moments).toHaveLength(1);
+      expect(moments[0]).toMatchObject({ kind: 'save-complete' });
+      expect(host.querySelector('[data-testid="pro-workbar-save-success"]')).toBeNull();
     } finally {
+      window.removeEventListener(FRIENDLY_LAB_MOMENT_EVENT, onMoment);
       await act(async () => root.unmount());
       host.remove();
     }

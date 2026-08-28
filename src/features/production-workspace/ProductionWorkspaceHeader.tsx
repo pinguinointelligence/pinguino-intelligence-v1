@@ -1,5 +1,4 @@
 import { SectionLabel } from '@/components/shared/SectionLabel';
-import { FriendlyLabMessageMotion } from '@/components/shared/FriendlyLabMessageMotion';
 import type { ProductionWorkspaceView } from './useProductionWorkspace';
 
 /**
@@ -20,31 +19,7 @@ export function ProductionWorkspaceHeader({ production }: { production: Producti
       data-production-state={completed ? 'completed' : 'active'}
     >
       <SectionLabel>Produkcja</SectionLabel>
-      {completed ? (
-        <FriendlyLabMessageMotion
-          timing="important"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#2f6f3c]"
-          testId="production-workspace-complete"
-        >
-          <span
-            aria-hidden
-            className="grid size-4 shrink-0 place-items-center rounded-full border border-[#2f6f3c]/25 bg-[#2f6f3c]/[0.06]"
-          >
-            <svg viewBox="0 0 16 16" className="size-2.5" fill="none">
-              <path
-                d="m3.5 8.2 2.8 2.8 6.2-6"
-                stroke="currentColor"
-                strokeWidth="1.7"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </span>
-          <span>Gellattissimo! Partia gotowa.</span>
-        </FriendlyLabMessageMotion>
-      ) : (
-        <p className="text-xs text-stone-600">Ważenie składników</p>
-      )}
+      {!completed ? <p className="text-xs text-stone-600">Ważenie składników</p> : null}
     </header>
   );
 }

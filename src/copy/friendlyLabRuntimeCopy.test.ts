@@ -7,6 +7,7 @@ const read = (...segments: string[]): string =>
   fs.readFileSync(path.join(process.cwd(), 'src', ...segments), 'utf8');
 
 const MATERIAL_SURFACES = [
+  ['components', 'shared', 'friendlyLabMoment.ts'],
   ['features', 'customer-shell', 'customerShellCopy.ts'],
   ['features', 'product-scanner', 'LiveProductScanner.tsx'],
   ['features', 'product-scanner', 'scannerErrors.ts'],
@@ -110,16 +111,16 @@ describe('Gellatti Friendly Lab — material runtime copy', () => {
     );
     expect(italian).toEqual([
       {
+        file: 'components/shared/friendlyLabMoment.ts',
+        text: 'Gellattissimo! Partia gotowa.',
+      },
+      {
         file: 'features/pro-workbench/friendlyLabRecipeCopy.ts',
         text: 'Perfetto. Receptura jest gotowa.',
       },
       {
         file: 'features/constraint-studio/ui/ConstraintPreviewCard.tsx',
         text: 'Gellattissimo! Wybrany profil osiągnięty.',
-      },
-      {
-        file: 'features/production-workspace/ProductionWorkspaceHeader.tsx',
-        text: 'Gellattissimo! Partia gotowa.',
       },
     ]);
   });

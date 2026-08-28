@@ -4,7 +4,7 @@ import { join, resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createRoot } from 'react-dom/client';
 import { act } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { calculateRecipe, proposeCorrections, type RecipeInput } from '@/engine';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
 import { buildRecipeInput, recipeContext } from '@/features/studio/buildRecipeInput';
@@ -39,6 +39,10 @@ import { WorkbenchIntelligenceHeader } from './WorkbenchIntelligenceHeader';
 import { monitorScoreView } from './monitorSummaryView';
 import { formatMonitorValue } from './professionalMonitorModel';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
+import {
+  FRIENDLY_LAB_MOMENT_EVENT,
+  type FriendlyLabMomentEventDetail,
+} from '@/components/shared/friendlyLabMoment';
 
 const SRC = resolve(import.meta.dirname, '..', '..');
 const read = (...parts: string[]) => readFileSync(join(SRC, ...parts), 'utf8');
@@ -106,8 +110,10 @@ describe('profile hierarchy and compact preflight', () => {
     const host = document.createElement('div');
     document.body.appendChild(host);
     const root = createRoot(host);
-    const applySuccessEvent = vi.fn();
-    window.addEventListener('gellatti:friendly-lab-apply-success', applySuccessEvent);
+    const moments: FriendlyLabMomentEventDetail[] = [];
+    const applySuccessEvent = (event: Event) =>
+      moments.push((event as CustomEvent<FriendlyLabMomentEventDetail>).detail);
+    window.addEventListener(FRIENDLY_LAB_MOMENT_EVENT, applySuccessEvent);
     const renderPanel = () => (
       <RecipeProfilePanel
         activeTab="profile"
@@ -204,11 +210,11 @@ describe('profile hierarchy and compact preflight', () => {
         useConstraintStudioStore.setState({ applyPending: false, history: [{} as never] });
         root.render(renderPanel());
       });
-      expect(host.querySelector('[data-testid="friendly-lab-apply-success"]')).not.toBeNull();
-      expect(host.textContent).toContain('Perfetto. Receptura jest gotowa.');
-      expect(applySuccessEvent).toHaveBeenCalledOnce();
+      expect(host.querySelector('[data-testid="friendly-lab-apply-success"]')).toBeNull();
+      expect(moments).toHaveLength(1);
+      expect(moments[0]).toMatchObject({ kind: 'apply-complete' });
     } finally {
-      window.removeEventListener('gellatti:friendly-lab-apply-success', applySuccessEvent);
+      window.removeEventListener(FRIENDLY_LAB_MOMENT_EVENT, applySuccessEvent);
       await act(async () => root.unmount());
       host.remove();
     }

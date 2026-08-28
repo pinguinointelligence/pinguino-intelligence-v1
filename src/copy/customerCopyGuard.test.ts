@@ -115,6 +115,10 @@ describe('customer copy guard', () => {
     );
     expect(italian.map(({ file, text }) => ({ file, text }))).toEqual([
       {
+        file: 'src/components/shared/friendlyLabMoment.ts',
+        text: 'Gellattissimo! Partia gotowa.',
+      },
+      {
         file: 'src/copy/en.ts',
         text: 'Perfetto. Domyślna maszyna została zapisana.',
       },
@@ -125,10 +129,6 @@ describe('customer copy guard', () => {
       {
         file: 'src/features/pro-workbench/friendlyLabRecipeCopy.ts',
         text: 'Perfetto. Receptura jest gotowa.',
-      },
-      {
-        file: 'src/features/production-workspace/ProductionWorkspaceHeader.tsx',
-        text: 'Gellattissimo! Partia gotowa.',
       },
     ]);
   });

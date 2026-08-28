@@ -21,6 +21,10 @@ import {
 import { useAuthStore } from '@/stores/authStore';
 import { LabelWorkspace } from './LabelWorkspace';
 import { COMPLETE_LABEL_NUTRITION, createCompleteLabel } from './masterLabelTestFixture';
+import {
+  FRIENDLY_LAB_MOMENT_EVENT,
+  type FriendlyLabMomentEventDetail,
+} from '@/components/shared/friendlyLabMoment';
 
 function completedSnapshot() {
   const input: RecipeInput = {
@@ -76,6 +80,8 @@ function completedSnapshot() {
 describe('LabelWorkspace unified actual-run surface', () => {
   let host: HTMLDivElement;
   let root: ReturnType<typeof createRoot>;
+  let moments: FriendlyLabMomentEventDetail[];
+  let onMoment: (event: Event) => void;
 
   beforeEach(() => {
     (
@@ -90,10 +96,15 @@ describe('LabelWorkspace unified actual-run surface', () => {
     host = document.createElement('div');
     document.body.append(host);
     root = createRoot(host);
+    moments = [];
+    onMoment = (event) =>
+      moments.push((event as CustomEvent<FriendlyLabMomentEventDetail>).detail);
+    window.addEventListener(FRIENDLY_LAB_MOMENT_EVENT, onMoment);
   });
 
   afterEach(async () => {
     await act(async () => root.unmount());
+    window.removeEventListener(FRIENDLY_LAB_MOMENT_EVENT, onMoment);
     host.remove();
   });
 
@@ -256,6 +267,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
 
     expect(continueButton.disabled).toBe(false);
     expect(continueButton.textContent).toBe('Pokaż etykietę');
+    expect(moments).toHaveLength(0);
     await act(async () => continueButton.click());
 
     expect(workspace.getAttribute('data-active-label-view')).toBe('label');
@@ -264,7 +276,9 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(button('Pobierz PDF')).not.toBeUndefined();
     expect((button('Drukuj') as HTMLButtonElement).disabled).toBe(false);
     expect(workspace.querySelector('[data-testid="label-print-blocked-message"]')).toBeNull();
-    expect(workspace.querySelector('[data-testid="label-print-ready-message"]')).not.toBeNull();
+    expect(workspace.querySelector('[data-testid="label-print-ready-message"]')).toBeNull();
+    expect(moments).toHaveLength(1);
+    expect(moments[0]).toMatchObject({ kind: 'label-ready' });
     expect(
       workspace.querySelector<HTMLButtonElement>('[data-testid="label-workspace-dot-label"]')
         ?.disabled,
@@ -361,7 +375,9 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(host.textContent).toContain('Koszt');
     expect(host.textContent).toContain('Baza techniczna');
     expect(host.querySelector('[data-testid="label-print-blocked-message"]')).toBeNull();
-    expect(host.querySelector('[data-testid="label-print-ready-message"]')).not.toBeNull();
+    expect(host.querySelector('[data-testid="label-print-ready-message"]')).toBeNull();
+    expect(moments).toHaveLength(1);
+    expect(moments[0]).toMatchObject({ kind: 'label-ready' });
     expect(
       host.querySelector('[data-testid="label-consumer-preview"]')?.getAttribute('data-market'),
     ).toBe('EU');
@@ -562,12 +578,9 @@ describe('LabelWorkspace unified actual-run surface', () => {
     const workspace = host.querySelector('[data-testid="label-workspace"]')!;
     expect(workspace.getAttribute('data-active-label-view')).toBe('label');
     expect(workspace.querySelector('[data-testid="label-consumer-preview"]')).not.toBeNull();
-    expect(
-      workspace
-        .querySelector('[data-testid="label-print-ready-message"]')
-        ?.getAttribute('data-friendly-lab-timing'),
-    ).toBe('informational');
-    expect(workspace.textContent).toContain('Gotowe. Etykieta czeka na druk.');
+    expect(workspace.querySelector('[data-testid="label-print-ready-message"]')).toBeNull();
+    expect(moments).toHaveLength(1);
+    expect(moments[0]).toMatchObject({ kind: 'label-ready' });
     expect(button('Pobierz PDF')).not.toBeUndefined();
     expect((button('Drukuj') as HTMLButtonElement).disabled).toBe(false);
 

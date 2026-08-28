@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { copy } from '@/copy/en';
 import { cn } from '@/lib/cn';
 import { useRecipeStore } from '@/stores/recipeStore';
@@ -11,7 +11,7 @@ import {
 import { NewRecipeConfirmationDialog } from '@/features/recipes/NewRecipeConfirmationDialog';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { iconButtonClasses } from '@/components/ui/buttonStyles';
-import { FriendlyLabMessageMotion } from '@/components/shared/FriendlyLabMessageMotion';
+import { announceFriendlyLabMoment } from '@/components/shared/friendlyLabMoment';
 
 const w = copy.proWorkbar;
 const pm = copy.proMachine;
@@ -53,7 +53,7 @@ export function ProWorkbar({
   const [nameDraft, setNameDraft] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
   const [newRecipeConfirmOpen, setNewRecipeConfirmOpen] = useState(false);
-  const [saveSuccessKey, setSaveSuccessKey] = useState(0);
+  const saveTransitionSequence = useRef(0);
   const name = nameDraft ?? savedRecipeName ?? '';
 
   const product = copy.studio.goal.productTypes[visibleProductType];
@@ -75,6 +75,14 @@ export function ProWorkbar({
           ? 'dirty'
           : 'clean';
 
+  const announceSaveSuccess = () => {
+    saveTransitionSequence.current += 1;
+    announceFriendlyLabMoment(
+      'save-complete',
+      `save:${savedRecipeId ?? name.trim()}:${saveTransitionSequence.current}`,
+    );
+  };
+
   const doSave = async () => {
     const title = name.trim();
     if (!title) {
@@ -86,7 +94,7 @@ export function ProWorkbar({
       const created = await save.createNew(title);
       if (created) {
         setNameDraft(null);
-        setSaveSuccessKey((key) => key + 1);
+        announceSaveSuccess();
       }
       return;
     }
@@ -97,7 +105,7 @@ export function ProWorkbar({
     const saved = await save.saveVersion();
     if (saved) {
       setNameDraft(null);
-      setSaveSuccessKey((key) => key + 1);
+      announceSaveSuccess();
     }
   };
 
@@ -269,17 +277,6 @@ export function ProWorkbar({
           </span>
         </div>
       </div>
-
-      {saveSuccessKey > 0 ? (
-        <FriendlyLabMessageMotion
-          key={saveSuccessKey}
-          timing="informational"
-          className="mt-2 rounded-[12px] border border-[#2f6f3c]/20 bg-[#2f6f3c]/[0.055] px-3 py-2 text-xs font-semibold text-[#2f6f3c]"
-          testId="pro-workbar-save-success"
-        >
-          Gotowe. Receptura zapisana.
-        </FriendlyLabMessageMotion>
-      ) : null}
 
       {nameError ? (
         <p

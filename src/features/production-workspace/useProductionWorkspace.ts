@@ -72,6 +72,7 @@ import {
   productionVersionFingerprint,
 } from './productionReadinessState';
 import { carbonatedProductsForRecipe } from './productionDegassing';
+import { announceFriendlyLabMoment } from '@/components/shared/friendlyLabMoment';
 
 export type ProductionRescueAuthorizationInvalidation = 'expired' | 'revision_mismatch' | null;
 
@@ -1628,6 +1629,10 @@ export function useProductionWorkspace(enabled: boolean) {
           plannedComposition,
         );
         replaceSession(completedSession);
+        announceFriendlyLabMoment(
+          'production-complete',
+          `production:${completedSession.sessionId}:${completedSession.completedAt ?? 'completed'}`,
+        );
       } catch {
         setPersistence({
           busy: false,

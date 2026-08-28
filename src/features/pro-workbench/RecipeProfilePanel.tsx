@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/Button';
 import { WorkflowNotice } from '@/components/shared/WorkflowNotice';
-import { FriendlyLabMessageMotion } from '@/components/shared/FriendlyLabMessageMotion';
+import { announceFriendlyLabMoment } from '@/components/shared/friendlyLabMoment';
 import { LabelWorkspace, type LabelWorkspaceView } from '@/features/master-label/LabelWorkspace';
 import {
   calculateRecipe,
@@ -36,7 +36,6 @@ import { useRecipeProfileStore } from './recipeProfileStore';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { buildCurrentRecipeResultAuthority } from './currentRecipeResultAuthority';
 import { friendlyLabRecipeJourneyState } from './friendlyLabRecipeJourney';
-import { FRIENDLY_LAB_APPLY_SUCCESS } from './friendlyLabRecipeCopy';
 
 export type ProContextTab = 'recipe' | 'monitor' | 'production';
 export type CockpitTab = WorkbenchModuleTab;
@@ -238,7 +237,6 @@ function ProfileContent({
     legacyInspection: Boolean(legacyInspection),
   });
   const friendlyCurrentResultReady = journeyState === 'CURRENT' && currentResultReady;
-  const [applySuccessKey, setApplySuccessKey] = useState(0);
   const previousApplyPending = useRef(applyPending);
   const applyStartHistoryCount = useRef(appliedHistoryCount);
   const applySuccessAwaitingCurrent = useRef(false);
@@ -253,11 +251,13 @@ function ProfileContent({
     }
     if (!applyPending && friendlyCurrentResultReady && applySuccessAwaitingCurrent.current) {
       applySuccessAwaitingCurrent.current = false;
-      setApplySuccessKey((key) => key + 1);
-      window.dispatchEvent(new CustomEvent('gellatti:friendly-lab-apply-success'));
+      announceFriendlyLabMoment(
+        'apply-complete',
+        `apply:${draftRevision}:${appliedHistoryCount}`,
+      );
     }
     previousApplyPending.current = applyPending;
-  }, [appliedHistoryCount, applyBlocked, applyPending, friendlyCurrentResultReady]);
+  }, [appliedHistoryCount, applyBlocked, applyPending, draftRevision, friendlyCurrentResultReady]);
   const frozenNutritionResult = useMemo(
     () =>
       legacyInspection
@@ -306,20 +306,6 @@ function ProfileContent({
           description="Przed edycją, zapisem lub produkcją utwórz zweryfikowaną wersję."
           variant="neutral"
         />
-      ) : null}
-      {applySuccessKey > 0 ? (
-        <FriendlyLabMessageMotion
-          key={applySuccessKey}
-          timing="important"
-          className="mb-2"
-          testId="friendly-lab-apply-success"
-        >
-          <WorkflowNotice
-            title={FRIENDLY_LAB_APPLY_SUCCESS.title}
-            description={FRIENDLY_LAB_APPLY_SUCCESS.description}
-            variant="neutral"
-          />
-        </FriendlyLabMessageMotion>
       ) : null}
       <div
         className="grid min-w-0 items-start gap-3"
