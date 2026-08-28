@@ -383,7 +383,7 @@ describe('single Crown is a safe Main priority, not a gram lock (§6, §16, §34
 });
 
 describe('Multi-Main protects the group ratio, not absolute grams (§19, §20, §21)', () => {
-  it('trustlessly Applies a no-increase proof whose technical ceiling is below the current Vegan group', () => {
+  it('truthfully refuses an unchanged no-increase proof while preserving the Vegan Main group', () => {
     const starter = buildCanonicalNewRecipeStarter({
       visibleProductType: 'vegan',
       servingModeId: 'temp_minus_11',
@@ -432,13 +432,9 @@ describe('Multi-Main protects the group ratio, not absolute grams (§19, §20, �
     const constraints = {
       byLineId: { [support.id]: { mode: 'locked' as const, grams: support.planned_grams } },
     };
-    let finalBuilt: ReturnType<typeof buildOptimizePreview> | null = null;
-    let finalBaseSnapshots: Record<string, ProductBehaviorSnapshot> | null = null;
-    let finalProposalSnapshots: Record<string, ProductBehaviorSnapshot> | null = null;
     for (const [sweetness, softness] of [
       [0, 0],
       [2, 0],
-      [2, -2],
     ] as const) {
       current = {
         ...current,
@@ -460,51 +456,36 @@ describe('Multi-Main protects the group ratio, not absolute grams (§19, §20, �
       const built = bindProductBehaviorToPreview(raw, proposalSnapshots, baseSnapshots, []);
       expect(built.ok, JSON.stringify(built).slice(0, 1_200)).toBe(true);
       if (!built.ok) return;
-      finalBuilt = built;
-      finalBaseSnapshots = baseSnapshots;
-      finalProposalSnapshots = proposalSnapshots;
-      if (softness !== -2) current = built.preview.proposedInput;
+      current = built.preview.proposedInput;
     }
-    expect(finalBuilt?.ok).toBe(true);
-    if (!finalBuilt?.ok || !finalBaseSnapshots || !finalProposalSnapshots) return;
-    const proof = finalBuilt.preview.mainObjective!;
-    expect(proof.status).toBe('no_admissible_increase');
-    expect(proof.searchUpperBoundGrams).toBeGreaterThanOrEqual(proof.executableMainGrams);
-    expect(proof.firstHigherRejectedGrams).toBeNull();
-    const proposedFingerprint = workingStateFingerprint(
-      finalBuilt.preview.proposedInput,
-      finalBuilt.preview.nextConstraints,
-    );
-    const committed = commitPreview(
-      current,
-      constraints,
-      finalBuilt.preview,
-      '2026-08-23T12:00:01.000Z',
-      'vegan-no-increase-proof-above-ceiling',
-      [],
-      undefined,
-      null,
-      null,
-      {
-        baseFingerprint: finalBuilt.preview.baseFingerprint,
-        targetFingerprint: directionTargetFingerprint(current),
-        candidateFingerprint: proposedFingerprint,
+    const requested: RecipeInput = {
+      ...current,
+      goals: {
+        formulation_strategy: 'optimal',
+        direction_targets_active: true,
+        direction_targets: { sweetness: 2, softness: -2, creaminess: 0, flavor: 0 },
       },
-      null,
-      finalBaseSnapshots,
-      [],
-      {
-        baseFingerprint: finalBuilt.preview.baseFingerprint,
-        proposedFingerprint,
-        baseProductBehaviorFingerprint: productBehaviorSnapshotFingerprint(finalBaseSnapshots),
-        proposedProductBehaviorFingerprint:
-          productBehaviorSnapshotFingerprint(finalProposalSnapshots),
-        snapshots: structuredClone(finalProposalSnapshots),
-      },
-      null,
-      { requirePracticalPreview: true },
-    );
-    expect(committed, JSON.stringify(committed)).toMatchObject({ ok: true });
+    };
+    const refused = buildOptimizePreview(requested, constraints, AT, {
+      productBehaviorSnapshots: campaignVeganSnapshots(requested),
+      technicalOnlyMainLineIds: [],
+      requirePracticalPreview: true,
+    });
+    expect(refused).toMatchObject({
+      ok: false,
+      code: 'no_proposal',
+      directionTargetUnreached: true,
+    });
+    const mains = current.items.filter((item) => item.lock_type === 'main');
+    expect(mains.map((item) => item.id)).toEqual([
+      'main-strawberry',
+      'main-banana-puree',
+      'main-cranberry',
+    ]);
+    expect(mains.map((item) => item.main_ratio_weight)).toEqual([100, 200, 300]);
+    expect(mains[1]!.planned_grams / mains[0]!.planned_grams).toBeCloseTo(2, 1);
+    expect(mains[2]!.planned_grams / mains[0]!.planned_grams).toBeCloseTo(3, 1);
+    expect(mains.every((item) => item.planned_grams > 1)).toBe(true);
   });
 
   it('applies the hard-safe Sorbet 1:1 candidate reproduced by the stress campaign', () => {

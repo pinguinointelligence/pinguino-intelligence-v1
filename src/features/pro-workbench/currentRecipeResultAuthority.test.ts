@@ -22,11 +22,15 @@ const authorityInput = (
 };
 
 describe('one current Recipe result authority', () => {
-  it('publishes CURRENT only when Monitor, Nutrition, Cost and Summary all resolve', () => {
+  it('keeps verified currentness separate from granular live module readiness', () => {
     const complete = buildCurrentRecipeResultAuthority(authorityInput());
     expect(complete).toMatchObject({
       state: 'CURRENT',
       ready: true,
+      baseTechnicalReady: true,
+      nutritionReady: true,
+      costReady: true,
+      labelReady: true,
       draftRevision: 17,
       blockedModules: [],
     });
@@ -48,7 +52,33 @@ describe('one current Recipe result authority', () => {
     expect(split).toMatchObject({
       state: 'STALE',
       ready: false,
+      baseTechnicalReady: true,
+      nutritionReady: false,
+      costReady: true,
+      labelReady: true,
       blockedModules: ['NUTRITION'],
+    });
+  });
+
+  it('does not let a missing Label fact hide known Monitor, nutrition or cost facts', () => {
+    const recipe = starterMilkBase();
+    const snapshots = productBehaviorTestSnapshots(recipe);
+    const firstLine = recipe.items[0]!.id;
+    snapshots[firstLine] = {
+      ...snapshots[firstLine]!,
+      moduleEligibility: {
+        ...snapshots[firstLine]!.moduleEligibility,
+        LABEL: 'blocked',
+      },
+    };
+
+    expect(buildCurrentRecipeResultAuthority(authorityInput({ recipe, snapshots }))).toMatchObject({
+      state: 'CURRENT',
+      ready: true,
+      baseTechnicalReady: true,
+      nutritionReady: true,
+      costReady: true,
+      labelReady: false,
     });
   });
 
@@ -78,15 +108,29 @@ describe('one current Recipe result authority', () => {
     expect(next.resultReference).not.toBe(first.resultReference);
   });
 
-  it('invalidates every current surface while a material edit awaits recalculation', () => {
+  it('marks optimization stale while retaining the independently valid live draft facts', () => {
     const stale = buildCurrentRecipeResultAuthority(
       authorityInput({ awaitingRecalculation: true }),
     );
-    expect(stale).toMatchObject({ state: 'STALE', ready: false });
+    expect(stale).toMatchObject({
+      state: 'STALE',
+      ready: false,
+      baseTechnicalReady: true,
+      nutritionReady: true,
+      costReady: true,
+      labelReady: true,
+    });
 
     const loading = buildCurrentRecipeResultAuthority(
       authorityInput({ awaitingRecalculation: true, loading: true }),
     );
-    expect(loading).toMatchObject({ state: 'LOADING', ready: false });
+    expect(loading).toMatchObject({
+      state: 'LOADING',
+      ready: false,
+      baseTechnicalReady: true,
+      nutritionReady: true,
+      costReady: true,
+      labelReady: true,
+    });
   });
 });

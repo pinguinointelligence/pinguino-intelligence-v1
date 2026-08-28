@@ -238,7 +238,8 @@ export function MonitorPanelContent({
   // A genuinely legacy version remains inspectable, with an explicit warning,
   // until it is reconstructed into a new version. A partial/stale modern
   // authority must never silently fall back to independently interpreted facts.
-  const technicalViewAllowed = technicalView && (currentResultAuthority.ready || legacyInspection);
+  const technicalViewAllowed =
+    technicalView && (currentResultAuthority.baseTechnicalReady || legacyInspection);
   const actualToppingByLineId = new Map(
     (production?.session?.addonLines ?? [])
       .filter((line) => line.confirmed || line.physicalAddedGrams > 0)
@@ -249,11 +250,13 @@ export function MonitorPanelContent({
     <div
       className="pro-scroll-safe space-y-1.5 text-ink"
       data-testid="monitor-panel-content"
-      data-behavior-authority={currentResultAuthority.ready ? 'ready' : 'revalidation-required'}
+      data-behavior-authority={
+        currentResultAuthority.baseTechnicalReady ? 'ready' : 'revalidation-required'
+      }
       data-current-result-state={currentResultAuthority.state}
       data-current-result-revision={currentResultAuthority.draftRevision}
     >
-      {(legacyInspection || !currentResultAuthority.ready) &&
+      {(legacyInspection || !currentResultAuthority.baseTechnicalReady) &&
       behaviorAuthority.requiredLineIds.length > 0 ? (
         <WorkflowNotice
           eyebrow={legacyInspection ? 'Historia receptury' : 'Wymagane sprawdzenie'}

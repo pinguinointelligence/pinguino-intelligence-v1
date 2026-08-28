@@ -128,12 +128,12 @@ export function WorkbenchIntelligenceHeader({
       previewInput ? monitorScoreView(calculateRecipe(previewInput), previewInput).match : null,
     [previewInput],
   );
-  // This dock is the FORMAL CALCULATION STATE, not a live diagnostic. It shows
-  // the authoritative calculated score, or `Przelicz` — never both. The live
-  // as-written evaluation belongs to the Monitor alone; binding this control to
-  // it would duplicate the score and destroy the designed state semantics.
-  const current =
-    hasRecipe && journeyState === 'CURRENT' && currentResultAuthority.ready && !legacyInspection;
+  // The score evaluates the live recipe as written. Verified optimization
+  // freshness remains separate in `state`/`journeyState`, and a stale draft
+  // keeps its Recalculate control beside this read-only evaluation.
+  const current = hasRecipe && currentResultAuthority.baseTechnicalReady && !legacyInspection;
+  const verifiedCurrent =
+    journeyState === 'CURRENT' && currentResultAuthority.ready && !legacyInspection;
   const displayedMatch = previewMatch ?? (current ? match : null);
   // Protein v2: measured content of the SAME candidate the ring is describing,
   // so a preview that lowers protein while raising the score renders exactly
@@ -160,7 +160,9 @@ export function WorkbenchIntelligenceHeader({
     hasAppliedHistory: appliedHistoryCount > 0,
   });
   const working = recalculationTerminal?.state === 'WORKING';
-  const pending = !displayedMatch || (journeyState !== 'CURRENT' && previewMatch === null);
+  const pending = !displayedMatch;
+  const recalculateNeeded =
+    working || (previewMatch === null && (!verifiedCurrent || awaitingRecalculation));
 
   if (variant === 'dock') {
     return (
@@ -172,7 +174,17 @@ export function WorkbenchIntelligenceHeader({
         data-current-result-revision={currentResultAuthority.draftRevision}
         data-friendly-lab-recipe-state={journeyState}
       >
-        {pending || working ? (
+        {displayedMatch ? (
+          <WorkbenchScoreDisplay
+            score={displayedMatch.score}
+            label={displayedMatch.label}
+            proteinPercent={displayedProtein?.percent ?? null}
+            proteinEnergySharePercent={displayedProtein?.energySharePercent ?? null}
+            preview={previewMatch !== null}
+            onOpenLearning={onOpenLearning}
+          />
+        ) : null}
+        {pending || recalculateNeeded ? (
           <button
             type="button"
             onClick={onRecalculate}
@@ -197,16 +209,7 @@ export function WorkbenchIntelligenceHeader({
               </span>
             </span>
           </button>
-        ) : (
-          <WorkbenchScoreDisplay
-            score={displayedMatch.score}
-            label={displayedMatch.label}
-            proteinPercent={displayedProtein?.percent ?? null}
-            proteinEnergySharePercent={displayedProtein?.energySharePercent ?? null}
-            preview={previewMatch !== null}
-            onOpenLearning={onOpenLearning}
-          />
-        )}
+        ) : null}
       </div>
     );
   }
@@ -227,8 +230,8 @@ export function WorkbenchIntelligenceHeader({
     >
       <button
         type="button"
-        onClick={pending || working ? onRecalculate : onOpenLearning}
-        disabled={working || (pending ? !onRecalculate : !onOpenLearning)}
+        onClick={recalculateNeeded ? onRecalculate : onOpenLearning}
+        disabled={working || (recalculateNeeded ? !onRecalculate : !onOpenLearning)}
         aria-busy={working}
         className={`pro-focus-ring flex items-center justify-end gap-3 rounded-[12px] text-right disabled:cursor-default ${variant === 'global' ? 'min-h-12 sm:min-w-[210px]' : 'min-h-14 w-full'}`}
       >
@@ -236,12 +239,12 @@ export function WorkbenchIntelligenceHeader({
           <span className="flex items-center justify-end gap-2">
             <span
               aria-hidden
-              className={`size-2 shrink-0 rounded-full ${current || previewMatch ? 'bg-[#18a83a]' : 'bg-[#f58a07]'}`}
+              className={`size-2 shrink-0 rounded-full ${verifiedCurrent || previewMatch ? 'bg-[#18a83a]' : 'bg-[#f58a07]'}`}
             />
             <strong className="block truncate text-xs font-semibold text-ink">
               {previewMatch
                 ? 'Podgląd gotowy'
-                : current
+                : verifiedCurrent
                   ? 'Obliczenia zakończone'
                   : working
                     ? 'Przeliczanie…'

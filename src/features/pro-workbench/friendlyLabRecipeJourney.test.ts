@@ -7,6 +7,11 @@ const authority = (
 ): CurrentRecipeResultAuthority => ({
   state: 'STALE',
   ready: false,
+  baseTechnicalReady: true,
+  nutritionReady: true,
+  costReady: true,
+  labelReady: true,
+  labelGate: {} as CurrentRecipeResultAuthority['labelGate'],
   draftRevision: 17,
   recipeFingerprint: 'recipe',
   behaviorFingerprint: 'behavior',

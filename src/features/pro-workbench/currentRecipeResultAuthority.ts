@@ -30,7 +30,17 @@ export interface CurrentRecipeResultAuthorityInput {
 
 export interface CurrentRecipeResultAuthority {
   state: 'CURRENT' | 'STALE' | 'LOADING';
+  /** Verified optimization/currentness boundary. A dirty draft is never ready. */
   ready: boolean;
+  /** Live as-written BASE technical result; independent of Recalculate freshness. */
+  baseTechnicalReady: boolean;
+  /** Live final-product nutrition facts; toppings participate in this gate. */
+  nutritionReady: boolean;
+  /** Live final-product cost facts; independent from nutrition and Label. */
+  costReady: boolean;
+  /** Label publication readiness; never withholds known Monitor/nutrition/cost facts. */
+  labelReady: boolean;
+  labelGate: ProductBehaviorModuleGate;
   draftRevision: number;
   recipeFingerprint: string;
   behaviorFingerprint: string;
@@ -79,10 +89,20 @@ export function buildCurrentRecipeResultAuthority(
     recipeFingerprint,
     behaviorFingerprint,
   });
+  const labelGate = recipeBehaviorModuleGate(authority, 'LABEL');
+  const baseTechnicalReady = moduleGates.MONITOR.ready;
+  const nutritionReady = moduleGates.NUTRITION.ready;
+  const costReady = moduleGates.COST.ready;
+  const labelReady = labelGate.ready;
   const ready = !input.awaitingRecalculation && blockedModules.length === 0;
   return {
     state: ready ? 'CURRENT' : input.loading ? 'LOADING' : 'STALE',
     ready,
+    baseTechnicalReady,
+    nutritionReady,
+    costReady,
+    labelReady,
+    labelGate,
     draftRevision: input.draftRevision,
     recipeFingerprint,
     behaviorFingerprint,

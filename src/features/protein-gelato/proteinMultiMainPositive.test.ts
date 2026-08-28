@@ -26,7 +26,6 @@ import { parseCsv } from '@/lib/csv';
 import { buildCanonicalNewRecipeStarter } from '@/features/recipes/newRecipeStarter';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/contracts';
-import { productBehaviorSnapshotFingerprint } from '@/features/product-intelligence';
 import { mainEnvelopeSearchCeilingGrams } from '@/features/product-intelligence/mainEnvelope';
 import { verifyMainIngredientIdentity } from '@/features/formulation/mainIngredientContract';
 import {
@@ -34,8 +33,6 @@ import {
   buildBatchRescalePreview,
   buildOptimizePreview,
   commitPreview,
-  directionTargetFingerprint,
-  workingStateFingerprint,
 } from '@/features/constraint-studio/applyPipeline';
 import { computeOptimizePreviewResult } from '@/features/constraint-studio/optimizePreviewComputation';
 
@@ -330,9 +327,7 @@ const servedOwnerBananaCranberrySnapshots = (
   return snapshots;
 };
 
-const servedFourCrownSnapshots = (
-  input: RecipeInput,
-): Record<string, ProductBehaviorSnapshot> => {
+const servedFourCrownSnapshots = (input: RecipeInput): Record<string, ProductBehaviorSnapshot> => {
   const snapshots = servedOwnerBananaCranberrySnapshots(input);
   snapshots['strawberry-main'] = {
     ...snapshots['strawberry-main']!,
@@ -436,7 +431,7 @@ describe.each([
 });
 
 describe('Protein Crown group authority regressions', () => {
-  it('repairs Protein support before searching the exact -13 ECO 2:1 Main envelope', () => {
+  it('refuses the -13 ECO 2:1 Main envelope when support repair moves away from Direction', () => {
     const starter = buildCanonicalNewRecipeStarter({
       visibleProductType: 'protein',
       servingModeId: 'temp_minus_13',
@@ -478,64 +473,15 @@ describe('Protein Crown group authority regressions', () => {
       productBehaviorSnapshots: snapshots,
       technicalOnlyMainLineIds: [],
     });
-    expect(raw.ok, JSON.stringify(raw)).toBe(true);
-    if (!raw.ok) return;
-    const proposalSnapshots = calibratedProteinFruitSnapshots(raw.preview.proposedInput);
-    for (const item of raw.preview.proposedInput.items) {
-      if (dairyIds.has(canonicalIngredientId(item.ingredient))) {
-        proposalSnapshots[item.id] = {
-          ...proposalSnapshots[item.id]!,
-          approvedLiquidDairyCarrier: true,
-        };
-      }
-    }
-    const built = bindProductBehaviorToPreview(raw, proposalSnapshots, snapshots, []);
-    expect(built.ok, JSON.stringify(built)).toBe(true);
-    if (!built.ok) return;
-    const mains = ['mainA', 'mainB'].map(
-      (lineId) => built.preview.proposedInput.items.find((item) => item.id === lineId)!,
-    );
-    expect(built.preview.mainObjective?.attempts).toBeGreaterThan(0);
-    expect(mains[0]!.planned_grams + mains[1]!.planned_grams).toBeLessThanOrEqual(414);
-    expect(mains[0]!.planned_grams / mains[1]!.planned_grams).toBeCloseTo(2, 6);
-    expect(verifyMainIngredientIdentity(input, built.preview.proposedInput)).toMatchObject({
-      ok: true,
+    expect(raw).toMatchObject({
+      ok: false,
+      code: 'no_proposal',
+      directionTargetUnreached: true,
     });
-    const directionConsent = {
-      baseFingerprint: built.preview.baseFingerprint,
-      targetFingerprint: directionTargetFingerprint(input),
-      candidateFingerprint: workingStateFingerprint(
-        built.preview.proposedInput,
-        built.preview.nextConstraints,
-      ),
-    };
-    const proposalAuthorization = {
-      baseFingerprint: built.preview.baseFingerprint,
-      proposedFingerprint: workingStateFingerprint(
-        built.preview.proposedInput,
-        built.preview.nextConstraints,
-      ),
-      baseProductBehaviorFingerprint: productBehaviorSnapshotFingerprint(snapshots),
-      proposedProductBehaviorFingerprint: productBehaviorSnapshotFingerprint(proposalSnapshots),
-      snapshots: structuredClone(proposalSnapshots),
-    };
-    const committed = commitPreview(
-      input,
-      NONE,
-      built.preview,
-      '2026-08-23T12:01:00.000Z',
-      'apply-protein-stage-ordered-main-envelope',
-      [],
-      undefined,
-      null,
-      null,
-      directionConsent,
-      null,
-      snapshots,
-      [],
-      proposalAuthorization,
-    );
-    expect(committed, JSON.stringify(committed)).toMatchObject({ ok: true });
+    expect(input.items.filter((item) => item.lock_type === 'main').map((item) => item.id)).toEqual([
+      'mainA',
+      'mainB',
+    ]);
   });
 
   it('reduces an above-ceiling 2:1 Crown group to the safe 20.7% envelope', () => {
@@ -630,7 +576,7 @@ describe('Protein Crown group authority regressions', () => {
     expect(signature(successful[2]!)).toEqual(signature(successful[0]!));
   });
 
-  it('publishes the exact served -13 ECO Banana 352 g + Cranberry 136 g domain result before the UI watchdog', () => {
+  it('truthfully refuses the served -13 ECO result that leaves its reached Direction band', () => {
     const input = servedOwnerBananaCranberryFixture();
     const snapshots = servedOwnerBananaCranberrySnapshots(input);
     expect(input.items.reduce((sum, item) => sum + item.planned_grams, 0)).toBe(1_488);
@@ -647,17 +593,11 @@ describe('Protein Crown group authority regressions', () => {
     });
     const runtimeMs = performance.now() - started;
 
-    expect(built.ok, JSON.stringify(built)).toBe(true);
-    if (built.ok) {
-      expect(built.preview.directionAssessment).toMatchObject({
-        active: true,
-        reached: false,
-        score: 9,
-      });
-      expect(verifyMainIngredientIdentity(input, built.preview.proposedInput)).toMatchObject({
-        ok: true,
-      });
-    }
+    expect(built).toMatchObject({
+      ok: false,
+      code: 'no_proposal',
+      directionTargetUnreached: true,
+    });
     expect(runtimeMs).toBeLessThan(LOCAL_SERVED_RESULT_BUDGET_MS);
     console.info(
       'SERVED_OWNER_PROTEIN ' +

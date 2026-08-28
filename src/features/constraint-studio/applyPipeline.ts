@@ -1302,6 +1302,63 @@ export function buildLineDiffs(
   return lines;
 }
 
+export interface DirectionCandidateProgress {
+  active: boolean;
+  reached: boolean;
+  materiallyDifferent: boolean;
+  strictlyCloser: boolean;
+  accepted: boolean;
+  before: DirectionDistanceMeasure | null;
+  after: DirectionDistanceMeasure | null;
+}
+
+/**
+ * One strict-progress authority for an active Direction proposal.
+ *
+ * Reaching the requested target is sufficient. An unreached NEAREST candidate
+ * is truthful only when the executable gram vector actually changes and its
+ * distance to the user's requested band is strictly smaller than the current
+ * draft's distance. This is pure and is called independently by both the
+ * Preview exit and the Apply trust door.
+ */
+export function assessDirectionCandidateProgress(
+  current: RecipeInput,
+  candidate: RecipeInput,
+): DirectionCandidateProgress {
+  const requested = requestedDirectionBands(current);
+  if (requested.length === 0) {
+    return {
+      active: false,
+      reached: false,
+      materiallyDifferent: false,
+      strictlyCloser: false,
+      accepted: true,
+      before: null,
+      after: null,
+    };
+  }
+  const before = directionDistance(current, requested);
+  const after = directionDistance(candidate, requested);
+  // Acceptance is defined against the published requested BANDS. The more
+  // exact center-based Direction assessment remains presentation/consent
+  // metadata, but a value already inside every requested band has reached the
+  // user-visible target and must not be rejected as non-improving distance 0.
+  const reached = after.missedAxes === 0;
+  const materiallyDifferent = buildLineDiffs(current, candidate, { byLineId: {} }).some(
+    (line) => line.kind !== 'unchanged',
+  );
+  const strictlyCloser = (compareDirectionDistance(after, before) ?? 0) < 0;
+  return {
+    active: true,
+    reached,
+    materiallyDifferent,
+    strictlyCloser,
+    accepted: reached || (materiallyDifferent && strictlyCloser),
+    before,
+    after,
+  };
+}
+
 const lockedIngredientNames = (input: RecipeInput, set: ConstraintSet): string[] =>
   input.items.filter((item) => isConstrained(set, item.id)).map((item) => item.ingredient.name);
 
@@ -6290,6 +6347,15 @@ function enforceTargetBatchInvariant(
   const target = input.target_batch_grams;
   if (!(target > 0)) return result;
   if (Math.abs(plannedSum(result.preview.proposedInput) - target) <= BATCH_SUM_TOLERANCE_G) {
+    const progress = assessDirectionCandidateProgress(input, result.preview.proposedInput);
+    if (progress.active && !progress.accepted) {
+      return {
+        ok: false,
+        code: 'no_proposal',
+        violatedMetrics: requestedDirectionBands(input).map((entry) => entry.metric),
+        directionTargetUnreached: true,
+      };
+    }
     return result;
   }
   return { ok: false, code: 'no_proposal' };
@@ -8412,6 +8478,18 @@ export class VerifiedApply {
     }
     if (!sameVerifiedRecipeContext(current, preview.proposedInput)) {
       return { ok: false, code: 'stale_preview', messagePl: copy.blocked.stale };
+    }
+    if (preview.kind === 'optimize') {
+      const directionProgress = assessDirectionCandidateProgress(current, preview.proposedInput);
+      if (directionProgress.active && !directionProgress.accepted) {
+        return {
+          ok: false,
+          code: 'unsafe_proposal',
+          messagePl: copy.blocked.unsafeProposal,
+          violationsBefore: detectViolations(calculateRecipe(current)).length,
+          violationsAfter: detectViolations(calculateRecipe(preview.proposedInput)).length,
+        };
+      }
     }
 
     // `nextConstraints` is part of an untrusted Preview payload. Normal

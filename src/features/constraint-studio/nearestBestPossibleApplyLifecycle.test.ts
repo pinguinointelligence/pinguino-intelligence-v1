@@ -115,19 +115,39 @@ const buildCase = (
   return built as SuccessfulBuild;
 };
 
+const buildOutcome = (
+  sweetness: RecipeDirectionTarget,
+  softness: RecipeDirectionTarget,
+): BuildPreviewResult => {
+  useRecipeStore.getState().loadRecipeInput(directedMilkWithHeldMain(sweetness, softness));
+  useConstraintStudioStore.getState().resetForTests();
+  const draft = selectCanonicalDraft();
+  return buildOptimizePreview(draft.input, draft.constraints, AT, {
+    requirePracticalPreview: true,
+  });
+};
+
 let score10: SuccessfulBuild;
-let score9: SuccessfulBuild;
-let score8: SuccessfulBuild;
+let score9NoSolution: BuildPreviewResult;
+let score8NoSolution: BuildPreviewResult;
 
 beforeAll(() => {
   // Three real canonical candidates are built once. Apply receives the same
   // result through the Worker seam, just as the served UI does.
   score10 = buildCase(-2, 0);
-  score9 = buildCase(1, -2);
-  score8 = buildCase(-2, -2);
+  score9NoSolution = buildOutcome(1, -2);
+  score8NoSolution = buildOutcome(-2, -2);
   expect(score10.preview.directionAssessment).toMatchObject({ score: 10, reached: true });
-  expect(score9.preview.directionAssessment).toMatchObject({ score: 9, reached: false });
-  expect(score8.preview.directionAssessment).toMatchObject({ score: 8, reached: false });
+  expect(score9NoSolution).toMatchObject({
+    ok: false,
+    code: 'no_proposal',
+    directionTargetUnreached: true,
+  });
+  expect(score8NoSolution).toMatchObject({
+    ok: false,
+    code: 'no_proposal',
+    directionTargetUnreached: true,
+  });
 }, 60_000);
 
 beforeEach(() => {
@@ -286,27 +306,24 @@ describe('NEAREST / BEST-POSSIBLE Preview → Apply lifecycle', () => {
     expectSuccessfulApply(displayed, 10);
   });
 
-  it('B. applies the exact hard-safe 9/10 candidate after explicit BEST-POSSIBLE acceptance', async () => {
-    const displayed = stagePreview(score9, true);
-    expect(useConstraintStudioStore.getState().directionConsent).not.toBeNull();
-    expect(detectViolations(calculateRecipe(displayed.proposedInput))).toEqual([]);
-
-    await applyPreviewWithServerAuthority(immediateRuntime(score9));
-
-    expectSuccessfulApply(displayed, 9);
+  it('B. does not stage the old unchanged unreached 9/10 BEST-POSSIBLE candidate', () => {
+    expect(score9NoSolution).toMatchObject({
+      ok: false,
+      code: 'no_proposal',
+      directionTargetUnreached: true,
+    });
   });
 
-  it('C. applies an explicitly accepted hard-safe 8/10 BEST-POSSIBLE candidate', async () => {
-    const displayed = stagePreview(score8, true);
-    expect(detectViolations(calculateRecipe(displayed.proposedInput))).toEqual([]);
-
-    await applyPreviewWithServerAuthority(immediateRuntime(score8));
-
-    expectSuccessfulApply(displayed, 8);
+  it('C. returns a truthful no-solution instead of staging the unchanged unreached 8/10 draft', () => {
+    expect(score8NoSolution).toMatchObject({
+      ok: false,
+      code: 'no_proposal',
+      directionTargetUnreached: true,
+    });
   });
 
   it('D. keeps a real hard Engine violation blocked after NEAREST acceptance', async () => {
-    const honest = stagePreview(score9, true);
+    const honest = stagePreview(score10, false);
     const before = workingVector();
     const forged = structuredClone(honest);
     const milk = forged.proposedInput.items.find((item) => item.ingredient.id === 'milk_3_5')!;
@@ -333,9 +350,9 @@ describe('NEAREST / BEST-POSSIBLE Preview → Apply lifecycle', () => {
   });
 
   it('E. Back/cancel during Apply never mutates the working recipe', async () => {
-    stagePreview(score9, true);
+    stagePreview(score10, false);
     const before = workingVector();
-    const deferred = deferredRuntime(score9);
+    const deferred = deferredRuntime(score10);
     const applying = applyPreviewWithServerAuthority(deferred.runtime);
     await vi.waitFor(() => expect(useConstraintStudioStore.getState().applyPending).toBe(true));
 
@@ -353,20 +370,20 @@ describe('NEAREST / BEST-POSSIBLE Preview → Apply lifecycle', () => {
   it('F. repeated BEST-POSSIBLE Preview → Apply is deterministic and reaches terminal success', async () => {
     const results: Array<Array<[string, number]>> = [];
     for (let attempt = 0; attempt < 2; attempt += 1) {
-      const displayed = stagePreview(score9, true);
+      const displayed = stagePreview(score10, false);
       const outcome = await Promise.race([
-        applyPreviewWithServerAuthority(immediateRuntime(score9)).then(() => 'settled' as const),
+        applyPreviewWithServerAuthority(immediateRuntime(score10)).then(() => 'settled' as const),
         new Promise<'hung'>((resolve) => setTimeout(() => resolve('hung'), 1_000)),
       ]);
       expect(outcome).toBe('settled');
-      expectSuccessfulApply(displayed, 9);
+      expectSuccessfulApply(displayed, 10);
       results.push(workingVector());
     }
     expect(results[1]).toEqual(results[0]);
   });
 
   it('publishes a terminal failure if canonical Worker revalidation rejects', async () => {
-    stagePreview(score9, true);
+    stagePreview(score10, false);
     const before = workingVector();
     await applyPreviewWithServerAuthority({
       runOptimizePreview: async () => {

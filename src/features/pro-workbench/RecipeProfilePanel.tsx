@@ -62,21 +62,23 @@ function CompactMetricRow({
 
 function NutritionCostProfileGrid({
   result,
-  ready,
+  nutritionReady,
+  costReady,
   nutritionOverride,
   costsOverride,
 }: {
   result: RecipeResult;
-  ready: boolean;
+  nutritionReady: boolean;
+  costReady: boolean;
   nutritionOverride?: NutritionPer100g | ProductLabelNutritionPer100g | null;
   costsOverride?: RecipeCosts | null;
 }) {
-  const nutrition = ready
+  const nutrition = nutritionReady
     ? nutritionOverride === undefined
       ? result.nutrition_per_100g
       : nutritionOverride
     : null;
-  const costs = ready ? (costsOverride === undefined ? result.costs : costsOverride) : null;
+  const costs = costReady ? (costsOverride === undefined ? result.costs : costsOverride) : null;
   const grams = (value: number | null | undefined, precision = 1) =>
     value === null || value === undefined ? '—' : `${value.toFixed(precision)} g`;
   const euro = (value: number | null | undefined) =>
@@ -320,45 +322,52 @@ function ProfileContent({
     }
     previousApplyPending.current = applyPending;
   }, [appliedHistoryCount, applyBlocked, applyPending, draftRevision, friendlyCurrentResultReady]);
+  const liveBaseNutritionReady = baseCurrentResultAuthority.nutritionReady && !legacyInspection;
   const frozenNutritionResult = useMemo(
     () =>
       legacyInspection
         ? result
-        : friendlyCurrentResultReady
+        : liveBaseNutritionReady
           ? calculateRecipe(recipeInputFromFrozenBehavior(input, baseAuthority, 'nutrition'))
           : result,
-    [baseAuthority, friendlyCurrentResultReady, input, legacyInspection, result],
+    [baseAuthority, input, legacyInspection, liveBaseNutritionReady, result],
   );
-  const finalCurrentResultReady =
-    friendlyCurrentResultReady && finalCurrentResultAuthority.ready && !finalLegacyInspection;
-  const finalSummaryReadable = finalCurrentResultReady || finalLegacyInspection;
-  const finalProduct = useMemo(() => {
-    if (!finalSummaryReadable) return null;
-    const finalInput = finalCurrentResultReady
-      ? recipeInputFromFrozenBehavior(input, finalAuthority, 'nutrition')
-      : input;
-    const finalToppings = finalCurrentResultReady
-      ? recipeToppingsFromFrozenBehavior(toppings, finalAuthority, 'nutrition')
-      : toppings;
+  const finalNutritionReady =
+    finalLegacyInspection || (!legacyInspection && finalCurrentResultAuthority.nutritionReady);
+  const finalCostReady =
+    finalLegacyInspection || (!legacyInspection && finalCurrentResultAuthority.costReady);
+  const finalNutritionProduct = useMemo(() => {
+    if (!finalNutritionReady) return null;
+    const finalInput = finalLegacyInspection
+      ? input
+      : recipeInputFromFrozenBehavior(input, finalAuthority, 'nutrition');
+    const finalToppings = finalLegacyInspection
+      ? toppings
+      : recipeToppingsFromFrozenBehavior(toppings, finalAuthority, 'nutrition');
     return calculateFinalProduct(
       finalInput,
       applyEffectiveCustomerPricesToToppings(finalToppings, customerPrices),
       'planning',
     );
-  }, [
-    customerPrices,
-    finalAuthority,
-    finalCurrentResultReady,
-    finalSummaryReadable,
-    input,
-    toppings,
-  ]);
+  }, [customerPrices, finalAuthority, finalLegacyInspection, finalNutritionReady, input, toppings]);
+  const finalCostProduct = useMemo(() => {
+    if (!finalCostReady) return null;
+    return calculateFinalProduct(
+      input,
+      applyEffectiveCustomerPricesToToppings(toppings, customerPrices),
+      'planning',
+    );
+  }, [customerPrices, finalCostReady, input, toppings]);
   return (
     <div
       className="w-full min-w-0 p-3"
       data-testid="pro-context-recipe"
       data-current-result-state={baseCurrentResultAuthority.state}
       data-current-result-revision={baseCurrentResultAuthority.draftRevision}
+      data-base-technical-ready={baseCurrentResultAuthority.baseTechnicalReady ? 'true' : 'false'}
+      data-nutrition-ready={finalNutritionReady ? 'true' : 'false'}
+      data-cost-ready={finalCostReady ? 'true' : 'false'}
+      data-label-ready={finalCurrentResultAuthority.labelReady ? 'true' : 'false'}
       data-friendly-lab-recipe-state={journeyState}
     >
       {legacyInspection ? (
@@ -380,9 +389,10 @@ function ProfileContent({
         {recipeBar ? <div className="min-w-0">{recipeBar}</div> : null}
         <NutritionCostProfileGrid
           result={frozenNutritionResult}
-          ready={finalSummaryReadable}
-          nutritionOverride={finalProduct?.finalLabelNutritionPer100g}
-          costsOverride={finalProduct?.finalCosts}
+          nutritionReady={finalNutritionReady}
+          costReady={finalCostReady}
+          nutritionOverride={finalNutritionProduct?.finalLabelNutritionPer100g}
+          costsOverride={finalCostProduct?.finalCosts}
         />
       </div>
       <button

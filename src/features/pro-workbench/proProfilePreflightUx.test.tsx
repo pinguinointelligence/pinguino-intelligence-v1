@@ -242,7 +242,7 @@ describe('profile hierarchy and compact preflight', () => {
     }
   });
 
-  it('publishes score, inline Monitor, full Monitor, kcal and cost under one current-result gate', async () => {
+  it('publishes live score, Monitor, kcal and cost under their own module gates', async () => {
     const input = starterMilkBase();
     const result = calculateRecipe(input);
     const corrections = proposeCorrections({
@@ -319,13 +319,16 @@ describe('profile hierarchy and compact preflight', () => {
     try {
       await act(async () => root.render(view()));
 
-      // The historical split: MONITOR alone is ready, while Nutrition is not.
-      // No surface may label values from that partial authority as current.
-      expect(surface('score').textContent).not.toContain('Wynik aktualny');
-      expect(surface('score').querySelector('[data-testid="pro-workbar-recalc"]')).not.toBeNull();
+      // The technical base remains live when only Nutrition is unavailable.
+      expect(surface('score').textContent).toContain('Wynik aktualny');
+      expect(surface('score').querySelector('[data-testid="workbench-score-ring"]')).not.toBeNull();
       expect(surface('profile').textContent).toContain('— kcal / 100 g');
-      expect(surface('profile').textContent).toContain('— / kg');
-      expect(surface('monitor').querySelector('[data-testid="monitor-live-summary"]')).toBeNull();
+      expect(surface('profile').textContent).toContain(
+        `${calculateFinalProduct(input).finalCosts?.cost_per_kg?.toFixed(2)} € / kg`,
+      );
+      expect(
+        surface('monitor').querySelector('[data-testid="monitor-live-summary"]'),
+      ).not.toBeNull();
 
       await act(async () => {
         useRecipeStore.setState({ productBehaviorSnapshots: completeSnapshots });
@@ -356,16 +359,29 @@ describe('profile hierarchy and compact preflight', () => {
       expect(podValue).toBeTypeOf('number');
       expect(surface('monitor').textContent).toContain(formatMonitorValue(podValue!));
 
-      // A material edit invalidates the one authority even while its prior
-      // frozen snapshots remain in memory.
+      // A material edit stales the optimization, but every live as-written
+      // fact remains visible and the Recalculate action remains available.
       await act(async () => {
         useRecipeProfileStore.getState().markRecalculationRequired();
         root.render(view());
       });
-      expect(surface('score').textContent).not.toContain('Wynik aktualny');
-      expect(surface('profile').textContent).toContain('— kcal / 100 g');
-      expect(surface('profile').textContent).toContain('— / kg');
-      expect(surface('monitor').querySelector('[data-testid="monitor-live-summary"]')).toBeNull();
+      expect(surface('score').querySelector('[data-testid="workbench-score-ring"]')).not.toBeNull();
+      expect(surface('score').querySelector('[data-testid="pro-workbar-recalc"]')).not.toBeNull();
+      expect(
+        surface('score')
+          .querySelector('[data-testid="workbench-intelligence-header"]')
+          ?.getAttribute('data-current-result-state'),
+      ).toBe('STALE');
+      expect(surface('profile').textContent).toContain(
+        `${expectedFinal.finalLabelNutritionPer100g?.kcal.toFixed(0)} kcal / 100 g`,
+      );
+      expect(surface('profile').textContent).toContain(
+        `${expectedFinal.finalCosts?.cost_per_kg?.toFixed(2)} € / kg`,
+      );
+      expect(
+        surface('monitor').querySelector('[data-testid="monitor-live-summary"]'),
+      ).not.toBeNull();
+      expect(surface('monitor').textContent).toContain('Oczekuje na przeliczenie');
     } finally {
       await act(async () => root.unmount());
       host.remove();
@@ -415,7 +431,7 @@ describe('profile hierarchy and compact preflight', () => {
     const host = document.createElement('div');
     document.body.appendChild(host);
     const root = createRoot(host);
-    const panel = (activeTab: 'profile' | 'summary') => (
+    const panel = (activeTab: 'profile' | 'monitor' | 'summary') => (
       <RecipeProfilePanel
         activeTab={activeTab}
         onTabChange={() => undefined}
@@ -472,6 +488,99 @@ describe('profile hierarchy and compact preflight', () => {
         expect(labelPrerequisite?.querySelector('h3')).not.toBeNull();
         expect(labelPrerequisite?.textContent).toContain('Otwórz Produkcję');
         expect(host.querySelector('[data-testid="label-consumer-preview"]')).toBeNull();
+      }
+
+      const variants = [
+        {
+          name: 'priced and complete',
+          activeToppings: [{ ...topping, planned_grams: 20 }],
+          blockedModule: null,
+          nutritionVisible: true,
+          costVisible: true,
+        },
+        {
+          name: 'missing price',
+          activeToppings: [
+            {
+              ...topping,
+              planned_grams: 20,
+              ingredient: { ...topping.ingredient, cost_per_kg: null, cost_currency: null },
+            },
+          ],
+          blockedModule: 'COST' as const,
+          nutritionVisible: true,
+          costVisible: false,
+        },
+        {
+          name: 'missing nutrition facts',
+          activeToppings: [{ ...topping, planned_grams: 20 }],
+          blockedModule: 'NUTRITION' as const,
+          nutritionVisible: false,
+          costVisible: true,
+        },
+        {
+          name: 'missing Label facts only',
+          activeToppings: [{ ...topping, planned_grams: 20 }],
+          blockedModule: 'LABEL' as const,
+          nutritionVisible: true,
+          costVisible: true,
+        },
+        {
+          name: 'removed topping',
+          activeToppings: [],
+          blockedModule: null,
+          nutritionVisible: true,
+          costVisible: true,
+        },
+      ];
+
+      for (const variant of variants) {
+        const snapshots = productBehaviorTestSnapshots(input, variant.activeToppings);
+        const toppingSnapshot = snapshots[topping.id];
+        if (toppingSnapshot && variant.blockedModule) {
+          snapshots[topping.id] = {
+            ...toppingSnapshot,
+            moduleEligibility: {
+              ...toppingSnapshot.moduleEligibility,
+              [variant.blockedModule]: 'blocked',
+            },
+          };
+        }
+        await act(async () => {
+          useRecipeStore.setState({
+            toppings: variant.activeToppings,
+            productBehaviorSnapshots: snapshots,
+          });
+          useRecipeProfileStore.getState().markRecalculationRequired();
+          root.render(panel('profile'));
+        });
+
+        const expected = calculateFinalProduct(input, variant.activeToppings);
+        const summary = host.querySelector('[data-testid="profile-nutrition-cost-summary"]');
+        expect(summary, variant.name).not.toBeNull();
+        if (variant.nutritionVisible) {
+          expect(summary?.textContent, variant.name).toContain(
+            `${expected.finalLabelNutritionPer100g?.kcal.toFixed(0)} kcal / 100 g`,
+          );
+        } else {
+          expect(summary?.textContent, variant.name).toContain('— kcal / 100 g');
+        }
+        if (variant.costVisible) {
+          expect(summary?.textContent, variant.name).toContain(
+            `${expected.finalCosts?.cost_per_kg?.toFixed(2)} € / kg`,
+          );
+        } else {
+          expect(summary?.textContent, variant.name).toContain('— / kg');
+        }
+
+        await act(async () => root.render(panel('monitor')));
+        expect(
+          host.querySelector('[data-testid="monitor-live-summary"]'),
+          `${variant.name}: base Monitor`,
+        ).not.toBeNull();
+        expect(host.querySelector('[data-testid="monitor-topping-summary"]') === null).toBe(
+          variant.activeToppings.length === 0,
+        );
       }
     } finally {
       await act(async () => root.unmount());

@@ -16,6 +16,8 @@ import { productBehaviorTestSnapshots } from '@/features/product-intelligence/pr
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
 import { calculateFinalProduct } from '@/features/recipe-composition/finalProduct';
 import type { CatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
+import { buildDirectPercentEdit } from '@/features/ingredient-builder/directPercentEdit';
+import { MobileIngredientLine } from '@/features/ingredient-builder/IngredientLineControls';
 import { buildRecipeInput, recipeContext } from '@/features/studio/buildRecipeInput';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useSessionStore } from '@/stores/sessionStore';
@@ -29,6 +31,7 @@ import {
 } from './recipeProfileStore';
 import { buildCurrentRecipeResultAuthority } from './currentRecipeResultAuthority';
 import { RecipeProfilePanel } from './RecipeProfilePanel';
+import { WorkbenchIntelligenceHeader } from './WorkbenchIntelligenceHeader';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT =
   true;
@@ -146,7 +149,7 @@ beforeEach(() => {
   confirmCurrentSettings();
 });
 
-describe('owner matrix A–F: base mutations preserve settings and controls but stale result', () => {
+describe('owner matrix A–F: base mutations preserve settings and publish the live draft', () => {
   const cases: Array<[string, () => void]> = [
     [
       'A grams',
@@ -181,16 +184,152 @@ describe('owner matrix A–F: base mutations preserve settings and controls but 
   it.each(cases)('%s', (_name, mutate) => {
     const confirmedIdentity = useRecipeProfileStore.getState().activeDraftIdentity;
     mutate();
+    const mutatedInput = currentInput();
+    useRecipeStore.setState({
+      productBehaviorSnapshots: productBehaviorTestSnapshots(mutatedInput),
+    });
 
     expect(useRecipeProfileStore.getState().activeDraftIdentity).toBe(confirmedIdentity);
     expect(currentSettingsConfirmed()).toBe(true);
     expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(true);
-    expect(baseCurrentAuthority().state).toBe('STALE');
+    expect(baseCurrentAuthority()).toMatchObject({
+      state: 'STALE',
+      ready: false,
+      baseTechnicalReady: true,
+      nutritionReady: true,
+      costReady: true,
+    });
     const html = renderProfile();
     expect(html).toContain('data-testid="profile-direction-axes"');
     expect(html).toContain('Słodycz');
     expect(html).toContain('Twardość');
     expect(html).not.toContain('friendly-lab-recipe-stale');
+  });
+
+  it('keeps batch, percentage, Monitor, Score, kcal and cost visible through the five live edits', async () => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+
+    const renderLiveDraft = async () => {
+      const input = currentInput();
+      const result = calculateRecipe(input);
+      const first = result.items[0]!;
+      await act(async () => {
+        root.render(
+          <>
+            <MobileIngredientLine
+              item={first}
+              percent={(first.effective_grams / result.total_batch_g) * 100}
+              isMain={first.lock_type === 'main'}
+              required={false}
+              unavailable={false}
+              estimated={false}
+              changed
+              missingAmount={false}
+              onSetMain={() => undefined}
+              onOpen={() => undefined}
+            />
+            <WorkbenchIntelligenceHeader
+              result={result}
+              input={input}
+              onRecalculate={() => undefined}
+              variant="dock"
+            />
+            <RecipeProfilePanel
+              activeTab="profile"
+              onTabChange={() => undefined}
+              result={result}
+              servingTemperatureC={input.target_temperature_c}
+              corrections={proposeCorrections({
+                input,
+                context: recipeContext(input),
+                redact: false,
+              })}
+              input={input}
+              idPrefix="live-five-profile"
+              showTabs={false}
+              onOpenPreview={() => undefined}
+              onRecalculate={() => undefined}
+            />
+            <RecipeProfilePanel
+              activeTab="monitor"
+              onTabChange={() => undefined}
+              result={result}
+              servingTemperatureC={input.target_temperature_c}
+              corrections={proposeCorrections({
+                input,
+                context: recipeContext(input),
+                redact: false,
+              })}
+              input={input}
+              idPrefix="live-five-monitor"
+              showTabs={false}
+              onOpenPreview={() => undefined}
+              onRecalculate={() => undefined}
+            />
+          </>,
+        );
+      });
+      return { input, result, first };
+    };
+
+    const assertLive = async () => {
+      const { input, result, first } = await renderLiveDraft();
+      const expected = calculateFinalProduct(input);
+      expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(true);
+      expect(
+        host
+          .querySelector('[data-testid="workbench-intelligence-header"]')
+          ?.getAttribute('data-current-result-state'),
+      ).toBe('STALE');
+      expect(host.querySelector('[data-testid="workbench-score-ring"]')).not.toBeNull();
+      expect(host.querySelector('[data-testid="pro-workbar-recalc"]')).not.toBeNull();
+      expect(host.querySelector('[data-testid="monitor-live-summary"]')).not.toBeNull();
+      expect(host.querySelector('[data-testid="workbench-settings-line"]')?.textContent).toContain(
+        result.total_batch_g.toLocaleString('pl-PL', { maximumFractionDigits: 1 }),
+      );
+      expect(
+        host.querySelector(`[data-testid="row-mobile-percent-${first.id}"]`)?.textContent,
+      ).toContain(`${((first.effective_grams / result.total_batch_g) * 100).toFixed(1)} %`);
+      expect(host.textContent).toContain(
+        `${expected.finalLabelNutritionPer100g?.kcal.toFixed(0)} kcal / 100 g`,
+      );
+      expect(host.textContent).toContain(`${expected.finalCosts?.cost_per_kg?.toFixed(2)} € / kg`);
+    };
+
+    try {
+      const first = useRecipeStore.getState().items[0]!;
+      useRecipeStore.getState().setPlannedGrams(first.id, first.planned_grams + 1);
+      await assertLive();
+
+      useRecipeStore.getState().setPlannedGrams(first.id, first.planned_grams);
+      await assertLive();
+
+      const percentEdit = buildDirectPercentEdit(currentInput(), { byLineId: {} }, first.id, 60);
+      expect(percentEdit.ok).toBe(true);
+      if (percentEdit.ok)
+        useRecipeStore.getState().setPlannedGramsVector(percentEdit.gramsByLineId);
+      await assertLive();
+
+      useRecipeStore.getState().addIngredient(findDemoIngredient('inulin')!, 5);
+      useRecipeStore.setState({
+        productBehaviorSnapshots: productBehaviorTestSnapshots(currentInput()),
+      });
+      await assertLive();
+
+      const added = useRecipeStore
+        .getState()
+        .items.find((item) => item.ingredient.id === findDemoIngredient('inulin')!.id)!;
+      useRecipeStore.getState().removeItem(added.id);
+      useRecipeStore.setState({
+        productBehaviorSnapshots: productBehaviorTestSnapshots(currentInput()),
+      });
+      await assertLive();
+    } finally {
+      await act(async () => root.unmount());
+      host.remove();
+    }
   });
 });
 
