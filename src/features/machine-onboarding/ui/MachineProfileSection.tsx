@@ -23,7 +23,7 @@ import { cardShell, color, notice, radius, type } from '@/features/customer-shel
 import { TextField } from '@/features/customer-shell/ui/TextField';
 import { TouchButton } from '@/features/customer-shell/ui/TouchButton';
 import { machineOnboardingCopy as copy } from '../machineOnboardingCopy';
-import { containerSplitNotice, formatGrams } from '../machineViews';
+import { containerSplitNotice, formatGrams, formatMachineCapacity } from '../machineViews';
 import { deriveBatchGuidance, type AboveRecommendationChoice } from '../batchGuidance';
 import {
   parseGramsInput,
@@ -236,7 +236,7 @@ export function MachineProfileSection({
             {view.container !== null ? (
               <Row
                 label={view.container.label}
-                value={`${view.container.capacityMl} ${copy.settings.unitMl}`}
+                value={formatMachineCapacity(view.container.capacityMl)}
               />
             ) : null}
             {view.recommendedGrams !== null ? (

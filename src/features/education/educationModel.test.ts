@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
-import { MACHINE_CATALOG, type HomeMachineProfile } from '@/features/machine-catalog';
+import {
+  MACHINE_CATALOG,
+  SAGE_SMART_SCOOP_BCI600,
+  type HomeMachineProfile,
+} from '@/features/machine-catalog';
 import { educationCopy } from '@/copy/education.pl';
 import {
   FRESH_GELATO_EDUCATION,
@@ -288,3 +292,11 @@ describe('machine guide uses canonical catalog data', () => {
     expect(JSON.stringify(FRESH_GELATO_EDUCATION).toLowerCase()).not.toContain('pasteurisation');
   });
 });
+  it('uses Sage model-specific operational steps from the canonical record', () => {
+    const guide = machineEducationForProfile(SAGE_SMART_SCOOP_BCI600);
+    expect(guide?.title).toBe('SAGE SMART SCOOP');
+    expect(guide?.steps).toHaveLength(8);
+    expect(guide?.steps.join(' ')).toContain('PRE-COOL');
+    expect(guide?.steps.join(' ')).toContain('KEEP COOL');
+    expect(guide?.steps.join(' ').toLowerCase()).not.toContain('zamroź misę');
+  });

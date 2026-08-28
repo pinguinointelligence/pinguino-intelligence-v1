@@ -150,6 +150,33 @@ export interface MachineCapacity {
   readonly perProgram?: readonly MachineProgramCapacity[];
 }
 
+/** Official-source evidence attached to one exact model/market record. */
+export interface MachineSpecificationEvidence {
+  readonly kind: 'product_page' | 'manual';
+  readonly url: string;
+  /** Short fact keys only; customer copy is resolved elsewhere. */
+  readonly verifiedFacts: readonly string[];
+}
+
+/** Optional operating facts that belong to the machine workflow, never recipe math. */
+export interface MachineOperatingFeatures {
+  readonly selfCooling: boolean;
+  readonly preCoolSupported: boolean;
+  readonly preCoolOptional: boolean;
+  readonly keepCoolSupported: boolean;
+  readonly keepCoolMaximumHours: number | null;
+  readonly hardnessSettings: number | null;
+  readonly dessertFamilies: readonly string[];
+  readonly operationalInstructions?: readonly string[];
+  readonly instructionTitle?: string;
+}
+
+/** Electrical facts stay in data and are not rendered by normal Home UX. */
+export interface MachineElectricalSpecification {
+  readonly voltageRangeV: readonly [number, number];
+  readonly powerRangeW: readonly [number, number];
+}
+
 /**
  * One catalog record: a machine model FOR ONE MARKET (§9.3 — the same family
  * can ship different vessels in EU, UK and US, so records are per-region).
@@ -157,6 +184,10 @@ export interface MachineCapacity {
 export interface HomeMachineProfile {
   /** Stable unique id, unique per (model, market). */
   readonly id: string;
+  /** Canonical customer-visible name. Custom legacy records may omit it. */
+  readonly displayName?: string;
+  /** Alternate commercial names and search phrases; never duplicate records. */
+  readonly searchAliases?: readonly string[];
   readonly brand: string;
   readonly family: string;
   /** Manufacturer model codes covered by this record (may be empty for custom). */
@@ -171,6 +202,8 @@ export interface HomeMachineProfile {
    */
   readonly resolvedVisibleMode: HomeVisibleModeId;
   readonly capacity: MachineCapacity;
+  /** Eligibility for the shared 95% Home fill rule from a confirmed operating vessel. */
+  readonly recommendedBatchBasis?: 'confirmed_vessel_capacity';
   readonly requiresPreFreeze: boolean;
   readonly preFreezeTarget: PreFreezeTarget;
   /**
@@ -183,11 +216,15 @@ export interface HomeMachineProfile {
   readonly specificationSource: MachineSpecificationSource;
   /** Official source URL (Annex B) backing this record's numbers. */
   readonly specificationSourceUrl?: string;
+  /** Exact official sources used to verify the record. */
+  readonly specificationEvidence?: readonly MachineSpecificationEvidence[];
   /** ISO date of the LAST per-model+market manual re-confirmation. Absent until verified. */
   readonly specificationVerifiedAt?: string;
   readonly specificationStatus: MachineSpecificationStatus;
   /** Documented cross-source disagreements (§9.3). Non-empty ⇒ conflicting_sources. */
   readonly sourceConflicts?: readonly MachineSourceConflict[];
+  readonly operatingFeatures?: MachineOperatingFeatures;
+  readonly electricalSpecification?: MachineElectricalSpecification;
   /**
    * Only used for user-declared custom machines: marks the conservative,
    * FLAGGED fallback of §8.4 when the user only knew the total vessel

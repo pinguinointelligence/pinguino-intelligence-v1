@@ -275,6 +275,14 @@ const PRE_FREEZE_EXPECTATION: Readonly<Record<MachineTechnology, PreFreezeTarget
  */
 export function validateHomeMachineProfile(profile: HomeMachineProfile): string[] {
   const issues: string[] = [];
+  if (profile.specificationSource === 'manufacturer_official') {
+    if (!profile.displayName?.trim()) {
+      issues.push(`${profile.id}: manufacturer profile requires a canonical displayName`);
+    }
+    if (!profile.searchAliases?.length) {
+      issues.push(`${profile.id}: manufacturer profile requires searchAliases`);
+    }
+  }
   const expectedMode = visibleModeForTechnology(profile.technology);
   if (expectedMode === null) {
     issues.push(
@@ -298,6 +306,21 @@ export function validateHomeMachineProfile(profile: HomeMachineProfile): string[
   }
   if (profile.specificationStatus === 'verified' && profile.specificationVerifiedAt === undefined) {
     issues.push(`${profile.id}: verified requires a specificationVerifiedAt date`);
+  }
+  if (profile.specificationStatus === 'verified' && !profile.specificationEvidence?.length) {
+    issues.push(`${profile.id}: verified requires exact official specificationEvidence`);
+  }
+  if (profile.recommendedBatchBasis === 'confirmed_vessel_capacity') {
+    if (
+      profile.capacity.vesselCapacityMl === null ||
+      !Number.isFinite(profile.capacity.vesselCapacityMl) ||
+      profile.capacity.vesselCapacityMl <= 0
+    ) {
+      issues.push(`${profile.id}: confirmed vessel batch basis requires a positive vessel capacity`);
+    }
+    if (vesselFigureConflicted(profile)) {
+      issues.push(`${profile.id}: conflicted vessel cannot be an approved batch basis`);
+    }
   }
   const expectedPreFreeze = PRE_FREEZE_EXPECTATION[profile.technology];
   if (profile.preFreezeTarget !== expectedPreFreeze) {

@@ -72,7 +72,7 @@ export const MACHINE_ONBOARDING_TILES: readonly MachineOnboardingTile[] = [
   },
   {
     id: 'tile-sage-smart-scoop',
-    label: 'Sage / Breville Smart Scoop',
+    label: 'Sage Smart Scoop',
     kind: 'catalog_family',
     catalogIds: ['sage-smart-scoop-bci600-uk-eu'],
   },

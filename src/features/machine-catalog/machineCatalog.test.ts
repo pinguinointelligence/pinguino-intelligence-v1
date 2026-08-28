@@ -177,11 +177,11 @@ const EXPECTED_ROWS: readonly ExpectedRow[] = [
   },
   {
     profile: SAGE_SMART_SCOOP_BCI600,
-    market: 'UK/EU',
+    market: 'EU/ES',
     technology: 'compressor',
     mode: 'fresh',
-    status: 'needs_review',
-    active: false,
+    status: 'verified',
+    active: true,
   },
 ];
 
@@ -211,11 +211,11 @@ describe('Annex A seed catalog — model → technology → mode → status', ()
     }
   });
 
-  it('nothing is verified in this pass (Annex A demands per-model+market re-confirmation)', () => {
-    for (const profile of MACHINE_CATALOG) {
-      expect(profile.specificationStatus).not.toBe('verified');
-      expect(profile.specificationVerifiedAt).toBeUndefined();
-    }
+  it('only Sage is verified from exact current official product + manual evidence', () => {
+    expect(MACHINE_CATALOG.filter((profile) => profile.specificationStatus === 'verified')).toEqual(
+      [SAGE_SMART_SCOOP_BCI600],
+    );
+    expect(SAGE_SMART_SCOOP_BCI600.specificationVerifiedAt).toBe('2026-08-28');
   });
 
   it('the catalog is versioned', () => {
@@ -303,17 +303,26 @@ describe('Annex A capacities — exact numbers, per §9.1 field, never guessed',
     expect(KITCHENAID_5KSMICM.preFreezeTarget).toBe('bowl');
   });
 
-  it('Sage BCI600: technology confirmed, EVERY capacity null, needs_review, inactive', () => {
+  it('Sage BCI600 / SCI600: verified 1.0 L vessel, no pre-freeze, active', () => {
     const c = SAGE_SMART_SCOOP_BCI600.capacity;
-    expect(c.vesselCapacityMl).toBeNull();
+    expect(c.vesselCapacityMl).toBe(1000);
     expect(c.maximumLiquidMixMl).toBeNull();
     expect(c.workingCapacityMl).toBeNull();
     expect(c.minimumBatchMl).toBeNull();
     expect(c.maximumBatchMl).toBeNull();
     expect(c.defaultBatchMl).toBeNull();
     expect(c.finishedProductCapacityMl).toBeNull();
-    expect(SAGE_SMART_SCOOP_BCI600.specificationStatus).toBe('needs_review');
-    expect(SAGE_SMART_SCOOP_BCI600.active).toBe(false);
+    expect(SAGE_SMART_SCOOP_BCI600.specificationStatus).toBe('verified');
+    expect(SAGE_SMART_SCOOP_BCI600.active).toBe(true);
+    expect(SAGE_SMART_SCOOP_BCI600.requiresPreFreeze).toBe(false);
+    expect(SAGE_SMART_SCOOP_BCI600.operatingFeatures).toMatchObject({
+      selfCooling: true,
+      preCoolSupported: true,
+      preCoolOptional: true,
+      keepCoolSupported: true,
+      keepCoolMaximumHours: 3,
+      hardnessSettings: 12,
+    });
   });
 
   it('no record invents min/default/max batch or manufacturer max-mix grams', () => {
@@ -347,6 +356,7 @@ describe('region-aware lookup (§9.3 — records are per model AND market)', () 
       'ninja-creami-deluxe-nc502eu-eu-es',
       'ninja-creami-scoop-swirl-nc7-eu-es',
       'moulinex-freezi-mj803af0-es',
+      'sage-smart-scoop-bci600-uk-eu',
     ]);
     const eu = machinesForMarket(MACHINE_CATALOG, 'EU').map((p) => p.id);
     expect(eu).not.toContain('moulinex-freezi-mj803af0-es'); // ES-only record
@@ -411,12 +421,13 @@ describe('activation (§9.3 rule intact; owner final decision activates the Ninj
     expect(validateHomeMachineProfile(mislabelled)).not.toEqual([]);
   });
 
-  it('the active Home list is exactly the nine machines of the final decision', () => {
+  it('the active Home list includes all ten canonical machines after Sage verification', () => {
     expect(listActiveHomeMachines(MACHINE_CATALOG).map((p) => p.id)).toEqual([
       'ninja-creami-nc302eu-eu-es',
       'ninja-creami-deluxe-nc502eu-eu-es',
       'ninja-creami-scoop-swirl-nc7-eu-es',
       'moulinex-freezi-mj803af0-es',
+      'sage-smart-scoop-bci600-uk-eu',
       'magimix-gelato-expert-eu',
       'cuisinart-ice100e-eu',
       'kitchenaid-5ksmicm-uk-eu',
@@ -565,14 +576,25 @@ describe('owner Home batch rule — 0.95 factor over CONFIRMED usable capacity',
     });
   });
 
-  it('program/finished volumes are never batch sources (Moulinex, ICE-100, Sage → none)', () => {
-    for (const profile of [MOULINEX_FREEZI_MJ803AF0, CUISINART_ICE100E, SAGE_SMART_SCOOP_BCI600]) {
+  it('program/finished volumes are never batch sources (Moulinex and ICE-100 → none)', () => {
+    for (const profile of [MOULINEX_FREEZI_MJ803AF0, CUISINART_ICE100E]) {
       expect(recommendMachineBatch(profile)).toBeNull();
       expect(deriveMachineSetup(profile).batchSuggestion).toEqual({
         kind: 'none',
         reason: 'no_confirmed_usable_capacity',
       });
     }
+  });
+
+  it('owner-approved Sage uses the same shared 0.95 rule: 1000 ml vessel → 950 g', () => {
+    expect(recommendMachineBatch(SAGE_SMART_SCOOP_BCI600)).toEqual({
+      grams: 950,
+      source: 'confirmed_vessel_ml',
+      safetyFactorApplied: 0.95,
+      ruleVersion: HOME_BATCH_RULE_VERSION,
+      estimated: false,
+    });
+    expect(deriveMachineSetup(SAGE_SMART_SCOOP_BCI600).recommendedBatchGrams).toBe(950);
   });
 });
 

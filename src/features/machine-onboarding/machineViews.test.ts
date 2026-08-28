@@ -14,6 +14,7 @@ import {
   NINJA_CREAMI_DELUXE_NC502EU,
   NINJA_CREAMI_NC302EU,
   NINJA_CREAMI_SCOOP_SWIRL_NC7,
+  SAGE_SMART_SCOOP_BCI600,
   buildCustomMachineProfile,
   deriveMachineSetup,
 } from '@/features/machine-catalog';
@@ -58,7 +59,7 @@ describe('§8.2 tile views — honesty', () => {
       'Ninja CREAMi Deluxe',
       'Ninja CREAMi Scoop & Swirl',
       'Moulinex Freezi',
-      'Sage / Breville Smart Scoop',
+      'Sage Smart Scoop',
       'Magimix Gelato Expert',
       'Cuisinart ICE-100',
       'KitchenAid Ice Cream Maker',
@@ -80,10 +81,11 @@ describe('§8.2 tile views — honesty', () => {
     expect(NINJA_CREAMI_DELUXE_NC502EU.sourceConflicts ?? []).toEqual([]);
   });
 
-  it('Sage stays visible but DISABLED with the honest verification note', () => {
-    const sage = views.find((v) => v.label === 'Sage / Breville Smart Scoop');
-    expect(sage?.selectable).toBe(false);
-    expect(sage?.note).toBe(copy.tiles.unavailableNote);
+  it('Sage is active and selectable after exact official verification', () => {
+    const sage = views.find((v) => v.label === 'Sage Smart Scoop');
+    expect(sage?.selectable).toBe(true);
+    expect(sage?.note).toBeNull();
+    expect(sage?.selectableProfiles).toEqual([SAGE_SMART_SCOOP_BCI600]);
   });
 
   it('the offered tiles are exactly the activatable machines of the final decision', () => {
@@ -93,6 +95,7 @@ describe('§8.2 tile views — honesty', () => {
       'Ninja CREAMi Deluxe',
       'Ninja CREAMi Scoop & Swirl',
       'Moulinex Freezi',
+      'Sage Smart Scoop',
       'Magimix Gelato Expert',
       'Cuisinart ICE-100',
       'KitchenAid Ice Cream Maker',
@@ -133,12 +136,14 @@ describe('§8.2 search', () => {
     expect(noDiacritics.map((v) => v.label)).toContain('Cuisinart z misą chłodzoną');
   });
 
-  it('empty query returns everything; a disabled family stays findable (honest note intact)', () => {
+  it('empty query returns everything; Sage aliases resolve to its one active profile', () => {
     expect(searchMachineTiles(views, '')).toEqual(views);
-    const sage = searchMachineTiles(views, 'bci600');
-    expect(sage.map((v) => v.label)).toContain('Sage / Breville Smart Scoop');
-    expect(sage.find((v) => v.label.startsWith('Sage'))?.selectable).toBe(false);
-    expect(sage.find((v) => v.label.startsWith('Sage'))?.note).toBe(copy.tiles.unavailableNote);
+    for (const query of ['bci600', 'sci600', 'Breville']) {
+      const sage = searchMachineTiles(views, query);
+      expect(sage.map((v) => v.label)).toContain('Sage Smart Scoop');
+      expect(sage.find((v) => v.label.startsWith('Sage'))?.selectable).toBe(true);
+      expect(sage.find((v) => v.label.startsWith('Sage'))?.note).toBeNull();
+    }
     // Owner final decision: the Deluxe is selectable — findable with NO note.
     const deluxe = searchMachineTiles(views, 'nc502');
     expect(deluxe.find((v) => v.label === 'Ninja CREAMi Deluxe')?.note).toBeNull();
@@ -301,6 +306,7 @@ describe('§7.3 context view — vessel from the catalog record OR the user’s 
       name: 'Ninja CREAMi Scoop & Swirl',
       vesselMl: 480,
       recommendedBatchGrams: 460,
+      defaultBatchGrams: 460,
     });
   });
 
@@ -314,6 +320,7 @@ describe('§7.3 context view — vessel from the catalog record OR the user’s 
     const view = buildMachineContextView(own);
     expect(view?.vesselMl).toBe(500); // the user's own container, not the 706 catalog figure
     expect(view?.recommendedBatchGrams).toBe(470);
+    expect(view?.defaultBatchGrams).toBe(470);
   });
 
   it('a machine without a vessel figure yields name-only (null vessel)', () => {
@@ -329,6 +336,7 @@ describe('§7.3 context view — vessel from the catalog record OR the user’s 
       name: 'Ninja CREAMi Deluxe',
       vesselMl: 706,
       recommendedBatchGrams: 670,
+      defaultBatchGrams: 670,
     });
   });
 

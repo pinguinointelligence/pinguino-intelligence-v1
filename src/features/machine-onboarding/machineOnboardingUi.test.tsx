@@ -14,6 +14,7 @@ import {
   MACHINE_CATALOG_VERSION,
   NINJA_CREAMI_DELUXE_NC502EU,
   NINJA_CREAMI_SCOOP_SWIRL_NC7,
+  SAGE_SMART_SCOOP_BCI600,
   deriveMachineSetup,
 } from '@/features/machine-catalog';
 import { machineOnboardingCopy as copy } from './machineOnboardingCopy';
@@ -30,8 +31,13 @@ import { MachineProfileSection } from './ui/MachineProfileSection';
 const render = (el: ReactElement) => renderToStaticMarkup(el);
 const noop = () => undefined;
 
-function recordFor(profileId: 'nc7' | 'deluxe') {
-  const profile = profileId === 'nc7' ? NINJA_CREAMI_SCOOP_SWIRL_NC7 : NINJA_CREAMI_DELUXE_NC502EU;
+function recordFor(profileId: 'nc7' | 'deluxe' | 'sage') {
+  const profile =
+    profileId === 'nc7'
+      ? NINJA_CREAMI_SCOOP_SWIRL_NC7
+      : profileId === 'sage'
+        ? SAGE_SMART_SCOOP_BCI600
+        : NINJA_CREAMI_DELUXE_NC502EU;
   const record = buildMachinePreferenceRecord({
     profile,
     isCustom: false,
@@ -56,7 +62,7 @@ describe('§8.1/§8.2 first screen', () => {
       'Ninja CREAMi',
       'Ninja CREAMi Deluxe',
       'Moulinex Freezi',
-      'Sage / Breville Smart Scoop',
+      'Sage Smart Scoop',
       'Magimix Gelato Expert',
       'Cuisinart ICE-100',
       'KitchenAid Ice Cream Maker',
@@ -67,9 +73,9 @@ describe('§8.1/§8.2 first screen', () => {
     }
   });
 
-  it('disabled families carry the honest note and a real disabled control', () => {
-    expect(html).toContain(copy.tiles.unavailableNote);
-    expect(html).toContain('disabled=""'); // an actual disabled attribute, not just styling
+  it('Sage is active and does not carry the old capacity-verification block', () => {
+    expect(html).toContain('Sage Smart Scoop');
+    expect(html).not.toContain(copy.tiles.unavailableNote);
   });
 });
 
@@ -149,10 +155,10 @@ describe('§7.3 context bar — hard rules', () => {
   if (view === null) throw new Error('expected view');
   const html = render(<MachineContextBar view={view} onChange={noop} />);
 
-  it('shows exactly name + vessel + the recipe-scope change action (owner correction)', () => {
+  it('shows name + effective default batch + the recipe-scope change action', () => {
     expect(html).toContain('Twoja maszyna:');
     expect(html).toContain('Ninja CREAMi Deluxe');
-    expect(html).toContain('pojemnik 706 ml');
+    expect(html).toContain('670 g');
     // The default-machine bar uses the recipe-scope wording, unambiguously.
     expect(html).toContain('Zmień dla tej receptury');
     expect(html).toContain('aria-label="Zmień maszynę tylko dla tej receptury"');
@@ -160,17 +166,21 @@ describe('§7.3 context bar — hard rules', () => {
     expect(html).not.toContain('Domyślna maszyna:');
   });
 
-  it('NEVER shows an engine name, technology code, temperature or grams', () => {
+  it('NEVER shows an engine name, technology code or temperature', () => {
     expect(html).not.toMatch(/engine/i);
     expect(html).not.toMatch(/respin|ninja_gelato|ninja_swirl|compressor|frozen_bowl/);
     expect(html).not.toMatch(/−?\s?1[123]\s?°C|°C/);
-    expect(html).not.toMatch(/\d+\s?g\b/); // grams live on batch surfaces, not the bar
   });
 
   it('a machine without a vessel figure renders the name only', () => {
     const nameOnly = render(
       <MachineContextBar
-        view={{ name: 'Twoja maszyna', vesselMl: null, recommendedBatchGrams: null }}
+        view={{
+          name: 'Twoja maszyna',
+          vesselMl: null,
+          recommendedBatchGrams: null,
+          defaultBatchGrams: null,
+        }}
         onChange={noop}
       />,
     );
@@ -222,5 +232,26 @@ describe('§8.6 profile section (settings card — owner hotfix)', () => {
     );
     expect(html).toContain(copy.profile.noMachine);
     expect(html).toContain(copy.profile.setUp);
+  });
+
+  it('renders Sage capacity, recommendation and editable 950 g default', () => {
+    const view = buildMachineSettingsView(recordFor('sage'));
+    if (view === null) throw new Error('expected Sage settings');
+    const html = render(
+      <MachineProfileSection
+        view={view}
+        onSetUp={noop}
+        onChange={noop}
+        onSave={asyncNoop}
+        onGoToRecipe={noop}
+      />,
+    );
+    expect(html).toContain('Sage Smart Scoop');
+    expect(html).toContain('Pojemność producenta');
+    expect(html).toContain('1,0 L');
+    expect(html).toContain('Zalecany wsad Gellatti');
+    expect(html).toContain('950 g');
+    expect(html).toContain('Mój domyślny wsad');
+    expect(html).toContain('value="950"');
   });
 });

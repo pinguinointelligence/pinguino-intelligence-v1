@@ -18,7 +18,12 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { copy } from '@/copy/en';
 import { isServingModeId, temperatureForMode } from '@/features/customer-flow/servingMode';
-import { MACHINE_CATALOG, deriveMachineSetup, listActiveHomeMachines } from '@/features/machine-catalog';
+import {
+  MACHINE_CATALOG,
+  SAGE_SMART_SCOOP_BCI600,
+  deriveMachineSetup,
+  listActiveHomeMachines,
+} from '@/features/machine-catalog';
 import { machineDisplayName } from '@/features/machine-onboarding/machineViews';
 
 interface MockRecipeState {
@@ -91,11 +96,14 @@ describe('S4 professional serving-mode routing', () => {
 /* Home derivation (pure — real registry, approved auto-routing/batch) */
 /* ------------------------------------------------------------------ */
 describe('S4 home machines (real registry, honest auto-config)', () => {
-  it('offers the active registry records and excludes the inactive Sage record', () => {
+  it('offers the active registry records including Sage exactly once', () => {
     const active = activeHome();
     expect(active.length).toBeGreaterThan(0);
     expect(active.some((p) => p.active === false)).toBe(false);
-    expect(inactive().some((p) => p.id === 'sage-smart-scoop-bci600-uk-eu')).toBe(true);
+    expect(active.filter((p) => p.id === SAGE_SMART_SCOOP_BCI600.id)).toEqual([
+      SAGE_SMART_SCOOP_BCI600,
+    ]);
+    expect(deriveMachineSetup(SAGE_SMART_SCOOP_BCI600).recommendedBatchGrams).toBe(950);
   });
 
   it('every active home machine auto-routes to an existing supported temperature cell', () => {
@@ -118,14 +126,12 @@ describe('S4 home machines (real registry, honest auto-config)', () => {
 /* Structure (static render — hierarchy, exactness, honesty)           */
 /* ------------------------------------------------------------------ */
 describe('S4 selector structure', () => {
-  it('renders „Maszyna profesjonalna" FIRST, high-contrast, above Maszyny domowe and Inne urządzenia', () => {
+  it('renders „Maszyna profesjonalna" FIRST, high-contrast, above Maszyny domowe', () => {
     const html = render();
     const iPro = html.indexOf('data-testid="pro-machine-professional"');
     const iHome = html.indexOf(m.home.heading);
-    const iOther = html.indexOf('data-testid="pro-machine-other"');
     expect(iPro).toBeGreaterThan(-1);
     expect(iPro).toBeLessThan(iHome);
-    expect(iHome).toBeLessThan(iOther);
     const proSection = html.slice(iPro, iPro + 300);
     expect(proSection).toContain('bg-ink'); // dark card
     expect(proSection).toContain('text-paper'); // high-contrast text
@@ -154,13 +160,10 @@ describe('S4 selector structure', () => {
     expect(html).toContain(m.home.setDefault);
   });
 
-  it('shows „Inne urządzenia" with only real inactive records and the honest verification note', () => {
+  it('omits „Inne urządzenia" when the canonical registry has no inactive records', () => {
     const html = render();
-    expect(html).toContain('data-testid="pro-machine-other"');
-    expect(html).toContain(m.other.needsReview);
-    const others = inactive();
-    expect(others.length).toBeGreaterThan(0);
-    for (const profile of others) expect(html).toContain(esc(machineDisplayName(profile)));
+    expect(inactive()).toEqual([]);
+    expect(html).not.toContain('data-testid="pro-machine-other"');
   });
 
   it('marks the selected professional serving mode as pressed (exactly one)', () => {

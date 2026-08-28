@@ -33,7 +33,7 @@ describe('§8.2 starter tiles', () => {
       'Ninja CREAMi Deluxe',
       'Ninja CREAMi Scoop & Swirl',
       'Moulinex Freezi',
-      'Sage / Breville Smart Scoop',
+      'Sage Smart Scoop',
       'Magimix Gelato Expert',
       'Cuisinart ICE-100',
       'KitchenAid Ice Cream Maker',

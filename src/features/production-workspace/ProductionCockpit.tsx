@@ -79,6 +79,30 @@ function HeatInformationCard({ production }: { production: ProductionWorkspaceVi
   );
 }
 
+function MachineOperationCard({ production }: { production: ProductionWorkspaceView }) {
+  const guide = production.machineGuide;
+  if (!guide) return null;
+  return (
+    <section
+      className="rounded-[18px] border border-ink/10 bg-white p-4 text-ink shadow-pro-e0"
+      data-testid="production-machine-instructions"
+      data-machine-id={guide.sourceMachineId ?? undefined}
+    >
+      <p className="text-[10px] font-semibold tracking-[0.09em] text-stone-500 uppercase">
+        Instrukcja maszyny
+      </p>
+      <h2 className="mt-1 text-sm font-semibold text-ink">{guide.title}</h2>
+      <ol className="mt-3 space-y-2 pl-5 text-xs leading-relaxed text-stone-700">
+        {guide.steps.map((step) => (
+          <li key={step} className="list-decimal pl-1">
+            {step}
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
 function DegassingCard({ production }: { production: ProductionWorkspaceView }) {
   if (!production.degassingRequired || production.carbonatedProducts.length === 0) return null;
   const acknowledged = production.degassingAcknowledged;
@@ -257,6 +281,7 @@ export function ProductionCockpit({
     return (
       <div className="space-y-3 p-3 text-ink">
         <HeatInformationCard production={production} />
+        <MachineOperationCard production={production} />
         <DegassingCard production={production} />
         <section
           className="rounded-[18px] border border-ink/10 bg-white p-5 shadow-pro-e0"
@@ -536,6 +561,7 @@ export function ProductionCockpit({
 
   return (
     <div className="pro-scroll-safe space-y-3 p-3 text-ink" data-testid="production-cockpit">
+      <MachineOperationCard production={production} />
       {production.persistenceError ? (
         <p
           className="rounded-[12px] border border-status-error/25 bg-status-error/[0.04] px-3 py-2 text-xs leading-relaxed text-status-error"

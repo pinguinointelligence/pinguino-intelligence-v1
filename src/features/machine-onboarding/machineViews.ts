@@ -25,7 +25,11 @@ import {
   type MachineOnboardingTile,
 } from '@/features/machine-catalog';
 import { machineOnboardingCopy as copy } from './machineOnboardingCopy';
-import { recommendedBatchGramsOf, type MachinePreferenceRecord } from './preferenceContracts';
+import {
+  effectiveDefaultBatchGrams,
+  recommendedBatchGramsOf,
+  type MachinePreferenceRecord,
+} from './preferenceContracts';
 
 /* ------------------------------------------------------------------ */
 /* Display name                                                        */
@@ -37,6 +41,7 @@ export function machineDisplayName(profile: HomeMachineProfile): string {
     const parts = [profile.brand, profile.modelCodes[0] ?? ''].map((p) => p.trim()).filter(Boolean);
     return parts.length > 0 ? parts.join(' ') : copy.profile.customName;
   }
+  if (profile.displayName?.trim()) return profile.displayName.trim();
   return `${profile.brand} ${profile.family}`.trim();
 }
 
@@ -131,7 +136,13 @@ export function searchMachineTiles(
     for (const recordId of tile?.catalogIds ?? []) {
       const profile = byId.get(recordId);
       if (!profile) continue;
-      haystack.push(profile.brand, profile.family, ...profile.modelCodes);
+      haystack.push(
+        profile.displayName ?? '',
+        profile.brand,
+        profile.family,
+        ...profile.modelCodes,
+        ...(profile.searchAliases ?? []),
+      );
     }
     return haystack.some((h) => normalizeForSearch(h).includes(wanted));
   });
@@ -155,6 +166,14 @@ export type BatchPresentation =
 export function formatGrams(grams: number): string {
   if (Number.isInteger(grams)) return String(grams);
   return grams.toFixed(1).replace('.', ',');
+}
+
+/** Customer capacity formatting: litres for full 100 ml increments, otherwise ml. */
+export function formatMachineCapacity(capacityMl: number): string {
+  if (capacityMl >= 1000 && capacityMl % 100 === 0) {
+    return `${(capacityMl / 1000).toFixed(1).replace('.', ',')} L`;
+  }
+  return `${capacityMl} ml`;
 }
 
 /**
@@ -243,6 +262,8 @@ export interface MachineContextView {
    * the per-container split limit) — the §7.3 bar itself does NOT display it.
    */
   readonly recommendedBatchGrams: number | null;
+  /** The user's effective default (own value first, recommendation second). */
+  readonly defaultBatchGrams: number | null;
 }
 
 /** Resolve the profile a saved preference points at (catalog id or custom). */
@@ -271,6 +292,7 @@ export function buildMachineContextView(
     name: machineDisplayName(profile),
     vesselMl: record.customContainer?.capacityMl ?? profile.capacity.vesselCapacityMl,
     recommendedBatchGrams: recommendedBatchGramsOf(record),
+    defaultBatchGrams: effectiveDefaultBatchGrams(record),
   };
 }
 

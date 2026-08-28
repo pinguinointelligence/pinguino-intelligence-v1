@@ -212,7 +212,7 @@ export const machineOnboardingCopy = {
    */
   settings: {
     /** Manufacturer data — informational, read-only on the main screen (§8). */
-    manufacturerCapacityLabel: 'Pojemnik producenta',
+    manufacturerCapacityLabel: 'Pojemność producenta',
     /** The user's own container replaces the label once declared (§8). */
     customCapacityLabel: 'Twój pojemnik',
     unitMl: 'ml',

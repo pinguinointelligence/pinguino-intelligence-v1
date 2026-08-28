@@ -71,6 +71,7 @@ import {
   productionRecipeLifecycleState,
   productionVersionFingerprint,
 } from './productionReadinessState';
+import { machineEducationById } from '@/features/education';
 import { carbonatedProductsForRecipe } from './productionDegassing';
 import { announceFriendlyLabMoment } from '@/components/shared/friendlyLabMoment';
 
@@ -844,6 +845,8 @@ export function useProductionWorkspace(enabled: boolean) {
     [plannedInput, session, sessionOwnerMismatch, staleSource],
   );
   const forecastResult = useMemo(() => calculateRecipe(forecastInput), [forecastInput]);
+  const machineGuide =
+    recipe.machineKind === 'home' ? machineEducationById(recipe.machineId) : null;
   const rescue = useMemo(() => browserProductionRescueDecision(session), [session]);
   const rescueAuthorizationRunId =
     rescueAuthorization.status === 'preview'
@@ -1318,6 +1321,8 @@ export function useProductionWorkspace(enabled: boolean) {
     selectedRescueOptionId: effectiveSelectedRescueOptionId,
     deviationDecisionUnresolved: rescue.state === 'options',
     corrections,
+    /** Same canonical Home machine id selected by Recipe/Pro, resolved for Production. */
+    machineGuide,
     processReadiness,
     /**
      * OWNER RULE §2/§3 — Production speaks only about heat that is POSITIVELY

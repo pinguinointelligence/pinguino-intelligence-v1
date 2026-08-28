@@ -305,6 +305,7 @@ const BATCH_SOURCES: ReadonlySet<string> = new Set([
   'maximum_liquid_mix_ml',
   'working_capacity_ml',
   'respin_vessel_ml',
+  'confirmed_vessel_ml',
 ]);
 
 function parseDefaultBatch(value: unknown): SavedDefaultBatch | null {

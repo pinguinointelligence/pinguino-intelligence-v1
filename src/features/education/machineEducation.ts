@@ -48,10 +48,11 @@ export function machineEducationForProfile(
     profile.preFreezeMinimumHours != null
       ? profile.preFreezeMinimumHours
       : null;
+  const operating = profile.operatingFeatures;
   return {
     category,
-    title: educationCopy.machine.categories[category].title,
-    steps: educationCopy.machine.categories[category].steps,
+    title: operating?.instructionTitle ?? educationCopy.machine.categories[category].title,
+    steps: operating?.operationalInstructions ?? educationCopy.machine.categories[category].steps,
     timing:
       verifiedHours === null
         ? { status: 'missing', text: educationCopy.machine.timingMissing, source: null }

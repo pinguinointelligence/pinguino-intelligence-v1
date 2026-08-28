@@ -13,7 +13,7 @@ import { color, notice, radius, type } from '@/features/customer-shell/ui/tokens
 import { TextField } from '@/features/customer-shell/ui/TextField';
 import { TouchButton } from '@/features/customer-shell/ui/TouchButton';
 import { machineOnboardingCopy as copy } from '../machineOnboardingCopy';
-import { containerSplitNotice, formatGrams } from '../machineViews';
+import { containerSplitNotice, formatGrams, formatMachineCapacity } from '../machineViews';
 import { deriveBatchGuidance, type AboveRecommendationChoice } from '../batchGuidance';
 import { parseGramsInput } from '../machineSettingsView';
 
@@ -72,7 +72,7 @@ export function MachineAdjustBatchStep({
         <p className={cn(type.bodyStrong, color.textPrimary)}>{machineName}</p>
         {containerMl !== null ? (
           <p className={cn('mt-1', type.secondary, color.textSecondary)}>
-            {copy.settings.manufacturerCapacityLabel}: {containerMl} {copy.settings.unitMl}
+            {copy.settings.manufacturerCapacityLabel}: {formatMachineCapacity(containerMl)}
           </p>
         ) : null}
         {recommendedGrams !== null ? (
