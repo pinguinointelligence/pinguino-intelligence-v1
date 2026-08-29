@@ -68,8 +68,11 @@ function ProductCard({
           <ul className="mt-2 grid gap-1 text-xs text-stone-600">
             {product.contents.map((entry) => (
               <li key={entry.sku}>
-                {entry.title}
-                {entry.packSizeG ? ` · ${entry.packSizeG} g` : ''}
+                {/* Article titles already carry their pack size ("Dekstroza ·
+                    500 g"), so only append it when the title does not. */}
+                {entry.packSizeG && !entry.title.includes(`${entry.packSizeG} g`)
+                  ? `${entry.title} · ${entry.packSizeG} g`
+                  : entry.title}
               </li>
             ))}
           </ul>
