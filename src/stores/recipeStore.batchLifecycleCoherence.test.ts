@@ -39,6 +39,15 @@ import {
   startNewProRecipe,
 } from '@/pages/destinations/startNewProRecipe';
 import { calculateRecipe, detectViolations, type RecipeInput } from '@/engine';
+import {
+  answerCurrentQuestion,
+  startAssistantFlow,
+  submitIntentDraft,
+  type AssistantAnswerValue,
+  type AssistantFlowState,
+} from '@/features/studioFlow/conversationalAssistantFlow';
+import { buildStarterRecipeDraft } from '@/features/studioFlow/intentRecipeDraft';
+import { applyStarterRecipeInputToStudio } from '@/features/studioFlow/applyStarterToStudio';
 import { sorbetMultiMainBase } from '@/features/recipe-constraints/__fixtures__/sorbetAuthorityFixture';
 import { practicalizeRecipeCandidate } from '@/features/practical-recipe/practicalRecipe';
 import {
@@ -351,5 +360,159 @@ describe('RESTORATION #2 — a legitimate dirty draft is still allowed to differ
     expect(baseSum()).toBeCloseTo(1001, 6);
     expect(state.dirty).toBe(true);
     expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(true);
+  });
+});
+
+/* -------------------------------------------------------------------------- *
+ * RESTORATION #2 (addendum, owner decision 2026-08-29) — payload batch        *
+ * authority for an assistant-applied starter.                                 *
+ *                                                                             *
+ * `batch_size` is a REQUIRED question in the assistant flow, so an applied     *
+ * starter carries the newest and most specific user batch intent. It outranks  *
+ * the stored account/product default for that one operation — but it wins      *
+ * WITH its Base, never as a lone `target_batch_grams`.                         *
+ *                                                                             *
+ * Pre-decision behaviour: a 5 kg starter applied under a 1 kg account default  *
+ * became a 1 kg recipe. `applyStarterToStudio.ts` documented the opposite as   *
+ * its test-pinned contract; its own tests never seeded a default, so the gap   *
+ * was invisible to them.                                                       *
+ * -------------------------------------------------------------------------- */
+
+const baseSumOf = (input: RecipeInput) =>
+  input.items.reduce((sum, item) => sum + item.planned_grams, 0);
+
+/** The trusted assistant journey, answered exactly as the UI commits it. */
+const starterPayloadFor = (batchSize: string): RecipeInput => {
+  const answer = (state: AssistantFlowState, pending: AssistantAnswerValue) => {
+    const result = answerCurrentQuestion(state, pending);
+    if (!result.ok) throw new Error(`unexpected reject: ${result.reason}`);
+    return result.state;
+  };
+  let flow = startAssistantFlow();
+  flow = answer(flow, '');
+  flow = answer(flow, 'standard_gelato');
+  flow = answer(flow, '-11');
+  flow = answer(flow, batchSize); // the REQUIRED explicit batch answer
+  flow = answer(flow, 'wanilia');
+  flow = answer(flow, 'medium');
+  flow = answer(flow, 'balanced');
+  flow = answer(flow, []);
+  flow = answer(flow, 'no');
+  const submission = submitIntentDraft(flow, 'recipe_design');
+  if (!submission.ok) throw new Error('expected a complete submission');
+  const starter = buildStarterRecipeDraft(submission.draft);
+  if (starter.recipeInput === null) throw new Error('expected a starter payload');
+  return structuredClone(starter.recipeInput);
+};
+
+describe('RESTORATION #2 — an applied starter keeps the batch the user asked for', () => {
+  beforeEach(() => {
+    useRecipeProfileStore.getState().resetForTests();
+    useRecipeStore.getState().startNewRecipe('gelato');
+  });
+
+  it('owner case: a 5 kg starter applied over a 1 kg account default stays 5 kg', () => {
+    const payload = starterPayloadFor('5000');
+    expect(payload.target_batch_grams).toBe(5000);
+
+    const stored = storeAccountDefault();
+    expect(stored.targetBatchGrams).toBe(1000); // the default that used to win
+
+    applyStarterRecipeInputToStudio(payload);
+
+    // The requested batch survives, and the Base actually realizes it.
+    expectCoherent(5000, 'PROFESSIONAL_USER_BATCH');
+  });
+
+  it('the applied batch is a USER batch, so a later product switch cannot re-derive it', () => {
+    selectHome(MAGIMIX_GELATO_EXPERT);
+    storeAccountDefault();
+    useRecipeStore.getState().startNewRecipe('gelato');
+
+    applyStarterRecipeInputToStudio(starterPayloadFor('5000'));
+    // Never MACHINE_DEFAULT: that source is what `setVisibleProductType`
+    // re-derives from the machine on the next product switch.
+    expect(useRecipeStore.getState().batch_source).not.toBe('MACHINE_DEFAULT');
+
+    useRecipeStore.getState().setVisibleProductType('sorbet');
+    expect(useRecipeStore.getState().target_batch_grams).toBe(5000);
+  });
+
+  it('a Home account default never silently shrinks the request to machine capacity', () => {
+    selectHome(MAGIMIX_GELATO_EXPERT);
+    expectCoherent(950, 'MACHINE_DEFAULT');
+    storeAccountDefault();
+    useRecipeStore.getState().startNewRecipe('gelato');
+
+    applyStarterRecipeInputToStudio(starterPayloadFor('5000'));
+
+    // The user asked for 5 kg on a 950 g machine. That incompatibility belongs
+    // to the machine/flow validation layer, which can show it truthfully — it
+    // is NOT resolved here by quietly handing back a 950 g recipe.
+    const state = useRecipeStore.getState();
+    expect(state.target_batch_grams).toBe(5000);
+    expect(baseSum()).toBeCloseTo(5000, 6);
+    expect(state.machine_capacity_grams).toBe(950); // still the truth about the machine
+  });
+
+  it('heals an incoherent payload through the shared resize authority, never target-only', () => {
+    // A payload whose declared batch and Base disagree: 5000 g declared over a
+    // 1000 g vector. Writing the number alone is exactly the P0 this forbids.
+    const payload = starterPayloadFor('1000');
+    expect(baseSumOf(payload)).toBeCloseTo(1000, 6);
+    const shares = payload.items.map((item) => item.planned_grams / 1000);
+    payload.target_batch_grams = 5000;
+
+    applyStarterRecipeInputToStudio(payload);
+
+    expectCoherent(5000, 'PROFESSIONAL_USER_BATCH');
+    // Resized, not re-mixed: every ratio and identity is preserved.
+    const loaded = useRecipeStore.getState().items;
+    expect(loaded.map((item) => item.id)).toEqual(payload.items.map((item) => item.id));
+    loaded.forEach((item, index) => {
+      expect(item.planned_grams / 5000).toBeCloseTo(shares[index]!, 8);
+    });
+  });
+
+  it('keeps every ratio and identity when the payload is already coherent', () => {
+    const payload = starterPayloadFor('5000');
+    const shares = payload.items.map((item) => item.planned_grams / 5000);
+    storeAccountDefault();
+
+    applyStarterRecipeInputToStudio(payload);
+
+    const loaded = useRecipeStore.getState().items;
+    expect(loaded.map((item) => item.id)).toEqual(payload.items.map((item) => item.id));
+    loaded.forEach((item, index) => {
+      // Untouched: an already-coherent payload is not resized at all.
+      expect(item.planned_grams).toBeCloseTo(payload.items[index]!.planned_grams, 8);
+      expect(item.planned_grams / 5000).toBeCloseTo(shares[index]!, 8);
+    });
+  });
+
+  it('does NOT change any other non-saved load: the account default still wins there', () => {
+    useRecipeStore.getState().setBatchGrams(400);
+    const payload = structuredClone(buildRecipeInput(useRecipeStore.getState()));
+
+    useRecipeStore.getState().startNewRecipe('gelato');
+    storeAccountDefault();
+    useRecipeStore.getState().loadRecipeInput(payload); // no batch authority
+
+    expectCoherent(1000, 'PROFESSIONAL_DEFAULT');
+  });
+
+  it('does NOT change the saved-reopen path, even if the authority is passed', () => {
+    useRecipeStore.getState().setBatchGrams(3000);
+    const saved = savedPayload();
+
+    useRecipeStore.getState().startNewRecipe('gelato');
+    storeAccountDefault();
+    useRecipeStore
+      .getState()
+      .loadRecipeInput(saved, { savedId: 'r-1', savedName: 'Saved', batchAuthority: 'payload' });
+
+    // A saved recipe restores its OWN persisted batch and grams, as before.
+    expectCoherent(3000, 'PROFESSIONAL_USER_BATCH');
+    expect(useRecipeStore.getState().savedRecipeId).toBe('r-1');
   });
 });

@@ -492,6 +492,15 @@ export interface RecipeState {
       versionId?: string | null;
       versionDate?: string | null;
       composition?: RecipeCompositionMetadata | null;
+      /**
+       * Who owns `target_batch_grams` for THIS load. Omitted (the default) an
+       * account/product default may still impose its batch on a non-saved load.
+       * `'payload'` means the caller carries an explicit, newer user batch
+       * intent that outranks that default — today only the Studio assistant's
+       * "apply this starter", where `batch_size` is a required answer. The
+       * batch is still adopted only together with the Base that realizes it.
+       */
+      batchAuthority?: 'payload';
     },
   ) => void;
   /** Start an explicit clean Pro draft for the selected customer-visible type. */
@@ -811,6 +820,18 @@ const profileBatchSource = (profile: ProfileSettingsSnapshot): RecipeBatchSource
       : 'MACHINE_DEFAULT'
     : 'PROFESSIONAL_USER_BATCH');
 
+/**
+ * The label for a batch the USER set for themselves rather than one a machine
+ * derived. Keeping it off `MACHINE_DEFAULT` is what stops `setVisibleProductType`
+ * from silently re-deriving it from the machine on the next product switch.
+ */
+const userBatchSourceForProfile = (profile: ProfileSettingsSnapshot): RecipeBatchSource =>
+  profile.machineKind !== 'home'
+    ? 'PROFESSIONAL_USER_BATCH'
+    : profile.machineId?.startsWith('custom-')
+      ? 'CUSTOM_MACHINE_BATCH'
+      : 'USER_OVERRIDE';
+
 /** The batch a profile imposes, together with the Base that realizes it. */
 interface ResolvedProfileBatch {
   items: RecipeItem[];
@@ -846,13 +867,53 @@ const resolveProfileBatch = (
   return {
     items,
     targetBatchGrams: previousBatchGrams,
-    batchSource:
-      profile.machineKind !== 'home'
-        ? 'PROFESSIONAL_USER_BATCH'
-        : profile.machineId?.startsWith('custom-')
-          ? 'CUSTOM_MACHINE_BATCH'
-          : 'USER_OVERRIDE',
+    batchSource: userBatchSourceForProfile(profile),
   };
+};
+
+/**
+ * A load whose PAYLOAD carries the authoritative batch (owner decision,
+ * 2026-08-29): the Studio assistant's starter flow asks `batch_size` as a
+ * REQUIRED question, so the applied payload holds the newest and most specific
+ * user intent — newer than any stored account/product default. That intent wins
+ * for this operation.
+ *
+ * It wins WITH its Base, never alone. The requested batch is only authoritative
+ * if the vector realizes it, so a payload whose Base sum differs goes through
+ * the same shared atomic `resizeRecipeBatch` authority as every other batch
+ * lifecycle change. `target_batch_grams` is never written next to a
+ * differently-sized ingredient vector — the RESTORATION #2 contract.
+ *
+ * The batch is labelled as a USER batch, not a machine default, so a later
+ * product-type switch cannot silently re-derive the size the user chose.
+ *
+ * Machine capacity is deliberately NOT applied here: a batch larger than the
+ * account's Home machine stays exactly as requested and is validated — and
+ * shown truthfully — by the machine/flow validation layer. Silently converting
+ * the user's selected batch to a machine-sized one is the behaviour this path
+ * exists to remove.
+ */
+const resolvePayloadBatch = (
+  items: RecipeItem[],
+  requestedBatchGrams: number,
+  profile: ProfileSettingsSnapshot | null,
+): ResolvedProfileBatch => {
+  const batchSource: RecipeBatchSource = profile
+    ? userBatchSourceForProfile(profile)
+    : 'PROFESSIONAL_USER_BATCH';
+  const baseSum = items.reduce((sum, item) => sum + item.planned_grams, 0);
+  if (Math.abs(baseSum - requestedBatchGrams) <= BATCH_RESIZE_TOLERANCE_GRAMS) {
+    return { items, targetBatchGrams: requestedBatchGrams, batchSource };
+  }
+  const resized = resizeRecipeBatch(items, baseSum, requestedBatchGrams);
+  if (resized.ok) {
+    return { items: resized.items, targetBatchGrams: requestedBatchGrams, batchSource };
+  }
+  // Defensive: a starter template carries no gram locks or actualized rows, so
+  // this is unreachable from the live apply. If a payload ever does make the
+  // request unrealizable, coherence still outranks it — the draft keeps the
+  // batch its own Base actually realizes rather than a number it does not.
+  return { items, targetBatchGrams: baseSum, batchSource };
 };
 
 const profileFields = (
@@ -2211,6 +2272,10 @@ export const useRecipeStore = create<RecipeState>()(
         // (they were written together at save time). Only a NON-SAVED load may
         // adopt an account/product default batch, and only atomically.
         const adoptsAccountBatch = profile !== null && profile === compatibleDefaults;
+        // An explicit payload batch intent outranks the account/product default
+        // for this load. A saved reopen is never affected: it carries its own
+        // persisted batch and resolves no defaults at all.
+        const payloadOwnsBatch = !savedRecipe && link.batchAuthority === 'payload';
         const healedItems = input.items.map((item) => {
           const normalized = normalizeRecipeItemIdentity({ ...item });
           return normalized.lock_type === 'grams' && normalized.planned_grams === 0
@@ -2251,8 +2316,9 @@ export const useRecipeStore = create<RecipeState>()(
               (candidate) => candidate.lineId === item.lineId && candidate.reason === item.reason,
             ) === index,
         );
-        const resolvedBatch: ResolvedProfileBatch | null =
-          profile === null
+        const resolvedBatch: ResolvedProfileBatch | null = payloadOwnsBatch
+          ? resolvePayloadBatch(normalizedItems, input.target_batch_grams, profile)
+          : profile === null
             ? null
             : adoptsAccountBatch
               ? resolveProfileBatch(profile, normalizedItems, input.target_batch_grams)
@@ -2272,8 +2338,12 @@ export const useRecipeStore = create<RecipeState>()(
                 category: input.category,
                 visibleProductType: visibleTypeOf(input.category),
                 target_temperature_c: input.target_temperature_c,
-                target_batch_grams: input.target_batch_grams,
-                batch_source: 'PROFESSIONAL_USER_BATCH' as const,
+                // With no profile to adopt, the payload's own batch already
+                // stands. `resolvedBatch` is non-null here ONLY on the
+                // payload-authority path, where it additionally guarantees the
+                // Base sums to that batch; every other caller is unchanged.
+                target_batch_grams: resolvedBatch?.targetBatchGrams ?? input.target_batch_grams,
+                batch_source: resolvedBatch?.batchSource ?? ('PROFESSIONAL_USER_BATCH' as const),
                 batchResizeConflict: null,
                 machine_capacity_grams: input.machine_capacity_grams,
                 machine_capacity_source:
