@@ -1,0 +1,53 @@
+GELLATTI — served capture: Production per profile
+Served on https://staging.pinguinoai.com, staging 36a3b7f4, as test1@test1.com
+
+Saved recipes were seeded through the application's OWN path — the canonical
+starter, the real staging ProductBehavior resolver, the real Preview/Apply
+doors and the real Supabase recipes adapter (`create_recipe_with_v1`, guarded
+by `assert_recipe_behavior_authority_all_lines_v1`). A recipe the server would
+refuse could not have been seeded.
+
+--- Gelato -------------------------------------------------------------------
+QA Gelato Wanilia -11, v1, 6 lines, 1000 g, Maszyna profesjonalna, -11 C
+Weighing 6/6, "W naczyniu 1000 g / Cel 1000 g / Do dodania 0 g"
+Wynik koncowy 10 "Wyjatkowo dobrze dopasowana"
+LOT-20260829-228836054F   Koszt partii 1,79 EUR
+Obrobka na cieplo: TARA GUM - Stabilizer
+VERDICT: PASS
+
+--- Vegan --------------------------------------------------------------------
+QA Vegan Kokos -12, v2, 7 lines, 1000 g, -12 C
+Reopen -> Przelicz reported "Dane produktow w tej wersji sa nieaktualne
+(REFINED COCONUT OIL)" and offered "Utworz nowa wersje z aktualnymi danymi
+produktow" -> NEAREST consent "Najblizszy poprawny wynik: 9/10, Slodycz: cel
+nieosiagniety" -> Zastosuj zmiany -> Wroc i zapisz -> ZAPISZ -> Produkcja ready
+Weighing 7/7, Wynik koncowy "Wyjatkowo dobrze dopasowana"
+LOT-20260829-834993C734   Koszt partii "Brak pelnych danych"
+Obrobka na cieplo: REFINED COCONUT OIL, TARA GUM
+VERDICT: PASS
+
+--- Protein ------------------------------------------------------------------
+QA Protein Kakao -12, v2, 8 lines, 1000 g, -12 C
+Reopen -> "Dane produktow w tej wersji sa nieaktualne (PROTEIN GEL WPC)" ->
+"Utworz nowa wersje..." -> "Receptura juz spelnia wybrany profil" -> ZAPISZ
+enabled -> Produkcja ready
+Weighing 8/8, Wynik koncowy "Wyjatkowo dobrze dopasowana"
+LOT-20260829-92AACEA842   Koszt partii "Brak pelnych danych"
+VERDICT: PASS
+
+--- Sorbet -------------------------------------------------------------------
+QA Sorbet Truskawka -12 and QA Sorbet Truskawka -13, both v1, 6 lines, 1000 g
+Direction target (0,0) - no change requested.
+
+  Produkcja : "WYMAGA RECEPTURY WYKONAWCZEJ / Najpierw przelicz recepture /
+               Produkcja korzysta wylacznie ze zweryfikowanej receptury
+               wykonawczej w pelnych gramach."
+  Przelicz  : "To najblizszy osiagalny wynik dla wybranego kierunku. Nie
+               znalezlismy bezpiecznej korekty, ktora poprawia ten cel bez
+               naruszenia twardych ograniczen. Parametry kierunku: NPAC,
+               slodycz (POD). Receptura nie zostala zmieniona."
+  ZAPISZ    : disabled - nothing changed, so there is nothing to save.
+  Produkcja : still refuses.
+
+VERDICT: BLOCKED - closed loop, recorded as PC-06. Reproduced at BOTH
+temperatures, so it is not the -12 specificity of PC-01.
