@@ -24,6 +24,12 @@ export default defineConfig({
       ...configDefaults.exclude,
       'src/**/*.campaign.test.{ts,tsx}',
       'src/**/*.crown-campaign.test.{ts,tsx}',
+      // Same rule, same reason: the acceptance harness signs into the staging
+      // QA account and resolves real ProductBehavior authority over the
+      // network for ~1300 cells. It belongs to `npm run acceptance:matrix`
+      // (vitest.acceptance.config.ts), never to `npm test` — a default suite
+      // that needs a reachable environment is not a default suite.
+      'src/**/*.acceptance.test.{ts,tsx}',
     ],
     // Full formulation/Protein proofs are CPU-bound and OCR fixtures load
     // shared language assets. Run files serially so `npm test` exercises the
