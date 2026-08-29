@@ -231,8 +231,12 @@ export function ShopPage() {
           <b className="block text-[14px] font-bold text-[var(--g-ink)]">
             Future commerce — nieaktywne.
           </b>
+          {/* The approved note names the payment provider. This repository has
+              a hard boundary contract (`studioBoundary.test.ts`) forbidding that
+              literal anywhere in the UI layer, and the contract wins: the same
+              statement is made without naming the provider. */}
           <p className="mt-1">
-            Brak Stripe, checkout, płatności, cart per se — ta strona jest konceptem produktowym.
+            Brak checkoutu, płatności i koszyka — ta strona jest konceptem produktowym.
           </p>
         </CommerceLock>
       </section>
