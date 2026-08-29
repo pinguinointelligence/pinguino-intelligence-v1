@@ -70,8 +70,25 @@ jobs:
   verify:
     name: Typecheck, lint, tests, build
     runs-on: ubuntu-latest
+    # Two accepted contracts describe the environment they were accepted in,
+    # and a default runner does not provide it. Neither is a code defect and
+    # neither test is touched — the RUNNER is corrected to observe them:
+    #
+    #   * `gellattiStabilizerAuthority` reads a historical git object
+    #     (`git show 7edd90ea:…/mapper_basement.csv`), which a shallow
+    #     checkout does not contain — hence `fetch-depth: 0` below.
+    #   * `myRecipesVersionSelector` and `historicalVersionNotice` assert the
+    #     LOCAL calendar day of an immutable timestamp; their own comments say
+    #     so („v1: 22.08 UTC = 23.08 local"). A UTC runner renders the previous
+    #     day — hence the explicit TZ below.
+    env:
+      TZ: Europe/Madrid
     steps:
       - uses: actions/checkout@v4
+        with:
+          # A contract that verifies an accepted historical artefact needs the
+          # history it verifies against.
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -81,3 +98,23 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+
+  # The solver time contracts are REAL contracts, not slow tests: they assert
+  # that a recipe vector resolves inside 5000 ms. Sharing a runner with the
+  # rest of a 10 000-test suite makes them measure contention rather than the
+  # solver, so they run alone, with the SAME assertion and the same 5000 ms
+  # budget. The threshold is owner-locked and is not raised here.
+  solver-contracts:
+    name: Solver time contracts (isolated)
+    runs-on: ubuntu-latest
+    env:
+      TZ: Europe/Madrid
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: recipeVectorProximity — no competing workload
+        run: npx vitest run src/features/constraint-studio/recipeVectorProximity.test.ts --reporter=verbose
