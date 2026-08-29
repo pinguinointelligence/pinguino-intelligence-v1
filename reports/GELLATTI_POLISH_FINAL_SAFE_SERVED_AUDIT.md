@@ -102,7 +102,7 @@ No data was mutated — navigation and text extraction only.
 | `/labels` — account profile + real batch labels, market chip, print preflight | PASS after fix | `Świat / Uniwersalna` live; **raw enum `NOT_READY` was rendering** → fixed with a display map |
 | `/pro` — Studio, ingredient rows, Monitor score, Direction axes, settings, cost | PASS | fully Polish; remaining non-Polish is canonical Mapper data (below) |
 | `/production` — current batch, history, labels tabs | PASS | fully Polish |
-| `/products` — catalog table, detail card, fact rows | PASS after fix | `Status kanoniczny` live; **raw `General` (canonicalFamily) was rendering** → fixed with a display alias |
+| `/products` — catalog table, detail card, fact rows | PASS after fix | `Status kanoniczny` live; **generic English `General` was rendering** → fixed with a brand-placeholder-aware display alias (now `Owoce`) |
 | `/recipes`, `/community`, `/top100`, `/account` (authenticated) | PASS | fully Polish |
 
 Two raw contract values were caught **only** by this authenticated served pass —
@@ -114,9 +114,13 @@ were fixed in the display layer with the contract untouched:
    (`Niegotowe do druku` / `Gotowe — etykieta uniwersalna` /
    `Gotowe — profil prawny rynku`). `labelRepository` still gates on the raw
    `'NOT_READY'`.
-2. `GlobalCatalogSearchPanel` rendered the database value `canonicalFamily`
-   (`General`). Now `canonicalFamilyLabelPl()` in `catalogDisplayAliases.ts`,
-   an alias table with a byte-exact fallback for unmapped values.
+2. `GlobalCatalogSearchPanel` rendered a generic English qualifier (`General`)
+   under canonical Gellatti base products. The value comes from the BRAND
+   column, where canonical rows carry a placeholder rather than a trade name.
+   Now `catalogQualifierPl()` in `catalogDisplayAliases.ts`: a real commercial
+   brand wins and stays byte-exact (`Mlekovita`, `HARIBO`, `La Chocolatera`,
+   `Ravifruit`), a placeholder falls through to the localized family, then the
+   localized category. Served re-check: the BANANA card now reads **Owoce**.
 
 ### Dynamic catalog data seen served (policy-covered, not leaks)
 

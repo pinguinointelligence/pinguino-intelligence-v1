@@ -19,9 +19,11 @@ term is an owner decision, recorded here first.
 | Visual authority | the owner-approved Gellatti V2.1 design |
 | Implementation branch | `claude/language-pl-final-safe` |
 | Base at start | `625507e5` → rebased onto `b1eeb345` (owner-locked regression protection) |
-| Implementation commits | `48b32491` (Polish baseline + locale foundation), `<second commit>` (served fixes: print-readiness + catalog family display maps) |
-| Staging deployment | `dpl_2hPVwESNa9AjAeF39NcxwownBa6E` (state READY) |
-| Immutable URL | https://pinguino-staging-ivycscjya-pinguinointelligence-7784s-projects.vercel.app |
+| Implementation commits | `48b32491` Polish baseline + locale foundation · `a82ac60e` served fixes (print-readiness, catalog family) + lock docs · `053a1cc2` catalog brand-placeholder qualifier |
+| Final staging SHA | `053a1cc2` |
+| Staging deployment | `dpl_FG91vPx8pVKFDJHbdaL2GvzGvqT8` (state READY) |
+| Immutable URL | https://pinguino-staging-qvwyrmbt9-pinguinointelligence-7784s-projects.vercel.app |
+| Served bundle | `index-BnEN_nQd.js` |
 | Alias | https://staging.pinguinoai.com |
 | `origin/main` | UNTOUCHED |
 | Customer Production / Production Supabase | UNTOUCHED |
@@ -56,7 +58,7 @@ contract value, falls back to that value).
 |---|---|---|
 | `src/features/optimization/branchWorkflowLabels.ts` | IF9/IF10 spine codes (`rescue_same_target_batch`, `weigh_actual_batch_g`, `stop_and_buy_missing_product`, …) | routers/previews/tests still emit and match the raw codes |
 | `src/features/master-label/labelPresentation.ts` → `printReadinessLabelPl` | `NOT_READY` / `PRINT_READY_UNIVERSAL` / `PRINT_READY_REGULATORY` | `labelRepository` still gates on `'NOT_READY'` |
-| `src/features/global-catalog/catalogDisplayAliases.ts` → `canonicalFamilyLabelPl` | generic canonical family/category values (`General` → `Ogólne`, …) | stored catalog value unchanged; unmapped values returned exactly |
+| `src/features/global-catalog/catalogDisplayAliases.ts` → `canonicalFamilyLabelPl`, `catalogQualifierPl` | generic canonical family/category values (`fruit` → `Owoce`, …) and the generic BRAND placeholders (`General`, `Generic`, `N/A`, …) | stored catalog value unchanged; a real trade name always wins and is byte-exact; unmapped values returned exactly |
 
 Every map falls back to the raw value, so a new contract code renders
 unlocalised rather than blank.
