@@ -1,13 +1,55 @@
 name: CI
 
+# `staging` is the deployment branch. Until 2026-08-29 this workflow ran only
+# for `main`, which has been frozen since 2026-07-23 — so 270 consecutive
+# commits reached staging (and the live staging deployment) with no typecheck,
+# no lint, no tests and no build. That is the permissive condition behind every
+# regression the provenance audit found. staging is now gated like main.
 on:
   push:
-    branches: [main]
+    branches: [main, staging]
   pull_request:
-    branches: [main]
+    branches: [main, staging]
 
 jobs:
+  # Fast, always-required gate. Ordered cheapest-first so a broken contract is
+  # reported in seconds rather than after the full suite.
+  contracts:
+    name: Owner-locked contracts + protected paths
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The guards diff against the base branch, so they need real history.
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+
+      # No stray conflict markers or whitespace damage — cheap, catches a
+      # botched conflict resolution before anything else runs.
+      - name: Whitespace and conflict-marker check
+        run: git diff --check "$(git merge-base origin/${{ github.base_ref || 'staging' }} HEAD)" HEAD
+
+      # An implementation task must not be able to edit an accepted contract and
+      # declare success.
+      - name: Owner-locked contract guard
+        run: node scripts/guardOwnerLockedContracts.mjs --base "origin/${{ github.base_ref || 'staging' }}"
+
+      # A design/language/cleanup task must produce ZERO semantic drift on a
+      # protected functional path. Commit names are not trusted; the diff is
+      # classified.
+      - name: Protected functional path diff gate
+        run: node scripts/guardProtectedPaths.mjs --base "origin/${{ github.base_ref || 'staging' }}"
+
+      # The accepted behaviour itself.
+      - name: Owner-locked regression contracts
+        run: npm run test:contracts
+
   verify:
+    name: Typecheck, lint, tests, build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

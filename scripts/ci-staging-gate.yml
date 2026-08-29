@@ -1,20 +1,21 @@
-# PREPARED REPLACEMENT FOR .github/workflows/ci.yml — NOT YET ACTIVE.
+# ACTIVATED. This file is the SOURCE the live gate was installed from; the
+# running workflow is `.github/workflows/ci.yml` and the two are identical
+# below this header.
 #
-# This is the change that makes the owner-locked protection MANDATORY rather
-# than advisory. It could not be pushed by the agent: GitHub rejects a push
+# It could not be installed when it was first written: GitHub rejects a push
 # that creates or updates a workflow file unless the token carries the
-# `workflow` scope, and neither the OAuth app token nor the gh CLI token has it:
+# `workflow` scope, and neither the OAuth app token nor the gh CLI token had it:
 #
 #   ! [remote rejected] -> staging (refusing to allow an OAuth App to create or
 #     update workflow `.github/workflows/ci.yml` without `workflow` scope)
 #
-# TO ACTIVATE (owner, with a `workflow`-scoped token):
-#   cp scripts/ci-staging-gate.yml .github/workflows/ci.yml
-#   # delete this comment header, then commit and push to staging
-#   # finally: require the "Owner-locked contracts + protected paths" check
-#   #          in GitHub branch protection for `staging`
+# The owner granted the scope on 2026-08-29 and the gate is now live for
+# `staging` as well as `main`.
 #
-# Until both steps are done, a red gate is visible but does not block a push.
+# REMAINING OWNER STEP — the gate reports but does not yet BLOCK:
+#   require the "Owner-locked contracts + protected paths" check in GitHub
+#   branch protection for `staging`. Until that is set, a red gate is visible
+#   but a push still succeeds.
 
 name: CI
 
