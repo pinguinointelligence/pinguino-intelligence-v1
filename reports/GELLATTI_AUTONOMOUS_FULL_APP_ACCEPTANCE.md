@@ -171,6 +171,7 @@ kcal/100 g, while the final product mass reacts (1000 g → 1050 g).
 | PRO recipe | "QA Gelato Wanilia -11" saved, v1, score 10 |
 | Production | Completed — 6/6 ingredients weighed, 1000 g, **LOT-20260829-228836054F**, cost 1.79 € |
 | EU Label | EU profile resolved; name, LOT, real mass, ingredients, allergens and nutrition all `GOTOWE`; blocked only on the four missing saturated-fat figures (blocker 2) |
+| Production, other profiles | **Not driven per profile.** The formulation pipeline for Sorbet, Vegan and Protein is verified 326 cells each by the harness (starter → Direction → Preview → Apply → Save → reopen). The Production *weighing* workflow was exercised once, on Gelato; the EU label is blocked for every profile by the same saturated-fat gap, so a per-profile label PDF was unreachable either way. The blocker was the workbench profile `<select>`: it would not accept a programmatic or keyboard change in the automation harness, and I chose to record that rather than spend the run on browser choreography |
 | Community | Creator `@marysialody` created inline; recipe published **with an image**; card visible with attribution |
 | Ranking | Top 100 ranks it **#1** — one eligible recipe still yields a truthful board |
 | Favourites | 2 products starred, persisted across reload, "Ulubione" filter returns exactly those two |
@@ -189,6 +190,11 @@ This is **not** a full pass of the brief. Delivered in full: the exhaustive
 formulation matrix (Phase A), the partner lane (I), franchise (J), the shop and
 admin commerce (G/H), the Recipes/Community navigation repair (C1), favourites
 (C2), Community publishing with an image (C), the global inventory (E) and the
-mobile pass (K). Production (B) is verified for Gelato and blocked at the label
-PDF for all four profiles by a data gap. Scanner (D) could not be exercised at
-all — the intake needs an image file that was not on disk.
+mobile pass (K). Production (B) is verified end-to-end for Gelato — weighing,
+TARA, confirmations, LOT and cost — and blocked at the label PDF for all four
+profiles by a data gap; the Sorbet/Vegan/Protein *weighing* workflow was not
+driven separately. Scanner (D) could not be exercised at all — the intake needs
+an image file that was not on disk.
+
+Nothing in this report is claimed as verified unless it was actually run. Where
+a step was skipped, the reason is stated instead of the result.
