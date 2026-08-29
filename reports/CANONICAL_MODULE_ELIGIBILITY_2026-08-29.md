@@ -269,3 +269,74 @@ Engine science, solver bands, Main/Multi-Main, Main/Crown 1 g, Machine System,
 Professional 1000 g, Direction fallback, Rescue ranking, Production Rescue,
 Scanner/TEXTIMPORT, Label calculations, visual design, Polish copy, auth.
 `origin/main` and the production Supabase project were not touched.
+
+## 14. Focused test results (rebased tree, commit `fa4b03cc`)
+
+```
+npx vitest run src/features/product-intelligence/canonicalModuleEligibility.test.ts
+  1 file / 34 tests PASS
+
+npx vitest run src/features/product-intelligence/
+  46 files / 655 tests PASS, 19 skipped
+
+npx vitest run src/features/ingredient-builder src/features/global-catalog src/features/formulation
+  86 files / 906 tests PASS
+
+npx vitest run src/features/constraint-studio src/services src/stores \
+              src/features/production-workspace src/features/product-intelligence
+  213 files / 2310 PASS, 19 skipped, 1 FAIL
+
+npx vitest run --maxWorkers=1 src/features/constraint-studio/starterPackDirectionRescue.test.ts
+  1 file / 8 tests PASS (396 s)
+
+npx vitest run --maxWorkers=1 src/features/constraint-studio/constraintStudioStore.test.ts
+  1 file / 30 tests PASS
+
+npx vitest run src/features/constraint-studio/recipeVectorProximity.test.ts
+  1 file / 23 tests PASS
+
+npm run typecheck   PASS
+npm run lint        0 errors (4 pre-existing react-refresh warnings)
+npm run build       PASS
+git diff --check    clean
+```
+
+### The one failure, explained
+
+`starterPackDirectionRescue.test.ts > runs the exact owner Hardness -2 fixture
+through the real bounded Engine search` hit its own **600 000 ms** timeout in the
+combined run. Its diagnostic line shows single candidate searches taking
+89–163 s each. `uptime` reported load average **11–12** throughout: two other
+worktrees on this Mac (`pinguino-gellatti-design-1to1`,
+`pinguino-intelligence-v1-gellatti-v2-1-staging-deploy`) plus a
+`/private/tmp/staging-baseline` checkout were running vitest concurrently.
+
+Run alone at `--maxWorkers=1` the same file is **8/8 PASS**. The same happened to
+`recipeVectorProximity.test.ts` (3 then 2 different tests timing out at 5000 ms,
+23/23 PASS alone) and `constraintStudioStore.test.ts` (1 timeout, 30/30 PASS
+alone) — different tests each run, which is the signature of CPU starvation, not
+a regression. This change adds no runtime code to any Engine or solver path.
+
+## 15. Deployment
+
+```
+starting staging SHA   f08a920f  (rebased onto 616f65e6 mid-flight)
+fix commit SHA         fa4b03cc
+final staging SHA      fa4b03cc
+deployment ID          dpl_AN2BaA2AUjAmShv1FkU4xdvJpRkk   READY
+immutable URL          https://pinguino-staging-88foxwhlt-pinguinointelligence-7784s-projects.vercel.app
+alias                  https://staging.pinguinoai.com
+served bundle          assets/index-Lx0bIM8i.js
+staging DB migration   supabase_migrations.schema_migrations 20260829070507
+origin/main            4dfb097d  UNCHANGED
+production Supabase    riwipywgqobrulyzrzad  NOT TOUCHED
+```
+
+## 16. Remaining item
+
+UI click-through on staging (open picker → add BANANA → Recalculate → Save →
+reopen) needs an authenticated session, and this account signs in with email +
+password, which Claude does not type. Everything below the UI is proven on the
+live staging database through the exact RPCs the app calls
+(`resolve_product_behavior_v1`, `search_products_v1`) under an authenticated
+TEST PRO context. The owner's remaining step is the visual confirmation.
