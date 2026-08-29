@@ -803,24 +803,71 @@ const canonicalMachineDefault = (
   return profile ? deriveMachineSetup(profile, productProfile).recommendedBatchGrams : null;
 };
 
+const profileBatchSource = (profile: ProfileSettingsSnapshot): RecipeBatchSource =>
+  profile.batchSource ??
+  (profile.machineKind === 'home'
+    ? profile.machineId?.startsWith('custom-')
+      ? 'CUSTOM_MACHINE_BATCH'
+      : 'MACHINE_DEFAULT'
+    : 'PROFESSIONAL_USER_BATCH');
+
+/** The batch a profile imposes, together with the Base that realizes it. */
+interface ResolvedProfileBatch {
+  items: RecipeItem[];
+  targetBatchGrams: number;
+  batchSource: RecipeBatchSource;
+}
+
+/**
+ * Adopting an ACCOUNT/PRODUCT default batch is a lifecycle change of the
+ * authoritative batch, so it goes through the one atomic resize authority
+ * together with the Base it describes. Writing `target_batch_grams` alone left
+ * the previous recipe's grams in place and still reported the draft as
+ * coherent — the owner P0 `400 / 1000` (and `982 / 950`) state with
+ * `batchResizeConflict: null`.
+ *
+ * When the default cannot coexist with the draft's locks it is NOT adopted:
+ * the recipe keeps its own coherent batch, described as the manual batch it
+ * actually is. An incoherent Partia is never written.
+ */
+const resolveProfileBatch = (
+  profile: ProfileSettingsSnapshot,
+  items: RecipeItem[],
+  previousBatchGrams: number,
+): ResolvedProfileBatch => {
+  const batchSource = profileBatchSource(profile);
+  if (profile.targetBatchGrams === previousBatchGrams) {
+    return { items, targetBatchGrams: previousBatchGrams, batchSource };
+  }
+  const resized = resizeRecipeBatch(items, previousBatchGrams, profile.targetBatchGrams);
+  if (resized.ok) {
+    return { items: resized.items, targetBatchGrams: profile.targetBatchGrams, batchSource };
+  }
+  return {
+    items,
+    targetBatchGrams: previousBatchGrams,
+    batchSource:
+      profile.machineKind !== 'home'
+        ? 'PROFESSIONAL_USER_BATCH'
+        : profile.machineId?.startsWith('custom-')
+          ? 'CUSTOM_MACHINE_BATCH'
+          : 'USER_OVERRIDE',
+  };
+};
+
 const profileFields = (
   profile: ProfileSettingsSnapshot,
   items: RecipeItem[],
   currentCategory: ProductCategory,
+  batch: ResolvedProfileBatch,
 ) => ({
   mode: 'classic' as const,
   formulation_strategy: normalizeFormulationStrategy(profile.formulationStrategy),
   visibleProductType: profile.visibleProductType,
   category: internalCategoryFor(profile.visibleProductType, items, currentCategory),
   target_temperature_c: profile.targetTemperatureC,
-  target_batch_grams: profile.targetBatchGrams,
-  batch_source:
-    profile.batchSource ??
-    (profile.machineKind === 'home'
-      ? profile.machineId?.startsWith('custom-')
-        ? 'CUSTOM_MACHINE_BATCH'
-        : 'MACHINE_DEFAULT'
-      : 'PROFESSIONAL_USER_BATCH'),
+  target_batch_grams: batch.targetBatchGrams,
+  batch_source: batch.batchSource,
   batchResizeConflict: null,
   machine_capacity_grams: profile.machineKind === 'home' ? profile.machineCapacityGrams : null,
   machine_capacity_source: (profile.machineKind === 'home' && profile.machineCapacityGrams !== null
@@ -2160,6 +2207,10 @@ export const useRecipeStore = create<RecipeState>()(
         const compatibleMetadata = matchesInputBase(metadata) ? metadata : null;
         const compatibleDefaults = matchesInputBase(defaults) ? defaults : null;
         const profile = compatibleMetadata ?? compatibleDefaults;
+        // Reopening a saved recipe restores ITS OWN batch and grams untouched
+        // (they were written together at save time). Only a NON-SAVED load may
+        // adopt an account/product default batch, and only atomically.
+        const adoptsAccountBatch = profile !== null && profile === compatibleDefaults;
         const healedItems = input.items.map((item) => {
           const normalized = normalizeRecipeItemIdentity({ ...item });
           return normalized.lock_type === 'grams' && normalized.planned_grams === 0
@@ -2200,11 +2251,22 @@ export const useRecipeStore = create<RecipeState>()(
               (candidate) => candidate.lineId === item.lineId && candidate.reason === item.reason,
             ) === index,
         );
+        const resolvedBatch: ResolvedProfileBatch | null =
+          profile === null
+            ? null
+            : adoptsAccountBatch
+              ? resolveProfileBatch(profile, normalizedItems, input.target_batch_grams)
+              : {
+                  items: normalizedItems,
+                  targetBatchGrams: profile.targetBatchGrams,
+                  batchSource: profileBatchSource(profile),
+                };
+        const loadedItems = resolvedBatch?.items ?? normalizedItems;
         set((state) => ({
           draftRevision: state.draftRevision + 1,
           draftContextSeq: state.draftContextSeq + 1,
-          ...(profile
-            ? profileFields(profile, normalizedItems, input.category)
+          ...(profile && resolvedBatch
+            ? profileFields(profile, loadedItems, input.category, resolvedBatch)
             : {
                 mode: 'classic' as const,
                 category: input.category,
@@ -2246,10 +2308,10 @@ export const useRecipeStore = create<RecipeState>()(
           // bridge), not a deliberate zero — heal it on load so the UI shows
           // the truth. Explicit zeros live in §17 constraints, which are
           // session state and never stored with the recipe input.
-          items: normalizedItems,
+          items: loadedItems,
           baseOrder: orderedBaseItems(
-            normalizedItems,
-            compositionMetadata?.baseOrder ?? normalizedItems.map((item) => item.id),
+            loadedItems,
+            compositionMetadata?.baseOrder ?? loadedItems.map((item) => item.id),
           ).map((item) => item.id),
           toppings: sortedToppings(loadedToppings),
           productBehaviorSnapshots: structuredClone(
@@ -2618,9 +2680,20 @@ export const useRecipeStore = create<RecipeState>()(
             .getState()
             .defaultsFor(productDefaultsKey(base.visibleProductType)) ??
           useRecipeProfileStore.getState().defaultsFor(profileOwnerKey());
+        // Same lifecycle rule as `loadRecipeInput`: an account default batch is
+        // adopted only together with the Base that realizes it.
+        const demoBatch = defaults
+          ? resolveProfileBatch(defaults, base.items, base.target_batch_grams)
+          : null;
         set((state) => ({
           ...base,
-          ...(defaults ? profileFields(defaults, base.items, base.category) : {}),
+          ...(defaults && demoBatch
+            ? {
+                ...profileFields(defaults, demoBatch.items, base.category, demoBatch),
+                items: demoBatch.items,
+                baseOrder: demoBatch.items.map((item) => item.id),
+              }
+            : {}),
           formulation_strategy: 'optimal',
           draftRevision: state.draftRevision + 1,
           draftContextSeq: state.draftContextSeq + 1,
