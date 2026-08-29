@@ -100,7 +100,12 @@ export const studioHoldsUserDraft = (): boolean =>
  */
 export function applyStarterRecipeInputToStudio(payload: RecipeInput): StudioDraftSnapshot {
   const prior = captureStudioDraftSnapshot(useRecipeStore.getState());
-  useRecipeStore.getState().loadRecipeInput(payload);
+  // `batchAuthority: 'payload'` is what makes the documented "exact requested
+  // batch" contract above true in a signed-in account. `batch_size` is a
+  // REQUIRED answer in the assistant flow, so this payload holds the newest and
+  // most specific user intent; without this flag a stored account/product
+  // default would impose its own batch and a 5 kg starter would apply as 1 kg.
+  useRecipeStore.getState().loadRecipeInput(payload, { batchAuthority: 'payload' });
   return prior;
 }
 
