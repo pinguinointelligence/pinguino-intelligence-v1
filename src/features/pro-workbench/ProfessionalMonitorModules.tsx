@@ -154,7 +154,7 @@ export function MonitorRangeScale({
 function MetricDetail({ metric }: { metric: ProfessionalMonitorMetric }) {
   return (
     <div
-      className="monitor-detail-row monitor-detail-grid grid gap-3 border-t border-ink/7 py-2 first:border-0"
+      className="monitor-detail-row monitor-detail-grid grid gap-2 border-t border-ink/7 py-2 first:border-0"
       data-testid={`monitor-metric-${metric.id}`}
       data-raw-metric={metric.rawMetric}
       data-evaluation={metric.reading?.state ?? 'none'}
@@ -271,7 +271,7 @@ export function ProfessionalMonitorModules({
                     : [...current, module.id],
                 )
               }
-              className="monitor-module-row monitor-summary-grid pro-focus-ring grid w-full items-center gap-3 px-3 py-2 text-left disabled:cursor-default"
+              className="monitor-module-row monitor-summary-grid pro-focus-ring grid w-full items-center gap-2 px-3 py-2 text-left disabled:cursor-default"
             >
               {/* The approved pale circular container from the reference sheet:
                   a premium indicator, never a dashboard button. */}

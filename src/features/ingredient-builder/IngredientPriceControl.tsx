@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import type { EffectiveIngredientCost } from '@/features/pro-core/costContracts';
+import { currencyMark } from '@/features/pro-core/currencyMark';
 import { parseCustomerPriceText } from './customerPriceInput';
 import { HoverPreview } from '@/components/ui/HoverPreview';
 import { cn } from '@/lib/cn';
@@ -21,12 +22,12 @@ const money = (value: number): string =>
 /** Presentation only: `pricePerKg` is already the shared resolved authority. */
 const priceTooltipCopy = (cost: EffectiveIngredientCost): string | null => {
   if (cost.pricePerKg === null) return null;
-  const active = `${money(cost.pricePerKg)} ${cost.currency}/kg`;
+  const active = `${money(cost.pricePerKg)} ${currencyMark(cost.currency)}/kg`;
   if (cost.source !== 'customer_override') return `Cena bazowa: ${active}`;
   const own = `Moja cena: ${active}`;
   return cost.mapperPricePerKg === null
     ? own
-    : `${own} · Bazowa: ${money(cost.mapperPricePerKg)} ${cost.currency}/kg`;
+    : `${own} · Bazowa: ${money(cost.mapperPricePerKg)} ${currencyMark(cost.currency)}/kg`;
 };
 
 export function IngredientPriceCell({ view }: { view: IngredientPriceView }) {
@@ -34,7 +35,7 @@ export function IngredientPriceCell({ view }: { view: IngredientPriceView }) {
   const own = cost.source === 'customer_override';
   const tooltipCopy = priceTooltipCopy(cost);
   const activePriceCopy =
-    cost.pricePerKg === null ? '—' : `${money(cost.pricePerKg)} ${cost.currency}/kg`;
+    cost.pricePerKg === null ? '—' : `${money(cost.pricePerKg)} ${currencyMark(cost.currency)}/kg`;
   return (
     <div
       className="min-w-0 text-right leading-tight"
@@ -45,15 +46,37 @@ export function IngredientPriceCell({ view }: { view: IngredientPriceView }) {
           reach into the ••• action. The former „Moja" badge is gone (owner,
           2026-08-24): it broke the shape of the block and the owner does not
           need to read the word on every row. A custom price is now marked by a
-          quiet dot that explains itself on hover. */}
-      <span className="flex items-center justify-end gap-1 font-mono font-semibold tabular-nums text-ink">
+          quiet dot that explains itself on hover.
+
+          GELLATTI V2.1 (approved preview): the UNIT price leads in the quiet
+          tone and the LINE cost sits under it in ink — the reading order the
+          owner approved is „what this product costs" then „what this row costs".
+          Order and tone only: both numbers, their sources and their tooltips are
+          unchanged. */}
+      {!own && tooltipCopy ? (
+        <HoverPreview
+          text={tooltipCopy}
+          align="end"
+          maxWidthPx={224}
+          className="block truncate font-mono text-[11px] font-semibold tabular-nums text-[var(--g-text-price)]"
+        >
+          <span aria-label={tooltipCopy}>{activePriceCopy}</span>
+        </HoverPreview>
+      ) : (
+        <span className="block truncate font-mono text-[11px] font-semibold tabular-nums text-[var(--g-text-price)]">
+          {activePriceCopy}
+        </span>
+      )}
+      <span className="flex items-center justify-end gap-1 font-mono font-semibold tabular-nums text-[var(--g-ink)]">
         {/* „Koszt niepełny" is a STATUS, not a number: it is the one label wider
             than the reserved money column, so it takes the secondary size
             instead of clipping mid-word or stealing the name's width. */}
         <span
           className={cn('whitespace-nowrap', lineCost === null ? 'text-[10px]' : 'text-[11px]')}
         >
-          {lineCost === null ? 'Koszt niepełny' : `${money(lineCost)} ${cost.currency}`}
+          {lineCost === null
+            ? 'Koszt niepełny'
+            : `${money(lineCost)} ${currencyMark(cost.currency)}`}
         </span>
         {own && tooltipCopy ? (
           // The base price used to hide in a native `title`. It now travels in
@@ -77,18 +100,6 @@ export function IngredientPriceCell({ view }: { view: IngredientPriceView }) {
           </HoverPreview>
         ) : null}
       </span>
-      {!own && tooltipCopy ? (
-        <HoverPreview
-          text={tooltipCopy}
-          align="end"
-          maxWidthPx={224}
-          className="block truncate text-[10px] text-stone-600"
-        >
-          <span aria-label={tooltipCopy}>{activePriceCopy}</span>
-        </HoverPreview>
-      ) : (
-        <span className="block truncate text-[10px] text-stone-600">{activePriceCopy}</span>
-      )}
     </div>
   );
 }
@@ -211,7 +222,7 @@ export function CustomerPriceEditor({
                   className="h-full min-w-0 flex-1 border-0 bg-transparent px-2 text-right font-mono text-xs leading-none tabular-nums text-ink focus:outline-none"
                 />
                 <span className="shrink-0 border-l border-ink/[0.08] px-2 font-mono text-[10px] text-stone-500">
-                  {view.cost.currency}
+                  {currencyMark(view.cost.currency)}
                 </span>
               </span>
             </label>
@@ -247,7 +258,9 @@ export function CustomerPriceEditor({
             className="truncate font-mono text-[9px] leading-none tabular-nums text-stone-500"
             data-testid="article-panel-base-price"
           >
-            {base !== null ? `Bazowa: ${money(base)} ${view.cost.currency}/kg` : 'Bazowa: —'}
+            {base !== null
+              ? `Bazowa: ${money(base)} ${currencyMark(view.cost.currency)}/kg`
+              : 'Bazowa: —'}
           </p>
         </div>
       </div>
@@ -271,9 +284,9 @@ export function CustomerPriceEditor({
         </p>
         <p className="shrink-0 font-mono text-[9px] leading-none tabular-nums text-stone-500">
           {own && base !== null
-            ? `Bazowa: ${money(base)} ${view.cost.currency}/kg`
+            ? `Bazowa: ${money(base)} ${currencyMark(view.cost.currency)}/kg`
             : activePrice !== null
-              ? `${money(activePrice)} ${view.cost.currency}/kg`
+              ? `${money(activePrice)} ${currencyMark(view.cost.currency)}/kg`
               : '—'}
         </p>
       </div>
@@ -291,7 +304,9 @@ export function CustomerPriceEditor({
               }}
               className="h-11 w-24 rounded-lg border border-ink/15 bg-white px-3 text-right font-mono text-xs leading-none tabular-nums text-ink focus:border-ink/40 focus:outline-none"
             />
-            <span className="shrink-0 font-mono text-xs text-stone-500">{view.cost.currency}</span>
+            <span className="shrink-0 font-mono text-xs text-stone-500">
+              {currencyMark(view.cost.currency)}
+            </span>
           </span>
         </label>
       </div>

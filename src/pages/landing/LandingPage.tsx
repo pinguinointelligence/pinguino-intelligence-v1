@@ -208,8 +208,11 @@ export function LandingPage() {
           „Stwórz recepturę” is gone: it duplicated the hero's primary CTA in
           the same viewport (§3) — the hamburger carries navigation instead. */}
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-5 py-6 sm:px-8">
-        <Wordmark />
-        <CustomerMenu showBrand={false} />
+        {/* Owner override (V2.1 §6): hamburger LEFT, wordmark immediately after it. */}
+        <div className="flex min-w-0 items-center gap-3">
+          <CustomerMenu showBrand={false} />
+          <Wordmark />
+        </div>
       </header>
 
       {/* Hero (§6.1) — headline left, Monitor preview right / below on mobile. */}

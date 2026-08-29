@@ -40,15 +40,15 @@ describe('customer price input', () => {
 
   it('renders effective price, line contribution and a QUIET custom-price marker', () => {
     const html = renderToStaticMarkup(<IngredientPriceCell view={view()} />);
-    expect(html).toContain('3,00 EUR/kg');
-    expect(html).toContain('0,24 EUR');
+    expect(html).toContain('3,00 €/kg');
+    expect(html).toContain('0,24 €');
     // Owner 2026-08-24: the „Moja" badge is gone — it broke the shape of the
     // price block and had to be re-read on every row. A custom price is now a
     // small dot that explains itself on hover.
     expect(html).not.toContain('>Moja<');
     expect(html).toContain('customer-price-indicator');
     expect(html).toContain('data-price-source="customer_override"');
-    expect(html).toContain('Moja cena: 3,00 EUR/kg · Bazowa: 1,20 EUR/kg');
+    expect(html).toContain('Moja cena: 3,00 €/kg · Bazowa: 1,20 €/kg');
     expect(html).not.toContain('wprowadzona przez Ciebie');
     expect(html).not.toContain('Cena własna —');
     expect(html).not.toContain('W PRZYGOTOWANIU');
@@ -72,9 +72,9 @@ describe('customer price input', () => {
       />,
     );
     expect(html).toContain('data-price-source="reference"');
-    expect(html).toContain('1,20 EUR/kg');
-    expect(html).toContain('0,10 EUR');
-    expect(html).toContain('Cena bazowa: 1,20 EUR/kg');
+    expect(html).toContain('1,20 €/kg');
+    expect(html).toContain('0,10 €');
+    expect(html).toContain('Cena bazowa: 1,20 €/kg');
     expect(html).not.toContain('customer-price-indicator');
     expect(html).not.toContain('Moja cena:');
   });
@@ -95,7 +95,7 @@ describe('customer price input', () => {
       />,
     );
     expect(html).toContain('Koszt niepełny');
-    expect(html).not.toContain('0,00 EUR');
+    expect(html).not.toContain('0,00 €');
   });
 
   it('keeps the editor compact with save and true reset actions', () => {
@@ -103,7 +103,7 @@ describe('customer price input', () => {
     expect(html).toContain('data-testid="customer-price-editor"');
     expect(html).toContain('data-active-price-source="customer_override"');
     expect(html).toContain('Moja cena');
-    expect(html).toContain('Bazowa: 1,20 EUR/kg');
+    expect(html).toContain('Bazowa: 1,20 €/kg');
     expect(html).toContain('Cena za kg');
     expect(html).toContain('Zapisz');
     expect(html).toContain('Przywróć cenę bazową');
@@ -127,7 +127,7 @@ describe('customer price input', () => {
     );
     expect(html).toContain('data-active-price-source="mapper_reference"');
     expect(html).toContain('Cena bazowa');
-    expect(html).toContain('1,20 EUR/kg');
+    expect(html).toContain('1,20 €/kg');
     expect(html).not.toContain('Przywróć cenę bazową');
   });
 
@@ -150,7 +150,7 @@ describe('customer price input', () => {
       />,
     );
     expect(html).toContain('Moja cena');
-    expect(html).toContain('Bazowa: 1,20 EUR/kg');
+    expect(html).toContain('Bazowa: 1,20 €/kg');
     expect(html).toContain('data-layout="compact-inline"');
     expect(html).toContain('class="sr-only">Cena za kg</span>');
     expect(html).toContain('h-9');

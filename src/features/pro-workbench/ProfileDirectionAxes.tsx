@@ -27,11 +27,12 @@ function RegulatorRow({
 }) {
   return (
     <article
-      className="rounded-[16px] border border-ink/8 bg-white px-3 py-2 shadow-pro-e0"
+      /* GELLATTI V2.1: one 66 px bordered band per axis — identity on the left,
+         the five detents ON the rail in the middle, the far label on the right. */
+      className="rounded-[9px] border border-[var(--g-line)] bg-transparent px-2.5 py-2.5 xl:min-h-[66px]"
       data-testid={`profile-regulator-${id}`}
       data-regulator-state={disabled ? 'unavailable' : 'interactive'}
     >
-      <h4 className="text-xs font-semibold text-ink">{label}</h4>
       <div
         role="radiogroup"
         aria-label={label}
@@ -52,15 +53,20 @@ function RegulatorRow({
             onSet(2);
           }
         }}
-        className="mt-1 grid grid-cols-2 items-center gap-x-3 gap-y-1 min-[520px]:grid-cols-[minmax(68px,1fr)_180px_minmax(68px,1fr)] min-[520px]:gap-2"
+        className="grid grid-cols-2 items-center gap-x-3 gap-y-1 min-[520px]:grid-cols-[minmax(86px,1fr)_minmax(0,272px)_minmax(86px,1fr)] min-[520px]:gap-2.5"
       >
-        <span className="row-start-2 justify-self-start text-[10px] leading-tight text-stone-600 min-[520px]:row-auto">
-          {leftLabel}
+        <span className="row-start-2 min-w-0 justify-self-start min-[520px]:row-auto">
+          <b className="block text-[11px] leading-[17px] font-bold text-[var(--g-ink)]">{label}</b>
+          <small className="block text-[9px] leading-[13px] text-[var(--g-text-muted)]">
+            {leftLabel}
+          </small>
         </span>
-        <span className="relative col-span-2 col-start-1 row-start-1 grid grid-cols-5 justify-items-center min-[520px]:col-span-1 min-[520px]:col-start-2">
+        <span className="relative col-span-2 col-start-1 row-start-1 grid h-7 grid-cols-5 items-center justify-items-center min-[520px]:col-span-1 min-[520px]:col-start-2">
+          {/* The rail is a real rail: the five detents sit ON it, they are not
+              five detached circles (owner §12). */}
           <span
             aria-hidden
-            className="absolute top-1/2 right-[18px] left-[18px] h-px -translate-y-1/2 bg-ink/16"
+            className="absolute top-1/2 right-[14px] left-[14px] h-[2px] -translate-y-1/2 bg-[var(--g-rail-track)]"
           />
           {DETENTS.map((detent) => (
             <button
@@ -72,17 +78,17 @@ function RegulatorRow({
               disabled={disabled}
               onClick={() => onSet(detent)}
               className={cn(
-                'pro-focus-ring relative z-10 grid size-9 place-items-center rounded-full border font-mono text-xs font-semibold tabular-nums transition-colors disabled:opacity-35',
+                'pro-focus-ring relative z-10 grid size-7 place-items-center rounded-full border text-[9px] font-bold tabular-nums transition-colors disabled:opacity-35',
                 position === detent
-                  ? 'border-[#f58a07] bg-[#f58a07] text-white shadow-pro-e1'
-                  : 'border-ink/12 bg-white text-ink hover:border-[#f58a07]/60',
+                  ? 'border-[#f58a07] bg-[#f58a07] text-white'
+                  : 'border-[var(--g-line)] bg-white text-[var(--g-ink)] hover:border-[#f58a07]/60',
               )}
             >
               {detent > 0 ? `+${detent}` : detent}
             </button>
           ))}
         </span>
-        <span className="col-start-2 row-start-2 justify-self-end text-right text-[10px] leading-tight text-stone-600 min-[520px]:col-start-3 min-[520px]:row-auto">
+        <span className="col-start-2 row-start-2 justify-self-end text-right text-[9px] leading-[13px] text-[var(--g-text-muted)] min-[520px]:col-start-3 min-[520px]:row-auto">
           {rightLabel}
         </span>
       </div>
@@ -114,12 +120,14 @@ export function ProfileDirectionAxes({
   return (
     <section
       className={cn(
-        'rounded-[18px] border border-ink/10 bg-white px-3 py-2.5 shadow-pro-e1',
+        'rounded-[10px] border border-[var(--g-line)] bg-white px-4 py-4 shadow-none',
         className,
       )}
       data-testid="profile-direction-axes"
     >
-      <h3 className="mb-2 text-sm font-semibold text-ink">Dostosuj recepturę</h3>
+      <h3 className="mb-3 text-[18px] leading-[20px] font-bold text-[var(--g-ink)]">
+        Dostosuj recepturę
+      </h3>
       <div className="space-y-2">
         {(
           [

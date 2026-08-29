@@ -61,12 +61,20 @@ const SERVING_OPTIONS: readonly { id: string; label: string }[] = [
   { id: 'temp_minus_13', label: servingCopy.minus13 },
 ];
 
+/* GELLATTI V2.1 — the approved Settings field: a 46 px white cell with one
+   hairline, a 9 px quiet label and an 11 px bold value, its disclosure mark on
+   the right edge. Mobile keeps a 44 px touch target. */
 const compactSelect =
-  'h-11 min-w-0 rounded-[10px] border border-ink/12 bg-white px-3 text-[13px] text-ink shadow-pro-e0 transition-colors hover:border-ink/35 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#f58a07] lg:h-[46px] lg:text-xs';
-const compactFinalSettingsCard = 'profile-settings-final-card min-w-0 rounded-[12px] border p-1.5';
-const compactFinalSettingsLabel = 'px-1 text-[10px] font-medium leading-tight text-stone-600';
-const compactSettingsHelper = 'px-1 text-[10px] leading-tight text-stone-600';
-const compactFinalSettingsControl = 'h-11 lg:h-[46px]';
+  'h-11 min-w-0 appearance-none rounded-[9px] border border-[var(--g-line)] bg-white px-[11px] text-[13px] text-[var(--g-ink)] shadow-none transition-colors hover:border-ink/35 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#f58a07] lg:h-[46px] lg:text-[11px] lg:font-bold';
+const compactFinalSettingsCard =
+  'profile-settings-final-card relative min-w-0 rounded-[9px] border px-[11px] py-[6px]';
+const compactFinalSettingsLabel =
+  'block text-[9px] leading-[10px] font-normal text-[var(--g-text-field-label)]';
+/* The two Settings helper lines are not part of the approved 46 px field, so
+   they travel in the control's accessible description instead of taking a
+   third row (owner §13). No information is removed. */
+const compactSettingsHelper = 'sr-only';
+const compactFinalSettingsControl = 'h-11 lg:h-[29px]';
 
 function LabeledSelect<T extends string>({
   label,
@@ -93,14 +101,16 @@ function LabeledSelect<T extends string>({
     >
       <span
         className={cn(
-          'font-medium text-stone-600',
-          stacked ? 'pointer-events-none absolute left-3 top-1.5 z-10 text-[10px]' : 'text-xs',
+          'text-[var(--g-text-field-label)]',
+          stacked
+            ? 'pointer-events-none absolute top-[11px] left-[11px] z-10 text-[9px] leading-[10px] font-normal'
+            : 'text-xs font-medium text-stone-600',
         )}
       >
         {label}
       </span>
       <select
-        className={cn(compactSelect, 'w-full', stacked && 'h-11 pt-4 lg:h-[46px]')}
+        className={cn(compactSelect, 'w-full', stacked && 'h-11 pt-[16px] pr-[30px] lg:h-[46px]')}
         value={value}
         aria-label={label}
         data-testid={testid}
@@ -112,6 +122,14 @@ function LabeledSelect<T extends string>({
           </option>
         ))}
       </select>
+      {stacked ? (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute top-1/2 right-[11px] z-10 -translate-y-1/2 text-[14px] leading-none text-[var(--g-ink)]"
+        >
+          ⌄
+        </span>
+      ) : null}
     </label>
   );
 }
@@ -283,14 +301,16 @@ export function WorkbenchSettingsLine({
   };
   return (
     <section
+      /* GELLATTI V2.1: ONE ivory Settings panel. The approved preview does not
+         tint the whole card while settings are unconfirmed — the black confirm
+         control carries that state on its own. A real CONFLICT still colours
+         the card, because that is an error, not a pending step. */
       className={cn(
-        'rounded-[14px] border shadow-pro-e0 transition-colors',
-        compact ? 'p-2.5 lg:p-2' : 'p-3',
+        'rounded-[10px] border shadow-none transition-colors',
+        compact ? 'p-2.5 lg:p-4' : 'p-3',
         hardConflict
           ? 'border-status-error/45 bg-status-error/[0.035]'
-          : confirmed
-            ? 'border-ink/10 bg-white'
-            : 'border-[#f58a07]/35 bg-[#fffaf3]',
+          : 'border-[var(--g-line)] bg-[var(--g-ivory)]',
         className,
       )}
       data-testid="workbench-settings-line"
@@ -301,7 +321,9 @@ export function WorkbenchSettingsLine({
     >
       <div className="mb-2 flex min-h-6 items-center">
         <div className="flex min-w-0 items-center gap-2">
-          <h3 className="text-sm font-semibold text-ink">Ustawienia</h3>
+          <h3 className="text-sm font-semibold text-ink lg:text-[18px] lg:leading-[20px] lg:font-bold">
+            Ustawienia
+          </h3>
           <span
             role="status"
             aria-live="polite"
@@ -357,8 +379,9 @@ export function WorkbenchSettingsLine({
                 }
               }}
               data-testid="profile-settings-confirm"
+              /* The approved control is GRAPHITE, not orange (owner §13). */
               className={cn(
-                'pro-focus-ring w-full rounded-[10px] border border-[#f58a07] bg-[#f58a07] px-3 text-xs font-semibold text-white shadow-pro-e0 disabled:cursor-not-allowed disabled:opacity-35',
+                'pro-focus-ring w-full rounded-[8px] border border-[var(--g-graphite)] bg-[var(--g-graphite)] px-[10px] text-xs font-semibold whitespace-nowrap text-white shadow-none disabled:cursor-not-allowed disabled:opacity-35 lg:text-[10px]',
                 compact ? 'h-11 lg:h-[46px]' : 'min-h-11',
               )}
             >
@@ -366,8 +389,10 @@ export function WorkbenchSettingsLine({
             </button>
           ) : (
             <span
+              /* Same slot, same 46 px geometry, approved palette — the confirmed
+                 state is a quiet acknowledgement, never a second arrangement. */
               className={cn(
-                'inline-flex w-full items-center justify-center rounded-[10px] border border-status-ideal/25 bg-pro-sage/60 px-2 text-xs font-semibold text-status-ideal',
+                'inline-flex w-full items-center justify-center rounded-[8px] border border-[var(--g-line)] bg-white px-2 text-xs font-semibold whitespace-nowrap text-[var(--g-text-secondary)] lg:text-[10px]',
                 compact ? 'h-11 lg:h-[46px]' : 'min-h-11',
               )}
               data-testid="profile-settings-confirmed"
@@ -452,15 +477,23 @@ export function WorkbenchSettingsLine({
         </div>
 
         {compact ? (
-          <div className="profile-settings-final-row order-5 col-span-full">
+          /* GELLATTI V2.1 §13 — Batch and Tryb are the THIRD ROW of the one
+             Settings grid, two ordinary 46 px fields side by side. The former
+             three-row sub-grid (label / control / helper) is gone: it made the
+             last row taller than the two above it. */
+          <>
             <div
               className={cn(
                 compactFinalSettingsCard,
-                batchMismatch ? 'border-gold/35 bg-education-ivory/55' : 'border-ink/10 bg-white',
+                'order-5 lg:flex lg:h-[46px] lg:flex-col lg:justify-center lg:py-0',
+                batchMismatch
+                  ? 'border-gold/35 bg-education-ivory/55'
+                  : 'border-[var(--g-line)] bg-white',
               )}
               data-testid="profile-batch-combined"
               data-settings-cell="batch"
               data-settings-final-card="batch"
+              title="Baza lodowa bez toppingu"
             >
               <span className={compactFinalSettingsLabel} data-settings-label="batch">
                 Partia
@@ -472,15 +505,14 @@ export function WorkbenchSettingsLine({
                 )}
                 data-settings-control="batch"
               >
-                <strong className="font-mono text-xs tabular-nums text-ink">
+                <strong className="font-mono text-xs font-bold tabular-nums text-[var(--g-ink)] lg:text-[14px]">
                   {actualBatchG.toLocaleString('pl-PL', { maximumFractionDigits: 1 })}
                 </strong>
                 <span className="text-[10px] text-stone-400">/</span>
                 <DeferredNumberInput
                   className={cn(
                     compactSelect,
-                    compactFinalSettingsControl,
-                    'w-20 text-right font-mono tabular-nums',
+                    'h-7 w-20 rounded-[6px] border-transparent bg-transparent px-1 text-right font-mono font-bold tabular-nums lg:h-[29px] lg:text-[14px]',
                   )}
                   value={
                     Number.isFinite(batchDisplay)
@@ -491,10 +523,16 @@ export function WorkbenchSettingsLine({
                   decimals={unit === 'g' ? 0 : 3}
                   data-testid="workbench-batch"
                   aria-label="Docelowa partia"
+                  title="Baza lodowa bez toppingu"
                   onCommit={(next) => changeBatch(toGrams(next, unit, store.category))}
                 />
+                {/* The unit stays a real control (g / kg / l is genuine
+                    functionality) but wears the preview's plain unit mark. */}
                 <select
-                  className={cn(compactSelect, compactFinalSettingsControl, 'w-16')}
+                  className={cn(
+                    compactSelect,
+                    'h-7 w-auto border-transparent bg-transparent px-0 text-[var(--g-ink)] lg:h-[29px] lg:text-[11px]',
+                  )}
                   value={unit}
                   aria-label="Jednostka partii"
                   onChange={(event) => setUnit(event.currentTarget.value as BatchUnit)}
@@ -510,20 +548,27 @@ export function WorkbenchSettingsLine({
             </div>
 
             <div
-              className={cn(compactFinalSettingsCard, 'border-ink/8 bg-stone-50/70')}
+              className="profile-settings-final-card relative order-6 min-w-0"
               data-settings-cell="strategy"
               data-settings-final-card="strategy"
+              title={STRATEGY_COPY[store.formulation_strategy].description}
             >
               <label
-                className={compactFinalSettingsLabel}
+                className={cn(compactFinalSettingsLabel, 'sr-only')}
                 htmlFor="workbench-strategy"
                 data-settings-label="strategy"
               >
                 Tryb
               </label>
+              <span
+                aria-hidden
+                className="pointer-events-none absolute top-[11px] left-[11px] z-10 text-[9px] leading-[10px] text-[var(--g-text-field-label)]"
+              >
+                Tryb
+              </span>
               <select
                 id="workbench-strategy"
-                className={cn(compactSelect, compactFinalSettingsControl, 'w-full')}
+                className={cn(compactSelect, 'h-11 w-full pt-[16px] pr-[30px] lg:h-[46px]')}
                 value={store.formulation_strategy}
                 aria-label="Tryb"
                 data-testid="workbench-strategy"
@@ -538,11 +583,17 @@ export function WorkbenchSettingsLine({
                   </option>
                 ))}
               </select>
+              <span
+                aria-hidden
+                className="pointer-events-none absolute top-1/2 right-[11px] z-10 -translate-y-1/2 text-[14px] leading-none text-[var(--g-ink)]"
+              >
+                ⌄
+              </span>
               <p className={compactSettingsHelper} data-settings-helper="strategy">
                 {STRATEGY_COPY[store.formulation_strategy].description}
               </p>
             </div>
-          </div>
+          </>
         ) : (
           <>
             <div

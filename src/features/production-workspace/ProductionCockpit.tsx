@@ -279,40 +279,65 @@ export function ProductionCockpit({
   }
   if (!session || !progress) {
     return (
-      <div className="space-y-3 p-3 text-ink">
+      <div className="space-y-3 p-3 text-ink xl:space-y-2.5 xl:p-0">
         <HeatInformationCard production={production} />
         <MachineOperationCard production={production} />
         <DegassingCard production={production} />
+        {/* GELLATTI V2.1 §17: the ingredient progress is the FIRST card of the
+            Production column — the batch card sits under it, not above it. The
+            READY state shows `0 / N` and no invented predicted Score. */}
         <section
-          className="rounded-[18px] border border-ink/10 bg-white p-5 shadow-pro-e0"
+          className="rounded-[10px] border border-[var(--g-line)] bg-white px-4 py-3 shadow-none"
+          data-testid="production-ready-progress"
+        >
+          <div className="flex min-h-[58px] flex-col justify-center">
+            <strong className="block font-mono text-[15px] font-bold tabular-nums text-[var(--g-ink)]">
+              0 / {production.plannedInput.items.length} składników
+            </strong>
+            <div
+              className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-[var(--g-progress-track)]"
+              role="progressbar"
+              aria-label="Postęp ważenia składników"
+              aria-valuemin={0}
+              aria-valuemax={production.plannedInput.items.length}
+              aria-valuenow={0}
+            >
+              <span className="block h-full w-0 rounded-full bg-[var(--g-progress-fill)]" />
+            </div>
+          </div>
+        </section>
+        <section
+          className="rounded-[10px] border border-[var(--g-line)] bg-white p-4 shadow-none"
           data-testid="production-start-ready"
         >
-          <p className="text-[10px] font-semibold tracking-[0.09em] text-[#8a5b23] uppercase">
+          <p className="text-[9px] font-bold tracking-[0.09em] text-[#8a5b23] uppercase">
             Wszystko gotowe do rozpoczęcia partii
           </p>
-          <div className="mt-2 flex items-end justify-between gap-4">
+          <div className="mt-2 flex items-end justify-between gap-3">
             <div className="min-w-0">
-              <h2 className="truncate text-base font-semibold">{production.source.recipeName}</h2>
+              <h2 className="truncate text-base font-bold lg:text-[16px]">
+                {production.source.recipeName}
+              </h2>
               <p className="mt-1 text-xs text-stone-600">
                 {production.source.recipeVersionNumber
                   ? `Wersja ${production.source.recipeVersionNumber}`
                   : 'Zweryfikowany bieżący szkic'}
               </p>
             </div>
-            <strong className="shrink-0 font-mono text-lg tabular-nums">
+            <strong className="shrink-0 font-mono text-lg font-bold tabular-nums lg:text-[20px]">
               {formatPhysicalMassG(production.plannedInput.target_batch_grams)} g
             </strong>
           </div>
-          <dl className="mt-4 grid grid-cols-2 gap-3 border-y border-ink/8 py-3 text-xs">
-            <div>
-              <dt className="text-stone-500">Składniki bazy</dt>
-              <dd className="mt-1 font-mono font-semibold tabular-nums text-ink">
+          <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
+            <div className="rounded-[9px] bg-[var(--g-ivory)] px-2.5 py-2">
+              <dt className="text-[9px] text-[var(--g-text-field-label)]">Składniki bazy</dt>
+              <dd className="mt-1 font-mono text-[12px] font-bold tabular-nums text-[var(--g-ink)]">
                 {production.plannedInput.items.length}
               </dd>
             </div>
-            <div>
-              <dt className="text-stone-500">Źródło</dt>
-              <dd className="mt-1 font-semibold text-ink">
+            <div className="rounded-[9px] bg-[var(--g-ivory)] px-2.5 py-2">
+              <dt className="text-[9px] text-[var(--g-text-field-label)]">Źródło</dt>
+              <dd className="mt-1 text-[12px] font-bold text-[var(--g-ink)]">
                 {production.source.recipeVersionId ? 'Zapisana wersja' : 'Bieżąca receptura'}
               </dd>
             </div>
@@ -321,7 +346,7 @@ export function ProductionCockpit({
             type="button"
             onClick={() => void production.startNewSession()}
             disabled={production.sessionStarting || !production.practicalReady}
-            className="pro-focus-ring mt-4 min-h-11 w-full rounded-[12px] bg-ink px-4 py-2 text-xs font-semibold text-white shadow-pro-sm disabled:cursor-wait disabled:opacity-60"
+            className="pro-focus-ring mt-3 min-h-11 w-full rounded-[9px] bg-[var(--g-graphite)] px-4 py-2 text-xs font-semibold text-white shadow-none disabled:cursor-wait disabled:opacity-45 lg:min-h-[42px] lg:text-[11px]"
             data-testid="start-production-session"
           >
             {production.sessionStarting
@@ -338,24 +363,6 @@ export function ProductionCockpit({
               {production.sessionStartError}
             </p>
           ) : null}
-        </section>
-        <section
-          className="rounded-[14px] border border-ink/10 bg-white px-4 py-3 shadow-pro-e0"
-          data-testid="production-ready-progress"
-        >
-          <strong className="block font-mono text-sm font-semibold tabular-nums text-ink">
-            0 / {production.plannedInput.items.length} składników
-          </strong>
-          <div
-            className="mt-1.5 h-1.5 max-w-48 overflow-hidden rounded-full bg-ink/8"
-            role="progressbar"
-            aria-label="Postęp ważenia składników"
-            aria-valuemin={0}
-            aria-valuemax={production.plannedInput.items.length}
-            aria-valuenow={0}
-          >
-            <span className="block h-full w-0 rounded-full bg-status-ideal" />
-          </div>
         </section>
       </div>
     );
@@ -578,7 +585,7 @@ export function ProductionCockpit({
     progress.totalCount > 0 ? (progress.confirmedCount / progress.totalCount) * 100 : 0;
 
   return (
-    <div className="pro-scroll-safe space-y-3 p-3 text-ink" data-testid="production-cockpit">
+    <div className="pro-scroll-safe space-y-3 p-3 text-ink xl:space-y-2.5 xl:p-0" data-testid="production-cockpit">
       <MachineOperationCard production={production} />
       {production.persistenceError ? (
         <p
@@ -590,16 +597,19 @@ export function ProductionCockpit({
         </p>
       ) : null}
       <section
-        className="rounded-[14px] border border-ink/10 bg-white p-3 shadow-pro-e0"
+        className="rounded-[10px] border border-[var(--g-line)] bg-white p-4 shadow-none"
         data-testid="production-batch-state"
       >
-        <div className="flex items-start justify-between gap-4 border-b border-ink/8 pb-3">
+        {/* GELLATTI V2.1 §17: one progress header, minimum 58 px, with a
+            FULL-WIDTH rail and exactly ONE predicted Score — rendered only when
+            the runtime genuinely supplies it. */}
+        <div className="flex min-h-[58px] items-center justify-between gap-4 border-b border-ink/8 pb-3">
           <div className="min-w-0 flex-1" data-testid="production-workspace-progress">
-            <strong className="block font-mono text-sm font-semibold tabular-nums text-ink">
+            <strong className="block font-mono text-[15px] font-bold tabular-nums text-[var(--g-ink)]">
               {progress.confirmedCount} / {progress.totalCount} składników
             </strong>
             <div
-              className="mt-1.5 h-1.5 max-w-48 overflow-hidden rounded-full bg-ink/8"
+              className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-[var(--g-progress-track)]"
               role="progressbar"
               aria-label="Postęp ważenia składników"
               aria-valuemin={0}
@@ -607,7 +617,7 @@ export function ProductionCockpit({
               aria-valuenow={progress.confirmedCount}
             >
               <span
-                className="block h-full rounded-full bg-status-ideal transition-[width]"
+                className="block h-full rounded-full bg-[var(--g-progress-fill)] transition-[width]"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>

@@ -22,8 +22,15 @@ const FOCUSABLE =
 const iconButton =
   'grid h-11 w-11 shrink-0 place-items-center rounded-full text-ink transition-colors hover:bg-ink/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40';
 
-/** The one shallow, plan-aware destination drawer used by every shell. */
-export function AppNavDrawer({ side = 'left' }: { side?: 'left' | 'right' }) {
+/**
+ * The one shallow, plan-aware destination drawer used by every shell.
+ *
+ * OWNER OVERRIDE (Gellatti V2.1 §6): there is no side variant. The trigger is
+ * the FIRST element of the header everywhere and the panel always enters from
+ * the LEFT. The former right-side variant is deleted rather than defaulted, so
+ * no surface can re-introduce a mirrored drawer.
+ */
+export function AppNavDrawer() {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -131,15 +138,14 @@ export function AppNavDrawer({ side = 'left' }: { side?: 'left' | 'right' }) {
             data-testid="app-nav-drawer"
             data-audience={audience}
             /* The drawer opens on the SAME SIDE as the hamburger that opens it
-               (owner, 2026-08-24). The trigger is the first element of the
-               header on every screen, so the panel enters from the LEFT: a
-               control that opens a panel away from itself reads as two
-               unrelated things. */
+               (owner, 2026-08-24; re-affirmed as a hard override in V2.1 §6).
+               The trigger is the first element of the header on every screen,
+               so the panel enters from the LEFT — on the workbench, on every
+               global destination and on mobile alike. A control that opens a
+               panel away from itself reads as two unrelated things. */
             className={cn(
-              'absolute top-0 flex h-full w-[88vw] max-w-[360px] flex-col bg-paper text-ink',
-              side === 'left'
-                ? 'left-0 border-r border-ink/10 motion-safe:animate-[appDrawerIn_240ms_cubic-bezier(0.32,0.72,0,1)]'
-                : 'right-0 border-l border-ink/10 motion-safe:animate-[appDrawerInRight_240ms_cubic-bezier(0.32,0.72,0,1)]',
+              'absolute top-0 left-0 flex h-full w-[88vw] max-w-[360px] flex-col border-r border-ink/10 bg-paper text-ink',
+              'motion-safe:animate-[appDrawerIn_240ms_cubic-bezier(0.32,0.72,0,1)]',
             )}
           >
             <div
@@ -274,7 +280,6 @@ export function AppNavDrawer({ side = 'left' }: { side?: 'left' | 'right' }) {
 
           <style>{`
             @keyframes appDrawerIn { from { transform: translateX(-100%); } to { transform: translateX(0); } }
-            @keyframes appDrawerInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
             @keyframes appFadeIn { from { opacity: 0; } to { opacity: 1; } }
           `}</style>
         </div>

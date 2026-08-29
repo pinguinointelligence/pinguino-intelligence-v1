@@ -19,15 +19,16 @@ describe('responsive Pro workbench structure', () => {
     expect(page).toContain('max-w-[1776px]');
     expect(page).toContain('data-testid="pro-plan-indicator"');
     expect(page).toContain('xl:w-[calc(100%-var(--pro-page-gutter))]');
-    expect(page).toContain('xl:col-start-2 xl:row-start-1 xl:block xl:w-full');
+    // V2.1 §8: the strip is anchored by the ONE shared display-column recipe.
+    expect(page).toContain('DESKTOP_TAB_STRIP');
     expect(geometry).toContain('xl:w-[calc(100%-var(--pro-page-gutter))]');
     expect(geometry).toContain('xl:px-0');
     expect(geometry).toContain("APP_SHELL_MAX_WIDTH_CLASS = 'max-w-[1776px]'");
     expect(shell).toContain('APP_HEADER_ROW');
-    expect(shell).toContain('xl:grid-cols-[minmax(0,1.62fr)_minmax(400px,1fr)]');
-    expect(shell).toContain('xl:gap-[var(--pro-workbench-gap)]');
-    expect(surface).toContain('xl:grid-cols-[minmax(0,1.62fr)_minmax(400px,1fr)]');
-    expect(surface).toContain('xl:gap-[var(--pro-workbench-gap)]');
+    // V2.1 §8: ONE shared split, reused by the header row and the body, whose
+    // display track is an explicit length so the tab strip cannot drift.
+    expect(shell).toContain('DESKTOP_WORKBENCH_COLUMNS');
+    expect(surface).toContain('DESKTOP_WORKBENCH_COLUMNS');
     expect(surface).toContain('xl:grid xl:h-full');
     expect(surface).not.toContain('pro-workbench-body-max');
     expect(surface).not.toContain('xl:flex-none');

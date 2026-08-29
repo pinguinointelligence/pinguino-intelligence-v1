@@ -220,7 +220,9 @@ export function MachineProfileSection({
     <section aria-label={copy.profile.title}>
       <h2 className={cn(type.title, color.textPrimary)}>{copy.profile.title}</h2>
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
+      {/* GELLATTI V2.1 §5: the approved machine page is a 3:2 split — the
+          machine card beside its summary — inside the 1280 px canvas. */}
+      <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.66fr)]">
         <div className={cn('p-4 sm:p-5', cardShell)}>
           {/* This surface stores the PROFILE DEFAULT machine (owner correction). */}
           <p className={cn(type.caption, color.textMuted)}>{copy.profile.defaultLabel}</p>
@@ -346,83 +348,83 @@ export function MachineProfileSection({
               machine and must never inherit the catalog-only 95% proposal. */}
           {!view.isCustomMachine ? (
             <div className="mt-5 border-t border-ink/10 pt-4">
-            {!containerOpen ? (
-              <TouchButton variant="quiet" onClick={() => setContainerOpen(true)}>
-                {copy.settings.useCustomContainer}
-              </TouchButton>
-            ) : (
-              <div>
-                <p className={cn(type.bodyStrong, color.textPrimary)}>
-                  {copy.settings.customContainerTitle}
-                </p>
-                <p className={cn('mt-1 max-w-prose', type.caption, color.textMuted)}>
-                  {copy.settings.customContainerLead}
-                </p>
-                <div className="mt-3 flex flex-col gap-3">
-                  <TextField
-                    label={copy.settings.customCapacityFieldLabel}
-                    inputMode="decimal"
-                    value={capacityText}
-                    onChange={(e) => {
-                      setCapacityText(e.target.value);
-                      setCapacityError(null);
-                      setStatus('idle');
-                      // Offer the 0.95 proposal for the declared container; the
-                      // user may overwrite it (never forced).
-                      const parsed = parseGramsInput(e.target.value);
-                      if (
-                        parsed !== null &&
-                        parsed !== 'invalid' &&
-                        containerBatchText.trim() === ''
-                      ) {
-                        const suggested = suggestRecommendedGramsForContainer(parsed);
-                        if (suggested !== null) setContainerBatchText(String(suggested));
+              {!containerOpen ? (
+                <TouchButton variant="quiet" onClick={() => setContainerOpen(true)}>
+                  {copy.settings.useCustomContainer}
+                </TouchButton>
+              ) : (
+                <div>
+                  <p className={cn(type.bodyStrong, color.textPrimary)}>
+                    {copy.settings.customContainerTitle}
+                  </p>
+                  <p className={cn('mt-1 max-w-prose', type.caption, color.textMuted)}>
+                    {copy.settings.customContainerLead}
+                  </p>
+                  <div className="mt-3 flex flex-col gap-3">
+                    <TextField
+                      label={copy.settings.customCapacityFieldLabel}
+                      inputMode="decimal"
+                      value={capacityText}
+                      onChange={(e) => {
+                        setCapacityText(e.target.value);
+                        setCapacityError(null);
+                        setStatus('idle');
+                        // Offer the 0.95 proposal for the declared container; the
+                        // user may overwrite it (never forced).
+                        const parsed = parseGramsInput(e.target.value);
+                        if (
+                          parsed !== null &&
+                          parsed !== 'invalid' &&
+                          containerBatchText.trim() === ''
+                        ) {
+                          const suggested = suggestRecommendedGramsForContainer(parsed);
+                          if (suggested !== null) setContainerBatchText(String(suggested));
+                        }
+                      }}
+                      trailing={
+                        <span className={cn(type.secondary, color.textMuted)}>
+                          {copy.settings.unitMl}
+                        </span>
                       }
-                    }}
-                    trailing={
-                      <span className={cn(type.secondary, color.textMuted)}>
-                        {copy.settings.unitMl}
-                      </span>
-                    }
-                    {...(capacityError !== null ? { error: capacityError } : {})}
-                  />
-                  <TextField
-                    label={copy.settings.customRecommendedFieldLabel}
-                    hint={copy.settings.customRecommendedHint}
-                    inputMode="decimal"
-                    value={containerBatchText}
-                    onChange={(e) => {
-                      setContainerBatchText(e.target.value);
-                      setStatus('idle');
-                    }}
-                    trailing={
-                      <span className={cn(type.secondary, color.textMuted)}>
-                        {copy.batch.recommendedUnit}
-                      </span>
-                    }
-                  />
+                      {...(capacityError !== null ? { error: capacityError } : {})}
+                    />
+                    <TextField
+                      label={copy.settings.customRecommendedFieldLabel}
+                      hint={copy.settings.customRecommendedHint}
+                      inputMode="decimal"
+                      value={containerBatchText}
+                      onChange={(e) => {
+                        setContainerBatchText(e.target.value);
+                        setStatus('idle');
+                      }}
+                      trailing={
+                        <span className={cn(type.secondary, color.textMuted)}>
+                          {copy.batch.recommendedUnit}
+                        </span>
+                      }
+                    />
+                  </div>
+                  <div className="mt-3">
+                    <TouchButton
+                      variant="quiet"
+                      onClick={() => {
+                        setContainerOpen(false);
+                        setCapacityText('');
+                        setContainerBatchText('');
+                        setCapacityError(null);
+                        setStatus('idle');
+                      }}
+                    >
+                      {copy.settings.customContainerRemove}
+                    </TouchButton>
+                  </div>
                 </div>
-                <div className="mt-3">
-                  <TouchButton
-                    variant="quiet"
-                    onClick={() => {
-                      setContainerOpen(false);
-                      setCapacityText('');
-                      setContainerBatchText('');
-                      setCapacityError(null);
-                      setStatus('idle');
-                    }}
-                  >
-                    {copy.settings.customContainerRemove}
-                  </TouchButton>
-                </div>
-              </div>
-            )}
-            {draftCapacity === 'invalid' && capacityError === null ? (
-              <p className={cn('mt-2', type.caption, color.statusError)}>
-                {copy.settings.invalidCapacity}
-              </p>
-            ) : null}
+              )}
+              {draftCapacity === 'invalid' && capacityError === null ? (
+                <p className={cn('mt-2', type.caption, color.statusError)}>
+                  {copy.settings.invalidCapacity}
+                </p>
+              ) : null}
             </div>
           ) : null}
 

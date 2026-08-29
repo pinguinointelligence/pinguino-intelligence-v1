@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { copy } from '@/copy/en';
+import { DESKTOP_WORKBENCH_COLUMNS } from '@/features/shell/desktopTabAnchorContract';
 import { useAccess } from '@/access/useAccess';
 import { useSessionStore } from '@/stores/sessionStore';
 import { useRecipeStore } from '@/stores/recipeStore';
@@ -414,7 +415,11 @@ export function StudioEngineSurface({
           <ProductionWorkspaceHeader production={production} />
         ) : null}
         {/* Main split — editor (60–65 %) | LIVE Monitor PI (35–40 %). */}
-        <div className="min-h-0 flex-1 xl:grid xl:h-full xl:grid-cols-[minmax(0,1.62fr)_minmax(400px,1fr)] xl:gap-[var(--pro-workbench-gap)] xl:pt-2 xl:pb-3">
+        <div
+          /* ONE split, shared verbatim with the shell header row, so the module
+             tab strip above the display column cannot drift (owner §8). */
+          className={`min-h-0 flex-1 xl:grid xl:h-full xl:pt-3 xl:pb-3 ${DESKTOP_WORKBENCH_COLUMNS}`}
+        >
           <span
             aria-hidden
             data-testid="workbench-divider-rail"

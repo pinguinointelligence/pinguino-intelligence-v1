@@ -115,9 +115,15 @@ export function WorkbenchModuleTabs({
               bottom
                 ? 'flex min-h-[var(--pro-bottom-nav-height)] flex-col items-center justify-center gap-1 border-t-2 py-1'
                 : 'min-h-12 border-b-2 py-2',
+              // The approved header tab is UNDERLINE ONLY: the preview carries no
+              // filled or boxed active state, so the orange rule on the header
+              // hairline is the single active marker (owner §7/§8).
               active
-                ? 'border-[#f58a07] bg-stone-50/70 text-ink'
-                : 'border-transparent text-stone-600 hover:bg-stone-50 hover:text-ink',
+                ? cn('border-[#f58a07] text-ink', bottom && 'bg-stone-50/70')
+                : cn(
+                    'border-transparent text-stone-600 hover:text-ink',
+                    bottom && 'hover:bg-stone-50',
+                  ),
               attention && 'gellatti-next-action-attention text-attention',
             )}
           >

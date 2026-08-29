@@ -5,6 +5,7 @@ import { cn } from '@/lib/cn';
 import { DialogShell } from '@/components/ui/DialogShell';
 import { HoverPreview } from '@/components/ui/HoverPreview';
 import { DirectNumberControl } from './DirectNumberControl';
+import { productIdentityLines } from './productIdentityLines';
 import { IngredientCategoryIcon } from './IngredientCategoryIcon';
 import { ingredientCategorySymbolFor } from './ingredientCategorySymbols';
 import type { IngredientRowActions, IngredientRowLockView } from './IngredientRow';
@@ -175,7 +176,7 @@ export function MobileIngredientLine({
         className="pro-focus-ring absolute inset-0 z-0 rounded-lg transition-colors active:bg-stone-50"
       />
       <span className="pointer-events-none relative z-10 flex min-w-0 items-center gap-2">
-        <span className="relative grid size-7 shrink-0 place-items-center rounded-full bg-stone-100 text-stone-600">
+        <span className="relative grid size-7 shrink-0 place-items-center rounded-full bg-[var(--g-ivory-deep)] text-stone-600">
           <IngredientCategoryIcon
             symbol={ingredientCategorySymbolFor({ category: item.ingredient.category })}
           />
@@ -188,7 +189,11 @@ export function MobileIngredientLine({
             />
           ) : null}
         </span>
-        <span className="truncate text-[13px] font-semibold text-ink">{item.ingredient.name}</span>
+        {/* The approved mobile line carries the product NAME only — its
+            qualifier belongs to the one detail sheet (owner §19/§20). */}
+        <span className="truncate text-[13px] font-bold text-[var(--g-ink)] uppercase">
+          {productIdentityLines(item.ingredient.name).name}
+        </span>
         {missingAmount ? (
           <MissingAmountHint testId={`row-mobile-dose-missing-hint-${item.id}`} />
         ) : null}
@@ -294,11 +299,24 @@ export function MobileIngredientSheet({
         dataContent
       ) : (
         <div className="flex flex-col" data-ingredient-modal-view="actions">
-          {/* ── Identity — the same compact header language as desktop. ──────── */}
+          {/* ── Identity — the approved sheet header (Gellatti V2.1 §20/§26):
+                 an explicit „← Wróć" that returns to the ingredient list, the
+                 WHOLE catalog name, and the close control. One sheet, one level:
+                 Back and Close both return to the list, which is exactly the
+                 mobile architecture the owner locked. ─────────────────────── */}
           <div className="sticky top-0 z-10 border-b border-ink/[0.08] bg-white px-4 py-3">
             <div className="flex min-w-0 items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-2.5">
-                <span className="grid size-8 shrink-0 place-items-center rounded-[9px] bg-stone-100 text-stone-600">
+              <button
+                type="button"
+                onClick={onClose}
+                className="pro-focus-ring -ml-2 inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-2 text-[11px] font-semibold text-[var(--g-ink)]"
+                data-testid={`ingredient-sheet-back-${item.id}`}
+              >
+                <span aria-hidden>←</span>
+                <span>Wróć</span>
+              </button>
+              <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[var(--g-ivory-deep)] text-stone-600">
                   <IngredientCategoryIcon
                     symbol={ingredientCategorySymbolFor({ category: item.ingredient.category })}
                   />
@@ -308,12 +326,14 @@ export function MobileIngredientSheet({
                   real Mapper names ("CREAM 30% · Mlekovita Cream · Chilled")
                   are longer than a phone line, so this header wraps instead of
                   truncating. The collapsed list row still keeps one line. */}
-                  <h2 className="text-[13px] font-semibold leading-[1.2] break-words text-ink">
+                  <h2 className="text-[13px] leading-[1.2] font-bold break-words text-[var(--g-ink)]">
                     {item.ingredient.name}
                   </h2>
-                  <p className="mt-1 text-[10px] leading-none font-medium text-stone-500">
-                    {categoryLabelPl(item.ingredient.category)}
-                  </p>
+                  {productIdentityLines(item.ingredient.name).qualifier === null ? (
+                    <p className="mt-1 text-[10px] leading-none font-medium text-[var(--g-text-muted)]">
+                      {categoryLabelPl(item.ingredient.category)}
+                    </p>
+                  ) : null}
                 </div>
               </div>
               <button

@@ -51,6 +51,7 @@ import { resolveCostsRepository } from '@/features/pro-core/proCoreCostsRepo';
 import type { ProCorePersona } from '@/features/pro-core/proCoreCapabilities';
 import type { CockpitTab, ProContextTab } from '@/features/pro-workbench/RecipeProfilePanel';
 import type { LabelWorkspaceView } from '@/features/master-label/LabelWorkspace';
+import { DESKTOP_TAB_STRIP } from '@/features/shell/desktopTabAnchorContract';
 import { WorkbenchModuleTabs } from '@/features/pro-workbench/WorkbenchModuleTabs';
 import { ReviewBadge } from '@/features/design-review/ReviewBadge';
 import { OfficialProLogo } from '@/components/shared/OfficialProLogo';
@@ -136,8 +137,10 @@ function ProTopActions({ persona }: { persona: ProCorePersona }) {
         </span>
       ) : null}
       <DevPersonaSwitch persona={persona} />
+      {/* GELLATTI V2.1: the workbench plan mark is the approved GRAPHITE pill —
+          the destination pages carry the quiet white one. */}
       <span
-        className="rounded-md border border-ink/12 bg-white px-1.5 py-1 text-[8px] font-semibold tracking-[0.06em] text-ink"
+        className="inline-flex h-6 items-center rounded-full bg-[var(--g-graphite)] px-2.5 text-[9px] font-bold tracking-[0.08em] text-white"
         data-testid="pro-plan-indicator"
       >
         PRO
@@ -155,7 +158,10 @@ function ProWorkbenchHeaderChrome({
 }) {
   return (
     <div
-      className="hidden min-w-0 xl:col-start-2 xl:row-start-1 xl:block xl:w-full"
+      /* OWNER OVERRIDE §8 — the strip belongs to the RIGHT display column, not
+         to the viewport. `DESKTOP_TAB_STRIP` pins its box to that column, so
+         switching Receptura → Monitor → Produkcja → Etykieta moves it 0 px. */
+      className={`hidden min-w-0 xl:block ${DESKTOP_TAB_STRIP}`}
       data-testid="pro-global-workbench-chrome"
     >
       <WorkbenchModuleTabs

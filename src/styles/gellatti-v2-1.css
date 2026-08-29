@@ -1,0 +1,163 @@
+/* ──────────────────────────────────────────────────────────────────────────
+   GELLATTI V2.1 — APPROVED VISUAL AUTHORITY
+   ──────────────────────────────────────────────────────────────────────────
+   Reproduced 1:1 from the owner-approved interactive preview
+   `gellatti-global-page-preview-gate-20260828-v2-1`. Every number here was
+   MEASURED from that preview at the 1440 × 900 reference viewport, not
+   invented, so a later comparison can be made against the same source.
+
+   This file is PRESENTATION ONLY. It contains no engine, solver, pricing,
+   persistence, permission or navigation value, and it never changes what a
+   control does — only how it looks.
+
+   Two owner overrides sit ON TOP of the preview and win where they disagree:
+     §6  the hamburger is LEFT and the drawer opens from the LEFT everywhere;
+     §8  the module tab strip is anchored to the RIGHT workbench column.
+
+   Mobile is deliberately NOT reshaped here (owner §19/§20): the existing
+   mobile interaction architecture is preserved 1:1 and only inherits the
+   approved surfaces, type and colour. Every desktop geometry rule below is
+   therefore gated behind the `xl` (1280 px) workbench breakpoint.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* ── Workbench shell geometry ───────────────────────────────────────────── */
+.gellatti-pro-workbench {
+  /* The preview's outer gutter is 12 px per side; `--pro-page-gutter` is the
+     TOTAL the shell subtracts, so 24 px produces 12 px left and 12 px right on
+     BOTH the header row and the workbench body — which is exactly what keeps
+     the tab strip and the display column on the same pixels. */
+  --pro-page-gutter: 24px;
+  --pro-workbench-gap: var(--g-split-gap);
+  /* The blanket `.pro-studio-radius-system` corner normaliser resolves through
+     this token, so pointing it at the approved CONTROL radius makes every
+     stepper, field, band and select land on 9 px without a per-element
+     override. Cards (10 px) and compact buttons (8 px) are named below. */
+  --radius-pro-studio: 9px;
+}
+
+@media (min-width: 1280px) {
+  .gellatti-pro-workbench > header {
+    height: var(--g-workbench-header);
+    /* The preview starts the hamburger at x = 32 with a 40 px trigger. */
+    padding-left: 20px;
+    gap: 18px;
+    border-bottom-color: color-mix(in srgb, var(--g-ink) 8%, transparent);
+  }
+
+  .gellatti-pro-workbench > header [data-testid='app-nav-trigger'] {
+    height: 40px;
+    width: 40px;
+  }
+
+  /* The one editor/display split. Both cards carry the preview's 10 px corner
+     and its single hairline; the display column is an explicit length so the
+     tab strip above it cannot drift (see `desktopTabAnchorContract`). */
+  .gellatti-pro-workbench [data-testid='workbench-editor-pane'],
+  .gellatti-pro-workbench [data-testid='pro-profile-panel'] {
+    border-radius: var(--g-card-radius) !important;
+    box-shadow: none !important;
+  }
+
+  .gellatti-pro-workbench [data-testid='workbench-editor-pane'] {
+    border-color: var(--g-line) !important;
+  }
+
+  /* The approved CARD corner. These beat the blanket normaliser on specificity
+     because the workbench scope is an ancestor class, not the same one. */
+  .gellatti-pro-workbench [data-testid='workbench-editor-pane'],
+  .gellatti-pro-workbench [data-testid='pro-profile-panel'],
+  .gellatti-pro-workbench [data-testid='profile-direction-axes'],
+  .gellatti-pro-workbench [data-testid='workbench-settings-line'],
+  .gellatti-pro-workbench [data-testid='profile-nutrition-cost-summary'],
+  .gellatti-pro-workbench [data-testid='profile-learning-entry'],
+  .gellatti-pro-workbench [data-testid='production-ready-progress'],
+  .gellatti-pro-workbench [data-testid='production-start-ready'],
+  .gellatti-pro-workbench [data-testid='production-batch-state'],
+  .gellatti-pro-workbench [data-testid='production-completed'] > section,
+  .gellatti-pro-workbench [data-testid='label-workspace-empty'] {
+    border-radius: var(--g-card-radius) !important;
+  }
+
+  /* The approved COMPACT BUTTON corner. */
+  .gellatti-pro-workbench [data-testid='profile-settings-confirm'],
+  .gellatti-pro-workbench [data-testid='profile-settings-confirmed'] {
+    border-radius: 8px !important;
+  }
+
+  /* ── Module tabs (owner §8) ───────────────────────────────────────────
+     Underline only. The preview has NO filled or boxed active tab: the
+     active module is marked by a 2 px orange rule on the header hairline. */
+  .gellatti-pro-workbench [data-testid='pro-context-tabs'] {
+    border-bottom: 0;
+    height: var(--g-workbench-header);
+  }
+
+  .gellatti-pro-workbench [data-testid='pro-context-tabs'] > button {
+    min-height: var(--g-workbench-header);
+    font-size: 12px;
+    font-weight: 600;
+    background: transparent;
+  }
+
+  .gellatti-pro-workbench [data-testid='pro-context-tabs'] > button[aria-selected='true'] {
+    border-bottom-color: var(--g-orange);
+    color: var(--g-ink);
+  }
+}
+
+/* ── Ingredient row (Recipe + Production editor) ────────────────────────── */
+@media (min-width: 1280px) {
+  .gellatti-pro-workbench [data-gellatti-row='ingredient'] {
+    /* drag | identity | percent | grams | price | menu — the preview's own
+       tracks. The row is a fixed 54 px; the process-attention variant is the
+       only taller row (64 px) because it carries the inline acknowledgement. */
+    grid-template-columns: 22px minmax(0, 1fr) 142px 150px 98px 28px;
+    column-gap: 7px;
+    align-items: center;
+    min-height: var(--g-row-height);
+    padding-left: 12px;
+    padding-right: 10px;
+  }
+
+  .gellatti-pro-workbench [data-gellatti-row='ingredient'][data-process-attention='true'] {
+    min-height: var(--g-row-height-attention);
+    background: var(--g-attention-surface);
+    box-shadow: inset 3px 0 0 var(--g-orange);
+  }
+}
+
+/* ── Monitor metric row ─────────────────────────────────────────────────── */
+@media (min-width: 1280px) {
+  .gellatti-pro-workbench [data-gellatti-monitor='row'] {
+    /* icon | metric | code badge | rail | fixed value | chevron.
+       The value and chevron tracks are FIXED, which is what puts every value
+       on one right edge and every chevron on one axis (owner §16). */
+    grid-template-columns: 30px minmax(0, 1fr) 46px 114px 96px 14px;
+    column-gap: 8px;
+    align-items: center;
+    min-height: var(--g-monitor-row-height);
+  }
+}
+
+/* ── Approved destination pages ─────────────────────────────────────────── */
+/* The preview's destination header is FULL-BLEED (it is the only full-width
+   element on the page) with a 58 px inset at the 1440 px reference, while the
+   page canvas below it is the centred 1280 px measure. */
+.gellatti-destination-shell > header {
+  height: var(--pro-header-height);
+  max-width: none;
+  width: 100%;
+  padding-inline: clamp(1rem, 4.03vw, 58px);
+  border-bottom-color: color-mix(in srgb, var(--g-ink) 8%, transparent);
+}
+
+/* The preview's destination canvas: 1280 px, 12 px corners, one hairline. */
+.gellatti-destination {
+  --radius-pro-studio: 12px;
+}
+
+.gellatti-destination [data-gellatti-panel] {
+  border-radius: 12px;
+  border: 1px solid var(--g-line);
+  background: #fff;
+}

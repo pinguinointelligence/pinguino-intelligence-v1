@@ -9,6 +9,7 @@ import { cn } from '@/lib/cn';
 import { useAuthStore } from '@/stores/authStore';
 import { AppNavDrawer } from './AppNavDrawer';
 import { navigationAudience } from './appNav';
+import { DESKTOP_WORKBENCH_COLUMNS } from './desktopTabAnchorContract';
 import { APP_HEADER_ROW, APP_SHELL_MAX_WIDTH_CLASS } from './shellGeometry';
 
 /**
@@ -18,7 +19,13 @@ import { APP_HEADER_ROW, APP_SHELL_MAX_WIDTH_CLASS } from './shellGeometry';
  * (`/pro/production`) — the owner's visual master. The canonical AppNavDrawer
  * hamburger sits FIRST, immediately left of the PINGÜINO wordmark, in the exact
  * same place on every screen (owner, 2026-08-23: „the shell must not jump").
- * The drawer itself still opens from the RIGHT.
+ *
+ * OWNER OVERRIDE (Gellatti V2.1 §6): the hamburger is on the LEFT and the
+ * drawer opens from the LEFT on EVERY shell — global desktop, global mobile and
+ * the Pro workbench. Any right-side hamburger in the approved preview is
+ * superseded by this correction. `navigationPosition` now selects only the
+ * TRAILING PLAN BADGE placement; the drawer never moves side, because a control
+ * that opens a panel away from itself reads as two unrelated things.
  *
  * An optional `actions` slot holds PAGE-specific controls (e.g. „Zapisz
  * recepturę") — never global navigation. Page content is the children; a page
@@ -74,8 +81,7 @@ export function AppShell({
         className={cn(
           APP_HEADER_ROW,
           maxWidthClass,
-          viewportLock &&
-            'xl:grid xl:grid-cols-[minmax(0,1.62fr)_minmax(400px,1fr)] xl:gap-[var(--pro-workbench-gap)]',
+          viewportLock && `xl:grid ${DESKTOP_WORKBENCH_COLUMNS}`,
         )}
         style={{ paddingTop: 'max(env(safe-area-inset-top), 0.5rem)' }}
       >
@@ -87,7 +93,7 @@ export function AppShell({
             viewportLock && 'xl:col-start-1 xl:row-start-1',
           )}
         >
-          {navigationPosition === 'leading' ? <AppNavDrawer /> : null}
+          <AppNavDrawer />
           <Link
             to={brandDestination}
             aria-label={copy.shell.brand}
@@ -108,18 +114,15 @@ export function AppShell({
           )}
         >
           {!viewportLock ? actions : null}
-          {!viewportLock && navigationPosition === 'trailing' ? (
-            <>
-              {audience === 'pro' || audience === 'home' ? (
-                <span
-                  className="inline-flex h-8 items-center rounded-full bg-ink px-3 text-[11px] font-semibold tracking-[0.08em] text-white"
-                  data-testid="app-shell-plan-badge"
-                >
-                  {audience === 'pro' ? 'PRO' : 'HOME'}
-                </span>
-              ) : null}
-              <AppNavDrawer side="right" />
-            </>
+          {!viewportLock &&
+          navigationPosition === 'trailing' &&
+          (audience === 'pro' || audience === 'home') ? (
+            <span
+              className="inline-flex h-7 items-center rounded-full border border-ink/15 bg-white px-3.5 text-[9px] font-bold tracking-[0.14em] text-ink"
+              data-testid="app-shell-plan-badge"
+            >
+              {audience === 'pro' ? 'PRO' : 'HOME'}
+            </span>
           ) : null}
         </div>
       </header>

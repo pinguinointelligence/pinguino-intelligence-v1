@@ -68,8 +68,10 @@ describe('D2/D4/D5 — compact V2.1 housings, unchanged typography', () => {
   });
 
   it('D3 — the readable type sizes are NOT reduced', () => {
-    // Ingredient name and the numeric value keep 13px.
-    expect(row).toContain('text-[13px] font-semibold text-ink');
+    // V2.1 identity: 12 px bold NAME over a 9 px qualifier, both from the one
+    // canonical label. The numeric control keeps its 13 px value.
+    expect(row).toContain('text-[12px] font-bold leading-[15px] text-[var(--g-ink)] uppercase');
+    expect(row).toContain('text-[9px] leading-[11px] text-[var(--g-text-muted)]');
     expect(control).toContain(
       "compact ? 'text-[13px]' : responsive ? 'text-sm lg:text-[13px]' : 'text-sm'",
     );
@@ -77,10 +79,16 @@ describe('D2/D4/D5 — compact V2.1 housings, unchanged typography', () => {
 });
 
 describe('D6/D9/D10 — protected price column, name gets the rest', () => {
+  // GELLATTI V2.1 (approved preview, measured at 1440 px): SIX tracks —
+  // drag | identity | % | grams | price | menu — on a 7 px gutter inside a
+  // fixed 54 px line. The drag handle owning its own track is what puts the
+  // product icon on the same x on every row.
   it('the grid reserves width for price and action, and flexes the name', () => {
-    for (const track of ['minmax(300px,1fr)_142px_150px_96px_28px'])
+    for (const track of ['22px_minmax(300px,1fr)_142px_150px_98px_28px'])
       expect(row, track).toContain(track);
-    expect(row).toContain('2xl:grid-cols-[minmax(400px,1fr)_142px_150px_96px_28px]');
+    expect(row).toContain('2xl:grid-cols-[22px_minmax(400px,1fr)_142px_150px_98px_28px]');
+    expect(row).toContain('md:gap-x-[7px]');
+    expect(row).toContain('md:min-h-[54px]');
   });
 
   it('every row uses the SAME grid, so columns cannot drift between rows', () => {

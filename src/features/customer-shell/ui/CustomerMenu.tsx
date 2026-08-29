@@ -9,7 +9,12 @@ import { color, type } from './tokens';
  * list (including a separate „Studio" entry) is gone: this component now only lays out the slim
  * in-flow bar and mounts `AppNavDrawer`, which renders the ONE `appNav` config — NAWIGACJA +
  * PINGÜINO PRO (capability-gated) + the KONTO footer — with the same behavior everywhere
- * (right-side drawer, focus trap, Escape, scroll lock, safe areas).
+ * (focus trap, Escape, scroll lock, safe areas).
+ *
+ * OWNER OVERRIDE (Gellatti V2.1 §6): the trigger is the FIRST element of the bar
+ * and the drawer enters from the LEFT, exactly as on the Pro workbench. The bar
+ * therefore lays out leading-aligned instead of pushing the trigger to the
+ * trailing edge.
  */
 interface CustomerMenuProps {
   /**
@@ -22,16 +27,11 @@ interface CustomerMenuProps {
 
 export function CustomerMenu({ showBrand = true }: CustomerMenuProps = {}) {
   return (
-    <div
-      className="flex items-center justify-between"
-      style={{ paddingTop: 'env(safe-area-inset-top)' }}
-    >
+    <div className="flex items-center gap-3" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+      <AppNavDrawer />
       {showBrand ? (
         <span className={cn(type.label, color.textSecondary)}>{copy.menu.brand}</span>
-      ) : (
-        <span aria-hidden />
-      )}
-      <AppNavDrawer />
+      ) : null}
     </div>
   );
 }

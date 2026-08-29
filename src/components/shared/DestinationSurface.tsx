@@ -44,11 +44,19 @@ export function DestinationSurface({
     <div className="pro-studio-radius-system theme-pro-light">
       <AppShell
         navigationPosition="trailing"
+        /* GELLATTI V2.1 §5 — the approved destination lockup: wordmark, then
+           `<page> · Gellatti Workspace` at 11 px, the workspace half in ink.
+           No vertical rule and no uppercase tracking: the preview reads it as
+           one sentence, not as two competing labels. */
         brand={
-          <span className="gellatti-destination-brand flex min-w-0 items-center gap-4">
+          <span className="gellatti-destination-brand flex min-w-0 items-center gap-[18px]">
             <OfficialProLogo />
-            <span className="hidden truncate border-l border-ink/12 pl-4 text-[10px] font-semibold tracking-[0.13em] text-stone-500 uppercase sm:block">
-              {contextLabel ?? eyebrow ?? title}
+            <span className="hidden min-w-0 items-center gap-2 text-[11px] leading-[17px] text-[var(--g-text-secondary)] sm:flex">
+              <span className="truncate">{contextLabel ?? eyebrow ?? title}</span>
+              <span aria-hidden>·</span>
+              <b className="font-bold whitespace-nowrap text-[var(--g-ink)]">
+                {copy.shell.workspace}
+              </b>
             </span>
           </span>
         }

@@ -485,8 +485,9 @@ describe('profile hierarchy and compact preflight', () => {
         const labelPrerequisite = host.querySelector('[data-testid="label-workspace-empty"]');
         expect(labelPrerequisite?.textContent).toContain('Etykieta potrzebuje zakończonej partii');
         expect(labelPrerequisite?.tagName).toBe('SECTION');
-        expect(labelPrerequisite?.className).toContain('rounded-[12px]');
-        expect(labelPrerequisite?.className).toContain('px-3');
+        // V2.1 §18: the approved Label gate is a 10 px lead card.
+        expect(labelPrerequisite?.className).toContain('rounded-[10px]');
+        expect(labelPrerequisite?.className).toContain('px-4');
         expect(labelPrerequisite?.querySelector('h3')).not.toBeNull();
         expect(labelPrerequisite?.textContent).toContain('Otwórz Produkcję');
         expect(host.querySelector('[data-testid="label-consumer-preview"]')).toBeNull();
@@ -1014,7 +1015,7 @@ describe('five-detent direction language', () => {
     expect(read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx')).toContain(
       'recipe.setDirectionTarget(axis, next)',
     );
-    expect(read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx')).toContain('size-9');
+    expect(read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx')).toContain('size-7');
     expect(read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx')).toContain(
       'profileSnapshotFromState(store, directionTargets, directionIntents)',
     );

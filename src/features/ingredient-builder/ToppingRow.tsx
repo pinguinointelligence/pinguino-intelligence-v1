@@ -105,21 +105,23 @@ export function ToppingRow({
 
       <div className="hidden lg:block">
         <div className={compact ? COMPACT_ROW_GRID : ROW_GRID}>
+          {/* Same six-track row as the base list (V2.1): the drag handle owns the
+              leading track so toppings and ingredients share one column axis. */}
+          <span
+            aria-hidden
+            draggable
+            onDragStart={onDragStart}
+            className="inline-grid size-11 shrink-0 cursor-grab select-none place-items-center text-[12px] leading-none text-[var(--g-drag)] active:cursor-grabbing md:size-[22px]"
+            title="Przeciągnij, aby zmienić kolejność"
+          >
+            ⠿
+          </span>
+
           <div className="min-w-0">
-            <span className="flex min-w-0 items-center gap-1.5 2xl:gap-1">
+            <span className="flex min-w-0 items-center gap-2">
               <span
                 aria-hidden
-                draggable
-                onDragStart={onDragStart}
-                className="inline-grid size-11 shrink-0 cursor-grab select-none place-items-center text-base leading-none text-stone-400 active:cursor-grabbing md:size-5 2xl:order-1 2xl:size-4"
-                title="Przeciągnij, aby zmienić kolejność"
-              >
-                ⠿
-              </span>
-              <span aria-hidden className="size-8 shrink-0 2xl:order-10 2xl:size-6" />
-              <span
-                aria-hidden
-                className="grid size-7 shrink-0 place-items-center rounded-full bg-stone-100 text-stone-600 md:size-6 2xl:order-2 2xl:size-6"
+                className="grid size-7 shrink-0 place-items-center rounded-full bg-[var(--g-ivory-deep)] text-stone-600 md:size-7"
               >
                 <IngredientCategoryIcon
                   symbol={ingredientCategorySymbolFor({
@@ -130,15 +132,12 @@ export function ToppingRow({
                 />
               </span>
               <strong
-                className="truncate text-[13px] font-semibold text-ink 2xl:order-3"
+                className="truncate text-[12px] font-bold text-[var(--g-ink)] uppercase"
                 title={item.ingredient.name}
               >
                 {item.ingredient.name}
               </strong>
-              <CarbonationBubbles
-                status={item.ingredient.carbonation_status}
-                className="2xl:order-4"
-              />
+              <CarbonationBubbles status={item.ingredient.carbonation_status} />
             </span>
           </div>
 

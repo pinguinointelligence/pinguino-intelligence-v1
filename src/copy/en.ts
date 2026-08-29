@@ -346,6 +346,8 @@ export const copy = {
   /** Canonical application shell + navigation (one source of truth, Polish). */
   shell: {
     brand: 'GELLATTI',
+    /** The approved destination lockup descriptor (Gellatti V2.1 §5). */
+    workspace: 'Gellatti Workspace',
     openMenu: 'Otwórz menu',
     closeMenu: 'Zamknij menu',
     menuTitle: 'Menu',

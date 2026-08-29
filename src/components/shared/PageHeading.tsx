@@ -36,11 +36,11 @@ export function PageHeading({
             {eyebrow}
           </p>
         ) : null}
-        <h1 className="mt-2 max-w-3xl text-[25px] font-semibold leading-[1.08] tracking-[-0.035em] text-balance text-ink sm:text-[30px]">
+        <h1 className="mt-2 max-w-3xl text-[25px] leading-[1.08] font-[750] tracking-[-0.035em] text-balance text-ink sm:text-[30px]">
           {title}
         </h1>
         {blurb ? (
-          <p className="mt-3 max-w-xl text-sm leading-relaxed text-stone-600">{blurb}</p>
+          <p className="mt-3 max-w-[680px] text-sm leading-relaxed text-stone-600">{blurb}</p>
         ) : null}
       </div>
       {actions ? <div className="flex min-w-0 items-center gap-2">{actions}</div> : null}

@@ -57,25 +57,27 @@
   container-type: inline-size;
 }
 
+/* GELLATTI V2.1 §16 — the approved Monitor row is ONE line:
+   icon | metric | badge | rail | fixed value | chevron.
+   The value and chevron tracks are fixed lengths, which is what puts all seven
+   values on a single right edge and all seven chevrons on a single axis. */
 .monitor-summary-grid {
-  grid-template-columns:
-    2rem minmax(6.75rem, 0.82fr) 3.25rem minmax(7rem, 1.25fr) 6.75rem
-    1.25rem;
+  grid-template-columns: 30px minmax(0, 1fr) 46px 114px 96px 14px;
+  column-gap: 8px;
 }
 
 /* Monitor values share one physical right-side column in summary and detail
    rows. The fixed capacity is intentionally modest: enough for "-11 °C" and
    "100,00 %", without opening a dashboard-sized void beside short values. */
 .monitor-value-column {
-  min-width: 6.75rem;
+  min-width: 96px;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
 .monitor-detail-grid {
-  grid-template-columns:
-    2rem minmax(6.75rem, 0.82fr) 3.25rem minmax(7rem, 1.25fr) 6.75rem
-    1.25rem;
+  grid-template-columns: 30px minmax(0, 1fr) 46px 114px 96px 14px;
+  column-gap: 8px;
 }
 
 .monitor-module-row {
@@ -186,64 +188,36 @@ body:has(details[open] [data-testid^='row-menu-']) [data-testid='design-review-o
   outline-offset: 2px;
 }
 
-.profile-settings-final-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: auto 2.75rem auto;
-  column-gap: 0.5rem;
-}
-
+/* GELLATTI V2.1 §13 — Batch and Tryb are ordinary cells of the ONE Settings
+   grid, not a separate three-row sub-grid pinned to the first row. They are the
+   third row: same 46 px height and same 8 px gutter as the four cells above. */
 .profile-settings-final-card {
-  display: grid;
-  grid-row: 1 / span 3;
-  grid-template-rows: subgrid;
-  row-gap: 0.25rem;
+  display: block;
+  grid-row: auto;
+  grid-template-rows: none;
 }
 
-@media (min-width: 1024px) {
-  .profile-settings-final-row {
-    grid-template-rows: auto 2.875rem auto;
-  }
-}
-
-@media (min-width: 1536px) {
-  .profile-settings-final-row {
-    grid-template-rows: auto 2.875rem auto;
-  }
-}
-
-/* Batch + Strategy need less inline space than the rest of the profile grid.
-   Keep their shared three-row geometry until the panel itself drops below the
-   desktop shell's 400px minimum, then use the existing one-column fallback. */
 @container right-pane (max-width: 399px) {
-  .profile-settings-final-row {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: none;
-    row-gap: 0.5rem;
-  }
-
-  .profile-settings-final-card {
-    grid-row: auto;
-    grid-template-rows: auto 2.75rem auto;
-  }
-
   .profile-settings-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
-@container right-pane (max-width: 540px) {
+/* The two-row reflow is the MOBILE sheet's geometry (owner §19/§22): the
+   approved desktop display column is 520 px and must stay on one line, so the
+   threshold sits below it instead of at 540 px. */
+@container right-pane (max-width: 420px) {
   .profile-nutrition-details {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .monitor-summary-grid {
-    grid-template-columns: 2rem minmax(0, 1fr) 3.25rem 6.75rem 1.25rem;
+    grid-template-columns: 28px minmax(0, 1fr) 42px 76px 12px;
     row-gap: 0.25rem;
   }
 
   .monitor-detail-grid {
-    grid-template-columns: 2rem minmax(0, 1fr) 0 minmax(0, 1fr) 6.75rem 1.25rem;
+    grid-template-columns: 28px minmax(0, 1fr) 0 minmax(0, 1fr) 76px 12px;
   }
 
   .monitor-summary-grid > :nth-child(3) {

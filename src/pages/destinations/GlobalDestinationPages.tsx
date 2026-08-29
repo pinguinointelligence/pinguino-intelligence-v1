@@ -169,7 +169,7 @@ export function ProductsHubPage() {
       eyebrow="Katalog Gellatti"
       title="Produkty"
       blurb="Produkty, ich zastosowanie, dostępność i Twoja cena — wszystko w jednym miejscu."
-      contextLabel="Katalog produktów"
+      contextLabel="Produkty"
       actions={
         capabilities.canSaveRecipe ? (
           <div className="flex flex-wrap items-center gap-2">
@@ -499,7 +499,7 @@ export function LabelsHubPage() {
       eyebrow="Gellatti Pro"
       title="Etykiety"
       blurb="Profil konta i etykiety zakończonych partii — w jednym, spójnym miejscu."
-      contextLabel="Etykiety"
+      contextLabel="Ustawienia etykiety"
     >
       <LabelWorkspace profileOnly repository={repository} />
 

@@ -59,15 +59,19 @@ describe('canonical application shell', () => {
     expect(brandIdx).toBeGreaterThan(triggerIdx);
   });
 
-  it('the one drawer follows its trigger: Pro left, approved global destinations right', () => {
+  // OWNER OVERRIDE (Gellatti V2.1 §6): ONE side everywhere — the trigger is
+  // leading and the drawer enters from the LEFT on the workbench, on every
+  // global destination and on mobile. The mirrored right-side variant is gone.
+  it('the one drawer follows its trigger: LEFT on every shell', () => {
     const drawer = read('features', 'shell', 'AppNavDrawer.tsx');
     const destination = read('components', 'shared', 'DestinationSurface.tsx');
     expect(drawer).toContain('left-0');
     expect(drawer).toContain('border-r');
     expect(drawer).toContain('translateX(-100%)');
-    expect(drawer).toContain('right-0');
-    expect(drawer).toContain('border-l');
-    expect(drawer).toContain('translateX(100%)');
+    expect(drawer.includes('right-0')).toBe(false);
+    expect(drawer.includes('border-l')).toBe(false);
+    expect(drawer.includes('translateX(100%)')).toBe(false);
+    expect(drawer.includes("side === 'left'")).toBe(false);
     expect(destination).toContain('navigationPosition="trailing"');
     expect(drawer).toContain("event.key === 'Escape'");
     expect(drawer).toContain("body.style.overflow = 'hidden'");

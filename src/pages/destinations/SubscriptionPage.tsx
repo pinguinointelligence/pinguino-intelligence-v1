@@ -269,14 +269,17 @@ export function SubscriptionPage() {
   return (
     <div className="gellatti-application pro-studio-radius-system theme-pro-light min-h-[100dvh] w-full bg-paper text-ink">
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-5 py-6 sm:px-8">
-        <Link
-          to="/"
-          aria-label={landingCopy.brand.name}
-          className={cn('flex items-center rounded', focusRing)}
-        >
-          <OfficialProLogo />
-        </Link>
-        <CustomerMenu showBrand={false} />
+        {/* Owner override (V2.1 §6): hamburger LEFT, wordmark immediately after it. */}
+        <div className="flex min-w-0 items-center gap-3">
+          <CustomerMenu showBrand={false} />
+          <Link
+            to="/"
+            aria-label={landingCopy.brand.name}
+            className={cn('flex items-center rounded', focusRing)}
+          >
+            <OfficialProLogo />
+          </Link>
+        </div>
       </header>
 
       <main className="mx-auto w-full max-w-5xl px-5 pb-24 pt-6 sm:px-8 sm:pt-10">

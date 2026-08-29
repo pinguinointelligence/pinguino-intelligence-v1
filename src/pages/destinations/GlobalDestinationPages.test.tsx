@@ -44,7 +44,8 @@ describe('canonical global destination hubs', () => {
   it('consolidates customer product intake under one Products destination', () => {
     persona = 'home';
     const html = render(<ProductsHubPage />, '/products');
-    expect(html).toContain('Katalog produktów');
+    // V2.1 §5: the destination lockup names the page itself.
+    expect(html).toContain('Produkty');
     expect(html).toContain('href="/products/scan"');
     expect(html).not.toContain('href="/products/import"');
     expect(html).toContain('Skanuj produkt');

@@ -32,7 +32,8 @@ describe('Slice 3 destination pages', () => {
       const html = render(el);
       expect(html).toContain('theme-pro-light');
       expect(html).toContain('bg-paper');
-      expect(html).toContain('font-semibold');
+      // V2.1 §5: the approved destination title carries the preview's 750 weight.
+      expect(html).toContain('font-[750]');
       expect(html).not.toContain('[color-scheme:dark]');
     }
   });

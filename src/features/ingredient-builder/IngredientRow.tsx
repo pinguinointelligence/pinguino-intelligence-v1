@@ -33,6 +33,7 @@ import {
   MobileIngredientLine,
   MobileIngredientSheet,
 } from './IngredientLineControls';
+import { productIdentityLines } from './productIdentityLines';
 import { IngredientCategoryIcon } from './IngredientCategoryIcon';
 import { CarbonationBubbles } from '@/components/product/CarbonationBubbles';
 import { ingredientCategorySymbolFor } from './ingredientCategorySymbols';
@@ -56,10 +57,17 @@ export type IngredientTableMode = 'recipe' | 'production';
  * primary identity: the name column's floor roughly doubles (164 → 300 px, and
  * 260 → 400 px at 2xl) without removing any information.
  */
+/**
+ * GELLATTI V2.1 (approved preview, measured at 1440 px): the row is SIX tracks —
+ * drag | identity | % | grams | price | menu — on a 7 px column gap inside a
+ * fixed 54 px line. The drag handle becomes its OWN track instead of riding
+ * inside the identity cell, which is what puts the product icon on the same x
+ * on every row and gives the identity its full 383 px measure.
+ */
 export const ROW_GRID =
-  'grid grid-cols-1 items-center gap-x-2 gap-y-3 md:grid-cols-[minmax(300px,1fr)_142px_150px_96px_28px] 2xl:grid-cols-[minmax(400px,1fr)_142px_150px_96px_28px]';
+  'grid grid-cols-1 items-center gap-x-2 gap-y-3 md:min-h-[54px] md:grid-cols-[22px_minmax(300px,1fr)_142px_150px_98px_28px] md:gap-x-[7px] md:gap-y-0 2xl:grid-cols-[22px_minmax(400px,1fr)_142px_150px_98px_28px]';
 export const COMPACT_ROW_GRID =
-  'grid grid-cols-1 items-center gap-x-2 gap-y-3 md:grid-cols-[minmax(300px,1fr)_142px_150px_96px_28px]';
+  'grid grid-cols-1 items-center gap-x-2 gap-y-3 md:min-h-[54px] md:grid-cols-[22px_minmax(300px,1fr)_142px_150px_98px_28px] md:gap-x-[7px] md:gap-y-0';
 export const PRODUCTION_ROW_GRID =
   'grid grid-cols-1 items-center gap-x-4 gap-y-2 md:grid-cols-[minmax(260px,1fr)_minmax(226px,300px)]';
 
@@ -460,10 +468,13 @@ function RecipeRow({
   mainUserHeld = false,
   compact,
   changed,
+  processReminder,
 }: {
   item: EffectiveRecipeItem;
   totalBatchG: number;
   actions: IngredientRowActions;
+  /** V2.1 §17: the heat acknowledgement lives INSIDE the line it belongs to. */
+  processReminder?: { onConfirm: () => void; disabled?: boolean };
   lock?: IngredientRowLockView;
   meta: IngredientRowMeta;
   substituteCandidates: readonly SubstituteCandidate[];
@@ -689,18 +700,21 @@ function RecipeRow({
           }}
           data-scope="BASE_FORMULATION"
         >
+          {/* The drag handle is its own grid track (V2.1): every product icon
+              therefore starts on the same x, on every row. */}
+          <span
+            aria-hidden
+            draggable
+            onDragStart={() => onDragStart?.(item.id)}
+            className="inline-grid size-11 shrink-0 cursor-grab select-none place-items-center text-[12px] leading-none text-[var(--g-drag)] active:cursor-grabbing md:size-[22px]"
+            title="Przeciągnij, aby zmienić kolejność"
+          >
+            ⠿
+          </span>
+
           <div className="min-w-0">
-            <span className="flex min-w-0 items-center gap-1.5">
-              <span
-                aria-hidden
-                draggable
-                onDragStart={() => onDragStart?.(item.id)}
-                className="inline-grid size-11 shrink-0 cursor-grab select-none place-items-center text-base leading-none text-stone-400 active:cursor-grabbing md:size-5 2xl:size-4"
-                title="Przeciągnij, aby zmienić kolejność"
-              >
-                ⠿
-              </span>
-              <span className="relative grid size-7 shrink-0 place-items-center rounded-full bg-stone-100 text-stone-600 md:size-6 2xl:size-6">
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="relative grid size-7 shrink-0 place-items-center rounded-full bg-[var(--g-ivory-deep)] text-stone-600 md:size-7">
                 <IngredientCategoryIcon
                   symbol={ingredientCategorySymbolFor({
                     category: item.ingredient.category,
@@ -716,16 +730,20 @@ function RecipeRow({
                 ) : null}
               </span>
               {/* Truncation is visual only — the full name stays in the DOM for
-                  assistive technology, and the hover preview serves the mouse. */}
+                  assistive technology, and the hover preview serves the mouse.
+                  V2.1 splits the catalog label into its two approved lines:
+                  the product NAME above, its own qualifier below. The split is
+                  presentation only — the canonical name is never rewritten. */}
               <span className="min-w-0 flex-1">
                 <HoverPreview
                   text={item.ingredient.name}
-                  className="block min-w-0 truncate text-[13px] font-semibold leading-4 text-ink"
+                  className="block min-w-0 truncate text-[12px] font-bold leading-[15px] text-[var(--g-ink)] uppercase"
                 >
-                  {item.ingredient.name}
+                  {productIdentityLines(item.ingredient.name).name}
                 </HoverPreview>
-                <span className="mt-0.5 block truncate text-[10px] leading-3 text-stone-500">
-                  {categoryLabelPl(item.ingredient.category)}
+                <span className="mt-0.5 block truncate text-[9px] leading-[11px] text-[var(--g-text-muted)]">
+                  {productIdentityLines(item.ingredient.name).qualifier ??
+                    categoryLabelPl(item.ingredient.category)}
                 </span>
               </span>
               {missingAmount ? (
@@ -747,6 +765,31 @@ function RecipeRow({
                   className="grid size-4 place-items-center rounded-full border border-ink/30 text-[10px] font-bold text-ink"
                 >
                   !
+                </span>
+              ) : null}
+              {processReminder ? (
+                <span
+                  className="hidden min-w-0 flex-1 items-center gap-2 xl:flex"
+                  data-testid="production-inline-process-reminder"
+                >
+                  <span className="min-w-0">
+                    <strong className="block text-[10px] leading-[12px] font-black text-[var(--g-attention-ink)]">
+                      Pamiętaj o obróbce
+                    </strong>
+                    <span className="mt-0.5 block text-[8px] leading-[10px] font-bold text-[var(--g-text-muted)]">
+                      Dla poniższych składników wskazana jest obróbka na ciepło:
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={processReminder.onConfirm}
+                    disabled={processReminder.disabled}
+                    aria-label="Potwierdź informację o obróbce"
+                    className="gellatti-next-action-attention pro-focus-ring grid h-8 w-9 shrink-0 place-items-center rounded-[9px] bg-[var(--g-graphite)] text-[10px] font-extrabold text-white disabled:cursor-wait disabled:opacity-60"
+                    data-testid="acknowledge-production-heat-information-inline"
+                  >
+                    OK
+                  </button>
                 </span>
               ) : null}
               <span
@@ -1316,7 +1359,10 @@ export function IngredientRow({
               'border-b border-ink/[0.075] px-[var(--pro-mobile-gutter)] py-2 lg:px-3 lg:py-1.5',
               productionActions?.settled ? 'bg-stone-50/35' : 'transition-colors hover:bg-stone-50',
             )
-          : 'border-b border-ink/[0.075] px-[var(--pro-mobile-gutter)] py-1 transition-colors hover:bg-stone-50 lg:px-3 lg:py-1.5',
+          : // V2.1: the row's own 54 px grid owns the height, so the shell adds no
+            // vertical padding on desktop — that is what makes the served row
+            // exactly 54 px instead of 54 + 12.
+            'border-b border-ink/[0.075] px-[var(--pro-mobile-gutter)] py-1 transition-colors hover:bg-stone-50 lg:px-3 lg:py-0 lg:pr-2.5',
         mode === 'recipe' &&
           customerRoleFor(item.lock_type, meta) === 'main' &&
           'border-gold/20 bg-education-ivory/55 hover:bg-education-ivory/75',
@@ -1328,7 +1374,8 @@ export function IngredientRow({
           'border-status-error/20 bg-status-error/[0.045] hover:bg-status-error/[0.06]',
         mode === 'recipe' && changed && 'ingredient-line-changed',
         mode === 'production' && productionActive && 'production-line-active',
-        productionProcessReminder && 'xl:border-l-2 xl:border-l-[#f58a07] xl:bg-[#fffaf3]',
+        productionProcessReminder &&
+          'xl:min-h-[64px] xl:border-l-[3px] xl:border-l-[#f58a07] xl:bg-[var(--g-attention-surface)]',
       )}
       data-ingredient-mode={mode}
       data-production-row-family={mode === 'production' ? 'recipe-table' : undefined}
@@ -1348,6 +1395,7 @@ export function IngredientRow({
           item={item}
           totalBatchG={totalBatchG}
           actions={actions}
+          processReminder={productionProcessReminder}
           lock={lock}
           meta={meta}
           substituteCandidates={substituteCandidates}
@@ -1362,32 +1410,6 @@ export function IngredientRow({
           changed={changed}
         />
       )}
-      {mode === 'recipe' && productionProcessReminder ? (
-        <div
-          className="hidden items-center justify-between gap-3 border-t border-[#f58a07]/20 px-3 py-2 xl:flex"
-          data-testid="production-inline-process-reminder"
-        >
-          <span className="min-w-0">
-            <strong className="block text-xs font-semibold text-[#8a5b23]">
-              Pamiętaj o obróbce
-            </strong>
-            <span className="mt-0.5 block text-[10px] leading-snug text-stone-600">
-              Dla poniższych składników wskazana jest obróbka na ciepło:
-            </span>
-          </span>
-          <button
-            type="button"
-            onClick={productionProcessReminder.onConfirm}
-            disabled={productionProcessReminder.disabled}
-            aria-label="Potwierdź informację o obróbce"
-            className="gellatti-next-action-attention pro-focus-ring inline-flex h-8 shrink-0 items-center gap-1 rounded-[10px] border border-[#f58a07] bg-ink px-3 text-xs font-semibold text-white disabled:cursor-wait disabled:opacity-60"
-            data-testid="acknowledge-production-heat-information-inline"
-          >
-            <span aria-hidden>✓</span>
-            <span>OK</span>
-          </button>
-        </div>
-      ) : null}
     </div>
   );
 }

@@ -349,7 +349,7 @@ function ProfileContent({
   }, [customerPrices, finalCostReady, input, toppings]);
   return (
     <div
-      className="w-full min-w-0 p-3"
+      className="w-full min-w-0 p-3 xl:p-0"
       data-testid="pro-context-recipe"
       data-current-result-state={baseCurrentResultAuthority.state}
       data-current-result-revision={baseCurrentResultAuthority.draftRevision}
@@ -369,7 +369,7 @@ function ProfileContent({
         />
       ) : null}
       <div
-        className="grid min-w-0 items-start gap-3"
+        className="grid min-w-0 items-start gap-3 xl:gap-2.5"
         data-testid="profile-desktop-grid"
         data-profile-layout="stacked"
       >
@@ -384,14 +384,25 @@ function ProfileContent({
           costsOverride={finalCostProduct?.finalCosts}
         />
       </div>
+      {/* GELLATTI V2.1: the approved 58 px entry — title, its own question line
+          and the orange disclosure mark. */}
       <button
         type="button"
         onClick={onOpenEducation}
-        className="pro-focus-ring mt-2.5 flex min-h-11 w-full items-center justify-between rounded-[16px] border border-ink/10 bg-white px-4 text-left text-xs font-semibold text-ink shadow-pro-e0"
+        className="pro-focus-ring mt-2.5 flex min-h-11 w-full items-center justify-between gap-3 rounded-[10px] border border-[var(--g-line)] bg-white px-[13px] text-left shadow-none lg:min-h-[58px]"
         data-testid="profile-learning-entry"
       >
-        <span>Wiedza o recepturze</span>
-        <span aria-hidden>›</span>
+        <span className="min-w-0">
+          <span className="block text-[11px] leading-[20px] font-bold text-[var(--g-graphite)]">
+            Wiedza o recepturze
+          </span>
+          <span className="block truncate text-[9px] leading-[16px] font-normal text-[var(--g-text-muted)]">
+            Dlaczego taki wynik i jak przygotować recepturę?
+          </span>
+        </span>
+        <span aria-hidden className="text-[16px] leading-none font-bold text-[var(--g-orange)]">
+          ›
+        </span>
       </button>
     </div>
   );
@@ -463,12 +474,17 @@ function SummaryPanel({
   }
 
   return (
-    <div className="pro-scroll-safe p-3" data-testid="pro-context-summary">
+    <div className="pro-scroll-safe p-3 xl:p-0" data-testid="pro-context-summary">
+      {/* GELLATTI V2.1 §18 — the approved Label gate: eyebrow, 18 px title, its
+          own body line, then the graphite action BELOW the copy. Structure and
+          copy only; every Production → Label gate and calculation is untouched. */}
       <WorkflowNotice
         eyebrow="Etykieta"
         title="Etykieta potrzebuje zakończonej partii"
         description="Gdy zakończysz produkcję, pojawią się tu potwierdzone składniki, wartości odżywcze, koszt, baza techniczna i numer partii (LOT)."
         variant="attention"
+        emphasis="lead"
+        stackAction
         action={
           <Button size="sm" onClick={onOpenProduction}>
             Otwórz Produkcję
@@ -530,7 +546,10 @@ export function RecipeProfilePanel({
     <div
       data-testid="pro-profile-panel"
       data-testid-shell="pro-intelligence-shell"
-      className="right-pane min-h-full bg-white text-ink lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:overflow-hidden lg:rounded-[10px] lg:border lg:border-ink/10 lg:shadow-pro-e0"
+      /* GELLATTI V2.1: on the desktop workbench the display column is NOT a card —
+         it is a transparent 520 px track holding the approved cards on a 10 px
+         rhythm. The mobile cockpit sheet keeps its own white surface. */
+      className="right-pane min-h-full bg-white text-ink lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:overflow-hidden lg:rounded-[10px] lg:border lg:border-ink/10 lg:shadow-pro-e0 xl:rounded-none xl:border-0 xl:bg-transparent xl:shadow-none"
     >
       {showTabs ? (
         <div className="sticky top-0 z-30 bg-white" data-testid="workbench-sticky-chrome">
@@ -552,7 +571,10 @@ export function RecipeProfilePanel({
         role="tabpanel"
         aria-labelledby={`${idPrefix}-${activeTab}-tab-control`}
         tabIndex={0}
-        className="intelligence-tabpanel-scroll lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overflow-x-hidden lg:[scrollbar-gutter:stable] 2xl:[scrollbar-gutter:auto]"
+        /* The approved display column is a full 520 px: a permanently reserved
+           scrollbar gutter would inset every card by ~15 px and break the 1:1
+           geometry, so the gutter is claimed only when a scrollbar exists. */
+        className="intelligence-tabpanel-scroll lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overflow-x-hidden lg:[scrollbar-gutter:stable] xl:[scrollbar-gutter:auto]"
       >
         {activeTab === 'profile' && educationOpen ? (
           <ContextualEducationView
@@ -572,7 +594,7 @@ export function RecipeProfilePanel({
           />
         ) : null}
         {activeTab === 'monitor' ? (
-          <div className="pro-scroll-safe p-2 text-ink" data-testid="pro-context-monitor">
+          <div className="pro-scroll-safe p-2 text-ink xl:p-0" data-testid="pro-context-monitor">
             <MonitorPanelContent
               result={result}
               servingTemperatureC={servingTemperatureC}

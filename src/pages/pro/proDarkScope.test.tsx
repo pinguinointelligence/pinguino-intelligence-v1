@@ -132,8 +132,8 @@ describe('Pro workspace — white precision scope', () => {
     expect(html).toContain('data-testid="workbench-intelligence-header"');
     expect(html).toContain('data-testid="workbench-editor-pane"');
     expect(html).toContain('data-testid="pro-monitor-panel"');
-    expect(html).toContain('xl:grid-cols-[minmax(0,1.62fr)_minmax(400px,1fr)]');
-    expect(html).toContain('xl:gap-[var(--pro-workbench-gap)]');
+    expect(html).toContain('xl:grid-cols-[minmax(0,1fr)_var(--g-side-width)]');
+    expect(html).toContain('xl:gap-[var(--g-split-gap)]');
   });
 
   it('keeps the two explicit five-detent choices and the review tools route', () => {

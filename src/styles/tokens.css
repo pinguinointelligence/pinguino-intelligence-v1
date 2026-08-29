@@ -127,6 +127,54 @@
   --pro-mobile-gutter: 1rem;
   /* One header height, identical on every authenticated screen. */
   --pro-header-height: 82px;
+  /* The workbench header is 90 px in the approved preview; destinations stay 82. */
+  --pro-workbench-header-height: 90px;
   /* Mobile preview navigation bar (Receptura/Monitor/Produkcja/Etykieta). */
   --pro-bottom-nav-height: 3.5rem;
+}
+
+/* ── Gellatti V2.1 approved visual authority ───────────────────────────────
+   Measured 1:1 from the owner-approved interactive preview
+   (`gellatti-global-page-preview-gate-20260828-v2-1`). Presentation only: no
+   engine, solver, pricing, persistence or gating value reads any of these.
+   The names mirror the preview's own vocabulary so a future comparison can be
+   made against the same source. */
+:root {
+  /* Palette — the exact preview values. */
+  --g-ink: #101113;
+  --g-graphite: #191a1d;
+  --g-line: #ded9d0;
+  --g-line-strong: #cfcac1;
+  --g-line-quiet: #e2ded7;
+  --g-text-muted: #77736c;
+  --g-text-secondary: #65635f;
+  --g-text-field-label: #6f6b64;
+  --g-text-price: #5e5a54;
+  --g-lock: #5f5b55;
+  --g-ivory: #fbfaf7;
+  --g-ivory-deep: #f6f4ef;
+  --g-stepper-face: #f7f5f0;
+  --g-orange: #f58a07;
+  --g-score-green: #3f9b58;
+  --g-rail-track: #d9d5ce;
+  --g-progress-track: #e5e1da;
+  --g-progress-fill: #5d735f;
+  --g-attention-surface: #fffaf3;
+  --g-attention-ink: #8a5300;
+  --g-preflight-surface: #fff9ed;
+  --g-drag: #aaa59d;
+  --g-menu-dots: #6f6b64;
+
+  /* Workbench geometry — the preview's own numbers at the 1440 px reference. */
+  --g-gutter: 12px;
+  --g-split-gap: 12px;
+  --g-side-width: clamp(370px, 36.111vw, 520px);
+  --g-workbench-header: 90px;
+  --g-card-radius: 10px;
+  --g-control-radius: 9px;
+  --g-row-height: 54px;
+  --g-row-height-attention: 64px;
+  --g-monitor-row-height: 64px;
+  --g-field-height: 46px;
+  --g-stepper-height: 32px;
 }

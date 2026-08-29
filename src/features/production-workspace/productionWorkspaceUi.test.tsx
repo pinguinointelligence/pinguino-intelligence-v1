@@ -730,7 +730,10 @@ describe('Production workspace touch-first UI', () => {
     expect(html).toContain('data-testid="production-inline-process-reminder"');
     expect(html).toContain('data-testid="acknowledge-production-heat-information-inline"');
     expect(html).toContain('Pamiętaj o obróbce');
-    expect(html).toContain('hidden items-center');
+    // V2.1 §17: the acknowledgement lives INSIDE the desktop ingredient line
+    // (never as a second row under it), and stays hidden below the workbench
+    // breakpoint so the mobile card remains the phone's own affordance.
+    expect(html).toContain('hidden min-w-0 flex-1 items-center gap-2 xl:flex');
     expect(html).toContain('xl:flex');
 
     const cockpitSource = readFileSync(

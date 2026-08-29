@@ -138,13 +138,13 @@ describe('canonical Gellatti Pro — menu (proofs 4–6, 17–18)', () => {
     expect(read('components', 'shared', 'DestinationSurface.tsx')).toContain('AppShell');
   });
 
-  // The accepted Pro trigger remains leading; global destination triggers are trailing.
+  // Every trigger is leading and every drawer opens LEFT (owner V2.1 §6).
   // The historical rule this replaced was about the LEGACY left sidebar
   // (AppMenu), which stays deleted — that is what the assertions below pin.
   it('17. the legacy left sidebar stays deleted; no routed page uses ShellLayout', () => {
     const drawer = read('features', 'shell', 'AppNavDrawer.tsx');
     expect(drawer).toContain('left-0');
-    expect(drawer).toContain('right-0');
+    expect(drawer.includes('right-0')).toBe(false);
     expect(read('components', 'shared', 'DestinationSurface.tsx')).toContain(
       'navigationPosition="trailing"',
     );

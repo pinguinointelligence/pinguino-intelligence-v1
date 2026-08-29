@@ -331,7 +331,7 @@ describe('compact ingredient article panel', () => {
     ).toEqual(['Zapisz', 'Usuń z receptury']);
     expect(
       priceEditor?.querySelector('[data-testid="article-panel-base-price"]')?.textContent,
-    ).toContain('Bazowa: 3,50 EUR/kg');
+    ).toContain('Bazowa: 3,50 €/kg');
 
     await click(document.querySelector(`${panelId} [aria-label="Zapisz"]`));
     expect(onSave).toHaveBeenCalledWith(4);

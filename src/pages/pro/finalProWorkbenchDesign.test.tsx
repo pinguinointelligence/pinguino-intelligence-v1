@@ -125,7 +125,8 @@ describe('one global menu and four local contexts', () => {
   it('keeps the four workspace modules in one horizontal header row', () => {
     const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
     expect(page).toContain('<WorkbenchModuleTabs');
-    expect(page).toContain('xl:col-start-2 xl:row-start-1 xl:block xl:w-full');
+    // V2.1 §8: the strip is anchored to the display column by the shared contract.
+    expect(page).toContain('DESKTOP_TAB_STRIP');
     expect(page).toContain('className="w-full border-b-0"');
     expect(page).toContain('AppShell');
   });
@@ -137,7 +138,8 @@ describe('one global menu and four local contexts', () => {
     const topping = read('features', 'ingredient-builder', 'ToppingRow.tsx');
     const buttons = read('components', 'ui', 'buttonStyles.ts');
     expect(page).toContain('data-testid="pro-plan-indicator"');
-    expect(page).toContain('px-1.5 py-1 text-[8px]');
+    // V2.1: the workbench plan mark is the approved graphite pill.
+    expect(page).toContain("bg-[var(--g-graphite)] px-2.5 text-[9px]");
     for (const source of [workbar, ingredient, topping]) {
       expect(source).toContain("iconButtonClasses('xs')");
       expect(source).toContain('•••');
@@ -318,7 +320,8 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     expect(monitor).not.toContain('bg-[#b98555]/68');
     expect(monitor).not.toContain('band.bandMin.toFixed');
     expect(monitor).not.toContain('band.bandMax.toFixed');
-    expect(theme).toContain('3.25rem minmax(7rem, 1.25fr) 6.75rem');
+    // V2.1 §16: one Monitor line — icon | metric | badge | rail | value | chevron.
+    expect(theme).toContain('30px minmax(0, 1fr) 46px 114px 96px 14px');
     expect(theme).not.toContain('minmax(5.5rem, auto)');
     expect(model).toContain('bandPosition');
     expect(diagnostic).not.toContain('a.window.minPercentOfTotalMix');
@@ -334,7 +337,7 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     expect(axes).toContain('role="radio"');
     expect(axes).toContain('aria-checked={position === detent}');
     expect(axes).toContain("event.key === 'ArrowRight'");
-    expect(axes).toContain("'border-[#f58a07] bg-[#f58a07] text-white shadow-pro-e1'");
+    expect(axes).toContain("'border-[#f58a07] bg-[#f58a07] text-white'");
     expect(axes).not.toContain('Po zmianie:');
     expect(axes).not.toContain('Legenda kierunku');
     for (const label of ['Wartości odżywcze i koszt', 'Na 100 g', 'Węglowodany', 'Cała partia']) {
@@ -395,10 +398,10 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     const surface = read('features', 'studio', 'StudioEngineSurface.tsx');
     expect(shell).toContain('xl:h-dvh');
     expect(shell).toContain('xl:overflow-hidden');
-    expect(shell).toContain('xl:grid-cols-[minmax(0,1.62fr)_minmax(400px,1fr)]');
+    expect(shell).toContain('DESKTOP_WORKBENCH_COLUMNS');
     expect(shell).toContain("viewportLock && 'xl:col-start-1 xl:row-start-1'");
     expect(read('styles', 'theme-pro-light.css')).toContain(
-      '@container right-pane (max-width: 540px)',
+      '@container right-pane (max-width: 420px)',
     );
     expect(read('styles', 'theme-pro-light.css')).toContain(
       'grid-template-columns: minmax(0, 1fr)',

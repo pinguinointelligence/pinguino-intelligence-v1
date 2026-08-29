@@ -432,10 +432,11 @@ export function IngredientBuilder({
       </div>
     ) : (
       <div className={`${ROW_GRID} px-3 py-2`} data-testid="recipe-table-header">
-        {['Składnik', '%', 'Ilość', 'Cena/kg', ''].map((label, index) => (
+        {/* Six tracks (V2.1): the leading one belongs to the drag handle. */}
+        {['', 'Składnik', '%', 'Ilość', 'Cena/kg', ''].map((label, index) => (
           <span
             key={`${label}-${index}`}
-            className={`${headCell} ${[1, 3].includes(index) ? 'text-right' : ''}`}
+            className={`${headCell} ${[2, 4].includes(index) ? 'text-right' : ''}`}
           >
             {label || '\u00a0'}
           </span>

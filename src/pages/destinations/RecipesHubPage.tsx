@@ -776,7 +776,7 @@ export function RecipesHubPage() {
       eyebrow={d.eyebrow}
       title="Receptury"
       blurb="Twoje receptury, kolekcje Gellatti i inspiracje smakowe — w jednej bibliotece."
-      contextLabel="Biblioteka receptur"
+      contextLabel="Receptury"
       actions={
         <button type="button" onClick={requestNewRecipe} className={buttonClasses('primary', 'sm')}>
           + Nowa receptura

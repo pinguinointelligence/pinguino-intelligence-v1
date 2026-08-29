@@ -91,7 +91,7 @@ export function MachineProfilePage() {
     <DestinationSurface
       eyebrow="Konto"
       title="Ustawienia maszyny"
-      blurb="Domyślna maszyna i partia są punktem startu dla nowych receptur."
+      blurb="Domyślna maszyna i partia są punktem startu dla nowych receptur i nowych Produkcji."
       contextLabel="Ustawienia maszyny"
     >
       <CustomerSurface measure="workspace">
