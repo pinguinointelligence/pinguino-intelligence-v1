@@ -17,7 +17,7 @@
  * explicit „Używam innego pojemnika” action, which marks the profile as the
  * user's own configuration.
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { cardShell, color, notice, radius, type } from '@/features/customer-shell/ui/tokens';
 import { TextField } from '@/features/customer-shell/ui/TextField';
@@ -40,6 +40,18 @@ export interface MachineSettingsSubmit {
 }
 
 interface MachineProfileSectionProps {
+  /**
+   * V2.1 §5 (owner-approved wiring): the approved design places
+   * „Zapisz ustawienia" in the PAGE HEADING. The page cannot own the draft —
+   * the draft, its validation and its payload all live here — so the section
+   * hands its EXISTING `submit` upward instead. There is still exactly one
+   * save authority: the heading button and the in-card button are the same
+   * closure, and when a page takes the action over the in-card copy is not
+   * rendered twice.
+   *
+   * Nothing about what is submitted, or when saving is allowed, changes.
+   */
+  onRegisterSave?: (submit: (() => Promise<void>) | null) => void;
   /** Null = no machine saved yet → the set-up entry point. */
   view: MachineSettingsView | null;
   onSetUp: () => void;
@@ -85,6 +97,7 @@ function Row({
 
 export function MachineProfileSection({
   view,
+  onRegisterSave,
   onSetUp,
   onChange,
   onSave,
@@ -215,6 +228,17 @@ export function MachineProfileSection({
     const ok = await onSave({ userDefaultGrams: own, customContainer: container });
     setStatus(ok ? 'saved' : 'failed');
   };
+
+  /* The page renders the approved heading action by calling THIS submit. The
+     registration is withdrawn on unmount so a stale closure can never be
+     invoked against a section that is no longer mounted. */
+  const submitRef = useRef(submit);
+  submitRef.current = submit;
+  useEffect(() => {
+    if (!onRegisterSave) return;
+    onRegisterSave(() => submitRef.current());
+    return () => onRegisterSave(null);
+  }, [onRegisterSave]);
 
   return (
     <section aria-label={copy.profile.title}>
@@ -430,7 +454,9 @@ export function MachineProfileSection({
 
           {/* Actions (§2) — explicit save, explicit restore, explicit change. */}
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <TouchButton onClick={() => void submit()}>{copy.settings.save}</TouchButton>
+            {onRegisterSave ? null : (
+              <TouchButton onClick={() => void submit()}>{copy.settings.save}</TouchButton>
+            )}
             {view.recommendedGrams !== null ? (
               <TouchButton variant="secondary" onClick={restore}>
                 {copy.settings.restoreRecommended}

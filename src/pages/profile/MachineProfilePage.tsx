@@ -12,7 +12,7 @@ import type { ReactNode } from 'react';
  * machinePreference) joins the selector once the owner applies migrations
  * 0030 + 0031 to the environment the bundle talks to.
  */
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { CustomerSurface } from '@/features/customer-shell/ui/CustomerSurface';
 import { TouchButton } from '@/features/customer-shell/ui/TouchButton';
@@ -35,6 +35,7 @@ import { selectMachinePreferenceStore } from '@/services/machinePreference/machi
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { useAuthStore } from '@/stores/authStore';
 import { ApplicationState } from '@/components/shared/ApplicationState';
+import { buttonClasses } from '@/components/ui/buttonStyles';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
 
 type PageMode = 'view' | 'onboarding' | 'edit_custom';
@@ -97,12 +98,27 @@ export function MachineProfilePage() {
   // Maszyna is an authenticated destination reached from the one drawer, so it
   // wears the approved global DestinationSurface while retaining the exact
   // onboarding, persistence and save callbacks below.
-  const shell = (children: ReactNode) => (
+  /* V2.1 §5 (owner-approved wiring): the approved design puts „Zapisz
+     ustawienia" in the page heading. The draft, its validation and its payload
+     stay inside `MachineProfileSection`; the section registers its EXISTING
+     submit here, so this button and the section's own are one save authority —
+     never two. When no section is mounted (loading, onboarding) there is no
+     registered submit and the action is simply absent. */
+  const [saveMachineSettings, setSaveMachineSettings] = useState<
+    (() => Promise<void>) | null
+  >(null);
+  const registerSave = useCallback(
+    (submit: (() => Promise<void>) | null) => setSaveMachineSettings(() => submit),
+    [],
+  );
+
+  const shell = (children: ReactNode, headingAction?: ReactNode) => (
     <DestinationSurface
       eyebrow="Konto"
       title="Ustawienia maszyny"
       blurb="Domyślna maszyna i partia są punktem startu dla nowych receptur i nowych Produkcji."
       contextLabel="Ustawienia maszyny"
+      actions={headingAction}
     >
       <CustomerSurface measure="workspace">
         <div className="max-w-4xl">{children}</div>
@@ -148,6 +164,7 @@ export function MachineProfilePage() {
         ) : null}
         <MachineProfileSection
           view={settingsView}
+          onRegisterSave={registerSave}
           onSetUp={() => setMode('onboarding')}
           onChange={() => {
             setDefaultChangedName(null);
@@ -161,5 +178,15 @@ export function MachineProfilePage() {
         />
       </div>
     </>,
+    saveMachineSettings ? (
+      <button
+        type="button"
+        onClick={() => void saveMachineSettings()}
+        className={buttonClasses('primary', 'sm')}
+        data-testid="machine-settings-save"
+      >
+        {machineOnboardingCopy.settings.save}
+      </button>
+    ) : undefined,
   );
 }
