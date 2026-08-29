@@ -4,6 +4,10 @@ import { DialogShell } from '@/components/ui/DialogShell';
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import { communityCopy } from '@/copy/community';
 import { slugifyTitle } from '@/features/community/domain/creatorHandle';
+import {
+  PUBLICATION_IMAGES,
+  suggestPublicationImage,
+} from '@/features/community/domain/publicationImages';
 import { publicationPath } from '@/features/community/domain/shareUrls';
 import { publishRecipe } from '@/services/community';
 import { CreatorProfileForm } from './CreatorProfileForm';
@@ -42,6 +46,11 @@ export function PublishToCommunityDialog({
   const [title, setTitle] = useState(defaultTitle);
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
+  /* A publication always carries an image — a Community card with an empty
+     frame reads as an unfinished product, and the ranking surfaces are built
+     around a picture. The picker opens on a sensible suggestion instead of a
+     blank grid, and publishing without one is not possible. */
+  const [imageUrl, setImageUrl] = useState(() => suggestPublicationImage(defaultTitle).url);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [creatorReady, setCreatorReady] = useState(hasCreatorProfile);
@@ -54,6 +63,10 @@ export function PublishToCommunityDialog({
       setError(copy.creator.handleInvalid);
       return;
     }
+    if (!imageUrl) {
+      setError(copy.publish.imageRequired);
+      return;
+    }
     setPending(true);
     setError(null);
     try {
@@ -63,6 +76,7 @@ export function PublishToCommunityDialog({
         slug,
         title: title.trim(),
         description: description.trim() || null,
+        imageUrl,
         category: category.trim() || null,
       });
       onPublished?.(result);
@@ -148,6 +162,41 @@ export function PublishToCommunityDialog({
                 className="w-full rounded-sm border border-ink/15 bg-paper px-3 py-2 text-sm text-ink"
               />
             </Field>
+            <Field label={copy.publish.imageLabel}>
+              <div className="flex flex-col gap-3">
+                <img
+                  src={imageUrl}
+                  alt={
+                    PUBLICATION_IMAGES.find((image) => image.url === imageUrl)?.label ?? title
+                  }
+                  className="h-36 w-full rounded-sm border border-ink/12 object-cover"
+                />
+                <div
+                  role="radiogroup"
+                  aria-label={copy.publish.imageLabel}
+                  className="grid max-h-40 grid-cols-5 gap-2 overflow-y-auto pr-1"
+                  data-testid="publication-image-picker"
+                >
+                  {PUBLICATION_IMAGES.map((image) => (
+                    <button
+                      key={image.url}
+                      type="button"
+                      role="radio"
+                      aria-checked={image.url === imageUrl}
+                      aria-label={image.label}
+                      onClick={() => setImageUrl(image.url)}
+                      className={
+                        image.url === imageUrl
+                          ? 'overflow-hidden rounded-sm border-2 border-[#ef8708]'
+                          : 'overflow-hidden rounded-sm border border-ink/12 opacity-80 hover:opacity-100'
+                      }
+                    >
+                      <img src={image.url} alt="" className="h-12 w-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </Field>
             <Field label={copy.publish.categoryLabel}>
               <input
                 value={category}
@@ -176,7 +225,7 @@ export function PublishToCommunityDialog({
                 type="button"
                 className={buttonClasses('primary')}
                 onClick={submit}
-                disabled={pending || !slug}
+                disabled={pending || !slug || !imageUrl}
               >
                 {pending ? '…' : copy.actions.publishToCommunity}
               </button>

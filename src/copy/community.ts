@@ -92,6 +92,8 @@ export interface CommunityCopy {
     readonly descriptionLabel: string;
     readonly categoryLabel: string;
     readonly slugLabel: string;
+    readonly imageLabel: string;
+    readonly imageRequired: string;
     readonly needsCreatorProfile: string;
     readonly published: string;
   };
@@ -220,6 +222,8 @@ export const communityCopyPl: CommunityCopy = {
     descriptionLabel: 'Opis',
     categoryLabel: 'Kategoria',
     slugLabel: 'Adres publiczny',
+    imageLabel: 'Zdjęcie',
+    imageRequired: 'Wybierz zdjęcie receptury.',
     needsCreatorProfile: 'Najpierw utwórz profil Twórcy.',
     published: 'Receptura jest już w Community.',
   },
@@ -349,6 +353,8 @@ export const communityCopyEn: CommunityCopy = {
     descriptionLabel: 'Opis',
     categoryLabel: 'Category',
     slugLabel: 'Public address',
+    imageLabel: 'Photo',
+    imageRequired: 'Choose a recipe photo.',
     needsCreatorProfile: 'Najpierw utwórz profil twórcy.',
     published: 'Published',
   },
