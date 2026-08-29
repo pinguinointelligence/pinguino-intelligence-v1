@@ -14,6 +14,7 @@ import {
   type CommunityCard,
   type TopCreatorEntry,
 } from '@/services/community';
+import { RecipeLibraryNav } from '@/features/recipes/RecipeLibraryNav';
 
 /**
  * Gellatti TOP 100 (§38) + Top Creators (§39).
@@ -50,7 +51,9 @@ export function TopHundredPage() {
   };
 
   return (
-    <DestinationSurface eyebrow="GELLATTI" title={copy.nav.top100}>
+    <DestinationSurface eyebrow="GELLATTI" title={copy.nav.top100} contextLabel="Receptury">
+      {/* Top 100 stays inside the Recipes experience — same strip, same way back. */}
+      <RecipeLibraryNav mode="links" activeHref="/top100" />
       <div className="flex flex-col gap-8">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <nav aria-label="Ranking" className="flex gap-1">

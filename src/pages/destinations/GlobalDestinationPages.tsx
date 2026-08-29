@@ -22,6 +22,12 @@ import { loadCanonicalProductionHistory } from '@/services/productionHistoryTrut
 import type { CanonicalProductionHistoryEntry } from '@/services/productionHistoryTruth';
 import { WorkflowNotice } from '@/components/shared/WorkflowNotice';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { FranchiseInquiryForm } from '@/features/franchise/FranchiseInquiryForm';
+import {
+  FRANCHISE_CONCEPT_INITIAL,
+  FRANCHISE_CONCEPT_ORDER,
+  franchiseConceptLabelPl,
+} from '@/features/franchise/franchiseConcepts';
 
 const quietLink =
   'flex min-h-14 items-center justify-between border-b border-ink/10 py-3 text-sm text-ink transition-opacity hover:opacity-55';
@@ -98,12 +104,11 @@ export function ShopPage() {
 }
 
 export function FranchisePage() {
-  const concepts = ['Punkt', 'Wózek', 'Przyczepa', 'Lokal firmowy'] as const;
   return (
     <DestinationSurface
       eyebrow="Ekosystem Gellatti"
       title="Franchise"
-      blurb="Koncepty biznesowe Gellatti: punkt, wózek, przyczepa i lokal firmowy."
+      blurb="Koncepty biznesowe Gellatti: lokal firmowy, przyczepa, wózek i punkt."
       contextLabel="Franchise"
     >
       <div className="grid overflow-hidden rounded-[12px] border border-ink/12 lg:grid-cols-[1.1fr_0.9fr]">
@@ -112,24 +117,21 @@ export function FranchisePage() {
             Franchise jest niezależne od planu Home lub Pro. Ten kierunek prowadzi do zapytania
             biznesowego i nie miesza się z programem Współpraca.
           </p>
-          <a
-            href="mailto:pinguinointelligence@gmail.com?subject=Franchise%20GELLATTI"
-            className={cn(buttonClasses('primary', 'md'), 'mt-6 w-max')}
-          >
+          <a href="#franchise-inquiry" className={cn(buttonClasses('primary', 'md'), 'mt-6 w-max')}>
             Zapytaj o Franchise
           </a>
         </div>
         <div className="grid grid-cols-2 bg-white">
-          {concepts.map((concept, index) => (
+          {FRANCHISE_CONCEPT_ORDER.map((concept) => (
             <div
               key={concept}
               className="grid min-h-36 place-items-center border-b border-l border-ink/10 p-5 text-center odd:border-l-0 lg:odd:border-l"
             >
               <span>
                 <span className="mx-auto grid size-12 place-items-center rounded-[12px] border border-ink/12 text-xl">
-                  {['P', 'W', 'T', 'L'][index]}
+                  {FRANCHISE_CONCEPT_INITIAL[concept]}
                 </span>
-                <strong className="mt-3 block text-xs">{concept}</strong>
+                <strong className="mt-3 block text-xs">{franchiseConceptLabelPl(concept)}</strong>
               </span>
             </div>
           ))}
@@ -143,18 +145,21 @@ export function FranchisePage() {
           Cztery formaty. Bez wymyślonych warunków.
         </h2>
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          {concepts.map((concept, index) => (
+          {FRANCHISE_CONCEPT_ORDER.map((concept) => (
             <article key={concept} className="rounded-[12px] border border-ink/12 bg-white p-5">
               <span className="grid size-11 place-items-center rounded-[10px] border border-ink/12 text-lg">
-                {['P', 'W', 'T', 'L'][index]}
+                {FRANCHISE_CONCEPT_INITIAL[concept]}
               </span>
-              <h3 className="mt-4 text-lg font-semibold">{concept}</h3>
+              <h3 className="mt-4 text-lg font-semibold">{franchiseConceptLabelPl(concept)}</h3>
               <p className="mt-2 text-xs leading-relaxed text-stone-500">
                 Szczegóły wymagają rozmowy i potwierdzonego źródła.
               </p>
             </article>
           ))}
         </div>
+      </section>
+      <section className="mt-10">
+        <FranchiseInquiryForm />
       </section>
     </DestinationSurface>
   );

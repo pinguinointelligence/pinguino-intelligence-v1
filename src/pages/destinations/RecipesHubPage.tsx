@@ -40,6 +40,8 @@ import { MyRecipesContent } from '@/pages/recipes/MyRecipesPage';
 import { hasUnsavedProRecipeChanges, startNewProRecipe } from './startNewProRecipe';
 import { NewRecipeConfirmationDialog } from '@/features/recipes/NewRecipeConfirmationDialog';
 import { SharedWithMePanel } from '@/features/community/ui/SharedWithMePanel';
+import { RecipeLibraryNav } from '@/features/recipes/RecipeLibraryNav';
+import { RECIPE_LIBRARY_TABS, type RecipeLibraryTab } from '@/features/recipes/recipeLibrary';
 import { useRecipeStore } from '@/stores/recipeStore';
 
 const r = copy.nav.recipes;
@@ -47,31 +49,7 @@ const d = r.discovery;
 const MAX_FEATURED = 6;
 
 type DiscoveryView = 'home' | 'lost' | 'natural' | 'fantasy' | 'inspiration' | 'countries';
-type RecipeLibraryTab = 'mine' | 'shared' | 'pinguino' | 'inspiration';
 type IconName = 'left' | 'right' | 'book' | 'globe' | 'leaf' | 'search' | 'sparkles';
-
-/* GELLATTI V2.1 §5: the approved library strip reads as ONE sentence of six
-   destinations in sentence case — `Moje · Udostępnione mi · Gellatti ·
-   Inspiracje · Community · Top 100` — not as two uppercase groups pushed to
-   opposite edges. Only the casing and the grouping change; the tab ids, the
-   routes, the roles and the keyboard contract are untouched. */
-const RECIPE_LIBRARY_TABS = [
-  ['mine', 'Moje'],
-  ['shared', 'Udostępnione mi'],
-  ['pinguino', 'Gellatti'],
-  ['inspiration', 'Inspiracje'],
-] as const satisfies readonly (readonly [RecipeLibraryTab, string])[];
-
-/**
- * Community and TOP 100 complete the §3 recipe navigation, but they are real
- * ROUTES with public URLs — not panels of this page. They render as links with
- * `aria-current`, next to the tablist rather than inside it, so a screen
- * reader is never told that following a link will switch a tab panel.
- */
-const RECIPE_LIBRARY_LINKS = [
-  ['/community', 'Community'],
-  ['/top100', 'Top 100'],
-] as const;
 
 function Icon({ name, className = 'h-4 w-4' }: { name: IconName; className?: string }) {
   const paths: Readonly<Record<IconName, ReactNode>> = {
@@ -788,51 +766,12 @@ export function RecipesHubPage() {
         </button>
       }
     >
-      <div className="gellatti-library-tabs mb-8 flex max-w-full flex-wrap items-end justify-start gap-0 overflow-hidden border-b border-ink/15">
-        <div
-          role="tablist"
-          aria-label="Biblioteka receptur"
-          className="flex w-full min-w-0 max-w-full overflow-x-auto lg:w-auto"
-        >
-          {RECIPE_LIBRARY_TABS.map(([id, label]) => (
-            <button
-              key={id}
-              id={`recipes-tab-${id}`}
-              type="button"
-              role="tab"
-              aria-selected={activeTab === id}
-              aria-controls={`recipes-panel-${id}`}
-              tabIndex={activeTab === id ? 0 : -1}
-              onClick={() => selectTab(id)}
-              onKeyDown={(event) => handleTabKeyDown(event, id)}
-              className={cn(
-                'min-h-12 shrink-0 border-b-2 px-4 text-[13px] font-semibold tracking-normal',
-                activeTab === id
-                  ? 'border-[#ef8708] text-ink'
-                  : 'border-transparent text-stone-600 hover:text-ink',
-              )}
-              data-testid={`recipes-tab-${id}`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <nav
-          aria-label="Gellatti Community"
-          className="flex w-full min-w-0 max-w-full overflow-x-auto lg:w-auto"
-        >
-          {RECIPE_LIBRARY_LINKS.map(([href, label]) => (
-            <Link
-              key={href}
-              to={href}
-              className="inline-flex min-h-12 shrink-0 items-center border-b-2 border-transparent px-4 text-[13px] font-semibold tracking-normal text-stone-600 hover:text-ink"
-              data-testid={`recipes-link-${href.slice(1)}`}
-            >
-              {label}
-            </Link>
-          ))}
-        </nav>
-      </div>
+      <RecipeLibraryNav
+        mode="tabs"
+        activeTab={activeTab}
+        onSelect={selectTab}
+        onKeyDown={handleTabKeyDown}
+      />
 
       <NewRecipeConfirmationDialog
         open={newRecipeConfirmOpen}

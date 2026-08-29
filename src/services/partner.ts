@@ -217,3 +217,100 @@ export async function claimReferralEvidence(): Promise<string | null> {
   saveReferralEvidence({ ...evidence, attributionId });
   return attributionId;
 }
+
+/* ------------------------------------------------------------------------ */
+/* Partner / Creator application lane                                        */
+/* ------------------------------------------------------------------------ */
+
+/** What the customer fills in. Deliberately short — the brief asks for a real
+ *  cooperation invitation, not a bureaucratic form. */
+export interface PartnerApplicationDraft {
+  displayName: string;
+  primaryLink: string;
+  otherLinks?: string;
+  platforms: string[];
+  audience?: string;
+  country?: string;
+  note?: string;
+  proposedSlug?: string;
+}
+
+export type PartnerApplicationStatus =
+  | 'draft'
+  | 'submitted'
+  | 'in_review'
+  | 'approved'
+  | 'rejected';
+
+export interface PartnerApplicationRecord {
+  id: string;
+  status: PartnerApplicationStatus;
+  application_data: Record<string, unknown>;
+  submitted_at: string | null;
+  reviewed_at: string | null;
+  decision_reason: string | null;
+  created_at: string;
+}
+
+export interface MyPartnerApplication {
+  application: PartnerApplicationRecord | null;
+  partnerActive: boolean;
+}
+
+export async function submitPartnerApplication(
+  draft: PartnerApplicationDraft,
+): Promise<{ id: string; status: PartnerApplicationStatus; duplicate: boolean }> {
+  if (!supabase) return unavailable();
+  const { data, error } = await supabase.rpc('gellatti_submit_partner_application_v1', {
+    p_application: draft,
+  });
+  if (error) throw new Error(error.message);
+  return data as { id: string; status: PartnerApplicationStatus; duplicate: boolean };
+}
+
+export async function getMyPartnerApplication(): Promise<MyPartnerApplication> {
+  if (!supabase) return unavailable();
+  const { data, error } = await supabase.rpc('gellatti_my_partner_application_v1');
+  if (error) throw new Error(error.message);
+  return (data ?? { application: null, partnerActive: false }) as MyPartnerApplication;
+}
+
+export interface AdminPartnerApplication {
+  id: string;
+  userId: string;
+  email: string | null;
+  status: PartnerApplicationStatus;
+  application: Record<string, unknown>;
+  submitted_at: string | null;
+  reviewed_at: string | null;
+  decision_reason: string | null;
+  created_at: string;
+  partnerActive: boolean;
+}
+
+export async function getAdminPartnerApplications(
+  status?: PartnerApplicationStatus,
+): Promise<AdminPartnerApplication[]> {
+  if (!supabase) return unavailable();
+  const { data, error } = await supabase.rpc('gellatti_admin_partner_applications_v1', {
+    p_status: status ?? null,
+    p_limit: 200,
+  });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as AdminPartnerApplication[];
+}
+
+export async function decidePartnerApplication(input: {
+  applicationId: string;
+  action: 'approve' | 'reject' | 'request_information';
+  reason?: string;
+}): Promise<{ status: PartnerApplicationStatus; code?: string; slug?: string }> {
+  if (!supabase) return unavailable();
+  const { data, error } = await supabase.rpc('gellatti_admin_partner_application_action_v1', {
+    p_application_id: input.applicationId,
+    p_action: input.action,
+    p_reason: input.reason ?? null,
+  });
+  if (error) throw new Error(error.message);
+  return data as { status: PartnerApplicationStatus; code?: string; slug?: string };
+}

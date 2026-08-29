@@ -17,6 +17,7 @@ import {
   startConnectOnboarding,
   updatePartnerProfile,
   uploadPartnerLogo,
+  getMyPartnerApplication,
   type PartnerCodeAnalytics,
   type PartnerWorkspace,
 } from '@/services/partner';
@@ -636,6 +637,14 @@ export function PartnerPage() {
     : 'overview';
   const query = useQuery({ queryKey: ['partner-workspace'], queryFn: getPartnerWorkspace });
   const data = query.data;
+  // A blocked panel must explain itself, so the gate needs the applicant's own
+  // application status — not just the "no partner row" fact.
+  const application = useQuery({
+    queryKey: ['partner-application', 'gate'],
+    queryFn: getMyPartnerApplication,
+    enabled: data !== undefined && !data.ok,
+  });
+  const applicationStatus = application.data?.application?.status ?? null;
   const content = useMemo(() => {
     if (!data?.ok) return null;
     if (section === 'overview') return <Overview data={data} />;
@@ -689,16 +698,37 @@ export function PartnerPage() {
           {data && !data.ok ? (
             <ApplicationState
               kind="empty"
-              title="Tryb Partner niedostępny"
+              title={
+                applicationStatus === 'submitted' || applicationStatus === 'in_review'
+                  ? 'Zgłoszenie partnerskie w toku'
+                  : 'Tryb Partner nie jest jeszcze aktywny'
+              }
+              /* A gate has to say WHY and WHAT NEXT. Before this, an account
+                 that had simply never applied was told it lacked an invitation
+                 it had no way to ask for. */
               body={
                 data.reason === 'partner_not_active'
                   ? 'Status Partnera nie jest aktywny. Historia finansowa pozostaje zachowana.'
-                  : 'Konto nie ma zaproszonej i zatwierdzonej roli Partner.'
+                  : applicationStatus === 'submitted'
+                    ? 'Twoje zgłoszenie czeka na decyzję. Odezwiemy się w powiadomieniach.'
+                    : applicationStatus === 'in_review'
+                      ? 'Potrzebujemy jeszcze kilku informacji do Twojego zgłoszenia.'
+                      : applicationStatus === 'rejected'
+                        ? 'Poprzednie zgłoszenie zostało rozpatrzone odmownie. Możesz wysłać nowe.'
+                        : 'Panel Partner otwiera się po zatwierdzeniu zgłoszenia. Zajmuje to kilka pól.'
               }
               action={
-                <Link to="/home" className={applicationSecondaryClasses()}>
-                  Wróć do Home
-                </Link>
+                applicationStatus === 'submitted' ? (
+                  <Link to="/community" className={applicationSecondaryClasses()}>
+                    Zobacz Community
+                  </Link>
+                ) : (
+                  <Link to="/work-with-us#partner-application" className={applicationSecondaryClasses()}>
+                    {applicationStatus === 'in_review' || applicationStatus === 'rejected'
+                      ? 'Uzupełnij zgłoszenie'
+                      : 'Wyślij zgłoszenie'}
+                  </Link>
+                )
               }
             />
           ) : (

@@ -12,6 +12,7 @@ import { CommunityRecipeCard } from '@/features/community/ui/CommunityRecipeCard
 import { useAsyncResource } from '@/features/community/ui/useAsyncResource';
 import { RANKING_WINDOWS, type RankingWindow } from '@/features/community/domain/ranking';
 import { listCommunity, searchCommunity, type CommunityCard } from '@/services/community';
+import { RecipeLibraryNav } from '@/features/recipes/RecipeLibraryNav';
 
 /**
  * Community discovery (§37).
@@ -47,7 +48,11 @@ export function CommunityPage() {
   );
 
   return (
-    <DestinationSurface eyebrow="GELLATTI" title={copy.nav.community}>
+    <DestinationSurface eyebrow="GELLATTI" title={copy.nav.community} contextLabel="Receptury">
+      {/* Community is part of the Recipes experience, not a destination the
+          customer is thrown into: the library strip stays, so the way back is
+          where the way in was. The public URL keeps working unchanged. */}
+      <RecipeLibraryNav mode="links" activeHref="/community" />
       <div className="flex flex-col gap-8">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <nav aria-label={copy.nav.community} className="flex flex-wrap gap-1">

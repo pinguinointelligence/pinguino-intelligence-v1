@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
 import { SectionLabel } from '@/components/shared/SectionLabel';
+import { AdminPartnerApplicationsPanel } from './AdminPartnerApplicationsPanel';
 import { customerErrorMessage } from '@/copy/customerError';
 import {
   activatePartner,
@@ -124,13 +125,14 @@ export function AdminPartnersSection() {
   return (
     <>
       <header className="border-b border-ink/10 pb-6">
-        <SectionLabel>Dostęp przez zaproszenie</SectionLabel>
+        <SectionLabel>Zgłoszenia i zaproszenia</SectionLabel>
         <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-ink">Partnerzy</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-600">
-          Jedna ścieżka Partner → przypisanie → rejestr prowizji → konto wypłat Connect. Brak
-          publicznej rejestracji bez zaproszenia.
+          Jedna ścieżka Partner → przypisanie → rejestr prowizji → konto wypłat Connect. Partner
+          powstaje po zatwierdzeniu zgłoszenia albo z zaproszenia e-mailem.
         </p>
       </header>
+      <AdminPartnerApplicationsPanel />
       <div className="mt-7 grid gap-6 xl:grid-cols-2">
         <form
           onSubmit={(event) => {
