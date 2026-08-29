@@ -119,18 +119,19 @@ describe('global target-batch invariant', () => {
     throw new Error(`fuzz seed ${FUZZ_SEED} never reached`);
   };
 
-  it('the exact fuzz seed 454174848 refuses a batch repair that moves away from Direction', () => {
+  it('the exact fuzz seed 454174848 case reconciles to the target batch', () => {
     const draft = exactFuzzDraft();
     expect(Math.round(plannedSum(draft))).toBe(951);
     expect(draft.target_batch_grams).toBe(1000);
     const built = assertInvariant(draft, 'fuzz seed 454174848');
-    // Mass is legally allocatable, but the executable candidate increases the
-    // requested-band distance. It is therefore not a truthful Direction result.
-    expect(built).toMatchObject({
-      ok: false,
-      code: 'no_proposal',
-      directionTargetUnreached: true,
-    });
+    // It must be a real success, not a refusal — the mass is legally allocatable.
+    // ORDINARY RECALCULATE: the executable candidate increases the requested-band
+    // distance, and that is reported truthfully as `directionTargetUnreached`. It
+    // is NOT a reason to withhold a valid, on-batch, violation-free repair.
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    expect(built.preview.directionTargetUnreached).toBe(true);
+    expect(built.preview.directionAssessment?.reached).toBe(false);
   });
 
   it('an underweight draft never returns a false already_clean', () => {

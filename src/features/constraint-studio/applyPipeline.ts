@@ -1341,19 +1341,48 @@ export interface DirectionCandidateProgress {
   reached: boolean;
   materiallyDifferent: boolean;
   strictlyCloser: boolean;
+  /**
+   * EXPLICIT DIRECTION verdict — strict progress. An unreached candidate counts
+   * as Direction progress only when it actually moves closer to the requested
+   * band. Consumed by the explicit Direction routes (Starter Pack rescue, the
+   * owner Direction fallback ladder) and by the Apply door for those routes.
+   */
   accepted: boolean;
+  /**
+   * ORDINARY RECALCULATE verdict — truthful publication.
+   *
+   * A technically valid, on-batch correction is a real answer even when it does
+   * not reach or improve the active Direction target: Direction then reports
+   * `reached: false` and the shared presentation contract raises
+   * `directionTargetUnreached`, so the served UI still collects explicit
+   * best-achievable consent. What must never be published is a candidate that
+   * is byte-identical to the current draft — that is the fake NEAREST this
+   * authority exists to keep closed.
+   */
+  publishable: boolean;
   before: DirectionDistanceMeasure | null;
   after: DirectionDistanceMeasure | null;
 }
 
 /**
- * One strict-progress authority for an active Direction proposal.
+ * The Direction progress authority for an active Direction proposal.
  *
- * Reaching the requested target is sufficient. An unreached NEAREST candidate
- * is truthful only when the executable gram vector actually changes and its
- * distance to the user's requested band is strictly smaller than the current
- * draft's distance. This is pure and is called independently by both the
- * Preview exit and the Apply trust door.
+ * It publishes TWO verdicts because two different questions are being asked of
+ * the same measurement, and conflating them is what made an ordinary technical
+ * correction disappear:
+ *
+ *   `accepted`    — "is this real Direction progress?"  (explicit Direction)
+ *   `publishable` — "is this a truthful answer at all?" (ordinary Recalculate)
+ *
+ * `strictlyCloser` is unsatisfiable whenever the current draft already sits
+ * inside every requested band: band distance cannot fall below zero, so
+ * `accepted` degenerates to `reached` there. Using it as a *publication* gate
+ * therefore deleted valid, on-batch, violation-free repairs — the proven
+ * Protein −13 °C ECO Multi-Main fixture returned `no_proposal` for exactly this
+ * reason while its solver input was byte-identical to the accepted one.
+ *
+ * Both verdicts are pure and are read independently by the Preview exit and by
+ * the Apply trust door.
  */
 export function assessDirectionCandidateProgress(
   current: RecipeInput,
@@ -1367,6 +1396,7 @@ export function assessDirectionCandidateProgress(
       materiallyDifferent: false,
       strictlyCloser: false,
       accepted: true,
+      publishable: true,
       before: null,
       after: null,
     };
@@ -1388,6 +1418,7 @@ export function assessDirectionCandidateProgress(
     materiallyDifferent,
     strictlyCloser,
     accepted: reached || (materiallyDifferent && strictlyCloser),
+    publishable: reached || materiallyDifferent,
     before,
     after,
   };
@@ -6418,8 +6449,21 @@ function enforceTargetBatchInvariant(
   const target = input.target_batch_grams;
   if (!(target > 0)) return result;
   if (Math.abs(plannedSum(result.preview.proposedInput) - target) <= BATCH_SUM_TOLERANCE_G) {
+    // ORDINARY RECALCULATE — Direction progress is INFORMATIONAL here, never a
+    // publication veto. This exit is shared by every route, including a plain
+    // technical correction that is repairing something Direction has no opinion
+    // about (an off-batch draft, a violated hard band, a Main repair). Refusing
+    // such a candidate because it did not also improve Direction left the owner
+    // with no recipe at all, and it is unrepairable by construction whenever the
+    // draft already sits inside its bands. The candidate's Direction truth is
+    // already published: `directionTargetUnreached` is raised by the single
+    // presentation contract every Preview producer converges on, so the served
+    // UI still collects the same explicit best-achievable consent.
+    //
+    // The one thing that is still never publishable is a candidate identical to
+    // the draft — that would be a NEAREST claim with nothing behind it.
     const progress = assessDirectionCandidateProgress(input, result.preview.proposedInput);
-    if (progress.active && !progress.accepted) {
+    if (progress.active && !progress.publishable) {
       return {
         ok: false,
         code: 'no_proposal',
@@ -8825,7 +8869,21 @@ export class VerifiedApply {
         directionIdentity,
         preview.proposedInput,
       );
-      if (directionProgress.active && !directionProgress.accepted) {
+      // The door reads the SAME verdict the Preview exit used, selected by the
+      // route the Preview actually came from — otherwise it would refuse a
+      // Preview the pipeline legitimately published.
+      //   explicit Direction (owner fallback ladder, Starter Pack rescue)
+      //     -> strict progress, exactly as accepted;
+      //   ordinary Recalculate
+      //     -> truthful publication: a materially different candidate is real,
+      //        an unchanged one is the forged NEAREST this door exists to stop.
+      const explicitDirectionRoute =
+        preview.directionFallback !== undefined ||
+        preview.starterPackRescue !== undefined;
+      const directionSatisfied = explicitDirectionRoute
+        ? directionProgress.accepted
+        : directionProgress.publishable;
+      if (directionProgress.active && !directionSatisfied) {
         return {
           ok: false,
           code: 'unsafe_proposal',
