@@ -2615,6 +2615,39 @@ function iterateSolverToFixedPoint(
 const MAIN_OBJECTIVE_EPSILON_G = 0.05;
 const MAIN_OBJECTIVE_MAX_PROBES = 16;
 
+/**
+ * MAIN / CROWN POSITIVE-MASS CONTRACT (owner P0, 2026-08-29).
+ *
+ * A Main proof authorises a Preview whenever the frontier actually moved the
+ * executable Main mass. BOTH terminal search outcomes are real, complete,
+ * Engine-verified Main corrections:
+ *
+ *  - `maximized`       — a certified maximum (a published ProductBehavior
+ *                        ceiling or an integer linear relaxation closed the
+ *                        upper bound);
+ *  - `best_achievable` — the bounded frontier. It is the ONLY status a
+ *                        user-held / uncalibrated Main can ever produce,
+ *                        because §4 forbids inventing a percentage ceiling for
+ *                        it, so `mathematicallyCertified` is unreachable.
+ *
+ * `held_by_contract` and `no_admissible_increase` return the starting mass and
+ * are excluded by the gram delta below, exactly as before.
+ *
+ * Restricting the on-batch/technically-clean gates to `maximized` made every
+ * user-held Main computationally inert: an on-batch draft with a positive Main
+ * was answered „receptura jest już dobra" (score 10) no matter how small that
+ * Main was, while the same draft one gram off the batch target routed through
+ * batch reconciliation and correctly proposed the full Main amount. That is the
+ * owner's observed „Main 1 g dead zone / 2 g activation". The Apply door
+ * already re-verifies both proof shapes (`exactMaximumProof` /
+ * `boundedBestProof`), so no trust boundary is widened here.
+ */
+const mainObjectiveRaisesMain = (
+  proof: MainFlavourObjectiveProof | null | undefined,
+): proof is MainFlavourObjectiveProof =>
+  (proof?.status === 'maximized' || proof?.status === 'best_achievable') &&
+  Math.abs(proof.exactAcceptedMainGrams - proof.startingMainGrams) > MAIN_OBJECTIVE_EPSILON_G;
+
 type MainObjectiveProbe =
   | { ok: true; input: RecipeInput; mainGrams: number; score: number | null }
   | {
@@ -7287,12 +7320,7 @@ function buildOptimizePreviewWithDirection(
       const ecoMainObjective = currentDirectionSafe
         ? maximizeMainFlavourObjective(input, working, set, options)
         : { input: working, proof: null };
-      if (
-        ecoMainObjective.proof?.status === 'maximized' &&
-        Math.abs(
-          ecoMainObjective.proof.exactAcceptedMainGrams - ecoMainObjective.proof.startingMainGrams,
-        ) > MAIN_OBJECTIVE_EPSILON_G
-      ) {
+      if (mainObjectiveRaisesMain(ecoMainObjective.proof)) {
         const preview = finishPreview(
           'optimize',
           copy.preview.kindLabels.optimize,
@@ -7411,13 +7439,7 @@ function buildOptimizePreviewWithDirection(
       }
     }
     const cleanMainObjective = maximizeMainFlavourObjective(input, working, set, options);
-    if (
-      cleanMainObjective.proof?.status === 'maximized' &&
-      Math.abs(
-        cleanMainObjective.proof.exactAcceptedMainGrams -
-          cleanMainObjective.proof.startingMainGrams,
-      ) > MAIN_OBJECTIVE_EPSILON_G
-    ) {
+    if (mainObjectiveRaisesMain(cleanMainObjective.proof)) {
       const preview = finishPreview(
         'optimize',
         copy.preview.kindLabels.optimize,
@@ -7618,9 +7640,7 @@ function buildOptimizePreviewWithDirection(
     violationsAfter === 0 ||
     violationsAfter < violationsBefore ||
     (lastProposal !== null && severityAfter < severityBefore - SEVERITY_EPS) ||
-    (mainObjective.proof?.status === 'maximized' &&
-      Math.abs(mainObjective.proof.exactAcceptedMainGrams - mainObjective.proof.startingMainGrams) >
-        MAIN_OBJECTIVE_EPSILON_G);
+    mainObjectiveRaisesMain(mainObjective.proof);
   if (!improved) {
     // Owner Phase 6: same fallback door — a produced-but-rejected local
     // candidate on a complete unconstrained draft tries the template seed;
