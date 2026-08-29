@@ -34,13 +34,13 @@ import {
 import { studioIntentFromRecipe } from './optimizationPreviewRunner';
 
 const RESCUE_PROBLEMS: readonly { value: BatchRescueProblem; label: string }[] = [
-  { value: 'too_hard', label: 'Too hard' },
-  { value: 'too_soft', label: 'Too soft' },
-  { value: 'icy', label: 'Icy' },
-  { value: 'sandy', label: 'Sandy' },
-  { value: 'too_sweet', label: 'Too sweet' },
-  { value: 'too_fatty', label: 'Too fatty' },
-  { value: 'serving_temperature_mismatch', label: 'Serving temperature mismatch' },
+  { value: 'too_hard', label: 'Za twarde' },
+  { value: 'too_soft', label: 'Za miękkie' },
+  { value: 'icy', label: 'Lodowate' },
+  { value: 'sandy', label: 'Piaskowata' },
+  { value: 'too_sweet', label: 'Za słodkie' },
+  { value: 'too_fatty', label: 'Za tłuste' },
+  { value: 'serving_temperature_mismatch', label: 'Niezgodność temperatury serwowania' },
 ];
 
 /** '' → null (missing, routers block honestly); otherwise the parsed number. */
@@ -150,9 +150,9 @@ export function BranchWorkflowPreviews({
       <div className="flex flex-col gap-1">
         <SectionLabel>Korekta partii i brak składnika</SectionLabel>
         <p className="text-xs leading-relaxed text-ivory/60">
-          Preview only — nothing is applied. No inventory is changed. No recipe is saved. Decisions and any
-          verified numbers come from the real engine with regulator verification; missing measurements block
-          honestly instead of being guessed.
+          To tylko podgląd — nic nie zostanie zastosowane, zapisane ani odjęte z zapasów. Decyzje i
+          zweryfikowane liczby pochodzą z prawdziwego silnika z weryfikacją regulatora; brakujące pomiary
+          uczciwie blokują wynik, zamiast być zgadywane.
         </p>
       </div>
 
@@ -175,20 +175,20 @@ export function BranchWorkflowPreviews({
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <p className={labelCls}>Zmierzona masa partii (g)</p>
-                <input className={inputCls} inputMode="decimal" placeholder="Weigh it" value={measuredBatchG} onChange={(e) => setMeasuredBatchG(e.target.value)} />
+                <input className={inputCls} inputMode="decimal" placeholder="Zważ" value={measuredBatchG} onChange={(e) => setMeasuredBatchG(e.target.value)} />
               </div>
               <div>
-                <p className={labelCls}>observed serving °C</p>
-                <input className={inputCls} inputMode="decimal" placeholder="Optional" value={observedTempC} onChange={(e) => setObservedTempC(e.target.value)} />
+                <p className={labelCls}>zaobserwowana temperatura serwowania °C</p>
+                <input className={inputCls} inputMode="decimal" placeholder="Opcjonalne" value={observedTempC} onChange={(e) => setObservedTempC(e.target.value)} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-1.5">
-              <Check label="Already frozen" checked={frozen} onChange={setFrozen} />
-              <Check label="Can reprocess" checked={canReprocess} onChange={setCanReprocess} />
-              <Check label="Liquid addition ok" checked={liquidOk} onChange={setLiquidOk} />
-              <Check label="Dry addition ok" checked={dryOk} onChange={setDryOk} />
+              <Check label="Już zamrożone" checked={frozen} onChange={setFrozen} />
+              <Check label="Można przetworzyć ponownie" checked={canReprocess} onChange={setCanReprocess} />
+              <Check label="Można dodać płynne" checked={liquidOk} onChange={setLiquidOk} />
+              <Check label="Można dodać suche" checked={dryOk} onChange={setDryOk} />
             </div>
-            <Check label="food-safety concern (contamination)" checked={foodSafety} onChange={setFoodSafety} />
+            <Check label="ryzyko bezpieczeństwa żywności (zanieczyszczenie)" checked={foodSafety} onChange={setFoodSafety} />
             <button type="button" onClick={runRescuePreview} className={buttonCls}>
               Podgląd korekty partii
             </button>
@@ -205,17 +205,17 @@ export function BranchWorkflowPreviews({
               ))}
             </select>
             <div>
-              <p className={labelCls}>available in stock (g)</p>
-              <input className={inputCls} inputMode="decimal" placeholder="Count it" value={availableG} onChange={(e) => setAvailableG(e.target.value)} />
+              <p className={labelCls}>dostępne w magazynie (g)</p>
+              <input className={inputCls} inputMode="decimal" placeholder="Policz" value={availableG} onChange={(e) => setAvailableG(e.target.value)} />
             </div>
             <div className="grid grid-cols-2 gap-1.5">
               <Check label="Można zmniejszyć masę partii" checked={canScaleDown} onChange={setCanScaleDown} />
-              <Check label="May reformulate" checked={canReformulate} onChange={setCanReformulate} />
-              <Check label="Can buy / wait" checked={purchasePossible} onChange={setPurchasePossible} />
+              <Check label="Można przeformułować" checked={canReformulate} onChange={setCanReformulate} />
+              <Check label="Można dokupić / poczekać" checked={purchasePossible} onChange={setPurchasePossible} />
             </div>
             <p className="text-[10px] leading-relaxed text-ivory/60">
-              Verified substitute podgląd requires a calibrated substitute from the reference catalog —
-              substitutes can never be typed in by hand.
+              Podgląd zweryfikowanego zamiennika wymaga skalibrowanego zamiennika z katalogu
+              referencyjnego — zamienników nie można wpisywać ręcznie.
             </p>
             <button type="button" onClick={runShortagePreview} className={buttonCls}>
               Podgląd braku składnika

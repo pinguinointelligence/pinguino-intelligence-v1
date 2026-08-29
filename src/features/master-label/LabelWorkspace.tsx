@@ -1397,7 +1397,7 @@ export function LegacyRunLabelSettings({
                 }
                 className={SETTINGS_INPUT_CLASS}
               >
-                <option value="retail_consumer">Retail / konsumencka</option>
+                <option value="retail_consumer">Detaliczna / konsumencka</option>
                 <option value="internal_production">Wewnętrzna produkcyjna</option>
                 <option value="display_gelateria">Ekspozycja / gelateria</option>
               </select>
@@ -1415,7 +1415,7 @@ export function LegacyRunLabelSettings({
                 }
                 className={SETTINGS_INPUT_CLASS}
               >
-                <option value="prepacked">Prepacked</option>
+                <option value="prepacked">Produkt paczkowany</option>
                 <option value="ppds">PPDS / pakowane w miejscu sprzedaży</option>
                 <option value="loose_non_prepacked">Loose / nieopakowane</option>
               </select>
@@ -1983,8 +1983,8 @@ function CompactRunLabelEditor({
                   className={SETTINGS_INPUT_CLASS}
                 >
                   <option value="unresolved">Wybierz obszar</option>
-                  <option value="GB">Great Britain</option>
-                  <option value="NI">Northern Ireland</option>
+                  <option value="GB">Wielka Brytania</option>
+                  <option value="NI">Irlandia Północna</option>
                 </select>
               </label>
             ) : draft.market === 'US' ? (
@@ -2087,7 +2087,7 @@ function CompactRunLabelEditor({
           </MissingDataCard>
         ) : null}
         {missing('lot') ? (
-          <MissingDataCard field="lot" title="Identyfikator partii LOT">
+          <MissingDataCard field="lot" title="Identyfikator partii Nr partii">
             <label className="block text-xs font-medium text-stone-600">
               LOT
               <input
@@ -2702,7 +2702,7 @@ function CompactMarketNutritionFields({
               />
             </label>
             <label className="text-xs font-medium text-stone-600">
-              Canada FOP
+              FOP (Kanada)
               <select
                 value={facts.canadaFopExemption}
                 onChange={(event) =>
@@ -2918,7 +2918,7 @@ export function LegacyRunLabelEditor({
                 }
                 className={SETTINGS_INPUT_CLASS}
               >
-                <option value="retail_consumer">Retail / konsumencka</option>
+                <option value="retail_consumer">Detaliczna / konsumencka</option>
                 <option value="internal_production">Wewnętrzna produkcyjna</option>
                 <option value="display_gelateria">Ekspozycja / gelateria</option>
               </select>
@@ -2936,7 +2936,7 @@ export function LegacyRunLabelEditor({
                 }
                 className={SETTINGS_INPUT_CLASS}
               >
-                <option value="prepacked">Prepacked</option>
+                <option value="prepacked">Produkt paczkowany</option>
                 <option value="ppds">PPDS / pakowane w miejscu sprzedaży</option>
                 <option value="loose_non_prepacked">Loose / nieopakowane</option>
               </select>
@@ -2983,9 +2983,9 @@ export function LegacyRunLabelEditor({
                 }
                 className={SETTINGS_INPUT_CLASS}
               >
-                <option value="unresolved">Wybierz GB albo Northern Ireland</option>
-                <option value="GB">Great Britain</option>
-                <option value="NI">Northern Ireland</option>
+                <option value="unresolved">Wybierz GB albo Irlandię Północną</option>
+                <option value="GB">Wielka Brytania</option>
+                <option value="NI">Irlandia Północna</option>
               </select>
             </label>
           ) : null}
@@ -3037,7 +3037,7 @@ export function LegacyRunLabelEditor({
                 className={SETTINGS_INPUT_CLASS}
               >
                 <option value="unresolved">Wybierz kontekst</option>
-                <option value="interstate_retail">Packaged retail / interstate commerce</option>
+                <option value="interstate_retail">Sprzedaż detaliczna w opakowaniu / handel międzystanowy (USA)</option>
                 <option value="food_service">Food service</option>
               </select>
             </label>
@@ -3464,7 +3464,7 @@ export function LegacyRunLabelEditor({
           <div className="grid gap-3 sm:grid-cols-2">
             <RequiredSettingsField field="lot" missing={missing('lot')}>
               <div className="text-xs font-medium text-stone-600">
-                LOT · nadawany automatycznie
+                Nr partii · nadawany automatycznie
                 <output
                   className={cn(
                     SETTINGS_INPUT_CLASS,
@@ -4119,7 +4119,7 @@ const LABEL_FIELD_NAMES: Readonly<Record<MasterLabelFieldId, string>> = {
   storage: 'Przechowywanie',
   production_date: 'Data produkcji',
   date_mark: 'Data trwałości',
-  lot: 'LOT',
+  lot: 'Nr partii',
   logo: 'Logo',
   origin: 'Pochodzenie',
   customer_note: 'Nota dla klienta',
@@ -4481,7 +4481,7 @@ function RegulatoryNutritionFields({
           {value.market === 'CA' ? (
             <>
               <label className="text-xs font-medium text-stone-600">
-                Canadian reference-amount category
+                Kanadyjska kategoria ilości referencyjnej
                 <select
                   value={facts.canadaProductForm ?? 'unresolved'}
                   onChange={(event) =>
@@ -4498,11 +4498,11 @@ function RegulatoryNutritionFields({
                   <option value="unresolved">Wybierz formę produktu</option>
                   <option value="tub">Tub / gelato / sorbet · 188 mL</option>
                   <option value="cake_sandwich_cone">Cake / sandwich / cone · 125 mL</option>
-                  <option value="single_portion">Pop / bar / cup · 75 mL</option>
+                  <option value="single_portion">Lód na patyku / baton / kubeczek · 75 mL</option>
                 </select>
               </label>
               <label className="text-xs font-medium text-stone-600">
-                Canadian NFT format
+                Kanadyjski format NFT
                 <select
                   value={facts.canadaFormatFamily ?? 'auto'}
                   onChange={(event) =>
@@ -4535,7 +4535,7 @@ function RegulatoryNutritionFields({
                 </select>
               </label>
               <label className="text-xs font-medium text-stone-600">
-                FOP / exemption
+                FOP / zwolnienie
                 <select
                   value={facts.canadaFopExemption}
                   onChange={(event) =>

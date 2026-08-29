@@ -236,13 +236,13 @@ function OperationalList({
 
 const REQUEST_TABS: readonly (readonly [ProductRequestStatus | 'ALL', string])[] = [
   ['SUBMITTED', 'Nowe'],
-  ['ADMIN_REVIEW', 'In review'],
+  ['ADMIN_REVIEW', 'W trakcie weryfikacji'],
   ['NEEDS_INFO', 'Oczekuje na użytkownika'],
-  ['RESUBMITTED', 'Resubmitted'],
+  ['RESUBMITTED', 'Wysłano ponownie'],
   ['APPROVED', 'Zatwierdzone'],
-  ['REJECTED', 'Rejected'],
-  ['DUPLICATE', 'Duplicate'],
-  ['USER_CANCELED', 'Canceled'],
+  ['REJECTED', 'Odrzucone'],
+  ['DUPLICATE', 'Duplikat'],
+  ['USER_CANCELED', 'Anulowane'],
   ['ALL', 'Wszystkie'],
 ];
 function ProductRequests() {

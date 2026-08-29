@@ -615,7 +615,7 @@ function Settings({ data }: { data: PartnerWorkspace }) {
           ['ID Partnera', data.partner?.id],
           ['Status', data.partner?.status],
           ['Tier', data.partner?.tier],
-          ['Public slug', data.profile?.slug],
+          ['Publiczny identyfikator', data.profile?.slug],
           ['Home + Pro', 'Bez opłat podczas aktywnego statusu Partner'],
         ].map(([label, value]) => (
           <div key={label} className="flex items-center justify-between gap-4 py-4 text-sm">

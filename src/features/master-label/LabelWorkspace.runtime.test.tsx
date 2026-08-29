@@ -452,7 +452,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(editor?.textContent).toContain('Rynek sprzedaży');
     expect(editor?.textContent).toContain('Zapamiętaj jako domyślne');
     expect(editor?.textContent).toContain('Kopie');
-    expect(editor?.textContent).not.toContain('LOT · nadawany automatycznie');
+    expect(editor?.textContent).not.toContain('Nr partii · nadawany automatycznie');
     expect(editor?.textContent).not.toContain('Energia według zasad rynku');
     expect(editor?.textContent).not.toContain('Uzupełnij wymagane pola');
     expect(editor?.querySelector('[data-label-field]')).toBeNull();
@@ -639,7 +639,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
     const workspace = host.querySelector('[data-testid="label-workspace"]')!;
     expect(workspace.getAttribute('data-active-label-view')).toBe('data');
     expect(workspace.querySelector('[data-testid="label-data-intake"]')?.textContent).toContain(
-      'European Union',
+      'Unia Europejska',
     );
 
     await swipe(workspace, 260, 130);
@@ -700,7 +700,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
       await Promise.resolve();
     });
 
-    expect(host.textContent).toContain('European Union');
+    expect(host.textContent).toContain('Unia Europejska');
     expect(button('Nowa wersja')).not.toBeUndefined();
     await act(async () => {
       button('Nowa wersja')!.click();

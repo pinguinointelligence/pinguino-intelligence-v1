@@ -399,7 +399,7 @@ export function ProductionCockpit({
               </span>
             </div>
             <div>
-              <dt className="text-stone-500">LOT</dt>
+              <dt className="text-stone-500">Nr partii</dt>
               <dd className="mt-1 truncate font-mono font-semibold tabular-nums text-ink">
                 {lotCode}
               </dd>

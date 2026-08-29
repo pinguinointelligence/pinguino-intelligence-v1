@@ -140,7 +140,7 @@ const WORLD_OPTIONAL: readonly MasterLabelFieldId[] = [
 export const MARKET_PROFILES: Readonly<Record<MarketProfileCode, MarketProfile>> = Object.freeze({
   EU: {
     code: 'EU',
-    label: 'European Union',
+    label: 'Unia Europejska',
     jurisdiction: 'European Union',
     flag: 'EU',
     consumerLayout: 'eu_declaration',
@@ -162,7 +162,7 @@ export const MARKET_PROFILES: Readonly<Record<MarketProfileCode, MarketProfile>>
   },
   UK: {
     code: 'UK',
-    label: 'United Kingdom',
+    label: 'Wielka Brytania',
     jurisdiction: 'United Kingdom (GB or Northern Ireland context required)',
     flag: 'UK',
     consumerLayout: 'uk_declaration',
@@ -184,7 +184,7 @@ export const MARKET_PROFILES: Readonly<Record<MarketProfileCode, MarketProfile>>
   },
   US: {
     code: 'US',
-    label: 'United States',
+    label: 'Stany Zjednoczone',
     jurisdiction: 'United States',
     flag: 'US',
     consumerLayout: 'us_nutrition_facts',
@@ -208,7 +208,7 @@ export const MARKET_PROFILES: Readonly<Record<MarketProfileCode, MarketProfile>>
   },
   CA: {
     code: 'CA',
-    label: 'Canada',
+    label: 'Kanada',
     jurisdiction: 'Canada',
     flag: 'CA',
     consumerLayout: 'ca_bilingual_nft',
@@ -260,7 +260,7 @@ export const MARKET_PROFILES: Readonly<Record<MarketProfileCode, MarketProfile>>
   },
   WORLD: {
     code: 'WORLD',
-    label: 'World / Universal',
+    label: 'Świat / Uniwersalna',
     jurisdiction: 'Universal informational output — no country legal profile',
     flag: 'WORLD',
     consumerLayout: 'world_neutral',

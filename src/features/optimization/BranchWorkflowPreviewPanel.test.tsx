@@ -87,8 +87,8 @@ describe('BranchWorkflowPreviewPanel — redaction (Demo/Free vs Pro vs DEV)', (
 
   it('Pro sees the VERIFIED IF10 scale-down ratio', () => {
     const t = visibleText(renderPanel(shortageCalculated(), pro));
-    expect(t).toMatch(/Verified scale-down: ×0\.720/);
-    expect(t).toMatch(/composition percentages preserved/);
+    expect(t).toMatch(/Zweryfikowane skalowanie w dół: ×0\.720/);
+    expect(t).toMatch(/udziały procentowe składu zachowane/);
   });
 
   it('Demo/Free never see verified substitute detail (names, grams, verdict numbers)', () => {
@@ -110,7 +110,7 @@ describe('BranchWorkflowPreviewPanel — redaction (Demo/Free vs Pro vs DEV)', (
   it('DEV shows the debug trace but STILL respects demo redaction', () => {
     const html = renderPanel(rescuePartial(), devDemo);
     expect(html).toContain('DEV trace');
-    expect(html).toContain('Multi-lever');
+    expect(html).toContain('Wielopoziomowo');
     expect(html).toContain('verification_failed');
     expect(html).not.toContain('212'); // additive trace, no redaction upgrade
     expect(/dextrose/i.test(html)).toBe(false);
@@ -122,7 +122,7 @@ describe('BranchWorkflowPreviewPanel — honest labels and hard display rules', 
     const preview = rescuePartial();
     expect(preview.exactStatus).toBe('partial_improvement'); // the real Slice 20 outcome
     const t = visibleText(renderPanel(preview, pro));
-    expect(t).toMatch(/Partial improvement — not fully rescued/);
+    expect(t).toMatch(/Częściowa poprawa — partia nie została w pełni uratowana/);
     expect(branchStatusLabel('partial_improvement')).not.toBe('verified');
     // every "rescued" occurrence is inside an explicit "not fully rescued" phrase
     expect(t.replace(/not fully rescued/g, '')).not.toMatch(/rescued/);
@@ -131,25 +131,25 @@ describe('BranchWorkflowPreviewPanel — honest labels and hard display rules', 
   it('calculated is labelled verified (IF10 scale-down)', () => {
     const preview = shortageCalculated();
     expect(preview.exactStatus).toBe('calculated');
-    expect(visibleText(renderPanel(preview, pro))).toMatch(/Stock Shortage/);
-    expect(visibleText(renderPanel(preview, pro))).toMatch(/verified/);
+    expect(visibleText(renderPanel(preview, pro))).toMatch(/Brak w magazynie/);
+    expect(visibleText(renderPanel(preview, pro))).toMatch(/zweryfikowane/);
   });
 
   it('blocked/missing-data renders honestly with the measurement requirement', () => {
     const preview = rescueBlocked();
     expect(preview.exactStatus).toBe('blocked_missing_data');
     const t = visibleText(renderPanel(preview, pro));
-    expect(t).toMatch(/blocked — data missing/);
-    expect(t).toMatch(/weigh actual batch g/);
+    expect(t).toMatch(/zablokowane — brak danych/);
+    expect(t).toMatch(/zważ rzeczywistą partię \(g\)/);
   });
 
   it('the locked user-decision menu renders for feasible decisions (both branches)', () => {
     const rescueText = visibleText(renderPanel(rescuePartial(), demo));
-    expect(rescueText).toMatch(/rescue same target batch/);
-    expect(rescueText).toMatch(/stop batch/);
+    expect(rescueText).toMatch(/ratuj tę samą docelową partię/);
+    expect(rescueText).toMatch(/zatrzymaj partię/);
     const shortageText = visibleText(renderPanel(shortageCalculated(), demo));
-    expect(shortageText).toMatch(/reduce batch to available stock/);
-    expect(shortageText).toMatch(/stop and buy missing product/);
+    expect(shortageText).toMatch(/zmniejsz partię do dostępnego zapasu/);
+    expect(shortageText).toMatch(/zatrzymaj i dokup brakujący produkt/);
   });
 
   it('always shows the preview-only / no-inventory / no-save disclaimers', () => {
@@ -193,7 +193,7 @@ describe('BranchWorkflowPreviews — Studio section (paid gate + explicit click)
     expect(t).toMatch(/Podgląd korekty partii/);
     expect(t).toMatch(/Podgląd braku składnika/);
     expect(t).toMatch(/Zmierzona masa partii \(g\)/);
-    expect(t).toMatch(/available in stock \(g\)/);
+    expect(t).toMatch(/dostępne w magazynie \(g\)/);
     // explicit-click only: no panel output on initial render
     expect(t).not.toMatch(/Twoja decyzja/);
     expect(t).not.toMatch(/· podgląd/);
@@ -247,7 +247,7 @@ describe('BranchWorkflow UI — boundary + Studio wiring', () => {
     // No substitute select or composition entry exists in the Studio section at
     // all (keeping the fixture module fully out of the production bundle); the
     // verified-substitute exact preview is proven on the DEV fixtures page.
-    expect(sectionSrc.includes('substitutes can never be typed in by hand')).toBe(true);
+    expect(sectionSrc.includes('zamienników nie można wpisywać ręcznie')).toBe(true);
     expect(/composition\s*[:=]/.test(sectionSrc)).toBe(false); // no composition entry in the UI
     expect(sectionSrc.includes('verifiedSubstituteFixtures')).toBe(false); // fixtures never imported here
     expect(sectionSrc.includes('previewVerifiedSubstituteRecalculation')).toBe(false); // Studio never substitutes

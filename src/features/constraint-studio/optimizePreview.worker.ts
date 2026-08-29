@@ -37,7 +37,7 @@ scope.onmessage = (event) => {
   } catch {
     // Runtime errors are intentionally sanitized at the Worker boundary. The
     // visible terminal owns the recovery copy; raw internals never reach UI.
-    scope.postMessage({ id, ok: false, message: 'Optimize worker failed.' });
+    scope.postMessage({ id, ok: false, message: 'Przeliczanie nie powiodło się.' });
     return;
   }
 

@@ -89,7 +89,7 @@ export function RecipeAxisScale({
           role="img"
           aria-live="polite"
           aria-atomic="true"
-          aria-label={`${label}: teraz ${Math.round(actualPosition)} procent skali, cel ${Math.round(targetPosition)} procent${previewPosition === undefined ? ', brak wyniku Preview' : `, Preview ${Math.round(previewPosition)} procent`}; ${relation === 'outside' ? 'poza wybranym celem' : 'w wybranym celu'}`}
+          aria-label={`${label}: teraz ${Math.round(actualPosition)} procent skali, cel ${Math.round(targetPosition)} procent${previewPosition === undefined ? ', brak wyniku podglądu' : `, podgląd ${Math.round(previewPosition)} procent`}; ${relation === 'outside' ? 'poza wybranym celem' : 'w wybranym celu'}`}
         >
           <div className="absolute inset-x-0 top-[8px] h-1 rounded-full bg-stone-200" />
           <div

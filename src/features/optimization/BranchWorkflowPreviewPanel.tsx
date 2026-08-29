@@ -13,6 +13,7 @@
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import { Card } from '@/components/ui/Card';
 import type { BranchRecalculationPreview } from './branchRecalculationPreview';
+import { branchCodeLabelPl } from './branchWorkflowLabels';
 import { branchStatusLabel, type BranchWorkflowDisplayPolicy } from './branchWorkflowPolicy';
 
 const STATUS_TONE: Record<string, string> = {
@@ -25,7 +26,8 @@ const STATUS_TONE: Record<string, string> = {
   not_supported: 'text-rose-300',
 };
 
-const humanize = (s: string): string => s.replace(/_/g, ' ');
+/** DISPLAY MAP ONLY — the raw spine code is never changed, only its wording. */
+const humanize = (s: string): string => branchCodeLabelPl(s);
 const fmt = (v: number | null | undefined): string =>
   typeof v === 'number' && Number.isFinite(v) ? v.toFixed(2) : '—';
 
@@ -36,7 +38,7 @@ export function BranchWorkflowPreviewPanel({
   preview: BranchRecalculationPreview;
   policy: BranchWorkflowDisplayPolicy;
 }) {
-  const branchLabel = preview.branch === 'actual_batch_rescue' ? 'Korekta rzeczywistej partii' : 'Stock Shortage';
+  const branchLabel = preview.branch === 'actual_batch_rescue' ? 'Korekta rzeczywistej partii' : 'Brak w magazynie';
   const branchResult = preview.batchRescue ?? preview.stockShortage;
   const menu = branchResult?.nextUserDecisionOptions ?? [];
   const menuLimitedReason = preview.stockShortage?.menuLimitedReason ?? null;
@@ -71,7 +73,7 @@ export function BranchWorkflowPreviewPanel({
           <p className="mt-1 text-xs leading-relaxed text-ivory/60">{menu.map(humanize).join(' · ')}</p>
         </div>
       ) : menuLimitedReason ? (
-        <p className="mt-3 font-mono text-[11px] text-ivory/60">menu limited: {humanize(menuLimitedReason)}</p>
+        <p className="mt-3 font-mono text-[11px] text-ivory/60">menu ograniczone: {humanize(menuLimitedReason)}</p>
       ) : null}
 
       {/* Pro: VERIFIED exact numbers only. */}
@@ -91,7 +93,7 @@ export function BranchWorkflowPreviewPanel({
       ) : null}
       {policy.showScaleFactor && verified && preview.scaleFactor !== null ? (
         <p className="mt-3 font-mono text-[11px] text-sky-300/80">
-          Verified scale-down: ×{preview.scaleFactor.toFixed(3)} (all composition percentages preserved)
+          Zweryfikowane skalowanie w dół: ×{preview.scaleFactor.toFixed(3)} (wszystkie udziały procentowe składu zachowane)
         </p>
       ) : null}
       {policy.showBeforeAfterMetrics && preview.beforeMetrics && preview.afterMetrics ? (
@@ -118,7 +120,7 @@ export function BranchWorkflowPreviewPanel({
         </p>
       ) : null}
       {allWarnings.length > 0 ? (
-        <p className="mt-2 font-mono text-[11px] text-ivory/60">Warnings: {allWarnings.map(humanize).join(', ')}</p>
+        <p className="mt-2 font-mono text-[11px] text-ivory/60">Ostrzeżenia: {allWarnings.map(humanize).join(', ')}</p>
       ) : null}
 
       {/* Redacted tiers: the upgrade affordance instead of numbers. */}
@@ -137,18 +139,18 @@ export function BranchWorkflowPreviewPanel({
           {preview.singleShotReason ? <div>single-shot: {preview.singleShotReason}</div> : null}
           {preview.multiStep ? (
             <div>
-              Multi-step: {preview.multiStep.status} · steps {preview.multiStep.steps.length}/{preview.multiStep.maxSteps} ·
+              Wielokrokowo: {preview.multiStep.status} · kroki {preview.multiStep.steps.length}/{preview.multiStep.maxSteps} ·
               stop {preview.multiStep.stopReason}
             </div>
           ) : null}
           {preview.multiLever ? (
             <div>
-              Multi-lever: {preview.multiLever.status} · steps {preview.multiLever.steps.length}/
+              Wielopoziomowo: {preview.multiLever.status} · kroki {preview.multiLever.steps.length}/
               {preview.multiLever.maxSteps} · stop {preview.multiLever.stopReason}
-              {preview.multiLever.residualGates.length ? ` · residual ${preview.multiLever.residualGates.join(',')}` : ''}
+              {preview.multiLever.residualGates.length ? ` · pozostałe ${preview.multiLever.residualGates.join(',')}` : ''}
             </div>
           ) : null}
-          {preview.rerun ? <div>rerun: {preview.rerun.before.status} → {preview.rerun.after.status} · {preview.rerun.decision}</div> : null}
+          {preview.rerun ? <div>ponowne uruchomienie: {preview.rerun.before.status} → {preview.rerun.after.status} · {preview.rerun.decision}</div> : null}
           {preview.scaleVerified !== null ? <div>scaleVerified: {String(preview.scaleVerified)}</div> : null}
         </div>
       ) : null}

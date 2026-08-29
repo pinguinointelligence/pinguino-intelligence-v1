@@ -287,7 +287,7 @@ export function sweetnessPathOf(
     return {
       kind: 'sugar_spectrum',
       resolved: true,
-      reason: 'cukry sa zerowe, a znana zawartosc alkoholu zasila deterministyczny NPAC Engine',
+      reason: 'Cukry wynoszą 0; znana zawartość alkoholu jest uwzględniana w obliczeniu NPAC.',
     };
   }
 
@@ -316,7 +316,7 @@ export function sweetnessPathOf(
       kind: 'stored',
       resolved: true,
       reason:
-        `zgodny profil Mappera uzupelnil widmo ${profileNamedSugar.toFixed(1)} z ` +
+        `zgodny profil Mappera uzupełnił widmo ${profileNamedSugar.toFixed(1)} z ` +
         `${sugars.toFixed(1)} g oraz POD/PAC jako ESTIMATED`,
     };
   }
@@ -328,7 +328,7 @@ export function sweetnessPathOf(
     return {
       kind: 'stored',
       resolved: true,
-      reason: 'zgodny profil Mappera dostarczyl komplet POD/PAC jako ESTIMATED',
+      reason: 'zgodny profil Mappera dostarczył komplet POD/PAC jako ESTIMATED',
     };
   }
 

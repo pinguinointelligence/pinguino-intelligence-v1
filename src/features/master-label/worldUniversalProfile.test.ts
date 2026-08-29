@@ -8,7 +8,7 @@ describe('WORLD / UNIVERSAL label profile', () => {
   it('is one of exactly six profiles and remains informational', () => {
     expect(MARKET_PROFILE_ORDER).toEqual(['EU', 'UK', 'US', 'CA', 'AU_NZ', 'WORLD']);
     expect(marketProfile('WORLD')).toMatchObject({
-      label: 'World / Universal',
+      label: 'Świat / Uniwersalna',
       status: 'INFORMATIONAL',
       nutritionFormat: 'WORLD_100G',
       consumerLayout: 'world_neutral',

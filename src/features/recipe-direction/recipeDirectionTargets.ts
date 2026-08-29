@@ -273,7 +273,7 @@ function computeRecipeDirectionPlan(input: RecipeInput): RecipeDirectionPlan {
       targetBand: null,
       targetCenter: null,
       reason:
-        'Pełna ścieżka −1/0/+1 dla tego profilu i temperatury nie ma jeszcze zweryfikowanego, bezpiecznego Preview/Apply.',
+        'Pełna ścieżka −1/0/+1 dla tego profilu i temperatury nie ma jeszcze zweryfikowanego, bezpiecznego podglądu i zastosowania zmian.',
     });
   } else {
     axes.push({

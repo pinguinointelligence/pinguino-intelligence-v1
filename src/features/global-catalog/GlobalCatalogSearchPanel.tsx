@@ -422,7 +422,7 @@ export function GlobalCatalogSearchPanel() {
                         : catalogPrice(selectedHit),
                       false,
                     ],
-                    ['Canonical status', selectedVerification.status, false],
+                    ['Status kanoniczny', selectedVerification.status, false],
                   ] as const
                 ).map(([label, value, mono]) => (
                   <div
@@ -453,7 +453,7 @@ export function GlobalCatalogSearchPanel() {
                     : selectedHit.usableInBase
                       ? 'RECEPTURA'
                       : selectedHit.usableAsTopping
-                        ? 'TOPPING ONLY'
+                        ? 'TYLKO TOPPING'
                         : 'WYMAGA WERYFIKACJI'}
                 </b>
                 <span className="mt-1 block text-[11px] leading-[16px] text-[var(--g-text-secondary)]">

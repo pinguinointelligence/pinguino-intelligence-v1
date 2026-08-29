@@ -30,7 +30,7 @@ const productChips: ChipOption[] = PRODUCT_PROFILE_ORDER.map((id) => ({
 const servingChips: ChipOption[] = SERVING_PROFILE_ORDER.map((id) => ({
   id,
   label: copy.servingProfiles[id].label,
-  desc: isServingProfileConnected(findServingProfile(id)) ? undefined : 'Preview',
+  desc: isServingProfileConnected(findServingProfile(id)) ? undefined : 'Podgląd',
 }));
 
 const batchChips: ChipOption[] = [

@@ -318,7 +318,7 @@ export function OptimizationPreviewPanel({
               solver target injection ({view.solverTargetMode}) · engine{' '}
               {view.solverTargetInjection.trace.engineSeededCount} viol → regulator-shadow{' '}
               {view.solverTargetInjection.trace.regulatorShadowCount} viol
-              {view.solverTargetInjection.correctionChanged ? ' · CHANGED' : ' · same'}
+              {view.solverTargetInjection.correctionChanged ? ' · ZMIENIONO' : ' · bez zmian'}
             </div>
           ) : (
             <div>solver target injection: blocked ({view.solverTargetInjection.blockedReason})</div>
@@ -332,13 +332,13 @@ export function OptimizationPreviewPanel({
           </div>
           {view.rerun ? (
             <div>
-              regulator {view.rerun.before.status} (score {view.rerun.before.score}) →{' '}
-              {view.rerun.after.status} (score {view.rerun.after.score})
+              regulator {view.rerun.before.status} (wynik {view.rerun.before.score}) →{' '}
+              {view.rerun.after.status} (wynik {view.rerun.after.score})
             </div>
           ) : null}
           {view.rejectedCorrections.length > 0 ? (
             <div>
-              rejected: {view.rejectedCorrections.map((r) => `${r.goal}:${r.reason}`).join(', ')}
+              odrzucone: {view.rejectedCorrections.map((r) => `${r.goal}:${r.reason}`).join(', ')}
             </div>
           ) : null}
           {view.hardBlockers.length > 0 ? (

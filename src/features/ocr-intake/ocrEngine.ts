@@ -103,7 +103,7 @@ export function validateLabelImage(meta: {
     return { ok: false, reason: `Obraz ma ${mb} MB. Limit to ${MAX_LABEL_IMAGE_BYTES / (1024 * 1024)} MB.` };
   }
   if (meta.sizeBytes !== null && meta.sizeBytes === 0) {
-    return { ok: false, reason: 'The file is empty (0 bytes).' };
+    return { ok: false, reason: 'Plik jest pusty (0 bajtów).' };
   }
   return { ok: true, reason: null };
 }
@@ -186,7 +186,7 @@ export function startLabelOcr(image: OcrImageInput, options: OcrEngineOptions = 
   // Mid-recognition cancellation: terminating the worker can leave the pending
   // recognize() promise unsettled, so `done` races it against this cancel promise.
   let signalCancelled: (() => void) | undefined;
-  const cancelledResult: OcrFailure = { status: 'failed', reason: 'cancelled', message: 'OCR cancelled.' };
+  const cancelledResult: OcrFailure = { status: 'failed', reason: 'cancelled', message: 'OCR anulowano.' };
   const cancelPromise = new Promise<OcrFailure>((resolve) => {
     signalCancelled = () => resolve(cancelledResult);
   });
@@ -209,7 +209,7 @@ export function startLabelOcr(image: OcrImageInput, options: OcrEngineOptions = 
     );
     activeWorker = worker;
     try {
-      if (cancelled) return { status: 'failed', reason: 'cancelled', message: 'OCR cancelled before recognition started.' };
+      if (cancelled) return { status: 'failed', reason: 'cancelled', message: 'OCR anulowano przed rozpoczęciem rozpoznawania.' };
       // Uint8Array is handled by both tesseract.js loadImage paths (copied verbatim)
       // but is missing from its ImageLike type — hence the cast.
       const recognizePromise = worker.recognize(image as Tesseract.ImageLike, {}, { text: true, blocks: true });
@@ -245,11 +245,11 @@ export function startLabelOcr(image: OcrImageInput, options: OcrEngineOptions = 
     const maxAttempts = 2;
     let lastError = '';
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-      if (cancelled) return { status: 'failed', reason: 'cancelled', message: 'OCR cancelled.' };
+      if (cancelled) return { status: 'failed', reason: 'cancelled', message: 'OCR anulowano.' };
       try {
         return await runOnce();
       } catch (error) {
-        if (cancelled) return { status: 'failed', reason: 'cancelled', message: 'OCR cancelled.' };
+        if (cancelled) return { status: 'failed', reason: 'cancelled', message: 'OCR anulowano.' };
         lastError = errorMessage(error);
       }
     }

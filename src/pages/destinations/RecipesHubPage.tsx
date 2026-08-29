@@ -128,7 +128,7 @@ const STATUS_LABELS: Readonly<Record<CuratedRecipeCandidate['status'], string>> 
   authentic_reproducible: 'Oryginalna wersja',
   adaptable: 'Jawna adaptacja',
   not_suitable: 'Odrzucone',
-  research_required: 'Research',
+  research_required: 'Wymaga weryfikacji',
 };
 
 const STAGE_LABELS: Readonly<Record<CuratedRecipeCandidate['publicationStage'], string>> = {

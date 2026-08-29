@@ -215,8 +215,8 @@ export function assessProteinStructure(
       code: 'fat_outside_evidence_envelope',
       scored: false,
       messagePl:
-        `Tłuszcz ${fatPercent.toFixed(1)}% leży poza oknem ${PROTEIN_FAT_EVIDENCE_ENVELOPE.fatFloorPercent}-` +
-        `${PROTEIN_FAT_EVIDENCE_ENVELOPE.fatCeilingPercent}%, w którym badano receptury wysokobiałkowe. ` +
+        `Tłuszcz ${fatPercent.toFixed(1)}% jest poza zakresem ${PROTEIN_FAT_EVIDENCE_ENVELOPE.fatFloorPercent}–` +
+        `${PROTEIN_FAT_EVIDENCE_ENVELOPE.fatCeilingPercent}% zbadanym dla receptur wysokobiałkowych. ` +
         `Twarde granice bezpieczeństwa obliczeń pozostają nadrzędne.`,
     });
   }

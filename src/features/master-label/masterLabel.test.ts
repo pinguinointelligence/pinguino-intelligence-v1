@@ -654,10 +654,10 @@ describe('Master Label — one actual-batch source model', () => {
     expect(marketProfile('WORLD').status).toBe('INFORMATIONAL');
     expect(marketProfile('EU').consumerLayout).toBe('eu_declaration');
     expect(marketProfile('US').consumerLayout).toBe('us_nutrition_facts');
-    expect(marketProfile('US').label).toBe('United States');
+    expect(marketProfile('US').label).toBe('Stany Zjednoczone');
     expect(marketProfile('UK')).toMatchObject({
       code: 'UK',
-      label: 'United Kingdom',
+      label: 'Wielka Brytania',
       consumerLayout: 'uk_declaration',
     });
     expect(Object.keys(MARKET_PROFILES)).toEqual(['EU', 'UK', 'US', 'CA', 'AU_NZ', 'WORLD']);

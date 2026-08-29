@@ -153,7 +153,7 @@ const PL: StudioFlowCopy = {
     },
     batch_rescue_guidance: {
       title: 'Ratowanie realnej partii (IF9)',
-      body: 'Opisz, co zmierzyłeś w gotowej partii. Dokładne gramatury pojawiają się wyłącznie po weryfikacji regulatorem; poprawa częściowa to wciąż partia nie w pełni uratowana.',
+      body: 'Wpisz to, co zmierzyłeś w gotowej partii. Dokładne gramatury pojawią się dopiero po weryfikacji; częściowa poprawa nadal oznacza niepełną korektę partii.',
       nextAction: 'Zważ partię i podaj obserwację — system nie zgaduje pomiarów.',
     },
     stock_shortage_guidance: {

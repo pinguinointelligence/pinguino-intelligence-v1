@@ -21,8 +21,8 @@
     "productionSessionSchema": 2
   },
   "bundle": {
-    "bytes": 334760,
-    "sha256": "7bbff6d99371f4e4caa7f7ab5be13f53e1881f4d7858152665ff8b472ea68426",
+    "bytes": 334777,
+    "sha256": "32e5ec01e13b3b3db90cf15c93656989987abc9dd9cf8bdabcc4e40961aad982",
     "externalImports": 0,
     "dynamicImports": 0
   },
@@ -217,7 +217,7 @@
     },
     {
       "path": "src/features/protein-gelato/proteinStructureQuality.ts",
-      "sha256": "6dd2d218920ed266a942f9421a3f16066f71ee5c2d73267b5bd3579a4d2bc614"
+      "sha256": "73f64429e5ffcfa60ff2bcf93ae29b8eca69ead11119b93b07b8c115976b5be6"
     },
     {
       "path": "src/features/recipe-composition/finalProduct.ts",
@@ -253,7 +253,7 @@
     },
     {
       "path": "src/features/recipe-direction/recipeDirectionTargets.ts",
-      "sha256": "5d694a8aadc1081bd61323e3aa3e729a312601a0345326d7802ab88845035bf7"
+      "sha256": "f5c97d21a9de79dcec2fcf88ee51508085a9aba1bdcf3fb2df6d9c7c0d0340a7"
     },
     {
       "path": "src/features/recipe-score/recipeMatchScore.ts",
@@ -268,5 +268,5 @@
       "sha256": "a2207c9c4e9431daa728d6b03fe1b9c4a4a3ba3403a0c056f2808c0759a455c8"
     }
   ],
-  "sourceClosureSha256": "1b60cbdf060dba85423fe513df387ab2eec306722d29c51d973675c6bbf14da3"
+  "sourceClosureSha256": "e6492b5b3805588ce7d20ee8d451abe66dc4a13272323edea04ed9001d82785e"
 }

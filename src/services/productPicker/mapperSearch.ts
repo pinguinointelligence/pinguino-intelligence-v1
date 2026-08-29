@@ -273,7 +273,7 @@ export async function searchMapperIngredients(
   if (error) {
     if (isAborted(error, query.signal)) return { kind: 'aborted' };
     if (isViewMissing(error)) return { kind: 'unavailable', reason: 'view_missing' };
-    return { kind: 'error', message: error.message ?? 'Search failed' };
+    return { kind: 'error', message: error.message ?? 'Wyszukiwanie nie powiodło się' };
   }
 
   const raw = (data ?? []) as unknown as Record<string, unknown>[];
