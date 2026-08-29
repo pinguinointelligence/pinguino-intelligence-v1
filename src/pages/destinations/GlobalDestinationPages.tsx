@@ -665,9 +665,9 @@ export function LabelsHubPage() {
 
   return (
     <DestinationSurface
-      eyebrow="Gellatti Pro"
-      title="Etykiety"
-      blurb="Profil konta i etykiety zakończonych partii — w jednym, spójnym miejscu."
+      eyebrow="Konto / Etykiety"
+      title="Ustawienia etykiety"
+      blurb="Domyślny profil, dane firmy, układ i drukarka — niezależnie od trwającej receptury lub Produkcji."
       contextLabel="Ustawienia etykiety"
     >
       <LabelWorkspace profileOnly repository={repository} />

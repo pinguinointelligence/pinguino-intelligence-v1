@@ -218,11 +218,14 @@ export function MachineProfileSection({
 
   return (
     <section aria-label={copy.profile.title}>
-      <h2 className={cn(type.title, color.textPrimary)}>{copy.profile.title}</h2>
+      {/* V2.1 §5: the page heading already names this page, so the approved
+          design carries no second title inside the content. The heading stays
+          in the accessibility tree — only the duplicate is hidden. */}
+      <h2 className="sr-only">{copy.profile.title}</h2>
 
       {/* GELLATTI V2.1 §5: the approved machine page is a 3:2 split — the
           machine card beside its summary — inside the 1280 px canvas. */}
-      <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.66fr)]">
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.66fr)]">
         <div className={cn('p-4 sm:p-5', cardShell)}>
           {/* This surface stores the PROFILE DEFAULT machine (owner correction). */}
           <p className={cn(type.caption, color.textMuted)}>{copy.profile.defaultLabel}</p>
@@ -495,6 +498,22 @@ export function MachineProfileSection({
             </TouchButton>
           </div>
         </aside>
+      </div>
+
+      {/* V2.1 §5: the approved page closes on a status strip that states, in
+          words, what the saved default actually DOES — which machine starts new
+          recipes and new Productions. Presentation of state the section already
+          holds; it changes no default and saves nothing. */}
+      <div className="mt-3 flex items-start gap-3 border-l-2 border-[var(--g-orange)] bg-[var(--g-ivory)] p-[18px]">
+        <span aria-hidden className="mt-1 block size-2 shrink-0 rounded-full bg-[var(--g-ink)]" />
+        <span className="min-w-0">
+          <strong className="block text-[13px] font-bold text-[var(--g-ink)]">
+            {copy.settings.defaultCurrentTitle}
+          </strong>
+          <span className="mt-0.5 block text-[12px] leading-[1.5] text-[var(--g-text-secondary)]">
+            {copy.settings.defaultCurrentBody(view.name)}
+          </span>
+        </span>
       </div>
     </section>
   );

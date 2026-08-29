@@ -55,8 +55,7 @@ export const machineOnboardingCopy = {
   /* -------------------------------------------------- §8.4 custom machine ----- */
   custom: {
     title: 'Własna maszyna',
-    lead:
-      'Podaj tylko to, co wiesz. Dla własnej maszyny wpisz wsad samodzielnie — możesz go później zmienić.',
+    lead: 'Podaj tylko to, co wiesz. Dla własnej maszyny wpisz wsad samodzielnie — możesz go później zmienić.',
     cycleBatchLabel: 'Mój wsad na cykl',
     noCycleRecommendation: 'Zalecany wsad na cykl: —',
     brandLabel: 'Marka (opcjonalnie)',
@@ -229,6 +228,9 @@ export const machineOnboardingCopy = {
     saveAndGoToRecipe: 'Zapisz i przejdź do receptury',
     restoreRecommended: 'Przywróć zalecany wsad',
     goToRecipe: 'Przejdź do receptury',
+    /* V2.1 §5: the approved closing status strip. */
+    defaultCurrentTitle: 'Domyślna maszyna jest aktualna',
+    defaultCurrentBody: (name: string) => `${name} rozpoczyna nowe receptury i nowe Produkcje.`,
     /** Owner hotfix §2: never force the browser's back arrow. */
     backToRecipe: 'Wróć do receptury',
     /** Unambiguous post-save status (§2). */
