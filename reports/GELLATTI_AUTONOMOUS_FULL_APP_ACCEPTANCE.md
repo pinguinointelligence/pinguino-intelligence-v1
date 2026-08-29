@@ -175,7 +175,9 @@ kcal/100 g, while the final product mass reacts (1000 g → 1050 g).
 | Ranking | Top 100 ranks it **#1** — one eligible recipe still yields a truthful board |
 | Favourites | 2 products starred, persisted across reload, "Ulubione" filter returns exactly those two |
 | Partner | Application → admin queue → approve → **partner active, code `MARYSIALOD`**, workspace open, PRO preserved |
-| Shop | Catalogue (8 articles), cart, real `cs_test_…` sessions for single / bundle / preorder, order + items written, order history visible |
+| Shop | Catalogue (8 articles), cart, and three real orders with real `cs_test_…` sessions: `G-20260829-7D9334` (single 500 g, 4,90 €), `G-20260829-26B49D` (**all seven singles**, 7 items, 67,30 €), `G-20260829-81880B` (**Starter Pack as preorder**, `contains_preorder=true`, `lead_time_weeks=6`) |
+| Preorder (G3) | Admin switched the Starter Pack to *Na zamówienie* with a 6-week lead time through the real Admin UI; the product card shows **"Na zamówienie · wysyłka za około 6 tyg."** and the cart shows **"Zamówienie zawiera produkt na zamówienie · wysyłka za około 6 tyg."** — both **before** payment |
+| Checkout security | A `localhost` redirect origin is refused by the allowlist (`redirect_url_not_allowed`), so the URL guard is live, not decorative |
 | Admin | Partner applications, shop articles + orders, franchise leads — all reachable and actionable as `admin@admin.com` |
 | Mobile 390 × 844 | `/shop`, `/work-with-us`, `/franchise`, `/community`, `/recipes`, `/account` — **no horizontal overflow on any** |
 
