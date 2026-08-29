@@ -426,7 +426,7 @@ export function StudioEngineSurface({
             />
           </span>
           <div
-            className="min-h-0 xl:flex xl:min-w-0 xl:flex-col xl:overflow-hidden xl:rounded-[18px] xl:border xl:border-ink/10 xl:bg-white xl:shadow-pro-e1"
+            className="min-h-0 xl:flex xl:min-w-0 xl:flex-col xl:overflow-hidden xl:rounded-[10px] xl:border xl:border-ink/10 xl:bg-white xl:shadow-pro-e0"
             data-testid="workbench-editor-pane"
           >
             {/* Owner v1.4 §7: an immutable snapshot opened from the library's WERSJA selector must

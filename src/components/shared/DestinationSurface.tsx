@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { OfficialProLogo } from '@/components/shared/OfficialProLogo';
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import { SurfaceToneContext } from '@/components/ui/surface';
 import { copy } from '@/copy/en';
@@ -6,7 +7,7 @@ import { cn } from '@/lib/cn';
 import { AppShell } from '@/features/shell/AppShell';
 import {
   APP_PAGE_BLOCK,
-  APP_PAGE_MEASURE,
+  APP_PAGE_CANVAS,
   APP_PAGE_WORKSPACE,
 } from '@/features/shell/shellGeometry';
 import { PAGE_HEADING_CONTENT_GAP, PageHeading } from '@/components/shared/PageHeading';
@@ -27,24 +28,39 @@ export function DestinationSurface({
   eyebrow,
   title,
   blurb,
+  actions,
+  contextLabel,
   children,
 }: {
   eyebrow?: string;
   title: string;
   blurb?: string;
+  actions?: ReactNode;
+  /** Compact lockup descriptor used by the approved global destination shell. */
+  contextLabel?: string;
   children?: ReactNode;
 }) {
   return (
     <div className="pro-studio-radius-system theme-pro-light">
-      <AppShell>
+      <AppShell
+        navigationPosition="trailing"
+        brand={
+          <span className="gellatti-destination-brand flex min-w-0 items-center gap-4">
+            <OfficialProLogo />
+            <span className="hidden truncate border-l border-ink/12 pl-4 text-[10px] font-semibold tracking-[0.13em] text-stone-500 uppercase sm:block">
+              {contextLabel ?? eyebrow ?? title}
+            </span>
+          </span>
+        }
+      >
         <SurfaceToneContext.Provider value="paper">
-          <div className="min-h-screen bg-paper text-ink">
+          <div className="gellatti-destination min-h-screen bg-paper text-ink">
             {/* The SAME heading rhythm and the SAME workspace geometry as the
                 Pro workspace — a destination is a page of one instrument, not a
                 marketing page that happens to sit behind a login. */}
             <div className={`${APP_PAGE_WORKSPACE} ${APP_PAGE_BLOCK}`}>
-              <div className={APP_PAGE_MEASURE}>
-                <PageHeading eyebrow={eyebrow} title={title} blurb={blurb} />
+              <div className={APP_PAGE_CANVAS}>
+                <PageHeading eyebrow={eyebrow} title={title} blurb={blurb} actions={actions} />
                 {children ? <div className={PAGE_HEADING_CONTENT_GAP}>{children}</div> : null}
               </div>
             </div>

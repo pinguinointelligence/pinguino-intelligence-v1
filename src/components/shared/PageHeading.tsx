@@ -31,8 +31,12 @@ export function PageHeading({
   return (
     <div className={cn('flex flex-wrap items-end justify-between gap-x-6 gap-y-3', className)}>
       <div className="min-w-0">
-        {eyebrow ? <p className="text-xs font-semibold text-stone-500">{eyebrow}</p> : null}
-        <h1 className="mt-2 max-w-3xl text-[28px] font-semibold leading-[1.12] tracking-[-0.035em] text-balance text-ink">
+        {eyebrow ? (
+          <p className="text-[10px] font-semibold tracking-[0.13em] text-stone-500 uppercase">
+            {eyebrow}
+          </p>
+        ) : null}
+        <h1 className="mt-2 max-w-3xl text-[25px] font-semibold leading-[1.08] tracking-[-0.035em] text-balance text-ink sm:text-[30px]">
           {title}
         </h1>
         {blurb ? (

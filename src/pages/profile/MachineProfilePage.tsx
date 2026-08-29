@@ -15,8 +15,6 @@ import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { CustomerSurface } from '@/features/customer-shell/ui/CustomerSurface';
-import { AppShell } from '@/features/shell/AppShell';
-import { APP_PAGE_MEASURE, APP_PAGE_WORKSPACE } from '@/features/shell/shellGeometry';
 import { TouchButton } from '@/features/customer-shell/ui/TouchButton';
 import {
   MachineOnboarding,
@@ -34,8 +32,8 @@ import {
 } from '@/features/machine-onboarding';
 import { selectMachinePreferenceStore } from '@/services/machinePreference/machinePreferenceSelector';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
-import { PageHeading } from '@/components/shared/PageHeading';
 import { ApplicationState } from '@/components/shared/ApplicationState';
+import { DestinationSurface } from '@/components/shared/DestinationSurface';
 
 type PageMode = 'view' | 'onboarding' | 'edit_custom';
 
@@ -87,25 +85,19 @@ export function MachineProfilePage() {
   };
 
   // Maszyna is an authenticated destination reached from the one drawer, so it
-  // wears the one shell — it used to render the customer menu instead, which is
-  // why its hamburger sat in a different place from every other page.
+  // wears the approved global DestinationSurface while retaining the exact
+  // onboarding, persistence and save callbacks below.
   const shell = (children: ReactNode) => (
-    <div className="pro-studio-radius-system theme-pro-light">
-      <AppShell>
-        <div className={`${APP_PAGE_WORKSPACE} pb-24 pt-8`}>
-          <div className={APP_PAGE_MEASURE}>
-            <CustomerSurface measure="workspace">
-              <PageHeading
-                eyebrow="Konto"
-                title="Ustawienia maszyny"
-                blurb="Domyślna maszyna i partia są punktem startu dla nowych receptur."
-              />
-              <div className="mt-6">{children}</div>
-            </CustomerSurface>
-          </div>
-        </div>
-      </AppShell>
-    </div>
+    <DestinationSurface
+      eyebrow="Konto"
+      title="Ustawienia maszyny"
+      blurb="Domyślna maszyna i partia są punktem startu dla nowych receptur."
+      contextLabel="Ustawienia maszyny"
+    >
+      <CustomerSurface measure="workspace">
+        <div className="max-w-4xl">{children}</div>
+      </CustomerSurface>
+    </DestinationSurface>
   );
 
   if (preference.status === 'loading') {

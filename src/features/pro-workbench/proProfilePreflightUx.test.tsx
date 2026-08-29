@@ -614,8 +614,8 @@ describe('profile hierarchy and compact preflight', () => {
     const panel = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
     const surface = read('features', 'studio', 'StudioEngineSurface.tsx');
     expect(surface).toContain('xl:flex xl:min-w-0 xl:flex-col xl:overflow-hidden');
-    expect(panel).toContain('lg:rounded-[18px]');
-    expect(panel).toContain('lg:shadow-pro-e1');
+    expect(panel).toContain('lg:rounded-[10px]');
+    expect(panel).toContain('lg:shadow-pro-e0');
     expect(panel).toContain('lg:flex-1 lg:overflow-y-auto');
     expect(panel).toContain("activeTab === 'profile'");
     expect(panel).toContain("activeTab === 'monitor'");

@@ -173,8 +173,18 @@ export function MyRecipesContent() {
     );
 
   return (
-    <div className="pb-16 pt-2" data-testid="recipes-mine">
-      <SectionLabel>{r.title}</SectionLabel>
+    <div className="pb-16" data-testid="recipes-mine">
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <SectionLabel>{r.title}</SectionLabel>
+          <p className="mt-2 text-sm text-stone-500">
+            Otwieraj zapisane wersje bez zmiany ich receptury źródłowej.
+          </p>
+        </div>
+        <span className="font-mono text-xs text-stone-500">
+          {rows.length > 0 ? `${rows.length} receptur` : null}
+        </span>
+      </div>
 
       {!available ? (
         <p className="mt-6 text-sm leading-relaxed text-stone-500">{r.unavailable}</p>
@@ -199,18 +209,19 @@ export function MyRecipesContent() {
               {openError}
             </p>
           ) : null}
-          <ul className="mt-6 divide-y divide-ink/5">
+          <ul className="mt-5 space-y-2.5">
             {rows.map((row) => (
-              <li key={row.id} className="flex flex-wrap items-center justify-between gap-4 py-4">
-                <div className="min-w-0">
-                  <p className="truncate text-base text-ink">{row.name}</p>
-                  {row.description ? (
-                    <p className="mt-0.5 truncate text-xs text-stone-500">{row.description}</p>
-                  ) : null}
-                </div>
-                {/* §11: the metadata group WRAPS on narrow screens (it becomes the row's second
-                  line) instead of squeezing six cells into an unreadable strip. */}
-                <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+              <li
+                key={row.id}
+                className="overflow-hidden rounded-[12px] border border-ink/12 bg-white shadow-pro-e0"
+              >
+                <div className="grid min-w-0 items-center gap-4 px-4 py-3 lg:grid-cols-[minmax(220px,1.45fr)_repeat(5,minmax(84px,0.62fr))]">
+                  <div className="min-w-0">
+                    <p className="truncate text-[15px] font-semibold text-ink">{row.name}</p>
+                    {row.description ? (
+                      <p className="mt-0.5 truncate text-xs text-stone-500">{row.description}</p>
+                    ) : null}
+                  </div>
                   <Cell label={r.columns.product} value={rowLabels(row).productType} />
                   <Cell label={r.columns.serving} value={rowLabels(row).mode} />
                   <Cell label={r.columns.engine} value={rowLabels(row).engine} />
@@ -219,6 +230,8 @@ export function MyRecipesContent() {
                     label={r.columns.updated}
                     value={formatSavedRecipeDate(row.latest_version_at ?? row.updated_at)}
                   />
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ink/8 bg-[#faf9f6] px-4 py-2.5">
                   <span className="flex flex-col">
                     <span className="text-[0.6rem] tracking-label text-stone-400 uppercase">
                       {r.columns.version}
@@ -255,7 +268,7 @@ export function MyRecipesContent() {
                   />
                   <button
                     type="button"
-                    className="text-xs text-stone-500 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-status-risky"
+                    className="ml-auto min-h-9 px-2 text-xs text-stone-500 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-status-risky"
                     onClick={() => {
                       if (window.confirm(r.confirmDelete)) deleteRecipe.mutate(row.id);
                     }}

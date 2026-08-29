@@ -37,5 +37,13 @@ export const APP_PAGE_WORKSPACE =
 /** Reading measure for text-first content, anchored to the workspace origin. */
 export const APP_PAGE_MEASURE = 'w-full max-w-[var(--pro-content-measure)]';
 
+/**
+ * Approved Gellatti V2 destination canvas. It is intentionally wider than the
+ * reading measure: library grids, catalog master/detail and admin queues need
+ * the full 1280 px owner-preview geometry while prose can still opt into
+ * `APP_PAGE_MEASURE` inside it.
+ */
+export const APP_PAGE_CANVAS = 'mx-auto w-full max-w-[1280px]';
+
 /** Vertical rhythm for non-workbench sections under the one header. */
 export const APP_PAGE_BLOCK = 'pt-8 pb-24 sm:pt-10';

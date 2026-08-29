@@ -17,6 +17,7 @@ const read = (...parts: string[]) =>
 describe('Gellatti Visual System V2', () => {
   it('projects current-PRO controls outward without changing their source recipe', () => {
     expect(buttonClasses('primary', 'sm')).toContain('min-h-10');
+    expect(buttonClasses('primary', 'sm')).toContain('max-sm:min-h-11');
     expect(applicationPrimaryClasses()).toContain('max-sm:min-h-11');
     expect(applicationSecondaryClasses()).toContain('max-sm:min-h-11');
     expect(applicationQuietClasses()).toContain('min-h-9');
@@ -62,7 +63,9 @@ describe('Gellatti Visual System V2', () => {
     const auth = read('features', 'auth', 'AuthModal.tsx');
 
     expect(pageHeading).not.toContain('font-mono');
-    expect(pageHeading).not.toContain('uppercase');
+    expect(pageHeading).toContain('tracking-[0.13em]');
+    expect(pageHeading).toContain('text-[25px]');
+    expect(pageHeading).toContain('sm:text-[30px]');
     expect(auth).not.toContain('tracking-label');
     expect(catalog).toContain('font-mono text-[10px]');
     expect(catalog).not.toContain('font-mono text-xl');

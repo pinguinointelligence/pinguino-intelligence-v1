@@ -717,12 +717,17 @@ function RecipeRow({
               </span>
               {/* Truncation is visual only — the full name stays in the DOM for
                   assistive technology, and the hover preview serves the mouse. */}
-              <HoverPreview
-                text={item.ingredient.name}
-                className="min-w-0 flex-1 truncate text-[13px] font-semibold text-ink"
-              >
-                {item.ingredient.name}
-              </HoverPreview>
+              <span className="min-w-0 flex-1">
+                <HoverPreview
+                  text={item.ingredient.name}
+                  className="block min-w-0 truncate text-[13px] font-semibold leading-4 text-ink"
+                >
+                  {item.ingredient.name}
+                </HoverPreview>
+                <span className="mt-0.5 block truncate text-[10px] leading-3 text-stone-500">
+                  {categoryLabelPl(item.ingredient.category)}
+                </span>
+              </span>
               {missingAmount ? (
                 <MissingAmountHint testId={`row-dose-missing-hint-${item.id}`} />
               ) : null}

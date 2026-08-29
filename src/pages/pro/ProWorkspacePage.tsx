@@ -471,7 +471,7 @@ export function ProWorkspacePage() {
     // White precision workspace: presentation-only token remap. The same components,
     // values, content, actions and below-fold review zone remain intact.
     <div
-      className={`pro-studio-radius-system theme-pro-light${workbench ? ' xl:h-dvh' : ''}`}
+      className={`pro-studio-radius-system theme-pro-light${workbench ? ' gellatti-pro-workbench xl:h-dvh' : ''}`}
       data-testid="pro-light-scope"
     >
       <AppShell

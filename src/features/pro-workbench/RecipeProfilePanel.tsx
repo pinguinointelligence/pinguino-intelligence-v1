@@ -530,7 +530,7 @@ export function RecipeProfilePanel({
     <div
       data-testid="pro-profile-panel"
       data-testid-shell="pro-intelligence-shell"
-      className="right-pane min-h-full bg-white text-ink lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:overflow-hidden lg:rounded-[18px] lg:border lg:border-ink/10 lg:shadow-pro-e1"
+      className="right-pane min-h-full bg-white text-ink lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:overflow-hidden lg:rounded-[10px] lg:border lg:border-ink/10 lg:shadow-pro-e0"
     >
       {showTabs ? (
         <div className="sticky top-0 z-30 bg-white" data-testid="workbench-sticky-chrome">

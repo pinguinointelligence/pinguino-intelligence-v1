@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
+import { OfficialProLogo } from '@/components/shared/OfficialProLogo';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { applicationPrimaryClasses } from '@/components/ui/applicationControlStyles';
 import { cn } from '@/lib/cn';
@@ -62,36 +63,99 @@ export function ShopPage() {
       eyebrow="Ekosystem Gellatti"
       title="Sklep"
       blurb="Jedno miejsce na zestawy startowe, składniki i przyszłe produkty Gellatti."
+      contextLabel="Sklep"
     >
-      <div className="border-y border-ink/10 py-8">
-        <p className="max-w-xl text-sm leading-relaxed text-stone-600">
-          Katalog zakupowy nie jest jeszcze dostępny w tej wersji. Gellatti nie pokazuje fikcyjnych produktów
-          ani cen.
-        </p>
+      <div className="grid min-h-[360px] overflow-hidden rounded-[12px] border border-ink/12 md:grid-cols-2">
+        <div className="flex flex-col justify-center bg-[#e7e3dd] p-8 sm:p-12">
+          <span className="text-[10px] font-semibold tracking-[0.13em] text-stone-600 uppercase">
+            Gellatti Shop
+          </span>
+          <h2 className="mt-4 max-w-md text-[36px] font-semibold leading-[0.98] tracking-[-0.045em] text-ink sm:text-[48px]">
+            Produkty bez dopowiadania.
+          </h2>
+          <p className="mt-5 max-w-lg text-sm leading-relaxed text-stone-600">
+            Katalog zakupowy nie jest jeszcze dostępny w tej wersji. Gellatti nie pokazuje
+            fikcyjnych produktów ani cen.
+          </p>
+          <span className="mt-6 inline-flex w-max rounded-full border border-[#ef8708]/35 bg-white/70 px-3 py-1 text-[10px] font-semibold text-[#9a5700]">
+            Wkrótce
+          </span>
+        </div>
+        <div className="flex min-h-[280px] items-center justify-center bg-[#191a1d] p-8 text-white">
+          <div className="flex h-56 w-44 flex-col justify-between rounded-[10px] bg-[#f1e8da] p-6 text-[#191a1d] shadow-pro-e2">
+            <OfficialProLogo className="max-h-8" />
+            <strong className="text-xl leading-none">
+              Gellatti
+              <br />
+              Shop
+            </strong>
+            <span className="font-mono text-[9px] tracking-[0.08em]">PREVIEW</span>
+          </div>
+        </div>
       </div>
     </DestinationSurface>
   );
 }
 
 export function FranchisePage() {
+  const concepts = ['Punkt', 'Wózek', 'Przyczepa', 'Lokal firmowy'] as const;
   return (
     <DestinationSurface
       eyebrow="Ekosystem Gellatti"
       title="Franchise"
       blurb="Koncepty biznesowe Gellatti: punkt, wózek, przyczepa i lokal firmowy."
+      contextLabel="Franchise"
     >
-      <div className="border-y border-ink/10 py-8">
-        <p className="max-w-xl text-sm leading-relaxed text-stone-600">
-          Franchise jest niezależne od planu Home lub Pro. Ten kierunek prowadzi do zapytania
-          biznesowego i nie miesza się z programem Współpraca.
-        </p>
-        <a
-          href="mailto:pinguinointelligence@gmail.com?subject=Franchise%20GELLATTI"
-          className={cn(buttonClasses('ghost', 'md'), 'mt-6')}
-        >
-          Zapytaj o Franchise
-        </a>
+      <div className="grid overflow-hidden rounded-[12px] border border-ink/12 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="flex flex-col justify-center bg-[#e7e3dd] p-8 sm:p-10">
+          <p className="max-w-xl text-sm leading-relaxed text-stone-600">
+            Franchise jest niezależne od planu Home lub Pro. Ten kierunek prowadzi do zapytania
+            biznesowego i nie miesza się z programem Współpraca.
+          </p>
+          <a
+            href="mailto:pinguinointelligence@gmail.com?subject=Franchise%20GELLATTI"
+            className={cn(buttonClasses('primary', 'md'), 'mt-6 w-max')}
+          >
+            Zapytaj o Franchise
+          </a>
+        </div>
+        <div className="grid grid-cols-2 bg-white">
+          {concepts.map((concept, index) => (
+            <div
+              key={concept}
+              className="grid min-h-36 place-items-center border-b border-l border-ink/10 p-5 text-center odd:border-l-0 lg:odd:border-l"
+            >
+              <span>
+                <span className="mx-auto grid size-12 place-items-center rounded-[12px] border border-ink/12 text-xl">
+                  {['P', 'W', 'T', 'L'][index]}
+                </span>
+                <strong className="mt-3 block text-xs">{concept}</strong>
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
+      <section className="mt-10">
+        <p className="text-[10px] font-semibold tracking-[0.13em] text-stone-500 uppercase">
+          Potwierdzone koncepty
+        </p>
+        <h2 className="mt-2 text-2xl font-semibold tracking-[-0.035em]">
+          Cztery formaty. Bez wymyślonych warunków.
+        </h2>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          {concepts.map((concept, index) => (
+            <article key={concept} className="rounded-[12px] border border-ink/12 bg-white p-5">
+              <span className="grid size-11 place-items-center rounded-[10px] border border-ink/12 text-lg">
+                {['P', 'W', 'T', 'L'][index]}
+              </span>
+              <h3 className="mt-4 text-lg font-semibold">{concept}</h3>
+              <p className="mt-2 text-xs leading-relaxed text-stone-500">
+                Szczegóły wymagają rozmowy i potwierdzonego źródła.
+              </p>
+            </article>
+          ))}
+        </div>
+      </section>
     </DestinationSurface>
   );
 }
@@ -105,49 +169,29 @@ export function ProductsHubPage() {
       eyebrow="Katalog Gellatti"
       title="Produkty"
       blurb="Produkty, ich zastosowanie, dostępność i Twoja cena — wszystko w jednym miejscu."
-    >
-      {!capabilities.canSaveRecipe ? (
-        <p className="border-y border-ink/10 py-8 text-sm text-stone-600">
-          Katalog produktów otwiera się w planach Home i Pro. Wybierz plan, aby dodać własne produkty
-        </p>
-      ) : (
-        <>
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-ink/10 pb-6">
-            <div>
-              <h2 className="text-xl font-semibold tracking-[-0.025em] text-ink">
-                Katalog produktów
-              </h2>
-              <p className="mt-1 text-sm text-stone-500">
-                Korzystaj z potwierdzonych produktów Gellatti. Nowy produkt dodasz ze zdjęcia
-                etykiety.
-              </p>
-            </div>
+      contextLabel="Katalog produktów"
+      actions={
+        capabilities.canSaveRecipe ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {canAdmin ? (
+              <Link to="/products/import" className={buttonClasses('ghost', 'sm')}>
+                Import administracyjny
+              </Link>
+            ) : null}
             <Link to="/products/scan" className={applicationPrimaryClasses()}>
               Skanuj produkt
             </Link>
           </div>
-          <div className="mt-2">
-            <Link to="/products/scan" className={quietLink}>
-              <span>
-                <strong className="block font-medium">Skanuj produkt</strong>
-                <span className="mt-1 block text-xs text-stone-500">
-                  Kamera, zdjęcia, kod kreskowy i bezpieczne uzupełnianie danych
-                </span>
-              </span>
-              <span aria-hidden>→</span>
-            </Link>
-            {canAdmin ? (
-              <Link to="/products/import" className={quietLink}>
-                <span>
-                  <strong className="block font-medium">Import administracyjny</strong>
-                  <span className="mt-1 block text-xs text-stone-500">
-                    Kontrolowana ścieżka administracyjna dostępna tylko w trybie Admin
-                  </span>
-                </span>
-                <span aria-hidden>→</span>
-              </Link>
-            ) : null}
-          </div>
+        ) : null
+      }
+    >
+      {!capabilities.canSaveRecipe ? (
+        <p className="border-y border-ink/10 py-8 text-sm text-stone-600">
+          Katalog produktów otwiera się w planach Home i Pro. Wybierz plan, aby dodać własne
+          produkty
+        </p>
+      ) : (
+        <>
           <GlobalCatalogSearchPanel />
           <p className="mt-8 max-w-xl text-xs leading-relaxed text-stone-500">
             Twoja cena, dostawca, notatki i stan magazynowy pozostają prywatne.
@@ -231,6 +275,7 @@ export function ProductionHubPage() {
       eyebrow="Gellatti Pro"
       title="Produkcja"
       blurb="Bieżąca partia, zapis zakończonych produkcji i etykiety — zawsze oparte na tych samych danych."
+      contextLabel="Produkcja"
     >
       {!capabilities.canUseProductionMode ? (
         <p className="border-y border-ink/10 py-8 text-sm text-stone-600">
@@ -454,6 +499,7 @@ export function LabelsHubPage() {
       eyebrow="Gellatti Pro"
       title="Etykiety"
       blurb="Profil konta i etykiety zakończonych partii — w jednym, spójnym miejscu."
+      contextLabel="Etykiety"
     >
       <LabelWorkspace profileOnly repository={repository} />
 
@@ -519,31 +565,32 @@ export function AccountSettingsPage() {
       eyebrow="Konto"
       title="Konto i ustawienia"
       blurb="Twój profil, plan i najważniejsze ustawienia konta."
+      contextLabel="Konto"
     >
       {status !== 'authed' && !import.meta.env.DEV ? (
         <p className="border-y border-ink/10 py-8 text-sm text-stone-600">
           Zaloguj się, aby zarządzać kontem
         </p>
       ) : (
-        <div className="divide-y divide-ink/10 border-y border-ink/10">
-          <div className="flex items-center justify-between gap-4 py-5">
+        <div className="divide-y divide-ink/10 overflow-hidden rounded-[12px] border border-ink/12 bg-white shadow-pro-e0">
+          <div className="flex items-center justify-between gap-4 px-5 py-5">
             <span className="text-sm text-stone-500">Profil</span>
             <strong className="truncate text-sm font-medium">
               {user?.email ?? 'owner-review@pinguino.local'}
             </strong>
           </div>
-          <Link to="/subscription" className={quietLink}>
+          <Link to="/subscription" className={cn(quietLink, 'px-5')}>
             <span>
               <span className="block text-xs text-stone-500">Plan i płatności</span>
               <strong className="mt-1 block font-medium">{plan}</strong>
             </span>
             <span aria-hidden>→</span>
           </Link>
-          <div className="flex items-center justify-between gap-4 py-5">
+          <div className="flex items-center justify-between gap-4 px-5 py-5">
             <span className="text-sm text-stone-500">Język</span>
             <strong className="text-sm font-medium">Polski</strong>
           </div>
-          <div className="flex items-center justify-between gap-4 py-5">
+          <div className="flex items-center justify-between gap-4 px-5 py-5">
             <span className="text-sm text-stone-500">Bezpieczeństwo</span>
             <span className="text-sm text-stone-600">Ustawienia konta</span>
           </div>

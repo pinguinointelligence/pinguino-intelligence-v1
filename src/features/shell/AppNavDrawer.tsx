@@ -23,7 +23,7 @@ const iconButton =
   'grid h-11 w-11 shrink-0 place-items-center rounded-full text-ink transition-colors hover:bg-ink/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40';
 
 /** The one shallow, plan-aware destination drawer used by every shell. */
-export function AppNavDrawer() {
+export function AppNavDrawer({ side = 'left' }: { side?: 'left' | 'right' }) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -135,7 +135,12 @@ export function AppNavDrawer() {
                header on every screen, so the panel enters from the LEFT: a
                control that opens a panel away from itself reads as two
                unrelated things. */
-            className="absolute top-0 left-0 flex h-full w-[88vw] max-w-[360px] flex-col border-r border-ink/10 bg-paper text-ink motion-safe:animate-[appDrawerIn_240ms_cubic-bezier(0.32,0.72,0,1)]"
+            className={cn(
+              'absolute top-0 flex h-full w-[88vw] max-w-[360px] flex-col bg-paper text-ink',
+              side === 'left'
+                ? 'left-0 border-r border-ink/10 motion-safe:animate-[appDrawerIn_240ms_cubic-bezier(0.32,0.72,0,1)]'
+                : 'right-0 border-l border-ink/10 motion-safe:animate-[appDrawerInRight_240ms_cubic-bezier(0.32,0.72,0,1)]',
+            )}
           >
             <div
               className="flex items-center justify-between px-6 pb-3 pt-5"
@@ -269,6 +274,7 @@ export function AppNavDrawer() {
 
           <style>{`
             @keyframes appDrawerIn { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+            @keyframes appDrawerInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
             @keyframes appFadeIn { from { opacity: 0; } to { opacity: 1; } }
           `}</style>
         </div>

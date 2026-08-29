@@ -32,6 +32,7 @@ export function AppShell({
   maxWidthClass = APP_SHELL_MAX_WIDTH_CLASS,
   contentClassName,
   viewportLock = false,
+  navigationPosition = 'leading',
 }: {
   actions?: ReactNode;
   /** Optional page-owned lockup. The shared Gellatti wordmark is the default. */
@@ -46,6 +47,9 @@ export function AppShell({
    * surface — the workbench fills it exactly; only the below-fold review zone extends
    * it. ADDITIVE prop; default shell behavior unchanged; mobile flows normally. */
   viewportLock?: boolean;
+  /** Destination pages place the same drawer at the trailing edge; the frozen
+   * Pro workbench keeps its accepted leading geometry. */
+  navigationPosition?: 'leading' | 'trailing';
 }) {
   const persona = useProCorePersona();
   const capabilities = proCoreCapabilitiesFor(persona);
@@ -62,6 +66,7 @@ export function AppShell({
     <div
       className={cn(
         'gellatti-application pro-studio-radius-system theme-pro-light min-h-screen bg-paper text-ink',
+        navigationPosition === 'trailing' && 'gellatti-destination-shell',
         viewportLock && 'xl:flex xl:h-dvh xl:min-h-0 xl:flex-col xl:overflow-hidden',
       )}
     >
@@ -82,7 +87,7 @@ export function AppShell({
             viewportLock && 'xl:col-start-1 xl:row-start-1',
           )}
         >
-          <AppNavDrawer />
+          {navigationPosition === 'leading' ? <AppNavDrawer /> : null}
           <Link
             to={brandDestination}
             aria-label={copy.shell.brand}
@@ -103,6 +108,19 @@ export function AppShell({
           )}
         >
           {!viewportLock ? actions : null}
+          {!viewportLock && navigationPosition === 'trailing' ? (
+            <>
+              {audience === 'pro' || audience === 'home' ? (
+                <span
+                  className="inline-flex h-8 items-center rounded-full bg-ink px-3 text-[11px] font-semibold tracking-[0.08em] text-white"
+                  data-testid="app-shell-plan-badge"
+                >
+                  {audience === 'pro' ? 'PRO' : 'HOME'}
+                </span>
+              ) : null}
+              <AppNavDrawer side="right" />
+            </>
+          ) : null}
         </div>
       </header>
       <main

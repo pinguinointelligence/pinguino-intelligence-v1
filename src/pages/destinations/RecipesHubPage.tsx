@@ -477,9 +477,9 @@ function ExecutableOwnerReviewView({
         {title}
       </h2>
       <p className="mt-3 max-w-2xl text-sm leading-relaxed text-stone-600">
-        Gotowość receptury bazowej jest oceniana osobno od Produkcji i Etykiety.
-        Bazę można edytować w Pro, ale brak procesu lub dodatku po produkcji nadal blokuje Produkcję, Etykietę
-        i publikację.
+        Gotowość receptury bazowej jest oceniana osobno od Produkcji i Etykiety. Bazę można edytować
+        w Pro, ale brak procesu lub dodatku po produkcji nadal blokuje Produkcję, Etykietę i
+        publikację.
       </p>
       <OwnerReviewFrame enabled>
         <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -776,12 +776,18 @@ export function RecipesHubPage() {
       eyebrow={d.eyebrow}
       title="Receptury"
       blurb="Twoje receptury, kolekcje Gellatti i inspiracje smakowe — w jednej bibliotece."
+      contextLabel="Biblioteka receptur"
+      actions={
+        <button type="button" onClick={requestNewRecipe} className={buttonClasses('primary', 'sm')}>
+          + Nowa receptura
+        </button>
+      }
     >
-      <div className="mb-10 flex flex-wrap items-end justify-between gap-4 border-b border-ink/15">
+      <div className="gellatti-library-tabs mb-8 flex max-w-full flex-wrap items-end justify-between gap-0 overflow-hidden border-b border-ink/15">
         <div
           role="tablist"
           aria-label="Biblioteka receptur"
-          className="flex min-w-0 overflow-x-auto"
+          className="flex w-full min-w-0 max-w-full overflow-x-auto lg:w-auto"
         >
           {RECIPE_LIBRARY_TABS.map(([id, label]) => (
             <button
@@ -795,8 +801,10 @@ export function RecipesHubPage() {
               onClick={() => selectTab(id)}
               onKeyDown={(event) => handleTabKeyDown(event, id)}
               className={cn(
-                'min-h-12 shrink-0 border-b-2 px-4 text-xs font-semibold tracking-[0.08em]',
-                activeTab === id ? 'border-ink text-ink' : 'border-transparent text-stone-600',
+                'min-h-12 shrink-0 border-b-2 px-4 text-[11px] font-semibold tracking-[0.08em]',
+                activeTab === id
+                  ? 'border-[#ef8708] text-ink'
+                  : 'border-transparent text-stone-600 hover:text-ink',
               )}
               data-testid={`recipes-tab-${id}`}
             >
@@ -804,25 +812,21 @@ export function RecipesHubPage() {
             </button>
           ))}
         </div>
-        <nav aria-label="Gellatti Community" className="flex min-w-0 shrink-0">
+        <nav
+          aria-label="Gellatti Community"
+          className="flex w-full min-w-0 max-w-full overflow-x-auto lg:w-auto"
+        >
           {RECIPE_LIBRARY_LINKS.map(([href, label]) => (
             <Link
               key={href}
               to={href}
-              className="inline-flex min-h-12 shrink-0 items-center border-b-2 border-transparent px-4 text-xs font-semibold tracking-[0.08em] text-stone-600 hover:text-ink"
+              className="inline-flex min-h-12 shrink-0 items-center border-b-2 border-transparent px-4 text-[11px] font-semibold tracking-[0.08em] text-stone-600 hover:text-ink"
               data-testid={`recipes-link-${href.slice(1)}`}
             >
               {label}
             </Link>
           ))}
         </nav>
-        <button
-          type="button"
-          onClick={requestNewRecipe}
-          className="mb-1 inline-flex min-h-11 items-center rounded-xl px-3 text-sm font-medium text-ink transition-opacity hover:opacity-55"
-        >
-          + Nowa receptura
-        </button>
       </div>
 
       <NewRecipeConfirmationDialog

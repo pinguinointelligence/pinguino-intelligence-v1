@@ -59,12 +59,16 @@ describe('canonical application shell', () => {
     expect(brandIdx).toBeGreaterThan(triggerIdx);
   });
 
-  it('the one drawer opens from the LEFT — the side its trigger sits on', () => {
+  it('the one drawer follows its trigger: Pro left, approved global destinations right', () => {
     const drawer = read('features', 'shell', 'AppNavDrawer.tsx');
+    const destination = read('components', 'shared', 'DestinationSurface.tsx');
     expect(drawer).toContain('left-0');
     expect(drawer).toContain('border-r');
     expect(drawer).toContain('translateX(-100%)');
-    expect(drawer.includes('right-0')).toBe(false);
+    expect(drawer).toContain('right-0');
+    expect(drawer).toContain('border-l');
+    expect(drawer).toContain('translateX(100%)');
+    expect(destination).toContain('navigationPosition="trailing"');
     expect(drawer).toContain("event.key === 'Escape'");
     expect(drawer).toContain("body.style.overflow = 'hidden'");
     expect(drawer).toContain('aria-modal="true"');

@@ -123,28 +123,31 @@ describe('canonical Gellatti Pro — menu (proofs 4–6, 17–18)', () => {
     // …and every shell renders AppNavDrawer: the canonical AppShell, and the customer bar.
     expect(read('features', 'shell', 'AppShell.tsx')).toContain('AppNavDrawer');
     expect(read('features', 'customer-shell', 'ui', 'CustomerMenu.tsx')).toContain('AppNavDrawer');
-    // Landing, flow, machine profile and subscription mount the customer bar; my-recipes,
-    // pro and all destinations mount AppShell — one drawer everywhere.
+    // Landing, flow and subscription mount the customer bar; authenticated destinations
+    // compose the same AppShell through DestinationSurface — one drawer everywhere.
     expect(read('pages', 'landing', 'LandingPage.tsx')).toContain('CustomerMenu');
     expect(read('features', 'customer-shell', 'CustomerShellV1.tsx')).toContain('CustomerMenu');
     // Maszyna moved onto the ONE authenticated shell (owner „global subpage
     // style unification", 2026-08-24): it is reached from the same drawer as
     // every other destination, so it must wear the same header — it previously
     // rendered the customer menu and put its hamburger somewhere else entirely.
-    expect(read('pages', 'profile', 'MachineProfilePage.tsx')).toContain('AppShell');
+    expect(read('pages', 'profile', 'MachineProfilePage.tsx')).toContain('DestinationSurface');
     expect(read('pages', 'destinations', 'SubscriptionPage.tsx')).toContain('CustomerMenu');
     expect(read('pages', 'recipes', 'MyRecipesPage.tsx')).toContain('AppShell');
     expect(read('pages', 'pro', 'ProWorkspacePage.tsx')).toContain('AppShell');
     expect(read('components', 'shared', 'DestinationSurface.tsx')).toContain('AppShell');
   });
 
-  // Owner 2026-08-24: the drawer now opens on the SAME side as its trigger.
+  // The accepted Pro trigger remains leading; global destination triggers are trailing.
   // The historical rule this replaced was about the LEGACY left sidebar
   // (AppMenu), which stays deleted — that is what the assertions below pin.
   it('17. the legacy left sidebar stays deleted; no routed page uses ShellLayout', () => {
     const drawer = read('features', 'shell', 'AppNavDrawer.tsx');
     expect(drawer).toContain('left-0');
-    expect(drawer.includes('right-0')).toBe(false);
+    expect(drawer).toContain('right-0');
+    expect(read('components', 'shared', 'DestinationSurface.tsx')).toContain(
+      'navigationPosition="trailing"',
+    );
     expect(read('app', 'router.tsx').includes('ShellLayout')).toBe(false);
     expect(read('components', 'shared', 'DestinationSurface.tsx').includes('ShellLayout')).toBe(
       false,

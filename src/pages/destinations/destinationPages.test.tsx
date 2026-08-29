@@ -84,7 +84,7 @@ describe('Slice 3 destination pages', () => {
     expect(html).toContain('id="recipes-panel-pinguino"');
     expect(html).toContain('role="tabpanel"');
     expect(html).toContain('tabindex="-1"');
-    expect(html).toContain('min-h-11');
+    expect(html).toContain('min-h-10');
     expect(html).not.toContain('href="/my-recipes"');
     expect(html).toContain(copy.nav.recipes.gelato);
   });
