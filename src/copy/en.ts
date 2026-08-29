@@ -240,11 +240,32 @@ export const copy = {
     },
     work: {
       title: 'Współpracuj z nami',
-      blurb: 'Cztery sposoby współpracy z Gellatti.',
+      blurb: 'Cztery istniejące sposoby współpracy, przedstawione w jednej linii Guided Precision.',
       includedLabel: 'Co obejmuje',
       forWhomLabel: 'Dla kogo',
       cta: 'Porozmawiaj z Gellatti',
       ctaHref: 'mailto:pinguinointelligence@gmail.com',
+      /* Approved editorial copy (Gellatti V2.1 §5). The four categories and
+         their meaning are unchanged; this is the frame around them. */
+      heroEyebrow: 'Gellatti collaboration',
+      heroCta: 'Zobacz możliwości',
+      heroDirection: [
+        'Image direction placeholder',
+        'premium food-tech team / lab environment',
+        'bez claims, ofert i warunków',
+      ] as const,
+      sectionEyebrow: 'Możliwości współpracy',
+      sectionTitle: 'Wybierz kontekst rozmowy.',
+      sectionHelper: 'Treść zachowuje bieżące cztery kategorie i ich istniejące znaczenie.',
+      cardEyebrow: 'Współpraca',
+      assetNote: 'Asset nie jest częścią preview.',
+      commerceNote: 'Rozmowa, nie oferta. Ceny, dostępność i warunki nie są tu potwierdzone.',
+      direction: {
+        app: ['Kierunek assetu: precyzyjny ekran Recipe / Monitor'] as const,
+        machinesApp: ['Kierunek assetu: pracownia + ekran Produkcji'] as const,
+        machineMixtures: ['Kierunek assetu: neutralna maszyna + niebrandowane opakowania'] as const,
+        ingredients: ['Kierunek assetu: surowce i mieszanki w kontroli jakości'] as const,
+      },
       offers: {
         app: {
           title: 'Sama aplikacja',

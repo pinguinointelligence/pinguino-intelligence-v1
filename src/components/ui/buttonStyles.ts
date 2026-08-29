@@ -1,6 +1,6 @@
 import { cn } from '@/lib/cn';
 
-export type ButtonVariant = 'primary' | 'ghost' | 'ivory';
+export type ButtonVariant = 'primary' | 'ghost' | 'ivory' | 'orange';
 export type ButtonSize = 'sm' | 'md';
 
 const VARIANTS: Record<ButtonVariant, string> = {
@@ -9,6 +9,10 @@ const VARIANTS: Record<ButtonVariant, string> = {
   /* Ivory fill carries SHELL text (visually identical on light routes) so the button
      never washes out inside `.theme-pro-dark`, where the ink token flips to ivory. */
   ivory: 'bg-ivory text-shell hover:bg-ivory/85',
+  /* The approved editorial-hero action (Gellatti V2.1 §5): the ONE saturated
+     orange call to action, used on a graphite ground where ink stays legible. */
+  orange:
+    'border border-[var(--g-orange)] bg-[var(--g-orange)] text-[var(--g-ink)] hover:brightness-105',
 };
 
 const SIZES: Record<ButtonSize, string> = {

@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
+import {
+  CommerceLock,
+  DestinationEyebrow,
+  DestinationSectionHead,
+  ImageDirection,
+  SplitHero,
+} from '@/components/shared/destinationEditorial';
 import { OfficialProLogo } from '@/components/shared/OfficialProLogo';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { applicationPrimaryClasses } from '@/components/ui/applicationControlStyles';
@@ -57,101 +64,263 @@ export function HowItWorksPage() {
   );
 }
 
+/**
+ * Sklep — the approved Starter Pack destination (Gellatti V2.1 §5).
+ *
+ * The approved design is deliberately AUTHORITY-GATED: it shows the one
+ * ingredient the owner brief actually confirms and states, in the page itself,
+ * that nothing else has a published Starter Pack source. Nothing here invents
+ * a product, a price, a weight or an availability date, and no commerce path
+ * is wired — the closing note says so in as many words.
+ */
+const STARTER_PACK_CONFIRMED = Object.freeze({
+  name: 'Inulina',
+  mass: '500 g',
+  status: 'Potwierdzone',
+  note: 'Neutralny koncept opakowania; bez ceny i obietnicy dostępności.',
+});
+
+function PackBox({ label, caption }: { label: string; caption?: string }) {
+  return (
+    <div className="flex h-full min-h-[280px] flex-col items-center justify-center gap-4 bg-[var(--g-graphite)] p-8">
+      <div className="flex h-[333px] w-[260px] flex-col justify-between rounded-[8px] bg-[#efe8dc] p-6 text-[var(--g-ink)]">
+        <OfficialProLogo className="max-h-8" />
+        <strong className="text-[22px] leading-tight font-bold whitespace-pre-line">{label}</strong>
+        <span className="font-mono text-[9px] tracking-[0.08em] text-[var(--g-text-secondary)]">
+          NEUTRAL PACKAGING PREVIEW
+        </span>
+      </div>
+      {caption ? (
+        <p className="max-w-[575px] text-center text-[9px] leading-[1.5] text-[#a9a69f]">
+          {caption}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export function ShopPage() {
   return (
-    <DestinationSurface
-      eyebrow="Ekosystem Gellatti"
-      title="Sklep"
-      blurb="Jedno miejsce na zestawy startowe, składniki i przyszłe produkty Gellatti."
-      contextLabel="Sklep"
-    >
-      <div className="grid min-h-[360px] overflow-hidden rounded-[12px] border border-ink/12 md:grid-cols-2">
-        <div className="flex flex-col justify-center bg-[#e7e3dd] p-8 sm:p-12">
-          <span className="text-[10px] font-semibold tracking-[0.13em] text-stone-600 uppercase">
-            Gellatti Shop
-          </span>
-          <h2 className="mt-4 max-w-md text-[36px] font-semibold leading-[0.98] tracking-[-0.045em] text-ink sm:text-[48px]">
-            Produkty bez dopowiadania.
-          </h2>
-          <p className="mt-5 max-w-lg text-sm leading-relaxed text-stone-600">
-            Katalog zakupowy nie jest jeszcze dostępny w tej wersji. Gellatti nie pokazuje
-            fikcyjnych produktów ani cen.
-          </p>
-          <span className="mt-6 inline-flex w-max rounded-full border border-[#ef8708]/35 bg-white/70 px-3 py-1 text-[10px] font-semibold text-[#9a5700]">
-            Wkrótce
-          </span>
+    <DestinationSurface title="Sklep" contextLabel="Sklep" bare>
+      <SplitHero
+        ratio="shop"
+        eyebrow="Gellatti Shop · design concept"
+        title="Gellatti Starter Pack"
+        blurb="Pierwszy zestaw składników Gellatti. Zawartość jest pokazywana tylko tam, gdzie istnieje potwierdzona authority."
+        note="Cena, dostępność, płatność i dostawa nie są potwierdzone."
+        actions={
+          <>
+            <span className="inline-flex h-6 items-center rounded-full border border-[#ef8708]/35 bg-[#fff8ee] px-3 text-[9px] font-bold text-[#9a5700]">
+              Wkrótce
+            </span>
+            <Link to="#starter-pack-content" className={buttonClasses('primary', 'sm')}>
+              Zobacz zawartość
+            </Link>
+          </>
+        }
+        visual={
+          <PackBox
+            label={'Starter\nPack'}
+            caption="Neutralny placeholder · brak zatwierdzonego zdjęcia lub packaging assetu"
+          />
+        }
+      />
+
+      <section className="mt-12" id="starter-pack-content">
+        <DestinationSectionHead
+          eyebrow="Potwierdzona zawartość"
+          title="Zestaw bez wymyślonej listy."
+          helper="Inulina jest jedynym składnikiem nazwanym w aktualnym owner brief. Repozytorium nie posiada potwierdzonego Starter Pack membership dla pozostałych produktów."
+          trailing={
+            <span className="inline-flex h-6 items-center rounded-full bg-[#f4f8f4] px-3 text-[9px] font-bold text-[#2f6b40]">
+              1 potwierdzona pozycja
+            </span>
+          }
+        />
+        <div className="grid gap-3 lg:grid-cols-3">
+          <article className="flex min-w-0 flex-col rounded-[12px] border border-[var(--g-line)] bg-white p-[18px]">
+            <ImageDirection
+              lines={[STARTER_PACK_CONFIRMED.name, STARTER_PACK_CONFIRMED.mass]}
+              className="h-[150px] w-full"
+            />
+            <div className="mt-4 flex items-baseline justify-between gap-3">
+              <strong className="text-[14px] leading-[1.35] font-bold text-[var(--g-ink)]">
+                {STARTER_PACK_CONFIRMED.name}
+              </strong>
+              <span className="font-mono text-[12px] text-[var(--g-text-secondary)]">
+                {STARTER_PACK_CONFIRMED.mass}
+              </span>
+            </div>
+            <span className="mt-2 inline-flex h-6 w-fit items-center rounded-full bg-[#f4f8f4] px-3 text-[9px] font-bold text-[#2f6b40]">
+              {STARTER_PACK_CONFIRMED.status}
+            </span>
+            <p className="mt-3 text-[12px] leading-[1.5] text-[var(--g-text-secondary)]">
+              {STARTER_PACK_CONFIRMED.note}
+            </p>
+            <button type="button" className={`${buttonClasses('ghost', 'sm')} mt-4 w-fit`} disabled>
+              Powiadom mnie
+            </button>
+          </article>
+
+          <article className="min-w-0 rounded-[12px] border border-[var(--g-line)] bg-[var(--g-ivory-deep)] p-[18px] lg:col-span-2">
+            <DestinationEyebrow>Owner input required</DestinationEyebrow>
+            <h3 className="mt-1 text-[21px] leading-[1.2] font-bold tracking-[-0.02em] text-[var(--g-ink)]">
+              Pozostała zawartość nie została opublikowana.
+            </h3>
+            <p className="mt-2 max-w-[60ch] text-[12px] leading-[1.5] text-[var(--g-text-secondary)]">
+              Nie pokazujemy nazw, gramatur, cen ani opakowań bez potwierdzonego źródła Starter
+              Pack.
+            </p>
+          </article>
         </div>
-        <div className="flex min-h-[280px] items-center justify-center bg-[#191a1d] p-8 text-white">
-          <div className="flex h-56 w-44 flex-col justify-between rounded-[10px] bg-[#f1e8da] p-6 text-[#191a1d] shadow-pro-e2">
-            <OfficialProLogo className="max-h-8" />
-            <strong className="text-xl leading-none">
-              Gellatti
-              <br />
-              Shop
-            </strong>
-            <span className="font-mono text-[9px] tracking-[0.08em]">PREVIEW</span>
+      </section>
+
+      {/* The approved product-detail CONCEPT: it states plainly that only the
+          name and the individual-pack mass are confirmed, and that description,
+          composition, claims, price and availability need their own authority. */}
+      <section className="mt-12">
+        <DestinationSectionHead
+          eyebrow="Product-detail concept"
+          title={`${STARTER_PACK_CONFIRMED.name} · ${STARTER_PACK_CONFIRMED.mass}`}
+          trailing={
+            <span className="inline-flex h-6 items-center rounded-full border border-[#ef8708]/35 bg-[#fff8ee] px-3 text-[9px] font-bold text-[#9a5700]">
+              Preview · Wkrótce
+            </span>
+          }
+        />
+        <article className="grid min-w-0 gap-5 rounded-[12px] border border-[var(--g-line)] bg-white p-[18px] lg:grid-cols-[minmax(0,0.4fr)_minmax(0,0.6fr)]">
+          <ImageDirection
+            lines={[STARTER_PACK_CONFIRMED.name, STARTER_PACK_CONFIRMED.mass]}
+            className="min-h-[277px] w-full"
+          />
+          <div className="min-w-0">
+            <DestinationEyebrow>Gellatti ingredient</DestinationEyebrow>
+            <h3 className="mt-1 text-[21px] leading-[1.2] font-bold tracking-[-0.02em] text-[var(--g-ink)]">
+              {STARTER_PACK_CONFIRMED.name}
+            </h3>
+            <p className="mt-2 max-w-[62ch] text-[12px] leading-[1.5] text-[var(--g-text-secondary)]">
+              Karta pokazuje wyłącznie potwierdzoną nazwę i gramaturę individual pack. Opis
+              handlowy, skład, claims, cena i dostępność wymagają osobnej authority.
+            </p>
+            <dl className="mt-4 grid gap-3 sm:grid-cols-3">
+              {(
+                [
+                  ['Masa', STARTER_PACK_CONFIRMED.mass],
+                  ['Cena', 'Niepotwierdzona'],
+                  ['Dostępność', 'Wkrótce · concept'],
+                ] as const
+              ).map(([label, value]) => (
+                <div key={label} className="min-w-0 rounded-[9px] bg-[var(--g-ivory)] px-3 py-2">
+                  <dt className="text-[9px] text-[var(--g-text-field-label)]">{label}</dt>
+                  <dd className="mt-1 text-[12px] font-bold text-[var(--g-ink)]">{value}</dd>
+                </div>
+              ))}
+            </dl>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button type="button" className={buttonClasses('ghost', 'sm')} disabled>
+                Powiadom mnie
+              </button>
+              <Link to="#starter-pack-content" className={buttonClasses('ghost', 'sm')}>
+                Wróć do Starter Pack
+              </Link>
+            </div>
           </div>
-        </div>
-      </div>
+        </article>
+
+        <CommerceLock>
+          <b className="block text-[14px] font-bold text-[var(--g-ink)]">
+            Future commerce — nieaktywne.
+          </b>
+          <p className="mt-1">
+            Brak Stripe, checkout, płatności, cart per se — ta strona jest konceptem produktowym.
+          </p>
+        </CommerceLock>
+      </section>
     </DestinationSurface>
   );
 }
 
+/**
+ * Franchise — the approved ecosystem destination (Gellatti V2.1 §5).
+ *
+ * The four formats are enquiry CATEGORIES, and the approved page says so on
+ * the page: no price, no terms and no availability promise appears anywhere.
+ * Franchise stays independent of the Home/Pro plan and of the Współpraca
+ * programme; both destinations remain the same mailto they already were.
+ */
+const FRANCHISE_CONCEPTS = [
+  { mark: 'P', name: 'Punkt' },
+  { mark: 'W', name: 'Wózek' },
+  { mark: 'T', name: 'Przyczepa' },
+  { mark: 'L', name: 'Lokal firmowy' },
+] as const;
+
+const FRANCHISE_MAILTO = 'mailto:pinguinointelligence@gmail.com?subject=Franchise%20GELLATTI';
+
 export function FranchisePage() {
-  const concepts = ['Punkt', 'Wózek', 'Przyczepa', 'Lokal firmowy'] as const;
   return (
-    <DestinationSurface
-      eyebrow="Ekosystem Gellatti"
-      title="Franchise"
-      blurb="Koncepty biznesowe Gellatti: punkt, wózek, przyczepa i lokal firmowy."
-      contextLabel="Franchise"
-    >
-      <div className="grid overflow-hidden rounded-[12px] border border-ink/12 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="flex flex-col justify-center bg-[#e7e3dd] p-8 sm:p-10">
-          <p className="max-w-xl text-sm leading-relaxed text-stone-600">
-            Franchise jest niezależne od planu Home lub Pro. Ten kierunek prowadzi do zapytania
-            biznesowego i nie miesza się z programem Współpraca.
-          </p>
-          <a
-            href="mailto:pinguinointelligence@gmail.com?subject=Franchise%20GELLATTI"
-            className={cn(buttonClasses('primary', 'md'), 'mt-6 w-max')}
-          >
-            Zapytaj o Franchise
-          </a>
-        </div>
-        <div className="grid grid-cols-2 bg-white">
-          {concepts.map((concept, index) => (
-            <div
-              key={concept}
-              className="grid min-h-36 place-items-center border-b border-l border-ink/10 p-5 text-center odd:border-l-0 lg:odd:border-l"
-            >
-              <span>
-                <span className="mx-auto grid size-12 place-items-center rounded-[12px] border border-ink/12 text-xl">
-                  {['P', 'W', 'T', 'L'][index]}
+    <DestinationSurface title="Franchise" contextLabel="Franchise" bare>
+      <SplitHero
+        ratio="franchise"
+        eyebrow="Ekosystem Gellatti"
+        title="Franchise"
+        blurb="Koncepty biznesowe Gellatti: punkt, wózek, przyczepa i lokal firmowy."
+        actions={
+          <>
+            <a href={FRANCHISE_MAILTO} className={buttonClasses('primary', 'sm')}>
+              Zapytaj o Franchise
+            </a>
+            <span className="inline-flex h-6 items-center rounded-full bg-[var(--g-ivory-deep)] px-3 text-[9px] font-bold text-[var(--g-text-secondary)]">
+              Zapytanie biznesowe
+            </span>
+          </>
+        }
+        visual={
+          <div className="grid grid-cols-2 bg-white">
+            {FRANCHISE_CONCEPTS.map(({ mark, name }) => (
+              <div
+                key={name}
+                className="grid min-h-[140px] place-items-center border-b border-l border-[var(--g-line)] p-5 text-center last:border-b-0"
+              >
+                <span>
+                  <span className="mx-auto grid size-12 place-items-center rounded-[12px] border border-[var(--g-line)] text-[20px] font-medium text-[var(--g-ink)]">
+                    {mark}
+                  </span>
+                  <strong className="mt-3 block text-[11px] font-bold text-[var(--g-ink)]">
+                    {name}
+                  </strong>
                 </span>
-                <strong className="mt-3 block text-xs">{concept}</strong>
+              </div>
+            ))}
+          </div>
+        }
+      />
+
+      <section className="mt-12">
+        <DestinationSectionHead
+          eyebrow="Potwierdzone koncepty"
+          title="Cztery formaty. Bez wymyślonych warunków."
+          helper="Karty są kategoriami enquiry, nie ofertami cenowymi ani obietnicą dostępności."
+        />
+        <div className="grid gap-3 lg:grid-cols-2">
+          {FRANCHISE_CONCEPTS.map(({ mark, name }) => (
+            <article
+              key={name}
+              className="min-w-0 rounded-[12px] border border-[var(--g-line)] bg-white p-5"
+            >
+              <span className="grid size-11 place-items-center rounded-[10px] border border-[var(--g-line)] text-[18px] font-medium text-[var(--g-ink)]">
+                {mark}
               </span>
-            </div>
-          ))}
-        </div>
-      </div>
-      <section className="mt-10">
-        <p className="text-[10px] font-semibold tracking-[0.13em] text-stone-500 uppercase">
-          Potwierdzone koncepty
-        </p>
-        <h2 className="mt-2 text-2xl font-semibold tracking-[-0.035em]">
-          Cztery formaty. Bez wymyślonych warunków.
-        </h2>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          {concepts.map((concept, index) => (
-            <article key={concept} className="rounded-[12px] border border-ink/12 bg-white p-5">
-              <span className="grid size-11 place-items-center rounded-[10px] border border-ink/12 text-lg">
-                {['P', 'W', 'T', 'L'][index]}
-              </span>
-              <h3 className="mt-4 text-lg font-semibold">{concept}</h3>
-              <p className="mt-2 text-xs leading-relaxed text-stone-500">
-                Szczegóły wymagają rozmowy i potwierdzonego źródła.
+              <h3 className="mt-4 text-[21px] leading-[1.2] font-bold tracking-[-0.02em] text-[var(--g-ink)]">
+                {name}
+              </h3>
+              <p className="mt-2 max-w-[62ch] text-[12px] leading-[1.5] text-[var(--g-text-secondary)]">
+                Kategoria obecna w aktualnym projekcie. Szczegóły wymagają rozmowy i potwierdzonej
+                authority.
               </p>
+              <a href={FRANCHISE_MAILTO} className={`${buttonClasses('ghost', 'sm')} mt-4 w-fit`}>
+                Zapytaj o ten koncept
+              </a>
             </article>
           ))}
         </div>

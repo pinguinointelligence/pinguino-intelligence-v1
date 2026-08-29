@@ -32,8 +32,10 @@ describe('Slice 3 destination pages', () => {
       const html = render(el);
       expect(html).toContain('theme-pro-light');
       expect(html).toContain('bg-paper');
-      // V2.1 §5: the approved destination title carries the preview's 750 weight.
-      expect(html).toContain('font-[750]');
+      // V2.1 §5: every destination carries an approved display weight — 750 on
+      // the shared PageHeading, 800 on the editorial hero that replaces it.
+      // A page with neither has lost its heading treatment entirely.
+      expect(html.includes('font-[750]') || html.includes('font-extrabold')).toBe(true);
       expect(html).not.toContain('[color-scheme:dark]');
     }
   });

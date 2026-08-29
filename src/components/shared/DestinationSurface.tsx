@@ -30,6 +30,7 @@ export function DestinationSurface({
   blurb,
   actions,
   contextLabel,
+  bare = false,
   children,
 }: {
   eyebrow?: string;
@@ -38,6 +39,9 @@ export function DestinationSurface({
   actions?: ReactNode;
   /** Compact lockup descriptor used by the approved global destination shell. */
   contextLabel?: string;
+  /** Editorial destinations open on their own HERO, so they suppress the
+   *  shared PageHeading rather than stacking two titles (V2.1 §5). */
+  bare?: boolean;
   children?: ReactNode;
 }) {
   return (
@@ -68,8 +72,12 @@ export function DestinationSurface({
                 marketing page that happens to sit behind a login. */}
             <div className={`${APP_PAGE_WORKSPACE} ${APP_PAGE_BLOCK}`}>
               <div className={APP_PAGE_CANVAS}>
-                <PageHeading eyebrow={eyebrow} title={title} blurb={blurb} actions={actions} />
-                {children ? <div className={PAGE_HEADING_CONTENT_GAP}>{children}</div> : null}
+                {bare ? null : (
+                  <PageHeading eyebrow={eyebrow} title={title} blurb={blurb} actions={actions} />
+                )}
+                {children ? (
+                  <div className={bare ? undefined : PAGE_HEADING_CONTENT_GAP}>{children}</div>
+                ) : null}
               </div>
             </div>
           </div>

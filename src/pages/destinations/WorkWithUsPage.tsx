@@ -1,54 +1,98 @@
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
-import { ImagePlaceholder } from '@/features/shell/MegaMenuItem';
+import {
+  CommerceLock,
+  DestinationEyebrow,
+  DestinationSectionHead,
+  EditorialHero,
+  ImageDirection,
+} from '@/components/shared/destinationEditorial';
+import { buttonClasses } from '@/components/ui/buttonStyles';
 import { copy } from '@/copy/en';
 
 const w = copy.nav.work;
 
-type Offer = { title: string; body: string; included: string; forWhom: string };
-const OFFERS: Offer[] = [
-  w.offers.app,
-  w.offers.machinesApp,
-  w.offers.machineMixtures,
-  w.offers.ingredients,
+type Offer = {
+  title: string;
+  body: string;
+  included: string;
+  forWhom: string;
+  direction: readonly string[];
+};
+
+/* The four categories are unchanged. Each one gains the approved image
+   DIRECTION the preview shows in its card — a named intent, not an asset. */
+const OFFERS: readonly Offer[] = [
+  { ...w.offers.app, direction: w.direction.app },
+  { ...w.offers.machinesApp, direction: w.direction.machinesApp },
+  { ...w.offers.machineMixtures, direction: w.direction.machineMixtures },
+  { ...w.offers.ingredients, direction: w.direction.ingredients },
 ];
 
-function OfferBlock({ offer }: { offer: Offer }) {
+function OfferCard({ offer }: { offer: Offer }) {
   return (
-    <div className="flex flex-col gap-5">
-      <ImagePlaceholder className="aspect-video w-full" />
-      <div>
-        <h2 className="text-xl font-light text-ivory">{offer.title}</h2>
-        <p className="mt-2 text-sm leading-relaxed text-ivory/60">{offer.body}</p>
-      </div>
-      <div className="space-y-4">
-        <div>
-          <p className="text-[0.625rem] tracking-label text-ivory/40 uppercase">{w.includedLabel}</p>
-          <p className="mt-1.5 text-sm leading-relaxed text-ivory/70">{offer.included}</p>
+    <article className="flex min-w-0 flex-col rounded-[12px] border border-[var(--g-line)] bg-white p-5">
+      <ImageDirection lines={[...offer.direction, w.assetNote]} className="h-[150px] w-full" />
+      <DestinationEyebrow>{w.cardEyebrow}</DestinationEyebrow>
+      <h2 className="mt-1 text-[21px] leading-[1.2] font-bold tracking-[-0.02em] text-[var(--g-ink)]">
+        {offer.title}
+      </h2>
+      <p className="mt-2 text-[12px] leading-[1.5] text-[var(--g-text-secondary)]">{offer.body}</p>
+      <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="min-w-0">
+          <dt className="text-[9px] leading-[1.25] font-bold tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">
+            {w.includedLabel}
+          </dt>
+          <dd className="mt-1 text-[11px] leading-[1.5] text-[var(--g-ink)]">{offer.included}</dd>
         </div>
-        <div>
-          <p className="text-[0.625rem] tracking-label text-ivory/40 uppercase">{w.forWhomLabel}</p>
-          <p className="mt-1.5 text-sm leading-relaxed text-ivory/70">{offer.forWhom}</p>
+        <div className="min-w-0">
+          <dt className="text-[9px] leading-[1.25] font-bold tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">
+            {w.forWhomLabel}
+          </dt>
+          <dd className="mt-1 text-[11px] leading-[1.5] text-[var(--g-ink)]">{offer.forWhom}</dd>
         </div>
-      </div>
-      <a
-        href={w.ctaHref}
-        className="mt-auto inline-flex w-fit items-center justify-center rounded-md border border-ivory/25 px-5 py-2.5 text-sm font-medium text-ivory transition-colors hover:border-ivory/50"
-      >
+      </dl>
+      <a href={w.ctaHref} className={`${buttonClasses('ghost', 'sm')} mt-5 w-fit`}>
         {w.cta}
       </a>
-    </div>
+    </article>
   );
 }
 
-/** Work With Us — the polished commercial destination (Phase 6C Slice 3). */
+/**
+ * Współpracuj z nami — the approved editorial destination (Gellatti V2.1 §5).
+ *
+ * The graphite hero, the section head and the four category cards are the
+ * preview's own structure. The four categories, their copy and the single
+ * mailto destination are the ones that were already here.
+ */
 export function WorkWithUsPage() {
   return (
-    <DestinationSurface title={w.title} blurb={w.blurb}>
-      <div className="grid gap-x-12 gap-y-16 md:grid-cols-2">
-        {OFFERS.map((offer) => (
-          <OfferBlock key={offer.title} offer={offer} />
-        ))}
-      </div>
+    <DestinationSurface title={w.title} blurb={w.blurb} contextLabel={w.title} bare>
+      <EditorialHero
+        eyebrow={w.heroEyebrow}
+        title={w.title}
+        blurb={w.blurb}
+        directionLines={w.heroDirection}
+        action={
+          <a href={w.ctaHref} className={buttonClasses('orange', 'md')}>
+            {w.heroCta}
+          </a>
+        }
+      />
+
+      <section className="mt-12">
+        <DestinationSectionHead
+          eyebrow={w.sectionEyebrow}
+          title={w.sectionTitle}
+          helper={w.sectionHelper}
+        />
+        <div className="grid gap-3 lg:grid-cols-2">
+          {OFFERS.map((offer) => (
+            <OfferCard key={offer.title} offer={offer} />
+          ))}
+        </div>
+        <CommerceLock>{w.commerceNote}</CommerceLock>
+      </section>
     </DestinationSurface>
   );
 }
