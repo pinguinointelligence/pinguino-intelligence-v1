@@ -42,7 +42,8 @@ the Sweetness intent, and a Sweetness-only request never rewrote Hardness.
 | 5 | **`/partner` told an account it lacked an invitation it had no way to request.** | A gate has to say why and what next. | `04106031` |
 | 6 | **`/account` signed-out state was plain text**, not a way in. | A dead end is not a state. | `1d28f694` |
 | 7 | **Partner approval mangled the slug** — `[^a-z0-9]` applied before `lower()` ate the capitals ("Marysia Lody" → "arysia-ody"). Found and fixed inside this run; the staging fixture was backfilled. | The slug is the partner's public address. | `1d28f694` |
-| 8 | Duplicated pack size in the Starter Pack contents list. | Cosmetic, caught in the mobile pass. | this batch |
+| 8 | Duplicated pack size in the Starter Pack contents list. | Cosmetic, caught in the mobile pass. | `dcc42b21` |
+| 9 | **A saved machine could leak between accounts on one browser.** `/machine` called the device-local store with no key, so it wrote to the unscoped legacy key while the Home shell correctly used `userScopedMachineKey(userId)`. | The scoped key exists precisely to prevent this (owner P0, 2026-07-18). The same customer also had their machine under two different keys depending on the surface. | `58d8631d` |
 
 ---
 
@@ -180,6 +181,7 @@ kcal/100 g, while the final product mass reacts (1000 g → 1050 g).
 | Preorder (G3) | Admin switched the Starter Pack to *Na zamówienie* with a 6-week lead time through the real Admin UI; the product card shows **"Na zamówienie · wysyłka za około 6 tyg."** and the cart shows **"Zamówienie zawiera produkt na zamówienie · wysyłka za około 6 tyg."** — both **before** payment |
 | Checkout security | A `localhost` redirect origin is refused by the allowlist (`redirect_url_not_allowed`), so the URL guard is live, not decorative |
 | Admin | Partner applications, shop articles + orders, franchise leads — all reachable and actionable as `admin@admin.com` |
+| Machine settings (F) | All 12 machines offered; Ninja CREAMi Deluxe derives **670 g** from the manufacturer's 706 ml by the ×0.95 rule; selection survives a reload. **Account-level persistence is a documented launch gate that is still closed** — `user_machine_preference` exists and the Supabase adapter is written, but only the device-local factory is wired, so a machine does not follow the customer to another device. Left closed: flipping a deliberate launch gate is a product decision, not a bug fix |
 | Mobile 390 × 844 | `/shop`, `/work-with-us`, `/franchise`, `/community`, `/recipes`, `/account` — **no horizontal overflow on any** |
 
 ---
