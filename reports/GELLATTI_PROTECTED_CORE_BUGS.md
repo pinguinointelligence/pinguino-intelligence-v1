@@ -16,6 +16,11 @@ so the owner can write a separate surgical prompt.
   `resolve_product_behavior_v1` verdict for every line**, and the real
   Preview / Apply / Save doors. Full ledger:
   `reports/GELLATTI_FULL_RECIPE_MATRIX.jsonl` (1304 cells).
+- **Reproducibility:** the whole matrix was run twice, the second time after the
+  harness moved to `src/qa/acceptance/**`. Both runs returned the identical
+  verdict — 1304 cells, 1163 PASS, 141 REFUSED, 0 axis mutations, and the same
+  refusal cluster sizes (53 / 34 / 22 / 15 / 9 / 8). Every bug below is
+  deterministic, not a one-off.
 - Reproduce one cluster: `QA_MATRIX_SUITES=isolation npm run acceptance:matrix`
   (or `direction`, `machines`, `toppings`), seed `20260829`.
 

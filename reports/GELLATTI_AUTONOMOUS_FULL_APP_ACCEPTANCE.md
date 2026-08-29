@@ -43,7 +43,8 @@ the Sweetness intent, and a Sweetness-only request never rewrote Hardness.
 | 6 | **`/account` signed-out state was plain text**, not a way in. | A dead end is not a state. | `1d28f694` |
 | 7 | **Partner approval mangled the slug** — `[^a-z0-9]` applied before `lower()` ate the capitals ("Marysia Lody" → "arysia-ody"). Found and fixed inside this run; the staging fixture was backfilled. | The slug is the partner's public address. | `1d28f694` |
 | 8 | Duplicated pack size in the Starter Pack contents list. | Cosmetic, caught in the mobile pass. | `dcc42b21` |
-| 9 | **A saved machine could leak between accounts on one browser.** `/machine` called the device-local store with no key, so it wrote to the unscoped legacy key while the Home shell correctly used `userScopedMachineKey(userId)`. | The scoped key exists precisely to prevent this (owner P0, 2026-07-18). The same customer also had their machine under two different keys depending on the surface. | `58d8631d` |
+| 9 | **The payment provider leaked into the UI layer.** `AdminShopSection.tsx` named Stripe in operator labels and read the provider's own row fields, so a screen knew which provider the product uses. Caught by the studio boundary guard in CI. | The guard exists to keep provider integrations out of the view layer. Fixed by mapping the references into a neutral `paymentReference` in the service and moving the labels to the copy module — the guard was not loosened. | `ca1860a3` |
+| 10 | **A saved machine could leak between accounts on one browser.** `/machine` called the device-local store with no key, so it wrote to the unscoped legacy key while the Home shell correctly used `userScopedMachineKey(userId)`. | The scoped key exists precisely to prevent this (owner P0, 2026-07-18). The same customer also had their machine under two different keys depending on the surface. | `58d8631d` |
 
 ---
 
@@ -134,7 +135,8 @@ rather than changed.
 | `npm run lint` | clean (0 errors) |
 | `npm run build` | succeeds |
 | CI "Owner-locked contracts + protected paths" | **pass** |
-| CI "Solver time contracts (isolated)" | **pass** (one earlier run was a runner flake; it passes on the same code) |
+| CI "Solver time contracts (isolated)" | **pass** — it failed on two earlier runs of identical code and passed on others, so it is flaky on slow runners, not a signal |
+| CI "Typecheck, lint, tests, build" | Failed twice on a **real** defect I had introduced and then fixed: the studio boundary guard caught the payment provider named in UI source (`AdminShopSection.tsx`) and the QA harness opening its own Supabase client under `src/features/**`. Both corrected in `ca1860a3` — the provider references now travel through the service as a neutral `paymentReference` and the harness moved to `src/qa/**`. The guard itself was left untouched |
 
 No formulation science, solver, Direction, Main/Crown, batch, Recalculate,
 Production or Label calculation was changed. Migrations were applied to the
@@ -157,6 +159,7 @@ staging project only.
 | Unique ingredient identities | 33 |
 | Unique topping identities | 12 |
 | Suites | direction 800 · isolation 288 · machines 192 · toppings 24 |
+| Reproducibility | The matrix was run **twice**, the second time after the harness moved to `src/qa/acceptance/**`. Identical verdict both times — same totals, same 0 axis mutations, same refusal cluster sizes (53 / 34 / 22 / 15 / 9 / 8) |
 
 **Post-process isolation holds exactly.** With the Base held byte-identical,
 `none` vs `TOPPING_ONLY` produce identical POD, PAC, NPAC, score, Base sum and
