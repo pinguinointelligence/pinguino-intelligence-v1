@@ -105,8 +105,11 @@ describe('canonical Gellatti Pro — menu (proofs 4–6, 17–18)', () => {
       'recipes',
       'production',
       'products',
-      'labels',
       'machine',
+      // OWNER AUTHORIZED (2026-08-29): the duplicate `Ustawienia etykiety`
+      // entry is gone; Community becomes the one door to the public creator
+      // surfaces. Label settings keep working inside Production/Label.
+      'community',
       'memberShop',
       'workWithUs',
       'franchise',

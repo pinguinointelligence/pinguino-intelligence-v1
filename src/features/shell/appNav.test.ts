@@ -42,6 +42,7 @@ describe('plan-aware global navigation', () => {
       'howItWorks',
       'guestShop',
       'plans',
+      'community',
       'workWithUs',
       'franchise',
     ]);
@@ -53,20 +54,21 @@ describe('plan-aware global navigation', () => {
       'recipes',
       'products',
       'machine',
+      'community',
       'memberShop',
       'workWithUs',
       'franchise',
     ]);
   });
 
-  it('returns the exact shallow Pro menu with Production and Labels', () => {
+  it('returns the exact shallow Pro menu with Production', () => {
     expect(ids('pro')).toEqual([
       'proWorkspace',
       'recipes',
       'production',
       'products',
-      'labels',
       'machine',
+      'community',
       'memberShop',
       'workWithUs',
       'franchise',
@@ -74,7 +76,6 @@ describe('plan-aware global navigation', () => {
     expect(ids('pro').filter((id) => !ids('home').includes(id))).toEqual([
       'proWorkspace',
       'production',
-      'labels',
     ]);
   });
 
@@ -86,19 +87,27 @@ describe('plan-aware global navigation', () => {
     expect(activeNavId(loc('/pro/machine'), 'pro')).toBe('machine');
     expect(activeNavId(loc('/pro/production'), 'pro')).toBe('production');
     expect(activeNavId(loc('/pro/history'), 'pro')).toBe('production');
-    expect(activeNavId(loc('/label'), 'pro')).toBe('labels');
-    expect(activeNavId(loc('/labels'), 'pro')).toBe('labels');
-    expect(activeNavId(loc('/pro/recipe', '?panel=summary&labelView=settings'), 'pro')).toBe(
-      'labels',
-    );
+    expect(activeNavId(loc('/community'), 'pro')).toBe('community');
+    expect(activeNavId(loc('/top100'), 'pro')).toBe('community');
     expect(activeNavId(loc('/pro/monitor'), 'pro')).toBe('proWorkspace');
     expect(isGroupActive('product', loc('/pro/versions'), 'pro')).toBe(true);
   });
 
-  it('opens label settings in the canonical recipe workbench instead of the history page', () => {
-    const labels = APP_NAV_ITEMS.find((item) => item.id === 'labels');
-    expect(labels?.label).toBe('Ustawienia etykiety');
-    expect(labels?.to).toBe('/pro/recipe?panel=summary&labelView=settings');
+  /* OWNER AUTHORIZED (2026-08-29, full-application acceptance): the duplicate
+     `Ustawienia etykiety` NAVIGATION entry is removed. Label settings keep
+     working in the Production/Label experience and in the workbench Summary
+     panel — only the second door into them is gone. */
+  it('carries no duplicate label-settings navigation entry', () => {
+    expect(APP_NAV_ITEMS.find((item) => item.id === 'labels')).toBeUndefined();
+    for (const audience of ['guest', 'home', 'pro'] as const) {
+      expect(ids(audience)).not.toContain('labels');
+    }
+  });
+
+  it('reaches Community and Top 100 from one Community destination', () => {
+    const community = APP_NAV_ITEMS.find((item) => item.id === 'community');
+    expect(community?.to).toBe('/community');
+    expect(community?.audiences).toEqual(['guest', 'home', 'pro']);
   });
 
   it('never promotes contextual actions, internals or a separate Studio destination', () => {

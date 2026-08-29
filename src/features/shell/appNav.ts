@@ -48,15 +48,11 @@ const recipeDestination = (loc: NavLocation) =>
   pathOrNested('/recipes')(loc) || loc.pathname === '/my-recipes';
 const productionDestination = (loc: NavLocation) =>
   pathOrNested('/production')(loc) || ['/pro/production', '/pro/history'].includes(loc.pathname);
-const labelsDestination = (loc: NavLocation) => {
-  if (pathOrNested('/labels')(loc) || loc.pathname === '/label') return true;
-  if (loc.pathname !== '/pro/recipe') return false;
-  const params = new URLSearchParams(loc.search);
-  return params.get('panel') === 'summary' && params.get('labelView') === 'settings';
-};
 const productsDestination = (loc: NavLocation) =>
   pathOrNested('/products')(loc) ||
   ['/create-ingredient', '/products/import'].includes(loc.pathname);
+const communityDestination = (loc: NavLocation) =>
+  ['/community', '/top100', '/creator'].includes(loc.pathname);
 const machineDestination = (loc: NavLocation) =>
   ['/machine', '/profile/machine', '/pro/machine'].includes(loc.pathname);
 const proWorkspaceDestination = (loc: NavLocation) =>
@@ -155,15 +151,6 @@ export const APP_NAV_ITEMS: readonly AppNavItem[] = [
     isActive: productsDestination,
   },
   {
-    id: 'labels',
-    label: s.items.labels,
-    to: '/pro/recipe?panel=summary&labelView=settings',
-    group: 'product',
-    order: 4,
-    audiences: ['pro'],
-    isActive: labelsDestination,
-  },
-  {
     id: 'machine',
     label: s.items.machine,
     to: '/machine',
@@ -180,6 +167,15 @@ export const APP_NAV_ITEMS: readonly AppNavItem[] = [
     order: 1,
     audiences: ['home', 'pro'],
     isActive: exact('/shop'),
+  },
+  {
+    id: 'community',
+    label: s.items.community,
+    to: '/community',
+    group: 'ecosystem',
+    order: 0,
+    audiences: ['guest', 'home', 'pro'],
+    isActive: communityDestination,
   },
   {
     id: 'workWithUs',

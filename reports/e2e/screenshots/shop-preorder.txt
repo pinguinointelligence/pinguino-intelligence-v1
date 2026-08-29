@@ -1,0 +1,30 @@
+GELLATTI — served capture: shop, preorder communicated BEFORE payment
+Account: test1@test1.com (PRO)  ·  Admin change made as admin@admin.com
+
+--- Admin -> Shop & orders ---------------------------------------------------
+GEL-STARTER-PACK  availability: Dostępny -> Na zamówienie, termin: 6 tyg.
+Saved through the real Admin UI. Server row after save:
+  sku=GEL-STARTER-PACK  availability=preorder  lead_time_weeks=6
+  price_cents=5900  active=true
+
+--- Customer -> /shop --------------------------------------------------------
+Product card chip:  "Na zamówienie · wysyłka za około 6 tyg."
+Cart notice:        "Zamówienie zawiera produkt na zamówienie · wysyłka za
+                     około 6 tyg."
+Cart footer:        "Razem 59,00 €"  ·  "Przejdź do płatności"
+Disclosure:         "Staging: płatność w trybie testowym Stripe. Karta nie
+                     zostanie obciążona."
+
+ASSERTION  the lead time is stated on the card AND in the cart, both before the
+           customer reaches payment — never hidden in terms after purchase.
+
+--- Orders created (real Stripe TEST sessions) -------------------------------
+  G-20260829-7D9334  pending  1 item   4,90 €  GEL-DEX-500
+  G-20260829-26B49D  pending  7 items 67,30 €  all seven 500 g articles
+  G-20260829-81880B  pending  1 item  59,00 €  GEL-STARTER-PACK [preorder]
+                     contains_preorder=true  lead_time_weeks=6
+All three carry a stripe_checkout_session_id beginning `cs_test_`.
+
+--- Checkout guard -----------------------------------------------------------
+A localhost redirect origin is refused: {"error":"redirect_url_not_allowed"}.
+The redirect allowlist is live, not decorative.

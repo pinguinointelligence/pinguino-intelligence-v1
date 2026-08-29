@@ -23,6 +23,7 @@ import {
   buildMachineSettingsView,
   localStorageMachinePreferenceStore,
   machineOnboardingCopy,
+  userScopedMachineKey,
   resolvePreferenceProfile,
   useMachinePreference,
   withCustomContainer,
@@ -32,6 +33,7 @@ import {
 } from '@/features/machine-onboarding';
 import { selectMachinePreferenceStore } from '@/services/machinePreference/machinePreferenceSelector';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
+import { useAuthStore } from '@/stores/authStore';
 import { ApplicationState } from '@/components/shared/ApplicationState';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
 
@@ -40,11 +42,19 @@ type PageMode = 'view' | 'onboarding' | 'edit_custom';
 export function MachineProfilePage() {
   const navigate = useNavigate();
   const persona = useProCorePersona();
+  /* The device-local key must be SCOPED to the signed-in account (owner P0,
+     2026-07-18): the Home shell already does this, and this page did not, so
+     the same customer's machine landed under two different keys and, on a
+     shared browser, one account's machine carried into the next account's
+     session. Same store, same launch gate — only the key is corrected. */
+  const authUserId = useAuthStore((state) => state.user?.id ?? null);
   const store = useMemo(
     () =>
-      selectMachinePreferenceStore({ localDevice: () => localStorageMachinePreferenceStore() })
-        .store,
-    [],
+      selectMachinePreferenceStore({
+        localDevice: () =>
+          localStorageMachinePreferenceStore(undefined, userScopedMachineKey(authUserId)),
+      }).store,
+    [authUserId],
   );
   const preference = useMachinePreference(store);
   const [mode, setMode] = useState<PageMode>('view');

@@ -9,6 +9,8 @@ import { StatusChip } from '@/components/shared/StatusChip';
 import { cn } from '@/lib/cn';
 import { customerErrorMessage } from '@/copy/customerError';
 import { AdminCatalogSection } from '@/features/admin/AdminCatalogSection';
+import { AdminShopSection } from '@/features/admin/AdminShopSection';
+import { AdminFranchiseLeadsSection } from '@/features/admin/AdminFranchiseLeadsSection';
 import { AdminCommunitySection } from '@/features/admin/AdminCommunitySection';
 import { AdminInvitesSection } from '@/features/admin/AdminInvitesSection';
 import { AdminPartnersSection } from '@/features/admin/AdminPartnersSection';
@@ -35,8 +37,10 @@ const NAV = [
   ['catalog', 'Catalog & countries'],
   ['users', 'Users'],
   ['revenue', 'Subscriptions & revenue'],
+  ['shop', 'Shop & orders'],
   ['partners', 'Partners'],
   ['community', 'Community & content'],
+  ['franchise', 'Franchise leads'],
   ['operations', 'Operations'],
   ['audit', 'Audit log'],
   ['settings', 'Admin settings'],
@@ -99,8 +103,10 @@ function AdminSection({ section }: { section: Section }) {
   if (section === 'customer-added-products') return <AdminCustomerAddedProductsSection />;
   if (section === 'users') return <AdminUsersSection />;
   if (section === 'revenue') return <Directory section="FINANCE" />;
+  if (section === 'shop') return <AdminShopSection />;
   if (section === 'partners') return <AdminPartnersSection />;
   if (section === 'community') return <AdminCommunitySection />;
+  if (section === 'franchise') return <AdminFranchiseLeadsSection />;
   if (section === 'audit') return <Directory section="AUDIT" />;
   if (section === 'catalog') return <AdminCatalogSection />;
   if (section === 'operations') return <Operations />;

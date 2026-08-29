@@ -1,0 +1,17 @@
+GELLATTI — served capture: mobile 390 x 844
+Account: test1@test1.com (PRO)
+
+Measured per surface: document.documentElement.scrollWidth vs clientWidth.
+
+  /shop           vw 390  scrollW 390  horizontalOverflow=false  offenders=[]
+  /work-with-us   vw 390  scrollW 390  horizontalOverflow=false
+  /franchise      vw 390  scrollW 390  horizontalOverflow=false
+  /community      vw 390  scrollW 390  horizontalOverflow=false
+  /recipes        vw 390  scrollW 390  horizontalOverflow=false
+  /account        vw 390  scrollW 390  horizontalOverflow=false
+
+ASSERTION  no horizontal overflow on any customer surface at 390 x 844.
+
+Visual check on /shop at 390 x 844: the Starter Pack card stacks (title,
+availability chip, description, contents list, price, action), the price and
+"Dodaj do koszyka" sit on one row, and nothing is clipped.

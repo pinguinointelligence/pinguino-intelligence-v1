@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactElement } from 'react';
 import { describe, expect, it } from 'vitest';
 import { copy } from '@/copy/en';
+import { cooperationCopy } from '@/copy/cooperation';
 import { landingCopy } from '@/pages/landing/landingCopy';
 import { APIPage } from './APIPage';
 import { CreateIngredientPage } from './CreateIngredientPage';
@@ -38,14 +39,35 @@ describe('Slice 3 destination pages', () => {
     }
   });
 
-  it('Work With Us shows the four offers + a mailto CTA', () => {
+  /* OWNER DECISION (2026-08-29): partners and creators are the primary
+     cooperation path and own the top of this page; ingredient supply is NOT a
+     public cooperation route today. Its copy and every consumer stay in the
+     tree — only the public presentation drops it. */
+  it('Work With Us leads with the partner path and keeps the machine routes', () => {
     const html = render(<WorkWithUsPage />);
-    expect(html).toContain(copy.nav.work.offers.app.title);
+    expect(html).toContain(cooperationCopy.partner.headline);
+    expect(html).toContain(cooperationCopy.partner.cta);
+    expect(html).toContain(cooperationCopy.partner.attributionTitle);
     expect(html).toContain(copy.nav.work.offers.machinesApp.title);
     expect(html).toContain(copy.nav.work.offers.machineMixtures.title);
-    expect(html).toContain(copy.nav.work.offers.ingredients.title);
-    expect(html).toContain(copy.nav.work.cta);
+    expect(html).toContain(copy.nav.work.offers.app.title);
+    expect(html).toContain(cooperationCopy.secondary.cta);
     expect(html).toContain('href="mailto:');
+  });
+
+  it('does not present ingredient supply as a public cooperation route', () => {
+    const html = render(<WorkWithUsPage />);
+    expect(html).not.toContain(copy.nav.work.offers.ingredients.title);
+    // The copy itself is untouched, so the route can return without a rebuild.
+    expect(copy.nav.work.offers.ingredients.title.length).toBeGreaterThan(0);
+  });
+
+  /* The "no commission figure, no income promise" rule is asserted where it
+     belongs — over the copy objects themselves, in src/copy/cooperation.test.ts.
+     Rendered HTML carries percentages in CSS, so it is the wrong layer. */
+  it('states no income promise in the cooperation page prose', () => {
+    const html = render(<WorkWithUsPage />);
+    expect(html).not.toMatch(/zarobisz|gwarantujemy/i);
   });
 
   it('Subscription (light-first, Polish) shows Home + Pro tiers and an honest Pro CTA, no checkout', () => {
