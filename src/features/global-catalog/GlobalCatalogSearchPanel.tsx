@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { cn } from '@/lib/cn';
 import { productCatalogOverviewVerificationView } from '@/features/ingredient-builder/productPickerModel';
 import { preserveServerProductRank } from './ranking';
-import { canonicalFamilyLabelPl } from './catalogDisplayAliases';
+import { canonicalFamilyLabelPl, catalogQualifierPl } from './catalogDisplayAliases';
 import { useGlobalCatalogPicker } from './useGlobalCatalogPicker';
 import { CarbonationBubbles } from '@/components/product/CarbonationBubbles';
 import { currencyMark } from '@/features/pro-core/currencyMark';
@@ -330,7 +330,7 @@ export function GlobalCatalogSearchPanel() {
               <CatalogRow
                 key={hit.id}
                 name={hit.displayName}
-                qualifier={`${hit.brand ?? canonicalFamilyLabelPl(hit.canonicalFamily) ?? canonicalFamilyLabelPl(hit.category) ?? 'Produkt'}${hit.markets[0] ? ` · ${hit.markets[0]}` : ''}`}
+                qualifier={`${catalogQualifierPl(hit.brand, hit.canonicalFamily, hit.category) ?? 'Produkt'}${hit.markets[0] ? ` · ${hit.markets[0]}` : ''}`}
                 ean={hit.eans[0] ?? hit.productCode ?? '—'}
                 status={verification.status}
                 blocked={technicallyBlocked}
@@ -392,9 +392,11 @@ export function GlobalCatalogSearchPanel() {
                     {selectedHit.displayName}
                   </h3>
                   <p className="mt-1 text-[12px] leading-[17px] text-[var(--g-text-muted)]">
-                    {selectedHit.brand ??
-                      canonicalFamilyLabelPl(selectedHit.canonicalFamily) ??
-                      'Produkt z katalogu Gellatti'}
+                    {catalogQualifierPl(
+                      selectedHit.brand,
+                      selectedHit.canonicalFamily,
+                      selectedHit.category,
+                    ) ?? 'Produkt z katalogu Gellatti'}
                   </p>
                 </div>
                 <span

@@ -63,3 +63,29 @@ export function canonicalFamilyLabelPl(value: string | null | undefined): string
 /** Every canonical value this alias table covers (used by the source test). */
 export const canonicalFamilyAliasKeysPl = (): readonly string[] =>
   Object.keys(CANONICAL_FAMILY_PL);
+
+/**
+ * Generic placeholders that canonical Gellatti base rows carry in the BRAND
+ * column. They are not trade names — a real brand (Mlekovita, HARIBO, Ravifruit,
+ * La Chocolatera) never matches this list and is always shown exactly as stored.
+ */
+const GENERIC_BRAND_PLACEHOLDERS = new Set(['general', 'generic', 'n/a', 'na', 'none', '-', '—']);
+
+export const isGenericBrandPlaceholder = (brand: string | null | undefined): boolean =>
+  brand !== null && brand !== undefined && GENERIC_BRAND_PLACEHOLDERS.has(brand.toLowerCase().trim());
+
+/**
+ * The qualifier line under a catalog product: a real brand wins and is never
+ * translated; a generic placeholder falls through to the localized family, then
+ * the localized category. The stored values are never modified.
+ */
+export function catalogQualifierPl(
+  brand: string | null | undefined,
+  canonicalFamily: string | null | undefined,
+  category: string | null | undefined,
+): string | null {
+  if (brand !== null && brand !== undefined && brand.trim() !== '' && !isGenericBrandPlaceholder(brand)) {
+    return brand;
+  }
+  return canonicalFamilyLabelPl(canonicalFamily) ?? canonicalFamilyLabelPl(category);
+}
