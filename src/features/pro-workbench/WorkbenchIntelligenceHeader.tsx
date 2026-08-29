@@ -13,6 +13,7 @@ import { assessProteinFormulation } from '@/features/protein-gelato/proteinAutho
 import { WorkbenchScoreDisplay } from './WorkbenchScoreDisplay';
 import { buildCurrentRecipeResultAuthority } from './currentRecipeResultAuthority';
 import { friendlyLabRecipeJourneyState } from './friendlyLabRecipeJourney';
+import { unfilledUserSuppliedRoles } from '@/features/formulation/formulate';
 
 export function WorkbenchIntelligenceHeader({
   result,
@@ -160,6 +161,15 @@ export function WorkbenchIntelligenceHeader({
     hasAppliedHistory: appliedHistoryCount > 0,
   });
   const working = recalculationTerminal?.state === 'WORKING';
+  // A template role the customer must supply (a sorbet's fruit, a chocolate
+  // gelato's chocolate) is never auto-added, so the scaffold deliberately
+  // carries less mass than the target batch until they choose. Say so instead
+  // of letting the draft read as an ordinary recipe that happens to be short —
+  // the batch itself is untouched, only its completeness is reported.
+  const missingUserSuppliedRole = useMemo(
+    () => unfilledUserSuppliedRoles(input)[0] ?? null,
+    [input],
+  );
   const pending = !displayedMatch;
   const recalculateNeeded =
     working || (previewMatch === null && (!verifiedCurrent || awaitingRecalculation));
@@ -173,6 +183,7 @@ export function WorkbenchIntelligenceHeader({
         data-current-result-state={currentResultAuthority.state}
         data-current-result-revision={currentResultAuthority.draftRevision}
         data-friendly-lab-recipe-state={journeyState}
+        data-missing-user-supplied-role={missingUserSuppliedRole?.role ?? undefined}
       >
         {displayedMatch ? (
           <WorkbenchScoreDisplay
@@ -203,9 +214,11 @@ export function WorkbenchIntelligenceHeader({
               <span className="block text-[10px] text-white/85">
                 {working
                   ? 'Gellatti przygotowuje wynik'
-                  : journeyState === 'STALE'
-                    ? 'Receptura się zmieniła.'
-                    : 'Zaktualizuj wynik receptury'}
+                  : missingUserSuppliedRole
+                    ? `Najpierw wybierz składnik: ${missingUserSuppliedRole.labelPl.toLocaleLowerCase('pl')}.`
+                    : journeyState === 'STALE'
+                      ? 'Receptura się zmieniła.'
+                      : 'Zaktualizuj wynik receptury'}
               </span>
             </span>
           </button>
@@ -226,6 +239,7 @@ export function WorkbenchIntelligenceHeader({
       data-current-result-state={currentResultAuthority.state}
       data-current-result-revision={currentResultAuthority.draftRevision}
       data-friendly-lab-recipe-state={journeyState}
+      data-missing-user-supplied-role={missingUserSuppliedRole?.role ?? undefined}
       aria-label={`Dopasowanie techniczne receptury: ${displayedMatch ? displayedMatch.display : 'oczekuje na przeliczenie'}`}
     >
       <button
@@ -250,17 +264,21 @@ export function WorkbenchIntelligenceHeader({
                     ? 'Przeliczanie…'
                     : legacyInspection
                       ? 'Podgląd historyczny'
-                      : journeyState === 'STALE'
-                        ? 'Receptura się zmieniła.'
-                        : hasRecipe
-                          ? 'Oczekuje na przeliczenie'
-                          : 'Brak danych'}
+                      : missingUserSuppliedRole
+                        ? 'Receptura niekompletna'
+                        : journeyState === 'STALE'
+                          ? 'Receptura się zmieniła.'
+                          : hasRecipe
+                            ? 'Oczekuje na przeliczenie'
+                            : 'Brak danych'}
             </strong>
           </span>
           <span className="mt-0.5 block truncate text-[10px] text-stone-600">
             {displayedMatch
               ? `${displayedMatch.score ?? '—'} · ${previewMatch ? previewMatch.label : displayedMatch.label}`
-              : 'Wynik pojawi się po przeliczeniu'}
+              : missingUserSuppliedRole
+                ? `Najpierw wybierz składnik: ${missingUserSuppliedRole.labelPl.toLocaleLowerCase('pl')}.`
+                : 'Wynik pojawi się po przeliczeniu'}
           </span>
           {/* Protein v2: measured content, never a target and never a control. */}
         </span>
