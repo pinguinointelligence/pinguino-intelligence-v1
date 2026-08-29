@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { cn } from '@/lib/cn';
 import { productCatalogOverviewVerificationView } from '@/features/ingredient-builder/productPickerModel';
 import { preserveServerProductRank } from './ranking';
+import { canonicalFamilyLabelPl } from './catalogDisplayAliases';
 import { useGlobalCatalogPicker } from './useGlobalCatalogPicker';
 import { CarbonationBubbles } from '@/components/product/CarbonationBubbles';
 import { currencyMark } from '@/features/pro-core/currencyMark';
@@ -301,7 +302,7 @@ export function GlobalCatalogSearchPanel() {
               <CatalogRow
                 key={`pi:${hit.id}`}
                 name={hit.displayName}
-                qualifier={hit.productForm ?? hit.category ?? 'Składnik z bazy Gellatti'}
+                qualifier={hit.productForm ?? canonicalFamilyLabelPl(hit.category) ?? 'Składnik z bazy Gellatti'}
                 ean={hit.eans[0] ?? hit.productCode ?? '—'}
                 status={verification.status}
                 blocked={technicallyBlocked}
@@ -329,7 +330,7 @@ export function GlobalCatalogSearchPanel() {
               <CatalogRow
                 key={hit.id}
                 name={hit.displayName}
-                qualifier={`${hit.brand ?? hit.canonicalFamily ?? hit.category ?? 'Produkt'}${hit.markets[0] ? ` · ${hit.markets[0]}` : ''}`}
+                qualifier={`${hit.brand ?? canonicalFamilyLabelPl(hit.canonicalFamily) ?? canonicalFamilyLabelPl(hit.category) ?? 'Produkt'}${hit.markets[0] ? ` · ${hit.markets[0]}` : ''}`}
                 ean={hit.eans[0] ?? hit.productCode ?? '—'}
                 status={verification.status}
                 blocked={technicallyBlocked}
@@ -392,7 +393,7 @@ export function GlobalCatalogSearchPanel() {
                   </h3>
                   <p className="mt-1 text-[12px] leading-[17px] text-[var(--g-text-muted)]">
                     {selectedHit.brand ??
-                      selectedHit.canonicalFamily ??
+                      canonicalFamilyLabelPl(selectedHit.canonicalFamily) ??
                       'Produkt z katalogu Gellatti'}
                   </p>
                 </div>

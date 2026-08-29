@@ -1,4 +1,5 @@
 import type { MasterLabelData } from './masterLabel';
+import { printReadinessLabelPl } from './labelPresentation';
 import { buildLabelPreflight } from './masterLabel';
 import { marketProfile } from './marketProfiles';
 import { buildMasterLabelPrintHtml } from './masterLabelPrint';
@@ -22,7 +23,7 @@ export function ConsumerLabelPreview({
     >
       <div className="mb-2 flex items-center justify-between gap-4 text-[11px] text-stone-500">
         <span data-testid="label-market-indicator">{profile.label}</span>
-        <span>{preflight.printReadiness}</span>
+        <span>{printReadinessLabelPl(preflight.printReadiness)}</span>
       </div>
       {label.market === 'WORLD' ? (
         <p className="mb-3 max-w-xl text-xs text-stone-500">

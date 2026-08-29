@@ -90,6 +90,51 @@ gated components directly.
 | `/` landing | PASS | identical copy |
 | authenticated/paid states | BLOCKED (external) | same reason as desktop |
 
+### Deployed staging — authenticated Pro session (read-only)
+
+After the first push (`48b32491`, deployment `dpl_2hPVwESNa9AjAeF39NcxwownBa6E`),
+the same routes were re-crawled on `https://staging.pinguinoai.com`, where a real
+signed-in Pro session exists. This covered the states that are BLOCKED locally.
+No data was mutated — navigation and text extraction only.
+
+| Route / state | Result | Findings |
+|---|---|---|
+| `/labels` — account profile + real batch labels, market chip, print preflight | PASS after fix | `Świat / Uniwersalna` live; **raw enum `NOT_READY` was rendering** → fixed with a display map |
+| `/pro` — Studio, ingredient rows, Monitor score, Direction axes, settings, cost | PASS | fully Polish; remaining non-Polish is canonical Mapper data (below) |
+| `/production` — current batch, history, labels tabs | PASS | fully Polish |
+| `/products` — catalog table, detail card, fact rows | PASS after fix | `Status kanoniczny` live; **raw `General` (canonicalFamily) was rendering** → fixed with a display alias |
+| `/recipes`, `/community`, `/top100`, `/account` (authenticated) | PASS | fully Polish |
+
+Two raw contract values were caught **only** by this authenticated served pass —
+neither is reachable without a Pro session and real label/catalog data, and both
+were fixed in the display layer with the contract untouched:
+
+1. `ConsumerLabelPreview` rendered `{preflight.printReadiness}` directly, showing
+   `NOT_READY`. Now `printReadinessLabelPl()` in `labelPresentation.ts`
+   (`Niegotowe do druku` / `Gotowe — etykieta uniwersalna` /
+   `Gotowe — profil prawny rynku`). `labelRepository` still gates on the raw
+   `'NOT_READY'`.
+2. `GlobalCatalogSearchPanel` rendered the database value `canonicalFamily`
+   (`General`). Now `canonicalFamilyLabelPl()` in `catalogDisplayAliases.ts`,
+   an alias table with a byte-exact fallback for unmapped values.
+
+### Dynamic catalog data seen served (policy-covered, not leaks)
+
+Canonical Mapper rows render their stored identity, which is correct per §8A of
+the workbook's DYNAMIC DATA POLICY — canonical PI-ING identity and technical data
+must stay exact:
+
+- canonical names: `MILK 3.5%`, `SKIMMED MILK`, `SUCROSE SUGAR`, `TARA GUM`,
+  `BANANA · Fresh Fruit`, `MANGO CHATO · Puree · Frozen/Chilled`
+- form/storage descriptors: `Milk · Chilled`, `Sweetener · Dry`, `Fresh Fruit`
+- commercial/brand names: `Mlekovita`, `HARIBO`, `La Chocolatera`, `Ravifruit`
+
+Localizing the *generic* ones would need an owner-approved display-alias table
+across ~2 089 Mapper rows. That is a naming decision, not a translation task, and
+is recorded as the dynamic-data backlog — it must never be done by mutating
+Mapper identity. The family/category alias added this pass is the first, safe
+slice of that layer.
+
 ## 4. English-leak gate
 
 Measured by the exhaustive AST pass over the whole repository, restricted to
