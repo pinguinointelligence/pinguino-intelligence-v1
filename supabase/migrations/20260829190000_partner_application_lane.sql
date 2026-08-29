@@ -231,9 +231,12 @@ begin
 
   -- ---- approve: activate Partner ON TOP of whatever plan the account has ----
   v_display := coalesce(nullif(btrim(v_app.application_data->>'displayName'), ''), 'Partner Gellatti');
-  v_slug := lower(regexp_replace(
-    coalesce(nullif(btrim(v_app.application_data->>'proposedSlug'), ''), v_display),
-    '[^a-z0-9]+', '-', 'g'));
+  -- Lowercase FIRST: `[^a-z0-9]` also matches uppercase letters, so running
+  -- the class over the original casing eats the capitals themselves
+  -- ("Marysia Lody" -> "arysia-ody").
+  v_slug := regexp_replace(
+    lower(coalesce(nullif(btrim(v_app.application_data->>'proposedSlug'), ''), v_display)),
+    '[^a-z0-9]+', '-', 'g');
   v_slug := btrim(v_slug, '-');
   if length(v_slug) < 3 then v_slug := 'partner-' || left(replace(v_app.id::text, '-', ''), 8); end if;
   v_slug := left(v_slug, 40);

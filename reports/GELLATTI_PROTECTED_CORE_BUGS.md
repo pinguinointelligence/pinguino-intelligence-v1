@@ -8,9 +8,167 @@ Recipe/Monitor, Production and Label calculations).
 **None of these were fixed.** Each entry carries an exact reproducible fixture
 so the owner can write a separate surgical prompt.
 
-Reproduction harness: `npm run acceptance:matrix`
-(`src/features/acceptance/__campaign__/fullRecipeMatrix.acceptance.test.ts`),
-which drives the real starters, the real staging `resolve_product_behavior_v1`
-authority for every line, and the real Preview/Apply/Save doors.
+- First observed on staging `04106031` (branch `claude/gellatti-full-app`, based on `origin/staging` 1a10f7cf).
+- Account: `test1@test1.com` (PRO), staging project `tunabqqrwabacxjcxxkz`.
+- Harness: `npm run acceptance:matrix` →
+  `src/features/acceptance/__campaign__/fullRecipeMatrix.acceptance.test.ts`.
+  It uses the real canonical starters, the **real staging
+  `resolve_product_behavior_v1` verdict for every line**, and the real
+  Preview / Apply / Save doors. Full ledger:
+  `reports/GELLATTI_FULL_RECIPE_MATRIX.jsonl` (1304 cells).
+- Reproduce one cluster: `QA_MATRIX_SUITES=isolation npm run acceptance:matrix`
+  (or `direction`, `machines`, `toppings`), seed `20260829`.
+
+## Matrix headline
+
+| Metric | Result |
+|---|---|
+| Cells exercised | **1304** |
+| PASS (Preview → Apply → Save → reopen) | **1163** |
+| REFUSED | **141** |
+| **Direction axis cross-contamination** | **0 of 1163 applied cells** |
+| Profiles | Gelato, Sorbet, Vegan, Protein (326 cells each) |
+| Machines | 12 (Professional, 10 Home profiles, Custom) |
+| Serving modes | Świeże, −11 °C, −12 °C, −13 °C |
+| Direction combinations | 25 (Sweetness −2…+2 × Hardness −2…+2) |
+| Unique ingredient identities | 33 |
+| Unique topping identities | 12 |
+
+**A3 result — the regression the brief targets does NOT reproduce.** Across 288
+sequential single-axis cases (commit a neutral recipe, then move exactly one
+axis) and 800 direct Direction cases, `axis_mutation` is `none` in every
+applied cell: a Hardness-only request never rewrote the Sweetness intent, and a
+Sweetness-only request never rewrote the Hardness intent.
 
 ---
+
+## PC-01 — Sorbet at −12 °C OPTIMAL cannot move Direction at all
+
+| | |
+|---|---|
+| **SEVERITY** | HIGH — a whole profile/temperature/mode cell is a dead end |
+| **FIRST OBSERVED SHA** | `04106031` (present on `origin/staging` 1a10f7cf) |
+| **PROFILE** | Sorbet (`sorbet`) |
+| **MACHINE** | Maszyna profesjonalna |
+| **TEMPERATURE** | −12 °C (`temp_minus_12`) — **only this one** |
+| **MODE** | OPTIMAL — **only this one** (−12 ECO answers all 8) |
+| **BATCH** | 1000 g |
+| **EXACT INGREDIENTS** | `PI-ING-000514` SUCROSE 46 g · `PI-ING-000494` DEXTROSE 93 g · `PI-ING-000456` INULIN 20 g · `PI-ING-000492` TARA GUM 4 g · `PI-ING-000359` RASPBERRY (Frozen Fruit) 807 g · `PI-ING-000342` APPLE puree 30 g |
+| **TOPPINGS** | none |
+| **MAIN/CROWN** | `PI-ING-000359` held as MAIN (line `acceptance-main-PI-ING-000359`) |
+| **LOCKS** | none |
+| **SWEETNESS** | 0 → each of −2, −1, +1, +2 |
+| **HARDNESS** | 0 → each of −2, −1, +1, +2 |
+| **ACTION SEQUENCE** | 1. Build the canonical Sorbet starter at −12 °C OPTIMAL 1000 g. 2. Add the raspberry Main (600 g requested by `missingMainMassGrams`) and the rotating apple line. 3. Przelicz at (0,0) → **succeeds**, score 78.06, applied and saved. 4. From that applied state request **one** axis change. |
+| **EXPECTED** | Either a legal proposal, or the accepted NEAREST fallback with a truthful consent, or an honest "already_clean". |
+| **ACTUAL** | `buildOptimizePreview` returns `no_proposal` for **all eight** single-axis requests — both axes, both directions. |
+| **SCORE / POD / PAC / NPAC** | baseline 78.06 / — (no proposal is produced, so none is reported) |
+| **CONSOLE / NETWORK** | No error; the refusal is the pipeline's own `no_proposal` code. |
+| **REPRODUCED** | 8/8 requests in the same run; the identical recipe at `fresh`, `temp_minus_11`, `temp_minus_13` and at `temp_minus_12` ECO answers 9/9. |
+| **LIKELY ROOT AREA** | Sorbet Direction search at −12 °C under OPTIMAL — the exact projection, `searchSorbetNearestDirectionCandidate` and the ladder all return nothing while `buildRecipeDirectionPlan` still reports **both axes `working`**. The plan promises an axis the search cannot move. |
+
+---
+
+## PC-02 — The Sorbet solver proposes a recipe its own stabilizer authority then refuses
+
+| | |
+|---|---|
+| **SEVERITY** | HIGH — self-inconsistent: the Engine proposes what the authority forbids |
+| **FIRST OBSERVED SHA** | `04106031` |
+| **PROFILE** | Sorbet |
+| **MACHINE** | Maszyna profesjonalna (1 of 15 cells on Sage Smart Scoop) |
+| **TEMPERATURE** | all four (fresh 6, −11 4, −12 3, −13 2) |
+| **MODE** | OPTIMAL 6 · ECO 9 |
+| **BATCH** | 1000 g |
+| **EXACT INGREDIENTS (exemplar `dir-Sorbet-fresh-optimal-s1-h2`)** | `PI-ING-001409` WATER 179 g · `PI-ING-000514` SUCROSE 103 g · `PI-ING-000494` DEXTROSE 59 g · `PI-ING-000456` INULIN 55 g · `PI-ING-000492` TARA GUM 4 g · `PI-ING-000385` PEACH (Fresh Fruit) 600 g MAIN · `PI-ING-000306` VITACEL CITRUS FIBER 30 g |
+| **TOPPINGS** | `PI-ING-001567` OREO SMALL CRUSHED COOKIE 50 g (POST_PROCESS_ADDON) |
+| **MAIN/CROWN** | `PI-ING-000385` MAIN 600 g |
+| **SWEETNESS / HARDNESS** | +1 / +2 (15 cells across 11 distinct combinations) |
+| **ACTION SEQUENCE** | Build Sorbet starter → add fruit Main + fibre line → Przelicz. |
+| **EXPECTED** | The solver keeps its own Sorbet stabilizer-system ceiling inside the candidate it proposes, or refuses before producing one. |
+| **ACTUAL** | The preview is produced and then rejected by ProductBehavior binding: *"Propozycja Gellatti została odrzucona: w proponowanej recepturze łączny limit systemu stabilizującego Sorbet wynosi 5 g."* The **input** is inside the limit (TARA GUM 4 g); the **proposal** is not. |
+| **CONSOLE / NETWORK** | `resolve_product_behavior_v1` verdicts are the real staging ones. |
+| **REPRODUCED** | 15/1304 cells, deterministic under seed 20260829. |
+| **LIKELY ROOT AREA** | The Sorbet candidate ladder can raise the stabilizer system above the profile ceiling; the ceiling is enforced only at the binding boundary, not inside candidate generation. |
+
+---
+
+## PC-03 — Sorbet `unsafe_proposal` with no NEAREST fallback
+
+| | |
+|---|---|
+| **SEVERITY** | MEDIUM-HIGH — the customer receives no recipe and no route forward |
+| **FIRST OBSERVED SHA** | `04106031` |
+| **PROFILE** | Sorbet only (22 cells) |
+| **MACHINE** | Maszyna profesjonalna 19 · Ninja CREAMi Scoop & Swirl 2 · Sage Smart Scoop 1 |
+| **TEMPERATURE** | fresh 4 · −11 3 · −12 7 · −13 8 |
+| **MODE** | OPTIMAL 12 · ECO 10 |
+| **BATCH** | 1000 g (700–950 g on the Home machines) |
+| **EXACT INGREDIENTS (exemplar `dir-Sorbet-fresh-optimal-s-2-h-1`)** | WATER 179 g · SUCROSE 103 g · DEXTROSE 59 g · INULIN 55 g · TARA GUM 4 g · `PI-ING-000347` BLUEBERRY 600 g MAIN · VITACEL CITRUS FIBER 30 g |
+| **TOPPINGS** | `PI-ING-001221` GRANELLA 50 g |
+| **SWEETNESS / HARDNESS** | −2 / −1 (15 distinct combinations across the cluster) |
+| **EXPECTED** | `buildOptimizePreview` degrades `unsafe_proposal` to a truthful NEAREST candidate — the documented behaviour for an unreachable preference. |
+| **ACTUAL** | The direct search ends on an illegal candidate and the NEAREST retry also produces nothing; the customer-visible outcome is a bare `unsafe_proposal`. |
+| **REPRODUCED** | 22/1304 cells, deterministic. |
+| **LIKELY ROOT AREA** | The Sorbet branch of the NEAREST fallback (`sorbetNearestDirectionSearch`) does not cover the region reached from a fruit-Main + citrus-fibre start. |
+
+---
+
+## PC-04 — Protein Recalculate exhausts the solver iteration cap
+
+| | |
+|---|---|
+| **SEVERITY** | MEDIUM — a valid preview is produced but can never be applied |
+| **FIRST OBSERVED SHA** | `04106031` |
+| **PROFILE** | Protein 28 · Sorbet 5 · Gelato 1 (34 cells) |
+| **MACHINE** | Maszyna profesjonalna 30 · Moulinex Freezi 2 · KitchenAid 1 · Custom 1 |
+| **TEMPERATURE** | fresh 14 · −11 10 · −13 7 · −12 3 |
+| **MODE** | OPTIMAL 20 · ECO 14 |
+| **BATCH** | 1000 g (Home machines at their derived batch) |
+| **EXACT INGREDIENTS (exemplar `dir-Gelato-temp_minus_13-optimal-s-1-h-1`)** | MILK 3.5 % 599 g · CREAM 30 % 125 g · SKIMMED MILK 45 g · SUCROSE 72 g · DEXTROSE 112 g · INULIN 44 g · TARA GUM 3 g · `PI-ING-000407` HAZELNUT CHUNKS 30 g |
+| **TOPPINGS** | `PI-ING-001680` PERA ZENZERO Variegato 50 g |
+| **SWEETNESS / HARDNESS** | −1 / −1 (17 distinct combinations across the cluster) |
+| **EXPECTED** | The solver converges, or refuses honestly before spending the budget. |
+| **ACTUAL** | Preview **OK** (score 84.45, POD 13.34, PAC 30.57, NPAC 53.45) but Apply is rejected: *"Osiągnięto limit prób, więc wyniku nie można zastosować. Podgląd jest tylko diagnostyczny."* |
+| **REPRODUCED** | 34/1304, deterministic. Protein carries 28 of them — 8.6 % of all Protein cells. |
+| **LIKELY ROOT AREA** | `MAX_SOLVER_ROUNDS` (18) reached in the Protein candidate ladder; the Apply door correctly refuses a non-converged candidate, so the cost is in convergence, not in the door. |
+
+---
+
+## PC-05 — Vegan Direction extremes land on a protein-in-dry-matter hard residual
+
+| | |
+|---|---|
+| **SEVERITY** | MEDIUM — largest single cluster; may be honest physics, needs owner science review |
+| **FIRST OBSERVED SHA** | `04106031` |
+| **PROFILE** | Vegan 44 · Gelato 9 (53 cells) |
+| **MACHINE** | 10 distinct machines |
+| **TEMPERATURE** | fresh 30 · −11 17 · −12 4 · −13 2 |
+| **MODE** | ECO 29 · OPTIMAL 24 |
+| **EXACT INGREDIENTS (exemplar `dir-Gelato-fresh-eco-s-2-h2`)** | MILK 3.5 % 672 g · CREAM 30 % 130 g · SKIMMED MILK 35 g · SUCROSE 130 g · DEXTROSE 30 g · TARA GUM 3 g · `PI-ING-000087` DARK CHOCOLATE 55 % 20 g · `PI-ING-001347` CHICKEN EGG WHITE DRIED 30 g |
+| **TOPPINGS** | `PI-ING-000087` DARK CHOCOLATE 55 % 50 g (BASE_AND_TOPPING) |
+| **SWEETNESS / HARDNESS** | −2 / +2 (13 distinct combinations) |
+| **ACTUAL** | Preview **OK** (score 79.78, POD 13.95, PAC 21.84, NPAC 33.05); Apply rejected: *"Propozycja narusza zatwierdzone zakresy technologiczne: Białko w suchej masie."* |
+| **REPRODUCED** | 53/1304, deterministic. |
+| **LIKELY ROOT AREA** | The candidate ladder moves sugars far enough to push protein-in-dry-matter outside its approved band before the hard-residual gate stops it. Whether the request is genuinely infeasible or the ladder simply took an illegal route is a science question for the owner. |
+
+---
+
+## Confirmed contract behaviours (not bugs — recorded for completeness)
+
+- **Protein Hardness is `blocked_science`** in all 326 Protein cells;
+  `buildRecipeDirectionPlan` reports it truthfully and the matrix records it
+  as NOT_APPLICABLE. Sweetness stays `working` on Protein.
+- **`already_clean`** (9 cells, Gelato + Protein): the recipe already satisfies
+  the requested target. Honest and correct.
+- **Post-process isolation holds exactly.** With the Base held byte-identical,
+  `none` vs `TOPPING_ONLY` produce identical POD, PAC, NPAC, score, Base sum
+  and kcal/100 g, while the final product mass reacts (1000 g → 1050 g). Adding
+  the same article to the Base as well (`BASE_AND_TOPPING`) legitimately moves
+  the Base physics.
+- **Two lines of one canonical identity are refused at the Apply door**
+  (`duplicate_lines`), with the offending product named. Correct — but note the
+  refusal arrives at Apply, not at Preview.
+- **Sorbet requires a user-chosen fruit Main.** The canonical Sorbet starter is
+  `blocked_missing_user_main` with `missingMainMassGrams = 600`; without a fruit
+  the pipeline refuses with `missing_required_role`. Correct and honest.

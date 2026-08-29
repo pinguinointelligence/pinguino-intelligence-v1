@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
-import { OfficialProLogo } from '@/components/shared/OfficialProLogo';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { applicationPrimaryClasses } from '@/components/ui/applicationControlStyles';
 import { cn } from '@/lib/cn';
 import { useAuthStore } from '@/stores/authStore';
+import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { proCoreCapabilitiesFor } from '@/features/pro-core/proCoreCapabilities';
 import { useProductionSessionStore } from '@/features/production-workspace/productionSessionStore';
@@ -22,6 +22,9 @@ import { loadCanonicalProductionHistory } from '@/services/productionHistoryTrut
 import type { CanonicalProductionHistoryEntry } from '@/services/productionHistoryTruth';
 import { WorkflowNotice } from '@/components/shared/WorkflowNotice';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { ShopCatalog } from '@/features/shop/ShopCatalog';
+import { ShopOrdersPanel } from '@/features/shop/ShopOrdersPanel';
+import { shopCopy } from '@/copy/shop';
 import { FranchiseInquiryForm } from '@/features/franchise/FranchiseInquiryForm';
 import {
   FRANCHISE_CONCEPT_INITIAL,
@@ -66,39 +69,12 @@ export function HowItWorksPage() {
 export function ShopPage() {
   return (
     <DestinationSurface
-      eyebrow="Ekosystem Gellatti"
-      title="Sklep"
-      blurb="Jedno miejsce na zestawy startowe, składniki i przyszłe produkty Gellatti."
-      contextLabel="Sklep"
+      eyebrow={shopCopy.page.eyebrow}
+      title={shopCopy.page.title}
+      blurb={shopCopy.page.blurb}
+      contextLabel={shopCopy.page.contextLabel}
     >
-      <div className="grid min-h-[360px] overflow-hidden rounded-[12px] border border-ink/12 md:grid-cols-2">
-        <div className="flex flex-col justify-center bg-[#e7e3dd] p-8 sm:p-12">
-          <span className="text-[10px] font-semibold tracking-[0.13em] text-stone-600 uppercase">
-            Gellatti Shop
-          </span>
-          <h2 className="mt-4 max-w-md text-[36px] font-semibold leading-[0.98] tracking-[-0.045em] text-ink sm:text-[48px]">
-            Produkty bez dopowiadania.
-          </h2>
-          <p className="mt-5 max-w-lg text-sm leading-relaxed text-stone-600">
-            Katalog zakupowy nie jest jeszcze dostępny w tej wersji. Gellatti nie pokazuje
-            fikcyjnych produktów ani cen.
-          </p>
-          <span className="mt-6 inline-flex w-max rounded-full border border-[#ef8708]/35 bg-white/70 px-3 py-1 text-[10px] font-semibold text-[#9a5700]">
-            Wkrótce
-          </span>
-        </div>
-        <div className="flex min-h-[280px] items-center justify-center bg-[#191a1d] p-8 text-white">
-          <div className="flex h-56 w-44 flex-col justify-between rounded-[10px] bg-[#f1e8da] p-6 text-[#191a1d] shadow-pro-e2">
-            <OfficialProLogo className="max-h-8" />
-            <strong className="text-xl leading-none">
-              Gellatti
-              <br />
-              Shop
-            </strong>
-            <span className="font-mono text-[9px] tracking-[0.08em]">PREVIEW</span>
-          </div>
-        </div>
-      </div>
+      <ShopCatalog />
     </DestinationSurface>
   );
 }
@@ -573,9 +549,18 @@ export function AccountSettingsPage() {
       contextLabel="Konto"
     >
       {status !== 'authed' && !import.meta.env.DEV ? (
-        <p className="border-y border-ink/10 py-8 text-sm text-stone-600">
-          Zaloguj się, aby zarządzać kontem
-        </p>
+        /* A dead end is not a state: the account page now offers the way in
+           rather than describing it. */
+        <div className="border-y border-ink/10 py-8">
+          <p className="text-sm text-stone-600">Zaloguj się, aby zarządzać kontem.</p>
+          <button
+            type="button"
+            onClick={() => useAuthModalStore.getState().open()}
+            className={cn(buttonClasses('primary', 'md'), 'mt-4')}
+          >
+            Zaloguj się
+          </button>
+        </div>
       ) : (
         <div className="divide-y divide-ink/10 overflow-hidden rounded-[12px] border border-ink/12 bg-white shadow-pro-e0">
           <div className="flex items-center justify-between gap-4 px-5 py-5">
@@ -605,6 +590,19 @@ export function AccountSettingsPage() {
           <AccountRecipeDefaults />
         </div>
       )}
+      {status === 'authed' ? (
+        <section className="mt-10" aria-labelledby="account-orders">
+          <p className="text-[10px] font-semibold tracking-[0.13em] text-stone-500 uppercase">
+            Sklep
+          </p>
+          <h2 id="account-orders" className="mt-2 text-2xl font-semibold tracking-[-0.035em]">
+            {shopCopy.orders.title}
+          </h2>
+          <div className="mt-5">
+            <ShopOrdersPanel />
+          </div>
+        </section>
+      ) : null}
     </DestinationSurface>
   );
 }
