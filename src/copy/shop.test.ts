@@ -33,6 +33,8 @@ describe('shop copy', () => {
   });
 
   it('formats money once, for every surface', () => {
-    expect(shopMoney(5900).replace(/ /g, ' ')).toContain('59,00');
+    // Intl inserts a narrow no-break space before the currency; normalise every
+    // Unicode space class before asserting so the test is locale-data proof.
+    expect(shopMoney(5900).replace(/\s/gu, ' ')).toBe('59,00 EUR'.replace('EUR', '\u20ac'));
   });
 });
