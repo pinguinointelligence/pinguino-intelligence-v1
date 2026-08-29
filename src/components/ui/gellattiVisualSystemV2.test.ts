@@ -67,7 +67,10 @@ describe('Gellatti Visual System V2', () => {
     expect(pageHeading).toContain('text-[25px]');
     expect(pageHeading).toContain('sm:text-[30px]');
     expect(auth).not.toContain('tracking-label');
-    expect(catalog).toContain('font-mono text-[10px]');
+    // V2.1 §5: mono stays reserved for PRODUCT DATA — it now carries the EAN
+    // and „Moja cena" columns of the approved catalog table, at the preview's
+    // own 11 px. The reservation is unchanged; only the size literal moved.
+    expect(catalog).toContain('font-mono text-[11px]');
     expect(catalog).not.toContain('font-mono text-xl');
   });
 

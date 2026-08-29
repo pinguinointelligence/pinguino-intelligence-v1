@@ -50,11 +50,16 @@ type DiscoveryView = 'home' | 'lost' | 'natural' | 'fantasy' | 'inspiration' | '
 type RecipeLibraryTab = 'mine' | 'shared' | 'pinguino' | 'inspiration';
 type IconName = 'left' | 'right' | 'book' | 'globe' | 'leaf' | 'search' | 'sparkles';
 
+/* GELLATTI V2.1 §5: the approved library strip reads as ONE sentence of six
+   destinations in sentence case — `Moje · Udostępnione mi · Gellatti ·
+   Inspiracje · Community · Top 100` — not as two uppercase groups pushed to
+   opposite edges. Only the casing and the grouping change; the tab ids, the
+   routes, the roles and the keyboard contract are untouched. */
 const RECIPE_LIBRARY_TABS = [
-  ['mine', 'MOJE'],
-  ['shared', 'UDOSTĘPNIONE MI'],
-  ['pinguino', 'GELLATTI'],
-  ['inspiration', 'INSPIRACJE'],
+  ['mine', 'Moje'],
+  ['shared', 'Udostępnione mi'],
+  ['pinguino', 'Gellatti'],
+  ['inspiration', 'Inspiracje'],
 ] as const satisfies readonly (readonly [RecipeLibraryTab, string])[];
 
 /**
@@ -64,8 +69,8 @@ const RECIPE_LIBRARY_TABS = [
  * reader is never told that following a link will switch a tab panel.
  */
 const RECIPE_LIBRARY_LINKS = [
-  ['/community', 'COMMUNITY'],
-  ['/top100', 'TOP 100'],
+  ['/community', 'Community'],
+  ['/top100', 'Top 100'],
 ] as const;
 
 function Icon({ name, className = 'h-4 w-4' }: { name: IconName; className?: string }) {
@@ -783,7 +788,7 @@ export function RecipesHubPage() {
         </button>
       }
     >
-      <div className="gellatti-library-tabs mb-8 flex max-w-full flex-wrap items-end justify-between gap-0 overflow-hidden border-b border-ink/15">
+      <div className="gellatti-library-tabs mb-8 flex max-w-full flex-wrap items-end justify-start gap-0 overflow-hidden border-b border-ink/15">
         <div
           role="tablist"
           aria-label="Biblioteka receptur"
@@ -801,7 +806,7 @@ export function RecipesHubPage() {
               onClick={() => selectTab(id)}
               onKeyDown={(event) => handleTabKeyDown(event, id)}
               className={cn(
-                'min-h-12 shrink-0 border-b-2 px-4 text-[11px] font-semibold tracking-[0.08em]',
+                'min-h-12 shrink-0 border-b-2 px-4 text-[13px] font-semibold tracking-normal',
                 activeTab === id
                   ? 'border-[#ef8708] text-ink'
                   : 'border-transparent text-stone-600 hover:text-ink',
@@ -820,7 +825,7 @@ export function RecipesHubPage() {
             <Link
               key={href}
               to={href}
-              className="inline-flex min-h-12 shrink-0 items-center border-b-2 border-transparent px-4 text-[11px] font-semibold tracking-[0.08em] text-stone-600 hover:text-ink"
+              className="inline-flex min-h-12 shrink-0 items-center border-b-2 border-transparent px-4 text-[13px] font-semibold tracking-normal text-stone-600 hover:text-ink"
               data-testid={`recipes-link-${href.slice(1)}`}
             >
               {label}
