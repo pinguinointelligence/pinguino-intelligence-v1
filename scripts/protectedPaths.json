@@ -1,0 +1,30 @@
+{
+  "$comment": "Protected functional paths. A change here is never 'just design' or 'just copy' until a semantic diff proves it. Maintained with docs/OWNER_LOCKED_CONTRACTS.md.",
+  "version": "2026-08-29.1",
+  "paths": [
+    { "path": "src/stores/recipeStore.ts", "area": "recipe state + batch authority + persistence" },
+    { "path": "src/features/constraint-studio/applyPipeline.ts", "area": "Preview/Apply, Main frontier, Direction" },
+    { "path": "src/features/constraint-studio/constraintStudioStore.ts", "area": "recalculation + apply orchestration" },
+    { "path": "src/features/constraint-studio/draftCandidateVector.ts", "area": "solver candidate ladder" },
+    { "path": "src/features/constraint-studio/optimizePreviewRuntime.ts", "area": "server-authority preview runtime" },
+    { "path": "src/features/formulation/formulate.ts", "area": "profile routing + formulation templates" },
+    { "path": "src/features/formulation/userLineIntent.ts", "area": "user-intent soft hold" },
+    { "path": "src/features/formulation/mainIngredientContract.ts", "area": "Main identity contract" },
+    { "path": "src/features/practical-recipe/practicalRecipe.ts", "area": "whole-gram executable boundary (Rescue bundle closure)" },
+    { "path": "src/features/product-intelligence/mainCapability.ts", "area": "Main capability authority" },
+    { "path": "src/features/product-intelligence/mainEnvelope.ts", "area": "Main envelope + Multi-Main percent authority" },
+    { "path": "src/features/product-intelligence/productBehaviorAccess.ts", "area": "ProductBehavior access/resolver gate" },
+    { "path": "src/features/product-intelligence/canonicalModuleEligibility.ts", "area": "BASE_RECIPE / TOPPING eligibility" },
+    { "path": "src/features/ingredient-builder/crownAutoSeed.ts", "area": "Crown auto-seed contract" },
+    { "path": "src/features/ingredient-builder/IngredientBuilder.tsx", "area": "recipe editor wiring" },
+    { "path": "src/features/ingredient-builder/IngredientRow.tsx", "area": "row controls: grams, lock, Crown/Main" },
+    { "path": "src/features/ingredient-builder/IngredientLineControls.tsx", "area": "mobile line controls (responsive parity)" },
+    { "path": "src/features/recipe-direction/recipeDirectionTargets.ts", "area": "Direction axes + blocked science" },
+    { "path": "src/features/recipes/newRecipeStarter.ts", "area": "fresh recipe starter + canonical batch" },
+    { "path": "src/features/machine-onboarding/preferenceContracts.ts", "area": "machine batch authority" },
+    { "path": "src/features/machine-catalog/homeBatchRule.ts", "area": "home batch recommendation rule" },
+    { "path": "src/features/production-workspace/productionRescue.ts", "area": "Production Rescue authority" },
+    { "path": "src/features/studio/buildRecipeInput.ts", "area": "solver input construction" },
+    { "path": "src/engine/", "area": "Engine science — solver, PAC/POD, coefficients" }
+  ]
+}
