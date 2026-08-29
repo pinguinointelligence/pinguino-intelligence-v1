@@ -15,7 +15,12 @@ import {
   type ShopAvailability,
   type ShopFulfillmentStatus,
 } from '@/services/shop';
-import { shopFulfillmentLabelPl, shopMoney, shopOrderStatusLabelPl } from '@/copy/shop';
+import {
+  shopCopy,
+  shopFulfillmentLabelPl,
+  shopMoney,
+  shopOrderStatusLabelPl,
+} from '@/copy/shop';
 
 const field = 'pro-focus-ring min-h-11 w-full border border-ink/15 bg-white px-3 text-sm';
 const th = 'border-b border-ink/15 px-3 py-2.5 text-left font-semibold text-stone-500';
@@ -131,7 +136,7 @@ function ProductRow({
 }
 
 /** Admin commerce: articles, prices, availability, preorder lead time, and the
- *  order queue with its real Stripe payment status. */
+ *  order queue with its real payment status from the provider. */
 export function AdminShopSection() {
   const queryClient = useQueryClient();
   const products = useQuery({ queryKey: ['admin-shop-products'], queryFn: getAdminShopProducts });
@@ -196,7 +201,7 @@ export function AdminShopSection() {
       ) : null}
 
       <section className="mt-7">
-        <SectionLabel>Artykuły</SectionLabel>
+        <SectionLabel>{shopCopy.admin.articlesTitle}</SectionLabel>
         {products.isLoading ? <ApplicationState kind="loading" title="Wczytuję artykuły…" /> : null}
         {products.isError ? (
           <ApplicationState kind="error" title="Nie udało się wczytać artykułów." />
@@ -231,7 +236,7 @@ export function AdminShopSection() {
       </section>
 
       <section className="mt-10">
-        <SectionLabel>Zamówienia</SectionLabel>
+        <SectionLabel>{shopCopy.admin.ordersTitle}</SectionLabel>
         {orders.isLoading ? (
           <ApplicationState kind="loading" title="Wczytuję zamówienia…" />
         ) : null}
@@ -282,15 +287,15 @@ export function AdminShopSection() {
                   </dd>
                 </div>
                 <div className="min-w-0">
-                  <dt className="text-stone-500">Stripe session</dt>
+                  <dt className="text-stone-500">{shopCopy.admin.sessionReference}</dt>
                   <dd className="truncate font-mono text-[11px] text-stone-600">
-                    {order.stripeCheckoutSessionId ?? '—'}
+                    {order.paymentReference.sessionId ?? '—'}
                   </dd>
                 </div>
                 <div className="min-w-0">
-                  <dt className="text-stone-500">Payment intent</dt>
+                  <dt className="text-stone-500">{shopCopy.admin.intentReference}</dt>
                   <dd className="truncate font-mono text-[11px] text-stone-600">
-                    {order.stripePaymentIntentId ?? '—'}
+                    {order.paymentReference.intentId ?? '—'}
                   </dd>
                 </div>
               </dl>
@@ -302,7 +307,7 @@ export function AdminShopSection() {
                   disabled={sync.isPending}
                   onClick={() => sync.mutate(order.id)}
                 >
-                  Sync ze Stripe
+                  {shopCopy.admin.syncPayment}
                 </Button>
                 {FULFILLMENT.filter((status) => status !== order.fulfillmentStatus).map((status) => (
                   <Button

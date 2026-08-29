@@ -2,6 +2,11 @@
 /**
  * GELLATTI — PHASE A: exhaustive PRO formulation acceptance matrix.
  *
+ * Lives under `src/qa/**`, not `src/features/**`: it opens its own Supabase
+ * client to sign in as the staging QA account, which the studio boundary guard
+ * rightly forbids in UI source. Keeping the harness outside the scanned tree
+ * preserves that guard untouched.
+ *
  * Qualification-only harness (never part of `npm test`). It drives the real
  * customer actions — pick a profile, pick a serving mode, pick a machine, add
  * an ingredient, add a topping, set Direction, Przelicz, Apply, Save, reopen —

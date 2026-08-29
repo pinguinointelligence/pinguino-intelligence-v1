@@ -146,8 +146,9 @@ export function ShopCatalog() {
     onError: () => setCheckoutError(c.cart.error),
   });
 
-  // Returning from Stripe: verify the payment with Stripe itself, never trust
-  // the redirect. The order id travels in the success URL the server built.
+  // Returning from the payment page: the payment status is verified server-side
+  // against the provider, never inferred from the redirect. The order id travels
+  // in the success URL the server built.
   const returnedOrderId = params.get('order');
   const sync = useMutation({ mutationFn: (orderId: string) => syncShopOrder(orderId) });
   useEffect(() => {

@@ -48,6 +48,13 @@ export interface ShopCopy {
     readonly testMode: string;
     readonly error: string;
   };
+  readonly admin: {
+    readonly sessionReference: string;
+    readonly intentReference: string;
+    readonly syncPayment: string;
+    readonly articlesTitle: string;
+    readonly ordersTitle: string;
+  };
   readonly orders: {
     readonly title: string;
     readonly empty: string;
@@ -109,6 +116,13 @@ export const shopCopyPl: ShopCopy = {
     testMode: 'Staging: płatność w trybie testowym Stripe. Karta nie zostanie obciążona.',
     error: 'Nie udało się rozpocząć płatności. Spróbuj ponownie.',
   },
+  admin: {
+    sessionReference: 'Sesja płatności (Stripe)',
+    intentReference: 'Płatność (Stripe payment intent)',
+    syncPayment: 'Sprawdź płatność u dostawcy',
+    articlesTitle: 'Artykuły',
+    ordersTitle: 'Zamówienia',
+  },
   orders: {
     title: 'Zamówienia',
     empty: 'Nie masz jeszcze zamówień.',
@@ -169,6 +183,13 @@ export const shopCopyEn: ShopCopy = {
     preorderNotice: 'This order contains an on-order item · ships in about {weeks} weeks',
     testMode: 'Staging: Stripe test mode. No card is charged.',
     error: 'Payment could not be started. Please try again.',
+  },
+  admin: {
+    sessionReference: 'Payment session (Stripe)',
+    intentReference: 'Payment (Stripe payment intent)',
+    syncPayment: 'Check payment with the provider',
+    articlesTitle: 'Articles',
+    ordersTitle: 'Orders',
   },
   orders: {
     title: 'Orders',

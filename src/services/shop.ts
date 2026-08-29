@@ -162,7 +162,23 @@ export async function upsertAdminShopProduct(draft: AdminShopProductDraft): Prom
   if (error) throw new Error(error.message);
 }
 
+/** The operator needs the payment provider's own references to reconcile an
+ *  order, but the UI must not know which provider that is — the boundary guard
+ *  keeps provider names out of the view layer, and a second provider must not
+ *  mean editing screens. The service maps them into one neutral shape. */
+export interface PaymentReference {
+  sessionId: string | null;
+  intentId: string | null;
+}
+
 export interface AdminShopOrder extends ShopOrder {
+  email: string;
+  userId: string | null;
+  subtotalCents: number;
+  paymentReference: PaymentReference;
+}
+
+interface AdminShopOrderRow extends ShopOrder {
   email: string;
   userId: string | null;
   subtotalCents: number;
@@ -174,7 +190,13 @@ export async function getAdminShopOrders(): Promise<AdminShopOrder[]> {
   if (!supabase) return unavailable();
   const { data, error } = await supabase.rpc('gellatti_admin_shop_orders_v1', { p_limit: 200 });
   if (error) throw new Error(error.message);
-  return (data ?? []) as AdminShopOrder[];
+  return ((data ?? []) as AdminShopOrderRow[]).map((row) => ({
+    ...row,
+    paymentReference: {
+      sessionId: row.stripeCheckoutSessionId,
+      intentId: row.stripePaymentIntentId,
+    },
+  }));
 }
 
 export async function setShopOrderFulfillment(input: {
