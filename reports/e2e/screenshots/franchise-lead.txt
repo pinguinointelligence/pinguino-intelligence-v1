@@ -1,0 +1,43 @@
+GELLATTI — served capture: Franchise inquiry to Admin lead
+Served on https://staging.pinguinoai.com, staging 36a3b7f4
+
+--- Customer -> /franchise ---------------------------------------------------
+Page: four approved concepts, ordered Lokal firmowy / Przyczepa / Wózek /
+Punkt (owner priority: a location and a foodtruck first; the two smaller
+formats stay because they are part of the approved set).
+
+Submitted:
+  Format     Przyczepa
+  Name       Anna Kowalska
+  Email      anna.kowalska@example.com
+  Phone      +48 600 100 200
+  City       Gdańsk        Country  Polska
+  Note       "Interesuje mnie przyczepa na sezon letni nad morzem. Mam
+              doświadczenie w gastronomii i lokalizację."
+
+Confirmation shown in place of the form:
+  "Zapytanie wysłane / Odezwiemy się na podany adres e-mail."
+
+--- Server -------------------------------------------------------------------
+franchise_inquiries row e604fb8c-9c33-439a-b40b-0a2687730cdf
+  concept=przyczepa  status=new  every field stored  user_id linked
+Admin notification: "Nowe zapytanie o Franchise — Anna Kowalska · przyczepa"
+
+FIX MADE DURING THIS CHECK: the notification's deep link pointed at
+/admin/operations, where the leads are not. It now points at /admin/franchise.
+
+--- Admin -> /admin/franchise ------------------------------------------------
+"ZAPYTANIA BIZNESOWE / Franchise / Zapytania ze strony Franchise. Format,
+kontakt i lokalizacja — bez warunków finansowych, bo te ustalasz w rozmowie."
+
+  Anna Kowalska
+  anna.kowalska@example.com · +48 600 100 200        [NOWE]
+  FORMAT Przyczepa   LOKALIZACJA Gdańsk, Polska   WPŁYNĘŁO 2026-08-29 22:45
+  <the customer's note>
+  [Skontaktowano] [Zakwalifikowane] [Zamknięte]  + operator note field
+
+After pressing Zakwalifikowane with a note:
+  Anna Kowalska ... [ZAKWALIFIKOWANE]
+
+ASSERTION  understand -> inquire -> confirmation -> usable Admin lead -> the
+           operator can move it. No invented financial term anywhere.

@@ -73,13 +73,15 @@ begin
     nullif(btrim(coalesce(p_inquiry->>'note', '')), '')
   ) returning id into v_id;
 
+  -- The lead queue lives at /admin/franchise; sending the operator to
+  -- /admin/operations made them hunt for it.
   insert into public.user_notifications(
     admin_permission, notification_type, entity_type, entity_id, title, body, deep_link, dedupe_key
   ) values (
     'SUPPORT', 'FRANCHISE_INQUIRY_SUBMITTED', 'franchise_inquiries', v_id::text,
     'Nowe zapytanie o Franchise',
     v_name || ' · ' || v_concept,
-    '/admin/operations', 'franchise-inquiry:' || v_id::text
+    '/admin/franchise', 'franchise-inquiry:' || v_id::text
   ) on conflict (dedupe_key) do nothing;
 
   perform public.gellatti_write_audit_v1(
