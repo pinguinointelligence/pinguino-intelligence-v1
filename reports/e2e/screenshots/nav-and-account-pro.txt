@@ -1,0 +1,36 @@
+GELLATTI — served capture: PRO navigation and Account
+Account: test1@test1.com (PRO)  ·  branch claude/gellatti-full-app
+
+--- /account, signed in ------------------------------------------------------
+Profil                     test1@test1.com
+Plan i płatności           Plan Pro
+Język                      Polski
+Bezpieczeństwo             Ustawienia konta
+Produkty w wyszukiwarce    (market picker, 18 countries)
+Sklep · Zamówienia         data-testid=order-G-20260829-26B49D
+                           data-testid=order-G-20260829-81880B
+                           data-testid=order-G-20260829-7D9334
+
+ASSERTION  the customer's own order history renders on the Account page, with
+           all three orders created in this run — including the preorder.
+
+--- drawer, guest audience ---------------------------------------------------
+Wypróbuj Gellatti -> /start
+Jak to działa     -> /how-it-works
+Sklep             -> /shop
+Plany             -> /subscription
+Community         -> /community          <-- NEW: was unreachable before
+Współpraca        -> /work-with-us
+Franchise         -> /franchise
+Zaloguj się
+
+ASSERTION  Community is reachable for a guest; `Ustawienia etykiety` is absent.
+
+--- drawer, pro audience -----------------------------------------------------
+Pinned by src/features/shell/appNav.test.ts and canonicalPro.test.tsx:
+  proWorkspace, recipes, production, products, machine,
+  community, memberShop, workWithUs, franchise
+
+ASSERTION  no `labels` entry in any audience (owner-authorized removal), and
+           `community` present in all three. Label settings keep working in the
+           Production/Label experience and in the workbench Summary panel.
