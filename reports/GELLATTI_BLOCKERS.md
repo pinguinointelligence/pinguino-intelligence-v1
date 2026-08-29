@@ -9,3 +9,28 @@ autonomous acceptance run could not finish itself, with what it did instead.
 | 2 | Phase B — EU label PDF | The EU label workspace refuses to print while any nutrient on the panel would be a substituted value. Four canonical Mapper articles used by the standard Gelato base — `MILK 3.5%`, `CREAM 30%`, `SKIMMED MILK`, `TARA GUM` — carry no confirmed **saturated fat** figure, so the panel is blocked with *"Brak potwierdzonych danych składników … Wymagana jest potwierdzona wartość zamiast wartości zastępczej."* This is the Label authority working correctly; I did not invent a nutrition value or a confirmation source to get past it. | Production completes and freezes its snapshot; the label workspace resolves the EU profile, product name, LOT, real batch mass, ingredients, allergens and the nutrition table, and names exactly which field is missing. | Supply confirmed saturated-fat values (with sources) for those four Mapper articles, or approve a documented substitution policy. Then the label prints for every profile. |
 | 3 | Phase D1 — cacao Scanner fixture | The Scanner accepts **image intake only** (`Zrób zdjęcie` / `Dodaj ze zdjęcia` / drag-and-drop); there is no EAN-entry path in the UI. The owner's cacao photograph arrived as a chat attachment, not as a file on disk, so there was no image file to feed it. I did not synthesise a package photo: an OCR pipeline that builds a catalogue product from a fabricated label would produce evidence that looks genuine and is not. | The product was identified from the owner's photograph and confirmed against an independent public source, so the fixture is one drag-and-drop away: **CACAO PURO · La Chocolatera · 250 g**, EAN **8410109108392** (Mercadona ES). Label facts read off the photo, per 100 g: 1556 kJ / 375 kcal · fat 16 g (saturates 10 g) · carbohydrate 16 g (sugars 0,70 g) · protein 26 g · salt 0,03 g · cocoa butter 16 % · "contiene azúcares naturalmente presentes". Independent confirmation: [Open Food Facts 8410109108392](https://world.openfoodfacts.org/product/8410109108392/cacao-puro-la-chocolatera). | Save that photo to disk and drop it on `/products/scan` as `test1@test1.com`. Everything downstream — OCR, exact-product search, dedupe, canonical binding, ProductBehavior resolution, finalisation, picker — then runs unattended. |
 | 4 | Phase D2 — two further commercial products | Same intake constraint: adding a product end-to-end through the Scanner requires a package photograph, and researched facts alone cannot be fed to it. | Research is not the blocker and was not attempted as a substitute for the photo. | Photograph any two commercial packages and run the same flow. |
+
+## Migration-ledger note (not a blocker, but the owner should know)
+
+All four migrations added in this run are applied on the staging project and
+appear in its migration history by name:
+`partner_application_lane`, `franchise_inquiry_lane`, `gellatti_shop_schema`,
+`favorites_mapper_visibility`.
+
+Two things worth knowing before anyone replays them:
+
+1. **The applied versions differ from the repo filenames.** They were applied
+   through the Supabase management API, which stamped its own timestamps
+   (`20260829173849`, `…174747`, `…175955`, `…183750`) rather than the ones in
+   `supabase/migrations/`. A later `supabase db push` will therefore see the
+   repo files as unapplied and run them again. **All four are idempotent** —
+   `create table if not exists`, `create or replace function`,
+   `drop policy if exists` before every `create policy` — so a replay is safe.
+
+2. **The partner slug fix is in the repo file but not in the applied history.**
+   The slug derivation bug (`[^a-z0-9]` applied before `lower()`) was corrected
+   with a direct `create or replace` after `partner_application_lane` had
+   already been applied. The live function on staging is the corrected one and
+   the repo file is the corrected one; only the recorded migration body is the
+   original. Replaying the repo file resolves it, and the follow-up migration
+   `partner_application_slug_fix` records it explicitly.
