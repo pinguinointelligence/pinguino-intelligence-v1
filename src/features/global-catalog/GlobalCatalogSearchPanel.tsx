@@ -266,7 +266,7 @@ export function GlobalCatalogSearchPanel() {
           {!catalog.isSettled ? 'Szukam…' : `${resultCount} wyników`}
         </p>
       </div>
-      <div className="mt-3 grid min-w-0 gap-3 lg:grid-cols-[minmax(340px,0.85fr)_minmax(420px,1.15fr)]">
+      <div className="mt-3 grid min-w-0 gap-3 lg:grid-cols-[minmax(340px,1.22fr)_minmax(420px,1fr)]">
         <div
           className="min-w-0 overflow-hidden rounded-[12px] border border-ink/12 bg-white shadow-pro-e0"
           data-gellatti-panel
@@ -383,7 +383,7 @@ export function GlobalCatalogSearchPanel() {
           {selectedHit && selectedVerification ? (
             <>
               <div className="flex flex-wrap items-start gap-3">
-                <span className="grid size-[42px] shrink-0 place-items-center rounded-[12px] bg-[var(--color-ivory)] text-[16px] font-extrabold text-[var(--g-ink)]">
+                <span className="grid size-[42px] shrink-0 place-items-center rounded-[12px] bg-[#efe8dc] text-[16px] font-extrabold text-[#101113]">
                   {selectedHit.displayName.slice(0, 1).toLocaleUpperCase('pl-PL')}
                 </span>
                 <div className="min-w-0 flex-1">

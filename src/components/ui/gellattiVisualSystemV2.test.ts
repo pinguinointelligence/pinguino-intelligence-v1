@@ -80,7 +80,9 @@ describe('Gellatti Visual System V2', () => {
     const adminReanalysis = read('features', 'admin', 'AdminProductCapabilityReanalysisDetail.tsx');
     const appShell = read('features', 'shell', 'AppShell.tsx');
 
-    expect(catalog).toContain('lg:grid-cols-[minmax(340px,0.85fr)_minmax(420px,1.15fr)]');
+    // V2.1 §5: the approved split gives the MASTER list the wider half
+    // (697 / 571 in the preview) so real catalog names are not truncated.
+    expect(catalog).toContain('lg:grid-cols-[minmax(340px,1.22fr)_minmax(420px,1fr)]');
     expect(admin).toContain('lg:grid-cols-[190px_minmax(0,1fr)]');
     expect(admin).toContain('<aside className="min-w-0 border-b');
     expect(adminReanalysis).toContain('<div className="min-w-0 space-y-7">');
