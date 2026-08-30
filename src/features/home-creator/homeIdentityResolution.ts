@@ -35,14 +35,38 @@ export function catalogueSearchTerms(chip: {
   readonly concept: string | null;
 }): readonly string[] {
   const terms: string[] = [];
+  const push = (value: string) => {
+    const trimmed = value.trim();
+    if (trimmed && !terms.includes(trimmed)) terms.push(trimmed);
+  };
+
   if (chip.concept !== null) {
     // Concepts are snake_case keys (`peanut_butter`); the catalogue is spaced words.
-    terms.push(chip.concept.replace(/_/g, ' '));
+    const concept = chip.concept.replace(/_/g, ' ');
+    // THE STEM GOES FIRST, and that ordering is the whole fix. The catalogue search is
+    // a server-side ILIKE on the raw term, so `%strawberry%` matches 24 rows and
+    // MISSES `STRAWBERRIES · Fresh Fruit` entirely, while `%strawberr%` matches 26 and
+    // includes it. Client-side stemming cannot rescue a row the query never returned.
+    // And because resolution stops at the first term that yields results, searching
+    // the singular first would end the search before the stem was ever tried — which
+    // is exactly what staging showed: a §23 list of five pastes and a beverage, with
+    // the actual fruit absent.
+    push(stemLastWord(concept));
+    push(concept);
   }
-  const raw = chip.label.trim();
-  if (raw && !terms.includes(raw)) terms.push(raw);
+  push(stemLastWord(chip.label));
+  push(chip.label);
   return terms;
 }
+
+/** Stem only the final word — `peanut butter` → `peanut butt` would be nonsense. */
+const stemLastWord = (phrase: string): string => {
+  const words = phrase.trim().split(' ');
+  const last = words[words.length - 1];
+  if (last === undefined) return phrase;
+  words[words.length - 1] = matchStem(last);
+  return words.join(' ');
+};
 
 export type IdentityResolution =
   | { readonly kind: 'resolved'; readonly row: SafeMapperSearchRow; readonly exact: boolean }

@@ -95,13 +95,18 @@ describe('catalogue search terms — the §25 ↔ §22 boundary', () => {
   it('tries the canonical English concept BEFORE the user’s own word', () => {
     // The catalogue is named in English; the user may type Polish. Searching the raw
     // word first found nothing for every non-English input — the bug this fixes.
+    // The STEM leads: the server-side ILIKE `%strawberry%` misses STRAWBERRIES, and
+    // resolution stops at the first term that returns rows.
     expect(catalogueSearchTerms({ label: 'truskawka', concept: 'strawberry' })).toEqual([
+      'strawberr',
       'strawberry',
       'truskawka',
     ]);
   });
 
   it('spaces a snake_case concept so it can match a catalogue name', () => {
+    // Only the LAST word is stemmed — `peanut butt` would be nonsense, and `butter`
+    // has no plural suffix, so the phrase survives intact.
     expect(catalogueSearchTerms({ label: 'maslo orzechowe', concept: 'peanut_butter' })[0]).toBe(
       'peanut butter',
     );
@@ -112,7 +117,17 @@ describe('catalogue search terms — the §25 ↔ §22 boundary', () => {
   });
 
   it('does not repeat the same term twice', () => {
+    // `mango` has no plural suffix, so stem and word coincide and dedupe to one.
     expect(catalogueSearchTerms({ label: 'mango', concept: 'mango' })).toEqual(['mango']);
+  });
+
+  it('reaches a plural catalogue row that the singular ILIKE would miss', () => {
+    // Proven on staging: %strawberry% = 24 rows without STRAWBERRIES;
+    // %strawberr% = 26 rows with it.
+    const terms = catalogueSearchTerms({ label: 'truskawka', concept: 'strawberry' });
+    expect(terms[0]).toBe('strawberr');
+    expect('STRAWBERRIES · FRESH FRUIT'.toLowerCase()).toContain(terms[0]);
+    expect('STRAWBERRY PUR KERRY'.toLowerCase()).toContain(terms[0]);
   });
 
   it('drops an empty raw word rather than searching for nothing', () => {
