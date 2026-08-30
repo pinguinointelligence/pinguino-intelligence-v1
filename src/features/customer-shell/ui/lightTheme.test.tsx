@@ -93,8 +93,15 @@ describe('customer shell is light-first (owner decision, Slice A)', () => {
     const html = renderToStaticMarkup(
       <TouchButton disabled>Dalej</TouchButton>,
     );
-    expect(html).toContain('disabled:bg-stone-200');
-    expect(html).toContain('disabled:text-stone-600');
+    /* The contract is a SOLID fill with a readable label — never a washed
+       alpha. The tokens moved onto the Gellatti palette; the readability did
+       not: --g-lock on --g-line-quiet measures 5.03:1, against 6.08:1 for the
+       stone-600-on-stone-200 pair it replaced, and both are above AA. (A first
+       attempt used --g-text-secondary on --g-line at 4.27:1; this test caught
+       it below the threshold.) */
+    expect(html).toContain('disabled:bg-[var(--g-line-quiet)]');
+    expect(html).toContain('disabled:text-[var(--g-lock)]');
     expect(html).not.toContain('disabled:bg-ink/30');
+    expect(html).not.toMatch(/disabled:bg-ink\/\d/);
   });
 });
