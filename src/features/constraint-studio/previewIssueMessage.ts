@@ -17,7 +17,23 @@ export function previewIssueMessagePl(issue: PreviewIssue): string {
     case 'missing_prices':
       return copy.previewIssue.missingPrices(issue.ingredientNames);
     case 'no_proposal':
-      return copy.previewIssue.noProposal;
+      /* PC-01. `no_proposal` covers two situations that read very differently
+       * to a customer. The ordinary one really is „no correction was possible
+       * under the current locks". The other is a recipe that already sits
+       * inside every approved band, where the requested Direction cannot be
+       * improved without leaving one — a safe local optimum, not a failure.
+       * Handing that customer the lock-feasibility instruction points them at a
+       * control that cannot help, and on the recorded Sorbet −12 °C fixture
+       * there are no locks at all.
+       *
+       * `directionTargetUnreached` is the pipeline's own verdict for exactly
+       * that family: every site raising it on a `no_proposal` first proves the
+       * draft is native-safe. So the distinction is read from the result, never
+       * re-derived here, and the canonical Gellatti sentence for „no further
+       * safe improvement" is reused rather than duplicated. */
+      return issue.directionTargetUnreached === true
+        ? copy.previewIssue.bestSafeResult
+        : copy.previewIssue.noProposal;
     case 'unsafe_proposal':
       return copy.previewIssue.unsafeProposal;
     case 'best_safe_result':
