@@ -34,3 +34,35 @@ Two things worth knowing before anyone replays them:
    the repo file is the corrected one; only the recorded migration body is the
    original. Replaying the repo file resolves it, and the follow-up migration
    `partner_application_slug_fix` records it explicitly.
+
+## CI instability in the full-suite job (recorded, not attributable to this run)
+
+The `Typecheck, lint, tests, build` job's `npm test` step intermittently dies
+without a vitest summary, always inside
+`src/features/protein-gelato/proteinMultiMainPositive.test.ts` — a pre-existing
+file that streams very large `SERVED_OWNER_PROTEIN {…}` JSON blobs to stdout.
+
+What is established:
+
+- The same job **passed** on this branch at `ca1860a3` (run 33274860762).
+- `npm run typecheck` and `npm run lint` pass on every run, including the
+  failing ones.
+- The full suite passes locally on the exact tree: **9994 passed, 122 skipped,
+  0 failures**, 12m20s, and that file alone passes in 15s with a 288 MB peak.
+- No workflow `timeout-minutes` is set, so it is not a workflow timeout, and no
+  OOM line appears in the log — an abrupt stop with no summary and a non-zero
+  exit is nonetheless the usual signature of the runner killing the process.
+
+What is **not** established: the exact cause. I could not reproduce it locally
+and the log carries no explicit error, so "the runner killed it" is the most
+consistent explanation, not a proven one.
+
+Why it is not attributable to this batch: the only source change since the last
+green run is the vite config exclusion, which **removes** ~17 minutes of
+network-bound work from every default run, plus a QA test file that the default
+suite no longer collects, report files and a migration file.
+
+Owner action, if this keeps happening: the cheapest fix is to stop that file
+printing full solver payloads to stdout on every case, or to give the job an
+explicit `timeout-minutes` and `--reporter=dot` so a kill is distinguishable
+from a hang in the log.
