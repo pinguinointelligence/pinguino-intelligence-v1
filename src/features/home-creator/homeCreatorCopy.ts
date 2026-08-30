@@ -46,6 +46,7 @@ export interface HomeCreatorCopy {
     readonly continueCreating: string;
     readonly useThis: string;
     readonly close: string;
+    readonly couldNotOpen: string;
     readonly gellattiSection: string;
     readonly communitySection: string;
     readonly alsoIncludes: string;
@@ -182,6 +183,7 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     continueCreating: 'Tworzę własną recepturę',
     useThis: 'Zobacz tę recepturę',
     close: 'Zamknij',
+    couldNotOpen: 'Nie udało się otworzyć tej receptury. Możesz tworzyć dalej po swojemu.',
     gellattiSection: 'Receptury Gellatti',
     communitySection: 'Z Community',
     alsoIncludes: 'Zawiera też:',
@@ -314,6 +316,7 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     continueCreating: 'Create my own recipe',
     useThis: 'See this recipe',
     close: 'Close',
+    couldNotOpen: "We couldn't open that recipe. You can keep creating your own.",
     gellattiSection: 'Gellatti recipes',
     communitySection: 'From Community',
     alsoIncludes: 'Also includes:',

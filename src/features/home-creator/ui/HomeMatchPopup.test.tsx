@@ -133,3 +133,38 @@ describe('§32 — extras are names, never quantities', () => {
     expect(html).not.toMatch(/\d+\s*g\b/);
   });
 });
+
+describe('a REFUSED derivation must not look like success', () => {
+  it('renders the refusal in customer language and keeps the user on the popup', () => {
+    const html = renderToStaticMarkup(
+      <HomeMatchPopup
+        official={[]}
+        community={match('c1', 'community')}
+        onChooseOfficial={vi.fn()}
+        onChooseCommunity={vi.fn()}
+        onCreateMyOwn={vi.fn()}
+        derivationMessage="Nie udało się otworzyć tej receptury."
+      />,
+    );
+    expect(html).toContain('home-match-derivation-error');
+    expect(html).toContain('Nie udało się otworzyć tej receptury.');
+    // Still offers the way forward rather than trapping.
+    expect(html).toContain('home-match-create-my-own');
+  });
+
+  it('shows nothing when there is no refusal', () => {
+    expect(render({ community: match('c1', 'community') })).not.toContain(
+      'home-match-derivation-error',
+    );
+  });
+
+  it('closes ONLY on a completed derivation — the gate checks the typed status', async () => {
+    const source = await import('node:fs').then((fs) =>
+      fs.readFileSync('src/features/home-creator/matching/HomeMatchGate.tsx', 'utf8'),
+    );
+    // Served QA found `onDerived` being called unconditionally, which closed the
+    // popup and marked the recipe ready with ZERO lines after a refusal.
+    expect(source).toContain("derivation.state.status === 'done'");
+    expect(source).not.toMatch(/\.then\(onDerived\)/);
+  });
+});
