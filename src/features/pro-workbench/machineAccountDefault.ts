@@ -18,10 +18,7 @@
  */
 import { temperatureForMode } from '@/features/customer-flow/servingMode';
 import { deriveMachineSetup } from '@/features/machine-catalog';
-import {
-  effectiveDefaultBatchGrams,
-  type MachinePreferenceRecord,
-} from '@/features/machine-onboarding/preferenceContracts';
+import type { MachinePreferenceRecord } from '@/features/machine-onboarding/preferenceContracts';
 import {
   machineDisplayName,
   resolvePreferenceProfile,
@@ -39,10 +36,9 @@ import {
  * case the caller keeps the existing Professional fallback rather than
  * inventing a substitute.
  *
- * The batch is the record's EFFECTIVE default, so a customer who typed their
- * own „Mój domyślny wsad" gets that number and everyone else gets Gellatti's
- * recommendation for the machine. Capacity stays a machine fact and is always
- * the derived recommendation.
+ * A customer who typed their own „Mój domyślny wsad" gets that number for every
+ * product; everyone else gets Gellatti's recommendation FOR THIS PRODUCT.
+ * Capacity stays a machine fact and is always the derived recommendation.
  *
  * Direction is deliberately neutral: a machine preference says which machine
  * and how much, never how sweet.
@@ -57,7 +53,13 @@ export function machineAccountDefaultSnapshot(
   if (setup.resolvedVisibleMode === null || setup.recommendedBatchGrams === null) return null;
   const targetTemperatureC = temperatureForMode(setup.resolvedVisibleMode);
   if (targetTemperatureC === null) return null;
-  const targetBatchGrams = effectiveDefaultBatchGrams(record) ?? setup.recommendedBatchGrams;
+  /* The customer's own „Mój domyślny wsad" wins for every product, because it
+     is a number they typed. Otherwise the recommendation for THIS product wins
+     — NOT the one frozen into the record, which was derived for the product
+     that happened to be current when the machine was saved. Magimix proposes
+     1240 g for sorbet against 950 g for gelato, and reading the record's
+     snapshot silently gave sorbet the gelato figure. */
+  const targetBatchGrams = record.userDefaultBatchGrams ?? setup.recommendedBatchGrams;
   if (!Number.isFinite(targetBatchGrams) || targetBatchGrams <= 0) return null;
   return {
     visibleProductType,

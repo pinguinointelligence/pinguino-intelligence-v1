@@ -150,10 +150,10 @@ export interface RecipeProfileState {
 }
 
 /**
- * The machine fallback answers only PRODUCT-scoped keys (`<ownerUserId>:<product>`),
- * never the bare legacy owner key: `startNewRecipe` reads the legacy key to
- * recover an older account-wide default and compares its `visibleProductType`,
- * and a machine preference has no product of its own to compare.
+ * The account's saved machine, applied to a PRODUCT-scoped key
+ * (`<ownerUserId>:<product>`). Never the bare legacy owner key: `startNewRecipe`
+ * reads that one to recover an older account-wide default and compares its
+ * `visibleProductType`, and a machine preference has no product to compare.
  */
 export function machineAccountFallback(
   machineAccountDefault: {
@@ -169,6 +169,42 @@ export function machineAccountFallback(
   const product = ownerKey.slice(separator + 1);
   if (product.length === 0) return null;
   return machineAccountDefault.resolve(product as VisibleProductType);
+}
+
+/**
+ * The saved machine WINS over a stored per-product default — for the machine
+ * and the batch it implies, and for nothing else.
+ *
+ * Letting the stored default win outright was the reopened bug: an account
+ * carrying an old `user_recipe_defaults` row (`machineKind: 'professional'`,
+ * 1000 g, written months earlier by Account Recipe Defaults) could save any
+ * Home machine and every new recipe still opened Professional 1000 g. The row
+ * is a snapshot of what a recipe looked like once; the machine preference is
+ * the customer saying which machine they own.
+ *
+ * Everything that is genuinely not a machine fact — Direction, mode, the
+ * product itself — still comes from the stored default, because a machine
+ * preference has no opinion about any of it.
+ */
+export function mergeMachineAccountDefault(
+  stored: ProfileSettingsSnapshot,
+  machine: ProfileSettingsSnapshot | null,
+): ProfileSettingsSnapshot {
+  if (machine === null) return stored;
+  return {
+    ...stored,
+    machineKind: machine.machineKind,
+    machineId: machine.machineId,
+    machineLabel: machine.machineLabel,
+    machineTechnology: machine.machineTechnology,
+    machineCapacityGrams: machine.machineCapacityGrams,
+    targetBatchGrams: machine.targetBatchGrams,
+    batchSource: machine.batchSource,
+    // The machine decides how it can serve; a stored temperature cannot
+    // override a machine that supports only one visible mode.
+    servingModeId: machine.servingModeId,
+    targetTemperatureC: machine.targetTemperatureC,
+  };
 }
 
 const clampTarget = (value: number): DirectionTarget =>
@@ -352,23 +388,24 @@ export const useRecipeProfileStore = create<RecipeProfileState>()(
         }),
 
       defaultsFor: (ownerKey) => {
+        const machine = machineAccountFallback(get().machineAccountDefault, ownerKey);
         const stored = get().defaultsByOwner[ownerKey];
-        /* A deliberately configured per-product default always wins. Only when
-           there is none does the account's saved machine answer — which is the
-           whole point: an account that set a machine and nothing else used to
-           get no default at all, and fell through to Professional. */
-        if (!stored) return machineAccountFallback(get().machineAccountDefault, ownerKey);
+        /* No stored default: the saved machine IS the default. With one: the
+           saved machine still owns the machine and the batch, and the stored
+           default keeps everything else. See `mergeMachineAccountDefault`. */
+        if (!stored) return machine;
         const canonical = stored?.directionIntents ?? stored?.directionTargets;
-        return stored
-          ? {
-              ...stored,
-              formulationStrategy: normalizeFormulationStrategy(
-                stored.formulationStrategy ?? stored.mode,
-              ),
-              directionTargets: { ...canonical! },
-              directionIntents: { ...canonical! },
-            }
-          : null;
+        return mergeMachineAccountDefault(
+          {
+            ...stored,
+            formulationStrategy: normalizeFormulationStrategy(
+              stored.formulationStrategy ?? stored.mode,
+            ),
+            directionTargets: { ...canonical! },
+            directionIntents: { ...canonical! },
+          },
+          machine,
+        );
       },
 
       resetForTests: () =>

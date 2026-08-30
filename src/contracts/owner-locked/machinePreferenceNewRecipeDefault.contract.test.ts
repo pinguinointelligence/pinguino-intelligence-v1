@@ -143,14 +143,61 @@ describe('OWNER-LOCKED — saved machine preference is the NEW-recipe default', 
     expect(machineEducationForSelection(state.machineId, state.machineTechnology)).not.toBeNull();
   });
 
-  it('6. a deliberately configured per-product default still wins over the machine', () => {
+  it('6. a stored per-product default does NOT keep an old machine alive', () => {
+    /* The reopened bug, reduced. `pro@pro.com` carried a `user_recipe_defaults`
+       row written on 2026-08-14 — machineKind 'professional', 1000 g — and once
+       a stored default outranked the machine preference, saving ANY home
+       machine left every new recipe on Professional 1000 g. The saved machine
+       is the customer's statement about the machine they own; the stored row is
+       a months-old snapshot of a recipe. */
+    useRecipeProfileStore.getState().saveDefaults(`${OWNER}:gelato`, {
+      visibleProductType: 'gelato',
+      mode: 'classic',
+      targetBatchGrams: PROFESSIONAL_DEFAULT_BATCH_GRAMS,
+      machineKind: 'professional',
+      machineId: null,
+      machineLabel: 'Maszyna profesjonalna',
+      servingModeId: 'temp_minus_11',
+      targetTemperatureC: -11,
+      machineCapacityGrams: null,
+      directionTargets: { sweetness: 1, softness: -1, creaminess: 0, flavor: 0 },
+    });
     publishPreference(DELUXE_ID);
-    const stored = machineAccountDefaultSnapshot(recordFor(OTHER_HOME_ID), 'gelato');
-    expect(stored).not.toBeNull();
-    useRecipeProfileStore.getState().saveDefaults(`${OWNER}:gelato`, stored!);
-
     useRecipeStore.getState().startNewRecipe('gelato');
-    expect(useRecipeStore.getState().machineId).toBe(OTHER_HOME_ID);
+
+    const state = useRecipeStore.getState();
+    expect(state.machineKind).toBe('home');
+    expect(state.machineId).toBe(DELUXE_ID);
+    expect(state.target_batch_grams).toBe(expectedGrams(DELUXE_ID, 'gelato'));
+    expect(state.batch_source).toBe('MACHINE_DEFAULT');
+    // The stored default keeps everything that is NOT a machine fact.
+    expect(state.direction_targets).toEqual({
+      sweetness: 1,
+      softness: -1,
+      creaminess: 0,
+      flavor: 0,
+    });
+  });
+
+  it('6b. a stored default with no machine preference is untouched', () => {
+    useRecipeProfileStore.getState().saveDefaults(`${OWNER}:gelato`, {
+      visibleProductType: 'gelato',
+      mode: 'classic',
+      targetBatchGrams: PROFESSIONAL_DEFAULT_BATCH_GRAMS,
+      machineKind: 'professional',
+      machineId: null,
+      machineLabel: 'Maszyna profesjonalna',
+      servingModeId: 'temp_minus_11',
+      targetTemperatureC: -11,
+      machineCapacityGrams: null,
+      directionTargets: { sweetness: 0, softness: 0, creaminess: 0, flavor: 0 },
+    });
+    publishPreference(null);
+    useRecipeStore.getState().startNewRecipe('gelato');
+
+    const state = useRecipeStore.getState();
+    expect(state.machineKind).toBe('professional');
+    expect(state.target_batch_grams).toBe(PROFESSIONAL_DEFAULT_BATCH_GRAMS);
   });
 
   it('7. the fallback answers only this owner, and only product-scoped keys', () => {
@@ -203,5 +250,97 @@ describe('OWNER-LOCKED — saved machine preference is the NEW-recipe default', 
       creaminess: 0,
       flavor: 0,
     });
+  });
+});
+
+/**
+ * The full canonical matrix. Every machine the runtime exposes is exercised —
+ * the list is read from `MACHINE_CATALOG`, so a machine added tomorrow is
+ * covered without editing this file, and one removed cannot leave a silent gap.
+ */
+describe('OWNER-LOCKED — every canonical machine becomes the NEW-recipe default', () => {
+  beforeEach(() => {
+    useAuthStore.setState({
+      status: 'authed',
+      user: { id: OWNER, email: null, displayName: null },
+      available: true,
+    });
+    useRecipeProfileStore.getState().resetForTests();
+    useRecipeProfileStore.getState().setMachineAccountDefault(null, null);
+  });
+
+  it('covers the whole registry, not a hand-picked subset', () => {
+    expect(MACHINE_CATALOG.length).toBeGreaterThanOrEqual(10);
+    expect(MACHINE_CATALOG.every((profile) => profile.active)).toBe(true);
+  });
+
+  for (const profile of MACHINE_CATALOG) {
+    it(`${profile.id} — saved, new recipe, stale default, refresh, Production`, () => {
+      const grams = expectedGrams(profile.id, 'gelato');
+
+      // A stale Professional row, exactly the shape that reopened this bug.
+      useRecipeProfileStore.getState().saveDefaults(`${OWNER}:gelato`, {
+        visibleProductType: 'gelato',
+        mode: 'classic',
+        targetBatchGrams: PROFESSIONAL_DEFAULT_BATCH_GRAMS,
+        machineKind: 'professional',
+        machineId: null,
+        machineLabel: 'Maszyna profesjonalna',
+        servingModeId: 'temp_minus_11',
+        targetTemperatureC: -11,
+        machineCapacityGrams: null,
+        directionTargets: { sweetness: 0, softness: 0, creaminess: 0, flavor: 0 },
+      });
+      publishPreference(profile.id);
+
+      useRecipeStore.getState().startNewRecipe('gelato');
+      const first = useRecipeStore.getState();
+      expect(first.machineKind).toBe('home');
+      expect(first.machineId).toBe(profile.id);
+      expect(first.target_batch_grams).toBe(grams);
+      expect(first.machine_capacity_grams).toBe(grams);
+      expect(first.batch_source).toBe('MACHINE_DEFAULT');
+      // The Base actually realizes the machine batch — not just a label.
+      expect(first.items.reduce((sum, item) => sum + item.planned_grams, 0)).toBe(grams);
+
+      // „+ Nowa receptura" again — the preference is not consumed once.
+      useRecipeStore.getState().startNewRecipe('gelato');
+      const second = useRecipeStore.getState();
+      expect(second.machineId).toBe(profile.id);
+      expect(second.target_batch_grams).toBe(grams);
+
+      // Production reads these three fields and nothing else for its machine.
+      expect(machineEducationForSelection(second.machineId, second.machineTechnology)).not.toBeNull();
+    });
+  }
+
+  it('is product-aware: a machine that differs by product keeps its own number', () => {
+    // Magimix proposes a different sorbet batch. Whichever machine carries a
+    // per-product difference, the snapshot must follow the registry, not one
+    // remembered figure.
+    const differing = MACHINE_CATALOG.filter(
+      (profile) => expectedGrams(profile.id, 'sorbet') !== expectedGrams(profile.id, 'gelato'),
+    );
+    expect(differing.length).toBeGreaterThan(0);
+    for (const profile of differing) {
+      publishPreference(profile.id);
+      useRecipeStore.getState().startNewRecipe('sorbet');
+      expect(useRecipeStore.getState().target_batch_grams).toBe(
+        expectedGrams(profile.id, 'sorbet'),
+      );
+    }
+  });
+
+  it('account isolation: another account never inherits this machine', () => {
+    publishPreference(DELUXE_ID);
+    useAuthStore.setState({
+      status: 'authed',
+      user: { id: 'a-different-account', email: null, displayName: null },
+      available: true,
+    });
+    useRecipeStore.getState().startNewRecipe('gelato');
+    const state = useRecipeStore.getState();
+    expect(state.machineId).toBeNull();
+    expect(state.target_batch_grams).toBe(PROFESSIONAL_DEFAULT_BATCH_GRAMS);
   });
 });
