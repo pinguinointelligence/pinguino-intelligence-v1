@@ -332,6 +332,19 @@ function RecalcDiagnosisView({
             Wróć do receptury
           </button>
         ) : null}
+        {/* A user-supplied flavour role (a sorbet's fruit, a chocolate gelato's
+            chocolate) can only be resolved by choosing a product, so offer that
+            directly instead of leaving „Wróć do receptury" as the only way out. */}
+        {issue.code === 'missing_required_role' && issue.role !== 'product_dose' ? (
+          <button
+            type="button"
+            className="inline-flex min-h-11 items-center justify-center rounded-lg bg-ivory px-4 py-2 text-sm font-semibold text-shell transition-colors hover:bg-ivory/90"
+            data-testid="pro-recalc-choose-user-supplied-product"
+            onClick={onChooseOtherProduct}
+          >
+            Wybierz składnik
+          </button>
+        ) : null}
         {issue.code === 'impossible_under_constraints' ? (
           <div className="flex flex-wrap gap-2">
             {issue.conflict ? (
@@ -722,8 +735,8 @@ export function RescueAdviceHint({
       <p className="mt-1 text-xs leading-relaxed text-ivory/70">{advice.reasonPl}</p>
       <p className="mt-1 text-xs leading-relaxed text-ivory/70">
         Gellatti nie doda tego składnika automatycznie. Wróć do Receptury, wybierz „Dodaj składnik”
-        i dodaj zweryfikowany produkt. Następnie przelicz ponownie — podgląd musi potwierdzić twardość,
-        zamrożenie, ciała stałe i wszystkie bezpieczne zakresy.
+        i dodaj zweryfikowany produkt. Następnie przelicz ponownie — podgląd musi potwierdzić
+        twardość, zamrożenie, ciała stałe i wszystkie bezpieczne zakresy.
       </p>
       {onAddIngredient ? (
         <button
@@ -772,9 +785,7 @@ export function DirectionBestDecision({
       data-testid="direction-best-decision"
     >
       <div>
-        <p className="text-sm font-medium text-ivory">
-          Nie mogę osiągnąć dokładnie wybranego celu
-        </p>
+        <p className="text-sm font-medium text-ivory">Nie mogę osiągnąć dokładnie wybranego celu</p>
         <p className="mt-1 text-xs text-ivory/70">
           Najbliższy poprawny wynik: {assessment?.score ?? 9}/10
         </p>

@@ -388,6 +388,58 @@ export const USER_SUPPLIED_FLAVOUR_ROLES: ReadonlySet<FunctionalRole> = new Set(
   'plant_fat',
 ]);
 
+/** The roles a template may declare as USER-SUPPLIED (`toolboxId === null`) and
+ * that the formulation pipeline therefore refuses to invent. Kept identical to
+ * the `user_supplied_required` stop below so a draft can never be reported
+ * complete by one and incomplete by the other. */
+const USER_SUPPLIED_REQUIRED_ROLES: ReadonlySet<FunctionalRole> = new Set([
+  'fruit',
+  'plant_liquid',
+  'plant_fat',
+  'chocolate_cocoa',
+]);
+
+export interface UnfilledUserSuppliedRole {
+  role: FunctionalRole;
+  /** Polish role label, e.g. „Owoc" — the same one the missing-role stop uses. */
+  labelPl: string;
+  /** Template grams for this role at the template's own base batch. */
+  templateGrams: number;
+}
+
+/**
+ * Roles the approved template declares as USER-SUPPLIED and that this recipe
+ * does not fill yet — the fruit of a sorbet, the chocolate of a chocolate
+ * gelato. Auto-adding a flavour is forbidden (`toolboxId === null`), so such a
+ * draft is INCOMPLETE BY CONSTRUCTION: its scaffold deliberately materializes
+ * less mass than the target batch until the customer chooses. S02 for example
+ * is 400 g of water/sugars/inulin/stabilizer against a 1000 g target, and the
+ * missing 600 g IS the fruit.
+ *
+ * That is NOT a coherent recipe which merely happens to be short, and it must
+ * never be presented as one. The batch authority is untouched here: the
+ * machine/user target stays exactly what it was — only COMPLETENESS is reported.
+ */
+export function unfilledUserSuppliedRoles(input: RecipeInput): UnfilledUserSuppliedRole[] {
+  const template = selectFormulationTemplateForRecipe(input).template;
+  if (!template) return [];
+  return template.roles
+    .filter(
+      (roleTarget) =>
+        roleTarget.toolboxId === null &&
+        USER_SUPPLIED_REQUIRED_ROLES.has(roleTarget.role) &&
+        !input.items.some(
+          (item) =>
+            resolveFunctionalRole(item.ingredient) === roleTarget.role && item.planned_grams > 0,
+        ),
+    )
+    .map((roleTarget) => ({
+      role: roleTarget.role,
+      labelPl: ROLE_LABEL_PL[roleTarget.role],
+      templateGrams: roleTarget.grams,
+    }));
+}
+
 export interface FormulationProposal {
   /** The COMPLETE next RecipeInput (atomic-replacement contract). */
   proposedInput: RecipeInput;
