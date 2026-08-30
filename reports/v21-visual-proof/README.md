@@ -52,9 +52,9 @@ A real legibility defect was fixed on the way: the graphite hero's call to actio
 
 | State | Desktop before → after | Mobile before → after |
 |---|---|---|
-| Sklep | 71.0 → **88.4** | 55.1 → 44.7 ¹ |
+| Sklep | 71.0 → **88.4** | 44.7 ¹ |
 | Franchise | 76.5 → **94.5** | 70.4 → **81.7** |
-| Współpracuj z nami | 94.7 → 87.1 ² | 73.0 → 72.3 ² |
+| Współpracuj z nami | 82.7 px / **96.8 ink** ² | 61.3 px / **86.1 ink** ² |
 | Receptury | 95.1 → 95.1 | 82.7 → **85.1** |
 | Produkty | 95.0 → **95.1** | 84.8 → **85.2** |
 | Ustawienia etykiety | 93.9 → 93.8 | 79.5 → **80.6** ³ |
@@ -74,14 +74,27 @@ category cards — the version that deleted the partner flow. Staging's cooperat
 different by owner decision, so pixel agreement necessarily drops while the *visual system*
 now matches.
 
-³ **State-mapping mismatch, not a gap.** The authority's `label-settings` is a full-page
-settings editor with four jurisdictions and a `Zapisz profil` action. Staging implements the
-same content as a MODAL sheet opened from `/labels`, with six jurisdictions (Kanada and
-Australia / Nowa Zelandia added). Page-vs-modal is an architecture difference, not a visual
-one, so it is recorded rather than silently converted — see OPEN below.
+³ **Architecture proposal, not a visual gap — and not a mapping error either.** I first
+called this a state-mapping mismatch; that was wrong. The authority's own metadata gives this
+state `path: "/labels"`, the same route staging uses, so the comparison was aimed correctly.
+What differs is the SHAPE: the authority proposes `/labels` as a full-page settings editor
+with four jurisdictions and a `Zapisz profil` action, while staging ships a hub whose editor
+is a MODAL sheet, with six jurisdictions (Kanada and Australia / Nowa Zelandia added).
+Page-vs-modal is architecture, so it is recorded rather than silently converted — and the
+authority itself flags it as an open Owner question. See OPEN below.
 
-1. **Ustawienia etykiety: page vs modal.** Needs an owner decision — keep staging's modal
-   (and dress it in the approved tokens), or promote it to the authority's full page.
+1. **Ustawienia etykiety: page vs modal.** Needs an owner decision — and the AUTHORITY ITSELF
+   asks for exactly this decision rather than settling it. Its own metadata for the state
+   records `path: "/labels"` — the same route staging uses — and lists two open questions:
+
+   > „Zatwierdzić kontrakt jednej authority dla Label module i strony z hamburgera."
+   > „Docelowa ścieżka standalone nie istnieje; obecny baseline to /labels. Wdrożenie będzie
+   > wymagało osobnej decyzji o route bez przekierowania do procesu."
+
+   So the standalone settings PAGE is not an approved implementation waiting to be built; it
+   is a proposal the pack explicitly flags as needing a separate route decision. Converting
+   staging's modal on my own initiative would have pre-empted a decision the design authority
+   deliberately left to the Owner. Recorded, not converted.
 2. **Sklep catalogue data** unavailable locally; blocks the mobile Sklep number only.
 3. **PRO Monitor / Produkcja computed states — PENDING_AUTH.** The local demo preset is
    stale and `Przelicz` cannot complete, so Monitor renders skeleton bars. §16 (7 rows, one
@@ -166,3 +179,26 @@ The three commercial destinations are where live staging diverges most from the 
 design — Sklep at 22 % on a phone. That is the gap this branch closes.
 
 Captures in `reports/v21-visual-proof/served-BEFORE/`.
+
+
+## Late corrections the served baseline forced
+
+Capturing live staging before merging caught two defects that were invisible locally,
+which is the whole argument for doing it in that order:
+
+1. **Sklep printed its starter-pack copy twice.** Locally the catalogue fails to load, so
+   the page looked correct. On real staging `ShopCatalog` opens on „Zestaw startowy /
+   Gellatti Starter Pack" using the same `starterPack.kicker` and `body` the hero had been
+   given. The hero now carries only `page.*`.
+2. **Współpraca lost its page identity.** The approved hero carries the PAGE eyebrow, title
+   and blurb; mine carried the PARTNER headline, so once `bare` removed the shared
+   `PageHeading`, „Twórz z Gellatti" was gone from the page altogether. The hero now carries
+   `c.page` and the partner block keeps its headline, body and `whatYouShare` in its own
+   section below — 90.9 → **96.8 %** ink desktop, 81.8 → **86.1 %** ink mobile.
+3. Both heroes hid their visual below `lg`; the authority's mobile heroes run the full band
+   WITH the visual (verified on the 390 × 844 captures — Sklep keeps its graphite half and
+   pack frame on a phone). Hiding it shortened the band and knocked the page below it out
+   of register.
+
+`px` on Sklep mobile stays low locally only because the catalogue cannot load there; the
+hero itself measures exactly x 80, y 124, w 1280, h 470 — the authority's own numbers.
