@@ -100,9 +100,9 @@ Legend for yes/no columns: `Y` = yes/required, `–` = no/not required, `?` = to
 | H-20-1 | Voice | Voice accepts complete natural sentences and extracts profile + ingredient concepts + role when clearly stated | – | Web Speech API | Y | `/` | intent parser | – | – | Y | Y | Y | Y | TESTED | | |
 | H-20-2 | Voice | Chips shown for correction; no separate transcript page | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TESTED | | |
 | H-21-1 | Intent | Several items may be added in sequence in any combination of text/voice/scan and are treated as one intention before `Create my recipe` | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TESTED | | |
-| H-22-1 | Identity | Resolve user terms through Product Catalog / Mapper / canonical identity / ProductBehavior / SKU identities BEFORE recipe matching | Y | `services/products`, `ingredient-resolution`, Mapper | Y (wiring) | `/` | `services/ingredientResolution` | – | – | Y | Y | Y | Y | TODO | | |
+| H-22-1 | Identity | Resolve user terms through Product Catalog / Mapper / canonical identity / ProductBehavior / SKU identities BEFORE recipe matching | Y | `services/products`, `ingredient-resolution`, Mapper | Y (wiring) | `/` | `services/ingredientResolution` | – | – | Y | Y | Y | Y | TESTED | | |
 | H-22-2 | Identity | Never match recipes against guessed product text; never invent semantic substitution | – | – | Y | – | – | – | – | – | – | Y | Y | TESTED | | |
-| H-23-1 | Identity | Ambiguous text/voice → simple real-product choice list (e.g. several Oreo SKUs, Chocolate vs Cocoa vs Spread); no photos required | – | `product-picker` | Y | `/` | `services/productPicker` | – | – | Y | Y | Y | Y | TODO | | |
+| H-23-1 | Identity | Ambiguous text/voice → simple real-product choice list (e.g. several Oreo SKUs, Chocolate vs Cocoa vs Spread); no photos required | – | `product-picker` | Y | `/` | `services/productPicker` | – | – | Y | Y | Y | Y | TESTED | | |
 | H-24-1 | Identity | Where existing Gellatti mapping already collapses several SKUs to one canonical identity, HOME uses that authority — no new equivalence layer | Y | Mapper canonical identity | – | – | – | – | – | – | – | Y | – | TODO | | |
 | H-25-1 | Intent | Multilingual + typo-tolerant intent (strawberry/truskawka/fresa/Erdbeere; whisky cola/whiskey & coke/whisky z colą; mojito/mochito/mojitto) | Partly | `polishFlavorSynonyms` | Y | `/` | intent parser | – | – | Y | Y | Y | Y | TESTED | | |
 | H-25-2 | Intent | Understanding only — everything resolves to real Gellatti identities before matching/formulation | – | – | Y | – | – | – | – | – | – | Y | Y | TESTED | | |
@@ -154,8 +154,8 @@ Legend for yes/no columns: `Y` = yes/required, `–` = no/not required, `?` = to
 | H-47-1 | Machine | Changing the machine inside a recipe affects only that recipe; the account default is unchanged | Y (recipe-scoped) | `recipeStore.setMachineSelection` | Y | `/` | – | – | – | Y | Y | Y | Y | TODO | | |
 | H-47-2 | Machine | A saved recipe remembers its recipe-specific machine; a new recipe uses the account default again | Y | `userRecipeDefaults` | – | – | – | – | – | – | – | Y | Y | TODO | | |
 | H-48-1 | Generation | The first recipe builds a full base automatically — the user is never asked to choose milk/sugar/stabiliser first | Y | `intentRecipeDraft` STARTER_TEMPLATES, Engine | Y | `/` | `recipeStore` | – | – | Y | Y | Y | Y | IMPLEMENTED | | |
-| H-49-1 | Crown | A Crown-eligible user-added product turns Crown on automatically per the current PRO authority | Y | `canonical module eligibility`, `setMainIngredient` | Y | `/` | `recipeStore` | – | – | Y | Y | Y | Y | TODO | | |
-| H-49-2 | Crown | If the current system does not allow Crown it is not bypassed; no new classification | – | – | – | – | – | – | – | – | – | Y | Y | TODO | | |
+| H-49-1 | Crown | A Crown-eligible user-added product turns Crown on automatically per the current PRO authority | Y | `canonical module eligibility`, `setMainIngredient` | Y | `/` | `recipeStore` | – | – | Y | Y | Y | Y | TESTED | | |
+| H-49-2 | Crown | If the current system does not allow Crown it is not bypassed; no new classification | – | – | – | – | – | – | – | – | – | Y | Y | TESTED | | |
 | H-50-1 | Crown | Crown and Multi-Main behave exactly as today; manual gram edits use existing semantics; Crown off/on where allowed | Y | `recipeStore` | – | `/` | – | – | – | Y | Y | Y | Y | TODO | | |
 | H-51-1 | Live | Everything becomes live only after the first recipe is built; edits update the shared recipe | – | – | Y | `/` | `recipeStore` | – | – | Y | Y | Y | Y | IMPLEMENTED | | |
 | H-52-1 | Display | HOME shows: editable name, Score, machine/amount, ingredient name, grams, Crown, Topping marker, simple sweetness, Add ingredient, Add topping, Save recipe, Share with Community when eligible, Let's make it | – | – | Y | `/` | – | – | Y | Y | Y | Y | Y | IMPLEMENTED | | |
@@ -359,3 +359,33 @@ pass). This branch touches no solver code and the protected-path guard confirms 
 AGENTS.md rule 11 exists to prevent, and it would delete the only signal a real solver
 regression would trip. Raised as a PR comment for an owner decision (re-run / explicit
 documented `testTimeout` / larger runner).
+
+---
+
+## 4. Local verification limit (important when reading §1 evidence)
+
+This worktree has **no `.env`**, so Supabase is unconfigured locally. Two consequences:
+
+1. The intent → identity → recipe-line path **cannot be exercised locally**. The search
+   correctly returns `unavailable` and the chip correctly stays unresolved, so the
+   local browser run proves the *honest-failure* behaviour and nothing more.
+2. Everything verified locally so far — root routing, stage flow, profile skipping,
+   machine selection, starter generation, Score, masked grams — runs off the local
+   demo catalogue and the pure authorities, so those results stand.
+
+Identity resolution is therefore being verified against the PR's Vercel preview
+(`pinguino-staging-git-1a5e9c-…vercel.app`), which carries real backend env.
+
+### Bug found and fixed by browser QA (2026-08-30)
+
+**Non-English intent resolved to nothing.** The Mapper catalogue is named in ENGLISH
+(`STRAWBERRIES`) while §25 explicitly invites `truskawka` / `fresa` / `Erdbeere`.
+Searching the user's raw word matched zero rows for every non-English user — the intent
+was understood perfectly by the parser and then discarded at the catalogue boundary.
+`catalogueSearchTerms()` now tries the canonical concept first and the raw word second.
+This adds no translation layer and no equivalence (§24): the concept is only a search
+string, and whatever comes back still goes through the normal ranking and the §23
+choice.
+
+This is a good example of why §121 exists — the unit tests were all green and the
+defect was only visible against a real catalogue.
