@@ -1,0 +1,51 @@
+GELLATTI — served capture: saved machine preference -> NEW recipe default
+Served on https://staging.pinguinoai.com as test1@test1.com
+Staging bc048ae2 · bundle index-Al9_Fj0Q.js · captured 2026-08-30
+
+ACCOUNT STATE
+  /machine : Domyslna maszyna "Ninja CREAMi Deluxe"
+             Pojemnosc producenta 706 ml
+             Zalecany wsad Gellatti 670 g
+             "Mój domyślny wsad" empty -> the recommendation is the default
+  "Zapisz ustawienia" pressed explicitly before the run.
+  DB: user_recipe_defaults holds ZERO rows for this account — which is exactly
+  why the bug existed. The account had a machine and no recipe default.
+
+--- BEFORE (staging 0673a6c6) ------------------------------------------------
+  + Nowa receptura -> Maszyna profesjonalna, 1000 / 1000 g
+  A refresh did not change it.
+
+--- AFTER (staging bc048ae2) -------------------------------------------------
+1. + Nowa receptura
+     machine <select> value : ninja-creami-deluxe-nc502eu-eu-es
+     machine <select> text  : "Ninja CREAMi Deluxe"
+     Partia                 : 670 / 670 g
+     "Zalecany wsad na cykl: 670 g · Jedna partia miesci sie w jednym cyklu."
+     BAZA LODOWA 670 g · PRODUKT FINALNY 670 g
+     Product family stayed "Wegańskie" — the family the customer was working in
+     — and the Deluxe still resolved 670 g for it, which proves the batch comes
+     from `deriveMachineSetup(profile, product)` and not from a fixed number.
+
+2. Full page reload -> + Nowa receptura
+     machine value ninja-creami-deluxe-nc502eu-eu-es, 670 g again.
+     The sign-in bridge, not a one-shot in-session hand-off.
+
+3. Production for that NEW recipe (przelicz -> zastosuj -> zapisz -> Produkcja)
+     "QA Machine Default Deluxe · Wersja 1 · 670 g · Zrodlo: Zapisana wersja"
+     "WSZYSTKO GOTOWE DO ROZPOCZECIA PARTII", "Rozpocznij partie" enabled
+     and the panel renders INSTRUKCJA MASZYNY:
+       "Procesor z mrozonym pojemnikiem
+        1. Przygotuj mix  2. Zamroz caly pojemnik
+        3. Urzadzenie obrabia zamrozona baze"
+     That block is `machineEducationForSelection(machineId, machineTechnology)`
+     and renders ONLY when machineKind === 'home', so Production is holding the
+     same home-machine context as the recipe. A Professional recipe has no such
+     block.
+
+4. PRECEDENCE — reopening a saved historical Professional recipe
+     QA Gelato Wanilia -11 -> machine <select> value "professional",
+     "Maszyna profesjonalna", 1000 g.
+     The Deluxe preference does not reach a saved version: `loadRecipeInput`
+     reads no account defaults at all for one.
+
+VERDICT: PASS on all four.
