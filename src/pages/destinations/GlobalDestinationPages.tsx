@@ -49,18 +49,28 @@ export function HowItWorksPage() {
       title="Jak to działa"
       blurb="Jedna logiczna droga od pomysłu do receptury i bezpiecznej produkcji."
     >
-      <ol className="grid border-y border-ink/10 sm:grid-cols-5">
+      {/* The same numbered rail Współpraca uses for „Jak to działa" — one
+          pattern for one idea, rather than a second near-identical one. The
+          steps keep their existing labels; no explanatory copy is invented
+          here. */}
+      <DestinationSectionHead
+        eyebrow="Droga receptury"
+        title="Pięć kroków, od pomysłu do gotowej partii."
+      />
+      <ol className="grid border-y border-[var(--g-line)] sm:grid-cols-5">
         {steps.map((step, index) => (
           <li
             key={step}
-            className="border-b border-ink/10 px-4 py-6 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0"
+            className="border-b border-[var(--g-line)] px-5 py-6 last:border-b-0 sm:border-r sm:border-b-0 sm:last:border-r-0"
           >
-            <span className="font-mono text-xs text-stone-400">0{index + 1}</span>
-            <strong className="mt-3 block text-sm font-medium text-ink">{step}</strong>
+            <span className="font-mono text-[12px] text-[var(--g-text-muted)]">0{index + 1}</span>
+            <strong className="mt-3 block text-[14px] leading-[1.35] font-bold text-[var(--g-ink)]">
+              {step}
+            </strong>
           </li>
         ))}
       </ol>
-      <div className="mt-10 flex flex-wrap gap-3">
+      <div className="mt-8 flex flex-wrap gap-3">
         <Link to="/start" className={buttonClasses('primary', 'md')}>
           Wypróbuj Gellatti
         </Link>
