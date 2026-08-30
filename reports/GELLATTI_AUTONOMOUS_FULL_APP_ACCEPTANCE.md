@@ -1,7 +1,7 @@
 # GELLATTI — AUTONOMOUS FULL APPLICATION ACCEPTANCE
 
-**Run:** 2026-08-29, unattended, goal mode.
-**Branch:** `claude/gellatti-full-app` on `origin/staging` (base `1a10f7cf`).
+**Run:** 2026-08-29 → 2026-08-30, unattended, goal mode.
+**Merged to staging:** PR #4 → `origin/staging` **`36a3b7f4`** (base `1a10f7cf`, rebased over `326962d0` when staging moved mid-run).
 **Environment:** staging only — `staging.pinguinoai.com`, Supabase project
 `tunabqqrwabacxjcxxkz`, Stripe **TEST** mode. `origin/main` and customer
 Production were never touched.
@@ -23,6 +23,7 @@ was fixed**; no protected functional path was touched in any commit
 | PC-03 | MED-HIGH | Sorbet `unsafe_proposal` with no NEAREST fallback — the customer receives no recipe and no route forward. | 22 |
 | PC-04 | MEDIUM | Protein Recalculate exhausts the solver iteration cap: a valid preview (score 84.45) that can never be applied. 8.6 % of all Protein cells. | 34 |
 | PC-05 | MEDIUM | Vegan Direction extremes land on a protein-in-dry-matter hard residual — preview only. Largest cluster; may be honest physics, needs owner science review. | 53 |
+| **PC-06** | **HIGH** | **A saved Sorbet recipe can never be taken into Production.** Produkcja demands a recalculation → the recalculation reports "nearest reached, recipe unchanged" → ZAPISZ is disabled because nothing changed → Produkcja still refuses. Three dead ends in a row, no Direction change even requested. Found by driving the served application, not the harness. | 2/2 recipes |
 
 **The regression the brief targeted does not reproduce.** Across 288 sequential
 single-axis cases and 800 direct Direction cases, `axis_mutation` is `none` in
@@ -44,7 +45,9 @@ the Sweetness intent, and a Sweetness-only request never rewrote Hardness.
 | 7 | **Partner approval mangled the slug** — `[^a-z0-9]` applied before `lower()` ate the capitals ("Marysia Lody" → "arysia-ody"). Found and fixed inside this run; the staging fixture was backfilled. | The slug is the partner's public address. | `1d28f694` |
 | 8 | Duplicated pack size in the Starter Pack contents list. | Cosmetic, caught in the mobile pass. | `dcc42b21` |
 | 9 | **The payment provider leaked into the UI layer.** `AdminShopSection.tsx` named Stripe in operator labels and read the provider's own row fields, so a screen knew which provider the product uses. Caught by the studio boundary guard in CI. | The guard exists to keep provider integrations out of the view layer. Fixed by mapping the references into a neutral `paymentReference` in the service and moving the labels to the copy module — the guard was not loosened. | `ca1860a3` |
-| 10 | **A saved machine could leak between accounts on one browser.** `/machine` called the device-local store with no key, so it wrote to the unscoped legacy key while the Home shell correctly used `userScopedMachineKey(userId)`. | The scoped key exists precisely to prevent this (owner P0, 2026-07-18). The same customer also had their machine under two different keys depending on the surface. | `58d8631d` |
+| 10 | **My own regression: the acceptance harness ran inside `npm test`.** The default suite excluded only the two campaign patterns, so `*.acceptance.test.ts` was collected — every default run signed into staging and resolved real authority for ~1300 cells over the network. | It made `npm test` ~29 min locally and ~45 in CI, and made the default suite depend on a reachable environment. Found by reading the CI timings rather than assuming they were infrastructure. | `e767587c` |
+| 11 | **The new-Franchise-lead notification sent the operator to the wrong page** (`/admin/operations` instead of `/admin/franchise`). | A notification that lands where the work is not is worse than none. Found by actually following it. | `35c01bd6` |
+| 12 | **A saved machine could leak between accounts on one browser.** `/machine` called the device-local store with no key, so it wrote to the unscoped legacy key while the Home shell correctly used `userScopedMachineKey(userId)`. | The scoped key exists precisely to prevent this (owner P0, 2026-07-18). The same customer also had their machine under two different keys depending on the surface. | `58d8631d` |
 
 ---
 
@@ -175,7 +178,9 @@ kcal/100 g, while the final product mass reacts (1000 g → 1050 g).
 | PRO recipe | "QA Gelato Wanilia -11" saved, v1, score 10 |
 | Production | Completed — 6/6 ingredients weighed, 1000 g, **LOT-20260829-228836054F**, cost 1.79 € |
 | EU Label | EU profile resolved; name, LOT, real mass, ingredients, allergens and nutrition all `GOTOWE`; blocked only on the four missing saturated-fat figures (blocker 2) |
-| Production, other profiles | **Not driven per profile.** The formulation pipeline for Sorbet, Vegan and Protein is verified 326 cells each by the harness (starter → Direction → Preview → Apply → Save → reopen). The Production *weighing* workflow was exercised once, on Gelato; the EU label is blocked for every profile by the same saturated-fat gap, so a per-profile label PDF was unreachable either way. The blocker was the workbench profile `<select>`: it would not accept a programmatic or keyboard change in the automation harness, and I chose to record that rather than spend the run on browser choreography |
+| **Production — Vegan** | **PASS** on staging. `QA Vegan Kokos -12` v2, 7 lines, 1000 g, **LOT-20260829-834993C734**. Reached through *"Utwórz nową wersję z aktualnymi danymi produktów"* → NEAREST consent (9/10, *"Słodycz: cel nieosiągnięty"*) → Apply → Save → Production |
+| **Production — Protein** | **PASS** on staging. `QA Protein Kakao -12` v2, 8 lines, 1000 g, **LOT-20260829-92AACEA842** |
+| **Production — Sorbet** | **BLOCKED — PC-06.** A saved Sorbet cannot be taken into Production at all: Produkcja demands a recalculation, the recalculation answers *"najbliższy osiągalny wynik … receptura nie została zmieniona"*, and ZAPISZ is then disabled because nothing changed. Reproduced at −12 °C **and** −13 °C |
 | Community | Creator `@marysialody` created inline; recipe published **with an image**; card visible with attribution |
 | Ranking | Top 100 ranks it **#1** — one eligible recipe still yields a truthful board |
 | Favourites | 2 products starred, persisted across reload, "Ulubione" filter returns exactly those two |
@@ -185,6 +190,7 @@ kcal/100 g, while the final product mass reacts (1000 g → 1050 g).
 | Checkout security | A `localhost` redirect origin is refused by the allowlist (`redirect_url_not_allowed`), so the URL guard is live, not decorative |
 | Admin | Partner applications, shop articles + orders, franchise leads — all reachable and actionable as `admin@admin.com` |
 | Machine settings (F) | All 12 machines offered; Ninja CREAMi Deluxe derives **670 g** from the manufacturer's 706 ml by the ×0.95 rule; selection survives a reload. **Account-level persistence is a documented launch gate that is still closed** — `user_machine_preference` exists and the Supabase adapter is written, but only the device-local factory is wired, so a machine does not follow the customer to another device. Left closed: flipping a deliberate launch gate is a product decision, not a bug fix |
+| Franchise (J) | **PASS** end-to-end on staging. Inquiry submitted from `/franchise` (Przyczepa, Anna Kowalska, Gdańsk), stored with every field, admin notified, visible in the `/admin/franchise` queue with format, contact, location and note, and moved to **ZAKWALIFIKOWANE** with an operator note. One fix made during the check: the notification deep-linked to `/admin/operations`, where the leads are not |
 | Mobile 390 × 844 | `/shop`, `/work-with-us`, `/franchise`, `/community`, `/recipes`, `/account` — **no horizontal overflow on any** |
 
 ---
@@ -195,11 +201,11 @@ This is **not** a full pass of the brief. Delivered in full: the exhaustive
 formulation matrix (Phase A), the partner lane (I), franchise (J), the shop and
 admin commerce (G/H), the Recipes/Community navigation repair (C1), favourites
 (C2), Community publishing with an image (C), the global inventory (E) and the
-mobile pass (K). Production (B) is verified end-to-end for Gelato — weighing,
-TARA, confirmations, LOT and cost — and blocked at the label PDF for all four
-profiles by a data gap; the Sorbet/Vegan/Protein *weighing* workflow was not
-driven separately. Scanner (D) could not be exercised at all — the intake needs
-an image file that was not on disk.
+mobile pass (K). Production (B) completes end-to-end for **Gelato, Vegan and
+Protein** — weighing, confirmations, LOT and cost — and is **blocked for Sorbet**
+by PC-06, a closed loop the customer cannot escape. The EU label is blocked for
+every profile by the saturated-fat data gap. Scanner (D) could not be exercised
+at all — the intake needs an image file that was not on disk.
 
 Nothing in this report is claimed as verified unless it was actually run. Where
 a step was skipped, the reason is stated instead of the result.

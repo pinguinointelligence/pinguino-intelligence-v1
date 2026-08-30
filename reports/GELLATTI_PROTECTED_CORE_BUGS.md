@@ -159,6 +159,26 @@ Sweetness-only request never rewrote the Hardness intent.
 
 ---
 
+## PC-06 — A saved Sorbet recipe can never be taken into Production
+
+| | |
+|---|---|
+| **SEVERITY** | **HIGH — closed loop: the customer has no move at all** |
+| **FIRST OBSERVED SHA** | staging `36a3b7f4`, served on https://staging.pinguinoai.com |
+| **PROFILE** | Sorbet (reproduced at **both** −12 °C and −13 °C, OPTIMAL) |
+| **MACHINE** | Maszyna profesjonalna |
+| **BATCH** | 1000 g |
+| **EXACT RECIPE** | `QA Sorbet Truskawka -12` (`16df2554-d6a8-46fb-ab82-8de839707851`) and `QA Sorbet Truskawka -13` (`07132301-b904-44c2-aad0-c084f5d66e70`), both v1, 6 lines: SUCROSE · DEXTROSE · INULIN · TARA GUM · `PI-ING-000406` WILD STRAWBERRY 600 g MAIN · `PI-ING-000496` FRUCTOSE |
+| **SWEETNESS / HARDNESS** | 0 / 0 — no Direction change is even requested |
+| **ACTION SEQUENCE** | 1. Open the saved recipe from Receptury → Otwórz. 2. Go to Produkcja. 3. Follow every instruction the application gives. |
+| **EXPECTED** | Either Production starts from the saved executable version, or the application offers a move that leads somewhere. |
+| **ACTUAL — three dead ends in a row** | **Produkcja:** *"WYMAGA RECEPTURY WYKONAWCZEJ · Najpierw przelicz recepturę · Produkcja korzysta wyłącznie ze zweryfikowanej receptury wykonawczej w pełnych gramach."* → **Przelicz:** *"To najbliższy osiągalny wynik dla wybranego kierunku. Nie znaleźliśmy bezpiecznej korekty, która poprawia ten cel bez naruszenia twardych ograniczeń. Parametry kierunku: NPAC, słodycz (POD). Receptura nie została zmieniona."* → **ZAPISZ: disabled** (nothing changed, so there is nothing to save). Production still refuses. The loop closes with no exit. |
+| **CONTRAST** | The same journey completes for the other three profiles on the same build: Gelato `LOT-20260829-228836054F`, Vegan `LOT-20260829-834993C734`, Protein `LOT-20260829-92AACEA842`. Vegan and Protein reached it through *"Utwórz nową wersję z aktualnymi danymi produktów"* → a NEAREST consent or *"Receptura już spełnia wybrany profil"* → **ZAPISZ enabled** → Production ready. Sorbet never reaches a state where ZAPISZ is enabled. |
+| **REPRODUCED** | 2/2 saved Sorbet recipes, at two different temperatures. |
+| **LIKELY ROOT AREA** | The interaction between the Production readiness gate (which demands a freshly verified whole-gram executable) and the Sorbet recalculation outcome (`nearest reached / recipe unchanged`). The unchanged-recipe outcome produces no executable and enables no save, so the gate can never be satisfied. Related to PC-01 and PC-03 but distinct: here **no Direction change is requested at all**. |
+
+---
+
 ## Confirmed contract behaviours (not bugs — recorded for completeness)
 
 - **Protein Hardness is `blocked_science`** in all 326 Protein cells;
