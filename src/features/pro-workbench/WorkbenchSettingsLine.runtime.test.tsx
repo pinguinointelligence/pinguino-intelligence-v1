@@ -6,6 +6,8 @@ import { copy } from '@/copy/en';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
+import { MACHINE_CATALOG, listActiveHomeMachines } from '@/features/machine-catalog';
+import { machineDisplayName, machineOnboardingCopy } from '@/features/machine-onboarding';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import type { VisibleProductType } from '@/features/studio/productType';
@@ -444,5 +446,194 @@ describe('WorkbenchSettingsLine — Sorbet is a fully supported product type', (
       (host.querySelector('[data-testid="workbench-product-type"]') as HTMLSelectElement).value,
     ).toBe('gelato');
     expect(cell.querySelector('[data-readiness]')).toBeNull();
+  });
+});
+
+/**
+ * The Studio batch surface must tell the truth about an over-capacity batch.
+ *
+ * Owner decision 2026-07-17: the machine recommendation is a SOFT proposal —
+ * a bigger batch is never capped and never blocked, but it must be shown
+ * truthfully in the validation layer. `claude/batch-lifecycle-coherence` made
+ * this reachable in the Studio (an applied starter now keeps the batch the user
+ * chose in the flow instead of adopting the account default), so the workbench
+ * has to carry the SAME `deriveBatchGuidance` rule and the SAME copy the
+ * machine settings card already shows.
+ */
+describe('WorkbenchSettingsLine — over-capacity batch guidance', () => {
+  let host: HTMLDivElement;
+  let root: ReturnType<typeof createRoot>;
+
+  const render = async () => {
+    await act(async () =>
+      root.render(
+        <WorkbenchSettingsLine
+          actualBatchG={useRecipeStore.getState().target_batch_grams}
+          compact
+        />,
+      ),
+    );
+  };
+
+  /* A REAL catalog machine — an unknown id is its own hard conflict, which
+     would mask whether this guidance blocks anything. */
+  const homeMachine = listActiveHomeMachines(MACHINE_CATALOG)[0]!;
+
+  /** Select that machine with a 700 g recommendation and the given batch. */
+  const selectHomeMachine = async (batchGrams: number, capacityGrams = 700) => {
+    await act(async () => {
+      useRecipeStore.getState().setMachineSelection({
+        kind: 'home',
+        servingModeId: 'temp_minus_12',
+        machineId: homeMachine.id,
+        label: machineDisplayName(homeMachine),
+        temperatureC: -12,
+        batchGrams,
+        capacityGrams,
+        batchSource: 'MACHINE_DEFAULT',
+      });
+    });
+    await render();
+  };
+
+  const click = async (testId: string) => {
+    const button = host.querySelector(`[data-testid="${testId}"]`) as HTMLButtonElement;
+    expect(button, `${testId} must be rendered`).not.toBeNull();
+    await act(async () => button.click());
+  };
+
+  const warning = () => host.querySelector('[data-testid="workbench-batch-above-recommendation"]');
+
+  beforeEach(async () => {
+    (
+      globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
+    localStorage.clear();
+    useConstraintStudioStore.getState().resetForTests();
+    useRecipeProfileStore.getState().resetForTests();
+    useRecipeStore.getState().startNewRecipe('gelato');
+    host = document.createElement('div');
+    document.body.append(host);
+    root = createRoot(host);
+    await render();
+  });
+
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    host.remove();
+  });
+
+  it('warns with the machine-settings copy when the batch exceeds the recommendation', async () => {
+    await selectHomeMachine(5_000);
+
+    expect(useRecipeStore.getState().target_batch_grams).toBe(5_000);
+    expect(warning()).not.toBeNull();
+    // The SAME string the machine settings card shows — one rule, one copy.
+    expect(warning()!.textContent).toContain(machineOnboardingCopy.batch.aboveWarning);
+    expect(warning()!.textContent).toContain(machineOnboardingCopy.batch.splitAction);
+    expect(warning()!.textContent).toContain(machineOnboardingCopy.batch.keepMine);
+    expect(warning()!.textContent).toContain(machineOnboardingCopy.batch.restoreShort);
+    // A screen reader must hear it as it appears (WCAG 4.1.3).
+    expect(warning()!.querySelector('[role="status"]')).not.toBeNull();
+  });
+
+  it('never blocks: the batch stays exactly what the user chose', async () => {
+    await selectHomeMachine(5_000);
+
+    expect(useRecipeStore.getState().target_batch_grams).toBe(5_000);
+    expect(useRecipeStore.getState().machine_capacity_grams).toBe(700);
+    // No capping, and settings stay confirmable — the warning is advisory only.
+    const confirm = host.querySelector(
+      '[data-testid="profile-settings-confirm"]',
+    ) as HTMLButtonElement;
+    expect(confirm.disabled).toBe(false);
+    await act(async () => confirm.click());
+    expect(host.querySelector('[data-testid="profile-settings-confirmed"]')).not.toBeNull();
+    expect(useRecipeStore.getState().target_batch_grams).toBe(5_000);
+  });
+
+  it('stays silent at or below the recommendation, and for a Professional machine', async () => {
+    await selectHomeMachine(700);
+    expect(warning()).toBeNull();
+    expect(host.querySelector('[data-testid="workbench-batch-custom-in-use"]')).toBeNull();
+
+    // Below the recommendation is the subtle marker only — never the warning.
+    await selectHomeMachine(500);
+    expect(warning()).toBeNull();
+    expect(host.querySelector('[data-testid="workbench-batch-custom-in-use"]')?.textContent).toBe(
+      machineOnboardingCopy.batch.customInUse,
+    );
+
+    // Professional has no machine recommendation, so there is nothing to warn about.
+    await act(async () => {
+      useRecipeStore.getState().setMachineSelection({
+        kind: 'professional',
+        servingModeId: 'temp_minus_12',
+        machineId: null,
+        label: 'Maszyna profesjonalna',
+        temperatureC: -12,
+        batchGrams: 5_000,
+        capacityGrams: null,
+      });
+    });
+    await render();
+    expect(useRecipeStore.getState().target_batch_grams).toBe(5_000);
+    expect(warning()).toBeNull();
+  });
+
+  it('offers the split plan without changing the batch', async () => {
+    await selectHomeMachine(5_000);
+    await click('workbench-batch-split');
+
+    const plan = host.querySelector('[data-testid="workbench-batch-split-plan"]');
+    expect(plan).not.toBeNull();
+    // 5000 g over a 700 g recommendation → 8 EVEN containers of 625 g,
+    // in the owner's verbatim split copy (§7.3).
+    expect(plan!.textContent).toContain(machineOnboardingCopy.split.message(8));
+    expect(plan!.textContent).toContain(machineOnboardingCopy.split.detail(8, '625'));
+    expect(warning()).toBeNull();
+    // Splitting is presentation only: the recipe batch is untouched.
+    expect(useRecipeStore.getState().target_batch_grams).toBe(5_000);
+  });
+
+  it('keeps my amount exactly and swaps the warning for the custom marker', async () => {
+    await selectHomeMachine(5_000);
+    await click('workbench-batch-keep-mine');
+
+    expect(warning()).toBeNull();
+    expect(host.querySelector('[data-testid="workbench-batch-custom-in-use"]')?.textContent).toBe(
+      machineOnboardingCopy.batch.customInUse,
+    );
+    expect(useRecipeStore.getState().target_batch_grams).toBe(5_000);
+  });
+
+  it('restores the recommendation through the ordinary batch path', async () => {
+    await selectHomeMachine(5_000);
+    await click('workbench-batch-restore-recommended');
+
+    expect(useRecipeStore.getState().target_batch_grams).toBe(700);
+    expect(warning()).toBeNull();
+    expect(host.querySelector('[data-testid="workbench-batch-custom-in-use"]')).toBeNull();
+  });
+
+  it('re-asks after a dismissal when the batch changes again (sticky per amount)', async () => {
+    await selectHomeMachine(5_000);
+    await click('workbench-batch-keep-mine');
+    expect(warning()).toBeNull();
+
+    const input = host.querySelector('[aria-label="Docelowa partia"]') as HTMLInputElement;
+    await act(async () => input.focus());
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(
+        input,
+        '6000',
+      );
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await act(async () => input.blur());
+
+    expect(useRecipeStore.getState().target_batch_grams).toBe(6_000);
+    // A new amount is a new decision — the warning legitimately returns.
+    expect(warning()).not.toBeNull();
   });
 });

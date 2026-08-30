@@ -261,8 +261,8 @@ describe('container split notice — owner verbatim copy', () => {
   it('Polish plural + gram formatting for the detail phrase', () => {
     expect(pluralPojemniki(2)).toBe('pojemniki');
     expect(pluralPojemniki(4)).toBe('pojemniki');
-    expect(pluralPojemniki(5)).toBe('Pojemników');
-    expect(pluralPojemniki(12)).toBe('Pojemników');
+    expect(pluralPojemniki(5)).toBe('pojemników');
+    expect(pluralPojemniki(12)).toBe('pojemników');
     expect(pluralPojemniki(22)).toBe('pojemniki');
     expect(formatGrams(450)).toBe('450');
     expect(formatGrams(333.3)).toBe('333,3');

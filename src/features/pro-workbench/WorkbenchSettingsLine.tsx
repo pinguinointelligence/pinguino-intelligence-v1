@@ -18,8 +18,12 @@ import {
 } from '@/features/machine-catalog';
 import {
   RecipeCustomMachineDialog,
+  containerSplitNotice,
+  deriveBatchGuidance,
   effectiveDefaultBatchGrams,
   machineDisplayName,
+  machineOnboardingCopy,
+  type AboveRecommendationChoice,
   type MachineOnboardingCompletion,
 } from '@/features/machine-onboarding';
 import { ReadinessBadge } from '@/features/design-review/ReadinessMarker';
@@ -75,6 +79,10 @@ const compactFinalSettingsLabel =
    third row (owner §13). No information is removed. */
 const compactSettingsHelper = 'sr-only';
 const compactFinalSettingsControl = 'h-11 lg:h-[29px]';
+/* The three non-blocking actions under the above-recommendation warning. Quiet
+   white cells in the Settings palette — an advisory, never a primary control. */
+const aboveActionClass =
+  'pro-focus-ring min-h-9 rounded-[8px] border border-[var(--g-line)] bg-white px-3 text-xs font-semibold whitespace-nowrap text-ink shadow-none transition-colors hover:border-ink/35';
 
 function LabeledSelect<T extends string>({
   label,
@@ -158,6 +166,14 @@ export function WorkbenchSettingsLine({
   const [unit, setUnit] = useState<BatchUnit>('g');
   const [pendingBaseProfile, setPendingBaseProfile] = useState<VisibleProductType | null>(null);
   const [customMachineOpen, setCustomMachineOpen] = useState(false);
+  /* The user's answer to the above-recommendation warning, pinned to the exact
+     amount it was given for (owner 2026-07-17: the choice is sticky per
+     amount). Never persisted — it is a dismissal, not recipe data. */
+  const [aboveChoice, setAboveChoice] = useState<{
+    readonly grams: number;
+    readonly recommendedGrams: number;
+    readonly choice: AboveRecommendationChoice;
+  } | null>(null);
   const activeHomeMachines = useMemo(() => listActiveHomeMachines(MACHINE_CATALOG), []);
   const selectedHome =
     store.machineKind === 'home'
@@ -213,6 +229,32 @@ export function WorkbenchSettingsLine({
   const batchMismatch = Math.abs(actualBatchG - store.target_batch_grams) > 0.1;
   const capacity = store.machineKind === 'home' ? store.machine_capacity_grams : null;
   const cyclePlan = capacity ? planContainerSplit(store.target_batch_grams, capacity) : null;
+
+  /* OWNER FINAL DECISION (2026-07-17) — the machine recommendation is a SOFT
+     proposal. A recipe batch above it is legitimate and is NEVER capped, but it
+     must be shown truthfully wherever the batch is edited, not only in machine
+     settings. Same rule (`deriveBatchGuidance`), same copy — this surface only
+     renders it in the workbench palette. Nothing here blocks anything. */
+  const guidanceGrams = Number.isFinite(store.target_batch_grams) ? store.target_batch_grams : null;
+  /* The choice is sticky per AMOUNT (and per recommendation): a new batch or a
+     new machine is a new decision, so the warning legitimately returns. */
+  const batchChoice: AboveRecommendationChoice =
+    aboveChoice !== null &&
+    aboveChoice.grams === guidanceGrams &&
+    aboveChoice.recommendedGrams === capacity
+      ? aboveChoice.choice
+      : 'undecided';
+  /* `capacity === null` (Professional, or a Home machine with no confirmed
+     recommendation) already yields `kind: 'none'` — no second capacity rule. */
+  const batchGuidance = deriveBatchGuidance({
+    recommendedGrams: capacity,
+    currentGrams: guidanceGrams,
+    choice: batchChoice,
+  });
+  const batchSplit =
+    batchGuidance.kind === 'custom_above' && batchGuidance.split !== null
+      ? containerSplitNotice(batchGuidance.split.totalGrams, capacity)
+      : null;
 
   const pickServing = (id: string, resetToProfessionalDefault = false) => {
     const temp = temperatureForMode(id);
@@ -298,6 +340,19 @@ export function WorkbenchSettingsLine({
       return;
     }
     resizeBatchGrams(target);
+  };
+
+  const chooseAbove = (choice: AboveRecommendationChoice) => {
+    if (guidanceGrams === null || capacity === null) return;
+    setAboveChoice({ grams: guidanceGrams, recommendedGrams: capacity, choice });
+  };
+  /* Restore goes through the ordinary batch path, so recipe locks answer it the
+     same way they answer a typed batch (a refusal surfaces as the existing
+     `batchResizeConflict` line — still no block from this guidance). */
+  const restoreRecommendedBatch = () => {
+    if (capacity === null) return;
+    setAboveChoice(null);
+    changeBatch(capacity);
   };
   return (
     <section
@@ -656,6 +711,63 @@ export function WorkbenchSettingsLine({
           </>
         )}
       </div>
+
+      {/* Above the machine recommendation: warn + offer the three owner actions,
+          never block (§7, owner 2026-07-17). Identical rule and copy to the
+          machine settings card — only the palette is the workbench's.
+          role="status" announces the warning to a screen reader (WCAG 4.1.3). */}
+      {batchGuidance.kind === 'custom_above' && batchGuidance.choice === 'undecided' ? (
+        <div
+          className="mt-2.5 rounded-[10px] border border-status-risky/40 bg-status-risky/10 px-3 py-2.5"
+          data-testid="workbench-batch-above-recommendation"
+        >
+          <p role="status" className="text-xs leading-relaxed font-semibold text-ink">
+            {machineOnboardingCopy.batch.aboveWarning}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className={aboveActionClass}
+              data-testid="workbench-batch-split"
+              onClick={() => chooseAbove('split')}
+            >
+              {machineOnboardingCopy.batch.splitAction}
+            </button>
+            <button
+              type="button"
+              className={aboveActionClass}
+              data-testid="workbench-batch-keep-mine"
+              onClick={() => chooseAbove('keep_mine')}
+            >
+              {machineOnboardingCopy.batch.keepMine}
+            </button>
+            <button
+              type="button"
+              className={aboveActionClass}
+              data-testid="workbench-batch-restore-recommended"
+              onClick={restoreRecommendedBatch}
+            >
+              {machineOnboardingCopy.batch.restoreShort}
+            </button>
+          </div>
+        </div>
+      ) : null}
+      {batchSplit !== null ? (
+        <div
+          role="status"
+          className="mt-2.5 rounded-[10px] border border-ink/10 bg-white px-3 py-2.5 text-xs leading-relaxed text-stone-700"
+          data-testid="workbench-batch-split-plan"
+        >
+          <p className="font-semibold text-ink">{batchSplit.message}</p>
+          <p className="mt-0.5">{batchSplit.detail}</p>
+        </div>
+      ) : null}
+      {batchGuidance.kind === 'custom' ||
+      (batchGuidance.kind === 'custom_above' && batchGuidance.choice === 'keep_mine') ? (
+        <p className="mt-2 text-xs text-stone-600" data-testid="workbench-batch-custom-in-use">
+          {machineOnboardingCopy.batch.customInUse}
+        </p>
+      ) : null}
       <NewRecipeConfirmationDialog
         open={pendingBaseProfile !== null}
         onCancel={() => setPendingBaseProfile(null)}
