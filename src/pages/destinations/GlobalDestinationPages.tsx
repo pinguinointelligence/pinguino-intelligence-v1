@@ -83,16 +83,19 @@ export function ShopPage() {
     >
       {/* GELLATTI V2.1 §5 — the approved Sklep hero: 470 px band, 1.05 / 0.95
           split, graphite right half. The catalogue underneath is untouched;
-          only the top of the page changes. The hero carries no CTA because the
+          only the top of the page changes.
+          The hero deliberately carries ONLY the page-level copy. `ShopCatalog`
+          already opens on „Zestaw startowy / Gellatti Starter Pack" with the
+          same `starterPack` kicker and body, so putting those in the hero too
+          printed them twice on served staging. It also carries no CTA: the
           approved label for that slot belongs to a design-only Starter Pack
-          page that this route no longer is — the composition is preserved, the
+          page this route no longer is — the composition is preserved, the
           invented button is not. */}
       <DestinationHero
         variant="shop"
-        eyebrow={shopCopy.starterPack.kicker}
+        eyebrow={shopCopy.page.eyebrow}
         title={shopCopy.page.title}
         blurb={shopCopy.page.blurb}
-        note={shopCopy.starterPack.body}
         visual={
           <div className="hidden bg-[var(--g-graphite)] p-[26px] lg:grid lg:place-items-center">
             <ImageDirection
