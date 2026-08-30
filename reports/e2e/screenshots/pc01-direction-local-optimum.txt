@@ -66,3 +66,29 @@ WHY THE PREDICATE IS NOT TOO BROAD
     6471  only fires on an `ok`, on-batch candidate identical to the draft
   So the flag already means "the recipe is safe and the requested Direction
   cannot be improved". The presentation layer simply was not reading it.
+
+--- SERVED VERIFICATION -------------------------------------------------------
+Staging 1c9108f5 · deployment dpl_EJBcFdwTE3bkHfo9UaVR9ZE5ZzHu (target
+production, READY) · served bundle index-Ck_Z8sbF.js (7 254 923 bytes).
+
+The deployed artifact carries the branch verbatim:
+
+  case`no_proposal`:return e.directionTargetUnreached===!0
+      ?zP.previewIssue.bestSafeResult
+      :zP.previewIssue.noProposal;
+  case`unsafe_proposal`:return zP.previewIssue.unsafeProposal;
+
+Both sentences ship, which is the point — the reclassification is a fork, not a
+replacement:
+  "Gellatti nie znalazlo dalszej bezpiecznej poprawy..."  present : yes
+  "Nie znaleziono korekty mozliwej przy obecnych blokadach..." present : yes
+  PC-03's `unsafe_proposal` still returns its own sentence : yes
+
+WHY THE EXACT FIXTURE WAS NOT DRIVEN THROUGH THE UI
+  The recorded fixture needs an 807 g RASPBERRY Main. The recipe editor commits
+  gram values only through its 1 g steppers (typed values do not commit — the
+  same constraint recorded in the served-QA harness lessons), so reproducing
+  807 g by hand is not a practical served step. The pipeline-level 8/8 matrix
+  above was run against the real Engine and the real Mapper rows, and the
+  served bundle is verified to contain the exact mapping that turns that
+  terminal state into the canonical sentence.
