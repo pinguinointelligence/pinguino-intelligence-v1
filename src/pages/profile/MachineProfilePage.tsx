@@ -12,7 +12,7 @@ import type { ReactNode } from 'react';
  * machinePreference) joins the selector once the owner applies migrations
  * 0030 + 0031 to the environment the bundle talks to.
  */
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { CustomerSurface } from '@/features/customer-shell/ui/CustomerSurface';
 import { TouchButton } from '@/features/customer-shell/ui/TouchButton';
@@ -34,6 +34,8 @@ import {
 import { selectMachinePreferenceStore } from '@/services/machinePreference/machinePreferenceSelector';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { useAuthStore } from '@/stores/authStore';
+import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
+import { machineAccountDefaultSnapshot } from '@/features/pro-workbench/machineAccountDefault';
 import { ApplicationState } from '@/components/shared/ApplicationState';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
@@ -58,6 +60,22 @@ export function MachineProfilePage() {
     [authUserId],
   );
   const preference = useMachinePreference(store);
+  /* Saving a machine here is what makes it the default for the NEXT new recipe.
+     The sign-in bridge in `providers` covers a reload; this keeps the same
+     session honest, so „+ Nowa receptura" right after saving already opens on
+     the machine that was just saved. */
+  const machineRecord = preference.record;
+  useEffect(() => {
+    useRecipeProfileStore
+      .getState()
+      .setMachineAccountDefault(
+        authUserId,
+        machineRecord === null
+          ? null
+          : (visibleProductType) =>
+              machineAccountDefaultSnapshot(machineRecord, visibleProductType),
+      );
+  }, [authUserId, machineRecord]);
   const [mode, setMode] = useState<PageMode>('view');
   // „Domyślna maszyna została zmieniona na …” after a profile default change.
   const [defaultChangedName, setDefaultChangedName] = useState<string | null>(null);

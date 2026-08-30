@@ -14,6 +14,10 @@ import {
 } from './accountSessionReset';
 import { listUserRecipeDefaults } from '@/services/userRecipeDefaults';
 import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
+import { machineAccountDefaultSnapshot } from '@/features/pro-workbench/machineAccountDefault';
+import { localStorageMachinePreferenceStore } from '@/features/machine-onboarding/localStorageMachinePreferenceStore';
+import { userScopedMachineKey } from '@/features/machine-onboarding/localStorageMachinePreferenceStore';
+import { selectMachinePreferenceStore } from '@/services/machinePreference/machinePreferenceSelector';
 
 const queryClient = new QueryClient();
 
@@ -70,6 +74,46 @@ function ResolvedAccountProviders({
       cancelled = true;
     };
   }, [userId, userEmail, setEffectiveAccess]);
+
+  /* The account's saved machine is the default for a NEW recipe. It lives in
+     its own store (`/machine` writes a MachinePreferenceRecord), so it is
+     resolved here once per signed-in account and handed to the profile store
+     as a LOWER-priority source than a deliberately configured per-product
+     default. Reopening a saved recipe is unaffected: `loadRecipeInput` reads no
+     defaults at all for a saved version. */
+  useEffect(() => {
+    if (!userId) {
+      useRecipeProfileStore.getState().setMachineAccountDefault(null, null);
+      return;
+    }
+    let cancelled = false;
+    const store = selectMachinePreferenceStore({
+      localDevice: () =>
+        localStorageMachinePreferenceStore(undefined, userScopedMachineKey(userId)),
+    }).store;
+    void Promise.resolve(store.load())
+      .then((record) => {
+        if (cancelled) return;
+        useRecipeProfileStore
+          .getState()
+          .setMachineAccountDefault(
+            userId,
+            record === null
+              ? null
+              : (visibleProductType) => machineAccountDefaultSnapshot(record, visibleProductType),
+          );
+      })
+      .catch(() => {
+        // A machine preference that cannot be read must never fabricate one:
+        // the Professional fallback stays exactly as it is today.
+        if (!cancelled) {
+          useRecipeProfileStore.getState().setMachineAccountDefault(userId, null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
 
   useEffect(() => {
     if (!userId) return;
