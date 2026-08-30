@@ -5,6 +5,7 @@ import {
   DestinationHero,
   DestinationSection,
   DestinationSectionHead,
+  ImageDirection,
 } from '@/components/shared/destinationEditorial';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { cn } from '@/lib/cn';
@@ -48,23 +49,61 @@ export function WorkWithUsPage() {
       bare
     >
       {/* ── PRIMARY: partners and creators ───────────────────────────────── */}
+      {/* The approved hero carries the PAGE's identity — eyebrow, title, blurb —
+          exactly as the preview does, so `c.page` is still on the page after
+          `bare` removes the shared `PageHeading`. The partner block keeps its
+          own headline and body in its own section below, so nothing is lost. */}
+      <DestinationHero
+        variant="editorial"
+        eyebrow={c.page.eyebrow}
+        title={c.page.title}
+        blurb={c.page.blurb}
+        actions={
+          <a href="#partner-application" className={buttonClasses('orange', 'md')}>
+            {c.partner.cta}
+          </a>
+        }
+        visual={
+          /* The approved hero keeps its image direction ON A PHONE too — the
+             authority's mobile hero runs the full graphite band with the frame
+             under the CTA, so hiding it below `lg` shortened the band and
+             pushed everything beneath it out of register. */
+          <div className="grid place-items-center p-[26px] pt-0 lg:p-[26px]">
+            <ImageDirection
+              tone="inverse"
+              className="h-full min-h-[190px] w-full"
+              lines={[
+                'Kierunek assetu: zespół i pracownia Gellatti',
+                'Asset nie jest częścią preview.',
+              ]}
+            />
+          </div>
+        }
+      />
+
       <section aria-labelledby="cooperation-partner">
-        <DestinationHero
-          variant="editorial"
-          eyebrow={c.partner.kicker}
-          title={c.partner.headline}
-          blurb={c.partner.body}
-          actions={
-            <a href="#partner-application" className={buttonClasses('orange', 'md')}>
-              {c.partner.cta}
-            </a>
-          }
-          visual={
-            <div className="border-t border-white/12 p-[clamp(28px,4.4vw,44px)] lg:border-t-0 lg:border-l">
-              <DestinationEyebrow tone="inverse">{c.partner.whatYouShareTitle}</DestinationEyebrow>
+        <DestinationSection>
+          <div className="grid overflow-hidden rounded-[12px] border border-[var(--g-line)] lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+            <div className="flex flex-col justify-center bg-[#e7e3dd] p-[clamp(28px,4vw,44px)]">
+              <DestinationEyebrow>{c.partner.kicker}</DestinationEyebrow>
+              <h2
+                id="cooperation-partner"
+                className="mt-2 text-[clamp(26px,2.4vw,32px)] leading-[1.05] font-bold tracking-[-0.035em] text-[var(--g-ink)]"
+              >
+                {c.partner.headline}
+              </h2>
+              <p className="mt-4 max-w-xl text-[13px] leading-relaxed text-[var(--g-text-secondary)]">
+                {c.partner.body}
+              </p>
+            </div>
+            <div className="bg-white p-[clamp(28px,4vw,44px)]">
+              <DestinationEyebrow>{c.partner.whatYouShareTitle}</DestinationEyebrow>
               <ul className="mt-4 space-y-3">
                 {c.partner.whatYouShare.map((line) => (
-                  <li key={line} className="flex gap-3 text-[13px] leading-relaxed text-[#c6c3bd]">
+                  <li
+                    key={line}
+                    className="flex gap-3 text-[13px] leading-relaxed text-[var(--g-text-secondary)]"
+                  >
                     <span
                       aria-hidden
                       className="mt-[7px] size-1.5 shrink-0 rounded-full bg-[var(--g-orange)]"
@@ -74,12 +113,8 @@ export function WorkWithUsPage() {
                 ))}
               </ul>
             </div>
-          }
-        />
-        {/* The hero carries the section's accessible name. */}
-        <h2 id="cooperation-partner" className="sr-only">
-          {c.partner.headline}
-        </h2>
+          </div>
+        </DestinationSection>
 
         <DestinationSection>
           <DestinationEyebrow>{c.partner.howTitle}</DestinationEyebrow>

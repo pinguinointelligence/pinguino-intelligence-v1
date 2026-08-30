@@ -97,10 +97,13 @@ export function ShopPage() {
         title={shopCopy.page.title}
         blurb={shopCopy.page.blurb}
         visual={
-          <div className="hidden bg-[var(--g-graphite)] p-[26px] lg:grid lg:place-items-center">
+          /* The graphite half stays on a phone — the approved mobile hero runs
+             the full band with its visual, so hiding it below `lg` shortens the
+             band and knocks everything under it out of register. */
+          <div className="grid place-items-center bg-[var(--g-graphite)] p-[26px]">
             <ImageDirection
               tone="inverse"
-              className="h-full w-full"
+              className="h-full min-h-[190px] w-full"
               lines={['Neutralny placeholder', 'brak zatwierdzonego zdjęcia lub packaging assetu']}
             />
           </div>
