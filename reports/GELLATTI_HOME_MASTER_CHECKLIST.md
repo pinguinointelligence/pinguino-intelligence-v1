@@ -237,8 +237,8 @@ Legend for yes/no columns: `Y` = yes/required, `–` = no/not required, `?` = to
 | H-105-2 | QA accounts | Roles 1–10: anonymous-via-storage, signed-in free, HOME subscriber, PRO subscriber, PRO-with-HOME-default, Maria (original creator), Tomek (variant of Maria), Anna (variant of Tomek retaining Maria as DNA), likes/favourites user, pre-Partner→Partner creator | – | – | Y | – | – | Y | Y | – | – | Y | Y | TODO | | |
 | H-105-3 | QA accounts | No passwords/secrets committed to the repository; a local/staging QA credential manifest lives outside source control and the account list is given to the Owner in the final report | – | – | Y | – | – | – | – | – | – | Y | – | TODO | manifest path + `.gitignore` proof | |
 | H-106-1 | QA matrix | Verify plan matrix: ANONYMOUS (HOME+PRO demo, masked), FREE (demo + like/favourite allowed), HOME (full HOME, no PRO in header), PRO (both, default PRO), PRO-preferred-HOME (login starts HOME) | – | – | Y | `/`, `/pro/*` | – | – | – | Y | Y | Y | Y | TODO | | |
-| H-107-1 | QA DNA | Maria→Tomek→Anna: B and C both publicly read "Based on original recipe by Maria"; `View original` opens Maria's A; internal history may keep the full chain | – | – | Y | `/community` | – | Y | Y | Y | Y | Y | Y | TODO | | |
-| H-107-2 | QA DNA | Repeat once with an official Gellatti recipe → user variation → "Based on original recipe by Gellatti" | – | – | Y | – | – | Y | Y | Y | Y | Y | Y | TODO | | |
+| H-107-1 | QA DNA | Maria→Tomek→Anna: B and C both publicly read "Based on original recipe by Maria"; `View original` opens Maria's A; internal history may keep the full chain | – | – | Y | `/community` | – | Y | Y | Y | Y | Y | Y | BLOCKED — AUTH | | |
+| H-107-2 | QA DNA | Repeat once with an official Gellatti recipe → user variation → "Based on original recipe by Gellatti" | – | – | Y | – | – | Y | Y | Y | Y | Y | Y | BLOCKED — AUTH | | |
 | H-108-1 | QA Partner | Publish while not Partner → no attribution; activate Partner via the legitimate staging flow; issue code/link; create future attributed activity; attribution starts only from activation/code time; earlier activity is not retroactive; no invented commission rates | – | `partnerShareAttribution` | Y | `/partner` | `services/partner` | Y | Y | – | – | Y | Y | TODO | | |
 | H-109-1 | QA social | Multiple QA users Like, Favourite, remove Like, remove Favourite, refresh, verify persistence, no duplicates, liked-by list, open profiles; no comments | – | – | Y | `/community` | – | Y | Y | Y | Y | Y | Y | TODO | | |
 | H-110-1 | QA Top100 | With 50 seeded publications verify all eligible ranking states; HOME search inspects ONLY Top100; several Community matches → highest-ranked exact match only; existing ranking authority, no second formula | – | `ranking.ts` | Y | `/top100` | – | Y | Y | Y | Y | Y | Y | TODO | | |
@@ -315,3 +315,47 @@ browser verification is recorded as `IMPLEMENTED`, deliberately one rung lower.
   pre-check is not built).
 - Add ingredient / Add topping / Save / Share / Let's make it are rendered but not yet
   wired to their authorities.
+
+---
+
+## 3. Blockers discovered during verification
+
+### B1 — DNA served proof needs an authenticated save path (`BLOCKED — AUTH`, rows H-107-1/2)
+
+I attempted to prove the §38 fix end-to-end by constructing a real
+Maria → Tomek → Anna chain directly on staging. The insert was refused:
+
+```
+ERROR: P0001: authentication required
+CONTEXT: PL/pgSQL function assert_recipe_behavior_authority_v1(jsonb,jsonb,'SAVE')
+         PL/pgSQL function recipe_behavior_write_guard_v1()
+```
+
+`saved_recipes` carries a write guard that requires an authenticated session. **This is
+the guard working correctly, and I did not bypass it** — planting QA rows past a
+protective trigger would invalidate the very thing the proof is supposed to establish.
+The transaction rolled back completely (verified: 0 QA creators, 0 QA recipes,
+0 QA publications, 0 lineage rows remain).
+
+The chain must therefore be built through the app's own authenticated save + publish
+path — which is exactly what §105 means by "legitimate staging QA/Admin paths", and is
+part of the unstarted §103/§104 seed work.
+
+**What IS proven about §38 today:** the SQL resolves `based_on` from
+`coalesce(root_publication_id, parent_publication_id)`; a source test pins that and all
+17 card keys; and `gellatti_publication_card_v1` executes correctly on staging
+(returns `based_on: null` for the one existing publication, which is an original with
+no lineage — the correct answer).
+
+### B2 — `Solver time contracts (isolated)` fails environmentally (blocks merge)
+
+`recipeVectorProximity.test.ts` fails in CI with `Error: Test timed out in 5000ms`;
+the same case runs in **2386 ms locally** and the file is 23/23 green in 17.7 s.
+The identical job fails on **`staging` itself in 4 of its last 6 runs**
+(33319256204, 33317673042, 33316195344, 33312556703 fail; 33320490721, 33314969409
+pass). This branch touches no solver code and the protected-path guard confirms it.
+
+**Deliberately not "fixed" by relaxing the timing budget** — that is the failure mode
+AGENTS.md rule 11 exists to prevent, and it would delete the only signal a real solver
+regression would trip. Raised as a PR comment for an owner decision (re-run / explicit
+documented `testTimeout` / larger runner).
