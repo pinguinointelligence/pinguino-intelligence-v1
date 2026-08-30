@@ -15,6 +15,8 @@ import {
 import { listUserRecipeDefaults } from '@/services/userRecipeDefaults';
 import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
 import { machineAccountDefaultSnapshot } from '@/features/pro-workbench/machineAccountDefault';
+import { professionalAccountDefaultSnapshot } from '@/features/pro-workbench/professionalAccountAuthority';
+import { readProfessionalChoice } from '@/features/machine-onboarding/professionalMachineChoice';
 import { localStorageMachinePreferenceStore } from '@/features/machine-onboarding/localStorageMachinePreferenceStore';
 import { userScopedMachineKey } from '@/features/machine-onboarding/localStorageMachinePreferenceStore';
 import { selectMachinePreferenceStore } from '@/services/machinePreference/machinePreferenceSelector';
@@ -91,6 +93,17 @@ function ResolvedAccountProviders({
       localDevice: () =>
         localStorageMachinePreferenceStore(undefined, userScopedMachineKey(userId)),
     }).store;
+    /* An explicit „Maszyna profesjonalna" is a saved choice like any other, and
+       it wins over a stale Home record because selecting it clears that record;
+       reading it first also keeps the answer stable if a clear ever half-fails. */
+    if (readProfessionalChoice(userId)) {
+      useRecipeProfileStore
+        .getState()
+        .setMachineAccountDefault(userId, professionalAccountDefaultSnapshot);
+      return () => {
+        cancelled = true;
+      };
+    }
     void Promise.resolve(store.load())
       .then((record) => {
         if (cancelled) return;

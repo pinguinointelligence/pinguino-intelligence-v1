@@ -36,6 +36,12 @@ import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { useAuthStore } from '@/stores/authStore';
 import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
 import { machineAccountDefaultSnapshot } from '@/features/pro-workbench/machineAccountDefault';
+import { professionalAccountDefaultSnapshot } from '@/features/pro-workbench/professionalAccountAuthority';
+import {
+  readProfessionalChoice,
+  writeProfessionalChoice,
+} from '@/features/machine-onboarding/professionalMachineChoice';
+import { copy as appCopy } from '@/copy/en';
 import { ApplicationState } from '@/components/shared/ApplicationState';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
@@ -65,17 +71,41 @@ export function MachineProfilePage() {
      session honest, so „+ Nowa receptura" right after saving already opens on
      the machine that was just saved. */
   const machineRecord = preference.record;
+  const [professionalChosen, setProfessionalChosen] = useState(() =>
+    readProfessionalChoice(authUserId),
+  );
+  /* Re-read on an account switch during render rather than in an effect: the
+     read is synchronous, and an effect here would render the previous account's
+     choice for one frame before correcting itself. */
+  const [choiceOwner, setChoiceOwner] = useState(authUserId);
+  if (choiceOwner !== authUserId) {
+    setChoiceOwner(authUserId);
+    setProfessionalChosen(readProfessionalChoice(authUserId));
+  }
   useEffect(() => {
     useRecipeProfileStore
       .getState()
       .setMachineAccountDefault(
         authUserId,
-        machineRecord === null
-          ? null
-          : (visibleProductType) =>
-              machineAccountDefaultSnapshot(machineRecord, visibleProductType),
+        professionalChosen
+          ? professionalAccountDefaultSnapshot
+          : machineRecord === null
+            ? null
+            : (visibleProductType) =>
+                machineAccountDefaultSnapshot(machineRecord, visibleProductType),
       );
-  }, [authUserId, machineRecord]);
+  }, [authUserId, machineRecord, professionalChosen]);
+
+  /* Professional and a Home machine are ONE choice, so picking either clears
+     the other. Professional keeps no record of its own — there is no container
+     and no derived batch to record — only the fact that it was chosen. */
+  const chooseProfessional = async () => {
+    writeProfessionalChoice(authUserId, true);
+    setProfessionalChosen(true);
+    await preference.clear();
+    setDefaultChangedName(appCopy.proMachine.professionalLabel);
+    setMode('view');
+  };
   const [mode, setMode] = useState<PageMode>('view');
   // „Domyślna maszyna została zmieniona na …” after a profile default change.
   const [defaultChangedName, setDefaultChangedName] = useState<string | null>(null);
@@ -91,6 +121,8 @@ export function MachineProfilePage() {
   }, [preference.record]);
 
   const handleComplete = async (completion: MachineOnboardingCompletion) => {
+    writeProfessionalChoice(authUserId, false);
+    setProfessionalChosen(false);
     const hadDefault = preference.record !== null;
     const ok = await preference.save(completion.record);
     // §7: „Zmień domyślną maszynę” explicitly changes the PROFILE default — an
@@ -155,6 +187,7 @@ export function MachineProfilePage() {
           <MachineOnboarding
             onComplete={(completion) => void handleComplete(completion)}
             submitLabel={machineOnboardingCopy.settings.saveAndGoToRecipe}
+            onSelectProfessional={() => void chooseProfessional()}
             {...(mode === 'edit_custom' && editableCustomProfile !== null
               ? { editCustomProfile: editableCustomProfile }
               : {})}
@@ -180,6 +213,30 @@ export function MachineProfilePage() {
             ✓ {machineOnboardingCopy.recipeMachine.defaultChanged(defaultChangedName)}
           </p>
         ) : null}
+        {professionalChosen ? (
+          /* Professional has no container and no derived batch to show, so the
+             panel states exactly what was chosen and what it means, and offers
+             the same „Zmień maszynę" door as a saved Home machine. */
+          <section
+            className="rounded-2xl border border-ink/12 bg-white p-5"
+            data-testid="machine-professional-summary"
+          >
+            <p className="text-[11px] font-semibold tracking-[0.08em] text-stone-500 uppercase">
+              {machineOnboardingCopy.profile.defaultLabel}
+            </p>
+            <h2 className="mt-1 text-xl font-semibold text-ink">
+              {appCopy.proMachine.professionalLabel}
+            </h2>
+            <p className="mt-2 text-[13px] leading-relaxed text-stone-600">
+              {machineOnboardingCopy.tiles.professionalNote}
+            </p>
+            <div className="mt-5">
+              <TouchButton variant="quiet" onClick={() => setMode('onboarding')}>
+                {machineOnboardingCopy.profile.change}
+              </TouchButton>
+            </div>
+          </section>
+        ) : (
         <MachineProfileSection
           view={settingsView}
           onRegisterSave={registerSave}
@@ -194,6 +251,7 @@ export function MachineProfilePage() {
             ? { onEditCustom: () => setMode('edit_custom') }
             : {})}
         />
+        )}
       </div>
     </>,
     saveMachineSettings ? (

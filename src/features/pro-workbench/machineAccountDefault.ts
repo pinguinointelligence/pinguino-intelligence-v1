@@ -23,6 +23,7 @@ import {
   machineDisplayName,
   resolvePreferenceProfile,
 } from '@/features/machine-onboarding/machineViews';
+import { copy } from '@/copy/en';
 import type { VisibleProductType } from '@/features/studio/productType';
 import {
   DEFAULT_DIRECTION_INTENTS,
@@ -90,4 +91,41 @@ export function machineAccountDefaultSnapshot(
     directionTargets: DEFAULT_DIRECTION_TARGETS,
     directionIntents: DEFAULT_DIRECTION_INTENTS,
   };
+}
+
+/**
+ * „Maszyna profesjonalna" chosen explicitly in Machine Settings.
+ *
+ * Nothing here is a new rule. `startNewRecipe` already applies the canonical
+ * Professional batch and `PROFESSIONAL_DEFAULT` source to anything that is not
+ * a `home` machine, so this snapshot only has to say WHICH kind was chosen.
+ *
+ * The canonical grams and serving mode are PASSED IN rather than imported.
+ * `newRecipeStarter` and `recipeStore` form a pre-existing module cycle — a
+ * module that imports the starter before the store sees
+ * `PROFESSIONAL_DEFAULT_BATCH_GRAMS` as `undefined` — and importing either from
+ * here would add a new edge into it. The app-level callers already sit safely
+ * outside that cycle, so they hand the authority in and this module keeps one
+ * source of truth without creating a second hazard.
+ */
+export function professionalAccountDefault(authority: {
+  batchGrams: number;
+  servingModeId: string;
+  targetTemperatureC: number;
+}): (visibleProductType: VisibleProductType) => ProfileSettingsSnapshot {
+  return (visibleProductType) => ({
+    visibleProductType,
+    mode: 'classic',
+    targetBatchGrams: authority.batchGrams,
+    batchSource: 'PROFESSIONAL_DEFAULT',
+    machineKind: 'professional',
+    machineId: null,
+    machineLabel: copy.proMachine.professionalLabel,
+    machineTechnology: null,
+    servingModeId: authority.servingModeId,
+    targetTemperatureC: authority.targetTemperatureC,
+    machineCapacityGrams: null,
+    directionTargets: DEFAULT_DIRECTION_TARGETS,
+    directionIntents: DEFAULT_DIRECTION_INTENTS,
+  });
 }
