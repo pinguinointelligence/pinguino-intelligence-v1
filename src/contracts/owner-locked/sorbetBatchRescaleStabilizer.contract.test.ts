@@ -139,15 +139,17 @@ describe('OWNER-LOCKED — batch rescale keeps the Sorbet stabilizer system cano
   });
 
   it('7. neither the projection nor the store writes a gram ceiling of its own', () => {
-    const authority = readFileSync(
-      'src/features/recipe-constraints/sorbetStabilizerSystemAuthority.ts',
+    /* The projection deliberately lives BESIDE the authority rather than inside
+       it: `sorbetStabilizerSystemAuthority.ts` is part of the security-reviewed
+       Production Rescue Edge source closure (GEL-P0-018), and a Studio-side
+       repair has no business enlarging that closure. It owns no limit of its
+       own — every number still comes from the authority it imports. */
+    const projection = readFileSync(
+      'src/features/recipe-constraints/sorbetStabilizerRescaleProjection.ts',
       'utf8',
     );
-    const projection = authority.slice(
-      authority.indexOf('export function planSorbetStabilizerSystemRescale'),
-      authority.indexOf('export function assessSorbetStabilizerSystem'),
-    );
     expect(projection).toContain('sorbetStabilizerWholeGramBand');
+    expect(projection).toContain("from './sorbetStabilizerSystemAuthority'");
     // Only the whole-gram arithmetic may carry numerals; no percentage and no
     // gram ceiling may be restated here.
     const code = projection.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');

@@ -87,7 +87,6 @@ export {
   SORBET_STABILIZER_SYSTEM_POLICY,
   assessSorbetStabilizerSystem,
   clampSorbetStabilizerComponentGrams,
-  planSorbetStabilizerSystemRescale,
   projectSorbetStabilizerSystemToWholeGramPreferred,
   sorbetStabilizerSystemApplies,
   sorbetStabilizerSystemItems,
@@ -97,6 +96,8 @@ export {
   type SorbetStabilizerSystemIssueCode,
   type SorbetStabilizerWholeGramBand,
 } from './sorbetStabilizerSystemAuthority';
+
+export { planSorbetStabilizerSystemRescale } from './sorbetStabilizerRescaleProjection';
 
 export {
   assessOwnerStabilizerSystem,
