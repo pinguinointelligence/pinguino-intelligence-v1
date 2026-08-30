@@ -183,7 +183,9 @@ kcal/100 g, while the final product mass reacts (1000 g → 1050 g).
 | EU Label | EU profile resolved; name, LOT, real mass, ingredients, allergens and nutrition all `GOTOWE`; blocked only on the four missing saturated-fat figures (blocker 2) |
 | **Production — Vegan** | **PASS** on staging. `QA Vegan Kokos -12` v2, 7 lines, 1000 g, **LOT-20260829-834993C734**. Reached through *"Utwórz nową wersję z aktualnymi danymi produktów"* → NEAREST consent (9/10, *"Słodycz: cel nieosiągnięty"*) → Apply → Save → Production |
 | **Production — Protein** | **PASS** on staging. `QA Protein Kakao -12` v2, 8 lines, 1000 g, **LOT-20260829-92AACEA842** |
-| **Production — Sorbet** | **BLOCKED — PC-06**, re-confirmed on the final head `c7344691` *after* PR #5's Sorbet fix landed, so the two are independent. A saved Sorbet cannot be taken into Production at all: Produkcja demands a recalculation, the recalculation answers *"najbliższy osiągalny wynik … receptura nie została zmieniona"*, and ZAPISZ is then disabled because nothing changed. Reproduced at −12 °C **and** −13 °C |
+| **Production — PC-07 re-run** | **PASS** on staging `49dea0b4` for the two saved versions whose product evidence had gone stale. Before PR #14 they were an honest refusal with no reachable cure; now Produkcja offers *„Utwórz nową wersję z aktualnymi danymi produktów"* and the chain runs refresh → przelicz → (NEAREST 9/10 for Vegan) → zastosuj → zapisz → Produkcja. Batches completed: **LOT-20260830-60DCC5F047** (Vegan, 10/10) and **LOT-20260830-D0469F7926** (Protein, 10/10). v1 untouched in both. Capture: `reports/e2e/screenshots/pc07-product-data-recovery.txt` |
+| **EU Label** | **PASS** on staging `49dea0b4`. Blocker 2 was a data gap, not a code gap: the workspace already owns the designed way through — an operator-supplied final saturated-fat value with its confirmation source. Exercised end to end on `LOT-20260830-D0469F7926`: six operator fields → rendered EU label (ingredients descending by mass, full nutrition panel, net quantity, LOT, best before, storage, FBO block, 102 × 152 mm at 1.20 mm x-height) → **`Pobierz PDF` produced a real 512 762-byte `application/pdf`** → *„Etykieta partii zapisana"*. Every operator value is an explicitly marked staging QA placeholder, including a deliberately fictitious operator. Detail: `reports/e2e/eu-labels/README.txt` |
+| **Production — Sorbet** | **PASS** on staging `3e0b8b94`. PC-06 was closed in PR #8: a saved, unedited, whole-gram version is now its own executable evidence, so the recalculate/save/production loop is gone. Both fixtures completed batches — `LOT-20260830-0624A2A275` (−12 °C, 10/10) and `LOT-20260830-ADA64E65AC` (−13 °C, 10/10) — and neither saved version was rewritten (`md5(recipe_input)` identical before and after). Capture: `reports/e2e/screenshots/pc06-sorbet-production.txt` |
 | Community | Creator `@marysialody` created inline; recipe published **with an image**; card visible with attribution |
 | Ranking | Top 100 ranks it **#1** — one eligible recipe still yields a truthful board |
 | Favourites | 2 products starred, persisted across reload, "Ulubione" filter returns exactly those two |
@@ -199,6 +201,16 @@ kcal/100 g, while the final product mass reacts (1000 g → 1050 g).
 ---
 
 ## Honest status
+
+**Updated 2026-08-30.** Since the first pass, PC-06 and PC-07 were both closed
+and served, so **Production now completes end to end for all four profiles from
+a saved recipe**, and the EU label print pipeline is proven through to a real
+PDF. What remains genuinely undone is listed in `GELLATTI_BLOCKERS.md`: the
+Stripe card entry (an action I do not perform), the Scanner photo intake (needs
+an image file on disk), and the account-level machine persistence launch gate
+(an owner decision, because the shared code path would also reach production).
+
+The original first-pass assessment follows, kept for the record.
 
 This is **not** a full pass of the brief. Delivered in full: the exhaustive
 formulation matrix (Phase A), the partner lane (I), franchise (J), the shop and

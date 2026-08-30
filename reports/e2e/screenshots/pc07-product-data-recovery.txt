@@ -1,0 +1,65 @@
+GELLATTI — served capture: PC-07, stale product data -> Production
+Served on https://staging.pinguinoai.com as test1@test1.com
+Staging 49dea0b4 · bundle index-l-TPbhsX.js · captured 2026-08-30
+
+FIXTURES (the two saved versions that stalled)
+  QA Vegan Kokos -12    id 0c02c5df-b981-40ce-bbfa-e3257aa4853f  v1, 7 lines
+  QA Protein Kakao -12  id 71284828-3ae3-4aee-82d0-124e3fc8ff93  v1, 8 lines
+  Server verdict before the fix (reports/e2e/pc07/validation.json):
+    Vegan   REFINED COCONUT OIL  behavior_snapshot_missing_or_unresolved:...:refresh_product_data
+    Protein PROTEIN GEL WPC      behavior_snapshot_missing_or_unresolved:...:refresh_product_data
+  NOTE: two recipes share each name. The rows that stall are the v1-only ones
+  above; the 22:02 rows already carry a refreshed v2.
+
+--- BEFORE (staging d1498d85) -------------------------------------------------
+  Produkcja : "WYMAGA RECEPTURY WYKONAWCZEJ / Nie udalo sie potwierdzic
+               produktow / Produkcja wymaga odswiezenia biezacej weryfikacji
+               produktow." - ONLY action "Wroc do receptury"
+  Receptura : no Przelicz control at all, ZAPISZ disabled
+  Monitor   : nothing
+  VERDICT   : BLOCKED - honest refusal, unreachable cure.
+
+--- AFTER (staging 49dea0b4) --------------------------------------------------
+Every step below offered exactly one obvious next action.
+
+  1. Produkcja  data-prerequisite="product_authority_required"
+                "Nie udalo sie potwierdzic produktow"
+                ACTION: "Utworz nowa wersje z aktualnymi danymi produktow"
+  2. -> refresh runs; prerequisite becomes "preview_required"
+                "Najpierw przelicz recepture"   ACTION: "Przelicz recepture"
+  3. -> Vegan:   NEAREST consent "Nie moge osiagnac dokladnie wybranego celu /
+                 Najblizszy poprawny wynik: 9/10 / Slodycz: cel nieosiagniety"
+                 ACTION: "Przelicz najlepiej mozliwie"
+                 -> preview, 5 zmian: WATER 389->387, OAT DRINK 227->230,
+                    REFINED COCONUT OIL 116->114, SUCROSE 126->128,
+                    DEXTROSE 87->86      ACTION: "Zastosuj zmiany"
+     -> Protein: "Jeszcze jeden krok. Potwierdz ustawienia" -> "Potwierdz
+                 ustawienia" -> "Receptura juz spelnia wybrany profil."
+  4. -> prerequisite "saved_version_required"
+                "Zapisz wersje wykonawcza"  ACTION: "Wroc i zapisz recepture"
+  5. -> ZAPISZ enabled -> saved
+  6. -> Produkcja "WSZYSTKO GOTOWE DO ROZPOCZECIA PARTII", zrodlo
+                "Zapisana wersja", no prerequisite, "Rozpocznij partie" enabled
+
+BATCHES COMPLETED
+  QA Vegan Kokos -12    Wersja 3, 7/7 wazenie, 1000 g
+                        LOT-20260830-60DCC5F047, wynik koncowy 10
+  QA Protein Kakao -12  Wersja 2, 8/8 wazenie, 1000 g
+                        LOT-20260830-D0469F7926, wynik koncowy 10
+
+THE HISTORICAL VERSION IS NEVER REWRITTEN
+  Vegan   0c02c5df: v1 still 2026-08-29 22:17:21, auditless; v2+v3 appended
+  Protein 71284828: v1 still 2026-08-29 22:17:21, auditless; v2 appended
+  No recipe row was created; both kept their names.
+
+ALSO CHECKED, NOT DEFECTS
+  * Mobile settings reveal at 390x844: dispatching the recalculation panel's
+    "Otworz ustawienia" event opens the cockpit sheet correctly (sheet closed
+    -> open). An earlier suspicion of a route/sheet race was NOT reproducible;
+    the first reading was a double-tap artifact of the test harness.
+  * ECO + a line showing "Koszt niepelny": ECO does NOT refuse with
+    `missing_prices` on either fixture — Vegan ECO returns
+    `optimizer_no_solution` WITH an action. `ProRecalcPanel` renders no action
+    for `missing_prices`, which would be a dead end if reached, but no recipe
+    reaching it could be constructed. Recorded as an unverified code
+    observation, not a bug.

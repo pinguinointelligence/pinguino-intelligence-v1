@@ -10,6 +10,39 @@ autonomous acceptance run could not finish itself, with what it did instead.
 | 3 | Phase D1 — cacao Scanner fixture | The Scanner accepts **image intake only** (`Zrób zdjęcie` / `Dodaj ze zdjęcia` / drag-and-drop); there is no EAN-entry path in the UI. The owner's cacao photograph arrived as a chat attachment, not as a file on disk, so there was no image file to feed it. I did not synthesise a package photo: an OCR pipeline that builds a catalogue product from a fabricated label would produce evidence that looks genuine and is not. | The product was identified from the owner's photograph and confirmed against an independent public source, so the fixture is one drag-and-drop away: **CACAO PURO · La Chocolatera · 250 g**, EAN **8410109108392** (Mercadona ES). Label facts read off the photo, per 100 g: 1556 kJ / 375 kcal · fat 16 g (saturates 10 g) · carbohydrate 16 g (sugars 0,70 g) · protein 26 g · salt 0,03 g · cocoa butter 16 % · "contiene azúcares naturalmente presentes". Independent confirmation: [Open Food Facts 8410109108392](https://world.openfoodfacts.org/product/8410109108392/cacao-puro-la-chocolatera). | Save that photo to disk and drop it on `/products/scan` as `test1@test1.com`. Everything downstream — OCR, exact-product search, dedupe, canonical binding, ProductBehavior resolution, finalisation, picker — then runs unattended. |
 | 4 | Phase D2 — two further commercial products | Same intake constraint: adding a product end-to-end through the Scanner requires a package photograph, and researched facts alone cannot be fed to it. | Research is not the blocker and was not attempted as a substitute for the photo. | Photograph any two commercial packages and run the same flow. |
 
+## Status update — 2026-08-30
+
+**Blocker 2 (EU label PDF) is CLOSED.** It was a data gap, not a code gap. The
+label workspace already owns the designed route: the operator supplies the final
+saturated-fat value together with its confirmation source, which flips
+`saturatedFatAuthority` from `missing` to `manual_final_value`. Exercised end to
+end on `LOT-20260830-D0469F7926` — the label rendered, `Pobierz PDF` produced a
+real 512 762-byte `application/pdf`, and the final label saved. Every operator
+value used is an explicitly marked staging QA placeholder, including a
+deliberately fictitious operator, so the artifact cannot be mistaken for a real
+label. Detail: `reports/e2e/eu-labels/README.txt`. **Owner action is unchanged in
+substance** — supply supplier-confirmed saturated-fat figures for `MILK 3.5%`,
+`CREAM 30%`, `SKIMMED MILK`, `TARA GUM` (and `PROTEIN GEL WPC`, `CACAO` for the
+protein base) — but nothing in the application is blocking.
+
+**Blockers 1, 3 and 4 stand**, for the reasons already stated: I do not enter
+card numbers, and the Scanner needs an image file on disk that I will not
+fabricate.
+
+**New entry — 5. Account-level machine persistence (owner decision).**
+`user_machine_preference` **is applied on staging** (15 columns, 4 RLS policies),
+so the precondition written into `machinePreferenceSelector.ts` — *"wire the
+backend factory ONLY after the owner applies 0030"* — is satisfied there. It is
+still not wired, and I did not wire it: `selectMachinePreferenceStore` is shared
+by every build, and flipping it would also point **production** at a table whose
+migration is the owner's to apply. The selector deliberately throws rather than
+degrading silently, so a runtime probe is not an acceptable substitute. Owner
+action: apply 0030 on production, then wire the `backend` factory in
+`MachineProfilePage.tsx` and `CustomerShellV1.tsx`. Until then the device-local
+store remains honest (`isAccountScoped: false`).
+
+---
+
 ## Migration-ledger note (not a blocker, but the owner should know)
 
 All four migrations added in this run are applied on the staging project and
