@@ -247,6 +247,18 @@ describe('Production trusted Rescue runtime races', () => {
       session: productionSession,
       archivedSessions: [],
     });
+    /* A saved, unedited, whole-gram version is production-ready (PC-06), so the
+       hook now reaches server validation in every test in this file — including
+       the Rescue-race tests, whose subject is authorization ordering, not
+       readiness. Give the dependency a defined default answer; the two tests
+       that care about validation still override it with their own. */
+    mocks.validateRecipeBehaviorOnServer.mockResolvedValue({
+      ready: true,
+      module: 'PRODUCTION',
+      staleLineIds: [],
+      lines: [],
+      processReadiness: { schemaVersion: 1, status: 'READY', blockers: [], advisories: [] },
+    });
   });
 
   afterEach(async () => {
