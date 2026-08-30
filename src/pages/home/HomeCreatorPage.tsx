@@ -28,6 +28,7 @@ import {
 } from '@/features/home-creator/useHomeEntitlement';
 import { useHomeFlow } from '@/features/home-creator/useHomeFlow';
 import { useHomeRecipeResult } from '@/features/home-creator/useHomeRecipeResult';
+import { useHomeIntentIngredients } from '@/features/home-creator/useHomeIntentIngredients';
 import { visibleProductTypeFor } from '@/features/home-creator/homeProfileMapping';
 import { proposeRecipeName } from '@/features/home-creator/homeRecipeName';
 import { buildHomeMachineView } from '@/features/home-creator/homeMachinePresentation';
@@ -69,6 +70,8 @@ export function HomeCreatorPage() {
   const [machine, setMachine] = useState<HomeMachineProfile | null>(null);
   const [amount, setAmount] = useState<HomeAmount | null>(null);
   const [forceMachineStage, setForceMachineStage] = useState(false);
+  const [resolving, setResolving] = useState(false);
+  const intentIngredients = useHomeIntentIngredients();
 
   const derivation = useMemo(() => (machine ? deriveMachineSetup(machine) : null), [machine]);
   const recommendedBatchGrams = derivation?.recommendedBatchGrams ?? null;
@@ -173,6 +176,17 @@ export function HomeCreatorPage() {
       // what happened before this line existed.
       if (machine) applyMachineSelection(machine);
       useHomeDraftStore.getState().markRecipeReady(true);
+
+      // §22/§49: the base is correct for the profile but is not yet what the user
+      // ASKED for. Add each resolved flavour through the same store action the Pro
+      // builder uses, and let the Main authority decide the crown.
+      void (async () => {
+        for (const chip of useHomeDraftStore.getState().chips) {
+          if (chip.productId === null || chip.ambiguous) continue;
+          await intentIngredients.addResolvedChip(chip);
+        }
+      })();
+
       window.setTimeout(() => scrollToStage('recipe'), 60);
     },
     [
@@ -180,6 +194,7 @@ export function HomeCreatorPage() {
       amount,
       machine,
       applyMachineSelection,
+      intentIngredients,
       recommendedBatchGrams,
       recipe.target_batch_grams,
       recipe.target_temperature_c,
@@ -244,11 +259,25 @@ export function HomeCreatorPage() {
           <HomeIntentSection
             onSubmit={() => {
               useHomeDraftStore.getState().submitIntent();
+              // §18: identity resolution starts HERE — never while the user is still
+              // describing the idea.
+              setResolving(true);
+              void (async () => {
+                try {
+                  for (const chip of useHomeDraftStore.getState().chips) {
+                    if (chip.productId !== null) continue;
+                    await intentIngredients.resolveOne(chip);
+                  }
+                } finally {
+                  setResolving(false);
+                }
+              })();
               window.setTimeout(() => {
                 const next = draft.profile === null ? 'profile' : 'machine';
                 scrollToStage(next);
               }, 60);
             }}
+            resolving={resolving}
             onScan={() => {
               // The cheap scanner pre-check is Phase 2; until it exists the button
               // must not pretend to work, so it is not wired to a fake result.

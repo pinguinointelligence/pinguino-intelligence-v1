@@ -25,10 +25,13 @@ export function HomeIntentSection({
   onSubmit,
   onScan,
   onChipClick,
+  resolving = false,
 }: {
   onSubmit: () => void;
   onScan: () => void;
   onChipClick?: (chip: IntentChip) => void;
+  /** §18: identity resolution runs only after `Create my recipe`. */
+  resolving?: boolean;
 }) {
   const [value, setValue] = useState('');
   const fieldId = useId();
@@ -215,7 +218,15 @@ export function HomeIntentSection({
       >
         {homeCreatorCopy.intent.cta}
       </button>
-      {chips.length === 0 ? (
+      {resolving ? (
+        <p
+          className="mt-3 text-center text-[12px]"
+          data-testid="home-intent-resolving"
+          style={{ color: 'var(--g-text-muted)' }}
+        >
+          {homeCreatorCopy.intent.resolving}
+        </p>
+      ) : chips.length === 0 ? (
         <p className="mt-3 text-center text-[12px]" style={{ color: 'var(--g-text-muted)' }}>
           {homeCreatorCopy.intent.emptyHint}
         </p>

@@ -16,6 +16,34 @@
 import type { SafeMapperSearchRow } from '@/services/productPicker/mapperSearch';
 import { normalizeIntentText } from './homeIntentParsing';
 
+/**
+ * The catalogue search terms to try for one chip, in order.
+ *
+ * THE BUG THIS EXISTS TO FIX (found in browser QA, 2026-08-30): the Mapper catalogue
+ * is named in ENGLISH (`STRAWBERRIES`), while §25 invites the user to type
+ * `truskawka`, `fresa` or `Erdbeere`. Searching the user's raw word therefore matched
+ * NOTHING for every non-English input — the intent was understood perfectly and then
+ * thrown away at the catalogue boundary.
+ *
+ * The parser already emits a canonical `concept` for exactly this reason, so the
+ * concept is tried FIRST and the raw word second. This is not a translation layer and
+ * it invents no equivalence (§24): the concept is only a search string, and whatever
+ * the catalogue returns still goes through the normal ranking and the §23 choice.
+ */
+export function catalogueSearchTerms(chip: {
+  readonly label: string;
+  readonly concept: string | null;
+}): readonly string[] {
+  const terms: string[] = [];
+  if (chip.concept !== null) {
+    // Concepts are snake_case keys (`peanut_butter`); the catalogue is spaced words.
+    terms.push(chip.concept.replace(/_/g, ' '));
+  }
+  const raw = chip.label.trim();
+  if (raw && !terms.includes(raw)) terms.push(raw);
+  return terms;
+}
+
 export type IdentityResolution =
   | { readonly kind: 'resolved'; readonly row: SafeMapperSearchRow; readonly exact: boolean }
   | { readonly kind: 'ambiguous'; readonly candidates: readonly SafeMapperSearchRow[] }

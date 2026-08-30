@@ -16,7 +16,11 @@ import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMa
 import { searchCanonicalMapperIngredients } from '@/services/productPicker/mapperSearch';
 import type { EngineIngredient } from '@/engine';
 import type { SafeMapperSearchRow } from '@/services/productPicker/mapperSearch';
-import { resolveIdentity, type IdentityResolution } from './homeIdentityResolution';
+import {
+  catalogueSearchTerms,
+  resolveIdentity,
+  type IdentityResolution,
+} from './homeIdentityResolution';
 
 /** What one chip resolved to, ready for the UI to act on. */
 export type ChipResolution =
@@ -27,29 +31,38 @@ export type ChipResolution =
   | { readonly kind: 'unavailable'; readonly reason: string };
 
 /**
- * Resolve one intent term against the canonical Mapper catalogue.
+ * Resolve one intent chip against the canonical Mapper catalogue.
  *
- * `term` is the user's own word. The search is the SAME RPC the recipe picker and the
- * Products page use, so HOME can never see a product Pro cannot.
+ * The search is the SAME RPC the recipe picker and the Products page use, so HOME can
+ * never see a product Pro cannot.
+ *
+ * The chip's canonical CONCEPT is tried BEFORE the user's raw word. The catalogue is
+ * named in English (`STRAWBERRIES`) while §25 invites `truskawka` / `fresa` /
+ * `Erdbeere`, so searching the raw word alone resolved nothing for every non-English
+ * user — the intent was understood perfectly and then thrown away at the catalogue
+ * boundary. An `unavailable` outcome short-circuits immediately: retrying a catalogue
+ * outage would let it masquerade as "no such product".
  */
-export async function resolveChipTerm(term: string, signal?: AbortSignal): Promise<ChipResolution> {
-  const outcome = await searchCanonicalMapperIngredients({ text: term, limit: 12, signal });
-  switch (outcome.kind) {
-    case 'results': {
-      const decision: IdentityResolution = resolveIdentity(outcome.rows, term);
-      if (decision.kind === 'resolved') return { kind: 'resolved', row: decision.row };
-      if (decision.kind === 'ambiguous') {
-        return { kind: 'ambiguous', candidates: decision.candidates };
-      }
-      return { kind: 'unresolved' };
-    }
-    case 'unavailable':
+export async function resolveChipTerm(
+  chip: { readonly label: string; readonly concept: string | null },
+  signal?: AbortSignal,
+): Promise<ChipResolution> {
+  for (const term of catalogueSearchTerms(chip)) {
+    const outcome = await searchCanonicalMapperIngredients({ text: term, limit: 12, signal });
+    if (outcome.kind === 'unavailable') {
       return { kind: 'unavailable', reason: outcome.reason };
-    case 'error':
-      return { kind: 'unavailable', reason: outcome.message };
-    case 'aborted':
-      return { kind: 'unavailable', reason: 'aborted' };
+    }
+    if (outcome.kind === 'error') return { kind: 'unavailable', reason: outcome.message };
+    if (outcome.kind === 'aborted') return { kind: 'unavailable', reason: 'aborted' };
+
+    const decision: IdentityResolution = resolveIdentity(outcome.rows, term);
+    if (decision.kind === 'resolved') return { kind: 'resolved', row: decision.row };
+    if (decision.kind === 'ambiguous') {
+      return { kind: 'ambiguous', candidates: decision.candidates };
+    }
+    // Nothing under this term — fall through and try the next one.
   }
+  return { kind: 'unresolved' };
 }
 
 /**

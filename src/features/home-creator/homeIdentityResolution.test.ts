@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SafeMapperSearchRow } from '@/services/productPicker/mapperSearch';
-import { resolveIdentity, scoreCandidate } from './homeIdentityResolution';
+import { catalogueSearchTerms, resolveIdentity, scoreCandidate } from './homeIdentityResolution';
 
 const row = (id: string, name: string): SafeMapperSearchRow => ({
   ingredient_id: id,
@@ -82,5 +82,34 @@ describe('scoring', () => {
 
   it('is diacritics-insensitive so Polish input matches catalogue names', () => {
     expect(scoreCandidate(row('a', 'TRUSKAWKA'), 'truskawką')).toBe(3);
+  });
+});
+
+describe('catalogue search terms — the §25 ↔ §22 boundary', () => {
+  it('tries the canonical English concept BEFORE the user’s own word', () => {
+    // The catalogue is named in English; the user may type Polish. Searching the raw
+    // word first found nothing for every non-English input — the bug this fixes.
+    expect(catalogueSearchTerms({ label: 'truskawka', concept: 'strawberry' })).toEqual([
+      'strawberry',
+      'truskawka',
+    ]);
+  });
+
+  it('spaces a snake_case concept so it can match a catalogue name', () => {
+    expect(catalogueSearchTerms({ label: 'maslo orzechowe', concept: 'peanut_butter' })[0]).toBe(
+      'peanut butter',
+    );
+  });
+
+  it('falls back to the raw word when nothing was recognised (§22)', () => {
+    expect(catalogueSearchTerms({ label: 'kombucha', concept: null })).toEqual(['kombucha']);
+  });
+
+  it('does not repeat the same term twice', () => {
+    expect(catalogueSearchTerms({ label: 'mango', concept: 'mango' })).toEqual(['mango']);
+  });
+
+  it('drops an empty raw word rather than searching for nothing', () => {
+    expect(catalogueSearchTerms({ label: '   ', concept: 'vanilla' })).toEqual(['vanilla']);
   });
 });
