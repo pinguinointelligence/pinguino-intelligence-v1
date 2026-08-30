@@ -268,5 +268,18 @@ export function pluralPojemniki(n: number): string {
   const mod10 = n % 10;
   const mod100 = n % 100;
   if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return 'pojemniki';
-  return 'Pojemników';
+  return 'pojemników';
+}
+
+/**
+ * Polish plural for „cykl” in the machine cycles readout („2 cykle · 500 g /
+ * cykl”, „8 cykli · 625 g / cykl”). Same 2–4 rule as `pluralPojemniki`, plus
+ * the singular the readout needs for one cycle.
+ */
+export function pluralCykle(n: number): string {
+  if (n === 1) return 'cykl';
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return 'cykle';
+  return 'cykli';
 }

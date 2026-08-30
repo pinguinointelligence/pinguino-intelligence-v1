@@ -18,7 +18,7 @@ import {
   buildCustomMachineProfile,
   deriveMachineSetup,
 } from '@/features/machine-catalog';
-import { machineOnboardingCopy as copy, pluralPojemniki } from './machineOnboardingCopy';
+import { machineOnboardingCopy as copy, pluralCykle, pluralPojemniki } from './machineOnboardingCopy';
 import {
   autoConfigLines,
   buildMachineContextView,
@@ -261,11 +261,23 @@ describe('container split notice — owner verbatim copy', () => {
   it('Polish plural + gram formatting for the detail phrase', () => {
     expect(pluralPojemniki(2)).toBe('pojemniki');
     expect(pluralPojemniki(4)).toBe('pojemniki');
-    expect(pluralPojemniki(5)).toBe('Pojemników');
-    expect(pluralPojemniki(12)).toBe('Pojemników');
+    expect(pluralPojemniki(5)).toBe('pojemników');
+    expect(pluralPojemniki(12)).toBe('pojemników');
     expect(pluralPojemniki(22)).toBe('pojemniki');
     expect(formatGrams(450)).toBe('450');
     expect(formatGrams(333.3)).toBe('333,3');
+  });
+
+  it('Polish plural for the machine cycles readout', () => {
+    // The workbench renders „8 cykli · 625 g / cykl" for an over-capacity
+    // batch; „cykle" is the 2-4 form only.
+    expect(pluralCykle(1)).toBe('cykl');
+    expect(pluralCykle(2)).toBe('cykle');
+    expect(pluralCykle(4)).toBe('cykle');
+    expect(pluralCykle(5)).toBe('cykli');
+    expect(pluralCykle(8)).toBe('cykli');
+    expect(pluralCykle(12)).toBe('cykli');
+    expect(pluralCykle(22)).toBe('cykle');
   });
 });
 

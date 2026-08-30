@@ -201,6 +201,17 @@ body:has(details[open] [data-testid^='row-menu-']) [data-testid='design-review-o
   .profile-settings-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  /* One column: the read-only Base readout must stay directly under the batch
+     field it reports on, so it moves ahead of Tryb (owner UX correction —
+     „Below it, show the current recipe/base state"). */
+  .profile-settings-base-readout {
+    order: 6;
+  }
+
+  .profile-settings-grid [data-settings-cell='strategy'] {
+    order: 7;
+  }
 }
 
 /* The two-row reflow is the MOBILE sheet's geometry (owner §19/§22): the

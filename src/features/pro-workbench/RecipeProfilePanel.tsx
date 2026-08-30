@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/Button';
 import { WorkflowNotice } from '@/components/shared/WorkflowNotice';
 import { announceFriendlyLabMoment } from '@/components/shared/friendlyLabMoment';
 import { LabelWorkspace, type LabelWorkspaceView } from '@/features/master-label/LabelWorkspace';
+import { DraftLabelPanel } from '@/features/master-label/DraftLabelPanel';
 import {
   calculateRecipe,
   type CorrectionResult,
@@ -454,27 +455,61 @@ function SummaryPanel({
   onOpenProduction,
   initialLabelView,
   labelViewRequestKey,
+  result,
+  recipeName,
 }: {
   production?: ProductionWorkspaceView;
   onOpenProduction: () => void;
   initialLabelView: LabelWorkspaceView;
   labelViewRequestKey?: string;
+  result: RecipeResult;
+  recipeName: string | null;
 }) {
   const completed = production?.session?.completionSnapshot ?? null;
   if (completed) {
     return (
       <div className="pro-scroll-safe" data-testid="pro-context-summary">
+        {/* OWNER DECISION (2026-08-30): the workbench `Etykieta` tab is the
+            CURRENT label plus the fields still missing for it — never a second
+            settings screen. `settingsHome="production"` removes the settings
+            view from this instance and points at Produkcja → Etykiety, which
+            owns every persistent label setting. */}
         <LabelWorkspace
           key={labelViewRequestKey ?? initialLabelView}
           snapshot={completed}
           initialView={initialLabelView}
+          settingsHome="production"
         />
       </div>
     );
   }
 
+  /* OWNER DECISION (2026-08-30) — an explicit, approved divergence from the
+     older V2.1 `pro-label-draft` gate. Before Production completes the reader
+     now sees a LIVE DRAFT of the label they are making, with only the data that
+     is still missing listed underneath it, instead of a panel telling them to
+     go somewhere else. Nothing is fabricated: `buildMasterLabelData` and every
+     regulatory and nutrition calculation are untouched, and LOT, the production
+     date and the confirmed declaration are shown as outstanding. The final
+     print stays unavailable until a real completed run exists — at which point
+     the branch above takes over with the existing authority.
+
+     The gate below is still the fallback for the one case a draft cannot be
+     drawn truthfully: no saved label profile yet. */
   return (
     <div className="pro-scroll-safe p-3 xl:p-0" data-testid="pro-context-summary">
+      <DraftLabelPanel
+        result={result}
+        productName={recipeName}
+        fallback={<LabelProfileMissingNotice onOpenProduction={onOpenProduction} />}
+      />
+    </div>
+  );
+}
+
+function LabelProfileMissingNotice({ onOpenProduction }: { onOpenProduction: () => void }) {
+  return (
+    <>
       {/* GELLATTI V2.1 §18 — the approved Label gate: eyebrow, 18 px title, its
           own body line, then the graphite action BELOW the copy. Structure and
           copy only; every Production → Label gate and calculation is untouched. */}
@@ -492,7 +527,7 @@ function SummaryPanel({
         }
         testId="label-workspace-empty"
       />
-    </div>
+    </>
   );
 }
 
@@ -529,6 +564,7 @@ export function RecipeProfilePanel({
 }) {
   const [educationOpen, setEducationOpen] = useState(false);
   const tabPanelRef = useRef<HTMLDivElement>(null);
+  const savedRecipeName = useRecipeStore((state) => state.savedRecipeName);
   const machineId = useRecipeStore((state) => state.machineId);
   const machineLabel = useRecipeStore((state) => state.machineLabel);
   useEffect(() => {
@@ -620,6 +656,8 @@ export function RecipeProfilePanel({
             onOpenProduction={() => onTabChange('production')}
             initialLabelView={initialLabelView}
             labelViewRequestKey={labelViewRequestKey}
+            result={result}
+            recipeName={savedRecipeName}
           />
         ) : null}
       </div>
