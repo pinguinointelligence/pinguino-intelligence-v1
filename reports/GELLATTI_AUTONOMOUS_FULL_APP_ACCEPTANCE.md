@@ -1,7 +1,10 @@
 # GELLATTI — AUTONOMOUS FULL APPLICATION ACCEPTANCE
 
 **Run:** 2026-08-29 → 2026-08-30, unattended, goal mode.
-**Merged to staging:** PR #4 → `origin/staging` **`36a3b7f4`** (base `1a10f7cf`, rebased over `326962d0` when staging moved mid-run).
+**Merged to staging:** PR #4 → `36a3b7f4`, then PR #6 → **`c7344691`** — the
+final staging head. Base `1a10f7cf`; staging moved three times mid-run (PR #3
+`326962d0`, PR #5 `35a3e88a`) and the branch was merged forward each time
+rather than force-pushed.
 **Environment:** staging only — `staging.pinguinoai.com`, Supabase project
 `tunabqqrwabacxjcxxkz`, Stripe **TEST** mode. `origin/main` and customer
 Production were never touched.
@@ -180,7 +183,7 @@ kcal/100 g, while the final product mass reacts (1000 g → 1050 g).
 | EU Label | EU profile resolved; name, LOT, real mass, ingredients, allergens and nutrition all `GOTOWE`; blocked only on the four missing saturated-fat figures (blocker 2) |
 | **Production — Vegan** | **PASS** on staging. `QA Vegan Kokos -12` v2, 7 lines, 1000 g, **LOT-20260829-834993C734**. Reached through *"Utwórz nową wersję z aktualnymi danymi produktów"* → NEAREST consent (9/10, *"Słodycz: cel nieosiągnięty"*) → Apply → Save → Production |
 | **Production — Protein** | **PASS** on staging. `QA Protein Kakao -12` v2, 8 lines, 1000 g, **LOT-20260829-92AACEA842** |
-| **Production — Sorbet** | **BLOCKED — PC-06.** A saved Sorbet cannot be taken into Production at all: Produkcja demands a recalculation, the recalculation answers *"najbliższy osiągalny wynik … receptura nie została zmieniona"*, and ZAPISZ is then disabled because nothing changed. Reproduced at −12 °C **and** −13 °C |
+| **Production — Sorbet** | **BLOCKED — PC-06**, re-confirmed on the final head `c7344691` *after* PR #5's Sorbet fix landed, so the two are independent. A saved Sorbet cannot be taken into Production at all: Produkcja demands a recalculation, the recalculation answers *"najbliższy osiągalny wynik … receptura nie została zmieniona"*, and ZAPISZ is then disabled because nothing changed. Reproduced at −12 °C **and** −13 °C |
 | Community | Creator `@marysialody` created inline; recipe published **with an image**; card visible with attribution |
 | Ranking | Top 100 ranks it **#1** — one eligible recipe still yields a truthful board |
 | Favourites | 2 products starred, persisted across reload, "Ulubione" filter returns exactly those two |

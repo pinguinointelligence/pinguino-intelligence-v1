@@ -164,7 +164,7 @@ Sweetness-only request never rewrote the Hardness intent.
 | | |
 |---|---|
 | **SEVERITY** | **HIGH — closed loop: the customer has no move at all** |
-| **FIRST OBSERVED SHA** | staging `36a3b7f4`, served on https://staging.pinguinoai.com |
+| **FIRST OBSERVED SHA** | staging `36a3b7f4`; **still reproduces on `c7344691`**, the final head, after PR #5's Sorbet fix — the two are independent |
 | **PROFILE** | Sorbet (reproduced at **both** −12 °C and −13 °C, OPTIMAL) |
 | **MACHINE** | Maszyna profesjonalna |
 | **BATCH** | 1000 g |
