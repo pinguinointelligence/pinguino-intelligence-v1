@@ -129,6 +129,17 @@ export interface RecipeProfileState {
   confirmSettings: (signature: string, draftIdentity: string, contextSeq: number) => void;
   isConfirmed: (signature: string, draftIdentity: string, contextSeq: number) => boolean;
   recordCalculatedRecipe: (authority: CalculatedRecipeAuthority) => void;
+  /** The account's saved machine preference, resolved per product type. It is
+   * a LOWER-priority source than a stored per-product default and is never
+   * persisted here — it is derived from `MachinePreferenceStore` on sign-in. */
+  machineAccountDefault: {
+    ownerUserId: string;
+    resolve: (visibleProductType: VisibleProductType) => ProfileSettingsSnapshot | null;
+  } | null;
+  setMachineAccountDefault: (
+    ownerUserId: string | null,
+    resolve: ((visibleProductType: VisibleProductType) => ProfileSettingsSnapshot | null) | null,
+  ) => void;
   saveDefaults: (ownerKey: string, settings: ProfileSettingsSnapshot) => void;
   replaceDefaultsForOwner: (
     ownerUserId: string,
@@ -136,6 +147,28 @@ export interface RecipeProfileState {
   ) => void;
   defaultsFor: (ownerKey: string) => ProfileSettingsSnapshot | null;
   resetForTests: () => void;
+}
+
+/**
+ * The machine fallback answers only PRODUCT-scoped keys (`<ownerUserId>:<product>`),
+ * never the bare legacy owner key: `startNewRecipe` reads the legacy key to
+ * recover an older account-wide default and compares its `visibleProductType`,
+ * and a machine preference has no product of its own to compare.
+ */
+export function machineAccountFallback(
+  machineAccountDefault: {
+    ownerUserId: string;
+    resolve: (visibleProductType: VisibleProductType) => ProfileSettingsSnapshot | null;
+  } | null,
+  ownerKey: string,
+): ProfileSettingsSnapshot | null {
+  if (machineAccountDefault === null) return null;
+  const separator = ownerKey.indexOf(':');
+  if (separator < 0) return null;
+  if (ownerKey.slice(0, separator) !== machineAccountDefault.ownerUserId) return null;
+  const product = ownerKey.slice(separator + 1);
+  if (product.length === 0) return null;
+  return machineAccountDefault.resolve(product as VisibleProductType);
 }
 
 const clampTarget = (value: number): DirectionTarget =>
@@ -169,6 +202,7 @@ export const useRecipeProfileStore = create<RecipeProfileState>()(
     (set, get) => ({
       directionTargets: DEFAULT_DIRECTION_TARGETS,
       directionIntents: DEFAULT_DIRECTION_INTENTS,
+      machineAccountDefault: null,
       awaitingRecalculation: false,
       openedContextSeq: null,
       activeDraftIdentity: null,
@@ -311,8 +345,19 @@ export const useRecipeProfileStore = create<RecipeProfileState>()(
           return { defaultsByOwner };
         }),
 
+      setMachineAccountDefault: (ownerUserId, resolve) =>
+        set({
+          machineAccountDefault:
+            ownerUserId !== null && resolve !== null ? { ownerUserId, resolve } : null,
+        }),
+
       defaultsFor: (ownerKey) => {
         const stored = get().defaultsByOwner[ownerKey];
+        /* A deliberately configured per-product default always wins. Only when
+           there is none does the account's saved machine answer — which is the
+           whole point: an account that set a machine and nothing else used to
+           get no default at all, and fell through to Professional. */
+        if (!stored) return machineAccountFallback(get().machineAccountDefault, ownerKey);
         const canonical = stored?.directionIntents ?? stored?.directionTargets;
         return stored
           ? {
