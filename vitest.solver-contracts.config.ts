@@ -39,5 +39,29 @@ export default defineConfig({
     include: ['src/features/constraint-studio/recipeVectorProximity.test.ts'],
     // One file, one worker, nothing else competing — the point of the exercise.
     fileParallelism: false,
+    /**
+     * A HARNESS ALLOWANCE, NOT A PERFORMANCE TARGET.
+     *
+     * Vitest's default 5000 ms was never a product requirement. Audited 2026-08-30:
+     * this file contains NO timing assertion of any kind — no performance.now, no
+     * Date.now, no elapsed check. All 24 assertions are correctness (the single
+     * `toBeLessThan` is on cinnamon GRAMS, not milliseconds). Vitest simply killed
+     * the test at its default timeout. No owner-locked contract and no entry in
+     * `AGENTS.md` or `protectedPaths.json` defines a solver runtime threshold.
+     *
+     * Measured on the unchanged SHA 883e76f8, 4-core/15Gi GitHub runner:
+     * 4468 / 4944 / 5007 / 5020 / 5151 ms — median 5007 ms, i.e. the DEFAULT sat
+     * below the median and produced 2 passes and 3 failures from identical code.
+     * Locally the same case takes ~2.4-3.2 s.
+     *
+     * 30 s gives the slower shared runner real room while still making a genuine
+     * hang obvious. Termination itself is guaranteed structurally and independently
+     * of the clock — `iteration_cap`, bounded_exact Direction search, bounded
+     * coordinate sweeps and the bounded frontier — all covered by their own tests.
+     *
+     * Scoped deliberately to THIS suite. The global default stays 5000 ms for the
+     * ~10 000 other tests.
+     */
+    testTimeout: 30_000,
   },
 });

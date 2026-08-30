@@ -33,6 +33,29 @@ describe('the heavy solver file is out of the default suite', () => {
   });
 });
 
+describe('the harness allowance is scoped, and is not a performance gate', () => {
+  it('gives the dedicated suite an explicit timeout', () => {
+    expect(read(DEDICATED_CONFIG)).toMatch(/testTimeout: 30_000/);
+  });
+
+  it('does NOT change the global default for the other ~10 000 tests', () => {
+    // The allowance exists because shared CI hardware is slower, not because any
+    // test may now be slow. Everything else keeps Vitest's 5000 ms default.
+    expect(read('vite.config.ts')).not.toContain('testTimeout');
+  });
+
+  it('keeps termination guaranteed structurally, not by the clock', () => {
+    // Audited 2026-08-30: the suite asserts nothing about elapsed time — Vitest
+    // merely killed it at the default. Termination is proven by bounded search and
+    // iteration caps, which have their own tests, so raising the harness allowance
+    // removes no correctness guarantee.
+    const suite = read(HEAVY_FILE);
+    for (const timing of ['performance.now', 'hrtime', 'toBeLessThan(5000)']) {
+      expect(suite, timing).not.toContain(timing);
+    }
+  });
+});
+
 describe('…and is still actually executed by its own job', () => {
   it('has a dedicated config that INCLUDES it', () => {
     const config = read(DEDICATED_CONFIG);
@@ -48,7 +71,9 @@ describe('…and is still actually executed by its own job', () => {
     const workflow = read('.github/workflows/ci.yml');
     expect(workflow).toContain('npm run solver:contracts');
     // A bare `vitest run <path>` would honour the exclusion and match nothing.
-    expect(workflow).not.toMatch(/vitest run src\/features\/constraint-studio\/recipeVectorProximity/);
+    expect(workflow).not.toMatch(
+      /vitest run src\/features\/constraint-studio\/recipeVectorProximity/,
+    );
   });
 
   it('keeps the dedicated job on its own runner, with nothing else in it', () => {

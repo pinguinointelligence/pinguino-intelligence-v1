@@ -159,3 +159,60 @@ proves the dedicated job did not become vacuous in exchange.
 
 The remaining exposure is the isolated job alone, at ~10 % margin, which is an
 infrastructure limit rather than a code or contract defect.
+
+
+---
+
+# PART 3 — RESOLUTION (2026-08-30)
+
+## The audit that settled it
+
+| Question | Answer |
+| --- | --- |
+| Where does 5000 ms come from? | **Vitest's default `testTimeout`.** Not configured anywhere for this file. |
+| Does the suite assert elapsed time? | **No.** No `performance.now`, no `Date.now`, no `hrtime`, no elapsed check. All 24 assertions are correctness; the one `toBeLessThan` is on cinnamon **grams**. Vitest simply killed the test. |
+| Is it an owner-locked contract? | **No.** Nothing in `src/contracts/owner-locked/`, `docs/OWNER_LOCKED_CONTRACTS.md`, `AGENTS.md` or `scripts/protectedPaths.json` defines a solver runtime threshold. |
+| Independent termination guarantee? | **Yes** — `iteration_cap` / `iteration_capped` (deterministic, "reported honestly"), `bounded_exact` Direction search, bounded coordinate sweep, bounded bisection, bounded frontier. 9 test references, none wall-clock. |
+
+The `ci.yml` comment asserting *"they assert that a recipe vector resolves inside
+5000 ms"* and *"the threshold is owner-locked"* was **false on both counts** and has been
+corrected.
+
+## Five-run capture that forced the audit — unchanged SHA `883e76f8`
+
+| exec | result | slow case | file total |
+| --- | --- | --- | --- |
+| 1 (fresh push) | pass | 4468 ms | 33.20 s |
+| 2 (re-run) | **fail** | 5020 ms | 37.15 s |
+| 3 (re-run) | pass | 4944 ms | 37.47 s |
+| 4 (re-run) | **fail** | 5151 ms | 37.79 s |
+| 5 (re-run) | **fail** | 5007 ms | 37.36 s |
+
+**min 4468 · max 5151 · median 5007 · 2 pass / 3 fail.** The median sat ABOVE the
+default, so identical code produced both green and red. Re-runs were also
+systematically ~500–680 ms slower than the fresh push, making "re-run until green" the
+worst available strategy.
+
+## Correction applied
+
+`testTimeout: 30_000` in `vitest.solver-contracts.config.ts` **only**. The global
+default remains 5000 ms for the ~10 000 other tests. A harness allowance, not a
+performance target: the case normally takes ~2.4–5.2 s, so 30 s leaves a genuine hang
+obvious while removing the false failures.
+
+Unchanged: Solver, Engine, iteration caps, bounded-search caps, every assertion, every
+scientific threshold.
+
+## Verification
+
+- dedicated suite → **23/23**, slow case 4031 ms
+- default suite → **0** copies of the timing file
+- non-vacuity guard → **9/9**, now also pinning the scoped allowance and the untouched global default
+- diff touches only: `ci.yml`, `package.json`, the guard test, `vite.config.ts`, `vitest.solver-contracts.config.ts` — no Solver, no Engine, no owner-locked contract, no protected path
+
+## CI-INFRA-2 status
+
+**Closed as a misclassification.** There was no performance contract to be blocked on —
+only a default harness timeout mistaken for one. Runtime remains visible as a
+diagnostic. Should solver runtime later become a real product requirement, it must be
+introduced deliberately as its own measured contract on suitable hardware.
