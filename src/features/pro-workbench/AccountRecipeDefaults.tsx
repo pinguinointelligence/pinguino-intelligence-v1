@@ -103,7 +103,7 @@ export function AccountRecipeDefaults() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-semibold tracking-[0.06em] text-stone-600 uppercase">Domyślne ustawienia receptury</p>
-          <h2 className="mt-1 text-xl font-semibold text-ink">Nowa receptura · {productLabel}</h2>
+          <h2 className="mt-1 text-[15px] leading-[1.3] font-bold tracking-[-0.02em] text-[var(--g-ink)]">Nowa receptura · {productLabel}</h2>
           <p className="mt-1 text-sm text-stone-600">Dotyczy tylko nowych receptur. Zapisane wersje pozostają bez zmian.</p>
         </div>
         <select

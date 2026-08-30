@@ -266,7 +266,7 @@ export function ProductRequestAccountSections() {
   const loading = active.isPending || archived.isPending || contributed.isPending;
   return (
     <section className="py-5" aria-labelledby="product-requests-heading">
-      <h2 id="product-requests-heading" className="text-sm font-semibold text-ink">
+      <h2 id="product-requests-heading" className="text-[15px] leading-[1.3] font-bold tracking-[-0.02em] text-[var(--g-ink)]">
         Zgłoszenia produktów
       </h2>
       <p className="mt-1 max-w-xl text-xs leading-relaxed text-stone-600">

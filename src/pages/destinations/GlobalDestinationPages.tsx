@@ -38,6 +38,10 @@ import {
   franchiseConceptLabelPl,
 } from '@/features/franchise/franchiseConcepts';
 
+/** One panel for each account concern — same card as the rest of the product. */
+const ACCOUNT_PANEL =
+  'rounded-[12px] border border-[var(--g-line)] bg-white px-5 [&>section]:py-0 [&>section]:first:pt-5 [&>section]:last:pb-5';
+
 const quietLink =
   'flex min-h-14 items-center justify-between border-b border-ink/10 py-3 text-sm text-ink transition-opacity hover:opacity-55';
 
@@ -665,40 +669,61 @@ export function AccountSettingsPage() {
           testId="account-sign-in-gate"
         />
       ) : (
-        <div className="divide-y divide-ink/10 overflow-hidden rounded-[12px] border border-ink/12 bg-white shadow-pro-e0">
-          <div className="flex items-center justify-between gap-4 px-5 py-5">
-            <span className="text-sm text-stone-500">Profil</span>
-            <strong className="truncate text-sm font-medium">
-              {user?.email ?? 'owner-review@pinguino.local'}
-            </strong>
+        /* Six unrelated concerns used to share ONE `divide-y` card: the profile
+           rows, product markets, the invite code, product requests and recipe
+           defaults all ran together as an endless list of hairlines. They are
+           separate things a reader visits for separate reasons, so each now
+           sits in its own panel on the standard rhythm — and each keeps its own
+           action beside its own controls. */
+        <div className="space-y-3">
+          <div className="divide-y divide-[var(--g-line)] overflow-hidden rounded-[12px] border border-[var(--g-line)] bg-white">
+            <div className="flex items-center justify-between gap-4 px-5 py-5">
+              <span className="text-sm text-[var(--g-text-secondary)]">Profil</span>
+              <strong className="truncate text-sm font-medium">
+                {user?.email ?? 'owner-review@pinguino.local'}
+              </strong>
+            </div>
+            <Link to="/subscription" className={cn(quietLink, 'px-5')}>
+              <span>
+                <span className="block text-xs text-[var(--g-text-secondary)]">
+                  Plan i płatności
+                </span>
+                <strong className="mt-1 block font-medium">{plan}</strong>
+              </span>
+              <span aria-hidden>→</span>
+            </Link>
+            <div className="flex items-center justify-between gap-4 px-5 py-5">
+              <span className="text-sm text-[var(--g-text-secondary)]">Język</span>
+              <strong className="text-sm font-medium">Polski</strong>
+            </div>
+            <div className="flex items-center justify-between gap-4 px-5 py-5">
+              <span className="text-sm text-[var(--g-text-secondary)]">Bezpieczeństwo</span>
+              <span className="text-sm text-[var(--g-text-secondary)]">Ustawienia konta</span>
+            </div>
           </div>
-          <Link to="/subscription" className={cn(quietLink, 'px-5')}>
-            <span>
-              <span className="block text-xs text-stone-500">Plan i płatności</span>
-              <strong className="mt-1 block font-medium">{plan}</strong>
-            </span>
-            <span aria-hidden>→</span>
-          </Link>
-          <div className="flex items-center justify-between gap-4 px-5 py-5">
-            <span className="text-sm text-stone-500">Język</span>
-            <strong className="text-sm font-medium">Polski</strong>
+          <div className={ACCOUNT_PANEL}>
+            <AccountProductMarkets />
           </div>
-          <div className="flex items-center justify-between gap-4 px-5 py-5">
-            <span className="text-sm text-stone-500">Bezpieczeństwo</span>
-            <span className="text-sm text-stone-600">Ustawienia konta</span>
+          <div className={ACCOUNT_PANEL}>
+            <HomeInviteRedemption />
           </div>
-          <AccountProductMarkets />
-          <HomeInviteRedemption />
-          <ProductRequestAccountSections />
-          <AccountRecipeDefaults />
+          <div className={ACCOUNT_PANEL}>
+            <ProductRequestAccountSections />
+          </div>
+          <div className={ACCOUNT_PANEL}>
+            <AccountRecipeDefaults />
+          </div>
         </div>
       )}
       {status === 'authed' ? (
-        <section className="mt-10" aria-labelledby="account-orders">
-          <p className="text-[10px] font-semibold tracking-[0.13em] text-stone-500 uppercase">
+        <section className="mt-[58px]" aria-labelledby="account-orders">
+          <span className="block text-[10px] leading-[1.25] font-bold tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">
             Sklep
-          </p>
-          <h2 id="account-orders" className="mt-2 text-2xl font-semibold tracking-[-0.035em]">
+          </span>
+          <h2
+            id="account-orders"
+            className="mt-1 text-[22px] leading-[1.2] font-bold tracking-[-0.025em] text-[var(--g-ink)]"
+          >
             {shopCopy.orders.title}
           </h2>
           <div className="mt-5">

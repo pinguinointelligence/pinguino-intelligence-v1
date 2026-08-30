@@ -63,7 +63,7 @@ export function AccountProductMarkets() {
     <section className="py-5" aria-labelledby="product-markets-heading">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 id="product-markets-heading" className="text-sm font-semibold text-ink">Produkty w wyszukiwarce</h2>
+          <h2 id="product-markets-heading" className="text-[15px] leading-[1.3] font-bold tracking-[-0.02em] text-[var(--g-ink)]">Produkty w wyszukiwarce</h2>
           <p className="mt-1 max-w-2xl text-xs leading-relaxed text-stone-600">
             Wybierz kraje sprzedaży SKU. Kraj pochodzenia pozostaje osobnym faktem produktu,
             a Ulubione są widoczne niezależnie od tego filtra
