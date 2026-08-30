@@ -5,8 +5,12 @@ POD/PAC/NPAC, profile bands, Gelato/Sorbet/Vegan/Protein rules,
 Crown/Main/Multi-Main, Direction, batch mathematics, Recalculate,
 Recipe/Monitor, Production and Label calculations).
 
-**None of these were fixed.** Each entry carries an exact reproducible fixture
-so the owner can write a separate surgical prompt.
+**None of these were fixed by the acceptance run.** Each entry carries an exact
+reproducible fixture so the owner can write a separate surgical prompt.
+
+**PC-06 has since been closed** under its own dedicated prompt — see the
+close-out note under that entry. PC-01…PC-05 remain open and untouched. PC-07
+was observed while proving PC-06 on staging and is recorded, not fixed.
 
 - First observed on staging `04106031` (branch `claude/gellatti-full-app`, based on `origin/staging` 1a10f7cf).
 - Account: `test1@test1.com` (PRO), staging project `tunabqqrwabacxjcxxkz`.
@@ -176,6 +180,63 @@ Sweetness-only request never rewrote the Hardness intent.
 | **CONTRAST** | The same journey completes for the other three profiles on the same build: Gelato `LOT-20260829-228836054F`, Vegan `LOT-20260829-834993C734`, Protein `LOT-20260829-92AACEA842`. Vegan and Protein reached it through *"Utwórz nową wersję z aktualnymi danymi produktów"* → a NEAREST consent or *"Receptura już spełnia wybrany profil"* → **ZAPISZ enabled** → Production ready. Sorbet never reaches a state where ZAPISZ is enabled. |
 | **REPRODUCED** | 2/2 saved Sorbet recipes, at two different temperatures. |
 | **LIKELY ROOT AREA** | The interaction between the Production readiness gate (which demands a freshly verified whole-gram executable) and the Sorbet recalculation outcome (`nearest reached / recipe unchanged`). The unchanged-recipe outcome produces no executable and enables no save, so the gate can never be satisfied. Related to PC-01 and PC-03 but distinct: here **no Direction change is requested at all**. |
+
+### PC-06 — CLOSED on staging `d1498d85`
+
+Fixed in PR #8 (`claude/pc06-sorbet-production-path`), merged to `staging` as
+`d1498d85`, served and verified end to end on 2026-08-30. Kept in this file
+because the *record* of the defect stays; the entry above is the state as
+filed, and this note is the outcome.
+
+**The two authorities that disagreed.** `productionRecipeLifecycleState`
+returned `TECHNICALLY_STALE` whenever `practicalRecipeAuditMatchesInput` was
+false and prescribed exactly one cure — recalculate. `buildOptimizePreview` had
+no applicable change to make for this Sorbet, so Apply never ran, so the audit
+was never attached, so the gate never opened. Save was disabled because nothing
+had changed. The practical audit is written at Apply time and persisted inside
+the `RecipeInput`, so any version saved in a session that did not Apply carries
+none.
+
+**Fix — lifecycle only.** An immutable saved version, reopened and unedited, is
+its own executable evidence when every planned gram is whole. Still
+`TECHNICALLY_STALE`: a pending recalculation, an unused 0 g row, any edit, an
+unsaved draft, and any fractional gram. No Sorbet science, POD/PAC/NPAC,
+Direction, solver band, stabilizer ceiling, Main/Crown, batch authority,
+Production calculation or Label calculation was touched, and no protected path
+was modified.
+
+**Served proof.** `QA Sorbet Truskawka -12` reopened → Produkcja
+*"WSZYSTKO GOTOWE DO ROZPOCZĘCIA PARTII"*, źródło *"Zapisana wersja"* → batch
+completed, `LOT-20260830-0624A2A275`, final score 10. `-13` likewise reaches
+*"Rozpocznij partię"*. Full capture in
+`reports/e2e/screenshots/pc06-sorbet-production.txt`.
+
+**Nothing was written to open the gate.** Both fixtures still hold exactly one
+version, still with no practical audit, still stamped 2026-08-29 22:17.
+
+**Blast radius, re-measured on 2026-08-30.** Of 722 saved versions on staging,
+361 carry no practical audit, spread over 330 of 440 recipes. The number that
+actually matters is the *latest* version, because that is the one the library
+opens: **164 of 440 recipes** had an auditless latest version and were therefore
+one Produkcja click away from this loop.
+
+---
+
+## PC-07 — A saved Vegan or Protein version can stall on server product verification
+
+*Newly observed on 2026-08-30 during the PC-06 served QA. Recorded, NOT fixed —
+this run was PC-06 only.*
+
+| | |
+|---|---|
+| **FIXTURE** | `QA Vegan Kokos -12` v2 (7 lines, 1000 g, −12 °C) and `QA Protein Kakao -12` v2 (8 lines, 1000 g, −12 °C), owner `test1@test1.com`. Both are the version the library opens. |
+| **STEPS** | `/recipes?tab=mine` → **Otwórz** → **Produkcja**. |
+| **EXPECTED** | Production, as both did on 2026-08-29 (`LOT-20260829-834993C734`, `LOT-20260829-92AACEA842`). |
+| **ACTUAL** | *"WYMAGA RECEPTURY WYKONAWCZEJ · **Nie udało się potwierdzić produktów** · Produkcja wymaga odświeżenia bieżącej weryfikacji produktów. Obliczenie receptury pozostaje bez zmian."* with a single offered action, **Wróć do receptury**. Following it, then **Potwierdź ustawienia**, then Produkcja again, returns the same message. The earlier recovery offer *"Utwórz nową wersję z aktualnymi danymi produktów"* — which is how both recipes escaped this on 2026-08-29 — is not presented. |
+| **WHERE** | `src/features/production-workspace/useProductionWorkspace.ts:735-756`: `validateRecipeBehaviorOnServer({ module: 'PRODUCTION' })` resolves `ready: false`. The recovery lane (`recoveryPending`, same file) and this behaviour-server gate are both live at that point; the gate's message is the one presented. |
+| **NOT CAUSED BY PC-06 — measured** | `reports/e2e/pc06/audit-probe.json`, produced by `src/qa/acceptance/pc06AuditProbe.acceptance.test.ts` against the real staging rows: both fixtures carry a practical audit and it **still matches** their input, so the PC-06 disjunct is short-circuited and never consulted. Pre-fix and post-fix lifecycle are both `READY` (`changedByPc06: false`). Only the two auditless Sorbet fixtures change state. The server gate they now stop at was equally reachable before PR #8. |
+| **LIKELY ROOT AREA** | Staging Mapper product data has drifted since those v2 versions were saved on 2026-08-29 (Vegan shows `REFINED COCONUT OIL — Koszt niepełny`), so the persisted ProductBehavior evidence no longer satisfies the server. The defect is not the refusal — that is honest — but that the *stale-product recovery* which previously resolved exactly this condition is not offered alongside it. |
+| **REPRODUCED** | 2/2 profiles, both on staging `d1498d85`. |
 
 ---
 
