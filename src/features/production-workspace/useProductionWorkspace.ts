@@ -44,7 +44,11 @@ import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileSto
 import { recipeCompositionFromState } from '@/features/recipe-composition/recipeCompositionPersistence';
 import { productBehaviorRequiredLineIds } from '@/features/product-intelligence';
 import { evaluateRecipeConstraintAuthority } from '@/features/recipe-constraints';
-import { validateRecipeBehaviorOnServer } from '@/services/productIntelligence';
+import {
+  validateRecipeBehaviorOnServer,
+  type RecipeBehaviorServerValidationResult,
+} from '@/services/productIntelligence';
+import { productBehaviorIssuesSupportWorkingCopyRefresh } from '@/features/product-intelligence/refreshRecipeBehaviorWorkingCopy';
 import { buildRecipeVersion } from '@/features/pro-core/recipeVersioning';
 import { productionCapabilitiesFor } from '@/features/pro-core/proCoreCapabilities';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
@@ -381,7 +385,11 @@ export function missingDirectionAlternativeProcessLines(
 }
 
 export type ProductionPrerequisiteAction =
-  'open_preview' | 'recalculate' | 'return_to_recipe' | 'archive_stale_session';
+  | 'open_preview'
+  | 'recalculate'
+  | 'return_to_recipe'
+  | 'archive_stale_session'
+  | 'refresh_product_behavior';
 
 export type ProductionPrerequisite = {
   code: ProductionPrerequisiteCode;
@@ -391,6 +399,25 @@ export type ProductionPrerequisite = {
   action: ProductionPrerequisiteAction;
   actionLabel: string;
 };
+
+/**
+ * PC-07. A PRODUCTION refusal is only worth offering a refresh for when every
+ * reason it gives is a lifecycle/freshness one — exactly the set the working-copy
+ * refresh already knows how to cure. Missing product science, failed
+ * classification and profile denial keep their existing product-data actions,
+ * so this reuses the refresh authority's own predicate rather than restating it.
+ */
+export function behaviorValidationSupportsRefresh(
+  validation: Pick<RecipeBehaviorServerValidationResult, 'lines'>,
+): boolean {
+  return productBehaviorIssuesSupportWorkingCopyRefresh(
+    validation.lines.map((line) => ({
+      lineId: line.lineId,
+      lineName: line.lineId,
+      reasons: line.reasons,
+    })),
+  );
+}
 
 const prerequisite = (
   code: ProductionPrerequisiteCode,
@@ -429,7 +456,12 @@ export function useProductionWorkspace(enabled: boolean) {
     ready: boolean;
     message: string | null;
     processReadiness: ProductProcessReadiness | null;
-  }>({ key: null, ready: false, message: null, processReadiness: null });
+    /* PC-07. A refusal that names a lifecycle/freshness reason has a cure the
+       application already owns; one that names missing product science does
+       not. Carrying the distinction here is what lets Produkcja offer the cure
+       beside the blocker instead of only „Wróć do receptury". */
+    refreshable: boolean;
+  }>({ key: null, ready: false, message: null, processReadiness: null, refreshable: false });
   const [sessionStart, setSessionStart] = useState<{
     busy: boolean;
     error: string | null;
@@ -618,6 +650,8 @@ export function useProductionWorkspace(enabled: boolean) {
     (behaviorServerGate.key === behaviorValidationKey && behaviorServerGate.ready);
   const behaviorServerMessage =
     behaviorServerGate.key === behaviorValidationKey ? behaviorServerGate.message : null;
+  const behaviorServerRefreshable =
+    behaviorServerGate.key === behaviorValidationKey && behaviorServerGate.refreshable;
   const missingAlternativeProcessLines = useMemo(
     () =>
       missingDirectionAlternativeProcessLines(
@@ -751,6 +785,7 @@ export function useProductionWorkspace(enabled: boolean) {
             message:
               'Produkcja wymaga odświeżenia bieżącej weryfikacji produktów. Obliczenie receptury pozostaje bez zmian.',
             processReadiness: validation.processReadiness ?? null,
+            refreshable: behaviorValidationSupportsRefresh(validation),
           });
           return;
         }
@@ -759,6 +794,7 @@ export function useProductionWorkspace(enabled: boolean) {
           ready: true,
           message: null,
           processReadiness: validation.processReadiness ?? null,
+          refreshable: false,
         });
       })
       .catch(() => {
@@ -769,6 +805,9 @@ export function useProductionWorkspace(enabled: boolean) {
             message:
               'Produkcja zablokowana: nie udało się potwierdzić aktualnej klasyfikacji produktu.',
             processReadiness: null,
+            // A transport failure is not evidence that product data is stale,
+            // so it must not offer a refresh that cannot help.
+            refreshable: false,
           });
         }
       });
@@ -827,6 +866,11 @@ export function useProductionWorkspace(enabled: boolean) {
                   'Wróć i zapisz recepturę',
                 )
               : null) ??
+            /* PC-07. When the refusal is a freshness one, name the blocker AND
+               offer the cure the application already owns. „Wróć do receptury"
+               was the only action, and the refresh that resolves exactly this
+               condition lives behind Przelicz — which a saved recipe with a
+               current score does not show. That left no exit at all. */
             (practicalGate.ready && !behaviorServerReady
               ? prerequisite(
                   behaviorServerMessage
@@ -837,8 +881,10 @@ export function useProductionWorkspace(enabled: boolean) {
                     : 'Potwierdzamy aktualną recepturę',
                   behaviorServerMessage ??
                     'Trwa bezpieczna weryfikacja produktów dla bieżącej receptury wykonawczej.',
-                  'return_to_recipe',
-                  'Wróć do receptury',
+                  behaviorServerRefreshable ? 'refresh_product_behavior' : 'return_to_recipe',
+                  behaviorServerRefreshable
+                    ? 'Utwórz nową wersję z aktualnymi danymi produktów'
+                    : 'Wróć do receptury',
                 )
               : null) ??
             (practicalGate.ready && missingAlternativeProcessLines.length > 0
@@ -1725,6 +1771,7 @@ export function useProductionWorkspace(enabled: boolean) {
               message:
                 'Produkcja wymaga odświeżenia bieżącej weryfikacji produktów. Obliczenie receptury pozostaje bez zmian.',
               processReadiness: validation.processReadiness ?? null,
+              refreshable: behaviorValidationSupportsRefresh(validation),
             });
             return;
           }
