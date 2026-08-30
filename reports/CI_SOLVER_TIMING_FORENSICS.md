@@ -75,3 +75,87 @@ timeout (2 in `solver-contracts`, 3 in `verify`). No PR caused them.
    than guessed.
 
 The 5000 ms assertion, the solver, and every scientific threshold are untouched.
+
+---
+
+# PART 2 — the isolated job: options investigated and exhausted
+
+## A. Larger / more deterministic runner — **UNAVAILABLE**, confirmed from configuration
+
+Checked rather than assumed:
+
+| Check | Result |
+| --- | --- |
+| `gh api users/pinguinointelligence` | `type=User` — **not an organization** |
+| `gh api repos/…/actions/runners` | `total_count = 0` — no self-hosted runners |
+| `gh api orgs/pinguinointelligence/actions/runner-groups` | **404 Not Found** |
+
+GitHub-hosted larger runners are an **organization-level** feature. This repository is
+owned by a personal account, so no larger runner label can be selected for any job.
+
+## B. Process-level isolation — **ALREADY SATISFIED**
+
+Recorded by the diagnostic step now in the job:
+
+```
+cores:  4
+memory: 15Gi
+load:    22:22:55 up 0 min,  0 user,  load average: 0.65, 0.18, 0.06
+```
+
+The dedicated job already runs on a **freshly booted, idle 4-core / 15 GB machine**,
+executing **one file**, with no coverage, no instrumentation, no build and no other
+test workload. `fileParallelism: false`. There is nothing left to isolate — and it
+still measured **4516 ms** on that clean machine.
+
+## C. Vitest pool tuning — measured, **no material gain**
+
+Slowest case, local, repeated runs:
+
+| Pool | Runs | Median |
+| --- | --- | --- |
+| `forks` (default) | 3432 / 2427 / 2403 / 2410 ms | **~2419 ms** |
+| `threads` | 2487 / 2489 / 2498 / 2447 ms | ~2488 ms |
+| `vmThreads` | 6511 / 6014 / 5931 ms | ~6014 ms |
+| `vmForks` | 6034 / 6119 / 6099 ms | ~6099 ms |
+
+`threads` is marginally slower in median but noticeably tighter in spread; the VM pools
+are **~2.5× worse** and are rejected outright. The existing default is already the best
+available. No pool change is proposed.
+
+## D. Harness doing unrelated work — **DISPROVEN**
+
+Hypothesis: the slow case is first in its `it.each` array, so it might be absorbing
+module/JIT warm-up that belongs to the file rather than to the case.
+
+Test: run each case ALONE (so each is first and cold).
+
+| Case | Alone & cold | In-file |
+| --- | --- | --- |
+| **(-11, -2, -2)** | **2662 ms** | ~2861–3229 ms local · 4516 ms CI |
+| (-12, -2, -1) | 1800 ms | 2271 ms |
+| (-13, -2, 1) | 1858 ms | 2892 ms |
+
+Slowness follows the **parameters, not the position**: run identically, the `-11 / -2 /
+-2` case is ~1.45× more expensive than its siblings. It is genuinely the hardest case
+in the family. **There is no harness waste to remove**, so under the stated rule the
+test must not be rewritten.
+
+## E. Conclusion
+
+CI hardware is roughly **1.7× slower per core** than the local machine
+(2662 ms local → 4516 ms CI for the same work). The contract needs **90 % of its
+budget** on the fastest environment this repository can obtain.
+
+**The available CI infrastructure cannot provide materially better headroom for the
+isolated job.** Reporting that, as instructed, rather than weakening the contract.
+
+## What this PR still fixes definitively
+
+The **duplicate execution** is real and removable. Of the 5 red runs observed on
+already-merged `staging`, **3 were the `verify` job** failing on this file inside the
+~10 000-test suite. Excluding it there eliminates that entire class, and the guard
+proves the dedicated job did not become vacuous in exchange.
+
+The remaining exposure is the isolated job alone, at ~10 % margin, which is an
+infrastructure limit rather than a code or contract defect.
