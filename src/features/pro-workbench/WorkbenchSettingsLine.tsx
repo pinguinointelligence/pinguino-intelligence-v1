@@ -23,6 +23,7 @@ import {
   effectiveDefaultBatchGrams,
   machineDisplayName,
   machineOnboardingCopy,
+  pluralCykle,
   type AboveRecommendationChoice,
   type MachineOnboardingCompletion,
 } from '@/features/machine-onboarding';
@@ -499,7 +500,7 @@ export function WorkbenchSettingsLine({
                 <p data-testid="home-machine-cycles">
                   {cyclePlan.containers === 1
                     ? 'Jedna partia mieści się w jednym cyklu.'
-                    : `${cyclePlan.containers} cykle · ${cyclePlan.gramsPerContainer.toLocaleString('pl-PL')} g / cykl`}
+                    : `${cyclePlan.containers} ${pluralCykle(cyclePlan.containers)} · ${cyclePlan.gramsPerContainer.toLocaleString('pl-PL')} g / cykl`}
                 </p>
               ) : (
                 <ReadinessBadge
@@ -551,8 +552,11 @@ export function WorkbenchSettingsLine({
               title="Baza lodowa bez toppingu"
             >
               <span className={compactFinalSettingsLabel} data-settings-label="batch">
-                Partia
+                Partia docelowa
               </span>
+              {/* ONE editable batch field (owner UX correction). The recipe's
+                  current Base is read-only information and lives under the
+                  grid — never a second box that reads as an input. */}
               <div
                 className={cn(
                   compactFinalSettingsControl,
@@ -560,10 +564,6 @@ export function WorkbenchSettingsLine({
                 )}
                 data-settings-control="batch"
               >
-                <strong className="font-mono text-xs font-bold tabular-nums text-[var(--g-ink)] lg:text-[14px]">
-                  {actualBatchG.toLocaleString('pl-PL', { maximumFractionDigits: 1 })}
-                </strong>
-                <span className="text-[10px] text-stone-400">/</span>
                 <DeferredNumberInput
                   className={cn(
                     compactSelect,
@@ -659,12 +659,9 @@ export function WorkbenchSettingsLine({
               data-testid="profile-batch-combined"
               data-settings-cell="batch"
             >
-              <span className="text-xs font-medium text-stone-600">Partia</span>
+              <span className="text-xs font-medium text-stone-600">Partia docelowa</span>
+              {/* ONE editable batch field — see the compact branch. */}
               <div className="flex min-w-0 items-center justify-end gap-1.5">
-                <strong className="font-mono text-xs tabular-nums text-ink">
-                  {actualBatchG.toLocaleString('pl-PL', { maximumFractionDigits: 1 })}
-                </strong>
-                <span className="text-[10px] text-stone-400">/</span>
                 <DeferredNumberInput
                   className={cn(compactSelect, 'w-20 text-right font-mono tabular-nums')}
                   value={
@@ -710,6 +707,23 @@ export function WorkbenchSettingsLine({
             </div>
           </>
         )}
+
+        {/* The recipe's CURRENT base, read-only (owner UX correction). It answers
+            "what does the recipe weigh right now" beside "what do I want to
+            make" — deliberately NOT a second input, and never editable. A grid
+            child so it stays directly under the batch field it reports on: full
+            width under the 2-column row, and re-ordered ahead of Tryb when the
+            grid collapses to one column (see `profile-settings-base-readout`). */}
+        <p
+          className="profile-settings-base-readout order-7 col-span-2 text-xs text-stone-600"
+          data-testid="workbench-recipe-base"
+          data-settings-readonly="base"
+        >
+          Baza receptury:{' '}
+          <span className="font-mono tabular-nums text-ink">
+            {actualBatchG.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} g
+          </span>
+        </p>
       </div>
 
       {/* Above the machine recommendation: warn + offer the three owner actions,

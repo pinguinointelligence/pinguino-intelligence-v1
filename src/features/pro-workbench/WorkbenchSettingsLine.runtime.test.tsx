@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -635,5 +637,163 @@ describe('WorkbenchSettingsLine — over-capacity batch guidance', () => {
     expect(useRecipeStore.getState().target_batch_grams).toBe(6_000);
     // A new amount is a new decision — the warning legitimately returns.
     expect(warning()).not.toBeNull();
+  });
+});
+
+/**
+ * Owner UX correction — the batch field must read as ONE editable amount.
+ *
+ * The old presentation put the recipe's current Base and the target batch in
+ * one `5000 / 470 g` row, which read as two inputs, overflowed the card, and
+ * left no way to tell where to type or what the second number meant. The fix
+ * is presentation only: one labelled editable field, the Base demoted to a
+ * read-only line, and the machine guidance kept separate.
+ */
+describe('WorkbenchSettingsLine — one editable batch field', () => {
+  let host: HTMLDivElement;
+  let root: ReturnType<typeof createRoot>;
+
+  const render = async (actualBatchG: number, compact = true) => {
+    await act(async () =>
+      root.render(<WorkbenchSettingsLine actualBatchG={actualBatchG} compact={compact} />),
+    );
+  };
+
+  const batchCard = () => host.querySelector('[data-testid="profile-batch-combined"]')!;
+  const baseLine = () => host.querySelector('[data-testid="workbench-recipe-base"]');
+
+  beforeEach(async () => {
+    (
+      globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
+    localStorage.clear();
+    useConstraintStudioStore.getState().resetForTests();
+    useRecipeProfileStore.getState().resetForTests();
+    useRecipeStore.getState().startNewRecipe('gelato');
+    host = document.createElement('div');
+    document.body.append(host);
+    root = createRoot(host);
+    await render(useRecipeStore.getState().target_batch_grams);
+  });
+
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    host.remove();
+  });
+
+  for (const compact of [true, false]) {
+    it(`exposes exactly one editable amount in the batch card (compact=${compact})`, async () => {
+      await render(470, compact);
+      const card = batchCard();
+      // One number input. The unit stays a real control; nothing else.
+      const inputs = card.querySelectorAll('input');
+      expect(inputs).toHaveLength(1);
+      expect(inputs[0]!.getAttribute('aria-label')).toBe('Docelowa partia');
+      expect(card.querySelectorAll('select')).toHaveLength(1);
+      expect(card.querySelector('[aria-label="Jednostka partii"]')).not.toBeNull();
+      // The old two-number `5000 / 470` row is gone from the card.
+      expect(card.textContent).not.toContain('/');
+      expect(card.textContent).toContain('Partia docelowa');
+      // …and the Base is NOT inside the card, where it read as a second input.
+      expect(card.querySelector('[data-testid="workbench-recipe-base"]')).toBeNull();
+    });
+  }
+
+  it('reports the recipe Base as read-only information, never as a control', async () => {
+    await render(470);
+    const base = baseLine();
+    expect(base).not.toBeNull();
+    expect(base!.textContent).toContain('Baza receptury:');
+    expect(base!.textContent).toContain('470');
+    // Read-only means read-only: no input, no select, no button, not focusable.
+    expect(base!.querySelectorAll('input, select, button, textarea, [contenteditable]')).toHaveLength(
+      0,
+    );
+    expect(base!.tagName).toBe('P');
+    expect(base!.hasAttribute('tabindex')).toBe(false);
+  });
+
+  it('shows the reconciled Base once the recipe matches the target', async () => {
+    await render(470);
+    expect(baseLine()!.textContent).toContain('470');
+    await render(5_000);
+    expect(baseLine()!.textContent).toContain('5000');
+    expect(baseLine()!.textContent).toContain('Baza receptury:');
+  });
+
+  it('keeps target, Base and machine guidance as three separate readings', async () => {
+    await act(async () => {
+      useRecipeStore.getState().setMachineSelection({
+        kind: 'home',
+        servingModeId: 'temp_minus_12',
+        machineId: listActiveHomeMachines(MACHINE_CATALOG)[0]!.id,
+        label: 'Home machine',
+        temperatureC: -12,
+        batchGrams: 5_000,
+        capacityGrams: 670,
+        batchSource: 'MACHINE_DEFAULT',
+      });
+    });
+    await render(470);
+
+    // 1 — what I want to make (the one editable field).
+    expect(
+      (host.querySelector('[aria-label="Docelowa partia"]') as HTMLInputElement).value,
+    ).toBe('5000');
+    // 2 — what the recipe weighs right now (read-only).
+    expect(baseLine()!.textContent).toContain('470');
+    // 3 — the machine reading, kept separate from both.
+    const capacity = host.querySelector('[data-testid="home-machine-capacity"]')!;
+    expect(capacity.textContent).toContain('Zalecany wsad na cykl');
+    expect(capacity.textContent).toContain('670');
+    // Polish plural: 8 is the genitive „cykli", not „cykle" (2-4 only).
+    expect(host.querySelector('[data-testid="home-machine-cycles"]')!.textContent).toBe(
+      '8 cykli · 625 g / cykl',
+    );
+    // The batch is presentation-corrected, not re-authored.
+    expect(useRecipeStore.getState().target_batch_grams).toBe(5_000);
+  });
+
+  it('renders no duplicate batch control anywhere in the panel', async () => {
+    await render(470);
+    const panel = host.querySelector('[data-testid="workbench-settings-line"]')!;
+    expect(panel.querySelectorAll('[aria-label="Docelowa partia"]')).toHaveLength(1);
+    expect(panel.querySelectorAll('[aria-label="Jednostka partii"]')).toHaveLength(1);
+    expect(panel.querySelectorAll('[data-testid="profile-batch-combined"]')).toHaveLength(1);
+    expect(panel.querySelectorAll('[data-testid="workbench-recipe-base"]')).toHaveLength(1);
+  });
+
+  it('keeps the Base readout directly under the batch field at both widths', async () => {
+    await render(470);
+    const grid = host.querySelector('.profile-settings-grid')!;
+    const base = baseLine()!;
+    // A grid child, so it can be ordered relative to the batch/Tryb row rather
+    // than floating below the whole panel.
+    expect(base.parentElement).toBe(grid);
+    // Two-column row: full width on its own line right under batch + Tryb.
+    expect(base.className).toContain('col-span-2');
+    expect(base.className).toContain('order-7');
+    // One-column reflow: the narrow rule lifts it ahead of Tryb.
+    expect(base.className).toContain('profile-settings-base-readout');
+    const theme = readFileSync(
+      resolve(import.meta.dirname, '..', '..', 'styles', 'theme-pro-light.css'),
+      'utf8',
+    );
+    const narrow = theme.slice(theme.indexOf('@container right-pane (max-width: 399px)'));
+    expect(narrow).toContain('.profile-settings-base-readout');
+    expect(narrow.indexOf('order: 6')).toBeGreaterThan(-1);
+    expect(narrow).toContain("[data-settings-cell='strategy']");
+  });
+
+  it('still commits an edited batch through the one remaining field', async () => {
+    await render(470);
+    const input = host.querySelector('[aria-label="Docelowa partia"]') as HTMLInputElement;
+    await act(async () => input.focus());
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, '2500');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await act(async () => input.blur());
+    expect(useRecipeStore.getState().target_batch_grams).toBe(2_500);
   });
 });
