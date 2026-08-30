@@ -35,6 +35,12 @@ export interface IntentChip {
   readonly productName: string | null;
   /** True when resolution found several real products and the user must choose (§23). */
   readonly ambiguous: boolean;
+  /**
+   * The real catalogue products offered for a §23 choice. Kept ON the chip so the
+   * question survives a refresh — an unanswered identity question that vanished would
+   * leave the recipe quietly missing the ingredient the user asked for.
+   */
+  readonly candidates?: readonly { readonly id: string; readonly name: string }[];
 }
 
 export interface HomeDraftState {

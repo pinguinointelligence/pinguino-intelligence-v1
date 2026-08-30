@@ -16,6 +16,7 @@ import { parseIntent } from '../homeIntentParsing';
 import { useHomeDraftStore, type IntentChip } from '../homeDraftStore';
 import { useVoiceIntent } from '../useVoiceIntent';
 import { HomeChip } from './HomeChip';
+import { HomeIdentityChoice } from './HomeIdentityChoice';
 import { HomeSection } from './HomeSection';
 
 const chipId = (): string =>
@@ -25,11 +26,14 @@ export function HomeIntentSection({
   onSubmit,
   onScan,
   onChipClick,
+  onChooseIdentity,
   resolving = false,
 }: {
   onSubmit: () => void;
   onScan: () => void;
   onChipClick?: (chip: IntentChip) => void;
+  /** §23: the user picked one of the offered real products. */
+  onChooseIdentity?: (chip: IntentChip, candidate: { id: string; name: string }) => void;
   /** §18: identity resolution runs only after `Create my recipe`. */
   resolving?: boolean;
 }) {
@@ -199,6 +203,18 @@ export function HomeIntentSection({
               />
             ))}
           </div>
+          {/* §23: only where the catalogue genuinely offers several real products. */}
+          {onChooseIdentity
+            ? chips
+                .filter((chip) => chip.ambiguous)
+                .map((chip) => (
+                  <HomeIdentityChoice
+                    key={`choice-${chip.id}`}
+                    chip={chip}
+                    onChoose={(candidate) => onChooseIdentity(chip, candidate)}
+                  />
+                ))
+            : null}
         </div>
       ) : null}
 

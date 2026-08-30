@@ -56,6 +56,47 @@ const displayOf = (row: SafeMapperSearchRow): string =>
   normalizeIntentText(row.ingredient_name_display ?? '');
 
 /**
+ * A minimal singular/plural stem, for MATCHING ONLY.
+ *
+ * Found in staging QA: the concept is `strawberry` and the catalogue row is
+ * `STRAWBERRIES · Fresh Fruit`. "strawberries" does not contain "strawberry", so the
+ * fresh fruit scored ZERO while `CHUPA CHUPS STRAWBERRY LOLLIPOP` scored a match — the
+ * plain ingredient was ranked below a novelty sweet purely on English plurals.
+ *
+ * Deliberately tiny and suffix-only. It is not a stemmer, not a lemmatiser and never
+ * touches the stored value: both sides are stemmed to compare, and the row's real name
+ * is what the user is shown and what the recipe records.
+ */
+export function matchStem(value: string): string {
+  const word = value.toLowerCase();
+  if (word.endsWith('ies')) return word.slice(0, -3);
+  if (word.endsWith('es') && word.length > 4) return word.slice(0, -2);
+  if (word.endsWith('s') && word.length > 3) return word.slice(0, -1);
+  if (word.endsWith('y')) return word.slice(0, -1);
+  return word;
+}
+
+/** Stem every word of a phrase so `strawberries fresh fruit` matches `strawberry`. */
+const stemPhrase = (value: string): string => value.split(' ').map(matchStem).join(' ');
+
+/**
+ * Subcategories that represent the PLAIN form of an ingredient.
+ *
+ * A person who types `truskawka` means strawberries. The catalogue also contains
+ * CHUPA CHUPS STRAWBERRY LOLLIPOP, FANTA STRAWBERRY and several PreGel pastes, all of
+ * which match the word equally well. Offering the lollipop first is a bad list.
+ *
+ * This is ORDERING ONLY and never an auto-adopt: §23 still shows the choice and the
+ * user still picks, so a professional who genuinely wants the paste loses nothing but
+ * a scroll. It is deliberately not a substitution rule (§22) — nothing is swapped, and
+ * a plain form that does not exist is simply absent from the list.
+ */
+const PLAIN_FORM_SUBCATEGORIES: ReadonlySet<string> = new Set(['fresh_fruit_profile']);
+
+export const isPlainForm = (row: SafeMapperSearchRow): boolean =>
+  row.ingredient_subcategory !== null && PLAIN_FORM_SUBCATEGORIES.has(row.ingredient_subcategory);
+
+/**
  * Score one row against the searched term. Higher is better; ties keep catalogue order,
  * which is already the canonical relevance order from the RPC.
  *
@@ -65,9 +106,16 @@ const displayOf = (row: SafeMapperSearchRow): string =>
  *  0 — matched only through the internal name / category
  */
 export function scoreCandidate(row: SafeMapperSearchRow, term: string): number {
-  const name = displayOf(row);
-  const wanted = normalizeIntentText(term);
-  if (!wanted) return 0;
+  const rawName = displayOf(row);
+  const rawWanted = normalizeIntentText(term);
+  if (!rawWanted) return 0;
+  // Exact/prefix are judged on the literal text first, so a true exact match always
+  // outranks a match that only survives stemming.
+  if (rawName === rawWanted) return 3;
+  if (rawName.startsWith(`${rawWanted} `) || rawName.startsWith(rawWanted)) return 2;
+
+  const name = stemPhrase(rawName);
+  const wanted = stemPhrase(rawWanted);
   if (name === wanted) return 3;
   if (name.startsWith(`${wanted} `) || name.startsWith(wanted)) return 2;
   if (name.includes(wanted)) return 1;
@@ -89,7 +137,14 @@ export function resolveIdentity(
 
   const scored = rows
     .map((row, index) => ({ row, index, score: scoreCandidate(row, term) }))
-    .sort((a, b) => b.score - a.score || a.index - b.index);
+    // Name relevance first, then the plain form of the ingredient, then catalogue
+    // order. The plain-form nudge only reorders a list the user still chooses from.
+    .sort(
+      (a, b) =>
+        b.score - a.score ||
+        Number(isPlainForm(b.row)) - Number(isPlainForm(a.row)) ||
+        a.index - b.index,
+    );
 
   const best = scored[0];
   if (!best || best.score === 0) {

@@ -16,6 +16,7 @@
 import { isValidElement, type ReactElement, type ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it } from 'vitest';
 import { customerShellCopy } from '@/features/customer-shell/customerShellCopy';
 import { RoleAwareEntryRoute } from '@/features/auth/RoleAwareEntryRoute';
@@ -64,11 +65,21 @@ const byPath = new Map(routes.map((r) => [r.path, r.element]));
 const elementType = (path: string): unknown =>
   isValidElement(byPath.get(path)) ? (byPath.get(path) as ReactElement).type : undefined;
 
+/**
+ * The real app wraps routes in `AppProviders`, which supplies a QueryClient. This
+ * harness renders `AppRoutes` on its own, so it must supply one too — the HOME Creator
+ * legitimately uses the canonical recipe-save hook, which is a react-query consumer.
+ * Making the harness match the app is not the same as loosening the page's needs.
+ */
 const renderAt = (path: string) =>
   renderToStaticMarkup(
-    <MemoryRouter initialEntries={[path]}>
-      <AppRoutes />
-    </MemoryRouter>,
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
+      <MemoryRouter initialEntries={[path]}>
+        <AppRoutes />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 
 /* --------------------------------------------------------------- tests -- */
