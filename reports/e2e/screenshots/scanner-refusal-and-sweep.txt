@@ -1,0 +1,53 @@
+GELLATTI — served capture: Scanner refusal path + destination sweep
+Served on https://staging.pinguinoai.com as test1@test1.com
+Staging 49dea0b4 · captured 2026-08-30
+
+--- SCANNER (Phase D) — the safety property, verified ------------------------
+Blocker 3 stands for the POSITIVE path: adding a real commercial product still
+needs a package photograph, and I will not fabricate one. What could be tested
+without fabricating anything is the NEGATIVE path, and it is the one that
+matters most: given a bad image, does the pipeline invent a product?
+
+Method: a plain 800x800 grey PNG (15 772 bytes) generated in-page — deliberately
+NOT a package label — handed to the drag-and-drop intake on /products/scan.
+
+Intake:   accepted, and the pipeline ran its real stages —
+          "Rozpoznajemy produkt / Sprawdzamy kod / Odczytujemy etykiete /
+           Potwierdzamy dane / Przygotowujemy produkt"
+Verdict:  "Potrzebuje jeszcze jednego zdjecia · Czy mozesz pokazac wyraznie kod
+           kreskowy produktu? · Kod pozwala bezpiecznie rozpoznac dokladnie ten
+           produkt i uniknac duplikatu."
+Actions:  "Dodaj potrzebne zdjecie", "Pokaz szczegoly diagnostyczne"
+
+  No product was invented. What happened + what next, with a named reason.
+
+Writes checked after the run, for 2026-08-30:
+  global_catalog_products ................ 0 rows
+  global_catalog_submissions ............. 0 rows
+  global_catalog_server_ocr_attestations . 0 rows
+
+  The refusal is clean: nothing entered the catalogue.
+
+VERDICT: PASS for the refusal path. The intake itself is proven to work, so
+blocker 3 is now only "no package photograph on disk" — nothing in the code.
+
+--- DESTINATION SWEEP (regression after PC-06, PC-07 and the V2.1 merges) -----
+Real navigations, signed in, desktop:
+  /home ............ PRO workbench (correct for a Pro account)
+  /shop ............ "EKOSYSTEM GELLATTI · Sklep", Starter Pack, neutral
+                     placeholder for the missing packaging asset
+  /community ....... Recipes strip intact (Moje · Udostepnione mi · Gellatti ·
+                     Inspiracje · Community · Top 100), sorting, search, and the
+                     published "QA Gelato Wanilia -11 · Autor Marysia Lody"
+  /work-with-us .... "Tworz z Gellatti", partners and creators first
+  /franchise ....... four concepts, "Zapytaj o Franchise", independent of plan
+  /machine ......... Ninja CREAMi Deluxe, 706 ml -> 670 g (the x0.95 rule)
+  /account ......... test1@test1.com, Plan Pro, language, security, SKU markets
+  /products ........ 100 results, EAN, status, "Moja cena", favourites
+  No error state on any destination.
+
+--- MOBILE 390 x 844 ---------------------------------------------------------
+document.scrollWidth === clientWidth === 390 on every one of:
+  /shop /work-with-us /franchise /community /recipes /account /products
+  /machine /top100
+  No horizontal overflow anywhere.
