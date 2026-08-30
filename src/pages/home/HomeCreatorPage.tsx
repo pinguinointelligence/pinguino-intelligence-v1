@@ -292,6 +292,23 @@ export function HomeCreatorPage() {
               }, 60);
             }}
             resolving={resolving}
+            onChooseIdentity={(chip, candidate) => {
+              // §23: the user answered the identity question. Record the real
+              // catalogue identity, clear the question, and — if the recipe already
+              // exists — put the ingredient in it now.
+              useHomeDraftStore.getState().resolveChip(chip.id, {
+                productId: candidate.id,
+                productName: candidate.name,
+                ambiguous: false,
+                candidates: undefined,
+              });
+              if (useHomeDraftStore.getState().recipeReady) {
+                const resolved = useHomeDraftStore
+                  .getState()
+                  .chips.find((entry) => entry.id === chip.id);
+                if (resolved) void intentIngredients.addResolvedChip(resolved);
+              }
+            }}
             onScan={() => {
               // The cheap scanner pre-check is Phase 2; until it exists the button
               // must not pretend to work, so it is not wired to a fake result.

@@ -51,11 +51,19 @@ export function useHomeIntentIngredients() {
             productId: resolution.row.ingredient_id,
             productName: resolution.row.ingredient_name_display,
             ambiguous: false,
+            candidates: undefined,
           });
           return { chipId: chip.id, status: 'added' };
         case 'ambiguous':
-          // §23: the USER picks between materially different real products.
-          resolveChip(chip.id, { ambiguous: true });
+          // §23: the USER picks between materially different real products. The
+          // candidates are stored so the question survives a refresh.
+          resolveChip(chip.id, {
+            ambiguous: true,
+            candidates: resolution.candidates.map((row) => ({
+              id: row.ingredient_id,
+              name: row.ingredient_name_display,
+            })),
+          });
           return { chipId: chip.id, status: 'ambiguous' };
         case 'unavailable':
           return { chipId: chip.id, status: 'unavailable' };

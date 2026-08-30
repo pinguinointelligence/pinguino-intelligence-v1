@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { SafeMapperSearchRow } from '@/services/productPicker/mapperSearch';
-import { catalogueSearchTerms, resolveIdentity, scoreCandidate } from './homeIdentityResolution';
+import {
+  catalogueSearchTerms,
+  isPlainForm,
+  matchStem,
+  resolveIdentity,
+  scoreCandidate,
+} from './homeIdentityResolution';
 
 const row = (id: string, name: string): SafeMapperSearchRow => ({
   ingredient_id: id,
@@ -111,5 +117,49 @@ describe('catalogue search terms — the §25 ↔ §22 boundary', () => {
 
   it('drops an empty raw word rather than searching for nothing', () => {
     expect(catalogueSearchTerms({ label: '   ', concept: 'vanilla' })).toEqual(['vanilla']);
+  });
+});
+
+describe('§23 ordering — the plain form is offered first', () => {
+  it('puts fresh fruit ahead of a lollipop, a soda and a paste', () => {
+    // Real staging rows: "truskawka" matches all of these equally well BY NAME.
+    const fresh = {
+      ...row('PI-ING-001553', 'STRAWBERRIES · Fresh Fruit'),
+      ingredient_subcategory: 'fresh_fruit_profile',
+    };
+    const lollipop = row('PI-ING-002068', 'CHUPA CHUPS STRAWBERRY LOLLIPOP · Inclusion');
+    const soda = row('PI-ING-001888', 'FANTA STRAWBERRY · Beverage');
+    const result = resolveIdentity([lollipop, soda, fresh], 'strawberry');
+
+    expect(result.kind).toBe('ambiguous');
+    if (result.kind === 'ambiguous') {
+      // Still a CHOICE — nothing was auto-adopted (§22/§23).
+      expect(result.candidates.length).toBe(3);
+      expect(result.candidates[0]?.ingredient_id).toBe('PI-ING-001553');
+    }
+  });
+
+  it('identifies a plain form only by its subcategory, never by its name', () => {
+    expect(isPlainForm(row('a', 'STRAWBERRIES · Fresh Fruit'))).toBe(false);
+    expect(
+      isPlainForm({ ...row('a', 'ANYTHING'), ingredient_subcategory: 'fresh_fruit_profile' }),
+    ).toBe(true);
+  });
+
+  it('matches a plural catalogue name against a singular concept', () => {
+    // The staging defect verbatim: STRAWBERRIES vs strawberry.
+    expect(matchStem('strawberries')).toBe(matchStem('strawberry'));
+    expect(matchStem('cherries')).toBe(matchStem('cherry'));
+    expect(matchStem('bananas')).toBe('banana');
+    expect(scoreCandidate(row('a', 'STRAWBERRIES · Fresh Fruit'), 'strawberry')).toBeGreaterThan(0);
+  });
+
+  it('never lets the plain-form nudge outrank an exact name match', () => {
+    const exact = row('EXACT', 'MANGO');
+    const plain = { ...row('PLAIN', 'MANGO PUREE'), ingredient_subcategory: 'fresh_fruit_profile' };
+    const result = resolveIdentity([plain, exact], 'mango');
+    // A single exact name match still resolves outright (§58: do not ask needlessly).
+    expect(result.kind).toBe('resolved');
+    if (result.kind === 'resolved') expect(result.row.ingredient_id).toBe('EXACT');
   });
 });
