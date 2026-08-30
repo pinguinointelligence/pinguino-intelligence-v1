@@ -59,7 +59,11 @@ A real legibility defect was fixed on the way: the graphite hero's call to actio
 | Produkty | 95.0 → **95.1** | 84.8 → **85.2** |
 | Ustawienia etykiety | 93.9 → 93.8 | 79.5 → **80.6** ³ |
 | Ustawienia maszyny | 95.1 → **95.4** | 84.4 → **87.6** |
-| PRO Receptura / Monitor / Produkcja / Etykieta ×2 | 92.2–94.2, unchanged | 86.3–91.0, unchanged |
+| PRO Receptura | **88.4** (ink 95.0) ⁴ | **87.1** (ink 91.9) ⁴ |
+| PRO Monitor | **89.0** (ink 95.8) ⁴ | **83.4** (ink 91.6) ⁴ |
+| PRO Produkcja | **88.6** (ink 93.5) ⁴ | **83.2** (ink 88.1) ⁴ |
+| PRO Etykieta — before production | **91.9** (ink 96.5) ⁴ | **87.6** (ink 91.4) ⁴ |
+| PRO Etykieta — final label | PENDING_DATA ⁵ | PENDING_DATA ⁵ |
 
 ¹ The Sklep catalogue cannot load in this local environment — the page renders
 "Nie udało się wczytać sklepu." The hero itself measures correctly at both viewports; the
@@ -76,8 +80,6 @@ same content as a MODAL sheet opened from `/labels`, with six jurisdictions (Kan
 Australia / Nowa Zelandia added). Page-vs-modal is an architecture difference, not a visual
 one, so it is recorded rather than silently converted — see OPEN below.
 
-## Open
-
 1. **Ustawienia etykiety: page vs modal.** Needs an owner decision — keep staging's modal
    (and dress it in the approved tokens), or promote it to the authority's full page.
 2. **Sklep catalogue data** unavailable locally; blocks the mobile Sklep number only.
@@ -85,6 +87,25 @@ one, so it is recorded rather than silently converted — see OPEN below.
    stale and `Przelicz` cannot complete, so Monitor renders skeleton bars. §16 (7 rows, one
    Score) and §17 (`0/6` with no invented Score) can only be closed on served staging with
    the TEST PRO session.
+⁴ **Corrected measurement.** An earlier pass navigated to each PRO route with a full page
+load. The dev persona lives in a Zustand store with no persistence, so every reload dropped
+back to `Demo` and the capture recorded the "Przestrzeń profesjonalna" ENTITLEMENT GATE
+rather than the workbench — against a mostly-white authority frame that still scored 92–94 %
+on white-space agreement alone. The numbers above are re-measured with the persona set once
+and every module reached by clicking its tab, so the workbench is actually on screen. The
+mobile architecture is confirmed intact per §19–27: compact ingredient list, BAZA LODOWA,
+TOPPINGI PO PRODUKCJI, PRODUKT FINALNY and the bottom module bar.
+
+⁵ The authority's `label/final-ready` is the label of a COMPLETED batch. Reaching it needs a
+finished production run, which the stale local demo preset cannot produce — same root cause as
+the Monitor/Produkcja blocker. Recorded as PENDING_DATA rather than scored against the
+before-production state it is not.
+
+The lesson generalises: on this app a screenshot is only evidence once you have checked that
+the state you meant to photograph is the state on screen.
+
+## Open
+
 4. ~~PRO Workbench Master at 82.5 %~~ — **closed, not a gap.** `?pro=master&state=master` is
    a DOCUMENTATION view of the pack itself ("Gellatti V2.1 across the complete working loop",
    four cards linking to the modules, a frozen-function panel). It has no app counterpart, in
