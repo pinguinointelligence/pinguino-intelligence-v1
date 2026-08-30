@@ -8,6 +8,7 @@ import { SectionLabel } from '@/components/shared/SectionLabel';
 import { StatusChip } from '@/components/shared/StatusChip';
 import { cn } from '@/lib/cn';
 import { customerErrorMessage } from '@/copy/customerError';
+import { ADMIN_TABLE, ADMIN_TD, ADMIN_TH } from '@/features/admin/adminUi';
 import { AdminCatalogSection } from '@/features/admin/AdminCatalogSection';
 import { AdminShopSection } from '@/features/admin/AdminShopSection';
 import { AdminFranchiseLeadsSection } from '@/features/admin/AdminFranchiseLeadsSection';
@@ -30,28 +31,34 @@ import {
   type ProductRequestStatus,
 } from '@/services/adminControl';
 
+/* Gellatti speaks Polish everywhere else in the product; Admin was the one
+   surface still labelled in English, against Polish section content. The ids
+   are unchanged, so every `/admin/<id>` route and deep link still resolves. */
 const NAV = [
-  ['overview', 'Overview'],
-  ['customer-added-products', 'Customer-added products'],
-  ['product-requests', 'Product requests'],
-  ['catalog', 'Catalog & countries'],
-  ['users', 'Users'],
-  ['revenue', 'Subscriptions & revenue'],
-  ['shop', 'Shop & orders'],
-  ['partners', 'Partners'],
-  ['community', 'Community & content'],
-  ['franchise', 'Franchise leads'],
-  ['operations', 'Operations'],
-  ['audit', 'Audit log'],
-  ['settings', 'Admin settings'],
+  ['overview', 'Przegląd'],
+  ['customer-added-products', 'Produkty od użytkowników'],
+  ['product-requests', 'Zgłoszenia produktów'],
+  ['catalog', 'Katalog i kraje'],
+  ['users', 'Użytkownicy'],
+  ['revenue', 'Subskrypcje i przychód'],
+  ['shop', 'Sklep i zamówienia'],
+  ['partners', 'Partnerzy'],
+  ['community', 'Community i treści'],
+  ['franchise', 'Zapytania Franchise'],
+  ['operations', 'Operacje'],
+  ['audit', 'Dziennik zdarzeń'],
+  ['settings', 'Ustawienia Admina'],
 ] as const;
 type Section = (typeof NAV)[number][0];
 const validSection = (value: string | undefined): Section =>
   NAV.some(([id]) => id === value) ? (value as Section) : 'overview';
 
-const table = 'w-full min-w-[760px] border-collapse text-left text-xs';
-const th = 'border-b border-ink/15 px-3 py-2.5 font-semibold text-stone-500';
-const td = 'border-b border-ink/8 px-3 py-3 align-top text-stone-700';
+/* The shared admin table language (see `adminUi`), so every operational table
+   in the workspace reads the same. `min-w` keeps wide data scrolling inside its
+   own card rather than pushing the page sideways. */
+const table = `${ADMIN_TABLE} min-w-[760px]`;
+const th = ADMIN_TH;
+const td = `${ADMIN_TD} text-[var(--g-ink)]`;
 
 export function AdminWorkspacePage() {
   const { section } = useParams();
