@@ -62,6 +62,30 @@ exactly one obvious next action. The historical v1 was never rewritten.
 
 ---
 
+## 1b. Machine preference → new-recipe default (2026-08-30)
+
+Saved `Ninja CREAMi Deluxe / 670 g` in Machine Settings, yet `+ Nowa receptura`
+still opened `Maszyna profesjonalna 1000 / 1000 g`, refresh included.
+
+**Two authorities described the same intent and never met.** `/machine` writes a
+`MachinePreferenceRecord` through `MachinePreferenceStore`; `startNewRecipe`
+reads `useRecipeProfileStore`, backed by `user_recipe_defaults` and written only
+by Account Recipe Defaults. Nothing bridged them, so an account that had set a
+machine and nothing else had **no recipe default at all** — confirmed on
+staging, where `user_recipe_defaults` holds zero rows for the reporting account
+— and fell through to the Professional fallback.
+
+Fixed by a bridge that derives nothing itself: machine, serving mode and grams
+all come from the existing registry (`resolvePreferenceProfile` →
+`deriveMachineSetup` → `effectiveDefaultBatchGrams`), the same chain the
+in-recipe picker uses. `recipeStore.ts` is protected and was **not** modified.
+
+Served on `bc048ae2`: `+ Nowa receptura` → `ninja-creami-deluxe-nc502eu-eu-es`,
+**670 / 670 g**; a full reload reproduces it; Production renders the
+home-machine `INSTRUKCJA MASZYNY` block at 670 g; and a saved historical
+Professional recipe still reopens Professional at 1000 g. Capture:
+`reports/e2e/screenshots/machine-preference-new-recipe.txt`.
+
 ## 2. Production — every profile, from a saved recipe
 
 | Profile | Fixture | Batch | Score |
