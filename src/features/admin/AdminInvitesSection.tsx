@@ -21,12 +21,12 @@ export function AdminInvitesSection() {
     },
   });
   return (
-    <section className="mt-9 border-t border-ink/10 pt-8">
+    <section className="mt-9 border-t border-[var(--g-line)] pt-8">
       <SectionLabel>Osobny typ dostępu</SectionLabel>
       <h2 className="mt-2 text-xl font-semibold text-ink">
         Jednorazowe zaproszenia Home na miesiąc
       </h2>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-600">
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--g-text-secondary)]">
         Kod jest przypisany do jednego e-maila, działa raz i nie jest kodem Partnera. Pełny kod
         pojawia się wyłącznie po utworzeniu.
       </p>
@@ -38,7 +38,7 @@ export function AdminInvitesSection() {
         }}
       >
         <input
-          className="pro-focus-ring min-h-11 flex-1 border border-ink/15 px-3 text-sm"
+          className="pro-focus-ring min-h-11 flex-1 border border-[var(--g-line)] px-3 text-sm"
           type="email"
           required
           value={email}
@@ -49,11 +49,11 @@ export function AdminInvitesSection() {
       </form>
       {issued ? (
         <div className="mt-4 max-w-xl border border-status-ideal/30 bg-status-ideal/5 p-4">
-          <p className="text-xs text-stone-600">
+          <p className="text-xs text-[var(--g-text-secondary)]">
             Skopiuj teraz dla {issued.email}. Nie będzie ponownie dostępny
           </p>
           <strong className="mt-2 block font-mono text-xl tracking-[0.12em]">{issued.code}</strong>
-          <p className="mt-2 text-xs text-stone-500">
+          <p className="mt-2 text-xs text-[var(--g-text-secondary)]">
             Wygasa: {new Date(issued.expiresAt).toLocaleString('pl-PL')}
           </p>
         </div>
@@ -64,12 +64,12 @@ export function AdminInvitesSection() {
       <div className="mt-6 overflow-x-auto">
         <table className="w-full min-w-[720px] text-left text-xs">
           <thead>
-            <tr className="border-y border-ink/15 bg-stone-50">
+            <tr className="border-y border-[var(--g-line)] bg-[var(--g-ivory)]">
               {['Miejsce', 'E-mail', 'Status', 'Utworzono', 'Wygasa', 'Wykorzystano'].map(
                 (label) => (
                   <th
                     key={label}
-                    className="px-3 py-3 text-[10px] uppercase tracking-[0.1em] text-stone-500"
+                    className="px-3 py-3 text-[10px] uppercase tracking-[0.1em] text-[var(--g-text-secondary)]"
                   >
                     {label}
                   </th>
@@ -79,7 +79,7 @@ export function AdminInvitesSection() {
           </thead>
           <tbody>
             {(query.data?.home ?? []).map((row) => (
-              <tr key={String(row.id)} className="border-b border-ink/10">
+              <tr key={String(row.id)} className="border-b border-[var(--g-line)]">
                 <td className="px-3 py-4">
                   {String(row.slot)} v{String(row.version)}
                 </td>

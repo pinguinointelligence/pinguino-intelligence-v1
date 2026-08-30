@@ -22,9 +22,9 @@ import {
   shopOrderStatusLabelPl,
 } from '@/copy/shop';
 
-const field = 'pro-focus-ring min-h-11 w-full border border-ink/15 bg-white px-3 text-sm';
-const th = 'border-b border-ink/15 px-3 py-2.5 text-left font-semibold text-stone-500';
-const td = 'border-b border-ink/8 px-3 py-3 align-top text-stone-700';
+const field = 'pro-focus-ring min-h-11 w-full border border-[var(--g-line)] bg-white px-3 text-sm';
+const th = 'border-b border-[var(--g-line)] px-3 py-2.5 text-left font-semibold text-[var(--g-text-secondary)]';
+const td = 'border-b border-[var(--g-line-quiet)] px-3 py-3 align-top text-[var(--g-ink)]';
 
 const AVAILABILITY: readonly ShopAvailability[] = ['in_stock', 'preorder', 'out_of_stock'];
 const AVAILABILITY_LABEL: Readonly<Record<ShopAvailability, string>> = {
@@ -63,9 +63,9 @@ function ProductRow({
     <tr>
       <td className={td}>
         <strong className="block text-ink">{product.title}</strong>
-        <span className="font-mono text-[11px] text-stone-500">{product.sku}</span>
+        <span className="font-mono text-[11px] text-[var(--g-text-secondary)]">{product.sku}</span>
         {product.canonical_ingredient_id ? (
-          <span className="mt-0.5 block font-mono text-[11px] text-stone-500">
+          <span className="mt-0.5 block font-mono text-[11px] text-[var(--g-text-secondary)]">
             {product.canonical_ingredient_id}
           </span>
         ) : null}
@@ -78,7 +78,7 @@ function ProductRow({
           value={price}
           onChange={(event) => setPrice(event.currentTarget.value)}
         />
-        <span className="mt-1 block text-[11px] text-stone-500">
+        <span className="mt-1 block text-[11px] text-[var(--g-text-secondary)]">
           {shopMoney(product.price_cents, product.currency)}
         </span>
       </td>
@@ -187,17 +187,17 @@ export function AdminShopSection() {
 
   return (
     <>
-      <header className="border-b border-ink/10 pb-6">
+      <header className="border-b border-[var(--g-line)] pb-6">
         <SectionLabel>Sprzedaż</SectionLabel>
-        <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-ink">Sklep</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-600">
+        <h1 className="mt-2 text-[25px] leading-[1.08] font-[750] tracking-[-0.04em] text-[var(--g-ink)] sm:text-[30px]">Sklep</h1>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--g-text-secondary)]">
           Artykuły odsyłają do istniejących produktów kanonicznych — sklep nigdy nie tworzy
           duplikatu składnika. Cena, dostępność i termin realizacji są edytowalne tutaj.
         </p>
       </header>
 
       {save.isError ? (
-        <p className="mt-4 text-sm text-[#b3261e]">{customerErrorMessage(save.error, 'admin')}</p>
+        <p className="mt-4 text-sm text-status-error">{customerErrorMessage(save.error, 'admin')}</p>
       ) : null}
 
       <section className="mt-7">
@@ -245,34 +245,34 @@ export function AdminShopSection() {
         ) : null}
         <div className="mt-4 grid gap-3">
           {(orders.data ?? []).map((order) => (
-            <article key={order.id} className="border border-ink/10 bg-white p-5">
+            <article key={order.id} className="border border-[var(--g-line)] bg-white p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="font-mono text-sm text-ink">{order.orderNumber}</p>
-                  <p className="mt-1 text-xs text-stone-500">{order.email}</p>
+                  <p className="mt-1 text-xs text-[var(--g-text-secondary)]">{order.email}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="border border-ink/15 px-2 py-1 text-[11px] tracking-[0.08em] text-stone-600 uppercase">
+                  <span className="border border-[var(--g-line)] px-2 py-1 text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">
                     {shopOrderStatusLabelPl(order.status)}
                   </span>
                   {order.containsPreorder ? (
-                    <span className="border border-[#ef8708]/45 bg-[#ef8708]/10 px-2 py-1 text-[11px] tracking-[0.08em] text-[#8a4d00] uppercase">
+                    <span className="border rounded-full border-[var(--g-orange)]/40 bg-[var(--g-orange)]/10 px-2.5 py-1 text-[10px] font-bold tracking-[0.04em] text-[var(--g-attention-ink)] uppercase">
                       Na zamówienie · {order.leadTimeWeeks ?? '?'} tyg.
                     </span>
                   ) : null}
-                  <span className="border border-ink/15 px-2 py-1 text-[11px] tracking-[0.08em] text-stone-600 uppercase">
+                  <span className="border border-[var(--g-line)] px-2 py-1 text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">
                     {shopFulfillmentLabelPl(order.fulfillmentStatus)}
                   </span>
                 </div>
               </div>
 
-              <ul className="mt-4 divide-y divide-ink/10 text-sm">
+              <ul className="mt-4 divide-y divide-[var(--g-line)] text-sm">
                 {order.items.map((item) => (
                   <li key={item.sku} className="flex justify-between gap-3 py-2">
-                    <span className="text-stone-700">
+                    <span className="text-[var(--g-ink)]">
                       {item.title} × {item.quantity}
                     </span>
-                    <span className="font-mono text-stone-600">
+                    <span className="font-mono text-[var(--g-text-secondary)]">
                       {shopMoney(item.unitPriceCents * item.quantity, order.currency)}
                     </span>
                   </li>
@@ -281,26 +281,26 @@ export function AdminShopSection() {
 
               <dl className="mt-4 grid gap-2 text-xs sm:grid-cols-3">
                 <div>
-                  <dt className="text-stone-500">Wartość</dt>
+                  <dt className="text-[var(--g-text-secondary)]">Wartość</dt>
                   <dd className="font-mono text-sm text-ink">
                     {shopMoney(order.totalCents, order.currency)}
                   </dd>
                 </div>
                 <div className="min-w-0">
-                  <dt className="text-stone-500">{shopCopy.admin.sessionReference}</dt>
-                  <dd className="truncate font-mono text-[11px] text-stone-600">
+                  <dt className="text-[var(--g-text-secondary)]">{shopCopy.admin.sessionReference}</dt>
+                  <dd className="truncate font-mono text-[11px] text-[var(--g-text-secondary)]">
                     {order.paymentReference.sessionId ?? '—'}
                   </dd>
                 </div>
                 <div className="min-w-0">
-                  <dt className="text-stone-500">{shopCopy.admin.intentReference}</dt>
-                  <dd className="truncate font-mono text-[11px] text-stone-600">
+                  <dt className="text-[var(--g-text-secondary)]">{shopCopy.admin.intentReference}</dt>
+                  <dd className="truncate font-mono text-[11px] text-[var(--g-text-secondary)]">
                     {order.paymentReference.intentId ?? '—'}
                   </dd>
                 </div>
               </dl>
 
-              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-ink/10 pt-4">
+              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[var(--g-line)] pt-4">
                 <Button
                   type="button"
                   variant="ghost"

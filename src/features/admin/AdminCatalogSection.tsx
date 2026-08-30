@@ -10,7 +10,7 @@ import {
   type AdminCatalogProduct,
 } from '@/services/adminControl';
 
-const inputClass = 'pro-focus-ring min-h-11 w-full border border-ink/15 bg-white px-3 text-sm';
+const inputClass = 'pro-focus-ring min-h-11 w-full border border-[var(--g-line)] bg-white px-3 text-sm';
 
 export function AdminCatalogSection() {
   const queryClient = useQueryClient();
@@ -50,12 +50,12 @@ export function AdminCatalogSection() {
   });
   return (
     <>
-      <header className="border-b border-ink/10 pb-6">
+      <header className="border-b border-[var(--g-line)] pb-6">
         <SectionLabel>Katalog główny</SectionLabel>
-        <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-ink">
+        <h1 className="mt-2 text-[25px] leading-[1.08] font-[750] tracking-[-0.04em] text-[var(--g-ink)] sm:text-[30px]">
           Katalog i kraje
         </h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-600">
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--g-text-secondary)]">
           Dane źródłowe są tylko do odczytu. Produkty zachowują historię wersji, sposób użycia,
           pochodzenie danych oraz rejestr zmian.
         </p>
@@ -80,11 +80,11 @@ export function AdminCatalogSection() {
         <div className="min-w-0 overflow-x-auto">
           <table className="w-full min-w-[900px] text-left text-xs">
             <thead>
-              <tr className="border-y border-ink/15 bg-stone-50">
+              <tr className="border-y border-[var(--g-line)] bg-[var(--g-ivory)]">
                 {['Artykuł', 'Produkt', 'EAN', 'Status', 'Behavior', 'Rynki', ''].map((label) => (
                   <th
                     key={label}
-                    className="px-3 py-3 text-[10px] uppercase tracking-[0.1em] text-stone-500"
+                    className="px-3 py-3 text-[10px] uppercase tracking-[0.1em] text-[var(--g-text-secondary)]"
                   >
                     {label}
                   </th>
@@ -93,25 +93,25 @@ export function AdminCatalogSection() {
             </thead>
             <tbody>
               {(catalog.data ?? []).map((product) => (
-                <tr key={product.id} className="border-b border-ink/10">
+                <tr key={product.id} className="border-b border-[var(--g-line)]">
                   <td className="px-3 py-4">
                     <span className="font-mono text-ink">{product.articleId}</span>
-                    <span className="mt-1 block text-[10px] text-stone-400">{product.origin}</span>
+                    <span className="mt-1 block text-[10px] text-[var(--g-text-muted)]">{product.origin}</span>
                   </td>
                   <td className="px-3 py-4">
                     <strong className="text-ink">{product.name ?? '—'}</strong>
-                    <span className="mt-1 block text-stone-500">
+                    <span className="mt-1 block text-[var(--g-text-secondary)]">
                       {product.brand ?? 'Bez marki'}
                     </span>
                   </td>
                   <td className="px-3 py-4 font-mono">{product.ean ?? '—'}</td>
                   <td className="px-3 py-4">
                     {product.active ? 'PUBLISHED' : 'UNPUBLISHED'}
-                    <span className="mt-1 block text-stone-500">{product.verificationStatus}</span>
+                    <span className="mt-1 block text-[var(--g-text-secondary)]">{product.verificationStatus}</span>
                   </td>
                   <td className="px-3 py-4">
                     {String(product.behavior?.mainEligibility ?? 'MISSING')}
-                    <span className="mt-1 block text-stone-500">
+                    <span className="mt-1 block text-[var(--g-text-secondary)]">
                       {String(product.behavior?.bindingStatus ?? '—')}
                     </span>
                   </td>
@@ -124,7 +124,7 @@ export function AdminCatalogSection() {
                     <button
                       type="button"
                       onClick={() => setSelected(product)}
-                      className="pro-focus-ring min-h-10 border border-ink/15 px-3 font-semibold"
+                      className="pro-focus-ring min-h-10 border border-[var(--g-line)] px-3 font-semibold"
                     >
                       Sprawdź
                     </button>
@@ -139,7 +139,7 @@ export function AdminCatalogSection() {
             </p>
           ) : null}
         </div>
-        <aside className="border border-ink/12 bg-[#f3ede3] p-5">
+        <aside className="border border-[var(--g-line)] rounded-[12px] bg-[var(--g-ivory)] p-[18px]">
           <SectionLabel>Operacje na produkcie</SectionLabel>
           {selected ? (
             <div className="mt-4 space-y-4">
@@ -147,7 +147,7 @@ export function AdminCatalogSection() {
                 <strong className="text-sm text-ink">
                   {selected.articleId} · {selected.name}
                 </strong>
-                <p className="mt-1 break-all font-mono text-[10px] text-stone-500">{selected.id}</p>
+                <p className="mt-1 break-all font-mono text-[10px] text-[var(--g-text-secondary)]">{selected.id}</p>
               </div>
               {selected.origin === 'PI' ? (
                 <p className="border border-amber-300 bg-amber-50 p-3 text-xs">
@@ -213,7 +213,7 @@ export function AdminCatalogSection() {
                   </Button>
                 </>
               )}
-              <details className="border-t border-ink/10 pt-4">
+              <details className="border-t border-[var(--g-line)] pt-4">
                 <summary className="cursor-pointer text-xs font-semibold">
                   Wersja / pochodzenie
                 </summary>
@@ -236,7 +236,7 @@ export function AdminCatalogSection() {
               ) : null}
             </div>
           ) : (
-            <p className="mt-4 text-sm text-stone-500">
+            <p className="mt-4 text-sm text-[var(--g-text-secondary)]">
               Wybierz artykuł. Mutacje zawsze wymagają powodu i uprawnienia CATALOG.
             </p>
           )}
@@ -247,7 +247,7 @@ export function AdminCatalogSection() {
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[840px] text-left text-xs">
             <thead>
-              <tr className="border-y border-ink/15 bg-stone-50">
+              <tr className="border-y border-[var(--g-line)] bg-[var(--g-ivory)]">
                 {[
                   'Kraj',
                   'Zatwierdzone',
@@ -259,7 +259,7 @@ export function AdminCatalogSection() {
                 ].map((label) => (
                   <th
                     key={label}
-                    className="px-3 py-3 text-[10px] uppercase tracking-[0.1em] text-stone-500"
+                    className="px-3 py-3 text-[10px] uppercase tracking-[0.1em] text-[var(--g-text-secondary)]"
                   >
                     {label}
                   </th>
@@ -268,7 +268,7 @@ export function AdminCatalogSection() {
             </thead>
             <tbody>
               {(countries.data ?? []).map((country) => (
-                <tr key={country.code} className="border-b border-ink/10">
+                <tr key={country.code} className="border-b border-[var(--g-line)]">
                   <td className="px-3 py-4">
                     <strong>{country.code}</strong> · {country.name}
                   </td>

@@ -59,12 +59,12 @@ export function AdminUsersSection() {
   });
   return (
     <>
-      <header className="border-b border-ink/10 pb-6">
+      <header className="border-b border-[var(--g-line)] pb-6">
         <AdminEyebrow>Obsługa kont</AdminEyebrow>
         <h1 className="mt-[7px] text-[25px] leading-[1.08] font-[750] tracking-[-0.04em] text-[var(--g-ink)] sm:text-[30px]">
           Użytkownicy
         </h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-600">
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--g-text-secondary)]">
           Role, stan konta, entitlementy, kraje, Favorites i zgłoszenia — bez haseł, kart oraz
           prywatnych receptur.
         </p>
@@ -189,7 +189,7 @@ export function AdminUsersSection() {
               ) : null}
             </div>
           ) : (
-            <p className="mt-4 text-sm text-stone-500">
+            <p className="mt-4 text-sm text-[var(--g-text-secondary)]">
               Wybierz konto. Każda zmiana wymaga powodu i roli SUPPORT
             </p>
           )}
