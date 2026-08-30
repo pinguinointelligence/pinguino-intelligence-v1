@@ -120,15 +120,15 @@ function PlanCard({
         'flex flex-col border bg-paper p-6 sm:p-7',
         radius.card,
         emphasized
-          ? 'border-ink/20 bg-stone-50 shadow-[0_10px_40px_rgba(16,17,19,0.07)]'
-          : 'border-ink/10 shadow-[0_1px_2px_rgba(16,17,19,0.05)]',
+          ? 'border-[var(--g-line-strong)] bg-[var(--g-ivory)] shadow-[0_10px_40px_rgba(16,17,19,0.07)]'
+          : 'border-[var(--g-line)] shadow-[0_1px_2px_rgba(16,17,19,0.05)]',
       )}
     >
       <div className="flex items-center justify-between gap-3">
         <h2 className={cn(type.heading, color.textPrimary)}>{plan.name}</h2>
         <span
           className={cn(
-            'rounded-full border border-ink/10 bg-paper px-2.5 py-1 text-[11px] font-medium',
+            'rounded-full border border-[var(--g-line)] bg-paper px-2.5 py-1 text-[11px] font-medium',
             color.textSecondary,
           )}
         >
@@ -225,7 +225,7 @@ export function SubscriptionPage() {
     <>
       <div
         className={cn(
-          'flex w-full items-center justify-center gap-2 border border-ink/15 bg-stone-50 px-4 py-3 text-[15px] font-medium',
+          'flex w-full items-center justify-center gap-2 border border-[var(--g-line)] bg-[var(--g-ivory)] px-4 py-3 text-[15px] font-medium',
           radius.card,
           color.textSecondary,
         )}
@@ -295,7 +295,7 @@ export function SubscriptionPage() {
         {checkoutParam === 'success' ? (
           <p
             className={cn(
-              'mt-6 rounded-xl border border-ink/10 bg-stone-50 px-4 py-3',
+              'mt-6 rounded-xl border border-[var(--g-line)] bg-[var(--g-ivory)] px-4 py-3',
               type.secondary,
               color.textSecondary,
             )}
@@ -305,7 +305,7 @@ export function SubscriptionPage() {
         ) : checkoutParam === 'cancelled' ? (
           <p
             className={cn(
-              'mt-6 rounded-xl border border-ink/10 bg-stone-50 px-4 py-3',
+              'mt-6 rounded-xl border border-[var(--g-line)] bg-[var(--g-ivory)] px-4 py-3',
               type.secondary,
               color.textMuted,
             )}
@@ -316,7 +316,7 @@ export function SubscriptionPage() {
 
         <div className="mt-8 flex items-center gap-2">
           <span className={cn(type.caption, color.textMuted)}>{c.cycleLabel}:</span>
-          <div className="inline-flex items-center gap-1 rounded-full border border-ink/10 bg-paper p-1">
+          <div className="inline-flex items-center gap-1 rounded-full border border-[var(--g-line)] bg-paper p-1">
             {cycleButton('monthly', c.monthly)}
             {cycleButton('yearly', c.yearly)}
           </div>
@@ -332,7 +332,7 @@ export function SubscriptionPage() {
         </div>
 
         {error ? (
-          <p role="alert" className={cn('mt-4 text-[#b4232a]', type.secondary)}>
+          <p role="alert" className={cn('mt-4 text-status-error', type.secondary)}>
             {error}
           </p>
         ) : null}
@@ -341,7 +341,7 @@ export function SubscriptionPage() {
             the paid Home/Pro plans above (owner P0). */}
         <div
           className={cn(
-            'mt-8 flex flex-col gap-3 rounded-2xl border border-ink/10 bg-stone-50 p-5 sm:flex-row sm:items-center sm:justify-between',
+            'mt-8 flex flex-col gap-3 rounded-2xl border border-[var(--g-line)] bg-[var(--g-ivory)] p-5 sm:flex-row sm:items-center sm:justify-between',
           )}
         >
           <p className={cn('max-w-prose', type.secondary, color.textSecondary)}>{s.demoNote}</p>
@@ -352,7 +352,7 @@ export function SubscriptionPage() {
 
         <section className="mt-16 max-w-md">
           <p className={cn(type.label, color.textMuted)}>{s.futureLabel}</p>
-          <ul className="mt-3 divide-y divide-ink/10 border-y border-ink/10">
+          <ul className="mt-3 divide-y divide-[var(--g-line)] border-y border-[var(--g-line)]">
             {s.future.map((item) => (
               <li
                 key={item}
@@ -365,7 +365,7 @@ export function SubscriptionPage() {
                 {item}
                 <span
                   className={cn(
-                    'shrink-0 rounded-full border border-ink/10 bg-stone-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.1em]',
+                    'shrink-0 rounded-full border border-[var(--g-line)] bg-[var(--g-ivory)] px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.1em]',
                     color.textMuted,
                   )}
                 >
@@ -376,7 +376,7 @@ export function SubscriptionPage() {
           </ul>
         </section>
 
-        <div className="mt-14 border-t border-ink/10 pt-8">
+        <div className="mt-14 border-t border-[var(--g-line)] pt-8">
           <Link
             to="/start"
             className={cn(

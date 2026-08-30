@@ -69,7 +69,7 @@ function CatalogRow({
     <div
       className={cn(
         CATALOG_COLUMNS,
-        'min-h-[60px] border-t border-ink/8 px-3',
+        'min-h-[60px] border-t border-[var(--g-line-quiet)] px-3',
         active && 'bg-[var(--g-ivory)]',
       )}
       data-catalog-row={active ? 'selected' : 'row'}
@@ -126,7 +126,7 @@ function CatalogRow({
         aria-pressed={favorite}
         aria-label={favorite ? `Usuń ${name} z Ulubionych` : `Dodaj ${name} do Ulubionych`}
         onClick={onToggleFavorite}
-        className={applicationIconClasses(favorite ? 'text-gold' : 'text-stone-500')}
+        className={applicationIconClasses(favorite ? 'text-gold' : 'text-[var(--g-text-secondary)]')}
       >
         <span aria-hidden>{favorite ? '★' : '☆'}</span>
       </button>
@@ -189,7 +189,7 @@ export function GlobalCatalogSearchPanel() {
 
   return (
     <section className="mt-2" aria-label="Katalog Gellatti">
-      <div className="rounded-[12px] border border-ink/12 bg-white p-3 shadow-pro-e0">
+      <div className="rounded-[12px] border border-[var(--g-line)] bg-white p-3 shadow-pro-e0">
         <div className="flex flex-wrap items-center gap-2">
           <label className="min-w-[260px] flex-1">
             <span className="sr-only">Szukaj w katalogu produktów</span>
@@ -215,7 +215,7 @@ export function GlobalCatalogSearchPanel() {
             onClick={() => setFavoritesOnly((value) => !value)}
             className={cn(
               applicationCompactClasses('shrink-0'),
-              favoritesOnly ? 'border-gold bg-gold/12 text-ink' : 'border-ink/12 text-stone-600',
+              favoritesOnly ? 'border-gold bg-gold/12 text-ink' : 'border-[var(--g-line)] text-[var(--g-text-secondary)]',
             )}
           >
             ★ Ulubione
@@ -230,7 +230,7 @@ export function GlobalCatalogSearchPanel() {
                 applicationCompactClasses('shrink-0'),
                 market === value
                   ? 'border-gold bg-gold/12 text-ink'
-                  : 'border-ink/12 text-stone-600',
+                  : 'border-[var(--g-line)] text-[var(--g-text-secondary)]',
               )}
             >
               {value}
@@ -244,7 +244,7 @@ export function GlobalCatalogSearchPanel() {
               applicationCompactClasses('shrink-0'),
               market === '__GLOBAL__'
                 ? 'border-gold bg-gold/12 text-ink'
-                : 'border-ink/12 text-stone-600',
+                : 'border-[var(--g-line)] text-[var(--g-text-secondary)]',
             )}
           >
             Cały świat
@@ -254,7 +254,7 @@ export function GlobalCatalogSearchPanel() {
               aria-label="Filtr sprzedawcy"
               value={retailer ?? ''}
               onChange={(event) => setRetailer(event.currentTarget.value || null)}
-              className={applicationCompactClasses('shrink-0 text-stone-700')}
+              className={applicationCompactClasses('shrink-0 text-[var(--g-ink)]')}
             >
               <option value="">Wszyscy sprzedawcy</option>
               {retailers.map((value) => (
@@ -263,13 +263,13 @@ export function GlobalCatalogSearchPanel() {
             </select>
           ) : null}
         </div>
-        <p className="mt-2 text-xs text-stone-600" role="status" aria-live="polite">
+        <p className="mt-2 text-xs text-[var(--g-text-secondary)]" role="status" aria-live="polite">
           {!catalog.isSettled ? 'Szukam…' : `${resultCount} wyników`}
         </p>
       </div>
       <div className="mt-3 grid min-w-0 gap-3 lg:grid-cols-[minmax(340px,1.22fr)_minmax(420px,1fr)]">
         <div
-          className="min-w-0 overflow-hidden rounded-[12px] border border-ink/12 bg-white shadow-pro-e0"
+          className="min-w-0 overflow-hidden rounded-[12px] border border-[var(--g-line)] bg-white shadow-pro-e0"
           data-gellatti-panel
         >
           {/* The approved head band names the four columns once. */}
@@ -287,7 +287,7 @@ export function GlobalCatalogSearchPanel() {
             <span />
           </div>
           {baseHits.length > 0 ? (
-            <p className="border-t border-ink/8 px-3 py-2 text-[10px] font-semibold text-[var(--g-text-muted)]">
+            <p className="border-t border-[var(--g-line-quiet)] px-3 py-2 text-[10px] font-semibold text-[var(--g-text-muted)]">
               Baza składników Gellatti
             </p>
           ) : null}
@@ -317,7 +317,7 @@ export function GlobalCatalogSearchPanel() {
             );
           })}
           {commercialHits.length > 0 ? (
-            <p className="border-t border-ink/8 px-3 py-2 text-[10px] font-semibold text-[var(--g-text-muted)]">
+            <p className="border-t border-[var(--g-line-quiet)] px-3 py-2 text-[10px] font-semibold text-[var(--g-text-muted)]">
               Produkty komercyjne
             </p>
           ) : null}
@@ -347,10 +347,10 @@ export function GlobalCatalogSearchPanel() {
             );
           })}
           {catalog.isSettled && resultCount === 0 ? (
-            <p className="px-3 py-6 text-sm text-stone-600">Brak pasujących produktów</p>
+            <p className="px-3 py-6 text-sm text-[var(--g-text-secondary)]">Brak pasujących produktów</p>
           ) : null}
           {hits.length > visibleLimit || catalog.hasMore ? (
-            <div className="border-t border-ink/8 p-3">
+            <div className="border-t border-[var(--g-line-quiet)] p-3">
               <button
                 type="button"
                 onClick={() => {
@@ -378,13 +378,13 @@ export function GlobalCatalogSearchPanel() {
             note, then the action row. Every destination and callback below is
             the one that was already here. */}
         <aside
-          className="order-first min-w-0 rounded-[12px] border border-ink/12 bg-white p-4 shadow-pro-e0 lg:order-none lg:sticky lg:top-4 lg:h-max"
+          className="order-first min-w-0 rounded-[12px] border border-[var(--g-line)] bg-white p-4 shadow-pro-e0 lg:order-none lg:sticky lg:top-4 lg:h-max"
           data-gellatti-panel
         >
           {selectedHit && selectedVerification ? (
             <>
               <div className="flex flex-wrap items-start gap-3">
-                <span className="grid size-[42px] shrink-0 place-items-center rounded-[12px] bg-[#efe8dc] text-[16px] font-extrabold text-[#101113]">
+                <span className="grid size-[42px] shrink-0 place-items-center rounded-[12px] bg-[#efe8dc] text-[16px] font-extrabold text-[var(--g-ink)]">
                   {selectedHit.displayName.slice(0, 1).toLocaleUpperCase('pl-PL')}
                 </span>
                 <div className="min-w-0 flex-1">
@@ -430,7 +430,7 @@ export function GlobalCatalogSearchPanel() {
                 ).map(([label, value, mono]) => (
                   <div
                     key={label}
-                    className="flex min-h-[41px] items-center justify-between gap-4 border-b border-ink/8 py-2"
+                    className="flex min-h-[41px] items-center justify-between gap-4 border-b border-[var(--g-line-quiet)] py-2"
                   >
                     <dt className="shrink-0 text-[9px] text-[var(--g-text-field-label)]">
                       {label}
@@ -487,7 +487,7 @@ export function GlobalCatalogSearchPanel() {
               </div>
             </>
           ) : (
-            <p className="py-6 text-sm text-stone-500">Wybierz produkt, aby zobaczyć szczegóły</p>
+            <p className="py-6 text-sm text-[var(--g-text-secondary)]">Wybierz produkt, aby zobaczyć szczegóły</p>
           )}
         </aside>
       </div>
