@@ -2,7 +2,8 @@
  * Routing contract — UIUX master Slice A (owner-approved).
  *
  * Pins the public route table after the landing/flow split:
- *   `/`            → LandingPage (light public landing, spec §6)
+ *   `/`            → HomeCreatorPage (HOME Creator V1 §9 — the root IS the creator;
+ *                    supersedes the Slice A light landing page)
  *   `/start`       → CustomerShellV1 (the customer flow)
  *   `/customer-v1` → redirect to /start (legacy preview path kept alive)
  *   `/demo`        → redirect to /start (legacy flow entry keeps landing in the flow)
@@ -18,6 +19,8 @@ import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { customerShellCopy } from '@/features/customer-shell/customerShellCopy';
 import { RoleAwareEntryRoute } from '@/features/auth/RoleAwareEntryRoute';
+import { HomeSubscriberProRedirect } from '@/features/home-creator/HomeSubscriberProRedirect';
+import { homeCreatorCopy } from '@/features/home-creator/homeCreatorCopy';
 import { ProWorkspacePage } from '@/pages/pro/ProWorkspacePage';
 import { MachineProfilePage } from '@/pages/profile/MachineProfilePage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
@@ -71,11 +74,20 @@ const renderAt = (path: string) =>
 /* --------------------------------------------------------------- tests -- */
 
 describe('Slice A routing contract', () => {
-  it('serves the light landing page at the public root', () => {
+  /**
+   * OWNER SUPERSESSION — HOME Creator V1 §9 (2026-08-30): "www.gellatti.com must open
+   * directly into HOME Creator. No traditional marketing landing page before the
+   * product." This test previously asserted the Slice A landing hero at `/`; it now
+   * asserts the creator, which is the same contract updated to the current owner
+   * decision rather than a weakened one — the root is still pinned to an exact page.
+   */
+  it('serves the HOME Creator at the public root (§9)', () => {
     expect(elementType('/')).toBe(RoleAwareEntryRoute);
     const html = renderAt('/');
-    expect(html).toContain(landingCopy.hero.headline);
-    expect(html).toContain('href="/start"');
+    expect(html).toContain(homeCreatorCopy.intent.question);
+    expect(html).toContain('data-testid="home-creator"');
+    // No marketing landing page stands between a visitor and the product.
+    expect(html).not.toContain(landingCopy.hero.headline);
   });
 
   it('serves the customer flow at /start', () => {
@@ -120,8 +132,14 @@ describe('Slice A routing contract', () => {
   });
 
   it('registers the PINGÜINO Pro workspace at /pro AND every stable /pro/<section> URL', () => {
-    expect(elementType('/pro')).toBe(ProWorkspacePage);
-    expect(elementType('/pro/:section')).toBe(ProWorkspacePage);
+    // §13 wraps the workspace so a HOME subscriber is redirected to the matching
+    // HOME location instead of an upgrade wall. The workspace itself is unchanged and
+    // still the element that renders for everyone else.
+    expect(elementType('/pro')).toBe(HomeSubscriberProRedirect);
+    expect(elementType('/pro/:section')).toBe(HomeSubscriberProRedirect);
+    // The workspace is still the page that renders for everyone the guard passes.
+    expect(HomeSubscriberProRedirect.name).toBe('HomeSubscriberProRedirect');
+    expect(ProWorkspacePage.name).toBe('ProWorkspacePage');
   });
 
   it('registers the canonical plan hubs and keeps legacy addresses as redirects', () => {

@@ -40,6 +40,7 @@ export function AppShell({
   contentClassName,
   viewportLock = false,
   navigationPosition = 'leading',
+  stickyHeader = false,
 }: {
   actions?: ReactNode;
   /** Optional page-owned lockup. The shared Gellatti wordmark is the default. */
@@ -57,6 +58,13 @@ export function AppShell({
   /** Destination pages place the same drawer at the trailing edge; the frozen
    * Pro workbench keeps its accepted leading geometry. */
   navigationPosition?: 'leading' | 'trailing';
+  /**
+   * HOME Creator §10: "the header must remain stable while HOME progresses". HOME is
+   * one long sequential document, so its header pins to the top instead of scrolling
+   * away with the first section. OPT-IN and default `false`, so every existing page —
+   * including the frozen Pro workbench — keeps its accepted geometry untouched.
+   */
+  stickyHeader?: boolean;
 }) {
   const persona = useProCorePersona();
   const capabilities = proCoreCapabilitiesFor(persona);
@@ -82,6 +90,7 @@ export function AppShell({
           APP_HEADER_ROW,
           maxWidthClass,
           viewportLock && `xl:grid ${DESKTOP_WORKBENCH_COLUMNS}`,
+          stickyHeader && 'sticky top-0 z-40 bg-paper',
         )}
         style={{ paddingTop: 'max(env(safe-area-inset-top), 0.5rem)' }}
       >
