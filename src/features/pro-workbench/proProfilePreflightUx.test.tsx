@@ -3,6 +3,7 @@ import { readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createRoot } from 'react-dom/client';
+import { MemoryRouter } from 'react-router';
 import { act } from 'react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { calculateRecipe, proposeCorrections, type RecipeInput } from '@/engine';
@@ -118,23 +119,27 @@ describe('profile hierarchy and compact preflight', () => {
     const applySuccessEvent = (event: Event) =>
       moments.push((event as CustomEvent<FriendlyLabMomentEventDetail>).detail);
     window.addEventListener(FRIENDLY_LAB_MOMENT_EVENT, applySuccessEvent);
+    /* The Summary tab now renders a draft label whose „Zmień ustawienia" is a
+       router Link, so the panel needs a routing context to mount. */
     const renderPanel = () => (
-      <RecipeProfilePanel
-        activeTab="profile"
-        onTabChange={() => undefined}
-        result={result}
-        servingTemperatureC={input.target_temperature_c}
-        corrections={proposeCorrections({
-          input,
-          context: recipeContext(input),
-          redact: false,
-        })}
-        input={input}
-        idPrefix="friendly-lab-state"
-        showTabs={false}
-        onOpenPreview={() => undefined}
-        onRecalculate={() => undefined}
-      />
+      <MemoryRouter>
+        <RecipeProfilePanel
+          activeTab="profile"
+          onTabChange={() => undefined}
+          result={result}
+          servingTemperatureC={input.target_temperature_c}
+          corrections={proposeCorrections({
+            input,
+            context: recipeContext(input),
+            redact: false,
+          })}
+          input={input}
+          idPrefix="friendly-lab-state"
+          showTabs={false}
+          onOpenPreview={() => undefined}
+          onRecalculate={() => undefined}
+        />
+      </MemoryRouter>
     );
 
     useConstraintStudioStore.getState().resetForTests();
@@ -434,22 +439,26 @@ describe('profile hierarchy and compact preflight', () => {
     document.body.appendChild(host);
     const root = createRoot(host);
     const panel = (activeTab: 'profile' | 'monitor' | 'summary') => (
-      <RecipeProfilePanel
-        activeTab={activeTab}
-        onTabChange={() => undefined}
-        result={result}
-        servingTemperatureC={input.target_temperature_c}
-        corrections={proposeCorrections({
-          input,
-          context: recipeContext(input),
-          redact: false,
-        })}
-        input={input}
-        idPrefix="profile-topping-regression"
-        showTabs={false}
-        onOpenPreview={() => undefined}
-        onRecalculate={() => undefined}
-      />
+      /* Summary renders the draft label, whose „Zmień ustawienia" is a router
+         Link — the panel needs a routing context to mount. */
+      <MemoryRouter>
+        <RecipeProfilePanel
+          activeTab={activeTab}
+          onTabChange={() => undefined}
+          result={result}
+          servingTemperatureC={input.target_temperature_c}
+          corrections={proposeCorrections({
+            input,
+            context: recipeContext(input),
+            redact: false,
+          })}
+          input={input}
+          idPrefix="profile-topping-regression"
+          showTabs={false}
+          onOpenPreview={() => undefined}
+          onRecalculate={() => undefined}
+        />
+      </MemoryRouter>
     );
     try {
       await act(async () => root.render(panel('profile')));
@@ -482,14 +491,32 @@ describe('profile hierarchy and compact preflight', () => {
         );
 
         await act(async () => root.render(panel('summary')));
-        const labelPrerequisite = host.querySelector('[data-testid="label-workspace-empty"]');
-        expect(labelPrerequisite?.textContent).toContain('Etykieta potrzebuje zakończonej partii');
-        expect(labelPrerequisite?.tagName).toBe('SECTION');
-        // V2.1 §18: the approved Label gate is a 10 px lead card.
-        expect(labelPrerequisite?.className).toContain('rounded-[10px]');
-        expect(labelPrerequisite?.className).toContain('px-4');
-        expect(labelPrerequisite?.querySelector('h3')).not.toBeNull();
-        expect(labelPrerequisite?.textContent).toContain('Otwórz Produkcję');
+        /* OWNER DECISION (2026-08-30) — an explicit, approved divergence from
+           the older V2.1 §18 Label GATE. Before Production completes the reader
+           now sees a live DRAFT of the label rather than a panel telling them to
+           go elsewhere. The old gate's assertions are replaced by the contract
+           that supersedes them, not dropped:
+             · the draft is on screen,
+             · only genuinely outstanding data is listed,
+             · nothing that needs a completed run is invented,
+             · and the final print stays unavailable. */
+        const draftCard = host.querySelector('[data-testid="draft-label-card"]');
+        expect(draftCard).not.toBeNull();
+        expect(host.querySelector('[data-testid="label-workspace-empty"]')).toBeNull();
+
+        const pending = host.querySelector('[data-testid="draft-label-pending"]');
+        expect(pending?.textContent).toContain('Numer partii (LOT)');
+        expect(pending?.textContent).toContain('Data produkcji');
+        expect(pending?.textContent).toContain('Potwierdzone składniki z produkcji');
+
+        const print = host.querySelector<HTMLButtonElement>('[data-testid="draft-label-print"]');
+        expect(print).not.toBeNull();
+        expect(print?.disabled).toBe(true);
+
+        // Settings never live in the workbench — they are one link away.
+        expect(
+          host.querySelector('[data-testid="label-settings-home-link"]')?.getAttribute('href'),
+        ).toBe('/labels');
         expect(host.querySelector('[data-testid="label-consumer-preview"]')).toBeNull();
       }
 
