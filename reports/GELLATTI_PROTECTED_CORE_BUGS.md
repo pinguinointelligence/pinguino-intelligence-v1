@@ -149,7 +149,12 @@ Full capture in `reports/e2e/screenshots/pc01-direction-local-optimum.txt`.
 
 `recipeStore.setBatchGrams` now projects the stabilizer system through the SAME
 canonical authority — `planSorbetStabilizerSystemRescale`, which reads only
-`sorbetStabilizerWholeGramBand`. No second policy, no literal ceiling, no change
+`sorbetStabilizerWholeGramBand`. The projection lives BESIDE the authority
+rather than inside it: `sorbetStabilizerSystemAuthority.ts` is one of the 60
+files in the security-reviewed Production Rescue Edge source closure
+(GEL-P0-018), and a Studio-side batch repair has no business enlarging that
+closure with code Rescue never calls. The authority file is byte-identical to
+staging and the Edge bundle is untouched. No second policy, no literal ceiling, no change
 to the authority's limits, the Solver, ProductBehavior, Mapper, HOME/PRO,
 Production or Rescue. The aggregate is the proportional total rounded to whole
 grams and capped by the new ceiling (so scaling **up** is never clamped away);
