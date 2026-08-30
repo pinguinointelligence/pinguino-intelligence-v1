@@ -210,6 +210,46 @@ Locked by `GEL-P0-023` (`sorbetBatchRescaleStabilizer.contract.test.ts`) and by
 `recipeStore.sorbetStabilizerRescale.test.ts`, which builds every fixture
 through the customer's own doors and never as a `RecipeInput`.
 
+### SERVED QA — staging `1e9580e0`, bundle `index-BEjANf2j.js`
+
+Run on https://staging.pinguinoai.com against the deployed bundle, through the
+real HOME shell — which the architecture rule makes a simplified presentation
+over the same shared `recipeStore`, so it exercises the canonical routes and not
+a HOME-specific path. Every state was reached by clicking the product's own
+controls: the idea input, the Sorbet profile, the machine picker and the amount
+field. No `RecipeInput` was constructed, and no store method was called directly
+— the lesson the original 34 g fixture taught. Site data was cleared once
+beforehand, which is simply a first-time visitor.
+
+Recipe: **„Strawberries · Fresh Fruit Sorbet"**, `category: sorbet`. Grams are
+masked in the signed-out view (`🔒 ••• g`), so the figures below are read from
+the persisted store `pinguino-recipe` — the served application's own state.
+
+| # | route | batch | stabilizer | total | derived band {min, pref, max} | whole | ≤ max | Σ recipe |
+|---|---|---|---|---|---|---|---|---|
+| **A** | **SELECT Ninja CREAMi Deluxe** (`setMachineSelection`) | **670** | **3 g** | 3 | {2, 3, 3} | yes | yes | 670.000 |
+| — | select Cuisinart ICE-30 (`setMachineSelection`) | 1900 | 9 g | 9 | {4, 8, 9} | yes | yes | 1900.000 |
+| **B** | manual 1000 → 500 | 500 | 2 g | 2 | {1, 2, 2} | yes | yes | 500.000 |
+| **C** | manual 1000 → 250 | 250 | 1 g | 1 | {1, 1, 1} | yes | yes | 250.000 |
+| **D** | manual 1000 → 2000 | 2000 | 8 g | 8 | {4, 8, 10} | yes | yes | 2000.000 |
+| **E** | 1000 → 670 → 1000 | — | 4 → 3 → 4 g | — | — | yes | yes | exact each step |
+
+**A** was verified on the freshly selected machine **before any Przelicz**:
+`batch_source: MACHINE_DEFAULT`, `machineId: ninja-creami-deluxe-nc502eu-eu-es`,
+`machine_capacity_grams: 670`, TARA GUM exactly 3 g — whole, and exactly the
+maximum 670 g derives. No invalid intermediate recipe exists at any point.
+
+**D** lands on 8 g, not the 10 g ceiling, because the proportional total from the
+preceding state is 8 — it is not clamped, which is the point: scaling up is
+never pulled down.
+
+**E** repeats without drift: 4 → 3 → 4 → 3 → 4, every state authority-valid.
+
+The ICE-30 row is included because it is the same route at a different capacity
+and it is the clearest before/after: the Sorbet starter carries 4 g of TARA GUM
+at 400 g, so the old proportional rescale would have produced **19 g** at
+1900 g — more than double the 9 g that batch derives.
+
 ### Deliberately left open
 
 * **The Gelato stabilizer system has the same 0.5 % ceiling and the same
