@@ -9,7 +9,7 @@ export function HomeInviteRedemption() {
   const mutation = useMutation({ mutationFn: () => redeemHomeInvite(code) });
   return (
     <section className="py-6">
-      <h2 className="text-sm font-semibold text-ink">Kod zaproszenia Home</h2>
+      <h2 className="text-[15px] leading-[1.3] font-bold tracking-[-0.02em] text-[var(--g-ink)]">Kod zaproszenia Home</h2>
       <p className="mt-2 max-w-xl text-xs leading-5 text-[var(--g-text-secondary)]">
         Jednorazowy kod jest przypisany do dokładnego adresu email tego konta i przyznaje jeden
         bezpłatny miesiąc Home.
