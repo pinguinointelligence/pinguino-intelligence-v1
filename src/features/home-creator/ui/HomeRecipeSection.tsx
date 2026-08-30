@@ -11,8 +11,14 @@
  */
 import { useState } from 'react';
 import { cn } from '@/lib/cn';
-import type { RecipeItem } from '@/engine';
-import type { RecipeToppingItem } from '@/features/recipe-composition/recipeCompositionPersistence';
+import type { EngineIngredient, RecipeItem } from '@/engine';
+import type {
+  RecipeToppingIngredient,
+  RecipeToppingItem,
+} from '@/features/recipe-composition/recipeCompositionPersistence';
+import { ProductPickerPopover } from '@/features/ingredient-builder/ProductPickerPopover';
+import type { IngredientLibrary } from '@/features/ingredient-builder/ingredientLibrary';
+import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/contracts';
 import type { RecipeMatchScorePresentation } from '@/features/recipe-score';
 import { homeCreatorCopy } from '../homeCreatorCopy';
 import {
@@ -138,6 +144,7 @@ export function HomeRecipeSection({
   onRemoveItem,
   onSubstitute,
   onUnavailable,
+  library,
   onAddIngredient,
   onAddTopping,
   onSave,
@@ -159,8 +166,10 @@ export function HomeRecipeSection({
   onRemoveItem: (lineId: string) => void;
   onSubstitute: (lineId: string) => void;
   onUnavailable: (lineId: string) => void;
-  onAddIngredient: () => void;
-  onAddTopping: () => void;
+  /** §56: the SAME Pro picker, in a simpler HOME presentation. */
+  library: IngredientLibrary;
+  onAddIngredient: (ingredient: EngineIngredient, behavior?: ProductBehaviorSnapshot) => void;
+  onAddTopping: (ingredient: RecipeToppingIngredient, behavior?: ProductBehaviorSnapshot) => void;
   onSave: () => void;
   onLetsMakeIt: () => void;
   onShare: () => void;
@@ -300,25 +309,30 @@ export function HomeRecipeSection({
       <p className="mt-8 text-[15px]" style={{ color: 'var(--g-text-secondary)' }}>
         {homeCreatorCopy.recipe.anythingElse}
       </p>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={onAddIngredient}
-          data-testid="home-add-ingredient"
-          className="min-h-[44px] rounded-full border px-4 text-[14px] focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
-          style={{ borderColor: 'var(--g-line)', color: 'var(--g-ink)' }}
-        >
-          + {homeCreatorCopy.recipe.addIngredient}
-        </button>
-        <button
-          type="button"
-          onClick={onAddTopping}
-          data-testid="home-add-topping"
-          className="min-h-[44px] rounded-full border px-4 text-[14px] focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
-          style={{ borderColor: 'var(--g-line)', color: 'var(--g-ink)' }}
-        >
-          + {homeCreatorCopy.recipe.addTopping}
-        </button>
+      {/* §56/§57: the SAME picker Pro uses — search, filters, scanner, catalogue and
+          ProductBehavior all come with it. HOME only supplies a plainer trigger label;
+          it does not reimplement selection, readiness or role routing. The popover
+          renders its own ＋ affordance, so the label carries no second plus sign. */}
+      <div
+        className="mt-3 flex flex-wrap gap-2 [&_button]:min-h-[44px]"
+        data-testid="home-add-controls"
+      >
+        <span data-testid="home-add-ingredient">
+          <ProductPickerPopover
+            library={library}
+            scope="BASE_FORMULATION"
+            triggerLabel={homeCreatorCopy.recipe.addIngredient}
+            onAdd={(ingredient, behavior) => onAddIngredient(ingredient, behavior)}
+          />
+        </span>
+        <span data-testid="home-add-topping">
+          <ProductPickerPopover
+            library={library}
+            scope="POST_PROCESS_ADDON"
+            triggerLabel={homeCreatorCopy.recipe.addTopping}
+            onAdd={(ingredient, behavior) => onAddTopping(ingredient, behavior)}
+          />
+        </span>
       </div>
 
       <div className="mt-10 flex flex-col gap-2.5">

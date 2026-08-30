@@ -29,6 +29,7 @@ import {
 import { useHomeFlow } from '@/features/home-creator/useHomeFlow';
 import { useHomeRecipeResult } from '@/features/home-creator/useHomeRecipeResult';
 import { useHomeIntentIngredients } from '@/features/home-creator/useHomeIntentIngredients';
+import { useIngredientLibrary } from '@/features/ingredient-builder/useIngredientLibrary';
 import { visibleProductTypeFor } from '@/features/home-creator/homeProfileMapping';
 import { proposeRecipeName } from '@/features/home-creator/homeRecipeName';
 import { buildHomeMachineView } from '@/features/home-creator/homeMachinePresentation';
@@ -72,6 +73,10 @@ export function HomeCreatorPage() {
   const [forceMachineStage, setForceMachineStage] = useState(false);
   const [resolving, setResolving] = useState(false);
   const intentIngredients = useHomeIntentIngredients();
+  // §56: the SAME library the Pro builder feeds its picker. Demo/free get the local
+  // preview catalogue, an authenticated paid session gets live Mapper search — HOME
+  // does not widen or narrow what Pro can see.
+  const library = useIngredientLibrary({ demo: !canSeeGrams });
 
   const derivation = useMemo(() => (machine ? deriveMachineSetup(machine) : null), [machine]);
   const recommendedBatchGrams = derivation?.recommendedBatchGrams ?? null;
@@ -375,8 +380,28 @@ export function HomeCreatorPage() {
             onRemoveItem={(lineId) => useRecipeStore.getState().removeItem(lineId)}
             onSubstitute={() => undefined}
             onUnavailable={(lineId) => useRecipeStore.getState().markIngredientUnavailable(lineId)}
-            onAddIngredient={() => undefined}
-            onAddTopping={() => undefined}
+            library={library}
+            onAddIngredient={(ingredient, behavior) => {
+              // Added at 0 g exactly as the Pro builder does — HOME invents no amount.
+              const added = useRecipeStore.getState().addIngredient(ingredient, 0);
+              if (added.status !== 'duplicate' && behavior) {
+                useRecipeStore
+                  .getState()
+                  .setProductBehaviorSnapshot(added.lineId, { ...behavior, lineId: added.lineId });
+              }
+            }}
+            onAddTopping={(ingredient, behavior) => {
+              // §57: the existing Topping behaviour — no Crown, editable grams.
+              useRecipeStore.getState().addTopping(ingredient, 0);
+              const topping = useRecipeStore
+                .getState()
+                .toppings.find((line) => line.ingredient.id === ingredient.id);
+              if (topping && behavior) {
+                useRecipeStore
+                  .getState()
+                  .setProductBehaviorSnapshot(topping.id, { ...behavior, lineId: topping.id });
+              }
+            }}
             onSave={() => undefined}
             onLetsMakeIt={() => useHomeDraftStore.getState().startPreparation()}
             onShare={() => undefined}
