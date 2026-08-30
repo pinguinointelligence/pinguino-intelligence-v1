@@ -48,7 +48,10 @@ export async function resolveChipTerm(
   signal?: AbortSignal,
 ): Promise<ChipResolution> {
   for (const term of catalogueSearchTerms(chip)) {
-    const outcome = await searchCanonicalMapperIngredients({ text: term, limit: 12, signal });
+    // A wide fetch, then rank, then show at most MAX_AMBIGUITY_CANDIDATES. "strawberr"
+    // matches 26 rows; taking only the first 12 in catalogue order would drop the
+    // plain fruit before the plain-form preference ever got to lift it.
+    const outcome = await searchCanonicalMapperIngredients({ text: term, limit: 40, signal });
     if (outcome.kind === 'unavailable') {
       return { kind: 'unavailable', reason: outcome.reason };
     }
