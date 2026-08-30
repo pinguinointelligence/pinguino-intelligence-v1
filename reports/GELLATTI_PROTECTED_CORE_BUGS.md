@@ -9,8 +9,8 @@ Recipe/Monitor, Production and Label calculations).
 reproducible fixture so the owner can write a separate surgical prompt.
 
 **PC-06 has since been closed** under its own dedicated prompt — see the
-close-out note under that entry. PC-01…PC-05 remain open and untouched. PC-07
-was observed while proving PC-06 on staging and is recorded, not fixed.
+close-out note under that entry. PC-01…PC-05 remain open and untouched. PC-07 was observed while proving PC-06, and has since been closed under the
+same autonomous run.
 
 - First observed on staging `04106031` (branch `claude/gellatti-full-app`, based on `origin/staging` 1a10f7cf).
 - Account: `test1@test1.com` (PRO), staging project `tunabqqrwabacxjcxxkz`.
@@ -237,6 +237,34 @@ this run was PC-06 only.*
 | **NOT CAUSED BY PC-06 — measured** | `reports/e2e/pc06/audit-probe.json`, produced by `src/qa/acceptance/pc06AuditProbe.acceptance.test.ts` against the real staging rows: both fixtures carry a practical audit and it **still matches** their input, so the PC-06 disjunct is short-circuited and never consulted. Pre-fix and post-fix lifecycle are both `READY` (`changedByPc06: false`). Only the two auditless Sorbet fixtures change state. The server gate they now stop at was equally reachable before PR #8. |
 | **LIKELY ROOT AREA** | Staging Mapper product data has drifted since those v2 versions were saved on 2026-08-29 (Vegan shows `REFINED COCONUT OIL — Koszt niepełny`), so the persisted ProductBehavior evidence no longer satisfies the server. The defect is not the refusal — that is honest — but that the *stale-product recovery* which previously resolved exactly this condition is not offered alongside it. |
 | **REPRODUCED** | 2/2 profiles, both on staging `d1498d85`. |
+
+### PC-07 — CLOSED on staging `49dea0b4`
+
+Fixed in PR #14 (`claude/pc07-product-verification-recovery`). Surfacing only:
+no formulation science and no protected path.
+
+**The three authorities.** `validateRecipeBehaviorOnServer({module:'PRODUCTION'})`
+refused with `behavior_snapshot_missing_or_unresolved:…:refresh_product_data`.
+The cure for exactly that reason already existed —
+`refreshCurrentRecipeBehaviorWorkingCopy`, offered as *„Utwórz nową wersję z
+aktualnymi danymi produktów"* — but it lived in `ProRecalcPanel`, reachable only
+through Przelicz, and `WorkbenchIntelligenceHeader` renders Przelicz only when
+`pending || recalculateNeeded`; a saved recipe whose score is verified and
+current shows neither. Save was disabled because nothing had changed.
+
+**Fix.** The PRODUCTION gate now carries whether the refusal is refreshable,
+decided by the refresh authority's own predicate
+(`productBehaviorIssuesSupportWorkingCopyRefresh`), and offers the refresh in
+place of a bare *„Wróć do receptury"*. A refusal naming missing product science
+keeps its existing product-data actions, and a transport failure never offers a
+refresh that cannot help.
+
+**Served proof.** Both fixtures now walk an unbroken chain — refresh → przelicz
+→ (NEAREST consent for Vegan) → zastosuj → zapisz → Produkcja — and completed
+batches `LOT-20260830-60DCC5F047` (Vegan, 10/10) and `LOT-20260830-D0469F7926`
+(Protein, 10/10). The historical v1 was never rewritten in either case. Full
+capture in `reports/e2e/screenshots/pc07-product-data-recovery.txt`.
+
 
 ---
 
