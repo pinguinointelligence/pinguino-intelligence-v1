@@ -14,7 +14,7 @@
  * RANKING: `rank` is the position the existing `gellatti_top_recipes_v1` gave the
  * publication. It is carried through untouched; this module scores nothing.
  */
-import { supabase } from '@/lib/supabase/client';
+import { matchCommunityTop100Rows, type CommunityMatchRow } from '@/services/communityMatch';
 import type { IntentProfile } from '../homeIntentParsing';
 import type { RecipeCandidate } from '../homeRecipeMatching';
 
@@ -25,19 +25,6 @@ const CATEGORY_BY_PROFILE: Readonly<Record<IntentProfile, string>> = {
   protein: 'Protein',
   vegan: 'Vegan',
 };
-
-interface MatchOracleRow {
-  publication_id: string;
-  slug: string;
-  title: string;
-  image_url: string | null;
-  category: string | null;
-  rank: number;
-  all_requested_present: boolean;
-  also_includes: string[] | null;
-  creator: { display_name?: string | null; handle?: string | null } | null;
-  based_on: { creator_display_name?: string | null } | null;
-}
 
 export interface CommunityMatch {
   readonly candidate: RecipeCandidate;
@@ -52,26 +39,22 @@ export interface CommunityMatch {
 }
 
 /**
- * Ask the oracle which Top 100 publications satisfy EVERY requested identity.
- * Returns `[]` on any failure — a matching outage must never block creation (§35:
- * no trustworthy match simply means no popup).
+ * Map the oracle's public rows into the feature's candidate shape.
+ * The IO itself lives in `@/services/communityMatch`; the boundary guard keeps every
+ * backend client out of `features/**`, so this module is pure mapping.
  */
 export async function matchCommunityTop100(input: {
   readonly ingredientIds: readonly string[];
   readonly profile: IntentProfile | null;
   readonly limit?: number;
 }): Promise<readonly CommunityMatch[]> {
-  if (!supabase) return [];
-  if (input.ingredientIds.length === 0) return [];
-
-  const { data, error } = await supabase.rpc('gellatti_match_community_top100_v1', {
-    p_ingredient_ids: [...input.ingredientIds],
-    p_category: input.profile === null ? null : CATEGORY_BY_PROFILE[input.profile],
-    p_limit: input.limit ?? 10,
+  const rows = await matchCommunityTop100Rows({
+    ingredientIds: input.ingredientIds,
+    category: input.profile === null ? null : CATEGORY_BY_PROFILE[input.profile],
+    limit: input.limit,
   });
-  if (error || !Array.isArray(data)) return [];
 
-  return (data as MatchOracleRow[]).map((row) => ({
+  return rows.map((row: CommunityMatchRow) => ({
     publicationId: row.publication_id,
     slug: row.slug,
     handle: row.creator?.handle ?? '',
