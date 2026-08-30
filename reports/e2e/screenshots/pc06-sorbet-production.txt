@@ -45,8 +45,15 @@ Partia zakonczona
   VERDICT: PASS - Production reached AND completed.
 
 QA Sorbet Truskawka -13 (second fixture)
+  Re-verified on the FINAL staging head 300aee92, bundle index-BIun7MQr.js.
   Produkcja -> "WSZYSTKO GOTOWE DO ROZPOCZECIA PARTII", Zrodlo "Zapisana
-  wersja", "Rozpocznij partie" enabled.  VERDICT: PASS.
+  wersja" -> Rozpocznij partie -> wazenie 6/6 (63 / 64 / 20 / 4 / 800 / 49 g)
+  -> Zakoncz wazenie bazy ->
+    Wynik koncowy 10 "Wyjatkowo dobrze dopasowana"
+    Nr partii  LOT-20260830-ADA64E65AC
+    Koszt partii 3.47 EUR
+    Obrobka na cieplo: TARA GUM · Stabilizer
+  VERDICT: PASS - Production reached AND completed.
 
 NOTHING WAS WRITTEN TO OPEN THE GATE
   After the run, recipe_versions for both fixtures still holds exactly ONE
@@ -54,3 +61,8 @@ NOTHING WAS WRITTEN TO OPEN THE GATE
   22:17:17 / 22:17:20. No new version, no re-save, no Direction mutation.
   The fix changes what the app CONCLUDES about a saved version, not the
   version itself.
+
+  Measured byte-for-byte, before and after TWO completed batches:
+    QA Sorbet Truskawka -12  md5(recipe_input) adcf4a384db9a6dc999f92d35ee4b8d5
+    QA Sorbet Truskawka -13  md5(recipe_input) 019fd356c5aa0292533c58d045ee82cc
+  Identical on both readings.
