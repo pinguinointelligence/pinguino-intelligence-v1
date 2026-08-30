@@ -35,6 +35,7 @@ import { PartnerPublicRoute } from '@/pages/community/PartnerPublicRoute';
 import { AdminWorkspacePage } from '@/pages/admin/AdminWorkspacePage';
 import { AdminRouteGuard } from '@/features/admin/AdminRouteGuard';
 import { RoleAwareEntryRoute } from '@/features/auth/RoleAwareEntryRoute';
+import { HomeSubscriberProRedirect } from '@/features/home-creator/HomeSubscriberProRedirect';
 import { SharedRecipePage } from '@/pages/community/SharedRecipePage';
 import { TopHundredPage } from '@/pages/community/TopHundredPage';
 import {
@@ -104,8 +105,9 @@ export function PublicRecipeOrPartnerRoute() {
 export function AppRoutes() {
   return (
     <Routes>
-      {/* Slice A (owner-approved): public root is the LIGHT landing page (spec §6);
-          the customer flow lives at /start behind the primary CTA. */}
+      {/* HOME Creator V1 §9 (owner, 2026-08-30): the public root IS the HOME Creator —
+          no marketing landing page before the product. `/start` still serves the
+          earlier customer shell so existing links keep their meaning. */}
       <Route path="/" element={<RoleAwareEntryRoute entry="root" />} />
       <Route path="/start" element={<RoleAwareEntryRoute entry="start" />} />
       <Route path="/home" element={<RoleAwareEntryRoute entry="home" />} />
@@ -123,7 +125,17 @@ export function AppRoutes() {
           /pro = workspace root (shows the recipe editor); /pro/<section> = stable section URLs
           (recipe/monitor/versions/production/history/costs/exports/settings — direct link +
           refresh restore the same section). */}
-      <Route path="/pro" element={<ProWorkspacePage />} />
+      {/* §13: a HOME subscriber opening a legacy /pro URL lands in the matching HOME
+          location instead of an upgrade wall. PRO subscribers and demo explorers
+          (§73, view-only) fall straight through. */}
+      <Route
+        path="/pro"
+        element={
+          <HomeSubscriberProRedirect>
+            <ProWorkspacePage />
+          </HomeSubscriberProRedirect>
+        }
+      />
       <Route
         path="/pro/history"
         element={
@@ -132,7 +144,14 @@ export function AppRoutes() {
       />
       <Route path="/pro/machine" element={<LegacyDestinationRedirect pathname="/machine" />} />
       <Route path="/pro/settings" element={<LegacyDestinationRedirect pathname="/account" />} />
-      <Route path="/pro/:section" element={<ProWorkspacePage />} />
+      <Route
+        path="/pro/:section"
+        element={
+          <HomeSubscriberProRedirect>
+            <ProWorkspacePage />
+          </HomeSubscriberProRedirect>
+        }
+      />
       {/* There is NO separate Studio product: /studio and /calculator land in the canonical
           PINGÜINO Pro recipe editor (query params preserved for /studio deep links). */}
       <Route path="/studio" element={<LegacyStudioRedirect />} />
@@ -160,8 +179,22 @@ export function AppRoutes() {
       <Route path="/creator" element={<CreatorHubPage />} />
       <Route path="/partner" element={<PartnerPage />} />
       <Route path="/:partnerSlug/:partnerCode/l/:linkSlug" element={<PartnerPublicRoute />} />
-      <Route path="/admin" element={<AdminRouteGuard><AdminWorkspacePage /></AdminRouteGuard>} />
-      <Route path="/admin/:section" element={<AdminRouteGuard><AdminWorkspacePage /></AdminRouteGuard>} />
+      <Route
+        path="/admin"
+        element={
+          <AdminRouteGuard>
+            <AdminWorkspacePage />
+          </AdminRouteGuard>
+        }
+      />
+      <Route
+        path="/admin/:section"
+        element={
+          <AdminRouteGuard>
+            <AdminWorkspacePage />
+          </AdminRouteGuard>
+        }
+      />
       {/* A React Router param owns a whole segment, so `/@:handle` matches
           nothing. The handle namespace is declared as `/:handle` and gated by
           CreatorHandleRoute, which requires the leading `@` and a valid,
@@ -193,15 +226,28 @@ export function AppRoutes() {
       <Route path="/api" element={<APIPage />} />
       <Route path="/work-with-us" element={<WorkWithUsPage />} />
       <Route path="/subscription" element={<SubscriptionPage />} />
-      <Route path="/create-ingredient" element={<LegacyDestinationRedirect pathname="/products/scan" />} />
+      <Route
+        path="/create-ingredient"
+        element={<LegacyDestinationRedirect pathname="/products/scan" />}
+      />
 
       {/* Profil → Moja maszyna (UIUX Slice B §8.6) — view/change the saved Home machine. */}
       <Route path="/profile/machine" element={<LegacyDestinationRedirect pathname="/machine" />} />
 
       {/* Product catalog intake — direct-URL / internal-first (no nav entry yet). */}
-      <Route path="/products/import" element={<AdminRouteGuard><ProductImportPage /></AdminRouteGuard>} />
+      <Route
+        path="/products/import"
+        element={
+          <AdminRouteGuard>
+            <ProductImportPage />
+          </AdminRouteGuard>
+        }
+      />
       <Route path="/products/scan" element={<ProductScannerV1Page />} />
-      <Route path="/products/add" element={<LegacyDestinationRedirect pathname="/products/scan" />} />
+      <Route
+        path="/products/add"
+        element={<LegacyDestinationRedirect pathname="/products/scan" />}
+      />
       {import.meta.env.DEV && <Route path="/products/scan/legacy" element={<ProductScanPage />} />}
 
       {/* Legacy customer-shell preview path → the flow's new canonical /start. */}

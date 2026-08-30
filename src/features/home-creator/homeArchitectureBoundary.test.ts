@@ -66,15 +66,35 @@ describe('§1 — HOME defines no parallel authority', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('contains no recipe MATH — HOME presents results, it never computes them', () => {
+  /**
+   * NOTE ON WHAT IS *NOT* FORBIDDEN.
+   *
+   * An earlier version of this guard banned `calculateRecipe(` outright. That was
+   * wrong: the Pro workbench's own panels (`RecipeProfilePanel`,
+   * `MonitorPanelContent`) call it from a `useMemo` to render the live recipe. Banning
+   * it in HOME would have forced HOME onto a DIFFERENT path to the same numbers —
+   * which is exactly the duplication §1 exists to prevent.
+   *
+   * The real rule is narrower and sharper: HOME may call the shared Engine barrel
+   * exactly as PRO does, but it may not RE-IMPLEMENT what the Engine and the scoring
+   * adapters already decide.
+   */
+  it('re-implements no scoring, band or formulation math of its own', () => {
     const offenders: string[] = [];
     for (const file of sourceFiles()) {
       const source = readFileSync(file, 'utf8');
-      // Calling the Engine/Solver entry points from a presentation layer would mean
-      // HOME had started formulating on its own instead of driving the shared stores.
-      for (const call of ['calculateRecipe(', 'detectViolations(', 'solveRecipe(']) {
-        if (source.includes(call)) {
-          offenders.push(`${file.replace(process.cwd(), '.')} calls ${call}`);
+      // A hand-rolled score/band/POD/PAC computation in a presentation layer is the
+      // signature of a second opinion about the same recipe.
+      for (const symbol of [
+        'function recipeScore',
+        'function computeScore',
+        'function bandPosition',
+        'function calculatePod',
+        'function calculatePac',
+        'function formulate',
+      ]) {
+        if (source.includes(symbol)) {
+          offenders.push(`${file.replace(process.cwd(), '.')} re-implements ${symbol}`);
         }
       }
     }
