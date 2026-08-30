@@ -97,6 +97,8 @@ export {
   type SorbetStabilizerWholeGramBand,
 } from './sorbetStabilizerSystemAuthority';
 
+export { planSorbetStabilizerSystemRescale } from './sorbetStabilizerRescaleProjection';
+
 export {
   assessOwnerStabilizerSystem,
   clampOwnerStabilizerComponentGrams,

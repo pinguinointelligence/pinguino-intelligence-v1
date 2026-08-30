@@ -112,27 +112,115 @@ Full capture in `reports/e2e/screenshots/pc01-direction-local-optimum.txt`.
 
 ---
 
-## PC-02 — The Sorbet solver proposes a recipe its own stabilizer authority then refuses
+## PC-02 — CORRECTED · batch rescale can manufacture an authority-invalid Sorbet stabilizer system — **FIXED**
+
+> **THE ORIGINAL ROOT-CAUSE NARRATIVE IS WITHDRAWN.** It was recorded from the
+> acceptance matrix, and forensic work at `cdfabcad` disproved it. The record is
+> corrected here rather than preserved, because a false cause is worse than no
+> cause: it would have sent the next reader to weaken the stabilizer authority.
+
+### What was originally recorded, and why it is wrong
 
 | | |
 |---|---|
-| **SEVERITY** | HIGH — self-inconsistent: the Engine proposes what the authority forbids |
-| **FIRST OBSERVED SHA** | `04106031` |
+| **ORIGINAL CLAIM** | "The Sorbet candidate ladder can raise the stabilizer system above the profile ceiling." |
+| **VERDICT** | **REJECTED BY EVIDENCE.** The Solver never raises it. In the recorded exemplar the failing candidate carries the stabilizer system through **unchanged** at 34 g; only the non-stabilizer lines are rescaled. |
+| **ORIGINAL CLAIM** | "The **input** is inside the limit (TARA GUM 4 g); the **proposal** is not." |
+| **VERDICT** | **REJECTED BY EVIDENCE.** It counted one member of a two-member system. `PI-ING-000306` VITACEL CITRUS FIBER resolves to functional role `stabilizer`, exactly like `PI-ING-000492` TARA GUM. The system is 4 g + 30 g = **34 g against a 5 g ceiling** — the input is already 29 g over the limit, `aggregate_above_maximum`, before any recalculation. The refusal was correct. |
+| **THE 34 g EXEMPLAR** | **INVALID HARNESS ARTEFACT / NOT CUSTOMER-REACHABLE.** The matrix constructed `RecipeInput` objects directly and bypassed the product's own doors. `addIngredient(VITACEL, 30)` lands **1 g**; `clampSorbetStabilizerComponentGrams` returns `{grams: 1, clamped: true}` with the correct message. No customer can enter that state. Same class of mistake as the PC-06 seeder. |
+| **NOT A DEFECT** | The 5 g figure, the authority, and the customer-facing rejection copy. `SORBET_STABILIZER_SYSTEM_POLICY` is a **percentage** (min 0.2 % · preferred 0.4 % · **max 0.5 %**, rounded inward to whole grams). "5 g" is what 1000 g derives — 250 g→1 · 500 g→2 · 670 g→3 · 1000 g→5 · 1430 g→7 · 1900 g→9 · 2000 g→10. Nothing may hard-code it. |
+
+### The real defect the forensic work found — customer-reachable
+
+| | |
+|---|---|
+| **SEVERITY** | HIGH — a batch change alone produces a draft the Apply door then refuses |
+| **PROVEN ON** | `947ea2b7` (staging), through the store's own public API only |
 | **PROFILE** | Sorbet |
-| **MACHINE** | Maszyna profesjonalna (1 of 15 cells on Sage Smart Scoop) |
-| **TEMPERATURE** | all four (fresh 6, −11 4, −12 3, −13 2) |
-| **MODE** | OPTIMAL 6 · ECO 9 |
-| **BATCH** | 1000 g |
-| **EXACT INGREDIENTS (exemplar `dir-Sorbet-fresh-optimal-s1-h2`)** | `PI-ING-001409` WATER 179 g · `PI-ING-000514` SUCROSE 103 g · `PI-ING-000494` DEXTROSE 59 g · `PI-ING-000456` INULIN 55 g · `PI-ING-000492` TARA GUM 4 g · `PI-ING-000385` PEACH (Fresh Fruit) 600 g MAIN · `PI-ING-000306` VITACEL CITRUS FIBER 30 g |
-| **TOPPINGS** | `PI-ING-001567` OREO SMALL CRUSHED COOKIE 50 g (POST_PROCESS_ADDON) |
-| **MAIN/CROWN** | `PI-ING-000385` MAIN 600 g |
-| **SWEETNESS / HARDNESS** | +1 / +2 (15 cells across 11 distinct combinations) |
-| **ACTION SEQUENCE** | Build Sorbet starter → add fruit Main + fibre line → Przelicz. |
-| **EXPECTED** | The solver keeps its own Sorbet stabilizer-system ceiling inside the candidate it proposes, or refuses before producing one. |
-| **ACTUAL** | The preview is produced and then rejected by ProductBehavior binding: *"Propozycja Gellatti została odrzucona: w proponowanej recepturze łączny limit systemu stabilizującego Sorbet wynosi 5 g."* The **input** is inside the limit (TARA GUM 4 g); the **proposal** is not. |
-| **CONSOLE / NETWORK** | `resolve_product_behavior_v1` verdicts are the real staging ones. |
-| **REPRODUCED** | 15/1304 cells, deterministic under seed 20260829. |
-| **LIKELY ROOT AREA** | The Sorbet candidate ladder can raise the stabilizer system above the profile ceiling; the ceiling is enforced only at the binding boundary, not inside candidate generation. |
+| **BATCH** | any shrink; **670 g is the Ninja CREAMi Deluxe capacity** — a real supported HOME machine, reachable since the machine-preference work (GEL-P0-022) |
+| **ACTION SEQUENCE** | Build a legal 1000 g Sorbet whose stabilizer system is at the ceiling (TARA GUM 2 g + a second stabilizer 3 g = 5 g, both reached through `addIngredient` and its own clamp) → change the batch to 670 g. |
+| **EXPECTED** | The stabilizer system arrives whole-grammed and inside the band the new batch derives. |
+| **ACTUAL (before the fix)** | `resizeRecipeBatch` scaled it by the one proportional factor: **1.34 g + 2.01 g = 3.35 g** against the 3 g ceiling at 670 g — fractional **and** over the maximum. `evaluateRecipeConstraintAuthority` returned `valid: false` with `component_not_whole_grams` **and** `aggregate_above_maximum`. Also reproduced at 500 g (2.5 g vs 2 g) and 250 g (1.25 g vs 1 g). Scaling **up** was already correct. |
+| **WHY IT HAPPENS** | The ceiling is a percentage that rounds **inward**, so it FLOORS as the batch shrinks while the proportional mass does not — the mass therefore always lands above the new ceiling, and never on a whole gram. |
+| **WHY IT WAS CAUGHT LATE** | The authority is evaluated only at the Apply door (`applyPipeline.ts` filters `source === 'owner_policy'`); nothing consults it during a batch change. `clampOwnerStabilizerComponentGrams` was already wired into `addIngredient`, `IngredientBuilder` and `directPercentEdit` — but not into the rescale. |
+| **CUSTOMER IMPACT** | Przelicz did repair it (tara 2 g + fibre 1 g = 3 g), so the customer was not stuck — but they held an authority-invalid draft in between, and any Apply from that state was refused. |
+
+### The fix
+
+`recipeStore.setBatchGrams` now projects the stabilizer system through the SAME
+canonical authority — `planSorbetStabilizerSystemRescale`, which reads only
+`sorbetStabilizerWholeGramBand`. The projection lives BESIDE the authority
+rather than inside it: `sorbetStabilizerSystemAuthority.ts` is one of the 60
+files in the security-reviewed Production Rescue Edge source closure
+(GEL-P0-018), and a Studio-side batch repair has no business enlarging that
+closure with code Rescue never calls. The authority file is byte-identical to
+staging and the Edge bundle is untouched. No second policy, no literal ceiling, no change
+to the authority's limits, the Solver, ProductBehavior, Mapper, HOME/PRO,
+Production or Rescue. The aggregate is the proportional total rounded to whole
+grams and capped by the new ceiling (so scaling **up** is never clamped away);
+it is raised to the new minimum only when the system already held its own; and
+it is split by largest remainder, which preserves the existing composition as
+closely as whole grams allow. The ordinary lines absorb the difference through
+that same resize authority, so the draft still sums to one batch.
+
+| rescale | before | after | derived band `{min, preferred, max}` | whole grams | authority |
+|---|---|---|---|---|---|
+| 1000 → 670 | 2 g + 3 g | **1 g + 2 g = 3 g** | {2, 3, 3} | yes | no issue |
+| 1000 → 500 | 2 g + 3 g | **1 g + 1 g = 2 g** | {1, 2, 2} | yes | no issue |
+| 1000 → 250 | 2 g + 3 g | **0 g + 1 g = 1 g** | {1, 1, 1} | yes | no issue |
+| 1000 → 2000 | 2 g + 3 g | **4 g + 6 g = 10 g** | {4, 8, 10} | yes | no issue |
+| 1000 → 1430 | 2 g + 3 g | 3 g + 4 g = 7 g | {3, 6, 7} | yes | no issue |
+| 1000 → 1900 | 2 g + 3 g | 4 g + 5 g = 9 g | {4, 8, 9} | yes | no issue |
+
+**Three live routes change the batch, and all three are covered.** The manual
+Partia edit (`setBatchGrams`) was only the first: **choosing a machine**
+(`setMachineSelection`) is the owner's own headline route — 670 g is not usually
+typed, it is what the Ninja CREAMi Deluxe imposes when the customer selects it —
+and switching product type on a Home machine re-derives its default batch
+(`setVisibleProductType`). Selecting the Deluxe was verified still broken after
+the first fix (`1.34 g + 2.01 g`, both codes) and is now `1 g + 2 g`, valid. All
+three call the one shared projection.
+
+The two remaining resize sites, `resolveProfileBatch` and `resolvePayloadBatch`,
+are reached only from `loadRecipeInput` and `resetToDemo` — load paths, left
+untouched under the owner's instruction not to broaden PC-02 into the load path
+without first reproducing a customer-reachable load defect.
+
+At 250 g the whole system may weigh 1 g, so two components cannot both carry
+mass and one reaches 0 g. That is the policy's own arithmetic, and it is not a
+new state: add-time clamping already produces a 0 g stabilizer line when the
+ceiling is full. It also lands exactly inside the canonical zero-gram rule that
+`practicalRecipe.ts` already states — *"When the Engine resolves such a line to
+exactly 0 g, the executable recipe OMITS the row: 'not used' is the absence of
+the ingredient, never an explicit 0 g ingredient row."* The draft keeps the row
+so the customer can raise it again; `unusedZeroGramLineIds` omits it from the
+executable recipe; the row is not a ghost, because `missingAmount` needs an
+UNKNOWN dose provenance, which a catalogue stabilizer does not have. No special
+behaviour was invented, and the projection only ever runs on lines that satisfy
+`isOmittableUnusedLine` — unlocked, unweighed, and free of gram, percent and
+range contracts.
+
+Repeated resizing is lossy once and then stable, which whole grams make
+unavoidable: `2+3 → (670) 1+2 → (1000) 1+3 → (670) 1+2 → (1000) 1+3`. Every
+intermediate state is authority-valid and the sequence is deterministic; exact
+restoration of the original split is mathematically impossible through a 3 g
+ceiling and is deliberately not faked.
+
+Locked by `GEL-P0-023` (`sorbetBatchRescaleStabilizer.contract.test.ts`) and by
+`recipeStore.sorbetStabilizerRescale.test.ts`, which builds every fixture
+through the customer's own doors and never as a `RecipeInput`.
+
+### Deliberately left open
+
+* **The Gelato stabilizer system has the same 0.5 % ceiling and the same
+  proportional rescale**, so the identical defect exists there. Out of scope by
+  instruction ("non-Sorbet batch rescaling is unchanged") — recorded, not fixed.
+* **`loadRecipeInput` does not re-clamp** a stabilizer system on load. Technical
+  debt; no customer-reachable load defect was demonstrated, so the load path was
+  not touched.
+* **A gram-locked or percent-locked stabilizer** is left to its lock: the
+  projection stands down rather than overruling an explicit instruction, and the
+  Apply-door authority remains the final check.
 
 ---
 

@@ -96,8 +96,13 @@ import { resolveFunctionalRole } from '@/features/formulation/ingredientRoles';
 import {
   clampOwnerStabilizerComponentGrams,
   evaluateRecipeConstraintAuthority,
+  planSorbetStabilizerSystemRescale,
+  sorbetStabilizerSystemItems,
 } from '@/features/recipe-constraints';
-import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
+import {
+  buildRecipeInput,
+  type RecipeInputState,
+} from '@/features/studio/buildRecipeInput';
 import { classifyProfileTransition } from '@/features/pro-workbench/profileCompatibility';
 import {
   MACHINE_CATALOG,
@@ -597,6 +602,12 @@ const moveWithin = <T extends { id: string }>(
 
 const ENGINE_KEPT_LOCKS: ReadonlySet<LockType> = new Set(['main', 'already_added', 'required']);
 
+/** A row the batch resize must not move: physically weighed, or pinned in grams. */
+const isBatchFixedLine = (item: RecipeItem): boolean =>
+  item.actual_grams !== null ||
+  item.grams_constraint !== undefined ||
+  item.lock_type === 'grams';
+
 /**
  * The ONE recipe-batch resize authority used by both machine selection and
  * manual Partia editing. It changes Base planned grams only:
@@ -607,12 +618,17 @@ const ENGINE_KEPT_LOCKS: ReadonlySet<LockType> = new Set(['main', 'already_added
  *  - toppings are outside this input and therefore cannot be resized here.
  *
  * A target that cannot coexist with locks is rejected before any store write.
+ *
+ * `pinnedLineIds` holds lines whose grams a canonical authority has already
+ * decided for the NEW batch — they are committed exactly as given, like any
+ * other fixed row, and the remaining mass reconciles around them.
  */
 export const resizeRecipeBatch = (
   items: readonly RecipeItem[],
   previousBatchGrams: number,
   nextBatchGrams: number,
   percentByLineId?: Readonly<Record<string, number>>,
+  pinnedLineIds?: ReadonlySet<string>,
 ): BatchResizeResult => {
   const currentSum = items.reduce((sum, item) => sum + item.planned_grams, 0);
   if (!Number.isFinite(nextBatchGrams) || nextBatchGrams <= 0) {
@@ -629,11 +645,7 @@ export const resizeRecipeBatch = (
   let flexibleCurrent = 0;
 
   for (const item of items) {
-    if (
-      item.actual_grams !== null ||
-      item.grams_constraint !== undefined ||
-      item.lock_type === 'grams'
-    ) {
+    if (isBatchFixedLine(item) || pinnedLineIds?.has(item.id) === true) {
       fixedIds.add(item.id);
       committed += item.planned_grams;
       continue;
@@ -739,6 +751,57 @@ export const resizeRecipeBatch = (
     };
   }
   return { ok: true, items: nextItems };
+};
+
+/**
+ * PC-02 — project the owner-approved Sorbet stabilizer system onto the band the
+ * NEW batch derives, then let this same resize authority reconcile everything
+ * else around it. The percentage limit lives in the stabilizer authority and is
+ * never restated here.
+ *
+ * The projection is skipped — leaving today's behaviour untouched — when any
+ * component of the system is not the resize's to move: physically weighed,
+ * gram-pinned, or carrying a percentage instruction. Those are explicit
+ * customer or caller decisions, and the Apply-door authority stays the final
+ * check on them.
+ *
+ * A projection that cannot be reconciled falls back to the plain proportional
+ * result, so no batch change that succeeds today can begin to refuse.
+ */
+const rescaleWithOwnerStabilizerSystem = (
+  state: RecipeInputState,
+  resized: RecipeItem[],
+  nextBatchGrams: number,
+  percentByLineId?: Readonly<Record<string, number>>,
+): RecipeItem[] => {
+  const components = sorbetStabilizerSystemItems(resized);
+  if (components.length === 0) return resized;
+  const adjustable = components.every(
+    (item) =>
+      !isBatchFixedLine(item) &&
+      item.percent_constraint === undefined &&
+      item.range_constraint === undefined &&
+      item.lock_type !== 'percent' &&
+      percentByLineId?.[item.id] === undefined,
+  );
+  if (!adjustable) return resized;
+
+  const plan = planSorbetStabilizerSystemRescale(
+    buildRecipeInput(state),
+    buildRecipeInput({ ...state, items: resized, target_batch_grams: nextBatchGrams }),
+  );
+  if (plan === null) return resized;
+
+  const reconciled = resizeRecipeBatch(
+    state.items.map((item) =>
+      plan.has(item.id) ? { ...item, planned_grams: plan.get(item.id)! } : item,
+    ),
+    state.target_batch_grams,
+    nextBatchGrams,
+    percentByLineId,
+    new Set(plan.keys()),
+  );
+  return reconciled.ok ? reconciled.items : resized;
 };
 
 /** Snapshot of a preset as fresh store state (items cloned so edits never touch preset data). */
@@ -1179,7 +1242,13 @@ export const useRecipeStore = create<RecipeState>()(
           return {
             ...nextBase,
             target_batch_grams: machineDefault,
-            items: resized.items,
+            // PC-02 — the product type the batch is re-derived FOR is the new
+            // one, so the projection is asked about `decision.nextCategory`.
+            items: rescaleWithOwnerStabilizerSystem(
+              { ...state, category: decision.nextCategory },
+              resized.items,
+              machineDefault,
+            ),
             machine_capacity_grams: machineDefault,
             machine_capacity_source: 'machine' as const,
             batch_source: 'MACHINE_DEFAULT' as const,
@@ -1236,11 +1305,24 @@ export const useRecipeStore = create<RecipeState>()(
           set({ batchResizeConflict: resized.conflict });
           return { ok: false, conflict: resized.conflict };
         }
+        // PC-02 — the owner-approved Sorbet stabilizer system is capped at a
+        // PERCENTAGE of the batch that rounds inward to whole grams, so one
+        // proportional factor cannot carry it: a legal 5 g system at 1000 g
+        // arrived at 670 g (Ninja CREAMi Deluxe) as 1.34 g + 2.01 g — fractional,
+        // and above the 3 g ceiling that batch derives. The canonical authority
+        // projects the system onto the new band; no limit is restated here, and
+        // the ordinary lines absorb the difference through this same resize.
+        const projected = rescaleWithOwnerStabilizerSystem(
+          state,
+          resized.items,
+          target_batch_grams,
+          percentByLineId,
+        );
         const batchSource = source ?? manualBatchSourceForState(state);
         const customBatch = batchSource === 'CUSTOM_MACHINE_BATCH';
         set({
           target_batch_grams,
-          items: resized.items,
+          items: projected,
           batch_source: batchSource,
           batchResizeConflict: null,
           ...(customBatch
@@ -2700,6 +2782,14 @@ export const useRecipeStore = create<RecipeState>()(
           set({ batchResizeConflict: resized.conflict });
           return { ok: false, conflict: resized.conflict };
         }
+        // PC-02 — choosing a machine IS a batch change, and the Ninja CREAMi
+        // Deluxe's 670 g is the case that made this reachable. The same
+        // canonical projection therefore applies here, and only where a resize
+        // actually happened.
+        const projectedItems =
+          sel.batchGrams == null && !enteringProfessionalFromHome
+            ? resized.items
+            : rescaleWithOwnerStabilizerSystem(state, resized.items, targetBatchGrams);
         const batchSource =
           sel.batchGrams == null
             ? sel.kind === 'professional'
@@ -2727,7 +2817,7 @@ export const useRecipeStore = create<RecipeState>()(
           // Route to the existing supported cell — no Engine change, just the temperature input.
           target_temperature_c: sel.temperatureC,
           target_batch_grams: targetBatchGrams,
-          items: resized.items,
+          items: projectedItems,
           batch_source: batchSource,
           batchResizeConflict: null,
           machine_capacity_grams: sel.kind === 'home' ? (sel.capacityGrams ?? null) : null,
