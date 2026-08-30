@@ -50,7 +50,7 @@ export function machineAccountDefaultSnapshot(
   const profile = resolvePreferenceProfile(record);
   if (profile === null) return null;
   const setup = deriveMachineSetup(profile, visibleProductType);
-  if (setup.resolvedVisibleMode === null || setup.recommendedBatchGrams === null) return null;
+  if (setup.resolvedVisibleMode === null) return null;
   const targetTemperatureC = temperatureForMode(setup.resolvedVisibleMode);
   if (targetTemperatureC === null) return null;
   /* The customer's own „Mój domyślny wsad" wins for every product, because it
@@ -58,9 +58,20 @@ export function machineAccountDefaultSnapshot(
      — NOT the one frozen into the record, which was derived for the product
      that happened to be current when the machine was saved. Magimix proposes
      1240 g for sorbet against 950 g for gelato, and reading the record's
-     snapshot silently gave sorbet the gelato figure. */
+     snapshot silently gave sorbet the gelato figure.
+
+     A CUSTOM machine usually has no derived recommendation at all — Gellatti
+     says so plainly („Dla tej maszyny nie proponujemy wsadu — ustaw własną
+     ilość") — so the typed batch is the ONLY number there is. Requiring a
+     recommendation here sent every custom machine back to Professional. */
   const targetBatchGrams = record.userDefaultBatchGrams ?? setup.recommendedBatchGrams;
-  if (!Number.isFinite(targetBatchGrams) || targetBatchGrams <= 0) return null;
+  if (
+    targetBatchGrams === null ||
+    !Number.isFinite(targetBatchGrams) ||
+    targetBatchGrams <= 0
+  ) {
+    return null;
+  }
   return {
     visibleProductType,
     mode: 'classic',
@@ -73,6 +84,8 @@ export function machineAccountDefaultSnapshot(
     machineTechnology: profile.technology,
     servingModeId: setup.resolvedVisibleMode,
     targetTemperatureC,
+    // Capacity stays a MACHINE fact and may honestly be unknown for a custom
+    // machine; the studio already renders a null capacity without inventing one.
     machineCapacityGrams: setup.recommendedBatchGrams,
     directionTargets: DEFAULT_DIRECTION_TARGETS,
     directionIntents: DEFAULT_DIRECTION_INTENTS,
