@@ -42,6 +42,10 @@ export interface HomeCreatorCopy {
   };
   readonly match: {
     readonly title: string;
+    readonly subtitle: string;
+    readonly continueCreating: string;
+    readonly useThis: string;
+    readonly close: string;
     readonly gellattiSection: string;
     readonly communitySection: string;
     readonly alsoIncludes: string;
@@ -173,7 +177,11 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     notFound: 'Nie rozpoznaję tego jeszcze.',
   },
   match: {
-    title: 'Mamy coś takiego',
+    title: 'Znaleźliśmy podobne receptury',
+    subtitle: 'Możesz zacząć od jednej z nich albo tworzyć dalej po swojemu.',
+    continueCreating: 'Tworzę własną recepturę',
+    useThis: 'Zobacz tę recepturę',
+    close: 'Zamknij',
     gellattiSection: 'Receptury Gellatti',
     communitySection: 'Z Community',
     alsoIncludes: 'Zawiera też:',
@@ -301,7 +309,11 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     notFound: "I don't recognise this yet.",
   },
   match: {
-    title: 'We have something like this',
+    title: 'We found similar recipes',
+    subtitle: 'You can start from one of these, or keep creating your own.',
+    continueCreating: 'Create my own recipe',
+    useThis: 'See this recipe',
+    close: 'Close',
     gellattiSection: 'Gellatti recipes',
     communitySection: 'From Community',
     alsoIncludes: 'Also includes:',

@@ -30,9 +30,17 @@ import {
 import { useHomeFlow } from '@/features/home-creator/useHomeFlow';
 import { useHomeRecipeResult } from '@/features/home-creator/useHomeRecipeResult';
 import { useHomeIntentIngredients } from '@/features/home-creator/useHomeIntentIngredients';
+import { HomeMatchGate } from '@/features/home-creator/matching/HomeMatchGate';
+import {
+  NO_MATCH,
+  searchExistingRecipes,
+  type HomeMatchResult,
+} from '@/features/home-creator/matching/homeMatchSearch';
+import { currentUserHasOwnerReviewAccess } from '@/services/ownerReviewAccess';
 import { useIngredientLibrary } from '@/features/ingredient-builder/useIngredientLibrary';
 import { useCanonicalRecipeSave } from '@/features/recipes/useCanonicalRecipeSave';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
+import { useAuthStore } from '@/stores/authStore';
 import { visibleProductTypeFor } from '@/features/home-creator/homeProfileMapping';
 import { proposeRecipeName } from '@/features/home-creator/homeRecipeName';
 import { buildHomeMachineView } from '@/features/home-creator/homeMachinePresentation';
@@ -75,6 +83,10 @@ export function HomeCreatorPage() {
   const [amount, setAmount] = useState<HomeAmount | null>(null);
   const [forceMachineStage, setForceMachineStage] = useState(false);
   const [resolving, setResolving] = useState(false);
+  // §35: `null` means matching has not run; NO_MATCH means it ran and found nothing,
+  // which is a normal outcome that shows no popup at all.
+  const [matchResult, setMatchResult] = useState<HomeMatchResult | null>(null);
+  const [matchDismissed, setMatchDismissed] = useState(false);
   const intentIngredients = useHomeIntentIngredients();
   // §56: the SAME library the Pro builder feeds its picker. Demo/free get the local
   // preview catalogue, an authenticated paid session gets live Mapper search — HOME
@@ -86,6 +98,7 @@ export function HomeCreatorPage() {
   const recipeSave = useCanonicalRecipeSave();
   const openAuthModal = useAuthModalStore((state) => state.open);
   const navigate = useNavigate();
+  const userId = useAuthStore((state) => state.user?.id ?? null);
 
   const derivation = useMemo(() => (machine ? deriveMachineSetup(machine) : null), [machine]);
   const recommendedBatchGrams = derivation?.recommendedBatchGrams ?? null;
@@ -114,6 +127,23 @@ export function HomeCreatorPage() {
   });
 
   const { result, score } = useHomeRecipeResult(draft.recipeReady);
+
+  // Narrow the §35 decision ONCE. `show_popup` is the only kind that renders anything;
+  // `auto_adopt_official` and `create_my_own` both continue silently.
+  const matchPopup = useMemo(() => {
+    if (matchResult === null || matchResult.decision.kind !== 'show_popup') return null;
+    const { official, community } = matchResult.decision;
+    return {
+      official,
+      community,
+      communityMatch:
+        community === null
+          ? null
+          : (matchResult.communityMatches.find(
+              (entry) => entry.publicationId === community.candidate.id,
+            ) ?? null),
+    };
+  }, [matchResult]);
 
   const proposedName = useMemo(
     () =>
@@ -282,6 +312,32 @@ export function HomeCreatorPage() {
                     if (chip.productId !== null) continue;
                     await intentIngredients.resolveOne(chip);
                   }
+                  // §32–§40: only RESOLVED identities may drive matching (§22), so
+                  // this runs after resolution and never on raw text.
+                  const chips = useHomeDraftStore.getState().chips;
+                  const requested = chips
+                    .filter((chip) => chip.productId !== null && !chip.ambiguous)
+                    .map((chip) => ({
+                      productId: chip.productId as string,
+                      statedRole: chip.role,
+                      displayName: chip.productName ?? chip.label,
+                    }));
+                  if (requested.length === 0) {
+                    setMatchResult(NO_MATCH);
+                    return;
+                  }
+                  // The offer gate is the SAME authority that guards opening an
+                  // owner-review template, so an offer and an open can never disagree.
+                  const canOpenOwnerReview = userId
+                    ? await currentUserHasOwnerReviewAccess(userId)
+                    : false;
+                  setMatchResult(
+                    await searchExistingRecipes({
+                      requested,
+                      profile: useHomeDraftStore.getState().profile,
+                      canOpenOwnerReview,
+                    }),
+                  );
                 } finally {
                   setResolving(false);
                 }
@@ -454,6 +510,29 @@ export function HomeCreatorPage() {
           />
         ) : null}
       </div>
+      {/* §36 — shown ONLY when a trustworthy match survived the strict matcher.
+          No match means no modal at all: creation simply continues (§35), which is
+          why there is no "nothing found" state here. */}
+      {matchPopup !== null && !matchDismissed ? (
+        <HomeMatchGate
+          official={matchPopup.official}
+          community={matchPopup.community}
+          communityMatch={matchPopup.communityMatch}
+          onChooseOfficial={() => {
+            // Opening an official template is the existing owner-review handoff; the
+            // popup closes and the user continues in the recipe it loaded.
+            setMatchDismissed(true);
+          }}
+          onCreateMyOwn={() => setMatchDismissed(true)}
+          onDerived={() => {
+            // The canonical derivation already loaded the derived recipe into the
+            // shared store, so HOME only has to stop offering the choice.
+            setMatchDismissed(true);
+            useHomeDraftStore.getState().markRecipeReady(true);
+          }}
+        />
+      ) : null}
+
       {/* The engine result is consumed for the Score only; no metric is rendered (§52). */}
       <span hidden data-testid="home-result-present">
         {result ? 'yes' : 'no'}
