@@ -22,6 +22,9 @@ export const machineOnboardingCopy = {
 
   /* ----------------------------------------------------------- §8.2 tiles ----- */
   tiles: {
+    /** „Maszyna profesjonalna" as an explicit choice beside the Home families. */
+    professionalNote:
+      'Wybierz, jeśli pracujesz na maszynie profesjonalnej — Gellatti użyje wtedy swojej standardowej partii.',
     /** Honest short note on families that cannot be selected yet. */
     unavailableNote: 'W trakcie weryfikacji pojemności',
     /** ARIA hint for a disabled tile. */

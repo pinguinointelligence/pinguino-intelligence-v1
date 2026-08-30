@@ -30,6 +30,7 @@ import { SelectableCard } from '@/features/customer-shell/ui/SelectableCard';
 import { TouchButton } from '@/features/customer-shell/ui/TouchButton';
 import { color, type } from '@/features/customer-shell/ui/tokens';
 import { machineOnboardingCopy as copy } from '../machineOnboardingCopy';
+import { copy as appCopy } from '@/copy/en';
 import {
   autoConfigLines,
   buildMachineTileViews,
@@ -76,6 +77,12 @@ interface MachineOnboardingProps {
   /** Market token recorded on CUSTOM machines (catalog records carry their own). */
   market?: string;
   onComplete: (completion: MachineOnboardingCompletion) => void;
+  /**
+   * „Maszyna profesjonalna" as an explicit choice. Optional: the Home
+   * onboarding flow is unchanged when it is absent, and Professional is NOT a
+   * machine record, so it never enters `onComplete`.
+   */
+  onSelectProfessional?: () => void;
   /** Injected clock (ISO datetime) — deterministic in tests. */
   now?: () => string;
   /** Optional §8.6 entry: edit an existing custom machine (prefilled form). */
@@ -116,6 +123,7 @@ function initialFormValues(profile: HomeMachineProfile): CustomMachineFormValues
 export function MachineOnboarding({
   market = 'ES',
   onComplete,
+  onSelectProfessional,
   now = () => new Date().toISOString(),
   editCustomProfile = null,
   catalog = MACHINE_CATALOG,
@@ -335,6 +343,20 @@ export function MachineOnboarding({
     <section>
       <h1 className={cn(type.display, color.textPrimary)}>{copy.intro.title}</h1>
       <p className={cn('mt-3 max-w-prose', type.secondary, color.textSecondary)}>{copy.intro.lead}</p>
+      {onSelectProfessional ? (
+        <div className="mt-6">
+          <TouchButton
+            variant="quiet"
+            onClick={onSelectProfessional}
+            data-testid="machine-tile-professional"
+          >
+            {appCopy.proMachine.professionalLabel}
+          </TouchButton>
+          <p className={cn('mt-2 max-w-prose', type.secondary, color.textSecondary)}>
+            {copy.tiles.professionalNote}
+          </p>
+        </div>
+      ) : null}
       <div className="mt-6">
         <MachineTileGrid
           views={visibleTiles}
