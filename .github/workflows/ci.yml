@@ -80,11 +80,22 @@ jobs:
       - run: npm test
       - run: npm run build
 
-  # The solver time contracts are REAL contracts, not slow tests: they assert
-  # that a recipe vector resolves inside 5000 ms. Sharing a runner with the
-  # rest of a 10 000-test suite makes them measure contention rather than the
-  # solver, so they run alone, with the SAME assertion and the same 5000 ms
-  # budget. The threshold is owner-locked and is not raised here.
+  # Solver-heavy CORRECTNESS contracts. Corrected 2026-08-30 — the previous comment
+  # here claimed this suite "asserts that a recipe vector resolves inside 5000 ms" and
+  # that "the threshold is owner-locked". An audit found BOTH claims false: the file
+  # contains no timing assertion of any kind, and no owner-locked contract,
+  # AGENTS.md rule or protected path defines a solver runtime threshold. The 5000 ms
+  # was simply Vitest's DEFAULT testTimeout.
+  #
+  # The suite runs separately so it does not compete with the full application suite,
+  # and `vitest.solver-contracts.config.ts` gives it a 30 s harness allowance because
+  # shared CI hardware is materially slower than local execution (measured: ~2.4-3.2 s
+  # locally vs 4.5-5.2 s here, which straddled the old default and produced red builds
+  # from unchanged code).
+  #
+  # Correctness and termination are enforced by the assertions themselves plus
+  # bounded search and iteration caps — never by wall-clock timing. Per-test durations
+  # below remain visible as diagnostics; they are not a gate.
   solver-contracts:
     name: Solver time contracts (isolated)
     runs-on: ubuntu-latest
@@ -97,5 +108,17 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+
+      # Diagnostic evidence, so any future sizing decision is measured rather than
+      # assumed. Not a gate.
+      - name: Record runner resources
+        run: |
+          echo "cores:  $(nproc)"
+          echo "memory: $(free -h | awk '/^Mem:/{print $2}')"
+          echo "load:   $(uptime)"
+
+      # Runs through its OWN config, because the file is now excluded from the
+      # default suite. A bare `vitest run <path>` would honour that exclusion and
+      # match nothing — a vacuously green job, which is worse than the flake.
       - name: recipeVectorProximity — no competing workload
-        run: npx vitest run src/features/constraint-studio/recipeVectorProximity.test.ts --reporter=verbose
+        run: npm run solver:contracts
