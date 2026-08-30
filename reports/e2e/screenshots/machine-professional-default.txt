@@ -1,0 +1,54 @@
+GELLATTI — served capture: „Maszyna profesjonalna" as an explicit default
+Served on https://staging.pinguinoai.com as pro@pro.com (4ebc6ec7-…)
+Staging 532bd854 · bundle index-DWQqdJF-.js · captured 2026-08-30
+
+--- BEFORE ------------------------------------------------------------------
+Machine Settings could save a Home machine or a Custom machine. There was no
+way to state „Professional is my default"; the only Professional path was to
+save nothing, and the page then said "Nie masz jeszcze zapisanej maszyny."
+
+--- AFTER -------------------------------------------------------------------
+1. Ustawienia maszyny -> "Zmień maszynę"
+     a tile "Maszyna profesjonalna" now sits beside the Home families, with
+     "Wybierz, jeśli pracujesz na maszynie profesjonalnej — Gellatti użyje
+      wtedy swojej standardowej partii."
+     (data-testid="machine-tile-professional")
+
+2. Select it
+     "✓ Domyślna maszyna została zmieniona na Maszyna profesjonalna."
+     Panel: DOMYŚLNA MASZYNA / Maszyna profesjonalna / the note above /
+     "Zmień maszynę"           (data-testid="machine-professional-summary")
+     localStorage pinguino.machine_professional.v1::4ebc6ec7… = "1"
+     localStorage pinguino.machine_preference.v1::4ebc6ec7… = CLEARED
+       -> Professional and a Home machine are ONE choice, not two.
+
+3. Full document load of /pro/recipe, then "+ Nowa receptura"
+     machine select value : professional
+     machine select text  : "Maszyna profesjonalna"
+     Docelowa partia      : 1000
+     BAZA LODOWA          : 1000 g
+     PASS — the canonical Professional authority, unchanged.
+
+4. ROUND TRIP back to a Home machine
+     "Zmień maszynę" -> Ninja CREAMi Deluxe -> "Zapisz i przejdź do receptury"
+     pinguino.machine_professional.v1::…  = null   (choice cleared)
+     pinguino.machine_preference.v1::…    = ninja-creami-deluxe-nc502eu-eu-es
+     Full load -> "+ Nowa receptura" -> Ninja CREAMi Deluxe, 670 / 670 g
+     PASS — switching back is not one-way.
+
+NO NEW MACHINE, NO NEW BATCH RULE
+  `startNewRecipe` already applies the canonical Professional batch and the
+  PROFESSIONAL_DEFAULT source to anything that is not a `home` machine, so the
+  choice only records WHICH kind was picked. The grams come from
+  DEFAULT_NEW_RECIPE_BATCH_G — what PROFESSIONAL_DEFAULT_BATCH_GRAMS is defined
+  as — and no batch number is written anywhere in the change. The contract
+  asserts that at source level.
+
+PRE-EXISTING MODULE CYCLE, RECORDED NOT FIXED
+  `newRecipeStarter` and `recipeStore` form a cycle. Where the starter
+  initialises first, `PROFESSIONAL_DEFAULT_BATCH_GRAMS` is PERMANENTLY
+  undefined — reproducible on staging's own code with two imports and nothing
+  of this change involved. Nothing visible breaks, because
+  `buildCanonicalNewRecipeStarter` guards a non-finite batch and falls back to
+  the same 1000. The cycle runs through protected files, so it is recorded for
+  a separate decision rather than fixed here.
