@@ -45,5 +45,11 @@ export const APP_PAGE_MEASURE = 'w-full max-w-[var(--pro-content-measure)]';
  */
 export const APP_PAGE_CANVAS = 'mx-auto w-full max-w-[1280px]';
 
-/** Vertical rhythm for non-workbench sections under the one header. */
-export const APP_PAGE_BLOCK = 'pt-8 pb-24 sm:pt-10';
+/**
+ * Vertical rhythm for non-workbench sections under the one header.
+ *
+ * V2.1: measured on the authority as 26 px on mobile and 42 px from ≥ 640 —
+ * the page block used to open at 32 / 40, so every destination started 6 px too
+ * low on a phone and 2 px too high on a desktop.
+ */
+export const APP_PAGE_BLOCK = 'pt-[26px] pb-24 sm:pt-[42px]';

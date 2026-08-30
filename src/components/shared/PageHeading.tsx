@@ -32,11 +32,19 @@ export function PageHeading({
     <div className={cn('flex flex-wrap items-end justify-between gap-x-6 gap-y-3', className)}>
       <div className="min-w-0">
         {eyebrow ? (
-          <p className="text-[10px] font-semibold tracking-[0.13em] text-stone-500 uppercase">
+          /* V2.1: the authority sets the eyebrow at 10px/1.25 (12.5 px tall).
+             Left at the browser's `normal`, it rendered 15 px tall and pushed
+             the title 3 px down on every authenticated screen. */
+          <p className="text-[10px] leading-[1.25] font-semibold tracking-[0.13em] text-stone-500 uppercase">
             {eyebrow}
           </p>
         ) : null}
-        <h1 className="mt-2 max-w-3xl text-[25px] leading-[1.08] font-[750] tracking-[-0.035em] text-balance text-ink sm:text-[30px]">
+        {/* V2.1: the authority sets the page title at -0.04em on both steps —
+            measured -1px at 25px and -1.2px at 30px. The -0.035em this used to
+            carry left the title 0.125px loose per character on mobile and
+            0.15px on desktop, which reads as a slightly wider word on every
+            authenticated screen. */}
+        <h1 className="mt-[7px] max-w-3xl text-[25px] leading-[1.08] font-[750] tracking-[-0.04em] text-balance text-ink sm:text-[30px]">
           {title}
         </h1>
         {blurb ? (

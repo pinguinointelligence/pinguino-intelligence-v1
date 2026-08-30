@@ -55,7 +55,7 @@ export function WorkWithUsPage() {
           title={c.partner.headline}
           blurb={c.partner.body}
           actions={
-            <a href="#partner-application" className={buttonClasses('primary', 'md')}>
+            <a href="#partner-application" className={buttonClasses('orange', 'md')}>
               {c.partner.cta}
             </a>
           }
