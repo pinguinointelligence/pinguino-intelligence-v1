@@ -149,22 +149,28 @@ function ActionCard({
   onClick: () => void;
 }) {
   return (
+    /* This was a card in name only: a single `border-t` with no radius and no
+       fill, which read as two bare columns with a chevron floating at the far
+       edge. It is now the same 12 px card every other Gellatti collection uses,
+       so the whole tile reads as one thing you can press. */
     <button
       type="button"
       onClick={onClick}
-      className="group min-h-40 w-full border-t border-ink/12 py-6 text-left transition-colors hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink"
+      className="group flex min-h-40 w-full flex-col rounded-[12px] border border-[var(--g-line)] bg-white p-[18px] text-left transition-colors hover:border-[var(--g-line-strong)] hover:bg-[var(--g-ivory)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--g-ink)]"
     >
-      <div className="flex items-start justify-between gap-6">
-        <span className="mt-1 text-ink" aria-hidden>
+      <div className="flex items-start justify-between gap-4">
+        <span className="text-[var(--g-ink)]" aria-hidden>
           {icon}
         </span>
         <Icon
           name="right"
-          className="h-4 w-4 text-stone-400 transition-transform group-hover:translate-x-1"
+          className="h-4 w-4 text-[var(--g-text-muted)] transition-transform group-hover:translate-x-1"
         />
       </div>
-      <h2 className="mt-8 text-2xl font-semibold tracking-[-0.03em] text-ink">{title}</h2>
-      <p className="mt-2 max-w-sm text-sm leading-relaxed text-stone-500">{body}</p>
+      <h2 className="mt-5 text-[21px] leading-[1.2] font-bold tracking-[-0.02em] text-[var(--g-ink)]">
+        {title}
+      </h2>
+      <p className="mt-2 text-[12px] leading-[1.5] text-[var(--g-text-secondary)]">{body}</p>
     </button>
   );
 }
@@ -810,7 +816,7 @@ export function RecipesHubPage() {
                 <OwnerReviewFrame enabled={ownerReviewMode}>
                   <div
                     className={cn(
-                      'grid gap-x-8 md:grid-cols-2',
+                      'grid gap-3 md:grid-cols-2',
                       ownerReviewMode && 'xl:grid-cols-3',
                     )}
                   >

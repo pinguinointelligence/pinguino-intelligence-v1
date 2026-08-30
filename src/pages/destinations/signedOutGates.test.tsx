@@ -40,3 +40,22 @@ describe('signed-out and entitlement gates are designed states', () => {
     );
   });
 });
+
+describe('public pages use the shared card and rail language', () => {
+  const recipes = () =>
+    readFileSync(join(SRC, 'pages', 'destinations', 'RecipesHubPage.tsx'), 'utf8');
+
+  it('makes the Gellatti collection tiles real cards', () => {
+    // They were a single `border-t` with no radius and no fill, which read as
+    // two bare columns with a chevron floating at the far edge.
+    const source = recipes();
+    expect(source).toContain('rounded-[12px] border border-[var(--g-line)] bg-white p-[18px]');
+    expect(source).not.toContain('min-h-40 w-full border-t border-ink/12');
+  });
+
+  it('runs the how-it-works rail on the approved tokens', () => {
+    const source = page();
+    expect(source).toContain('border-y border-[var(--g-line)] sm:grid-cols-5');
+    expect(source).not.toContain('grid border-y border-ink/10 sm:grid-cols-5');
+  });
+});
