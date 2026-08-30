@@ -464,10 +464,16 @@ function SummaryPanel({
   if (completed) {
     return (
       <div className="pro-scroll-safe" data-testid="pro-context-summary">
+        {/* OWNER DECISION (2026-08-30): the workbench `Etykieta` tab is the
+            CURRENT label plus the fields still missing for it — never a second
+            settings screen. `settingsHome="production"` removes the settings
+            view from this instance and points at Produkcja → Etykiety, which
+            owns every persistent label setting. */}
         <LabelWorkspace
           key={labelViewRequestKey ?? initialLabelView}
           snapshot={completed}
           initialView={initialLabelView}
+          settingsHome="production"
         />
       </div>
     );

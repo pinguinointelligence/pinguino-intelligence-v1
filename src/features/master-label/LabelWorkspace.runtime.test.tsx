@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
+import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { calculateRecipe, type RecipeInput } from '@/engine';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
@@ -122,6 +123,7 @@ describe('LabelWorkspace unified actual-run surface', () => {
     options: {
       snapshot?: ReturnType<typeof completedSnapshot>;
       profileOverrides?: Partial<AccountLabelProfile>;
+      settingsHome?: 'inline' | 'production';
     } = {},
   ) {
     const repository = inMemoryLabelRepository('owner-label-workspace');
@@ -144,11 +146,14 @@ describe('LabelWorkspace unified actual-run surface', () => {
     });
     await act(async () => {
       root.render(
-        <LabelWorkspace
-          snapshot={options.snapshot ?? completedSnapshot()}
-          repository={repository}
-          initialView={initialView}
-        />,
+        <MemoryRouter>
+          <LabelWorkspace
+            snapshot={options.snapshot ?? completedSnapshot()}
+            repository={repository}
+            initialView={initialView}
+            {...(options.settingsHome ? { settingsHome: options.settingsHome } : {})}
+          />
+        </MemoryRouter>,
       );
       await Promise.resolve();
       await Promise.resolve();
@@ -714,5 +719,56 @@ describe('LabelWorkspace unified actual-run surface', () => {
     ).toBe('WORLD');
     expect(immutable.label.market).toBe('EU');
     expect(immutable.version).toBe(1);
+  });
+
+  /* OWNER DECISION (2026-08-30) — label settings have ONE home.
+     Produkcja → Etykiety owns every persistent label setting; the PRO workbench
+     `Etykieta` tab is the current label plus the fields still missing for it.
+     Nothing is deleted to achieve that: `settingsHome` only decides whether an
+     instance renders the settings or points at the one place that does. */
+  const dot = (view: 'data' | 'label' | 'settings') =>
+    host.querySelector(`[data-testid="label-workspace-dot-${view}"]`);
+
+  it('Produkcja → Etykiety keeps the settings view — it is the canonical home', async () => {
+    await renderWorkspace('label');
+    expect(dot('settings')).not.toBeNull();
+    expect(host.querySelector('[data-testid="label-settings-home-link"]')).toBeNull();
+  });
+
+  it('the PRO workbench Etykieta tab offers no settings view of its own', async () => {
+    await renderWorkspace('label', { settingsHome: 'production' });
+    expect(dot('settings')).toBeNull();
+    expect(host.querySelector('[data-testid="label-workspace"]')).not.toBeNull();
+  });
+
+  it('keeps the three-view switcher at home and none in the workbench', async () => {
+    await renderWorkspace('label');
+    expect(host.querySelectorAll('[data-testid^="label-workspace-dot-"]')).toHaveLength(3);
+
+    // The workbench is ONE stacked flow — preview, then whatever is still
+    // missing for it — so a view switcher there would only offer a second way
+    // to reach content already on the page.
+    await renderWorkspace('label', { settingsHome: 'production' });
+    expect(host.querySelectorAll('[data-testid^="label-workspace-dot-"]')).toHaveLength(0);
+  });
+
+  it('shows the workbench the LABEL first, with missing data stacked under it', async () => {
+    await renderWorkspace('data', { settingsHome: 'production' });
+    // never a bare form: the label view is what is on screen…
+    expect(host.querySelector('[data-active-label-view="label"]')).not.toBeNull();
+    // …and the fields still missing for it sit underneath.
+    expect(host.querySelector('[data-testid="label-missing-data-stack"]')).not.toBeNull();
+  });
+
+  it('still opens an incomplete label on its data view at home', async () => {
+    await renderWorkspace('data');
+    expect(host.querySelector('[data-active-label-view="data"]')).not.toBeNull();
+    expect(host.querySelector('[data-testid="label-missing-data-stack"]')).toBeNull();
+  });
+
+  it('a ?labelView=settings deep link cannot reopen settings in the workbench', async () => {
+    await renderWorkspace('settings', { settingsHome: 'production' });
+    expect(dot('settings')).toBeNull();
+    expect(host.querySelector('[data-active-label-view="settings"]')).toBeNull();
   });
 });
