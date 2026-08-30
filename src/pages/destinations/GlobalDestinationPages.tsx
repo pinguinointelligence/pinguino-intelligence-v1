@@ -215,10 +215,23 @@ export function ProductsHubPage() {
       }
     >
       {!capabilities.canSaveRecipe ? (
-        <p className="border-y border-ink/10 py-8 text-sm text-stone-600">
-          Katalog produktów otwiera się w planach Home i Pro. Wybierz plan, aby dodać własne
-          produkty
-        </p>
+        /* This was a bare sentence between two hairlines that told the reader to
+           choose a plan and then gave them no way to choose one. It is now the
+           approved gate surface with the action it was missing. */
+        <WorkflowNotice
+          eyebrow="Produkty"
+          title="Katalog produktów otwiera się w planach Home i Pro"
+          description="Dodawaj własne produkty, swoje ceny i dane odżywcze — w jednym katalogu."
+          variant="attention"
+          emphasis="lead"
+          stackAction
+          action={
+            <Link to="/subscription" className={buttonClasses('primary', 'sm')}>
+              Zobacz plany
+            </Link>
+          }
+          testId="products-plan-gate"
+        />
       ) : (
         <>
           <GlobalCatalogSearchPanel />
@@ -307,9 +320,20 @@ export function ProductionHubPage() {
       contextLabel="Produkcja"
     >
       {!capabilities.canUseProductionMode ? (
-        <p className="border-y border-ink/10 py-8 text-sm text-stone-600">
-          Produkcja jest dostępna w planie Pro
-        </p>
+        <WorkflowNotice
+          eyebrow="Produkcja"
+          title="Produkcja jest dostępna w planie Pro"
+          description="Prowadzi przez ważenie, odchylenia i zakończenie partii — a potem wydaje etykietę."
+          variant="attention"
+          emphasis="lead"
+          stackAction
+          action={
+            <Link to="/subscription" className={buttonClasses('primary', 'sm')}>
+              Zobacz plany
+            </Link>
+          }
+          testId="production-plan-gate"
+        />
       ) : (
         <>
           <div role="tablist" aria-label="Sekcje produkcji" className="flex border-b border-ink/15">
@@ -609,18 +633,27 @@ export function AccountSettingsPage() {
       contextLabel="Konto"
     >
       {status !== 'authed' && !import.meta.env.DEV ? (
-        /* A dead end is not a state: the account page now offers the way in
-           rather than describing it. */
-        <div className="border-y border-ink/10 py-8">
-          <p className="text-sm text-stone-600">Zaloguj się, aby zarządzać kontem.</p>
-          <button
-            type="button"
-            onClick={() => useAuthModalStore.getState().open()}
-            className={cn(buttonClasses('primary', 'md'), 'mt-4')}
-          >
-            Zaloguj się
-          </button>
-        </div>
+        /* A dead end is not a state: the account page offers the way in rather
+           than describing it — now on the approved gate surface instead of a
+           sentence floating between two hairlines. */
+        <WorkflowNotice
+          eyebrow="Konto"
+          title="Zaloguj się, aby zarządzać kontem"
+          description="Twój profil, plan i ustawienia czekają po zalogowaniu."
+          variant="attention"
+          emphasis="lead"
+          stackAction
+          action={
+            <button
+              type="button"
+              onClick={() => useAuthModalStore.getState().open()}
+              className={buttonClasses('primary', 'sm')}
+            >
+              Zaloguj się
+            </button>
+          }
+          testId="account-sign-in-gate"
+        />
       ) : (
         <div className="divide-y divide-ink/10 overflow-hidden rounded-[12px] border border-ink/12 bg-white shadow-pro-e0">
           <div className="flex items-center justify-between gap-4 px-5 py-5">
