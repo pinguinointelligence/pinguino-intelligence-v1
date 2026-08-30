@@ -147,3 +147,24 @@ describe('every admin section speaks the same visual language', () => {
     }
   });
 });
+
+describe('the admin workspace shell itself is on the palette', () => {
+  it('carries no legacy palette classes or raw hex', () => {
+    const page = read('pages', 'admin', 'AdminWorkspacePage.tsx');
+    expect(page).not.toMatch(/text-stone-\d/);
+    expect(page).not.toMatch(/border-ink\/\d/);
+    expect(page).not.toContain('bg-stone-50');
+    // #f3ede3 was a second ivory living beside --g-ivory on a detail panel.
+    expect(page).not.toMatch(/#[0-9a-f]{6}/i);
+  });
+
+  it('uses the approved title scale in its detail screens', () => {
+    const page = read('pages', 'admin', 'AdminWorkspacePage.tsx');
+    // The retired HEADING pattern, not any large size: the overview's headline
+    // figures legitimately stay big and mono (`font-mono text-3xl tabular-nums`),
+    // which is a number, not a title.
+    expect(page).not.toContain('text-3xl font-semibold');
+    // The shell renders no page title of its own — each section owns its
+    // heading, and those are pinned above.
+  });
+});
