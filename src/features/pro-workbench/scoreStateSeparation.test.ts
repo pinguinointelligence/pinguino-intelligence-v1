@@ -51,7 +51,22 @@ describe('recipe footer keeps the formal calculation state machine', () => {
   });
 
   it('keeps the live score visible while stale and renders Recalculate independently', () => {
-    expect(dockBranch).toContain('{displayedMatch ? (');
+    // The score gate is `presentedMatch`: `displayedMatch` itself, except when a
+    // user-supplied role is still missing and the neutral no-data state is shown
+    // instead of a score for a deliberately partial scaffold (RESTORATION #2B).
+    // It stays derived from the score — never from freshness — so a STALE recipe
+    // still renders its live score next to an independent Recalculate action.
+    expect(dockBranch).toContain('{presentedMatch ? (');
+    const presentedMatchDecl = header.slice(
+      header.indexOf('const presentedMatch'),
+      header.indexOf(';', header.indexOf('const presentedMatch')),
+    );
+    expect(presentedMatchDecl).toContain('displayedMatch');
+    // Derived from the score and the missing-role override ONLY — never from
+    // calculation freshness, or a stale recipe would lose its live score.
+    expect(presentedMatchDecl).not.toMatch(
+      /recalculateNeeded|journeyState|awaitingRecalculation|verifiedCurrent|pending/,
+    );
     expect(dockBranch).toContain('{pending || recalculateNeeded ? (');
     expect(dockBranch).toContain('data-testid="pro-workbar-recalc"');
     expect(dockBranch).toContain('<WorkbenchScoreDisplay');
