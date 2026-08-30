@@ -149,6 +149,62 @@ export function MachineProfileSection({
     setCapacityError(null);
   }
 
+  const submit = async () => {
+    /* No saved machine means there is nothing to save. The guard also lets
+       this closure — and the two hooks below it — live ABOVE the `view === null`
+       early return, so every hook runs in the same order on every render. */
+    if (view === null) return;
+    setStatus('idle');
+    const batch = parseGramsInput(batchText);
+    if (batch === 'invalid') {
+      setBatchError(copy.settings.invalidBatch);
+      return;
+    }
+    let container: SavedCustomContainer | null = null;
+    if (containerOpen) {
+      const capacity = parseGramsInput(capacityText);
+      if (capacity === 'invalid' || capacity === null) {
+        setCapacityError(copy.settings.invalidCapacity);
+        return;
+      }
+      const recommended = parseGramsInput(containerBatchText);
+      if (recommended === 'invalid') {
+        setCapacityError(copy.settings.invalidBatch);
+        return;
+      }
+      const resolved = recommended ?? suggestRecommendedGramsForContainer(capacity);
+      if (resolved === null) {
+        setCapacityError(copy.settings.invalidCapacity);
+        return;
+      }
+      container = { capacityMl: capacity, recommendedBatchGrams: resolved };
+    }
+    setBatchError(null);
+    setCapacityError(null);
+    // Saving the proposal back is not "an own setting": it stays null so the
+    // profile keeps FOLLOWING the recommendation (and moves with it if the
+    // machine or the container changes). Only a divergent value is the user's.
+    const recommendedAfter = container?.recommendedBatchGrams ?? view.recommendedGrams;
+    const own = batch !== null && batch === recommendedAfter ? null : batch;
+    // The amount is never blocked — an above-recommendation value saves as-is.
+    const ok = await onSave({ userDefaultGrams: own, customContainer: container });
+    setStatus(ok ? 'saved' : 'failed');
+  };
+
+  /* The page renders the approved heading action by calling THIS submit. The
+     ref is updated in an effect rather than during render, and the
+     registration is withdrawn on unmount so a stale closure can never be
+     invoked against a section that is no longer mounted. */
+  const submitRef = useRef(submit);
+  useEffect(() => {
+    submitRef.current = submit;
+  });
+  useEffect(() => {
+    if (!onRegisterSave) return;
+    onRegisterSave(() => submitRef.current());
+    return () => onRegisterSave(null);
+  }, [onRegisterSave]);
+
   if (view === null) {
     return (
       <section aria-label={copy.profile.title}>
@@ -191,54 +247,6 @@ export function MachineProfileSection({
     setStatus('idle');
   };
 
-  const submit = async () => {
-    setStatus('idle');
-    const batch = parseGramsInput(batchText);
-    if (batch === 'invalid') {
-      setBatchError(copy.settings.invalidBatch);
-      return;
-    }
-    let container: SavedCustomContainer | null = null;
-    if (containerOpen) {
-      const capacity = parseGramsInput(capacityText);
-      if (capacity === 'invalid' || capacity === null) {
-        setCapacityError(copy.settings.invalidCapacity);
-        return;
-      }
-      const recommended = parseGramsInput(containerBatchText);
-      if (recommended === 'invalid') {
-        setCapacityError(copy.settings.invalidBatch);
-        return;
-      }
-      const resolved = recommended ?? suggestRecommendedGramsForContainer(capacity);
-      if (resolved === null) {
-        setCapacityError(copy.settings.invalidCapacity);
-        return;
-      }
-      container = { capacityMl: capacity, recommendedBatchGrams: resolved };
-    }
-    setBatchError(null);
-    setCapacityError(null);
-    // Saving the proposal back is not "an own setting": it stays null so the
-    // profile keeps FOLLOWING the recommendation (and moves with it if the
-    // machine or the container changes). Only a divergent value is the user's.
-    const recommendedAfter = container?.recommendedBatchGrams ?? view.recommendedGrams;
-    const own = batch !== null && batch === recommendedAfter ? null : batch;
-    // The amount is never blocked — an above-recommendation value saves as-is.
-    const ok = await onSave({ userDefaultGrams: own, customContainer: container });
-    setStatus(ok ? 'saved' : 'failed');
-  };
-
-  /* The page renders the approved heading action by calling THIS submit. The
-     registration is withdrawn on unmount so a stale closure can never be
-     invoked against a section that is no longer mounted. */
-  const submitRef = useRef(submit);
-  submitRef.current = submit;
-  useEffect(() => {
-    if (!onRegisterSave) return;
-    onRegisterSave(() => submitRef.current());
-    return () => onRegisterSave(null);
-  }, [onRegisterSave]);
 
   return (
     <section aria-label={copy.profile.title}>
