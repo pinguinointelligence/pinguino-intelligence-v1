@@ -189,7 +189,22 @@ without first reproducing a customer-reachable load defect.
 At 250 g the whole system may weigh 1 g, so two components cannot both carry
 mass and one reaches 0 g. That is the policy's own arithmetic, and it is not a
 new state: add-time clamping already produces a 0 g stabilizer line when the
-ceiling is full.
+ceiling is full. It also lands exactly inside the canonical zero-gram rule that
+`practicalRecipe.ts` already states — *"When the Engine resolves such a line to
+exactly 0 g, the executable recipe OMITS the row: 'not used' is the absence of
+the ingredient, never an explicit 0 g ingredient row."* The draft keeps the row
+so the customer can raise it again; `unusedZeroGramLineIds` omits it from the
+executable recipe; the row is not a ghost, because `missingAmount` needs an
+UNKNOWN dose provenance, which a catalogue stabilizer does not have. No special
+behaviour was invented, and the projection only ever runs on lines that satisfy
+`isOmittableUnusedLine` — unlocked, unweighed, and free of gram, percent and
+range contracts.
+
+Repeated resizing is lossy once and then stable, which whole grams make
+unavoidable: `2+3 → (670) 1+2 → (1000) 1+3 → (670) 1+2 → (1000) 1+3`. Every
+intermediate state is authority-valid and the sequence is deterministic; exact
+restoration of the original split is mathematically impossible through a 3 g
+ceiling and is deliberately not faked.
 
 Locked by `GEL-P0-023` (`sorbetBatchRescaleStabilizer.contract.test.ts`) and by
 `recipeStore.sorbetStabilizerRescale.test.ts`, which builds every fixture

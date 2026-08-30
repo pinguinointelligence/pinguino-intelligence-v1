@@ -33,6 +33,10 @@ import {
   sorbetStabilizerSystemItems,
   sorbetStabilizerWholeGramBand,
 } from '@/features/recipe-constraints';
+import {
+  isOmittableUnusedLine,
+  unusedZeroGramLineIds,
+} from '@/features/practical-recipe/practicalRecipe';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { useRecipeStore } from './recipeStore';
 
@@ -266,6 +270,71 @@ describe('PC-02 — batch rescale keeps the Sorbet stabilizer system canonical',
     });
     expect(state().items.map((item) => item.planned_grams)).toEqual(before);
     expect(state().target_batch_grams).toBe(1000);
+  });
+
+  it('9c. a projected 0 g line follows canonical zero-gram semantics', () => {
+    /* `practicalRecipe.ts` states the rule: a 0 g optional line is "unused",
+       the DRAFT keeps the row so the customer can bring it back, and the
+       EXECUTABLE recipe omits it — "never an explicit 0 g ingredient row".
+       The projection must land inside that rule, not invent behaviour beside
+       it: it only ever runs on lines that are unlocked, unweighed and free of
+       gram/percent/range contracts, which is exactly `isOmittableUnusedLine`. */
+    useRecipeStore.getState().setBatchGrams(250);
+    const zeroed = stabilizers().find((item) => item.planned_grams === 0);
+    expect(zeroed).toBeDefined();
+
+    const recipe = input();
+    // The draft carries no gram/percent/range contracts, which is the shape
+    // `practicalRecipe` reasons about.
+    const set = { byLineId: {} };
+    expect(isOmittableUnusedLine(recipe, set, zeroed!)).toBe(true);
+    expect(unusedZeroGramLineIds(recipe, set)).toContain(zeroed!.id);
+
+    // The row is still the customer's: ordinary, editable, and raisable again.
+    expect(zeroed!.lock_type).toBe('unlocked');
+    expect(zeroed!.actual_grams).toBeNull();
+    useRecipeStore.getState().setBatchGrams(1000);
+    useRecipeStore.getState().setPlannedGrams(zeroed!.id, 2);
+    expect(
+      state().items.find((item) => item.id === zeroed!.id)!.planned_grams,
+    ).toBeGreaterThan(0);
+    expect(assessSorbetStabilizerSystem(input()).issues).toEqual([]);
+  });
+
+  it('9d. an explicitly range-locked stabilizer is left to its lock', () => {
+    // The projection never overrules an explicit customer contract; the
+    // Apply-door authority stays the check on those.
+    const tara = state().items.find((item) => item.ingredient.id === 'tara_gum');
+    useRecipeStore.getState().setRangeLock(tara!.id, 1, 4);
+    expect(state().items.find((item) => item.id === tara!.id)!.range_constraint).toBeDefined();
+    useRecipeStore.getState().setBatchGrams(670);
+    const locked = state().items.find((item) => item.id === tara!.id)!;
+    expect(locked.planned_grams).toBeGreaterThanOrEqual(1);
+    expect(locked.planned_grams).toBeLessThanOrEqual(4);
+  });
+
+  it('13. 1000 → 670 → 1000 is deterministic and never drifts into an invalid state', () => {
+    /* Whole-gram projection is lossy by construction — 2+3 cannot survive a
+       trip through a 3 g ceiling and come back — so exact restoration is not
+       required and must not be faked. What IS required: every intermediate
+       state is valid, and repeating the trip changes nothing further. */
+    useRecipeStore.getState().setBatchGrams(670);
+    expect(stabilizerGrams()).toEqual([1, 2]);
+    expect(ownerPolicyIssues()).toEqual([]);
+
+    useRecipeStore.getState().setBatchGrams(1000);
+    const afterOneTrip = stabilizerGrams();
+    expect(afterOneTrip.every(Number.isInteger)).toBe(true);
+    expect(stabilizerTotal()).toBeLessThanOrEqual(sorbetStabilizerWholeGramBand(1000).maxGrams);
+    expect(ownerPolicyIssues()).toEqual([]);
+    expect(sum()).toBeCloseTo(1000, 6);
+
+    for (let trip = 0; trip < 3; trip += 1) {
+      useRecipeStore.getState().setBatchGrams(670);
+      useRecipeStore.getState().setBatchGrams(1000);
+      expect(stabilizerGrams()).toEqual(afterOneTrip);
+      expect(ownerPolicyIssues()).toEqual([]);
+    }
   });
 
   it('10. a full rescale round trip never leaves an owner-policy issue behind', () => {

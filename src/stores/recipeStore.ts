@@ -780,6 +780,7 @@ const rescaleWithOwnerStabilizerSystem = (
     (item) =>
       !isBatchFixedLine(item) &&
       item.percent_constraint === undefined &&
+      item.range_constraint === undefined &&
       item.lock_type !== 'percent' &&
       percentByLineId?.[item.id] === undefined,
   );
