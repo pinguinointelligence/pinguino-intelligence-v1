@@ -19,8 +19,7 @@ import type { CommunityMatch } from './communityMatchService';
 type Derivation = ReturnType<typeof useRecipeDerivation>;
 
 /** Only a `done` derivation counts. Anything else left the recipe untouched. */
-const useRecipeDerivationSucceeded = (derivation: Derivation): boolean =>
-  derivation.state.status === 'done';
+const derivationSucceeded = (derivation: Derivation): boolean => derivation.state.status === 'done';
 
 /**
  * A refusal in customer language. `useRecipeDerivation` already produces one through
@@ -78,7 +77,7 @@ export function HomeMatchGate({
         // ZERO lines. Found in served QA: the user got an empty recipe screen and no
         // explanation. A refusal must stay on the popup and say so.
         void Promise.resolve(derivation.useThisRecipe()).then(() => {
-          if (useRecipeDerivationSucceeded(derivation)) onDerived();
+          if (derivationSucceeded(derivation)) onDerived();
         });
       }}
       derivationMessage={derivationRefusalMessage(derivation)}
