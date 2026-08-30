@@ -170,6 +170,27 @@ export function WorkbenchIntelligenceHeader({
     () => unfilledUserSuppliedRoles(input)[0] ?? null,
     [input],
   );
+  /** One Polish call to action for every slot that reports the unfinished role. */
+  const missingRoleActionPl =
+    missingUserSuppliedRole === null
+      ? null
+      : `Najpierw wybierz składnik: ${missingUserSuppliedRole.labelPl.toLocaleLowerCase('pl')}.`;
+  /**
+   * A draft still missing a user-supplied role has NO meaningful recipe score to
+   * present. Its scaffold is deliberately partial, so the calculated value reads
+   * as a BAD recipe instead of an unfinished one — a fresh Sorbet scored 2/10 in
+   * the low tone purely for not having its fruit yet. Hand the presentation the
+   * neutral no-data state instead (the ring already renders „—" with the no-data
+   * tone and no coloured arc) and say what is needed.
+   *
+   * Scoring itself is untouched: `monitorScoreView` still computes exactly what
+   * it computed before, and the normal score returns the moment the role is
+   * filled. This replaces only what the header HANDS to the score components.
+   */
+  const presentedMatch =
+    missingRoleActionPl === null
+      ? displayedMatch
+      : { score: null, label: missingRoleActionPl, display: missingRoleActionPl };
   const pending = !displayedMatch;
   const recalculateNeeded =
     working || (previewMatch === null && (!verifiedCurrent || awaitingRecalculation));
@@ -185,10 +206,10 @@ export function WorkbenchIntelligenceHeader({
         data-friendly-lab-recipe-state={journeyState}
         data-missing-user-supplied-role={missingUserSuppliedRole?.role ?? undefined}
       >
-        {displayedMatch ? (
+        {presentedMatch ? (
           <WorkbenchScoreDisplay
-            score={displayedMatch.score}
-            label={displayedMatch.label}
+            score={presentedMatch.score}
+            label={presentedMatch.label}
             proteinPercent={displayedProtein?.percent ?? null}
             proteinEnergySharePercent={displayedProtein?.energySharePercent ?? null}
             preview={previewMatch !== null}
@@ -214,8 +235,8 @@ export function WorkbenchIntelligenceHeader({
               <span className="block text-[10px] text-white/85">
                 {working
                   ? 'Gellatti przygotowuje wynik'
-                  : missingUserSuppliedRole
-                    ? `Najpierw wybierz składnik: ${missingUserSuppliedRole.labelPl.toLocaleLowerCase('pl')}.`
+                  : missingRoleActionPl
+                    ? missingRoleActionPl
                     : journeyState === 'STALE'
                       ? 'Receptura się zmieniła.'
                       : 'Zaktualizuj wynik receptury'}
@@ -240,7 +261,7 @@ export function WorkbenchIntelligenceHeader({
       data-current-result-revision={currentResultAuthority.draftRevision}
       data-friendly-lab-recipe-state={journeyState}
       data-missing-user-supplied-role={missingUserSuppliedRole?.role ?? undefined}
-      aria-label={`Dopasowanie techniczne receptury: ${displayedMatch ? displayedMatch.display : 'oczekuje na przeliczenie'}`}
+      aria-label={`Dopasowanie techniczne receptury: ${presentedMatch ? presentedMatch.display : 'oczekuje na przeliczenie'}`}
     >
       <button
         type="button"
@@ -274,11 +295,9 @@ export function WorkbenchIntelligenceHeader({
             </strong>
           </span>
           <span className="mt-0.5 block truncate text-[10px] text-stone-600">
-            {displayedMatch
-              ? `${displayedMatch.score ?? '—'} · ${previewMatch ? previewMatch.label : displayedMatch.label}`
-              : missingUserSuppliedRole
-                ? `Najpierw wybierz składnik: ${missingUserSuppliedRole.labelPl.toLocaleLowerCase('pl')}.`
-                : 'Wynik pojawi się po przeliczeniu'}
+            {presentedMatch
+              ? `${presentedMatch.score ?? '—'} · ${previewMatch ? previewMatch.label : presentedMatch.label}`
+              : 'Wynik pojawi się po przeliczeniu'}
           </span>
           {/* Protein v2: measured content, never a target and never a control. */}
         </span>
