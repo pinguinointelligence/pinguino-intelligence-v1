@@ -690,7 +690,7 @@ export function WorkbenchSettingsLine({
             </div>
 
             <div
-              className="rounded-[12px] border border-ink/8 bg-stone-50/70 p-1.5"
+              className="rounded-[12px] border border-ink/8 bg-[var(--g-ivory)]/70 p-1.5"
               data-settings-cell="strategy"
             >
               <LabeledSelect

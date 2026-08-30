@@ -235,7 +235,7 @@ export function AccountRecipeDefaults() {
               <div className="mt-2 grid grid-cols-[44px_1fr_44px] items-center gap-2">
                 <button
                   type="button"
-                  className="size-11 rounded-xl border border-ink/12 bg-stone-50 text-lg text-ink"
+                  className="size-11 rounded-xl border border-ink/12 bg-[var(--g-ivory)] text-lg text-ink"
                   aria-label={`${label}: mniej`}
                   disabled={value <= -2}
                   onClick={() => setDirectionIntent(axis, value - 1)}
@@ -276,7 +276,7 @@ export function AccountRecipeDefaults() {
                 </div>
                 <button
                   type="button"
-                  className="size-11 rounded-xl border border-ink/12 bg-stone-50 text-lg text-ink"
+                  className="size-11 rounded-xl border border-ink/12 bg-[var(--g-ivory)] text-lg text-ink"
                   aria-label={`${label}: więcej`}
                   disabled={value >= 2}
                   onClick={() => setDirectionIntent(axis, value + 1)}

@@ -159,7 +159,7 @@ function ArticleActionButton({
         data-article-action="true"
         className={cn(
           'pro-focus-ring grid h-9 w-full min-w-0 place-items-center rounded-[8px] border bg-white p-0 text-stone-600 transition-colors',
-          'border-ink/10 hover:border-ink/25 hover:bg-stone-50 hover:text-ink disabled:cursor-not-allowed disabled:border-ink/[0.06] disabled:bg-stone-50/70 disabled:text-stone-300',
+          'border-ink/10 hover:border-ink/25 hover:bg-[var(--g-ivory)] hover:text-ink disabled:cursor-not-allowed disabled:border-ink/[0.06] disabled:bg-[var(--g-ivory)]/70 disabled:text-stone-300',
           selected === true && '!border-gold/25 !bg-education-ivory !text-gold',
         )}
       >
@@ -557,7 +557,7 @@ function RecipeRow({
   const articlePanelContent = (
     <div className="text-ink" data-testid="article-panel-content">
       <div
-        className="grid grid-cols-[36px_36px_80px_repeat(3,minmax(0,1fr))] gap-1.5 rounded-[10px] border border-ink/10 bg-stone-50/55 p-1.5"
+        className="grid grid-cols-[36px_36px_80px_repeat(3,minmax(0,1fr))] gap-1.5 rounded-[10px] border border-ink/10 bg-[var(--g-ivory)]/55 p-1.5"
         data-testid="article-panel-quick-actions"
         data-control-height="36"
       >
@@ -1158,7 +1158,7 @@ function ProductionRow({
                   ? 'border-attention/30 bg-pro-amber text-attention'
                   : physicalStatus === 'DODANO'
                     ? 'border-status-ideal/25 bg-pro-sage text-status-ideal'
-                    : 'border-ink/10 bg-stone-50 text-stone-600',
+                    : 'border-ink/10 bg-[var(--g-ivory)] text-stone-600',
               )}
               data-testid={`production-mode-${line.lineId}`}
               role="status"
@@ -1357,12 +1357,12 @@ export function IngredientRow({
         mode === 'production'
           ? cn(
               'border-b border-ink/[0.075] px-[var(--pro-mobile-gutter)] py-2 lg:px-3 lg:py-1.5',
-              productionActions?.settled ? 'bg-stone-50/35' : 'transition-colors hover:bg-stone-50',
+              productionActions?.settled ? 'bg-[var(--g-ivory)]/35' : 'transition-colors hover:bg-[var(--g-ivory)]',
             )
           : // V2.1: the row's own 54 px grid owns the height, so the shell adds no
             // vertical padding on desktop — that is what makes the served row
             // exactly 54 px instead of 54 + 12.
-            'border-b border-ink/[0.075] px-[var(--pro-mobile-gutter)] py-1 transition-colors hover:bg-stone-50 lg:px-3 lg:py-0 lg:pr-2.5',
+            'border-b border-ink/[0.075] px-[var(--pro-mobile-gutter)] py-1 transition-colors hover:bg-[var(--g-ivory)] lg:px-3 lg:py-0 lg:pr-2.5',
         mode === 'recipe' &&
           customerRoleFor(item.lock_type, meta) === 'main' &&
           'border-gold/20 bg-education-ivory/55 hover:bg-education-ivory/75',

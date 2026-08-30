@@ -292,7 +292,7 @@ export function ProfessionalMonitorModules({
                 ) : null}
               </span>
               <span
-                className="monitor-badge justify-self-start rounded-[8px] border border-ink/8 bg-stone-50 px-2 py-1 text-[10px] font-semibold text-ink empty:border-0 empty:bg-transparent empty:p-0"
+                className="monitor-badge justify-self-start rounded-[8px] border border-ink/8 bg-[var(--g-ivory)] px-2 py-1 text-[10px] font-semibold text-ink empty:border-0 empty:bg-transparent empty:p-0"
                 data-monitor-badge={module.id === 'freezing' ? summary.metric.label : ''}
                 aria-hidden={module.id !== 'freezing'}
               >

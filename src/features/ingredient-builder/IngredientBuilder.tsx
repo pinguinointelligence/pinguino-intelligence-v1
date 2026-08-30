@@ -981,7 +981,7 @@ export function IngredientBuilder({
                 {mode === 'recipe' ? (
                   <>
                     <div
-                      className="flex items-center justify-between border-t border-ink/10 bg-stone-50/70 px-[var(--pro-mobile-gutter)] py-2 lg:px-3"
+                      className="flex items-center justify-between border-t border-ink/10 bg-[var(--g-ivory)]/70 px-[var(--pro-mobile-gutter)] py-2 lg:px-3"
                       data-testid="base-mass-total"
                     >
                       <span className="text-xs font-semibold tracking-[0.04em] text-stone-600 uppercase">

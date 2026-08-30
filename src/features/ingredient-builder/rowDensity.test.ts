@@ -156,7 +156,7 @@ describe('D11 — the complete left Recipe workspace follows the row system', ()
 
   it('uses one 44 px / rounded-xl action family with an explicit hierarchy', () => {
     expect(picker).toContain(
-      "scope === 'BASE_FORMULATION'\n            ? 'border border-ink/20 bg-white text-ink hover:border-ink/40'\n            : 'border border-ink/10 bg-stone-50 text-stone-700 hover:border-ink/25'",
+      "scope === 'BASE_FORMULATION'\n            ? 'border border-ink/20 bg-white text-ink hover:border-ink/40'\n            : 'border border-ink/10 bg-[var(--g-ivory)] text-stone-700 hover:border-ink/25'",
     );
     expect(picker).toContain('inline-flex h-11 items-center justify-center rounded-xl');
     expect(intelligenceHeader).toContain('flex h-11 shrink-0 items-center gap-2 rounded-xl');
