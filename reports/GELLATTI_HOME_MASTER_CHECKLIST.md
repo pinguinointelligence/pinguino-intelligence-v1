@@ -134,11 +134,11 @@ Legend for yes/no columns: `Y` = yes/required, `–` = no/not required, `?` = to
 | H-36-2 | Matching | Popup always includes `Create my own`, and shows additional ingredients clearly | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TODO | | |
 | H-37-1 | Lineage | Selecting a Community recipe leaves the original unchanged and creates an editable draft/copy with lineage kept | Y | `recordDerivation`, `recipe_lineage` | Y (wiring) | `/` | `services/community` | Y | Y | Y | Y | Y | Y | TODO | | |
 | H-37-2 | Lineage | The draft adapts later to the user's machine/batch and allows the existing edits | – | `recipeStore` | Y | `/` | – | – | – | Y | Y | Y | Y | TODO | | |
-| H-38-1 | Lineage | Public attribution ALWAYS points at the ORIGINAL creator (Maria → Tomek → Anna all read "Based on original recipe by Maria") | **Partly — `based_on` resolves the PARENT** | `recipe_lineage.root_creator_user_id` | Y (SQL fix) | `/@handle/:slug`, `/community` | `services/community` | Y | Y | Y | Y | Y | Y | TESTED | | |
+| H-38-1 | Lineage | Public attribution ALWAYS points at the ORIGINAL creator (Maria → Tomek → Anna all read "Based on original recipe by Maria") | **Partly — `based_on` resolves the PARENT** | `recipe_lineage.root_creator_user_id` | Y (SQL fix) | `/@handle/:slug`, `/community` | `services/community` | Y | Y | Y | Y | Y | Y | SERVED VERIFIED | | |
 | H-38-2 | Lineage | `View original` link is included | – | `AttributionByline` | Y | `/` | – | Y | Y | Y | Y | Y | Y | TODO | | |
 | H-38-3 | Lineage | Same rule for official Gellatti recipes → "Based on original recipe by Gellatti" | – | – | Y | – | – | Y | Y | Y | Y | Y | Y | TODO | | |
 | H-38-4 | Lineage | Becoming the original DNA creator requires `Create my own` | – | – | Y | – | – | – | Y | – | – | Y | Y | TODO | | |
-| H-39-1 | Lineage | Lineage survives any later edit; it is never severed because many ingredients changed | Y (stamped once) | `resolveLineage` | – | – | – | Y | Y | – | – | Y | Y | TODO | | |
+| H-39-1 | Lineage | Lineage survives any later edit; it is never severed because many ingredients changed | Y (stamped once) | `resolveLineage` | – | – | – | Y | Y | – | – | Y | Y | SERVED VERIFIED | | |
 | H-40-1 | Matching | Profile filter applies to both the official library and Community Top 100 (e.g. "Mojito Sorbet" → only Sorbet) | – | – | Y | `/` | – | Y | Y | Y | Y | Y | Y | TESTED | | |
 | H-41-1 | Create | `Create my own` uses the resolved intent ingredients | – | `intentRecipeDraft` | Y | `/` | `recipeStore` | – | – | Y | Y | Y | Y | IMPLEMENTED | | |
 | H-41-2 | Create | Known profile → skip the profile step; unknown → "How do you want to make it?" (Gelato/Sorbet/Protein/Vegan) | – | – | Y | `/` | – | – | – | Y | Y | Y | Y | TESTED | | |
@@ -237,7 +237,7 @@ Legend for yes/no columns: `Y` = yes/required, `–` = no/not required, `?` = to
 | H-105-2 | QA accounts | Roles 1–10: anonymous-via-storage, signed-in free, HOME subscriber, PRO subscriber, PRO-with-HOME-default, Maria (original creator), Tomek (variant of Maria), Anna (variant of Tomek retaining Maria as DNA), likes/favourites user, pre-Partner→Partner creator | – | – | Y | – | – | Y | Y | – | – | Y | Y | TODO | | |
 | H-105-3 | QA accounts | No passwords/secrets committed to the repository; a local/staging QA credential manifest lives outside source control and the account list is given to the Owner in the final report | – | – | Y | – | – | – | – | – | – | Y | – | TODO | manifest path + `.gitignore` proof | |
 | H-106-1 | QA matrix | Verify plan matrix: ANONYMOUS (HOME+PRO demo, masked), FREE (demo + like/favourite allowed), HOME (full HOME, no PRO in header), PRO (both, default PRO), PRO-preferred-HOME (login starts HOME) | – | – | Y | `/`, `/pro/*` | – | – | – | Y | Y | Y | Y | TODO | | |
-| H-107-1 | QA DNA | Maria→Tomek→Anna: B and C both publicly read "Based on original recipe by Maria"; `View original` opens Maria's A; internal history may keep the full chain | – | – | Y | `/community` | – | Y | Y | Y | Y | Y | Y | BLOCKED — AUTH | | |
+| H-107-1 | QA DNA | Maria→Tomek→Anna: B and C both publicly read "Based on original recipe by Maria"; `View original` opens Maria's A; internal history may keep the full chain | – | – | Y | `/community` | – | Y | Y | Y | Y | Y | Y | SERVED VERIFIED | | |
 | H-107-2 | QA DNA | Repeat once with an official Gellatti recipe → user variation → "Based on original recipe by Gellatti" | – | – | Y | – | – | Y | Y | Y | Y | Y | Y | BLOCKED — AUTH | | |
 | H-108-1 | QA Partner | Publish while not Partner → no attribution; activate Partner via the legitimate staging flow; issue code/link; create future attributed activity; attribution starts only from activation/code time; earlier activity is not retroactive; no invented commission rates | – | `partnerShareAttribution` | Y | `/partner` | `services/partner` | Y | Y | – | – | Y | Y | TODO | | |
 | H-109-1 | QA social | Multiple QA users Like, Favourite, remove Like, remove Favourite, refresh, verify persistence, no duplicates, liked-by list, open profiles; no comments | – | – | Y | `/community` | – | Y | Y | Y | Y | Y | Y | TODO | | |
@@ -389,3 +389,53 @@ choice.
 
 This is a good example of why §121 exists — the unit tests were all green and the
 defect was only visible against a real catalogue.
+
+---
+
+## 5. §38 / §107 — DNA chain PROVEN ON STAGING (2026-08-30)
+
+The blocker recorded in §3/B1 is **resolved**. The seed does not bypass
+`recipe_behavior_write_guard_v1`; it signs in as real QA users and writes through the
+app's own RPCs (`gellatti_claim_creator_handle_v1`, `create_recipe_with_v1`,
+`gellatti_record_derivation_v1`, `gellatti_publish_recipe_v1`). The lineage root is
+therefore computed by the DATABASE exactly as it is for a real user — hand-stamping it
+would have proved nothing.
+
+Run: `GELLATTI_QA_PASSWORD=… npm run home:seed-community`
+
+### The public cards
+
+| Publication | `based_on` shown publicly |
+| --- | --- |
+| A — Maria original | `null` (she IS the original) |
+| B — Tomek variant (depth 1) | **Maria QA** |
+| C — Anna variant of Tomek (depth 2) | **Maria QA** |
+
+### Why this proves the fix rather than a coincidence
+
+The stored lineage for Anna's row is:
+
+| derived_by | depth | parent_publication | parent_creator | root_creator |
+| --- | --- | --- | --- | --- |
+| Anna QA | 2 | **B — Tomek variant** | **Tomek QA** | **Maria QA** |
+
+Anna's PARENT is Tomek. The pre-fix card read `parent_publication_id`, so it would have
+credited **Tomek**. It now reads the root and credits **Maria** — §38 satisfied at
+depth 2, which is the only depth where the bug was ever visible.
+
+### Learned while building the seed (each one a refusal that was correct)
+
+1. `saved_recipes` alone is not the aggregate — `saved_recipe_meta` must exist too, or
+   every later step reports "unknown recipe". `create_recipe_with_v1` does all three.
+2. `product_composition` is CHECK-constrained (schemaVersion 1, BASE_FORMULATION,
+   three arrays); an empty object is refused.
+3. `recipe_versions.source` is CHECK-constrained to a known provenance vocabulary, so
+   the seed uses `imported` rather than inventing `qa_seed`. The QA marker lives in the
+   title, note and tags instead.
+
+### Still outstanding for §103/§104
+
+This proves the DNA mechanism with 3 publications. The full **50-publication seed with
+the required distribution** (15 original DNA / 10 official-derived / 15 user-derived /
+5 second-generation / 5 exact-match search fixtures, each with an image) is **not yet
+built** — the script is the foundation, not the finished seed.
