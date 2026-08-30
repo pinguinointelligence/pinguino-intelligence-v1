@@ -89,3 +89,33 @@ one, so it is recorded rather than silently converted — see OPEN below.
    four cards linking to the modules, a frozen-function panel). It has no app counterpart, in
    the same way the gate's `/` cover has none, so it is excluded from the scorecard rather
    than scored against `/pro/recipe`.
+
+## Decision 2 — machine save relocation, verified
+
+Ported from the superseded branch and refitted to this staging (the preference
+record moved to `preferenceContracts` with a new input shape, and the default suite
+is node-only so the interactive test needed the repo's `// @vitest-environment jsdom`
+pragma and `.runtime.test.tsx` name).
+
+Verified on a real saved machine driven through the actual picker flow — not a forged
+store:
+
+| | Desktop 1440×900 | Mobile 390×844 |
+|---|---|---|
+| `Zapisz ustawienia` controls | **exactly 1** | **exactly 1** |
+| position | x 1228, y 171 (page heading, top-right) | x 16, y 224 |
+
+The settings surface now matches the authority's composition: KONTO eyebrow, title and
+blurb, the heading save action, the machine card beside its `Podsumowanie` summary, and
+`Przywróć zalecany wsad` / `Zmień maszynę`. 121/121 machine-onboarding tests pass.
+
+CI caught three real React errors in the ported code — `useRef`/`useEffect` after the
+`view === null` early return, and a ref assigned during render. Fixed at the source by
+lifting `submit` and both hooks above the early return rather than by relaxing the rule.
+
+### Remaining machine-settings refinements (visual only, not yet applied)
+
+1. the authority's machine card header carries an icon tile and a `Zapisany default` chip;
+2. the authority's `Podsumowanie` card is ivory-tinted, ours is white;
+3. the authority has no `Moja maszyna` section heading above the cards, so its cards start
+   at y 227 against our y 303.

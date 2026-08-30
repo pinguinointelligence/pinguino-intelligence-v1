@@ -250,7 +250,11 @@ export function MachineProfileSection({
 
   return (
     <section aria-label={copy.profile.title}>
-      <h2 className={cn(type.title, color.textPrimary)}>{copy.profile.title}</h2>
+      {/* V2.1: the approved machine settings page carries its title in the PAGE
+          heading and goes straight to the cards — measured card top at y 227,
+          against y 303 when this label is painted too. It stays in the tree for
+          screen readers rather than being deleted. */}
+      <h2 className="sr-only">{copy.profile.title}</h2>
 
       {/* GELLATTI V2.1 §5: the approved machine page is a 3:2 split — the
           machine card beside its summary — inside the 1280 px canvas. */}
@@ -495,7 +499,10 @@ export function MachineProfileSection({
           ) : null}
         </div>
 
-        <aside className={cn('h-max p-4 sm:p-5', cardShell)} aria-label="Podsumowanie ustawień">
+        <aside
+          className={cn('h-max bg-[var(--g-ivory-deep)] p-4 sm:p-5', cardShell)}
+          aria-label="Podsumowanie ustawień"
+        >
           <h3 className={cn(type.title, color.textPrimary)}>Podsumowanie</h3>
           <dl className="mt-4">
             <Row label={copy.profile.defaultLabel} value={view.name} numeric={false} />
