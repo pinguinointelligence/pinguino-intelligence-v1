@@ -811,7 +811,7 @@ export function ProductPickerPopover({
           'pro-focus-ring relative inline-flex h-11 items-center justify-center rounded-xl px-4 text-xs font-semibold whitespace-nowrap transition-colors',
           scope === 'BASE_FORMULATION'
             ? 'border border-ink/20 bg-white text-ink hover:border-ink/40'
-            : 'border border-ink/10 bg-stone-50 text-stone-700 hover:border-ink/25',
+            : 'border border-ink/10 bg-[var(--g-ivory)] text-stone-700 hover:border-ink/25',
         )}
         aria-haspopup="dialog"
         aria-expanded={open}
@@ -1121,8 +1121,8 @@ export function ProductPickerPopover({
                                       className={cn(
                                         'relative flex min-h-16 w-full items-center rounded-xl border border-transparent',
                                         index === safeActiveIndex
-                                          ? 'border-ink/10 bg-stone-50 text-ink'
-                                          : 'hover:border-ink/8 hover:bg-stone-50',
+                                          ? 'border-ink/10 bg-[var(--g-ivory)] text-ink'
+                                          : 'hover:border-ink/8 hover:bg-[var(--g-ivory)]',
                                         !option.selectable ? 'cursor-not-allowed opacity-60' : '',
                                       )}
                                       onMouseEnter={() => {

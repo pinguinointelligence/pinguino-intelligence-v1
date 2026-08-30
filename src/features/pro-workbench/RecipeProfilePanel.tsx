@@ -118,7 +118,7 @@ function NutritionCostProfileGrid({
           ⌄
         </span>
       </summary>
-      <div className="profile-nutrition-details grid gap-2 border-t border-ink/8 bg-stone-50/60 p-2 min-[520px]:grid-cols-2">
+      <div className="profile-nutrition-details grid gap-2 border-t border-ink/8 bg-[var(--g-ivory)]/60 p-2 min-[520px]:grid-cols-2">
         <section
           className="min-w-0 rounded-[12px] border border-ink/8 bg-white px-2 py-1.5"
           data-testid="profile-nutrition-card"

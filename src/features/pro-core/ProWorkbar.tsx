@@ -170,7 +170,7 @@ export function ProWorkbar({
             data-workbar-action-size="primary"
             data-workbar-action-width={variant === 'panel' ? 'equal' : 'content'}
             className={cn(
-              'shrink-0 rounded-[14px] border border-ink/15 bg-white px-3 text-xs font-semibold text-ink shadow-pro-e0 transition-colors hover:border-ink/35 hover:bg-stone-50',
+              'shrink-0 rounded-[14px] border border-ink/15 bg-white px-3 text-xs font-semibold text-ink shadow-pro-e0 transition-colors hover:border-ink/35 hover:bg-[var(--g-ivory)]',
               variant === 'panel' ? 'h-9 w-[136px]' : 'h-11',
             )}
           >
@@ -185,7 +185,12 @@ export function ProWorkbar({
             data-workbar-action-size="primary"
             data-workbar-action-width={variant === 'panel' ? 'equal' : 'content'}
             className={cn(
-              'shrink-0 rounded-[14px] bg-ink px-3 text-xs font-semibold text-white shadow-pro-sm transition-all hover:-translate-y-px hover:bg-ink-soft disabled:cursor-not-allowed disabled:opacity-45',
+              /* A disabled action still has to be readable. `disabled:opacity-45`
+                 washed the whole button to ink@45 % on white — a 2.88:1 label,
+                 below AA. The product already settled this pattern for the
+                 customer shell (§21.2, audit #17): a SOLID quiet fill with a
+                 legible label, measured here at 5.03:1. */
+              'shrink-0 rounded-[14px] bg-ink px-3 text-xs font-semibold text-white shadow-pro-sm transition-all hover:-translate-y-px hover:bg-ink-soft disabled:cursor-not-allowed disabled:bg-[var(--g-line-quiet)] disabled:text-[var(--g-lock)] disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:bg-[var(--g-line-quiet)]',
               variant === 'panel' ? 'h-9 w-[136px]' : 'h-11',
               saveAttention && 'gellatti-next-action-attention',
             )}

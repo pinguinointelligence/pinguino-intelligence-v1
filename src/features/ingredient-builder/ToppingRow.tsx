@@ -57,7 +57,7 @@ export function ToppingRow({
   const catalogLabel = isCatalogLabelToppingIngredient(item.ingredient) ? item.ingredient : null;
   return (
     <div
-      className="border-b border-ink/[0.075] px-[var(--pro-mobile-gutter)] py-1 transition-colors hover:bg-stone-50 lg:px-3 lg:py-1.5"
+      className="border-b border-ink/[0.075] px-[var(--pro-mobile-gutter)] py-1 transition-colors hover:bg-[var(--g-ivory)] lg:px-3 lg:py-1.5"
       onDragOver={(event) => event.preventDefault()}
       onDrop={(event) => {
         event.preventDefault();
@@ -74,7 +74,7 @@ export function ToppingRow({
           onClick={() => setMobileSheetOpen(true)}
           data-testid={`topping-mobile-line-${item.id}`}
           aria-label={`${item.ingredient.name} — otwórz edycję toppingu`}
-          className="pro-focus-ring grid min-h-14 w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 text-left transition-colors active:bg-stone-50"
+          className="pro-focus-ring grid min-h-14 w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 text-left transition-colors active:bg-[var(--g-ivory)]"
         >
           <span className="flex min-w-0 items-center gap-2">
             <span
@@ -207,7 +207,7 @@ export function ToppingRow({
           <p className="mt-4 px-2 text-xs font-semibold tracking-[0.04em] text-stone-600 uppercase">
             Dane
           </p>
-          <details className="mx-2 mt-2 rounded-xl border border-ink/10 bg-stone-50 px-3 py-2">
+          <details className="mx-2 mt-2 rounded-xl border border-ink/10 bg-[var(--g-ivory)] px-3 py-2">
             <summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold text-ink">
               Dane produktu
             </summary>
@@ -273,7 +273,7 @@ export function ToppingRow({
               type="button"
               disabled={disabled}
               className={cn(
-                'min-h-11 w-full rounded-lg px-2 py-2 text-left text-xs text-ink hover:bg-stone-50',
+                'min-h-11 w-full rounded-lg px-2 py-2 text-left text-xs text-ink hover:bg-[var(--g-ivory)]',
                 disabled && 'cursor-not-allowed opacity-35',
               )}
               onClick={() => {

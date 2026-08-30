@@ -111,7 +111,7 @@ export function MainRoleTrigger({
         'pro-focus-ring inline-flex shrink-0 items-center justify-center text-gold transition-colors disabled:cursor-not-allowed disabled:text-stone-300',
         variant === 'article'
           ? 'h-9 w-full min-w-0 rounded-none border-0 bg-white hover:bg-education-ivory/70'
-          : "relative h-6 w-[57px] rounded-lg border border-gold/28 bg-white after:absolute after:-inset-y-2.5 after:inset-x-0 after:content-[''] hover:border-gold/45 hover:bg-education-ivory disabled:border-ink/12 disabled:bg-stone-50 disabled:text-stone-400",
+          : "relative h-6 w-[57px] rounded-lg border border-gold/28 bg-white after:absolute after:-inset-y-2.5 after:inset-x-0 after:content-[''] hover:border-gold/45 hover:bg-education-ivory disabled:border-ink/12 disabled:bg-[var(--g-ivory)] disabled:text-stone-400",
       )}
     >
       <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none">
@@ -173,7 +173,7 @@ export function MobileIngredientLine({
         type="button"
         onClick={onOpen}
         aria-label={`${item.ingredient.name} — otwórz edycję składnika`}
-        className="pro-focus-ring absolute inset-0 z-0 rounded-lg transition-colors active:bg-stone-50"
+        className="pro-focus-ring absolute inset-0 z-0 rounded-lg transition-colors active:bg-[var(--g-ivory)]"
       />
       <span className="pointer-events-none relative z-10 flex min-w-0 items-center gap-2">
         <span className="relative grid size-7 shrink-0 place-items-center rounded-full bg-[var(--g-ivory-deep)] text-stone-600">

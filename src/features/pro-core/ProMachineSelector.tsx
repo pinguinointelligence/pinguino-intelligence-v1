@@ -274,7 +274,7 @@ export function ProMachineSelector() {
             {otherDevices.map((profile) => (
               <li
                 key={profile.id}
-                className="flex flex-col rounded-lg border border-ink/10 bg-stone-50 px-4 py-3"
+                className="flex flex-col rounded-lg border border-ink/10 bg-[var(--g-ivory)] px-4 py-3"
               >
                 <span className="text-sm text-stone-600">{machineDisplayName(profile)}</span>
                 <span className="mt-0.5 text-xs text-stone-600">{m.other.needsReview}</span>

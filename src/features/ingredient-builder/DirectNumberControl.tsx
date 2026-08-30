@@ -225,7 +225,7 @@ export function DirectNumberControl({
         softDanger && 'ingredient-control-soft-danger',
         lockSegment?.pressed
           ? 'border-stone-400/70 bg-stone-100 shadow-[inset_0_1px_2px_rgb(16_17_19_/_0.06)]'
-          : disabled && 'bg-stone-50',
+          : disabled && 'bg-[var(--g-ivory)]',
       )}
       data-testid={testId}
       data-control-density={density}

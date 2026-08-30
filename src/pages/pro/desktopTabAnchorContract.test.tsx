@@ -53,7 +53,12 @@ describe('P0 desktop Workbench tab anchor', () => {
     expect(tabs).not.toMatch(/variant === ['"]header['"][\s\S]{0,240}(fixed|absolute)/);
     // Underline only: a filled or boxed active tab changes its own metrics and
     // is exactly what made the strip read as shifted (owner §7/§8).
-    expect(tabs).toContain("cn('border-[#f58a07] text-ink', bottom && 'bg-stone-50/70')");
+    /* The colour moved to the token (`stone-50` #fafaf9 -> `--g-ivory` #fbfaf7,
+       the same surface); the CONTRACT is unchanged — underline only, and the
+       quiet fill still belongs to the bottom variant alone. */
+    expect(tabs).toContain(
+      "cn('border-[#f58a07] text-ink', bottom && 'bg-[var(--g-ivory)]/70')",
+    );
   });
 
   it('keeps the accepted mobile bottom navigation contract separate and unchanged', () => {

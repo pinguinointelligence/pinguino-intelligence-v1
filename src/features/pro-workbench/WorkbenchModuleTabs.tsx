@@ -119,10 +119,10 @@ export function WorkbenchModuleTabs({
               // filled or boxed active state, so the orange rule on the header
               // hairline is the single active marker (owner §7/§8).
               active
-                ? cn('border-[#f58a07] text-ink', bottom && 'bg-stone-50/70')
+                ? cn('border-[#f58a07] text-ink', bottom && 'bg-[var(--g-ivory)]/70')
                 : cn(
                     'border-transparent text-stone-600 hover:text-ink',
-                    bottom && 'hover:bg-stone-50',
+                    bottom && 'hover:bg-[var(--g-ivory)]',
                   ),
               attention && 'gellatti-next-action-attention text-attention',
             )}

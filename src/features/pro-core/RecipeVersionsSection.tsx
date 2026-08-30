@@ -107,7 +107,7 @@ export function RecipeVersionsSection() {
 
       {unavailable ? (
         <p
-          className="mt-4 rounded border border-ink/10 bg-stone-50 px-3 py-2 text-sm text-stone-600"
+          className="mt-4 rounded border border-ink/10 bg-[var(--g-ivory)] px-3 py-2 text-sm text-stone-600"
           data-testid="pro-core-unavailable"
         >
           {c.backendUnavailable}

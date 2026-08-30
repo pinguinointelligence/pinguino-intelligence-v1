@@ -20,7 +20,7 @@ export function ProSliceBackendState({
 }) {
   const status = unavailable ? b.unavailable : isLocalDev ? b.localDev : b.durable;
   const tone = unavailable
-    ? 'border-ink/10 bg-stone-50 text-stone-600'
+    ? 'border-ink/10 bg-[var(--g-ivory)] text-stone-600'
     : isLocalDev
       ? 'border-amber-400 bg-amber-50 text-amber-900'
       : 'border-emerald-500/30 bg-emerald-50 text-emerald-900';

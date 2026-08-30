@@ -67,7 +67,7 @@ export function ProductPickerContextualRow({
       data-testid="product-picker-contextual-product"
       className={cn(
         'relative my-1 rounded-xl border bg-white transition-colors',
-        active ? 'border-ink/18 bg-stone-50' : 'border-ink/10 hover:border-ink/16',
+        active ? 'border-ink/18 bg-[var(--g-ivory)]' : 'border-ink/10 hover:border-ink/16',
       )}
       onMouseEnter={onActivate}
     >
@@ -94,7 +94,7 @@ export function ProductPickerContextualRow({
           <span className="min-w-0 flex-1">
             <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
               <strong className="truncate text-sm text-ink">{product.displayName}</strong>
-              <span className="rounded-md border border-ink/10 bg-stone-50 px-1.5 py-0.5 text-[10px] font-semibold text-stone-600">
+              <span className="rounded-md border border-ink/10 bg-[var(--g-ivory)] px-1.5 py-0.5 text-[10px] font-semibold text-stone-600">
                 {wording.badge}
               </span>
             </span>

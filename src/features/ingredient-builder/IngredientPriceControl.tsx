@@ -269,7 +269,7 @@ export function CustomerPriceEditor({
 
   return (
     <div
-      className="mb-2 rounded-[10px] border border-ink/10 bg-stone-50/70 p-3"
+      className="mb-2 rounded-[10px] border border-ink/10 bg-[var(--g-ivory)]/70 p-3"
       data-testid="customer-price-editor"
       data-active-price-source={view.cost.source}
       data-layout="default"
