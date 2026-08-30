@@ -87,6 +87,7 @@ export {
   SORBET_STABILIZER_SYSTEM_POLICY,
   assessSorbetStabilizerSystem,
   clampSorbetStabilizerComponentGrams,
+  planSorbetStabilizerSystemRescale,
   projectSorbetStabilizerSystemToWholeGramPreferred,
   sorbetStabilizerSystemApplies,
   sorbetStabilizerSystemItems,

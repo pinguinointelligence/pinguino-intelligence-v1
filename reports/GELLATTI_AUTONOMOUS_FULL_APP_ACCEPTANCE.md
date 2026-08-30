@@ -22,7 +22,7 @@ was fixed**; no protected functional path was touched in any commit
 | ID | Severity | Summary | Cells |
 |---|---|---|---|
 | PC-01 | HIGH | Sorbet at −12 °C OPTIMAL cannot move Direction at all — all 8 single-axis requests return `no_proposal` while the plan reports both axes `working`. The same recipe answers at fresh/−11/−13 and at −12 ECO. | 8 |
-| PC-02 | HIGH | The Sorbet solver proposes a candidate its own stabilizer-system ceiling then refuses (`product_behavior_invalid`, "łączny limit systemu stabilizującego Sorbet wynosi 5 g"). The input is inside the limit; the proposal is not. | 15 |
+| PC-02 | HIGH | **CORRECTED + FIXED.** The recorded cause ("the Solver raises the stabilizer above 5 g") is rejected by evidence: the Solver never raises it, and the 34 g exemplar is an invalid harness artefact built as a `RecipeInput` — `addIngredient` clamps it to 1 g. The real, customer-reachable defect is **batch rescale**: a legal 5 g system at 1000 g became 1.34 g + 2.01 g at 670 g (Ninja CREAMi Deluxe), fractional and over the 3 g ceiling that batch derives. Fixed in `recipeStore.setBatchGrams` via the existing canonical authority. | 15 |
 | PC-03 | MED-HIGH | Sorbet `unsafe_proposal` with no NEAREST fallback — the customer receives no recipe and no route forward. | 22 |
 | PC-04 | MEDIUM | Protein Recalculate exhausts the solver iteration cap: a valid preview (score 84.45) that can never be applied. 8.6 % of all Protein cells. | 34 |
 | PC-05 | MEDIUM | Vegan Direction extremes land on a protein-in-dry-matter hard residual — preview only. Largest cluster; may be honest physics, needs owner science review. | 53 |
