@@ -10,7 +10,7 @@ import {
   type AdminPartnerApplication,
 } from '@/services/partner';
 
-const field = 'pro-focus-ring min-h-11 w-full border border-ink/15 bg-white px-3 text-sm';
+const field = 'pro-focus-ring min-h-11 w-full border border-[var(--g-line)] bg-white px-3 text-sm';
 
 const STATUS_LABEL: Record<string, string> = {
   draft: 'Szkic',
@@ -37,15 +37,15 @@ function ApplicationRow({
   const platforms = Array.isArray(data.platforms) ? (data.platforms as string[]) : [];
   const open = row.status === 'submitted' || row.status === 'in_review';
   return (
-    <article className="border border-ink/10 bg-white p-5">
+    <article className="border border-[var(--g-line)] bg-white p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="text-base font-semibold text-ink">
             {text(data.displayName) ?? row.email ?? 'Zgłoszenie'}
           </h3>
-          <p className="mt-1 font-mono text-xs text-stone-500">{row.email}</p>
+          <p className="mt-1 font-mono text-xs text-[var(--g-text-secondary)]">{row.email}</p>
         </div>
-        <span className="border border-ink/15 px-2 py-1 text-[11px] tracking-[0.08em] text-stone-600 uppercase">
+        <span className="border border-[var(--g-line)] px-2 py-1 text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">
           {STATUS_LABEL[row.status] ?? row.status}
         </span>
       </div>
@@ -53,7 +53,7 @@ function ApplicationRow({
       <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
         {text(data.primaryLink) ? (
           <div className="min-w-0">
-            <dt className="text-[11px] tracking-[0.08em] text-stone-500 uppercase">Główny link</dt>
+            <dt className="text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">Główny link</dt>
             <dd className="truncate">
               <a
                 href={String(data.primaryLink)}
@@ -68,48 +68,48 @@ function ApplicationRow({
         ) : null}
         {text(data.otherLinks) ? (
           <div className="min-w-0">
-            <dt className="text-[11px] tracking-[0.08em] text-stone-500 uppercase">Inne linki</dt>
-            <dd className="truncate text-stone-600">{String(data.otherLinks)}</dd>
+            <dt className="text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">Inne linki</dt>
+            <dd className="truncate text-[var(--g-text-secondary)]">{String(data.otherLinks)}</dd>
           </div>
         ) : null}
         {platforms.length > 0 ? (
           <div>
-            <dt className="text-[11px] tracking-[0.08em] text-stone-500 uppercase">Platformy</dt>
-            <dd className="text-stone-600">{platforms.join(' · ')}</dd>
+            <dt className="text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">Platformy</dt>
+            <dd className="text-[var(--g-text-secondary)]">{platforms.join(' · ')}</dd>
           </div>
         ) : null}
         {text(data.audience) ? (
           <div>
-            <dt className="text-[11px] tracking-[0.08em] text-stone-500 uppercase">Publiczność</dt>
-            <dd className="text-stone-600">{String(data.audience)}</dd>
+            <dt className="text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">Publiczność</dt>
+            <dd className="text-[var(--g-text-secondary)]">{String(data.audience)}</dd>
           </div>
         ) : null}
         {text(data.country) ? (
           <div>
-            <dt className="text-[11px] tracking-[0.08em] text-stone-500 uppercase">Kraj</dt>
-            <dd className="text-stone-600">{String(data.country)}</dd>
+            <dt className="text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">Kraj</dt>
+            <dd className="text-[var(--g-text-secondary)]">{String(data.country)}</dd>
           </div>
         ) : null}
         <div>
-          <dt className="text-[11px] tracking-[0.08em] text-stone-500 uppercase">Konto Gellatti</dt>
-          <dd className="text-stone-600">
+          <dt className="text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">Konto Gellatti</dt>
+          <dd className="text-[var(--g-text-secondary)]">
             {row.partnerActive ? 'Partner aktywny' : 'Bez roli Partner'}
           </dd>
         </div>
       </dl>
 
       {text(data.note) ? (
-        <p className="mt-4 border-t border-ink/10 pt-4 text-sm leading-relaxed text-stone-600">
+        <p className="mt-4 border-t border-[var(--g-line)] pt-4 text-sm leading-relaxed text-[var(--g-text-secondary)]">
           {String(data.note)}
         </p>
       ) : null}
 
       {row.decision_reason ? (
-        <p className="mt-3 text-xs text-stone-500">Decyzja: {row.decision_reason}</p>
+        <p className="mt-3 text-xs text-[var(--g-text-secondary)]">Decyzja: {row.decision_reason}</p>
       ) : null}
 
       {open ? (
-        <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-ink/10 pt-4">
+        <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-[var(--g-line)] pt-4">
           <input
             className={`${field} max-w-xs`}
             placeholder="Powód decyzji (opcjonalnie)"
@@ -177,13 +177,13 @@ export function AdminPartnerApplicationsPanel() {
   return (
     <section className="mt-7">
       <SectionLabel>Zgłoszenia partnerskie</SectionLabel>
-      <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-600">
+      <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--g-text-secondary)]">
         Zgłoszenia z „Współpraca”. Zatwierdzenie od razu włącza tryb Partner obok obecnego planu,
         publikuje profil i tworzy pierwszy kod.
       </p>
 
       {decide.isError ? (
-        <p className="mt-3 text-sm text-[#b3261e]">{customerErrorMessage(decide.error, 'admin')}</p>
+        <p className="mt-3 text-sm text-status-error">{customerErrorMessage(decide.error, 'admin')}</p>
       ) : null}
       {decide.data?.code ? (
         <p className="mt-3 text-sm text-ink">
@@ -209,7 +209,7 @@ export function AdminPartnerApplicationsPanel() {
       </div>
 
       {closed.length > 0 ? (
-        <details className="mt-4 border border-ink/10 bg-white p-5">
+        <details className="mt-4 border border-[var(--g-line)] bg-white p-5">
           <summary className="cursor-pointer text-sm font-medium text-ink">
             Rozpatrzone ({closed.length})
           </summary>

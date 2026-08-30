@@ -20,7 +20,7 @@ import {
   setAdminCommissionRule,
 } from '@/services/adminControl';
 
-const field = 'pro-focus-ring min-h-11 w-full border border-ink/15 bg-white px-3 text-sm';
+const field = 'pro-focus-ring min-h-11 w-full border border-[var(--g-line)] bg-white px-3 text-sm';
 
 export function AdminPartnersSection() {
   const queryClient = useQueryClient();
@@ -124,10 +124,10 @@ export function AdminPartnersSection() {
   });
   return (
     <>
-      <header className="border-b border-ink/10 pb-6">
+      <header className="border-b border-[var(--g-line)] pb-6">
         <SectionLabel>Zgłoszenia i zaproszenia</SectionLabel>
-        <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-ink">Partnerzy</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-600">
+        <h1 className="mt-2 text-[25px] leading-[1.08] font-[750] tracking-[-0.04em] text-[var(--g-ink)] sm:text-[30px]">Partnerzy</h1>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--g-text-secondary)]">
           Jedna ścieżka Partner → przypisanie → rejestr prowizji → konto wypłat Connect. Partner
           powstaje po zatwierdzeniu zgłoszenia albo z zaproszenia e-mailem.
         </p>
@@ -139,7 +139,7 @@ export function AdminPartnersSection() {
             event.preventDefault();
             inviteMutation.mutate();
           }}
-          className="border border-ink/10 bg-[#f3ede3] p-5"
+          className="border border-[var(--g-line)] rounded-[12px] bg-[var(--g-ivory)] p-[18px]"
         >
           <SectionLabel>Zaproś e-mailem</SectionLabel>
           <div className="mt-4 grid gap-3">
@@ -177,7 +177,7 @@ export function AdminPartnersSection() {
             event.preventDefault();
             activate.mutate();
           }}
-          className="border border-ink/10 p-5"
+          className="border border-[var(--g-line)] p-5"
         >
           <SectionLabel>Aktywuj istniejącego użytkownika</SectionLabel>
           <div className="mt-4 grid gap-3">
@@ -217,11 +217,11 @@ export function AdminPartnersSection() {
           {customerErrorMessage(inviteMutation.error ?? activate.error, 'admin')}
         </p>
       ) : null}
-      <details className="mt-7 border-y border-ink/10 py-4">
+      <details className="mt-7 border-y border-[var(--g-line)] py-4">
         <summary className="cursor-pointer text-sm font-semibold text-ink">
           Wersjonowane zasady prowizji
         </summary>
-        <p className="mt-3 text-xs text-stone-600">
+        <p className="mt-3 text-xs text-[var(--g-text-secondary)]">
           Zmiana kopiuje pełną bieżącą tabelę do nowej wersji. Historyczne wpisy prowizji zachowują
           poprzednią wersję.
         </p>
@@ -280,7 +280,7 @@ export function AdminPartnersSection() {
           />
           <Button type="submit">Utwórz wersję</Button>
         </form>
-        <pre className="mt-4 max-h-52 overflow-auto bg-stone-50 p-3 text-[10px]">
+        <pre className="mt-4 max-h-52 overflow-auto bg-[var(--g-ivory)] p-3 text-[10px]">
           {JSON.stringify(commissionRules.data ?? [], null, 2)}
         </pre>
         {commissionMutation.isError ? (
@@ -291,9 +291,9 @@ export function AdminPartnersSection() {
       </details>
       <div className="mt-9 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {(invites.data?.partner ?? []).slice(0, 8).map((row) => (
-          <div key={String(row.id)} className="border-l border-ink/15 pl-3 text-xs">
+          <div key={String(row.id)} className="border-l border-[var(--g-line)] pl-3 text-xs">
             <strong>{String(row.email)}</strong>
-            <p className="mt-1 text-stone-500">
+            <p className="mt-1 text-[var(--g-text-secondary)]">
               {String(row.status)} · /{String(row.slug)}
             </p>
             {row.status === 'PENDING' ? (
@@ -326,19 +326,19 @@ export function AdminPartnersSection() {
             ? (partner.links as Array<Record<string, unknown>>)
             : [];
           return (
-            <article key={String(partner.id)} className="border-y border-ink/10 py-5">
+            <article key={String(partner.id)} className="border-y border-[var(--g-line)] py-5">
               <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_auto]">
                 <div>
                   <strong className="text-base text-ink">
                     {String(profile.display_name ?? partner.email)}
                   </strong>
-                  <p className="mt-1 font-mono text-[10px] text-stone-500">
+                  <p className="mt-1 font-mono text-[10px] text-[var(--g-text-secondary)]">
                     {String(partner.id)} · {String(partner.status)} · profil{' '}
                     {String(profile.moderation_status ?? '—')} · Connect{' '}
                     {partner.connectAccountId ? 'GOTOWE' : 'BRAK'} · wypłaty{' '}
                     {String(partner.payoutsEnabled)}
                   </p>
-                  <p className="mt-2 text-xs text-stone-600">
+                  <p className="mt-2 text-xs text-[var(--g-text-secondary)]">
                     Kliknięcia {String(partner.clicks)} · Przypisania {String(partner.attributions)}{' '}
                     · Oczekująca prowizja {String(partner.pendingCommission)}
                   </p>
@@ -346,7 +346,7 @@ export function AdminPartnersSection() {
                     {codes.map((code) => (
                       <span
                         key={String(code.id)}
-                        className="border border-ink/10 px-2 py-1 font-mono text-[10px]"
+                        className="border border-[var(--g-line)] px-2 py-1 font-mono text-[10px]"
                       >
                         {String(code.code)} · {String(code.status)}{' '}
                         <button
@@ -369,7 +369,7 @@ export function AdminPartnersSection() {
                     {links.map((link) => (
                       <span
                         key={String(link.id)}
-                        className="border border-ink/10 px-2 py-1 font-mono text-[10px]"
+                        className="border border-[var(--g-line)] px-2 py-1 font-mono text-[10px]"
                       >
                         {String(link.link_slug)} · {String(link.status)}{' '}
                         <button

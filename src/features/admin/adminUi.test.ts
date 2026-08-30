@@ -108,3 +108,42 @@ describe('admin uses one table and one heading system', () => {
     expect(ui).not.toContain('#f3ede3');
   });
 });
+
+describe('every admin section speaks the same visual language', () => {
+  const sections = [
+    'AdminCatalogSection',
+    'AdminCommunitySection',
+    'AdminCustomerAddedProductsSection',
+    'AdminFranchiseLeadsSection',
+    'AdminInvitesSection',
+    'AdminPartnerApplicationsPanel',
+    'AdminPartnersSection',
+    'AdminProductCapabilityReanalysisDetail',
+    'AdminShopSection',
+    'AdminUsersSection',
+  ];
+
+  it('carries no section-local heading scale', () => {
+    for (const name of sections) {
+      expect(read('features', 'admin', `${name}.tsx`)).not.toContain('text-3xl');
+    }
+  });
+
+  it('draws hairlines and muted text from tokens, not ad-hoc alphas', () => {
+    for (const name of sections) {
+      const source = read('features', 'admin', `${name}.tsx`);
+      expect(source).not.toContain('border-ink/');
+      expect(source).not.toContain('text-stone-');
+      expect(source).not.toContain('bg-stone-50');
+    }
+  });
+
+  it('holds no hand-picked hex — the palette is the token set', () => {
+    for (const name of sections) {
+      const source = read('features', 'admin', `${name}.tsx`);
+      // #f3ede3 (a second ivory), #b3261e (a Material red) and #ef8708
+      // (a near-miss orange next to the real --g-orange) all lived here.
+      expect(source).not.toMatch(/#[0-9a-f]{6}/i);
+    }
+  });
+});

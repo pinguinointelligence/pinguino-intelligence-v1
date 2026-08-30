@@ -78,20 +78,20 @@ export function AdminProductCapabilityReanalysisDetail({
       <button
         type="button"
         onClick={onClose}
-        className="min-h-10 text-xs font-semibold text-stone-600"
+        className="min-h-10 text-xs font-semibold text-[var(--g-text-secondary)]"
       >
         ← Wróć do zgłoszeń
       </button>
-      <header className="border-b border-ink/10 pb-6">
+      <header className="border-b border-[var(--g-line)] pb-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <SectionLabel>Ponowna analiza</SectionLabel>
           <StatusChip status={statusTone(request.status)}>{request.status}</StatusChip>
         </div>
-        <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-ink">{request.name}</h1>
-        <p className="mt-2 font-mono text-xs text-stone-600">
+        <h1 className="mt-2 text-[25px] leading-[1.08] font-[750] tracking-[-0.04em] text-[var(--g-ink)] sm:text-[30px]">{request.name}</h1>
+        <p className="mt-2 font-mono text-xs text-[var(--g-text-secondary)]">
           {request.productCode ?? request.canonicalProductId} · EAN {request.ean ?? '—'}
         </p>
-        <p className="mt-2 break-all font-mono text-[10px] text-stone-500">
+        <p className="mt-2 break-all font-mono text-[10px] text-[var(--g-text-secondary)]">
           Zgłoszenie {request.id}
         </p>
       </header>
@@ -100,7 +100,7 @@ export function AdminProductCapabilityReanalysisDetail({
         <div className="min-w-0 space-y-7">
           <section aria-label="Podsumowanie prośby o ponowną analizę">
             <h2 className="text-sm font-semibold text-ink">Zakres prośby</h2>
-            <dl className="mt-3 grid border-l border-t border-ink/10 sm:grid-cols-2">
+            <dl className="mt-3 grid border-l border-t border-[var(--g-line)] sm:grid-cols-2">
               {[
                 ['Produkt', request.name ?? '—'],
                 ['ID', request.productCode ?? '—'],
@@ -111,8 +111,8 @@ export function AdminProductCapabilityReanalysisDetail({
                 ['Zgłaszający', `${request.requesterEmail} · ${request.requestingUserId}`],
                 ['Czas zgłoszenia', new Date(request.submittedAt).toLocaleString('pl-PL')],
               ].map(([label, value]) => (
-                <div key={label} className="border-r border-b border-ink/10 p-4">
-                  <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-stone-500">
+                <div key={label} className="border-r border-b border-[var(--g-line)] p-4">
+                  <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--g-text-secondary)]">
                     {label}
                   </dt>
                   <dd className="mt-2 break-words text-xs leading-5 text-ink">{value}</dd>
@@ -123,12 +123,12 @@ export function AdminProductCapabilityReanalysisDetail({
 
           <section>
             <h2 className="text-sm font-semibold text-ink">Dowody i bieżąca decyzja</h2>
-            <p className="mt-2 text-xs leading-5 text-stone-600">
+            <p className="mt-2 text-xs leading-5 text-[var(--g-text-secondary)]">
               Dostępne dowody: {request.evidenceReferences.length}. Bieżące zastosowanie produktu
               pochodzi z zatwierdzonej wersji danych, a autor skanu pozostaje zapisany przy swoim
               koncie.
             </p>
-            <details className="mt-3 border border-ink/12 bg-stone-50 p-4" open>
+            <details className="mt-3 border border-[var(--g-line)] bg-[var(--g-ivory)] p-4" open>
               <summary className="cursor-pointer text-xs font-semibold text-ink">
                 Szczegóły diagnostyczne: dowody, gotowość i źródło skanu
               </summary>
@@ -152,9 +152,9 @@ export function AdminProductCapabilityReanalysisDetail({
         </div>
 
         <aside className="min-w-0 space-y-5">
-          <section className="border border-ink/12 bg-[#f3ede3] p-5">
+          <section className="border border-[var(--g-line)] rounded-[12px] bg-[var(--g-ivory)] p-[18px]">
             <SectionLabel>Decyzja administratora</SectionLabel>
-            <p className="mt-3 text-xs leading-5 text-stone-600">
+            <p className="mt-3 text-xs leading-5 text-[var(--g-text-secondary)]">
               Samo zgłoszenie niczego nie zmienia. Zatwierdzenie zamyka je dopiero po niezależnej
               weryfikacji dowodów i opublikowaniu właściwego zastosowania produktu.
             </p>
@@ -166,7 +166,7 @@ export function AdminProductCapabilityReanalysisDetail({
                   rows={4}
                   value={reason}
                   onChange={(event) => setReason(event.currentTarget.value)}
-                  className="mt-2 w-full border border-ink/15 bg-white p-3 font-normal"
+                  className="mt-2 w-full border border-[var(--g-line)] bg-white p-3 font-normal"
                 />
               </label>
             ) : null}
