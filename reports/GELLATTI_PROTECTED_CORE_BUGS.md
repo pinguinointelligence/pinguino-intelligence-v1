@@ -8,8 +8,8 @@ Recipe/Monitor, Production and Label calculations).
 **None of these were fixed by the acceptance run.** Each entry carries an exact
 reproducible fixture so the owner can write a separate surgical prompt.
 
-**PC-06 has since been closed** under its own dedicated prompt — see the
-close-out note under that entry. PC-01…PC-05 remain open and untouched. PC-07 was observed while proving PC-06, and has since been closed under the
+**PC-01 and PC-06 have since been closed** under their own dedicated prompts — see the
+close-out notes under those entries. PC-02…PC-05 remain open and untouched. PC-07 was observed while proving PC-06, and has since been closed under the
 same autonomous run.
 
 - First observed on staging `04106031` (branch `claude/gellatti-full-app`, based on `origin/staging` 1a10f7cf).
@@ -75,6 +75,40 @@ Sweetness-only request never rewrote the Hardness intent.
 | **CONSOLE / NETWORK** | No error; the refusal is the pipeline's own `no_proposal` code. |
 | **REPRODUCED** | 8/8 requests in the same run; the identical recipe at `fresh`, `temp_minus_11`, `temp_minus_13` and at `temp_minus_12` ECO answers 9/9. |
 | **LIKELY ROOT AREA** | Sorbet Direction search at −12 °C under OPTIMAL — the exact projection, `searchSorbetNearestDirectionCandidate` and the ladder all return nothing while `buildRecipeDirectionPlan` still reports **both axes `working`**. The plan promises an axis the search cannot move. |
+
+
+### PC-01 — CLOSED on staging `1c9108f5`
+
+The forensic answer was that the **refusal is correct and the classification is
+not**. The −12 °C OPTIMAL draft sits inside every approved band; the requested
+Direction cannot be improved without leaving one; the NEAREST retry returns the
+same recipe with its lines re-ordered, so `materiallyDifferent` is false and the
+candidate is rightly non-publishable. What was wrong is that the customer read
+*"Nie znaleziono korekty możliwej przy obecnych **blokadach** … Użyj «Sprawdź
+wykonalność blokad»"* — on a recipe with **no locks**.
+
+Fixed in PR #36, presentation only: `previewIssueMessagePl` now reads the
+pipeline's own `directionTargetUnreached` verdict and hands over the existing
+canonical `copy.previewIssue.bestSafeResult`. No new copy, no new terminal
+vocabulary, no localisation key. `applyPipeline.ts` was **not** modified;
+`publishable = reached || materiallyDifferent` is untouched; the internal result
+is still `no_proposal` with `directionTargetUnreached: true`, which is the
+accurate pipeline truth.
+
+The earlier instruction to return `best_safe_result` as the pipeline code was
+withdrawn on evidence: it is a proof-carrying variant whose producer only emits
+it when `hardMetrics === 0 && softMetrics > 0` — false here — and which demands
+`solverInvocations`, `bandSource`, `templateId` and `evidence` that
+`enforceTargetBatchInvariant` never receives. Emitting it there would have meant
+inventing proof.
+
+8/8 single-axis requests render the canonical sentence with the grams unchanged;
+the −12 ECO, −11 and −13 controls still answer `ok · UNREACHED`. **PC-02 and
+PC-03 are untouched** — PC-03 surfaces `unsafe_proposal`, whose variant has no
+`directionTargetUnreached` field at all, so the predicate cannot reach it.
+Full capture in `reports/e2e/screenshots/pc01-direction-local-optimum.txt`.
+
+---
 
 ---
 
