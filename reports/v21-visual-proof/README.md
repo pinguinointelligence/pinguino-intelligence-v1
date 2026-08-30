@@ -30,6 +30,7 @@ tone or line-wrap differs.
 | eyebrow line-height | 12.5 px | 15 px | **12.5 px** |
 | eyebrow → title gap | 7 px | 8 px | **7 px** |
 | title tracking | −0.04 em | −0.035 em | **−0.04 em** |
+| heading action width, mobile | 358 px (full) | 129 px (content) | **358 px** |
 | title y (mobile) | 127.5 | 131 | **127.5** |
 
 These live in `shellGeometry.ts` and `PageHeading.tsx`, so the correction lifts every
@@ -53,11 +54,11 @@ A real legibility defect was fixed on the way: the graphite hero's call to actio
 |---|---|---|
 | Sklep | 71.0 → **88.4** | 55.1 → 44.7 ¹ |
 | Franchise | 76.5 → **94.5** | 70.4 → **81.7** |
-| Współpracuj z nami | 94.7 → 87.6 ² | 73.0 → **74.1** |
-| Receptury | 95.1 → 95.1 | 82.7 → **83.4** |
+| Współpracuj z nami | 94.7 → 87.1 ² | 73.0 → 72.3 ² |
+| Receptury | 95.1 → 95.1 | 82.7 → **85.1** |
 | Produkty | 95.0 → **95.1** | 84.8 → **85.2** |
 | Ustawienia etykiety | 93.9 → 93.8 | 79.5 → **80.6** ³ |
-| Ustawienia maszyny | 95.1 → **95.2** | 84.4 → **85.0** |
+| Ustawienia maszyny | 95.1 → **95.4** | 84.4 → **87.6** |
 | PRO Receptura / Monitor / Produkcja / Etykieta ×2 | 92.2–94.2, unchanged | 86.3–91.0, unchanged |
 
 ¹ The Sklep catalogue cannot load in this local environment — the page renders

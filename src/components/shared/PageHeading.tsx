@@ -51,7 +51,15 @@ export function PageHeading({
           <p className="mt-3 max-w-[680px] text-sm leading-relaxed text-stone-600">{blurb}</p>
         ) : null}
       </div>
-      {actions ? <div className="flex min-w-0 items-center gap-2">{actions}</div> : null}
+      {/* V2.1: the approved page action is FULL WIDTH on a phone — measured
+          x 16, w 358 (the 390 viewport less its two 16 px gutters), h 44, on
+          Receptury, Ustawienia etykiety and Produkty alike. From ≥640 it
+          returns to its content width beside the title. */}
+      {actions ? (
+        <div className="flex w-full min-w-0 items-center gap-2 max-sm:*:flex-1 sm:w-auto">
+          {actions}
+        </div>
+      ) : null}
     </div>
   );
 }
