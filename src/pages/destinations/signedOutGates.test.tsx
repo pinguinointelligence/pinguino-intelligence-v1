@@ -59,3 +59,43 @@ describe('public pages use the shared card and rail language', () => {
     expect(source).not.toContain('grid border-y border-ink/10 sm:grid-cols-5');
   });
 });
+
+describe('commerce surfaces draw from the token palette', () => {
+  const files = [
+    ['features', 'shop', 'ShopCatalog.tsx'],
+    ['features', 'shop', 'ShopOrdersPanel.tsx'],
+    ['pages', 'destinations', 'SubscriptionPage.tsx'],
+    ['features', 'global-catalog', 'GlobalCatalogSearchPanel.tsx'],
+    ['features', 'account', 'HomeInviteRedemption.tsx'],
+  ] as const;
+
+  it('carries no legacy stone/ink palette classes', () => {
+    for (const parts of files) {
+      const source = readFileSync(join(SRC, ...parts), 'utf8');
+      expect(source).not.toMatch(/text-stone-\d/);
+      expect(source).not.toMatch(/border-ink\/\d/);
+      expect(source).not.toContain('bg-stone-50');
+    }
+  });
+
+  it('holds no near-miss duplicate of a colour the product already owns', () => {
+    for (const parts of files) {
+      const source = readFileSync(join(SRC, ...parts), 'utf8');
+      // Each of these sat one shade away from a real token:
+      // #ef8708 vs --g-orange, #8a4d00 vs --g-attention-ink, #101113 vs
+      // --g-ink, and #f5f2ee / #e7e3dd as further greiges beside
+      // --g-ivory-deep. Two different reds stood in for one error colour.
+      for (const stale of [
+        '#ef8708',
+        '#8a4d00',
+        '#101113',
+        '#f5f2ee',
+        '#e7e3dd',
+        '#b4232a',
+        '#b3261e',
+      ]) {
+        expect(source).not.toContain(stale);
+      }
+    }
+  });
+});

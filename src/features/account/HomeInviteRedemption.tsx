@@ -10,7 +10,7 @@ export function HomeInviteRedemption() {
   return (
     <section className="py-6">
       <h2 className="text-sm font-semibold text-ink">Kod zaproszenia Home</h2>
-      <p className="mt-2 max-w-xl text-xs leading-5 text-stone-600">
+      <p className="mt-2 max-w-xl text-xs leading-5 text-[var(--g-text-secondary)]">
         Jednorazowy kod jest przypisany do dokładnego adresu email tego konta i przyznaje jeden
         bezpłatny miesiąc Home.
       </p>
@@ -22,7 +22,7 @@ export function HomeInviteRedemption() {
         }}
       >
         <input
-          className="pro-focus-ring min-h-11 flex-1 border border-ink/15 px-3 font-mono text-sm uppercase"
+          className="pro-focus-ring min-h-11 flex-1 border border-[var(--g-line)] px-3 font-mono text-sm uppercase"
           value={code}
           onChange={(event) => setCode(event.currentTarget.value)}
           placeholder="PIH-XXXX-XXXX"

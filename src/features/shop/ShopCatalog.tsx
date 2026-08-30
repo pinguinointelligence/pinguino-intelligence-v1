@@ -20,7 +20,7 @@ import {
 import { shopAvailabilityLabelPl, shopCopy as c, shopMoney } from '@/copy/shop';
 import { useShopCartStore } from './shopCartStore';
 
-const sectionLabel = 'text-[10px] font-semibold tracking-[0.13em] text-stone-500 uppercase';
+const sectionLabel = 'text-[10px] font-semibold tracking-[0.13em] text-[var(--g-text-secondary)] uppercase';
 
 function AvailabilityChip({ product }: { product: ShopProduct }) {
   const preorder = product.availability === 'preorder';
@@ -29,10 +29,10 @@ function AvailabilityChip({ product }: { product: ShopProduct }) {
       className={cn(
         'inline-flex items-center rounded-full border px-3 py-1 text-[11px]',
         preorder
-          ? 'border-[#ef8708]/45 bg-[#ef8708]/10 text-[#8a4d00]'
+          ? 'border-[var(--g-orange)]/45 bg-[var(--g-orange)]/10 text-[var(--g-attention-ink)]'
           : product.availability === 'out_of_stock'
-            ? 'border-ink/15 bg-[#f5f2ee] text-stone-500'
-            : 'border-ink/12 bg-white text-stone-600',
+            ? 'border-[var(--g-line)] bg-[var(--g-ivory-deep)] text-[var(--g-text-secondary)]'
+            : 'border-[var(--g-line)] bg-white text-[var(--g-text-secondary)]',
       )}
     >
       {shopAvailabilityLabelPl(product.availability, product.leadTimeWeeks)}
@@ -54,18 +54,18 @@ function ProductCard({
       ? shopMoney(Math.round((product.priceCents / product.packSizeG) * 1000), product.currency)
       : null;
   return (
-    <article className="flex flex-col rounded-[12px] border border-ink/12 bg-white p-5">
+    <article className="flex flex-col rounded-[12px] border border-[var(--g-line)] bg-white p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <h3 className="text-lg font-semibold tracking-[-0.02em]">{product.title}</h3>
         <AvailabilityChip product={product} />
       </div>
       {product.description ? (
-        <p className="mt-2 text-xs leading-relaxed text-stone-500">{product.description}</p>
+        <p className="mt-2 text-xs leading-relaxed text-[var(--g-text-secondary)]">{product.description}</p>
       ) : null}
       {product.contents.length > 0 ? (
         <div className="mt-4">
           <p className={sectionLabel}>{c.starterPack.contents}</p>
-          <ul className="mt-2 grid gap-1 text-xs text-stone-600">
+          <ul className="mt-2 grid gap-1 text-xs text-[var(--g-text-secondary)]">
             {product.contents.map((entry) => (
               <li key={entry.sku}>
                 {/* Article titles already carry their pack size ("Dekstroza ·
@@ -78,11 +78,11 @@ function ProductCard({
           </ul>
         </div>
       ) : null}
-      <div className="mt-5 flex flex-wrap items-end justify-between gap-3 border-t border-ink/10 pt-4">
+      <div className="mt-5 flex flex-wrap items-end justify-between gap-3 border-t border-[var(--g-line)] pt-4">
         <div>
           <p className="font-mono text-xl text-ink">{shopMoney(product.priceCents, product.currency)}</p>
           {perKg ? (
-            <p className="mt-0.5 font-mono text-[11px] text-stone-500">
+            <p className="mt-0.5 font-mono text-[11px] text-[var(--g-text-secondary)]">
               {perKg} {c.product.perKg}
             </p>
           ) : null}
@@ -167,7 +167,7 @@ export function ShopCatalog() {
   return (
     <div className="flex flex-col gap-10">
       {returnedOrderId ? (
-        <div className="rounded-[12px] border border-ink/12 bg-[#e7e3dd] p-5" data-testid="shop-return">
+        <div className="rounded-[12px] border border-[var(--g-line)] bg-[var(--g-ivory-deep)] p-5" data-testid="shop-return">
           <p className="text-sm text-ink">
             {sync.data?.status === 'paid'
               ? `${c.orders.paidConfirmation} ${sync.data.orderNumber}`
@@ -191,7 +191,7 @@ export function ShopCatalog() {
           <h2 id="shop-starter" className="mt-2 text-2xl font-semibold tracking-[-0.035em]">
             {bundle.title}
           </h2>
-          <p className="mt-2 max-w-prose text-sm leading-relaxed text-stone-600">
+          <p className="mt-2 max-w-prose text-sm leading-relaxed text-[var(--g-text-secondary)]">
             {c.starterPack.body}
           </p>
           <div className="mt-5">
@@ -223,17 +223,17 @@ export function ShopCatalog() {
 
       <section
         aria-labelledby="shop-cart"
-        className="rounded-[12px] border border-ink/12 bg-white p-5"
+        className="rounded-[12px] border border-[var(--g-line)] bg-white p-5"
         data-testid="shop-cart"
       >
         <h2 id="shop-cart" className="text-lg font-semibold tracking-[-0.02em]">
           {c.cart.title}
         </h2>
         {lines.length === 0 ? (
-          <p className="mt-2 text-sm text-stone-500">{c.cart.empty}</p>
+          <p className="mt-2 text-sm text-[var(--g-text-secondary)]">{c.cart.empty}</p>
         ) : (
           <>
-            <ul className="mt-4 divide-y divide-ink/10">
+            <ul className="mt-4 divide-y divide-[var(--g-line)]">
               {lines.map(({ line, product }) => (
                 <li key={product.sku} className="flex flex-wrap items-center gap-3 py-3">
                   <span className="min-w-0 flex-1 text-sm text-ink">{product.title}</span>
@@ -256,7 +256,7 @@ export function ShopCatalog() {
                   <button
                     type="button"
                     onClick={() => cart.remove(product.sku)}
-                    className="min-h-11 px-2 text-xs text-stone-500 hover:text-ink"
+                    className="min-h-11 px-2 text-xs text-[var(--g-text-secondary)] hover:text-ink"
                   >
                     {c.cart.remove}
                   </button>
@@ -265,12 +265,12 @@ export function ShopCatalog() {
             </ul>
 
             {preorderWeeks > 0 ? (
-              <p className="mt-4 rounded-[10px] border border-[#ef8708]/40 bg-[#ef8708]/10 px-4 py-3 text-sm text-[#8a4d00]">
+              <p className="mt-4 rounded-[10px] border border-[var(--g-orange)]/40 bg-[var(--g-orange)]/10 px-4 py-3 text-sm text-[var(--g-attention-ink)]">
                 {c.cart.preorderNotice.replace('{weeks}', String(preorderWeeks))}
               </p>
             ) : null}
 
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t border-ink/10 pt-4">
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--g-line)] pt-4">
               <p className="font-mono text-xl">
                 {c.cart.total} {shopMoney(total)}
               </p>
@@ -289,7 +289,7 @@ export function ShopCatalog() {
                 </button>
               ) : (
                 <div className="text-right">
-                  <p className="text-sm text-stone-600">{c.cart.signInFirst}</p>
+                  <p className="text-sm text-[var(--g-text-secondary)]">{c.cart.signInFirst}</p>
                   <button
                     type="button"
                     onClick={() => openAuthModal()}
@@ -300,8 +300,8 @@ export function ShopCatalog() {
                 </div>
               )}
             </div>
-            {checkoutError ? <p className="mt-3 text-sm text-[#b3261e]">{checkoutError}</p> : null}
-            <p className="mt-3 text-xs text-stone-500">{c.cart.testMode}</p>
+            {checkoutError ? <p className="mt-3 text-sm text-status-error">{checkoutError}</p> : null}
+            <p className="mt-3 text-xs text-[var(--g-text-secondary)]">{c.cart.testMode}</p>
           </>
         )}
       </section>
