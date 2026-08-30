@@ -10,6 +10,7 @@
  * document itself; a CTA scrolls to the next section and a subtle Back goes up.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { AppShell } from '@/features/shell/AppShell';
 import { deriveMachineSetup, type HomeMachineProfile } from '@/features/machine-catalog';
 import { machineDisplayName } from '@/features/machine-onboarding/machineViews';
@@ -30,6 +31,8 @@ import { useHomeFlow } from '@/features/home-creator/useHomeFlow';
 import { useHomeRecipeResult } from '@/features/home-creator/useHomeRecipeResult';
 import { useHomeIntentIngredients } from '@/features/home-creator/useHomeIntentIngredients';
 import { useIngredientLibrary } from '@/features/ingredient-builder/useIngredientLibrary';
+import { useCanonicalRecipeSave } from '@/features/recipes/useCanonicalRecipeSave';
+import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { visibleProductTypeFor } from '@/features/home-creator/homeProfileMapping';
 import { proposeRecipeName } from '@/features/home-creator/homeRecipeName';
 import { buildHomeMachineView } from '@/features/home-creator/homeMachinePresentation';
@@ -77,6 +80,12 @@ export function HomeCreatorPage() {
   // preview catalogue, an authenticated paid session gets live Mapper search — HOME
   // does not widen or narrow what Pro can see.
   const library = useIngredientLibrary({ demo: !canSeeGrams });
+  // §65: THE ONE canonical save handler — create-vs-version and the immutable version
+  // semantics are its job, not HOME's. Defaults build from the shared store and link
+  // the draft, which is exactly what HOME edits.
+  const recipeSave = useCanonicalRecipeSave();
+  const openAuthModal = useAuthModalStore((state) => state.open);
+  const navigate = useNavigate();
 
   const derivation = useMemo(() => (machine ? deriveMachineSetup(machine) : null), [machine]);
   const recommendedBatchGrams = derivation?.recommendedBatchGrams ?? null;
@@ -402,7 +411,25 @@ export function HomeCreatorPage() {
                   .setProductBehaviorSnapshot(topping.id, { ...behavior, lineId: topping.id });
               }
             }}
-            onSave={() => undefined}
+            onSave={() => {
+              // §65: an explicit action, never an autosave. The canonical handler
+              // already knows WHY a save cannot proceed, so HOME routes on its answer
+              // instead of re-deciding entitlement (§72: Save is a paid action).
+              if (recipeSave.blocked === 'signin') {
+                openAuthModal();
+                return;
+              }
+              if (recipeSave.blocked === 'plan') {
+                // The dedicated HOME/PRO plan-choice paywall is not built yet, so the
+                // existing subscription page is used rather than a dead button.
+                navigate('/subscription');
+                return;
+              }
+              if (recipeSave.blocked === 'unavailable') return;
+              void (recipe.savedRecipeId
+                ? recipeSave.saveVersion()
+                : recipeSave.createNew(name.trim()));
+            }}
             onLetsMakeIt={() => useHomeDraftStore.getState().startPreparation()}
             onShare={() => undefined}
             canShare={false}
