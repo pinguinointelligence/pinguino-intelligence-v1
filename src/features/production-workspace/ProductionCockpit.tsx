@@ -14,6 +14,7 @@ import { DialogShell } from '@/components/ui/DialogShell';
 import { recipeTechnicalFit } from '@/features/recipe-score';
 import { PublishToCommunityDialog } from '@/features/community/ui/PublishToCommunityDialog';
 import { useCreatorProfile } from '@/features/community/useCreatorProfile';
+import { refreshCurrentRecipeBehaviorWorkingCopy } from '@/features/product-intelligence/refreshRecipeBehaviorWorkingCopy';
 
 const formatPhysicalMassG = (value: number): string =>
   Number.isInteger(value) ? value.toFixed(0) : value.toFixed(3).replace(/\.?0+$/, '');
@@ -167,6 +168,10 @@ export function ProductionCockpit({
 }) {
   const { session, progress, rescue, score } = production;
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [refreshingProductBehavior, setRefreshingProductBehavior] = useState(false);
+  const [productBehaviorRefreshError, setProductBehaviorRefreshError] = useState<string | null>(
+    null,
+  );
   const [finishDialogOpen, setFinishDialogOpen] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [communityDialogKey, setCommunityDialogKey] = useState<string | null>(null);
@@ -198,6 +203,42 @@ export function ProductionCockpit({
     if (rescue?.state === 'options') rescuePreviewRef.current?.focus();
   }, [rescue?.state]);
   const prerequisite = production.prerequisite;
+  /* PC-07. The freshness refusal now carries its own cure. This is the same
+     lifecycle action the Przelicz terminal offers — it rebuilds the working
+     copy from current product data and leaves the saved version untouched, so
+     the normal Save appends vN+1 rather than rewriting vN. */
+  const runProductBehaviorRefresh = () => {
+    if (refreshingProductBehavior) return;
+    setRefreshingProductBehavior(true);
+    setProductBehaviorRefreshError(null);
+    void (async () => {
+      try {
+        const result = await refreshCurrentRecipeBehaviorWorkingCopy();
+        if (!result.ok) {
+          const names = [...new Set(result.issues.map((issue) => issue.lineName))];
+          const suffix = names.length > 0 ? ` Dotyczy: ${names.join(', ')}.` : '';
+          setProductBehaviorRefreshError(
+            result.code === 'current_authority_unresolved' ||
+              result.code === 'current_authority_invalid'
+              ? `Nie udało się potwierdzić aktualnych danych wszystkich produktów.${suffix}`
+              : result.code === 'recipe_changed'
+                ? 'Receptura zmieniła się podczas odświeżania. Uruchom tę operację ponownie.'
+                : result.code === 'authentication_required'
+                  ? 'Zaloguj się ponownie i uruchom tę operację jeszcze raz.'
+                  : result.code === 'saved_version_required'
+                    ? 'Ta operacja wymaga otwartej, zapisanej wersji receptury.'
+                    : 'Nie udało się utworzyć nowej wersji roboczej. Receptura pozostała bez zmian.',
+          );
+        }
+      } catch {
+        setProductBehaviorRefreshError(
+          'Nie udało się odświeżyć danych produktów. Receptura pozostała bez zmian.',
+        );
+      } finally {
+        setRefreshingProductBehavior(false);
+      }
+    })();
+  };
   const prerequisiteAction = prerequisite
     ? prerequisite.action === 'open_preview'
       ? onOpenPreview
@@ -205,8 +246,17 @@ export function ProductionCockpit({
         ? onRecalculate
         : prerequisite.action === 'archive_stale_session'
           ? () => setArchiveDialogOpen(true)
-          : onReturnToRecipe
+          : prerequisite.action === 'refresh_product_behavior'
+            ? runProductBehaviorRefresh
+            : onReturnToRecipe
     : onReturnToRecipe;
+  const prerequisiteActionBusy =
+    prerequisite?.action === 'refresh_product_behavior' && refreshingProductBehavior;
+  const prerequisiteActionLabel = prerequisite
+    ? prerequisiteActionBusy
+      ? 'Tworzę nową wersję roboczą…'
+      : prerequisite.actionLabel
+    : null;
   const completedRecordVisible =
     session?.status === 'completed' &&
     session.completionSnapshot !== null &&
@@ -262,11 +312,22 @@ export function ProductionCockpit({
           <button
             type="button"
             onClick={prerequisiteAction}
-            className="pro-focus-ring mt-4 min-h-11 w-full rounded-[12px] bg-ink px-4 py-2 text-xs font-semibold text-white shadow-pro-sm"
+            disabled={prerequisiteActionBusy}
+            aria-busy={prerequisiteActionBusy}
+            className="pro-focus-ring mt-4 min-h-11 w-full rounded-[12px] bg-ink px-4 py-2 text-xs font-semibold text-white shadow-pro-sm disabled:cursor-wait disabled:opacity-70"
             data-testid="production-prerequisite-action"
           >
-            {prerequisite.actionLabel}
+            {prerequisiteActionLabel}
           </button>
+          {productBehaviorRefreshError ? (
+            <p
+              className="mt-2 text-xs leading-relaxed text-status-risky"
+              role="alert"
+              data-testid="production-prerequisite-action-error"
+            >
+              {productBehaviorRefreshError}
+            </p>
+          ) : null}
           {production.persistenceError ? (
             <p className="mt-2 text-xs leading-relaxed text-status-error" role="alert">
               {production.persistenceError}
@@ -459,9 +520,11 @@ export function ProductionCockpit({
             <button
               type="button"
               onClick={prerequisite ? prerequisiteAction : () => void production.startNewSession()}
+              disabled={prerequisiteActionBusy}
+              aria-busy={prerequisiteActionBusy}
               className={cn(buttonClasses('ghost', 'md'), 'w-full sm:w-auto')}
             >
-              {prerequisite ? prerequisite.actionLabel : 'Rozpocznij partię'}
+              {prerequisite ? prerequisiteActionLabel : 'Rozpocznij partię'}
             </button>
           </div>
           {prerequisite ? (
