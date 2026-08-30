@@ -468,7 +468,10 @@ export function ProductionHubPage() {
               <h2 className="text-xl font-semibold text-ink">Etykiety z zakończonych partii</h2>
               {labelSnapshot ? (
                 <div className="mt-6 border border-ink/10">
-                  <LabelWorkspace snapshot={labelSnapshot} />
+                  {/* Completed-batch VIEWER. Settings live on Etykiety
+                      (`/labels`), so this instance points there rather than
+                      opening a second copy of them. */}
+                  <LabelWorkspace snapshot={labelSnapshot} settingsHome="production" />
                 </div>
               ) : (
                 <p className="mt-5 text-sm text-stone-500">
@@ -529,6 +532,15 @@ export function LabelsHubPage() {
       title="Etykiety"
       blurb="Profil konta i etykiety zakończonych partii — w jednym, spójnym miejscu."
       contextLabel="Ustawienia etykiety"
+      /* OWNER DECISION (2026-08-30): this page is the one home for persistent
+         label settings, so it owes the reader a way back to the recipe they
+         came from. `/pro/recipe` is the existing workbench route — no new
+         navigation authority is introduced. */
+      actions={
+        <Link to="/pro/recipe" className={buttonClasses('ghost', 'sm')}>
+          Wróć do receptury
+        </Link>
+      }
     >
       <LabelWorkspace profileOnly repository={repository} />
 

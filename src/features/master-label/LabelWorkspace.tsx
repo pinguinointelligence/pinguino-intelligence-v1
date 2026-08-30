@@ -6,7 +6,9 @@ import {
   type ReactNode,
   type TouchEvent as ReactTouchEvent,
 } from 'react';
+import { Link } from 'react-router';
 import { Button } from '@/components/ui/Button';
+import { buttonClasses } from '@/components/ui/buttonStyles';
 import { Card } from '@/components/ui/Card';
 import { DialogShell } from '@/components/ui/DialogShell';
 import { SectionLabel } from '@/components/shared/SectionLabel';
@@ -131,6 +133,7 @@ export function LabelWorkspace({
   repository: suppliedRepository,
   onSaved,
   initialView = 'data',
+  settingsHome = 'inline',
 }: {
   snapshot?: ProductionCompletionSnapshot | null;
   runId?: string | null;
@@ -139,7 +142,22 @@ export function LabelWorkspace({
   repository?: LabelRepository;
   onSaved?: (snapshot: RunLabelSnapshot) => void;
   initialView?: LabelWorkspaceView;
+  /**
+   * OWNER DECISION (2026-08-30) — label settings live in ONE place.
+   *
+   * `'inline'` (Produkcja → Etykiety, `/labels`) keeps the settings view here:
+   * that surface is the canonical home for jurisdiction, operator, packaging
+   * and every other persistent label setting.
+   *
+   * `'production'` (the PRO workbench `Etykieta` tab) removes the settings view
+   * from this instance entirely and sends the reader to `/labels` instead. The
+   * workbench tab is the CURRENT label plus the fields still missing for it —
+   * not a second settings screen. No settings code is deleted or copied; the
+   * same authority simply renders in one place.
+   */
+  settingsHome?: 'inline' | 'production';
 }) {
+  const settingsLiveHere = settingsHome === 'inline';
   const repository = useMemo(
     () => suppliedRepository ?? resolveLabelRepository(),
     [suppliedRepository],
@@ -152,7 +170,9 @@ export function LabelWorkspace({
   const [label, setLabel] = useState<MasterLabelData | null>(null);
   const [editing, setEditing] = useState(false);
   const [saveAsDefault, setSaveAsDefault] = useState(true);
-  const [activeView, setActiveView] = useState<LabelWorkspaceView>(initialView);
+  const [activeView, setActiveView] = useState<LabelWorkspaceView>(
+    initialView === 'settings' && !settingsLiveHere ? 'data' : initialView,
+  );
   const [transitionDirection, setTransitionDirection] = useState<'forward' | 'back'>(
     initialView === 'data' ? 'back' : 'forward',
   );
@@ -167,9 +187,23 @@ export function LabelWorkspace({
   const requestedRunId = suppliedSnapshot?.sessionId ?? runId;
   const preflight = useMemo(() => (label ? buildLabelPreflight(label) : null), [label]);
   const labelDataReady = preflight?.readyForSystemPrint ?? false;
-  const visibleView: LabelWorkspaceView = saved ? 'label' : !labelDataReady ? 'data' : activeView;
+  /* OWNER DECISION (2026-08-30) — in the PRO workbench the LABEL comes first.
+     At home (`/labels`) an incomplete label still opens on its data view, which
+     is the settings-and-completion surface. In the workbench that would put a
+     form in front of the thing the reader came to see, so the label stays on
+     screen and the missing fields are stacked underneath it instead. */
+  const visibleView: LabelWorkspaceView = saved
+    ? 'label'
+    : !labelDataReady
+      ? settingsLiveHere
+        ? 'data'
+        : 'label'
+      : activeView;
+  /** The workbench stacks preview → missing data → actions in one flow. */
+  const stackMissingDataUnderLabel = !settingsLiveHere && !saved && !labelDataReady;
 
   const openView = (next: LabelWorkspaceView) => {
+    if (next === 'settings' && !settingsLiveHere) return;
     if (next === visibleView || (next === 'settings' && saved)) return;
     if (next === 'label' && !saved && !labelDataReady) return;
     const order: readonly LabelWorkspaceView[] = ['data', 'label', 'settings'];
@@ -321,7 +355,9 @@ export function LabelWorkspace({
     const deltaX = touch.clientX - start.x;
     const deltaY = touch.clientY - start.y;
     if (Math.abs(deltaX) < 56 || Math.abs(deltaX) <= Math.abs(deltaY) * 1.25) return;
-    const order: readonly LabelWorkspaceView[] = ['data', 'label', 'settings'];
+    const order: readonly LabelWorkspaceView[] = settingsLiveHere
+      ? ['data', 'label', 'settings']
+      : ['data', 'label'];
     const currentIndex = order.indexOf(visibleView);
     const next = order[currentIndex + (deltaX < 0 ? 1 : -1)];
     if (next) openView(next);
@@ -470,13 +506,10 @@ export function LabelWorkspace({
                       Nowa wersja
                     </Button>
                   ) : (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => openView(labelDataReady ? 'settings' : 'data')}
-                    >
-                      Ustawienia
-                    </Button>
+                    <SettingsEntry
+                      settingsLiveHere={settingsLiveHere}
+                      onOpen={() => openView(labelDataReady ? 'settings' : 'data')}
+                    />
                   )}
                   <Button
                     variant="ghost"
@@ -527,7 +560,9 @@ export function LabelWorkspace({
                     <button
                       type="button"
                       className="font-semibold underline underline-offset-4"
-                      onClick={() => openView(labelDataReady ? 'settings' : 'data')}
+                      onClick={() =>
+                        openView(settingsLiveHere && labelDataReady ? 'settings' : 'data')
+                      }
                       disabled={Boolean(saved)}
                     >
                       {printBlockedReason}
@@ -600,6 +635,17 @@ export function LabelWorkspace({
                 </Button>
               )}
             </div>
+            {stackMissingDataUnderLabel ? (
+              <div data-testid="label-missing-data-stack">
+                <CompactRunLabelEditor
+                  label={label}
+                  onSave={async (next) => {
+                    announceReadyTransition(next);
+                    setLabel(next);
+                  }}
+                />
+              </div>
+            ) : null}
           </>
         ) : visibleView === 'data' ? (
           <CompactRunLabelEditor
@@ -641,17 +687,23 @@ export function LabelWorkspace({
         ) : null}
       </div>
 
+      {settingsLiveHere ? (
       <nav
         aria-label="Widoki workspace etykiety"
         className="sticky bottom-[var(--label-workspace-bottom-inset,0px)] z-20 flex min-h-11 items-center justify-center gap-2 border-t border-ink/8 bg-white/95 px-4 backdrop-blur"
         data-testid="label-workspace-dots"
       >
         {(
-          [
-            ['data', 'Dane do etykiety'],
-            ['label', 'Etykieta'],
-            ['settings', 'Ustawienia etykiety'],
-          ] as const
+          settingsLiveHere
+            ? ([
+                ['data', 'Dane do etykiety'],
+                ['label', 'Etykieta'],
+                ['settings', 'Ustawienia etykiety'],
+              ] as const)
+            : ([
+                ['data', 'Dane do etykiety'],
+                ['label', 'Etykieta'],
+              ] as const)
         ).map(([view, label]) => (
           <button
             key={view}
@@ -680,6 +732,7 @@ export function LabelWorkspace({
           </button>
         ))}
       </nav>
+      ) : null}
       <style>{`
         @keyframes labelWorkspaceInFromRight { from { opacity: .55; transform: translateX(22px); } to { opacity: 1; transform: translateX(0); } }
         @keyframes labelWorkspaceInFromLeft { from { opacity: .55; transform: translateX(-22px); } to { opacity: 1; transform: translateX(0); } }
@@ -785,8 +838,8 @@ function ProfileEditor({
           }
         }}
       />
-      <details className="mt-4 rounded-[12px] border border-ink/10 bg-[#fffdf8] p-3" open>
-        <summary className="cursor-pointer text-sm font-semibold text-ink">
+      <details className="mt-4 rounded-[12px] border border-[var(--g-line)] bg-[var(--g-ivory)] p-[18px]" open>
+        <summary className="cursor-pointer text-[14px] leading-[1.35] font-bold text-[var(--g-ink)]">
           Dane firmy i trwałość · używane ponownie
         </summary>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -4820,16 +4873,57 @@ function PrinterSettingsFields({
   );
 }
 
+/**
+ * The one settings entry point.
+ *
+ * OWNER DECISION (2026-08-30): label settings live ONLY under Produkcja →
+ * Etykiety. Where they live, this opens them in place. Where they do not — the
+ * PRO workbench `Etykieta` tab — it sends the reader to that one home instead
+ * of rendering a second copy of the same screen.
+ */
+function SettingsEntry({
+  settingsLiveHere,
+  onOpen,
+}: {
+  settingsLiveHere: boolean;
+  onOpen: () => void;
+}) {
+  if (settingsLiveHere) {
+    return (
+      <Button variant="ghost" size="sm" onClick={onOpen}>
+        Ustawienia
+      </Button>
+    );
+  }
+  return (
+    <Link
+      to="/labels"
+      className={cn(buttonClasses('ghost', 'sm'), 'shrink-0')}
+      data-testid="label-settings-home-link"
+    >
+      Zmień ustawienia
+    </Link>
+  );
+}
+
 function EditorHeader({ title, onClose }: { title: string; onClose: () => void }) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-ink/10 pb-4">
+    /* GELLATTI V2.1 §5 — the approved settings vocabulary, applied inside the
+       modal the Owner kept (decision 2026-08-30: Ustawienia etykiety stays a
+       modal inside /labels; no standalone route). Eyebrow 10/1.25 at 0.08em,
+       section title 22/1.2/700 at -0.025em, hairlines on `--g-line`. */
+    <div className="flex items-center justify-between gap-4 border-b border-[var(--g-line)] pb-4">
       <div>
-        <SectionLabel>Edycja etykiety</SectionLabel>
-        <h2 className="mt-1 text-lg font-semibold text-ink">{title}</h2>
+        <span className="block text-[10px] leading-[1.25] font-bold tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">
+          Edycja etykiety
+        </span>
+        <h2 className="mt-1 text-[22px] leading-[1.2] font-bold tracking-[-0.025em] text-[var(--g-ink)]">
+          {title}
+        </h2>
       </div>
       <button
         type="button"
-        className="grid size-11 place-items-center rounded-full border border-ink/15 text-xl"
+        className="grid size-11 place-items-center rounded-full border border-[var(--g-line)] text-xl"
         aria-label="Zamknij edycję etykiety"
         onClick={onClose}
       >
@@ -4871,13 +4965,19 @@ function MarketAndIdentityFields({
   return (
     <div className="mt-4 space-y-4">
       <div>
-        <span className="text-xs text-stone-600">Jurysdykcja / profil</span>
+        <span className="text-[12px] leading-[1.5] text-[var(--g-text-secondary)]">
+          Jurysdykcja / profil
+        </span>
+        {/* V2.1: the approved chooser marks the selected profile with a doubled
+            INK edge on white, not a filled tile — the inset shadow draws the
+            second pixel without changing the box, so nothing reflows on
+            selection. */}
         <div className="mt-1 grid grid-cols-3 gap-1 sm:grid-cols-6">
           {MARKET_CODES.map((code) => (
             <button
               key={code}
               type="button"
-              className={`grid min-h-12 content-center rounded-[10px] border px-2 py-1 text-xs ${market === code ? 'border-ink bg-ink text-white' : 'border-ink/15 bg-white'}`}
+              className={`grid min-h-12 content-center rounded-[10px] border bg-white px-2 py-1 text-xs ${market === code ? 'border-[var(--g-ink)] text-[var(--g-ink)] shadow-[inset_0_0_0_1px_var(--g-ink)]' : 'border-[var(--g-line)]'}`}
               onClick={() => onMarket(code)}
             >
               <span>{MARKET_PROFILES[code].label}</span>
@@ -4894,7 +4994,7 @@ function MarketAndIdentityFields({
         ) : null}
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="text-xs text-stone-600">
+        <label className="text-[12px] leading-[1.5] text-[var(--g-text-secondary)]">
           Języki · po przecinku
           <input
             value={languages.join(', ')}
@@ -4908,7 +5008,7 @@ function MarketAndIdentityFields({
             className={SETTINGS_INPUT_CLASS}
           />
         </label>
-        <label className="text-xs text-stone-600">
+        <label className="text-[12px] leading-[1.5] text-[var(--g-text-secondary)]">
           Marka / nazwa firmy
           <input
             value={businessName}
@@ -4916,7 +5016,7 @@ function MarketAndIdentityFields({
             className={SETTINGS_INPUT_CLASS}
           />
         </label>
-        <label className="text-xs text-stone-600">
+        <label className="text-[12px] leading-[1.5] text-[var(--g-text-secondary)]">
           Operator
           <input
             value={operatorName}
@@ -4924,7 +5024,7 @@ function MarketAndIdentityFields({
             className={SETTINGS_INPUT_CLASS}
           />
         </label>
-        <label className="text-xs text-stone-600">
+        <label className="text-[12px] leading-[1.5] text-[var(--g-text-secondary)]">
           Adres operatora
           <input
             value={address}
@@ -4933,7 +5033,7 @@ function MarketAndIdentityFields({
           />
         </label>
       </div>
-      <label className="flex min-h-14 items-center gap-3 rounded-[12px] border border-ink/10 bg-[#fffdf8] p-3 text-xs text-stone-600">
+      <label className="flex min-h-14 items-center gap-3 rounded-[12px] border border-[var(--g-line)] bg-[var(--g-ivory)] p-[18px] text-[12px] leading-[1.5] text-[var(--g-text-secondary)]">
         {logoUrl ? (
           <img src={logoUrl} alt="Aktualne logo" className="size-12 object-contain" />
         ) : null}
