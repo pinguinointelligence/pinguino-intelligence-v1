@@ -22,6 +22,12 @@ import { loadCanonicalProductionHistory } from '@/services/productionHistoryTrut
 import type { CanonicalProductionHistoryEntry } from '@/services/productionHistoryTruth';
 import { WorkflowNotice } from '@/components/shared/WorkflowNotice';
 import { EmptyState } from '@/components/shared/EmptyState';
+import {
+  DestinationHero,
+  DestinationSection,
+  DestinationSectionHead,
+  ImageDirection,
+} from '@/components/shared/destinationEditorial';
 import { ShopCatalog } from '@/features/shop/ShopCatalog';
 import { ShopOrdersPanel } from '@/features/shop/ShopOrdersPanel';
 import { shopCopy } from '@/copy/shop';
@@ -73,8 +79,39 @@ export function ShopPage() {
       title={shopCopy.page.title}
       blurb={shopCopy.page.blurb}
       contextLabel={shopCopy.page.contextLabel}
+      bare
     >
-      <ShopCatalog />
+      {/* GELLATTI V2.1 §5 — the approved Sklep hero: 470 px band, 1.05 / 0.95
+          split, graphite right half. The catalogue underneath is untouched;
+          only the top of the page changes.
+          The hero deliberately carries ONLY the page-level copy. `ShopCatalog`
+          already opens on „Zestaw startowy / Gellatti Starter Pack" with the
+          same `starterPack` kicker and body, so putting those in the hero too
+          printed them twice on served staging. It also carries no CTA: the
+          approved label for that slot belongs to a design-only Starter Pack
+          page this route no longer is — the composition is preserved, the
+          invented button is not. */}
+      <DestinationHero
+        variant="shop"
+        eyebrow={shopCopy.page.eyebrow}
+        title={shopCopy.page.title}
+        blurb={shopCopy.page.blurb}
+        visual={
+          /* The graphite half stays on a phone — the approved mobile hero runs
+             the full band with its visual, so hiding it below `lg` shortens the
+             band and knocks everything under it out of register. */
+          <div className="grid place-items-center bg-[var(--g-graphite)] p-[26px]">
+            <ImageDirection
+              tone="inverse"
+              className="h-full min-h-[190px] w-full"
+              lines={['Neutralny placeholder', 'brak zatwierdzonego zdjęcia lub packaging assetu']}
+            />
+          </div>
+        }
+      />
+      <DestinationSection id="sklep-katalog">
+        <ShopCatalog />
+      </DestinationSection>
     </DestinationSurface>
   );
 }
@@ -86,57 +123,68 @@ export function FranchisePage() {
       title="Franchise"
       blurb="Koncepty biznesowe Gellatti: lokal firmowy, przyczepa, wózek i punkt."
       contextLabel="Franchise"
+      bare
     >
-      <div className="grid overflow-hidden rounded-[12px] border border-ink/12 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="flex flex-col justify-center bg-[#e7e3dd] p-8 sm:p-10">
-          <p className="max-w-xl text-sm leading-relaxed text-stone-600">
-            Franchise jest niezależne od planu Home lub Pro. Ten kierunek prowadzi do zapytania
-            biznesowego i nie miesza się z programem Współpraca.
-          </p>
-          <a href="#franchise-inquiry" className={cn(buttonClasses('primary', 'md'), 'mt-6 w-max')}>
+      {/* GELLATTI V2.1 §5 — the approved Franchise hero: 380 px band, 1.1 / 0.9
+          split, 66 px inset, the four concepts as the right half. The concepts,
+          the anchor CTA and the inquiry form below are unchanged. */}
+      <DestinationHero
+        variant="franchise"
+        eyebrow="Ekosystem Gellatti"
+        title="Franchise"
+        blurb="Koncepty biznesowe Gellatti: lokal firmowy, przyczepa, wózek i punkt."
+        note="Franchise jest niezależne od planu Home lub Pro. Ten kierunek prowadzi do zapytania biznesowego i nie miesza się z programem Współpraca."
+        actions={
+          <a href="#franchise-inquiry" className={buttonClasses('primary', 'md')}>
             Zapytaj o Franchise
           </a>
-        </div>
-        <div className="grid grid-cols-2 bg-white">
-          {FRANCHISE_CONCEPT_ORDER.map((concept) => (
-            <div
-              key={concept}
-              className="grid min-h-36 place-items-center border-b border-l border-ink/10 p-5 text-center odd:border-l-0 lg:odd:border-l"
-            >
-              <span>
-                <span className="mx-auto grid size-12 place-items-center rounded-[12px] border border-ink/12 text-xl">
-                  {FRANCHISE_CONCEPT_INITIAL[concept]}
+        }
+        visual={
+          <div className="grid grid-cols-2 bg-white">
+            {FRANCHISE_CONCEPT_ORDER.map((concept) => (
+              <div
+                key={concept}
+                className="grid min-h-36 place-items-center border-b border-l border-[var(--g-line)] p-5 text-center odd:border-l-0 lg:odd:border-l"
+              >
+                <span>
+                  <span className="mx-auto grid size-12 place-items-center rounded-[12px] border border-[var(--g-line)] text-xl">
+                    {FRANCHISE_CONCEPT_INITIAL[concept]}
+                  </span>
+                  <strong className="mt-3 block text-xs">{franchiseConceptLabelPl(concept)}</strong>
                 </span>
-                <strong className="mt-3 block text-xs">{franchiseConceptLabelPl(concept)}</strong>
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-      <section className="mt-10">
-        <p className="text-[10px] font-semibold tracking-[0.13em] text-stone-500 uppercase">
-          Potwierdzone koncepty
-        </p>
-        <h2 className="mt-2 text-2xl font-semibold tracking-[-0.035em]">
-          Cztery formaty. Bez wymyślonych warunków.
-        </h2>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              </div>
+            ))}
+          </div>
+        }
+      />
+      <DestinationSection>
+        <DestinationSectionHead
+          eyebrow="Potwierdzone koncepty"
+          title="Cztery formaty. Bez wymyślonych warunków."
+          helper="Karty są kategoriami enquiry, nie ofertami cenowymi ani obietnicą dostępności."
+        />
+        <div className="grid gap-3 sm:grid-cols-2">
           {FRANCHISE_CONCEPT_ORDER.map((concept) => (
-            <article key={concept} className="rounded-[12px] border border-ink/12 bg-white p-5">
-              <span className="grid size-11 place-items-center rounded-[10px] border border-ink/12 text-lg">
+            <article
+              key={concept}
+              className="rounded-[12px] border border-[var(--g-line)] bg-white p-[18px]"
+            >
+              <span className="grid size-11 place-items-center rounded-[10px] border border-[var(--g-line)] text-lg">
                 {FRANCHISE_CONCEPT_INITIAL[concept]}
               </span>
-              <h3 className="mt-4 text-lg font-semibold">{franchiseConceptLabelPl(concept)}</h3>
-              <p className="mt-2 text-xs leading-relaxed text-stone-500">
+              <h3 className="mt-4 text-[21px] leading-[1.2] font-bold tracking-[-0.02em] text-[var(--g-ink)]">
+                {franchiseConceptLabelPl(concept)}
+              </h3>
+              <p className="mt-2 text-[12px] leading-[1.5] text-[var(--g-text-secondary)]">
                 Szczegóły wymagają rozmowy i potwierdzonego źródła.
               </p>
             </article>
           ))}
         </div>
-      </section>
-      <section className="mt-10">
+      </DestinationSection>
+      <DestinationSection>
         <FranchiseInquiryForm />
-      </section>
+      </DestinationSection>
     </DestinationSurface>
   );
 }

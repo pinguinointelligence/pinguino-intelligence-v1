@@ -30,6 +30,7 @@ export function DestinationSurface({
   blurb,
   actions,
   contextLabel,
+  bare = false,
   children,
 }: {
   eyebrow?: string;
@@ -38,6 +39,15 @@ export function DestinationSurface({
   actions?: ReactNode;
   /** Compact lockup descriptor used by the approved global destination shell. */
   contextLabel?: string;
+  /**
+   * GELLATTI V2.1 §5 — the commercial destinations (Sklep, Franchise,
+   * Współpraca) open on a HERO that carries the page title itself, so the
+   * shared `PageHeading` would render the same title twice, 40 px above the
+   * approved canvas start. `bare` hands the top of the canvas to `children`;
+   * `title` is still required and still names the page for the lockup and the
+   * document, it simply is not painted a second time.
+   */
+  bare?: boolean;
   children?: ReactNode;
 }) {
   return (
@@ -68,8 +78,12 @@ export function DestinationSurface({
                 marketing page that happens to sit behind a login. */}
             <div className={`${APP_PAGE_WORKSPACE} ${APP_PAGE_BLOCK}`}>
               <div className={APP_PAGE_CANVAS}>
-                <PageHeading eyebrow={eyebrow} title={title} blurb={blurb} actions={actions} />
-                {children ? <div className={PAGE_HEADING_CONTENT_GAP}>{children}</div> : null}
+                {bare ? null : (
+                  <PageHeading eyebrow={eyebrow} title={title} blurb={blurb} actions={actions} />
+                )}
+                {children ? (
+                  <div className={bare ? undefined : PAGE_HEADING_CONTENT_GAP}>{children}</div>
+                ) : null}
               </div>
             </div>
           </div>

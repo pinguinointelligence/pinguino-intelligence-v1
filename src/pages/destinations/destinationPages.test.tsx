@@ -33,8 +33,13 @@ describe('Slice 3 destination pages', () => {
       const html = render(el);
       expect(html).toContain('theme-pro-light');
       expect(html).toContain('bg-paper');
-      // V2.1 §5: the approved destination title carries the preview's 750 weight.
-      expect(html).toContain('font-[750]');
+      /* V2.1 §5: a destination title always carries an APPROVED weight, and the
+         approved preview uses two — `font-[750]` for the shared `PageHeading`,
+         and 800 (`font-extrabold`, measured on the authority h1) for the pages
+         that open on a hero and therefore render no `PageHeading` at all.
+         Asserting either keeps the contract on every page in the loop instead
+         of dropping it for the hero ones. */
+      expect(html).toMatch(/font-\[750\]|font-extrabold/);
       expect(html).not.toContain('[color-scheme:dark]');
     }
   });
