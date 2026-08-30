@@ -26,6 +26,7 @@ import {
   projectSweetnessForDisplay,
   type HomeSweetness,
 } from '../homeSweetness';
+import { HomeRecalculate } from './HomeRecalculate';
 import { HomeSection } from './HomeSection';
 
 const SWEETNESS_LABEL: Readonly<Record<HomeSweetness, string>> = {
@@ -304,6 +305,9 @@ export function HomeRecipeSection({
           })}
         </div>
       </div>
+
+      {/* §60: the existing Recalculate → Preview → Apply workflow, plainly worded. */}
+      <HomeRecalculate />
 
       {/* §57 */}
       <p className="mt-8 text-[15px]" style={{ color: 'var(--g-text-secondary)' }}>
