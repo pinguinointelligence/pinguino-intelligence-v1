@@ -97,5 +97,19 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+
+      # Evidence, not behaviour. The contract sits close enough to its 5000 ms budget
+      # on this hardware that runner size decides the outcome (4502 ms on a passing
+      # run, 5086 ms on a failing one), so any future sizing decision should be based
+      # on recorded resources rather than assumption.
+      - name: Record runner resources
+        run: |
+          echo "cores:  $(nproc)"
+          echo "memory: $(free -h | awk '/^Mem:/{print $2}')"
+          echo "load:   $(uptime)"
+
+      # Runs through its OWN config, because the file is now excluded from the
+      # default suite. A bare `vitest run <path>` would honour that exclusion and
+      # match nothing — a vacuously green job, which is worse than the flake.
       - name: recipeVectorProximity — no competing workload
-        run: npx vitest run src/features/constraint-studio/recipeVectorProximity.test.ts --reporter=verbose
+        run: npm run solver:contracts

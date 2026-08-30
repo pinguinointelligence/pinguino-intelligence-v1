@@ -38,7 +38,8 @@
     "vegan:campaign": "vitest run --config vitest.campaign.config.ts",
     "crown:campaign": "vitest run --config vitest.crown-campaign.config.ts",
     "acceptance:matrix": "vitest run --config vitest.acceptance.config.ts",
-    "home:seed-community": "node scripts/seedHomeCommunityQa.mjs"
+    "home:seed-community": "node scripts/seedHomeCommunityQa.mjs",
+    "solver:contracts": "vitest run --config vitest.solver-contracts.config.ts --reporter=verbose"
   },
   "dependencies": {
     "@fontsource-variable/manrope": "^5.2.8",
