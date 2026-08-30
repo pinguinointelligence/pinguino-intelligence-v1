@@ -1,0 +1,56 @@
+GELLATTI — served capture: PC-06, saved Sorbet -> Production
+Served on https://staging.pinguinoai.com as test1@test1.com
+Staging d1498d85 · Vercel dpl_7fnXhvQKcaL544AtMfMJqza1CtqV (target production, READY)
+Bundle index-BtAT3edU.js · captured 2026-08-30
+
+FIXTURE (unchanged from the one filed as PC-06)
+  QA Sorbet Truskawka -12  id 16df2554-d6a8-46fb-ab82-8de839707851  v1
+  QA Sorbet Truskawka -13  id 07132301-b904-44c2-aad0-c084f5d66e70  v1
+  owner test1@test1.com · 6 lines · 1000 g · 0 fractional grams
+  recipe_input has NO top-level `pinguino_practical_v1` -> no practical audit
+  Direction target (0,0): no change requested anywhere in the loop.
+
+--- BEFORE (staging 66ad298c, recorded in production-per-profile.txt) ---------
+  Produkcja : "WYMAGA RECEPTURY WYKONAWCZEJ / Najpierw przelicz recepture"
+  Przelicz  : "...Receptura nie zostala zmieniona."
+  ZAPISZ    : disabled - nothing changed, so there is nothing to save
+  VERDICT   : BLOCKED, closed loop, no next action existed.
+
+--- AFTER (staging d1498d85) --------------------------------------------------
+Receptura
+  Reopened from /recipes?tab=mine -> Otworz. Sorbet, -12 C, OPTIMAL, 1000 g.
+  Lines: SUCROSE SUGAR 110 g, DEXTROSE 25 g, INULIN 20 g, TARA GUM 4 g,
+         WILD STRAWBERRY 804 g (Glowny), FRUCTOSE 37 g. Score 8.
+  Status "Zapisane".
+
+Produkcja  (the PC-06 gate)
+  "WSZYSTKO GOTOWE DO ROZPOCZECIA PARTII"
+  QA Sorbet Truskawka -12 · Wersja 1 · 1000 g · Skladniki bazy 6
+  Zrodlo: "Zapisana wersja"
+  NOT present: "WYMAGA RECEPTURY WYKONAWCZEJ", "Najpierw przelicz recepture".
+  One prerequisite remained and it was actionable, not circular: the TARA GUM
+  heat-treatment notice ("Pamietaj o obrobce"), button "Najpierw potwierdz
+  informacje" -> OK -> "Rozpocznij partie" enabled.
+
+Wazenie skladnikow
+  6 lines planned 110 / 25 / 20 / 4 / 804 / 37 g, confirmed 1..6 of 6.
+  "W naczyniu 1000 g · Cel 1000 g · Do dodania 0 g" -> "Zakoncz wazenie bazy".
+
+Partia zakonczona
+  Wynik koncowy 10 "Wyjatkowo dobrze dopasowana"
+  Nr partii  LOT-20260830-0624A2A275
+  Koszt partii 3.39 EUR
+  Obrobka na cieplo: TARA GUM · Stabilizer
+  Next actions offered: "Przejdz do etykiety", "Rozpocznij partie", "Udostepnij".
+  VERDICT: PASS - Production reached AND completed.
+
+QA Sorbet Truskawka -13 (second fixture)
+  Produkcja -> "WSZYSTKO GOTOWE DO ROZPOCZECIA PARTII", Zrodlo "Zapisana
+  wersja", "Rozpocznij partie" enabled.  VERDICT: PASS.
+
+NOTHING WAS WRITTEN TO OPEN THE GATE
+  After the run, recipe_versions for both fixtures still holds exactly ONE
+  version each, still with no practical audit, still created 2026-08-29
+  22:17:17 / 22:17:20. No new version, no re-save, no Direction mutation.
+  The fix changes what the app CONCLUDES about a saved version, not the
+  version itself.
