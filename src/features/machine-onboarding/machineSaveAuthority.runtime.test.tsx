@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * ONE machine-save authority — owner-approved relocation (Gellatti V2.1 §5).
  *
@@ -21,20 +22,24 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { NINJA_CREAMI_DELUXE_NC502EU } from '@/features/machine-catalog';
+import { MACHINE_CATALOG_VERSION, NINJA_CREAMI_DELUXE_NC502EU } from '@/features/machine-catalog';
 import { MachineProfileSection } from './ui/MachineProfileSection';
 import { buildMachineSettingsView } from './machineSettingsView';
-import { buildMachinePreferenceRecord } from './machinePreference';
+import { buildMachinePreferenceRecord } from './preferenceContracts';
 import type { MachineSettingsSubmit } from './ui/MachineProfileSection';
 
-const view = () =>
-  buildMachineSettingsView(
-    buildMachinePreferenceRecord({
-      profile: NINJA_CREAMI_DELUXE_NC502EU,
-      userDefaultGrams: null,
-      customContainer: null,
-    }),
-  );
+const record = () => {
+  const built = buildMachinePreferenceRecord({
+    profile: NINJA_CREAMI_DELUXE_NC502EU,
+    isCustom: false,
+    setAt: '2026-07-17T12:00:00.000Z',
+    catalogVersion: MACHINE_CATALOG_VERSION,
+  });
+  if (built === null) throw new Error('expected a Deluxe record');
+  return built;
+};
+
+const view = () => buildMachineSettingsView(record());
 
 let host: HTMLDivElement;
 let root: Root;
