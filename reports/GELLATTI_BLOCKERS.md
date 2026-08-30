@@ -68,6 +68,24 @@ Two things worth knowing before anyone replays them:
    original. Replaying the repo file resolves it, and the follow-up migration
    `partner_application_slug_fix` records it explicitly.
 
+## Solver-time contract flake, 2026-08-30 (recorded, not attributable)
+
+`Solver time contracts (isolated)` failed once on PR #15 — a **docs-only**
+commit that cannot change solver timing. The failure was the wall-clock budget,
+not behaviour: **22 of 23 passed**, and the one case
+(`keeps Cinnamon near 2 g … (-11 °C, sweetness -2, hardness -2)`) took
+**5162 ms** against the owner-locked **5000 ms**, i.e. 3 % over. The same case
+runs in **3435 ms** locally, where all 23 pass.
+
+The workflow's own comment anticipates this — the job exists precisely because
+these assertions "measure contention rather than the solver" when they share a
+runner. The threshold is owner-locked and was NOT raised. The job is not a
+required check, so it did not gate the merge. If it keeps happening, the honest
+options are the owner's: give the runner more headroom, or accept a documented
+tolerance on the budget.
+
+---
+
 ## CI instability in the full-suite job (recorded, not attributable to this run)
 
 The `Typecheck, lint, tests, build` job's `npm test` step intermittently dies
@@ -94,6 +112,21 @@ Why it is not attributable to this batch: the only source change since the last
 green run is the vite config exclusion, which **removes** ~17 minutes of
 network-bound work from every default run, plus a QA test file that the default
 suite no longer collects, report files and a migration file.
+
+**Reproduced again on 2026-08-30, on PR #16 — a REPORTS-ONLY commit.** Same
+signature exactly: the last log line is inside `proteinMultiMainPositive.test.ts`
+at 05:55:41 while it streams `SERVED_OWNER_PROTEIN {…}` blobs to stdout, then
+nothing until job cleanup at 06:14:54 — **no vitest summary, no `##[error]`
+line, no OOM line**. The same tree's full suite passes locally (10 025 passed,
+0 failed).
+
+That a commit touching only Markdown can trigger it settles the attribution
+question: it is not caused by any change in this run. It is also not gating —
+the required check is `Owner-locked contracts + protected paths`, which passed.
+
+Owner action, unchanged and now better evidenced: stop that file printing full
+solver payloads to stdout on every case, or give the job an explicit
+`timeout-minutes` and `--reporter=dot` so a kill is distinguishable from a hang.
 
 Owner action, if this keeps happening: the cheapest fix is to stop that file
 printing full solver payloads to stdout on every case, or to give the job an
