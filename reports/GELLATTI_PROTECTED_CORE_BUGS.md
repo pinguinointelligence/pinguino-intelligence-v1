@@ -172,6 +172,20 @@ that same resize authority, so the draft still sums to one batch.
 | 1000 → 1430 | 2 g + 3 g | 3 g + 4 g = 7 g | {3, 6, 7} | yes | no issue |
 | 1000 → 1900 | 2 g + 3 g | 4 g + 5 g = 9 g | {4, 8, 9} | yes | no issue |
 
+**Three live routes change the batch, and all three are covered.** The manual
+Partia edit (`setBatchGrams`) was only the first: **choosing a machine**
+(`setMachineSelection`) is the owner's own headline route — 670 g is not usually
+typed, it is what the Ninja CREAMi Deluxe imposes when the customer selects it —
+and switching product type on a Home machine re-derives its default batch
+(`setVisibleProductType`). Selecting the Deluxe was verified still broken after
+the first fix (`1.34 g + 2.01 g`, both codes) and is now `1 g + 2 g`, valid. All
+three call the one shared projection.
+
+The two remaining resize sites, `resolveProfileBatch` and `resolvePayloadBatch`,
+are reached only from `loadRecipeInput` and `resetToDemo` — load paths, left
+untouched under the owner's instruction not to broaden PC-02 into the load path
+without first reproducing a customer-reachable load defect.
+
 At 250 g the whole system may weigh 1 g, so two components cannot both carry
 mass and one reaches 0 g. That is the policy's own arithmetic, and it is not a
 new state: add-time clamping already produces a 0 g stabilizer line when the

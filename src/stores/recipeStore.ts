@@ -1241,7 +1241,13 @@ export const useRecipeStore = create<RecipeState>()(
           return {
             ...nextBase,
             target_batch_grams: machineDefault,
-            items: resized.items,
+            // PC-02 — the product type the batch is re-derived FOR is the new
+            // one, so the projection is asked about `decision.nextCategory`.
+            items: rescaleWithOwnerStabilizerSystem(
+              { ...state, category: decision.nextCategory },
+              resized.items,
+              machineDefault,
+            ),
             machine_capacity_grams: machineDefault,
             machine_capacity_source: 'machine' as const,
             batch_source: 'MACHINE_DEFAULT' as const,
@@ -2775,6 +2781,14 @@ export const useRecipeStore = create<RecipeState>()(
           set({ batchResizeConflict: resized.conflict });
           return { ok: false, conflict: resized.conflict };
         }
+        // PC-02 — choosing a machine IS a batch change, and the Ninja CREAMi
+        // Deluxe's 670 g is the case that made this reachable. The same
+        // canonical projection therefore applies here, and only where a resize
+        // actually happened.
+        const projectedItems =
+          sel.batchGrams == null && !enteringProfessionalFromHome
+            ? resized.items
+            : rescaleWithOwnerStabilizerSystem(state, resized.items, targetBatchGrams);
         const batchSource =
           sel.batchGrams == null
             ? sel.kind === 'professional'
@@ -2802,7 +2816,7 @@ export const useRecipeStore = create<RecipeState>()(
           // Route to the existing supported cell — no Engine change, just the temperature input.
           target_temperature_c: sel.temperatureC,
           target_batch_grams: targetBatchGrams,
-          items: resized.items,
+          items: projectedItems,
           batch_source: batchSource,
           batchResizeConflict: null,
           machine_capacity_grams: sel.kind === 'home' ? (sel.capacityGrams ?? null) : null,

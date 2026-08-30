@@ -24,6 +24,10 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { findDemoIngredient } from '@/data/demoIngredients';
 import type { EngineIngredient } from '@/engine';
 import {
+  NINJA_CREAMI_DELUXE_NC502EU,
+  deriveMachineSetup,
+} from '@/features/machine-catalog';
+import {
   assessSorbetStabilizerSystem,
   evaluateRecipeConstraintAuthority,
   sorbetStabilizerSystemItems,
@@ -221,6 +225,47 @@ describe('PC-02 — batch rescale keeps the Sorbet stabilizer system canonical',
     useRecipeStore.getState().setPlannedGrams(tara!.id, 5);
     useRecipeStore.getState().addIngredient(SECOND_STABILIZER, 2);
     expect(stabilizerGrams()).toEqual([5, 0]);
+  });
+
+  it('11. CHOOSING the Ninja CREAMi Deluxe is a batch change and is projected too', () => {
+    /* The owner-named real-world route: 670 g is not usually typed, it is the
+       capacity a supported HOME machine imposes when the customer selects it.
+       `setMachineSelection` resizes the batch itself, so the projection has to
+       reach it — otherwise the headline case stays broken while the manual
+       Partia edit looks fixed. */
+    const setup = deriveMachineSetup(NINJA_CREAMI_DELUXE_NC502EU, state().visibleProductType);
+    expect(setup.recommendedBatchGrams).toBe(670);
+    expect(
+      useRecipeStore.getState().setMachineSelection({
+        kind: 'home',
+        servingModeId: setup.resolvedVisibleMode!,
+        machineId: NINJA_CREAMI_DELUXE_NC502EU.id,
+        label: 'Ninja CREAMi Deluxe',
+        temperatureC: -11,
+        batchGrams: setup.recommendedBatchGrams!,
+        capacityGrams: setup.recommendedBatchGrams!,
+        batchSource: 'MACHINE_DEFAULT',
+      }),
+    ).toEqual({ ok: true });
+
+    expect(state().target_batch_grams).toBe(670);
+    expect(sum()).toBeCloseTo(670, 6);
+    expect(stabilizerGrams()).toEqual([1, 2]);
+    expect(assessSorbetStabilizerSystem(input()).issues).toEqual([]);
+    expect(ownerPolicyIssues()).toEqual([]);
+  });
+
+  it('12. a machine selection that does not change the batch changes nothing', () => {
+    const before = state().items.map((item) => item.planned_grams);
+    useRecipeStore.getState().setMachineSelection({
+      kind: 'professional',
+      servingModeId: 'fresh',
+      machineId: null,
+      label: 'Maszyna profesjonalna',
+      temperatureC: -11,
+    });
+    expect(state().items.map((item) => item.planned_grams)).toEqual(before);
+    expect(state().target_batch_grams).toBe(1000);
   });
 
   it('10. a full rescale round trip never leaves an owner-policy issue behind', () => {
