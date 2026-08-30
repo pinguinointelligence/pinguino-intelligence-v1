@@ -43,7 +43,7 @@ const ACCOUNT_PANEL =
   'rounded-[12px] border border-[var(--g-line)] bg-white px-5 [&>section]:py-0 [&>section]:first:pt-5 [&>section]:last:pb-5';
 
 const quietLink =
-  'flex min-h-14 items-center justify-between border-b border-ink/10 py-3 text-sm text-ink transition-opacity hover:opacity-55';
+  'flex min-h-14 items-center justify-between border-b border-[var(--g-line)] py-3 text-sm text-ink transition-opacity hover:opacity-55';
 
 export function HowItWorksPage() {
   const steps = ['Pomysł', 'Składniki', 'Gellatti', 'Receptura', 'Produkcja'];
@@ -249,7 +249,7 @@ export function ProductsHubPage() {
       ) : (
         <>
           <GlobalCatalogSearchPanel />
-          <p className="mt-8 max-w-xl text-xs leading-relaxed text-stone-500">
+          <p className="mt-8 max-w-xl text-xs leading-relaxed text-[var(--g-text-secondary)]">
             Twoja cena, dostawca, notatki i stan magazynowy pozostają prywatne.
           </p>
         </>
@@ -350,7 +350,7 @@ export function ProductionHubPage() {
         />
       ) : (
         <>
-          <div role="tablist" aria-label="Sekcje produkcji" className="flex border-b border-ink/15">
+          <div role="tablist" aria-label="Sekcje produkcji" className="flex border-b border-[var(--g-line)]">
             {productionTabs.map((tab, index) => (
               <button
                 key={tab.id}
@@ -378,7 +378,7 @@ export function ProductionHubPage() {
                 }}
                 className={cn(
                   'min-h-11 border-b-2 px-4 text-xs font-semibold sm:min-h-10',
-                  active === tab.id ? 'border-ink text-ink' : 'border-transparent text-stone-600',
+                  active === tab.id ? 'border-ink text-ink' : 'border-transparent text-[var(--g-text-secondary)]',
                 )}
                 data-testid={`production-tab-${tab.id}`}
               >
@@ -398,7 +398,7 @@ export function ProductionHubPage() {
               <h2 className="text-xl font-semibold text-ink">Bieżąca produkcja</h2>
               {session?.status === 'in_progress' ? (
                 <>
-                  <p className="mt-2 text-sm text-stone-600">
+                  <p className="mt-2 text-sm text-[var(--g-text-secondary)]">
                     {session.source.recipeName} · rozpoczęto{' '}
                     {new Date(session.startedAt).toLocaleString('pl-PL')}
                   </p>
@@ -408,7 +408,7 @@ export function ProductionHubPage() {
                 </>
               ) : (
                 <>
-                  <p className="mt-2 max-w-xl text-sm text-stone-600">
+                  <p className="mt-2 max-w-xl text-sm text-[var(--g-text-secondary)]">
                     Otwórz recepturę i przejdź do jej zakładki Produkcja, aby rozpocząć nową partię
                   </p>
                   <Link to="/pro/recipe" className={cn(buttonClasses('primary', 'md'), 'mt-6')}>
@@ -429,7 +429,7 @@ export function ProductionHubPage() {
             >
               <h2 className="text-xl font-semibold text-ink">Historia produkcji</h2>
               {historyState === 'loading' ? (
-                <p className="mt-5 text-sm text-stone-500" role="status">
+                <p className="mt-5 text-sm text-[var(--g-text-secondary)]" role="status">
                   Sprawdzamy zakończone partie…
                 </p>
               ) : null}
@@ -457,13 +457,13 @@ export function ProductionHubPage() {
               {history.map(({ run, snapshot }) => (
                 <div
                   key={run.runId}
-                  className="mt-6 border-y border-ink/10 py-5"
+                  className="mt-6 border-y border-[var(--g-line)] py-5"
                   data-production-run-id={run.runId}
                 >
                   <div className="flex flex-wrap items-end justify-between gap-4">
                     <div>
                       <strong className="text-base text-ink">{snapshot.source.recipeName}</strong>
-                      <p className="mt-1 text-xs text-stone-500">
+                      <p className="mt-1 text-xs text-[var(--g-text-secondary)]">
                         {new Date(snapshot.productionCompletedAt).toLocaleString('pl-PL')} · wersja{' '}
                         {snapshot.source.recipeVersionNumber ?? '—'}
                       </p>
@@ -472,7 +472,7 @@ export function ProductionHubPage() {
                       <span className="block font-mono text-lg font-semibold tabular-nums">
                         {snapshot.actualFinalMassG.toFixed(1)} g
                       </span>
-                      <span className="text-xs text-stone-500">
+                      <span className="text-xs text-[var(--g-text-secondary)]">
                         planowano {snapshot.originalBatchTargetG.toFixed(1)} g
                       </span>
                     </div>
@@ -505,14 +505,14 @@ export function ProductionHubPage() {
             >
               <h2 className="text-xl font-semibold text-ink">Etykiety z zakończonych partii</h2>
               {labelSnapshot ? (
-                <div className="mt-6 border border-ink/10">
+                <div className="mt-6 border border-[var(--g-line)]">
                   {/* Completed-batch VIEWER. Settings live on Etykiety
                       (`/labels`), so this instance points there rather than
                       opening a second copy of them. */}
                   <LabelWorkspace snapshot={labelSnapshot} settingsHome="production" />
                 </div>
               ) : (
-                <p className="mt-5 text-sm text-stone-500">
+                <p className="mt-5 text-sm text-[var(--g-text-secondary)]">
                   Etykieta pojawi się dopiero po zakończeniu produkcji i zatwierdzeniu danych
                   partii.
                 </p>
@@ -582,11 +582,11 @@ export function LabelsHubPage() {
     >
       <LabelWorkspace profileOnly repository={repository} />
 
-      <section className="mt-10 border-t border-ink/10 pt-8">
+      <section className="mt-10 border-t border-[var(--g-line)] pt-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h2 className="text-xl font-semibold text-ink">Etykieta zakończonej partii</h2>
-            <p className="mt-1 text-sm text-stone-500">
+            <p className="mt-1 text-sm text-[var(--g-text-secondary)]">
               Dane etykiety pochodzą wyłącznie z zatwierdzonego wyniku tej partii
             </p>
           </div>

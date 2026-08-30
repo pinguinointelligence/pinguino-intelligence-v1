@@ -64,7 +64,7 @@ export function AccountProductMarkets() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 id="product-markets-heading" className="text-[15px] leading-[1.3] font-bold tracking-[-0.02em] text-[var(--g-ink)]">Produkty w wyszukiwarce</h2>
-          <p className="mt-1 max-w-2xl text-xs leading-relaxed text-stone-600">
+          <p className="mt-1 max-w-2xl text-xs leading-relaxed text-[var(--g-text-secondary)]">
             Wybierz kraje sprzedaży SKU. Kraj pochodzenia pozostaje osobnym faktem produktu,
             a Ulubione są widoczne niezależnie od tego filtra
           </p>
@@ -80,15 +80,15 @@ export function AccountProductMarkets() {
       </div>
 
       {!form.primaryMarket && detectedCountry ? (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border border-ink/10 bg-[#f3ede3] px-4 py-3">
-          <p className="text-xs text-stone-700">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border border-[var(--g-line)] bg-[var(--g-ivory-deep)] px-4 py-3">
+          <p className="text-xs text-[var(--g-ink)]">
             Proponowany rynek na podstawie ustawień konta lub języka przeglądarki:
             {' '}<strong>{detectedCountry.namePl} ({detectedCountry.code})</strong>.
           </p>
           <button
             type="button"
             onClick={() => updateDraft((current) => ({ ...current, primaryMarket: detectedCountry.code, defaultScope: 'my_markets' }))}
-            className="pro-focus-ring min-h-10 border border-ink/15 bg-white px-3 text-xs font-semibold text-ink"
+            className="pro-focus-ring min-h-10 border border-[var(--g-line)] bg-white px-3 text-xs font-semibold text-ink"
           >
             Ustaw jako domyślny
           </button>
@@ -96,8 +96,8 @@ export function AccountProductMarkets() {
       ) : null}
 
       <fieldset className="mt-5">
-        <legend className="text-xs font-semibold text-stone-700">Kraje sprzedaży produktu</legend>
-        <div className="mt-3 grid gap-px border border-ink/10 bg-ink/10 sm:grid-cols-2 lg:grid-cols-3">
+        <legend className="text-xs font-semibold text-[var(--g-ink)]">Kraje sprzedaży produktu</legend>
+        <div className="mt-3 grid gap-px border border-[var(--g-line)] bg-ink/10 sm:grid-cols-2 lg:grid-cols-3">
           {(countries.data ?? []).map((country) => {
             const isSelected = selected.includes(country.code);
             return (
@@ -105,7 +105,7 @@ export function AccountProductMarkets() {
                 key={country.code}
                 className={cn(
                   'pro-focus-ring flex min-h-12 cursor-pointer items-center gap-3 bg-white px-4 py-3 text-xs',
-                  isSelected && 'bg-[#f3ede3] text-ink',
+                  isSelected && 'bg-[var(--g-ivory-deep)] text-ink',
                 )}
               >
                 <input
@@ -115,7 +115,7 @@ export function AccountProductMarkets() {
                   onChange={() => toggleCountry(country.code)}
                 />
                 <span className="min-w-0 flex-1 font-semibold">{country.namePl}</span>
-                <span className="font-mono text-[10px] text-stone-500">{country.code}</span>
+                <span className="font-mono text-[10px] text-[var(--g-text-secondary)]">{country.code}</span>
               </label>
             );
           })}
@@ -123,7 +123,7 @@ export function AccountProductMarkets() {
       </fieldset>
 
       <fieldset className="mt-5">
-        <legend className="text-xs font-semibold text-stone-700">Domyślny zakres</legend>
+        <legend className="text-xs font-semibold text-[var(--g-ink)]">Domyślny zakres</legend>
         <div className="mt-2 flex flex-wrap gap-2">
           {([
             ['my_markets', 'Tylko wybrane kraje'],
@@ -137,7 +137,7 @@ export function AccountProductMarkets() {
               onClick={() => updateDraft((current) => ({ ...current, defaultScope: scope }))}
               className={cn(
                 'pro-focus-ring min-h-11 rounded-sm border px-3 text-xs font-semibold',
-                form.defaultScope === scope ? 'border-ink bg-ink text-white' : 'border-ink/15 bg-white text-stone-600',
+                form.defaultScope === scope ? 'border-ink bg-ink text-white' : 'border-[var(--g-line)] bg-white text-[var(--g-text-secondary)]',
               )}
             >
               {label}
@@ -146,7 +146,7 @@ export function AccountProductMarkets() {
         </div>
       </fieldset>
 
-      <p className="mt-4 text-xs text-stone-500">
+      <p className="mt-4 text-xs text-[var(--g-text-secondary)]">
         Aktywny zakres: {form.defaultScope === 'global'
           ? 'wszystkie kraje'
           : selected.length > 0 ? selected.join(' + ') : 'brak wybranych krajów'}
