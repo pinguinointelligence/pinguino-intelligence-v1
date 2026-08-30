@@ -141,3 +141,28 @@ lifting `submit` and both hooks above the early return rather than by relaxing t
 2. the authority's `Podsumowanie` card is ivory-tinted, ours is white;
 3. the authority has no `Moja maszyna` section heading above the cards, so its cards start
    at y 227 against our y 303.
+
+## Served-staging baseline (pre-merge, `staging.pinguinoai.com`)
+
+Captured against the LIVE staging before this branch merges, so the post-merge pass is a true
+before/after on real infrastructure rather than a local approximation. The PR's own Vercel
+preview is behind deployment protection (302), so real staging is the only servable target.
+
+These numbers are lower than the local ones because served staging carries REAL data — a full
+shop catalogue, real cooperation content — where the local dev server shows empty or failed
+states. That makes them the honest baseline.
+
+| State | Served BEFORE · desktop | Served BEFORE · mobile | This branch, local |
+|---|---|---|---|
+| Sklep | **51.6** (ink 80.1) | **22.0** (ink 78.0) | 88.4 desktop |
+| Współpracuj z nami | **59.4** (ink 64.3) | **41.6** (ink 46.2) | 87.1 desktop |
+| Franchise | **87.7** (ink 96.4) | **63.9** (ink 90.1) | 94.5 desktop |
+| Receptury | 95.1 (ink 97.4) | 82.7 (ink 86.7) | 95.1 / 85.1 |
+| Produkty | 95.0 (ink 97.2) | 84.8 (ink 88.7) | 95.1 / 85.2 |
+| Ustawienia etykiety | 93.7 (ink 96.9) | 84.5 (ink 88.2) | 93.8 / 80.6 |
+| Ustawienia maszyny | 95.1 (ink 97.1) | 84.4 (ink 88.3) | 95.4 / 87.6 |
+
+The three commercial destinations are where live staging diverges most from the approved
+design — Sklep at 22 % on a phone. That is the gap this branch closes.
+
+Captures in `reports/v21-visual-proof/served-BEFORE/`.
