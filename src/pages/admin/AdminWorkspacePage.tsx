@@ -71,9 +71,9 @@ export function AdminWorkspacePage() {
           APP_SHELL_MAX_WIDTH_CLASS,
         )}
       >
-        <aside className="min-w-0 border-b border-ink/10 bg-pro-warm-raised px-3 py-3 lg:min-h-[calc(100vh-82px)] lg:border-r-0 lg:border-b-0 lg:bg-pro-graphite lg:px-3 lg:py-5 lg:text-white">
+        <aside className="min-w-0 border-b border-[var(--g-line)] bg-pro-warm-raised px-3 py-3 lg:min-h-[calc(100vh-82px)] lg:border-r-0 lg:border-b-0 lg:bg-pro-graphite lg:px-3 lg:py-5 lg:text-white">
           <p className="px-2 text-xs font-semibold text-ink lg:text-white">Gellatti Operations</p>
-          <p className="mt-1 px-2 text-[10px] text-stone-500 lg:text-white/55">
+          <p className="mt-1 px-2 text-[10px] text-[var(--g-text-secondary)] lg:text-white/55">
             STAGING · kontrolowane
           </p>
           <nav
@@ -88,7 +88,7 @@ export function AdminWorkspacePage() {
                   'min-h-11 shrink-0 rounded-[var(--radius-pro-studio)] px-3 py-2 text-[11px] font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40 lg:min-h-[38px] lg:whitespace-normal',
                   active === id
                     ? 'bg-pro-graphite text-white lg:bg-white/10'
-                    : 'text-stone-600 hover:bg-white lg:text-white/65 lg:hover:bg-white/5 lg:hover:text-white',
+                    : 'text-[var(--g-text-secondary)] hover:bg-white lg:text-white/65 lg:hover:bg-white/5 lg:hover:text-white',
                 )}
               >
                 {label}
@@ -122,12 +122,12 @@ function AdminSection({ section }: { section: Section }) {
 
 function Heading({ eyebrow, title, detail }: { eyebrow: string; title: string; detail: string }) {
   return (
-    <header className="border-b border-ink/10 pb-5">
-      <p className="text-xs font-semibold text-stone-500">{eyebrow}</p>
+    <header className="border-b border-[var(--g-line)] pb-5">
+      <p className="text-xs font-semibold text-[var(--g-text-secondary)]">{eyebrow}</p>
       <h1 className="mt-2 text-[28px] font-semibold leading-tight tracking-[-0.035em] text-ink">
         {title}
       </h1>
-      <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-600">{detail}</p>
+      <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--g-text-secondary)]">{detail}</p>
     </header>
   );
 }
@@ -177,14 +177,14 @@ function Overview() {
       {query.isError ? <ErrorBox message="Nie udało się odczytać stanu operacyjnego." /> : null}
       <Link
         to="/admin/product-requests"
-        className="mt-5 inline-flex min-h-10 items-center border border-ink/15 px-4 text-xs font-semibold text-ink"
+        className="mt-5 inline-flex min-h-10 items-center border border-[var(--g-line)] px-4 text-xs font-semibold text-ink"
       >
         Otwórz zgłoszenia produktów →
       </Link>
-      <dl className="mt-7 grid border-t border-l border-ink/10 sm:grid-cols-2 xl:grid-cols-4">
+      <dl className="mt-7 grid border-t border-l border-[var(--g-line)] sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map(([label, n]) => (
-          <div key={label} className="border-r border-b border-ink/10 p-5">
-            <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-500">
+          <div key={label} className="border-r border-b border-[var(--g-line)] p-5">
+            <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--g-text-secondary)]">
               {label}
             </dt>
             <dd className="mt-3 font-mono text-3xl tabular-nums text-ink">{n}</dd>
@@ -230,13 +230,13 @@ function OperationalList({
   return (
     <section>
       <h2 className="text-sm font-semibold text-ink">{title}</h2>
-      <dl className="mt-3 divide-y divide-ink/10 border-y border-ink/10">
+      <dl className="mt-3 divide-y divide-[var(--g-line)] border-y border-[var(--g-line)]">
         {rows.map(([a, b]) => (
           <div
             key={a}
             className="grid min-w-0 gap-1 py-3 text-sm sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] sm:items-start sm:gap-4"
           >
-            <dt className="min-w-0 text-stone-500">{a}</dt>
+            <dt className="min-w-0 text-[var(--g-text-secondary)]">{a}</dt>
             <dd className="min-w-0 break-all font-mono text-left text-ink sm:text-right">
               {String(b)}
             </dd>
@@ -331,7 +331,7 @@ function ProductRequests() {
           <button
             type="button"
             onClick={onClose}
-            className="pro-focus-ring min-h-11 text-xs font-semibold text-stone-600"
+            className="pro-focus-ring min-h-11 text-xs font-semibold text-[var(--g-text-secondary)]"
           >
             ← Zgłoszenia
           </button>
@@ -340,10 +340,10 @@ function ProductRequests() {
           </span>
         </div>
         <div className="grid min-w-0 gap-3 xl:grid-cols-[330px_minmax(0,1fr)]">
-          <aside className="hidden h-max overflow-hidden rounded-[var(--radius-pro-studio)] border border-ink/10 xl:block">
+          <aside className="hidden h-max overflow-hidden rounded-[var(--radius-pro-studio)] border border-[var(--g-line)] xl:block">
             <div className="bg-pro-warm-raised px-3 py-3">
               <h2 className="text-sm font-semibold text-ink">Kolejka zgłoszeń</h2>
-              <p className="mt-1 text-[10px] text-stone-500">{filtered.length} w bieżącym widoku</p>
+              <p className="mt-1 text-[10px] text-[var(--g-text-secondary)]">{filtered.length} w bieżącym widoku</p>
             </div>
             <div className="max-h-[calc(100vh-190px)] overflow-y-auto">
               {filtered.slice(0, 40).map((request) => (
@@ -352,7 +352,7 @@ function ProductRequests() {
                   type="button"
                   onClick={() => navigate(`/admin/product-requests?request=${request.id}`)}
                   className={cn(
-                    'pro-focus-ring block w-full border-t border-ink/8 px-3 py-3 text-left',
+                    'pro-focus-ring block w-full border-t border-[var(--g-line-quiet)] px-3 py-3 text-left',
                     request.id === selected.id
                       ? 'bg-pro-amber/60'
                       : 'bg-white hover:bg-pro-warm-raised',
@@ -361,15 +361,15 @@ function ProductRequests() {
                   <span className="block truncate text-xs font-semibold text-ink">
                     {request.name || request.brand || `#${request.requestNumber}`}
                   </span>
-                  <span className="mt-1 block truncate font-mono text-[9px] text-stone-500">
+                  <span className="mt-1 block truncate font-mono text-[9px] text-[var(--g-text-secondary)]">
                     {request.ean ?? request.id}
                   </span>
-                  <span className="mt-1 block text-[10px] text-stone-500">{request.status}</span>
+                  <span className="mt-1 block text-[10px] text-[var(--g-text-secondary)]">{request.status}</span>
                 </button>
               ))}
             </div>
           </aside>
-          <div className="min-w-0 rounded-[var(--radius-pro-studio)] border border-ink/10 bg-white p-4 sm:p-5">
+          <div className="min-w-0 rounded-[var(--radius-pro-studio)] border border-[var(--g-line)] bg-white p-4 sm:p-5">
             {detail}
           </div>
         </div>
@@ -383,14 +383,14 @@ function ProductRequests() {
         title="Zgłoszenia produktów"
         detail="Zgłoszenie jest materiałem do weryfikacji. Produkt pojawi się w katalogu dopiero po zatwierdzeniu."
       />
-      <div className="mt-5 flex gap-1 overflow-x-auto border-b border-ink/10 pb-3">
+      <div className="mt-5 flex gap-1 overflow-x-auto border-b border-[var(--g-line)] pb-3">
         {REQUEST_TABS.map(([tab, label]) => (
           <button
             key={tab}
             onClick={() => setStatus(tab)}
             className={cn(
               'min-h-11 shrink-0 rounded-[var(--radius-pro-studio)] px-3 text-[11px] font-semibold sm:min-h-8',
-              status === tab ? 'bg-ink text-white' : 'border border-ink/10 text-stone-600',
+              status === tab ? 'bg-ink text-white' : 'border border-[var(--g-line)] text-[var(--g-text-secondary)]',
             )}
           >
             {label}
@@ -403,14 +403,14 @@ function ProductRequests() {
           placeholder="E-mail użytkownika"
           value={filter.user}
           onChange={(e) => setFilter({ ...filter, user: e.currentTarget.value })}
-          className="min-h-10 border border-ink/15 px-3 text-xs"
+          className="min-h-10 border border-[var(--g-line)] px-3 text-xs"
         />
         <input
           aria-label="Filtr marki"
           placeholder="Marka"
           value={filter.brand}
           onChange={(e) => setFilter({ ...filter, brand: e.currentTarget.value })}
-          className="min-h-10 border border-ink/15 px-3 text-xs"
+          className="min-h-10 border border-[var(--g-line)] px-3 text-xs"
         />
         <input
           aria-label="Filtr EAN"
@@ -418,33 +418,33 @@ function ProductRequests() {
           placeholder="EAN"
           value={filter.ean}
           onChange={(e) => setFilter({ ...filter, ean: e.currentTarget.value })}
-          className="min-h-10 border border-ink/15 px-3 text-xs"
+          className="min-h-10 border border-[var(--g-line)] px-3 text-xs"
         />
         <input
           aria-label="Filtr kraju rynku"
           placeholder="Rynek ISO"
           value={filter.market}
           onChange={(e) => setFilter({ ...filter, market: e.currentTarget.value })}
-          className="min-h-10 border border-ink/15 px-3 text-xs uppercase"
+          className="min-h-10 border border-[var(--g-line)] px-3 text-xs uppercase"
         />
-        <label className="text-[10px] font-semibold uppercase tracking-[0.08em] text-stone-500">
+        <label className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--g-text-secondary)]">
           Od daty
           <input
             aria-label="Filtr daty zgłoszenia od"
             type="date"
             value={filter.dateFrom}
             onChange={(e) => setFilter({ ...filter, dateFrom: e.currentTarget.value })}
-            className="mt-1 min-h-10 w-full border border-ink/15 px-3 text-xs font-normal normal-case tracking-normal text-ink"
+            className="mt-1 min-h-10 w-full border border-[var(--g-line)] px-3 text-xs font-normal normal-case tracking-normal text-ink"
           />
         </label>
-        <label className="text-[10px] font-semibold uppercase tracking-[0.08em] text-stone-500">
+        <label className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--g-text-secondary)]">
           Do daty
           <input
             aria-label="Filtr daty zgłoszenia do"
             type="date"
             value={filter.dateTo}
             onChange={(e) => setFilter({ ...filter, dateTo: e.currentTarget.value })}
-            className="mt-1 min-h-10 w-full border border-ink/15 px-3 text-xs font-normal normal-case tracking-normal text-ink"
+            className="mt-1 min-h-10 w-full border border-[var(--g-line)] px-3 text-xs font-normal normal-case tracking-normal text-ink"
           />
         </label>
         <input
@@ -454,13 +454,13 @@ function ProductRequests() {
           placeholder="Min. wiek / dni SLA"
           value={filter.minAgeDays}
           onChange={(e) => setFilter({ ...filter, minAgeDays: e.currentTarget.value })}
-          className="min-h-10 self-end border border-ink/15 px-3 text-xs"
+          className="min-h-10 self-end border border-[var(--g-line)] px-3 text-xs"
         />
         <select
           aria-label="Filtr przypisanego administratora"
           value={filter.assignedAdmin}
           onChange={(e) => setFilter({ ...filter, assignedAdmin: e.currentTarget.value })}
-          className="min-h-10 self-end border border-ink/15 px-3 text-xs"
+          className="min-h-10 self-end border border-[var(--g-line)] px-3 text-xs"
         >
           <option value="ALL">Wszyscy przypisani administratorzy</option>
           <option value="UNASSIGNED">Nieprzypisane</option>
@@ -480,7 +480,7 @@ function ProductRequests() {
           aria-label="Filtr brakującego pola"
           value={filter.missing}
           onChange={(e) => setFilter({ ...filter, missing: e.currentTarget.value })}
-          className="min-h-10 border border-ink/15 px-3 text-xs"
+          className="min-h-10 border border-[var(--g-line)] px-3 text-xs"
         >
           <option value="">Wszystkie typy braków</option>
           {MISSING.map((item) => (
@@ -491,7 +491,7 @@ function ProductRequests() {
           aria-label="Filtr dokładnego dopasowania"
           value={filter.exactCandidate}
           onChange={(e) => setFilter({ ...filter, exactCandidate: e.currentTarget.value })}
-          className="min-h-10 border border-ink/15 px-3 text-xs"
+          className="min-h-10 border border-[var(--g-line)] px-3 text-xs"
         >
           <option value="ALL">Dokładne dopasowanie: wszystkie</option>
           <option value="YES">Dokładne dopasowanie: tak</option>
@@ -501,7 +501,7 @@ function ProductRequests() {
           aria-label="Filtr źródła zgłoszenia"
           value={filter.source}
           onChange={(e) => setFilter({ ...filter, source: e.currentTarget.value })}
-          className="min-h-10 border border-ink/15 px-3 text-xs"
+          className="min-h-10 border border-[var(--g-line)] px-3 text-xs"
         >
           <option value="">Wszystkie źródła</option>
           <option value="SCANNER">Skaner</option>
@@ -531,13 +531,13 @@ function ProductRequests() {
                     <>
                       <strong>Ponowna analiza</strong>
                       <br />
-                      <span className="font-mono text-[10px] text-stone-400">{request.id}</span>
+                      <span className="font-mono text-[10px] text-[var(--g-text-muted)]">{request.id}</span>
                     </>
                   ) : (
                     <span className="font-mono">#{request.requestNumber}</span>
                   )}
                   <br />
-                  <span className="text-stone-400">
+                  <span className="text-[var(--g-text-muted)]">
                     {new Date(request.submittedAt).toLocaleDateString('pl-PL')} ·{' '}
                     {Math.floor(
                       ((query.dataUpdatedAt || Date.parse(request.updatedAt)) -
@@ -554,7 +554,7 @@ function ProductRequests() {
                   {request.requestType === 'PRODUCT_CAPABILITY_REANALYSIS' ? (
                     <>
                       <br />
-                      <span className="font-mono text-[10px] text-stone-400">
+                      <span className="font-mono text-[10px] text-[var(--g-text-muted)]">
                         {request.productCode ?? request.canonicalProductId}
                       </span>
                     </>
@@ -563,28 +563,28 @@ function ProductRequests() {
                 <td className={td}>
                   {request.requesterEmail}
                   <br />
-                  <span className="font-mono text-[10px] text-stone-400">
+                  <span className="font-mono text-[10px] text-[var(--g-text-muted)]">
                     przypisano {request.assignedAdminUserId ?? '—'}
                   </span>
                 </td>
                 <td className={td}>
                   {request.marketCountryCode ?? '—'}
                   <br />
-                  <span className="text-stone-400">
+                  <span className="text-[var(--g-text-muted)]">
                     pochodzenie {request.countryOfOrigin ?? '—'}
                   </span>
                 </td>
                 <td className={td}>
                   {request.requestType}
                   <br />
-                  <span className="text-stone-400">{request.source}</span>
+                  <span className="text-[var(--g-text-muted)]">{request.source}</span>
                 </td>
                 <td className={td}>
                   <StatusChip status={statusTone(request.status)}>{request.status}</StatusChip>
                 </td>
                 <td className={td}>
                   <button
-                    className="min-h-10 border border-ink/15 px-3 font-semibold text-ink"
+                    className="min-h-10 border border-[var(--g-line)] px-3 font-semibold text-ink"
                     onClick={() => navigate(`/admin/product-requests?request=${request.id}`)}
                   >
                     Otwórz →
@@ -673,7 +673,7 @@ function RequestDetail({
   });
   return (
     <>
-      <button onClick={onClose} className="min-h-10 text-xs font-semibold text-stone-600">
+      <button onClick={onClose} className="min-h-10 text-xs font-semibold text-[var(--g-text-secondary)]">
         ← Wróć do kolejki
       </button>
       <Heading
@@ -698,7 +698,7 @@ function RequestDetail({
           <History events={request.events} />
         </div>
         <aside className="space-y-6">
-          <section className="border border-ink/12 bg-[#f3ede3] p-5">
+          <section className="rounded-[12px] border border-[var(--g-line)] bg-[var(--g-ivory)] p-[18px]">
             <SectionLabel>Brakujące informacje</SectionLabel>
             <div className="mt-4 grid gap-2">
               {MISSING.map((field) => (
@@ -722,34 +722,34 @@ function RequestDetail({
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 rows={4}
-                className="mt-2 w-full border border-ink/15 bg-white p-3 font-normal"
+                className="mt-2 w-full border border-[var(--g-line)] bg-white p-3 font-normal"
               />
             </label>
             <div
-              className="mt-4 border border-ink/15 bg-white p-4"
+              className="mt-4 border border-[var(--g-line)] bg-white p-4"
               aria-label="Podgląd wiadomości do użytkownika"
             >
-              <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-stone-500">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--g-text-secondary)]">
                 Podgląd wiadomości
               </p>
               <p className="mt-3 text-xs font-semibold text-ink">Potrzebujemy jeszcze:</p>
               {missing.length ? (
-                <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-stone-600">
+                <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-[var(--g-text-secondary)]">
                   {missing.map((field) => (
                     <li key={field}>{field}</li>
                   ))}
                 </ul>
               ) : (
-                <p className="mt-2 text-xs text-stone-500">
+                <p className="mt-2 text-xs text-[var(--g-text-secondary)]">
                   Wybierz co najmniej jedno pole lub dodaj wyjaśnienie
                 </p>
               )}
               {note.trim() ? (
-                <p className="mt-3 border-l-2 border-ink/20 pl-3 text-xs text-stone-600">
+                <p className="mt-3 border-l-2 border-[var(--g-line-strong)] pl-3 text-xs text-[var(--g-text-secondary)]">
                   {note.trim()}
                 </p>
               ) : null}
-              <p className="mt-3 text-xs leading-5 text-stone-600">
+              <p className="mt-3 text-xs leading-5 text-[var(--g-text-secondary)]">
                 Produkt zostanie dodany wyłącznie wtedy, gdy będziemy mogli jednoznacznie ustalić
                 jego tożsamość i potwierdzić dane wymagane przez Gellatti.
               </p>
@@ -762,20 +762,20 @@ function RequestDetail({
               Wyślij prośbę do użytkownika
             </Button>
           </section>
-          <section className="border border-ink/12 p-5">
+          <section className="border border-[var(--g-line)] p-5">
             <SectionLabel>Edycja danych z historią zmian</SectionLabel>
             <textarea
               aria-label="Zweryfikowane dane administratora w formacie JSON"
               value={verifiedPatch}
               onChange={(event) => setVerifiedPatch(event.currentTarget.value)}
               rows={7}
-              className="mt-4 w-full border border-ink/15 bg-stone-50 p-3 font-mono text-[10px]"
+              className="mt-4 w-full border border-[var(--g-line)] bg-[var(--g-ivory)] p-3 font-mono text-[10px]"
             />
             <Button variant="ghost" className="mt-3 w-full" onClick={() => evidencePatch.mutate()}>
               Dodaj jako audytowany dowód
             </Button>
           </section>
-          <section className="border border-ink/12 p-5">
+          <section className="border border-[var(--g-line)] p-5">
             <SectionLabel>Decyzja</SectionLabel>
             <div className="mt-4 grid gap-2">
               <Button variant="ghost" onClick={() => action.mutate('START_REVIEW')}>
@@ -793,7 +793,7 @@ function RequestDetail({
               <input
                 value={duplicateId}
                 onChange={(e) => setDuplicateId(e.target.value)}
-                className="mt-2 min-h-10 w-full border border-ink/15 px-3 font-mono font-normal"
+                className="mt-2 min-h-10 w-full border border-[var(--g-line)] px-3 font-mono font-normal"
               />
             </label>
             <Button
@@ -900,11 +900,11 @@ function ApprovalPreview({ request }: { request: AdminProductAddRequest }) {
     ['Braki', missing.length ? missing.join(', ') : 'Brak otwartych żądań informacji'],
   ] as const;
   return (
-    <section className="border-y border-ink/10 py-5" aria-label="Podgląd przed zatwierdzeniem">
+    <section className="border-y border-[var(--g-line)] py-5" aria-label="Podgląd przed zatwierdzeniem">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold text-ink">Podgląd przed zatwierdzeniem</h2>
-          <p className="mt-2 max-w-2xl text-xs leading-5 text-stone-600">
+          <p className="mt-2 max-w-2xl text-xs leading-5 text-[var(--g-text-secondary)]">
             Zatwierdzenie ponownie sprawdzi dokładność, sposób użycia i gotowość ról produktu. Bez
             wyniku co najmniej 85 i jednej potwierdzonej roli produkt nie powstanie.
           </p>
@@ -913,10 +913,10 @@ function ApprovalPreview({ request }: { request: AdminProductAddRequest }) {
           {missing.length ? `${missing.length} OTWARTE` : 'GOTOWE DO WERYFIKACJI'}
         </StatusChip>
       </div>
-      <dl className="mt-5 grid border-l border-t border-ink/10 sm:grid-cols-2">
+      <dl className="mt-5 grid border-l border-t border-[var(--g-line)] sm:grid-cols-2">
         {rows.map(([label, value]) => (
-          <div key={label} className="border-r border-b border-ink/10 p-4">
-            <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-stone-500">
+          <div key={label} className="border-r border-b border-[var(--g-line)] p-4">
+            <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--g-text-secondary)]">
               {label}
             </dt>
             <dd className="mt-2 break-words text-xs leading-5 text-ink">{value}</dd>
@@ -937,23 +937,23 @@ function CatalogCandidates({ request }: { request: AdminProductAddRequest }) {
   return (
     <section>
       <h2 className="text-sm font-semibold text-ink">Dokładne dopasowania i możliwe duplikaty</h2>
-      <div className="mt-3 divide-y divide-ink/10 border-y border-ink/10">
+      <div className="mt-3 divide-y divide-[var(--g-line)] border-y border-[var(--g-line)]">
         {(query.data ?? []).slice(0, 8).map((candidate) => (
           <article key={candidate.id} className="grid gap-2 py-3 sm:grid-cols-[1fr_auto]">
             <div>
               <strong className="text-xs text-ink">
                 {candidate.articleId} · {candidate.name}
               </strong>
-              <p className="mt-1 text-[10px] text-stone-500">
+              <p className="mt-1 text-[10px] text-[var(--g-text-secondary)]">
                 {candidate.brand ?? '—'} · EAN {candidate.ean ?? '—'} ·{' '}
                 {candidate.verificationStatus}
               </p>
             </div>
-            <span className="font-mono text-[10px] text-stone-400">{candidate.id}</span>
+            <span className="font-mono text-[10px] text-[var(--g-text-muted)]">{candidate.id}</span>
           </article>
         ))}
         {(query.data?.length ?? 0) === 0 ? (
-          <p className="py-4 text-xs text-stone-500">
+          <p className="py-4 text-xs text-[var(--g-text-secondary)]">
             Brak exact kandydata w zatwierdzonym katalogu
           </p>
         ) : null}
@@ -972,23 +972,23 @@ function EvidencePanel({ request }: { request: AdminProductAddRequest }) {
   return (
     <section>
       <h2 className="text-sm font-semibold text-ink">Dowody ({evidence.length})</h2>
-      <p className="mt-1 text-xs text-stone-500">
+      <p className="mt-1 text-xs text-[var(--g-text-secondary)]">
         Prywatne pliki używają pięciominutowych podpisanych URL-i. Link nie jest publiczny.
       </p>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         {evidence.length ? (
           evidence.map((e) => (
-            <article key={String(e.id)} className="border border-ink/10 p-4">
+            <article key={String(e.id)} className="border border-[var(--g-line)] p-4">
               {typeof e.signedUrl === 'string' &&
               String(e.mime_type ?? e.mimeType).startsWith('image/') ? (
                 <img
                   src={e.signedUrl}
                   alt={String(e.evidence_kind ?? e.kind ?? 'Dowód produktu')}
-                  className="mb-3 aspect-[4/3] w-full object-contain bg-stone-50"
+                  className="mb-3 aspect-[4/3] w-full object-contain bg-[var(--g-ivory)]"
                 />
               ) : null}
               <strong className="text-xs text-ink">{String(e.evidence_kind ?? e.kind)}</strong>
-              <p className="mt-2 break-all font-mono text-[10px] text-stone-500">
+              <p className="mt-2 break-all font-mono text-[10px] text-[var(--g-text-secondary)]">
                 {String(
                   e.storage_path ??
                     e.storagePath ??
@@ -997,7 +997,7 @@ function EvidencePanel({ request }: { request: AdminProductAddRequest }) {
                     'Szczegóły dowodu',
                 )}
               </p>
-              <p className="mt-2 text-xs text-stone-500">
+              <p className="mt-2 text-xs text-[var(--g-text-secondary)]">
                 {String(e.mime_type ?? e.mimeType ?? '')} ·{' '}
                 {String(e.byte_size ?? e.byteSize ?? '')}
               </p>
@@ -1014,7 +1014,7 @@ function EvidencePanel({ request }: { request: AdminProductAddRequest }) {
             </article>
           ))
         ) : (
-          <p className="text-sm text-stone-500">
+          <p className="text-sm text-[var(--g-text-secondary)]">
             Brak plików. Dostępny jest surowy wynik skanera i historia ekstrakcji.
           </p>
         )}
@@ -1025,9 +1025,9 @@ function EvidencePanel({ request }: { request: AdminProductAddRequest }) {
 }
 function DataPanel({ title, data }: { title: string; data: Record<string, unknown> }) {
   return (
-    <details className="border-y border-ink/10 py-4">
+    <details className="border-y border-[var(--g-line)] py-4">
       <summary className="cursor-pointer text-sm font-semibold text-ink">{title}</summary>
-      <pre className="mt-4 max-h-96 overflow-auto bg-stone-50 p-4 text-[11px] leading-5">
+      <pre className="mt-4 max-h-96 overflow-auto bg-[var(--g-ivory)] p-4 text-[11px] leading-5">
         {JSON.stringify(data, null, 2)}
       </pre>
     </details>
@@ -1037,15 +1037,15 @@ function History({ events }: { events: Array<Record<string, unknown>> }) {
   return (
     <section>
       <h2 className="text-sm font-semibold text-ink">Pełna historia</h2>
-      <ol className="mt-3 border-l border-ink/20 pl-5">
+      <ol className="mt-3 border-l border-[var(--g-line-strong)] pl-5">
         {events.map((e) => (
           <li key={String(e.id)} className="relative pb-5 text-xs">
             <span className="absolute -left-[23px] top-1 size-1.5 rounded-full bg-ink" />
             <strong>{String(e.eventType)}</strong>
-            <span className="ml-2 text-stone-500">
+            <span className="ml-2 text-[var(--g-text-secondary)]">
               {new Date(String(e.createdAt)).toLocaleString('pl-PL')}
             </span>
-            <pre className="mt-2 whitespace-pre-wrap text-[10px] text-stone-500">
+            <pre className="mt-2 whitespace-pre-wrap text-[10px] text-[var(--g-text-secondary)]">
               {JSON.stringify(e.data)}
             </pre>
           </li>
@@ -1111,7 +1111,7 @@ function GenericTable({ rows }: { rows: Array<Record<string, unknown>> }) {
           ))}
         </tbody>
       </table>
-      {rows.length === 0 ? <p className="py-8 text-sm text-stone-500">Brak rekordów</p> : null}
+      {rows.length === 0 ? <p className="py-8 text-sm text-[var(--g-text-secondary)]">Brak rekordów</p> : null}
     </div>
   );
 }
@@ -1178,7 +1178,7 @@ function OperationRecords({
       {rows.length ? (
         <GenericTable rows={rows} />
       ) : (
-        <p className="mt-3 border-y border-ink/10 py-4 text-xs text-stone-500">
+        <p className="mt-3 border-y border-[var(--g-line)] py-4 text-xs text-[var(--g-text-secondary)]">
           Brak rekordów w trwałym rejestrze
         </p>
       )}
@@ -1193,7 +1193,7 @@ function AdminSettings() {
         title="Preferencje i bezpieczeństwo"
         detail="Dźwięk sprzedaży wymaga jawnej interakcji przeglądarki. Role pozostają serwerowe."
       />
-      <p className="mt-7 text-sm text-stone-600">
+      <p className="mt-7 text-sm text-[var(--g-text-secondary)]">
         Ustawienie dźwięku i trwałe centrum powiadomień są dostępne w nagłówku Admin. Ważne
         zdarzenia nie istnieją wyłącznie jako toast.
       </p>
