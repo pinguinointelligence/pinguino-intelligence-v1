@@ -1,5 +1,27 @@
 # CI-INFRA — the gate's critical path: forensic evidence
 
+> ## STATUS: CLOSED / FROZEN — 2026-08-31
+>
+> **This is the canonical CI evidence for the isolated-lane arrangement.** Landed on
+> `staging` as PR #52 (merge `8a8ee17c`) and frozen by owner-locked contract
+> **GEL-P0-024**, which locks both lanes as _excluded here AND executed there_.
+> Changing either lane now requires the grouped approval described in
+> `src/contracts/owner-locked/README.md`.
+>
+> **Measured on CI after the change:** `npm test` 1 219 s → **557 s**; the `verify`
+> job 1 305 s → **656 s** against the p50 of 102 passing runs, with the new
+> `direction-rescue` lane at **486 s concurrent**. Critical path **21.8 min →
+> 10.9 min (−49.7 %)**.
+>
+> **Retained as non-blocking CI debt** — deliberately not acted on:
+> the four tests at 57–74 % of the bare 5000 ms default in section 4. They are
+> harmless while the suite stays serial and are prerequisites only if file
+> parallelism is ever revisited.
+>
+> **Out of scope by instruction:** the 468 s `starterPackDirectionRescue` file
+> itself. It is now the sole remaining floor on the gate, and lowering it is
+> Solver / test-performance work, not CI infrastructure.
+
 **Goal:** make the CI gate reflect the code honestly, and stop paying 22 minutes for it.
 **Non-goal:** making anything green that should be red. No threshold is raised, no test is
 skipped, weakened or rewritten, and no solver, Engine or ProductBehavior code is touched.
