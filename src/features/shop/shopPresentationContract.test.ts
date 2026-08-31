@@ -181,3 +181,24 @@ describe('shop presentation', () => {
     expect(admin).toContain('trackingNumber: trackingNumber.trim(),');
   });
 });
+
+/**
+ * S-29. Gellatti has NO transactional email provider, no shared email job and
+ * no mail module — audited 2026-08-31 across `supabase/functions/**` and
+ * `src/**`. Until one exists, the Shop must not tell a customer that a message
+ * is on its way. The order IS saved and IS visible under „Zamówienia", so the
+ * confirmation points there instead.
+ */
+describe('shop makes no promise the system cannot keep', () => {
+  it('never claims an email was or will be sent', () => {
+    const copy = readFileSync(join(SRC, 'copy', 'shop.ts'), 'utf8');
+    for (const claim of [
+      'trafia na Twój adres e-mail',
+      'dostaniesz mailem',
+      'goes to your email',
+      'arrives by email',
+    ]) {
+      expect(copy).not.toContain(claim);
+    }
+  });
+});

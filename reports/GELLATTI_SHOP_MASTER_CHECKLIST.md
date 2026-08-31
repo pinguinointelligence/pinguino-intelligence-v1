@@ -44,7 +44,7 @@ Freeze: 🔓 OPEN · 🧊 READY TO FREEZE · 🔒 FROZEN
 | S-26 | Checkout | Reconciliation idempotent; `paid_at` stamped once; refund never walked back | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | #49 | — | Add auto test |
 | S-27 | Order | Confirmation shows number, items, total, payment status, address, next steps | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | #49 | — | Served proof |
 | S-28 | Order | Customer order visibility (`/account`) shows address, shipping, tracking | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | #49 | — | Served proof |
-| S-29 | Email | Order confirmation / paid / shipped / refund emails | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | No canonical Shop email job audited yet | Audit shared email architecture |
+| S-29 | Email | Order confirmation / paid / shipped / refund emails | 🔴 | ✅ | ⬜ | ⬜ | 🔓 | #49 | **AUDITED: no email architecture exists.** No provider (Resend/Postmark/SendGrid), no shared mail module, no email job anywhere in `supabase/functions/**` or `src/**`. Partner/Home invites ride Supabase Auth's own mailer, which is not a Gellatti-branded transactional sender. Needs a provider account, a verified `gellatti.com` sending domain (SPF/DKIM) and a shared job — all owner decisions/credentials. | Owner decision. Meanwhile the Shop makes **no** email promise: confirmation points at the order history, pinned by a contract test |
 | S-30 | Admin | Order list with paid / unpaid / refunded visibility | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | #49 | — | Served proof |
 | S-31 | Admin | Fulfilment queues: to ship / waiting preorder / unpaid / shipped | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | #49 | derived, no second state machine | Served proof |
 | S-32 | Admin | Order detail answers "what to pack, where to send" | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | #49 | — | Served proof |
