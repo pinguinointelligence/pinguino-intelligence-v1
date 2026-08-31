@@ -18,6 +18,9 @@ export interface ShopCopy {
     readonly title: string;
     readonly blurb: string;
     readonly contextLabel: string;
+    readonly introEyebrow: string;
+    readonly introLine: string;
+    readonly cartLink: string;
   };
   /** The approved Shop hero — Starter Pack first, one CTA, one honest note. */
   readonly hero: {
@@ -36,6 +39,14 @@ export interface ShopCopy {
     readonly contentsTitle: string;
     readonly contentsHelper: string;
     readonly packTotal: string;
+    readonly name: string;
+    readonly offerLede: string;
+    readonly offerFacts: string;
+    readonly offerShipping: string;
+    readonly contentsTotalShort: string;
+    readonly galleryFront: string;
+    readonly galleryAngle: string;
+    readonly gallerySide: string;
     readonly detailKicker: string;
     readonly detailBody: string;
     readonly massRow: string;
@@ -80,7 +91,6 @@ export interface ShopCopy {
     readonly title: string;
     readonly kicker: string;
     readonly empty: string;
-    readonly emptyCta: string;
     readonly quantity: string;
     readonly decrease: string;
     readonly increase: string;
@@ -174,6 +184,10 @@ export const shopCopyPl: ShopCopy = {
     title: 'Sklep',
     blurb: 'Składniki, na których Gellatti liczy receptury. Nic więcej.',
     contextLabel: 'Sklep',
+    /* C3 §5 — the Shop's own utility line, under the frozen global header. */
+    introEyebrow: 'Sklep Gellatti',
+    introLine: 'Składniki do receptur Gellatti.',
+    cartLink: 'Koszyk',
   },
   hero: {
     eyebrow: 'Sklep Gellatti',
@@ -195,6 +209,20 @@ export const shopCopyPl: ShopCopy = {
     contentsTitle: 'Zawartość zestawu',
     contentsHelper: 'Dokładne gramatury spakowane w jednym pudełku.',
     packTotal: 'Razem w opakowaniu',
+    /* C3 §4 — the one featured offer. The eyebrow names the product line, the
+       facts line states what the hero used to repeat, and the two state lines
+       carry lead time and shipping once each. */
+    /* OWNER, 2026-09-01: the product is called simply „Zestaw Startowy".
+       The Gellatti brand is carried by the official wordmark in the global
+       header and is not re-set as a second prominent type treatment here. */
+    name: 'Zestaw Startowy',
+    offerLede: 'Siedem składników w proporcjach dobranych pod pierwsze receptury.',
+    offerFacts: '{count} składników · {grams}',
+    offerShipping: 'Wysyłka {amount}',
+    contentsTotalShort: 'Razem',
+    galleryFront: 'Widok z przodu',
+    galleryAngle: 'Ujęcie pod kątem',
+    gallerySide: 'Bok opakowania',
     detailKicker: 'Zestaw Gellatti',
     detailBody:
       'Karta pokazuje dokładną zawartość, masę, cenę i termin realizacji. Skład każdego ' +
@@ -235,8 +263,8 @@ export const shopCopyPl: ShopCopy = {
     outOfStock: 'Chwilowo niedostępny',
     usedFor: 'Do czego służy',
     singlesKicker: 'Pojedyncze składniki',
-    singlesTitle: 'Każdy składnik osobno',
-    singlesHelper: 'Te same składniki co w zestawie, w opakowaniach 500 g.',
+    singlesTitle: 'Kup osobno',
+    singlesHelper: 'Te same składniki dostępne również osobno.',
     containsMilk: 'Zawiera mleko',
     containsEgg: 'Zawiera jaja',
     detailKicker: 'Składnik Gellatti',
@@ -244,8 +272,7 @@ export const shopCopyPl: ShopCopy = {
   cart: {
     title: 'Twoje zamówienie',
     kicker: 'Koszyk',
-    empty: 'Koszyk jest pusty. Zacznij od zestawu startowego.',
-    emptyCta: 'Zobacz zestaw startowy',
+    empty: 'Koszyk jest pusty.',
     quantity: 'Ilość',
     decrease: 'Zmniejsz ilość',
     increase: 'Zwiększ ilość',
@@ -341,12 +368,14 @@ export const shopCopyEn: ShopCopy = {
     title: 'Shop',
     blurb: 'The ingredients Gellatti formulates with. Nothing else.',
     contextLabel: 'Shop',
+    introEyebrow: 'Gellatti shop',
+    introLine: 'The ingredients Gellatti formulates with.',
+    cartLink: 'Cart',
   },
   hero: {
     eyebrow: 'Gellatti shop',
     title: 'Gellatti Starter Pack',
-    lede:
-      'The first Gellatti ingredient set — seven items in the proportions a first batch needs.',
+    lede: 'The first Gellatti ingredient set — seven items in the proportions a first batch needs.',
     note: 'Courier shipping {shipping} · 2–5 business days. The amount shown is the amount charged.',
   },
   starterPack: {
@@ -361,6 +390,14 @@ export const shopCopyEn: ShopCopy = {
     contentsTitle: 'What is in the box',
     contentsHelper: 'Exact packed amounts, in one box.',
     packTotal: 'Total in the box',
+    name: 'Zestaw Startowy',
+    offerLede: 'Seven ingredients in the proportions a first batch needs.',
+    offerFacts: '{count} ingredients · {grams}',
+    offerShipping: 'Shipping {amount}',
+    contentsTotalShort: 'Total',
+    galleryFront: 'Front view',
+    galleryAngle: 'Angled view',
+    gallerySide: 'Side of the bag',
     detailKicker: 'Gellatti set',
     detailBody:
       'This card shows the exact contents, mass, price and lead time. Each ingredient is ' +
@@ -401,8 +438,8 @@ export const shopCopyEn: ShopCopy = {
     outOfStock: 'Currently unavailable',
     usedFor: 'What it does',
     singlesKicker: 'Single ingredients',
-    singlesTitle: 'Every ingredient on its own',
-    singlesHelper: 'The same ingredients as the pack, in 500 g bags.',
+    singlesTitle: 'Buy separately',
+    singlesHelper: 'The same ingredients, also available separately.',
     containsMilk: 'Contains milk',
     containsEgg: 'Contains eggs',
     detailKicker: 'Gellatti ingredient',
@@ -410,8 +447,7 @@ export const shopCopyEn: ShopCopy = {
   cart: {
     title: 'Your order',
     kicker: 'Cart',
-    empty: 'Your cart is empty. Start with the starter pack.',
-    emptyCta: 'See the starter pack',
+    empty: 'Your cart is empty.',
     quantity: 'Quantity',
     decrease: 'Decrease quantity',
     increase: 'Increase quantity',
@@ -518,7 +554,9 @@ export const shopAvailabilityLabelPl = (
       ? shopCopyPl.product.preorderWeeks.replace('{weeks}', String(leadTimeWeeks))
       : shopCopyPl.product.preorder;
   }
-  return availability === 'out_of_stock' ? shopCopyPl.product.outOfStock : shopCopyPl.product.inStock;
+  return availability === 'out_of_stock'
+    ? shopCopyPl.product.outOfStock
+    : shopCopyPl.product.inStock;
 };
 
 export const shopOrderStatusLabelPl = (
