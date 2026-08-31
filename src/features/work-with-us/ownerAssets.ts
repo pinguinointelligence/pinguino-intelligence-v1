@@ -12,11 +12,19 @@
  * `alt` is Polish because these routes are Polish, and describes what is
  * actually in the frame rather than what we wish were there.
  *
- * WHERE THE MANIFEST AND THE DELIVERED FILE DISAGREE, the delivered file wins
- * and the disagreement is recorded on the entry. Three do:
- *   A04 — manifest said "Machines hero"; the image contains no machine.
- *   A06 — manifest said "writer persona, 4:3"; the image is a trailer at 16:9.
- *   W01 — manifest said "/machines hero"; the image is an equipment close-up.
+ * THE OWNER'S FINAL MAPPING (correction, 2026-08-31). An earlier manifest
+ * assigned A04, A06 and W01 to other slots; those assignments were STALE and
+ * are superseded. There is no outstanding mismatch — this is the canonical set:
+ *   A04 → Partner / professional
+ *   A06 → Trailer product
+ *   W01 → Machines / equipment detail
+ *
+ * All 13 are approved and usable. None is to be regenerated or replaced.
+ *
+ * `gellattissimo` appearing in F01, F03 and W03 is INTENTIONAL Gellatti
+ * branding, not a stray third-party mark. It stays. So does every other brand
+ * element inside the frames — the files are byte-identical to the originals and
+ * nothing has been retouched.
  */
 
 export type OwnerAssetId =
@@ -57,8 +65,10 @@ export const OWNER_ASSETS: Readonly<Record<OwnerAssetId, OwnerAsset>> = Object.f
     'Przyczepa Gellatti w bieli i grafitcie na szarym tle studyjnym, z otwartą klapą i witryną.'),
   A07: A('A07', 1672, 941,
     'Przyczepa Gellatti na nadmorskim tarasie o zachodzie słońca; dwie osoby obsługi wydają lody gościom.'),
+  // Owner correction 2026-08-31: W03 IS the Gellatti Trailer. It belongs in the
+  // Trailer route alongside A06 and A07, and carries no disclaimer.
   W03: A('W03', 1448, 1086,
-    'Aluminiowa przyczepa Gellatti na dwóch osiach, holowana samochodem na festiwalu food trucków.'),
+    'Przyczepa Gellatti w drodze na festiwal food trucków, z neonem gellattissimo.'),
 
   // ── Franchise ─────────────────────────────────────────────────────────────
   F01: A('F01', 1672, 941,

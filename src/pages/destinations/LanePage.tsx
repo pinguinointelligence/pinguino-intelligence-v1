@@ -21,6 +21,9 @@ interface LanePageProps {
   /** A supporting image lower down — equipment detail, second use case. */
   readonly detail?: OwnerAssetId;
   readonly detailCaption?: string;
+  /** A third view of the same product, shown beside the detail. */
+  readonly detailSecondary?: OwnerAssetId;
+  readonly detailSecondaryCaption?: string;
 }
 
 /**
@@ -33,7 +36,14 @@ interface LanePageProps {
  * Every CTA here goes to the enquiry route. There is no online checkout for
  * equipment, and there is no control on this page that only looks functional.
  */
-export function LanePage({ copy, hero, detail, detailCaption }: LanePageProps) {
+export function LanePage({
+  copy,
+  hero,
+  detail,
+  detailCaption,
+  detailSecondary,
+  detailSecondaryCaption,
+}: LanePageProps) {
   return (
     <DestinationSurface eyebrow={copy.kicker} title={copy.title} blurb={copy.card} bare>
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
@@ -101,14 +111,39 @@ export function LanePage({ copy, hero, detail, detailCaption }: LanePageProps) {
       {/* ── Supporting image ──────────────────────────────────────────────── */}
       {detail !== undefined ? (
         <DestinationSection>
-          <div className="overflow-hidden rounded-[12px] border border-[var(--g-line)]">
-            <OwnerAssetImage id={detail} sizes="(min-width: 1024px) 70vw, 100vw" />
+          <div
+            className={
+              detailSecondary === undefined
+                ? 'overflow-hidden rounded-[12px] border border-[var(--g-line)]'
+                : 'grid gap-px overflow-hidden rounded-[12px] border border-[var(--g-line)] bg-[var(--g-line)] lg:grid-cols-2'
+            }
+          >
+            <figure className="bg-white">
+              <div className="aspect-[16/10] overflow-hidden">
+                <OwnerAssetImage
+                  id={detail}
+                  sizes={detailSecondary === undefined ? '(min-width: 1024px) 70vw, 100vw' : '(min-width: 1024px) 45vw, 100vw'}
+                />
+              </div>
+              {detailCaption === undefined ? null : (
+                <figcaption className="px-5 py-4 text-[12px] leading-relaxed text-[var(--g-text-muted)]">
+                  {detailCaption}
+                </figcaption>
+              )}
+            </figure>
+            {detailSecondary === undefined ? null : (
+              <figure className="bg-white">
+                <div className="aspect-[16/10] overflow-hidden">
+                  <OwnerAssetImage id={detailSecondary} sizes="(min-width: 1024px) 45vw, 100vw" />
+                </div>
+                {detailSecondaryCaption === undefined ? null : (
+                  <figcaption className="px-5 py-4 text-[12px] leading-relaxed text-[var(--g-text-muted)]">
+                    {detailSecondaryCaption}
+                  </figcaption>
+                )}
+              </figure>
+            )}
           </div>
-          {detailCaption === undefined ? null : (
-            <p className="mt-3 text-[12px] leading-relaxed text-[var(--g-text-muted)]">
-              {detailCaption}
-            </p>
-          )}
         </DestinationSection>
       ) : null}
 
