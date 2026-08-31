@@ -434,7 +434,11 @@ neutral placeholders are development-only.
 | T-SQA-01 | Served QA | Every checkpoint served-verified on staging: signed out, signed in, role, desktop, mobile, empty/loading/error/success, permission boundaries, real DB, real Stripe Sandbox | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | localhost alone is never accepted | Per checkpoint |
 | T-SQA-02 | Served QA | Accessibility pass | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Per checkpoint |
 
-### REGRESSION — introduced by `20260831201000`, corrected by `20260831201100` (CLOSED)
+### PARTNER APPLICATION LANE — **CLEAN / VERIFIED**, owner-accepted 2026-08-31
+
+`20260831201000` introduced the regression (`actor_type user → customer`, breaking submit and
+resubmit); `20260831201100` is the forward fix restoring `actor_type = 'user'`. **Never record
+`20260831201000` as good without the superseding note.** Lane CLOSED — no further changes.
 
 | ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | Evidence | Notes | Next |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |

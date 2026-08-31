@@ -829,7 +829,35 @@ chase an extreme Direction target"*, and it is **not** caused by this work:
 > command pattern and not by worktree, so it may have killed other sessions' test runs. Not repeated;
 > subsequent waits targeted my own PID only.
 
-### 15.9 Verdict
+### 15.9 CANONICAL LANE RECORD — owner-accepted 2026-08-31
 
-**The partner application lane is functionally restored and clean.**
+**PARTNER APPLICATION LANE STATUS: CLEAN / VERIFIED.**
+
+The two migrations must always be read as a pair. Recording them separately is what would let a
+future reader treat `20260831201000` as a clean success, which it was not.
+
+| Migration | Registered | What it did |
+| --- | --- | --- |
+| `20260831201000_partner_application_more_information.sql` | `20260831154203` | Added the `more_information_needed` state and fixed two latent breaks — **and introduced a regression**: it changed the audit `actor_type` from `user` → `customer`, which `audit_log_actor_type_check` rejects, breaking submit **and** resubmit |
+| `20260831201100_partner_application_audit_actor_fix.sql` | `20260831155647` | Forward-only correction: restored `actor_type = 'user'`. Nothing else changed — 61 executable lines, 0 mismatches |
+
+> ⚠️ **`20260831201000` must never be recorded as "good" on its own.** Any reference to it carries
+> the superseding `20260831201100` note. This is a forensic requirement, not a stylistic one.
+
+**Final live lifecycle — owner-accepted as sufficient proof:**
+
+| Step | Result |
+| --- | --- |
+| **A** submit | ✅ |
+| **B** request information | ✅ |
+| **C** resubmit | ✅ |
+| **D** approve | ✅ |
+| **E** reject | ✅ |
+| `actor_type` correct throughout | ✅ |
+| Authorization negative controls | ✅ |
+| No fixtures / residue | ✅ |
+| Status vocabulary clean | ✅ |
+| Audit contract resolves latest definitions | ✅ |
+
+**This lane is CLOSED. No further changes to it in this workstream.**
 
