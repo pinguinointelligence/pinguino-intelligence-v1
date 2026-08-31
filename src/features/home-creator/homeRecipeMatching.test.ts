@@ -24,7 +24,11 @@ const candidate = (
   id: string,
   source: 'official' | 'community',
   profile: IntentProfile,
-  ingredients: readonly { productId: string; role: 'ingredient' | 'topping'; displayName: string }[],
+  ingredients: readonly {
+    productId: string;
+    role: 'ingredient' | 'topping';
+    displayName: string;
+  }[],
   extra: Partial<RecipeCandidate> = {},
 ): RecipeCandidate => ({
   id,
@@ -36,7 +40,10 @@ const candidate = (
   ...extra,
 });
 
-const want = (productId: string, statedRole: 'ingredient' | 'topping' | null = null): RequestedIngredient => ({
+const want = (
+  productId: string,
+  statedRole: 'ingredient' | 'topping' | null = null,
+): RequestedIngredient => ({
   productId,
   statedRole,
   displayName: productId,
@@ -122,9 +129,18 @@ describe('§40 — the profile filters both libraries', () => {
 describe('§34 — Community contributes at most one candidate', () => {
   it('takes the highest-ranked exact match', () => {
     const best = highestRankedCommunityMatch([
-      { candidate: candidate('c7', 'community', 'gelato', [ing('X')], { rank: 7 }), alsoIncludes: [] },
-      { candidate: candidate('c2', 'community', 'gelato', [ing('X')], { rank: 2 }), alsoIncludes: [] },
-      { candidate: candidate('c9', 'community', 'gelato', [ing('X')], { rank: 9 }), alsoIncludes: [] },
+      {
+        candidate: candidate('c7', 'community', 'gelato', [ing('X')], { rank: 7 }),
+        alsoIncludes: [],
+      },
+      {
+        candidate: candidate('c2', 'community', 'gelato', [ing('X')], { rank: 2 }),
+        alsoIncludes: [],
+      },
+      {
+        candidate: candidate('c9', 'community', 'gelato', [ing('X')], { rank: 9 }),
+        alsoIncludes: [],
+      },
     ]);
     expect(best?.candidate.id).toBe('c2');
   });

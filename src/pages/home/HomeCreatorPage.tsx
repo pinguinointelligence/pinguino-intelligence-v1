@@ -10,6 +10,11 @@
  * document itself; a CTA scrolls to the next section and a subtle Back goes up.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { EngineIngredient } from '@/engine';
+import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/contracts';
+import { productRecommendedDosagePl } from '@/features/product-intelligence/productDosageAuthority';
+import { decideAddAmount } from '@/features/home-creator/homeAddAmountDecision';
+import { HomeAmountPrompt } from '@/features/home-creator/ui/HomeAmountPrompt';
 import { useNavigate } from 'react-router';
 import { AppShell } from '@/features/shell/AppShell';
 import { deriveMachineSetup, type HomeMachineProfile } from '@/features/machine-catalog';
@@ -284,6 +289,29 @@ export function HomeCreatorPage() {
     ],
   );
 
+  /** The picked product waiting for its confirmed amount. No line exists yet. */
+  const [pendingAdd, setPendingAdd] = useState<{
+    ingredient: EngineIngredient;
+    behavior: ProductBehaviorSnapshot | null;
+    recommendedDose: string | null;
+  } | null>(null);
+
+  /**
+   * The one place a Base line is created. Grams come either from the existing Crown flow
+   * (0, meaning Crown decides) or from the customer's confirmed amount — never invented.
+   */
+  const addIngredientLine = useCallback(
+    (ingredient: EngineIngredient, behavior: ProductBehaviorSnapshot | null, grams: number) => {
+      const added = useRecipeStore.getState().addIngredient(ingredient, grams);
+      if (added.status !== 'duplicate' && behavior) {
+        useRecipeStore
+          .getState()
+          .setProductBehaviorSnapshot(added.lineId, { ...behavior, lineId: added.lineId });
+      }
+    },
+    [],
+  );
+
   const lastGeneratedFor = useRef<string | null>(null);
   useEffect(() => {
     // Generate once, when every required answer is in — never on every render.
@@ -504,13 +532,23 @@ export function HomeCreatorPage() {
             onUnavailable={(lineId) => useRecipeStore.getState().markIngredientUnavailable(lineId)}
             library={library}
             onAddIngredient={(ingredient, behavior) => {
-              // Added at 0 g exactly as the Pro builder does — HOME invents no amount.
-              const added = useRecipeStore.getState().addIngredient(ingredient, 0);
-              if (added.status !== 'duplicate' && behavior) {
-                useRecipeStore
-                  .getState()
-                  .setProductBehaviorSnapshot(added.lineId, { ...behavior, lineId: added.lineId });
+              // §B, owner-locked 2026-08-31. Adding at 0 g and then reporting the
+              // minimum-1-g rule back to the customer was the defect, not the rule.
+              //
+              // Crown-capable  → the existing Crown authority decides the amount, so the
+              //                  line is created exactly as before.
+              // Not Crown-capable → ASK first. Nothing is created until a positive amount
+              //                  is confirmed, so no 0 g line and no fake 1 g ever exists.
+              const decision = decideAddAmount(behavior ?? null, productRecommendedDosagePl);
+              if (decision.kind === 'ask_amount') {
+                setPendingAdd({
+                  ingredient,
+                  behavior: behavior ?? null,
+                  recommendedDose: decision.recommendedDose,
+                });
+                return;
               }
+              addIngredientLine(ingredient, behavior ?? null, 0);
             }}
             onAddTopping={(ingredient, behavior) => {
               // §57: the existing Topping behaviour — no Crown, editable grams.
@@ -575,6 +613,19 @@ export function HomeCreatorPage() {
             // recipe, so the effect must not build one for these same answers.
             lastGeneratedFor.current = `${draft.profile}|${machine?.id ?? 'none'}|${amount?.totalGrams ?? 0}`;
             scrollToStage('recipe');
+          }}
+        />
+      ) : null}
+
+      {/* §B: asked BEFORE the line exists, so a refusal costs the customer nothing. */}
+      {pendingAdd ? (
+        <HomeAmountPrompt
+          productName={pendingAdd.ingredient.name}
+          recommendedDose={pendingAdd.recommendedDose}
+          onCancel={() => setPendingAdd(null)}
+          onConfirm={(grams) => {
+            addIngredientLine(pendingAdd.ingredient, pendingAdd.behavior, grams);
+            setPendingAdd(null);
           }}
         />
       ) : null}

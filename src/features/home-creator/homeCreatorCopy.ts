@@ -108,6 +108,11 @@ export interface HomeCreatorCopy {
     readonly maskedGramsLabel: string;
     /** The mask WITHOUT a unit — the gram control appends its own suffix. */
     readonly maskedGramsValue: string;
+    readonly askAmountTitle: string;
+    readonly askAmountConfirm: string;
+    readonly askAmountCancel: string;
+    readonly askAmountInvalid: string;
+    readonly askAmountRecommended: string;
     readonly gramsFieldLabel: string;
     readonly lockLabel: string;
     readonly grams: string;
@@ -248,6 +253,11 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     maskedGrams: '••• g',
     maskedGramsLabel: 'Gramatura ukryta — dostępna w planie HOME lub PRO',
     maskedGramsValue: '•••',
+    askAmountTitle: 'Ile chcesz dodać',
+    askAmountConfirm: 'Dodaj',
+    askAmountCancel: 'Anuluj',
+    askAmountInvalid: 'Podaj ilość większą od zera.',
+    askAmountRecommended: 'Zalecane dawkowanie producenta',
     gramsFieldLabel: 'ilość w g',
     lockLabel: 'Zablokuj ilość',
     grams: 'g',
@@ -384,6 +394,11 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     maskedGrams: '••• g',
     maskedGramsLabel: 'Amount hidden — available on the HOME or PRO plan',
     maskedGramsValue: '•••',
+    askAmountTitle: 'How much do you want to add',
+    askAmountConfirm: 'Add',
+    askAmountCancel: 'Cancel',
+    askAmountInvalid: 'Enter an amount greater than zero.',
+    askAmountRecommended: "Manufacturer's recommended dose",
     gramsFieldLabel: 'amount in g',
     lockLabel: 'Lock the amount',
     grams: 'g',

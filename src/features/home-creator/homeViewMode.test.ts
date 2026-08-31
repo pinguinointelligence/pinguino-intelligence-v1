@@ -53,17 +53,19 @@ describe('HOME/PRO switch presentation (§11)', () => {
       canHome: false,
       canPro: false,
     });
-    expect(
-      viewEntitlementFrom(true, { canHome: true, canPro: false } as never),
-    ).toEqual({ authed: true, canHome: true, canPro: false });
+    expect(viewEntitlementFrom(true, { canHome: true, canPro: false } as never)).toEqual({
+      authed: true,
+      canHome: true,
+      canPro: false,
+    });
   });
 });
 
 describe('default landing view (§12, §75)', () => {
   it('defaults a PRO subscriber to PRO', () => {
-    expect(
-      resolveDefaultLandingView({ entitlement: proSubscriber, defaultExperience: null }),
-    ).toBe('pro');
+    expect(resolveDefaultLandingView({ entitlement: proSubscriber, defaultExperience: null })).toBe(
+      'pro',
+    );
     expect(DEFAULT_EXPERIENCE_FALLBACK).toBe('pro');
   });
 
@@ -80,9 +82,9 @@ describe('default landing view (§12, §75)', () => {
   });
 
   it('lands demo visitors in HOME — the public root is the creator (§9)', () => {
-    expect(
-      resolveDefaultLandingView({ entitlement: anonymous, defaultExperience: 'pro' }),
-    ).toBe('home');
+    expect(resolveDefaultLandingView({ entitlement: anonymous, defaultExperience: 'pro' })).toBe(
+      'home',
+    );
   });
 });
 
@@ -136,9 +138,7 @@ describe('legacy /pro URLs for a HOME subscriber (§13)', () => {
 
   it('leaves PRO subscribers and demo explorers on the PRO URL', () => {
     for (const entitlement of [proSubscriber, proOnly, anonymous, freeAccount]) {
-      expect(
-        proUrlRedirectForHomeSubscriber({ entitlement, pathname: '/pro/recipe' }),
-      ).toBeNull();
+      expect(proUrlRedirectForHomeSubscriber({ entitlement, pathname: '/pro/recipe' })).toBeNull();
     }
   });
 
