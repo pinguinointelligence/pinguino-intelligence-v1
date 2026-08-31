@@ -268,6 +268,58 @@ export function HomeRecipeSection({
         ))}
       </ul>
 
+      {/* OWNER CORRECTION (HOME-UX-ADD-INGREDIENT, 2026-08-31): after the first
+          ingredient it was not obvious how to add another. The add controls existed,
+          but far below — past sweetness, past Przelicz, past a paragraph — so they read
+          as unrelated to the list. They now sit immediately after the last row.
+
+          ONE affordance for the section, not one per row, and it stays put at 1, 2 or
+          3+ ingredients because it is a sibling of the list, not part of it. The button
+          IS the canonical `ProductPickerPopover` trigger — HOME adds no selection
+          logic — rendered in the Designbook round icon-button variant. The visible
+          label is a desktop-only hint; the accessible name comes from the trigger. */}
+      <div
+        className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-2"
+        data-testid="home-add-controls"
+      >
+        <span className="inline-flex items-center gap-2" data-testid="home-add-ingredient">
+          <ProductPickerPopover
+            library={library}
+            scope="BASE_FORMULATION"
+            triggerVariant="icon"
+            triggerLabel={homeCreatorCopy.recipe.addIngredient}
+            onAdd={(ingredient, behavior) => onAddIngredient(ingredient, behavior)}
+          />
+          <span
+            aria-hidden
+            className="max-sm:hidden text-[13px]"
+            style={{ color: 'var(--g-text-secondary)' }}
+          >
+            {homeCreatorCopy.recipe.addIngredient}
+          </span>
+        </span>
+        {/* Toppings get the analogous affordance wherever toppings are offered. HOME has
+            no toppings-availability gate today — the topping picker has always been
+            rendered unconditionally — so this follows the SAME availability rather than
+            inventing a new rule. Recorded as HOME-UX-TOPPING-GATE. */}
+        <span className="inline-flex items-center gap-2" data-testid="home-add-topping">
+          <ProductPickerPopover
+            library={library}
+            scope="POST_PROCESS_ADDON"
+            triggerVariant="icon"
+            triggerLabel={homeCreatorCopy.recipe.addTopping}
+            onAdd={(ingredient, behavior) => onAddTopping(ingredient, behavior)}
+          />
+          <span
+            aria-hidden
+            className="max-sm:hidden text-[13px]"
+            style={{ color: 'var(--g-text-secondary)' }}
+          >
+            {homeCreatorCopy.recipe.addTopping}
+          </span>
+        </span>
+      </div>
+
       {/* §61/§62 sweetness — three choices over the existing Direction axis. */}
       <div className="mt-6" data-testid="home-sweetness">
         <p
@@ -308,36 +360,6 @@ export function HomeRecipeSection({
 
       {/* §60: the existing Recalculate → Preview → Apply workflow, plainly worded. */}
       <HomeRecalculate />
-
-      {/* §57 */}
-      <p className="mt-8 text-[15px]" style={{ color: 'var(--g-text-secondary)' }}>
-        {homeCreatorCopy.recipe.anythingElse}
-      </p>
-      {/* §56/§57: the SAME picker Pro uses — search, filters, scanner, catalogue and
-          ProductBehavior all come with it. HOME only supplies a plainer trigger label;
-          it does not reimplement selection, readiness or role routing. The popover
-          renders its own ＋ affordance, so the label carries no second plus sign. */}
-      <div
-        className="mt-3 flex flex-wrap gap-2 [&_button]:min-h-[44px]"
-        data-testid="home-add-controls"
-      >
-        <span data-testid="home-add-ingredient">
-          <ProductPickerPopover
-            library={library}
-            scope="BASE_FORMULATION"
-            triggerLabel={homeCreatorCopy.recipe.addIngredient}
-            onAdd={(ingredient, behavior) => onAddIngredient(ingredient, behavior)}
-          />
-        </span>
-        <span data-testid="home-add-topping">
-          <ProductPickerPopover
-            library={library}
-            scope="POST_PROCESS_ADDON"
-            triggerLabel={homeCreatorCopy.recipe.addTopping}
-            onAdd={(ingredient, behavior) => onAddTopping(ingredient, behavior)}
-          />
-        </span>
-      </div>
 
       <div className="mt-10 flex flex-col gap-2.5">
         <button

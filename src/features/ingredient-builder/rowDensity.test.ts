@@ -155,8 +155,23 @@ describe('D11 — the complete left Recipe workspace follows the row system', ()
   });
 
   it('uses one 44 px / rounded-xl action family with an explicit hierarchy', () => {
-    expect(picker).toContain(
-      "scope === 'BASE_FORMULATION'\n            ? 'border border-ink/20 bg-white text-ink hover:border-ink/40'\n            : 'border border-ink/10 bg-[var(--g-ivory)] text-stone-700 hover:border-ink/25'",
+    // TEST IMPLEMENTATION HARDENED; PRO VISUAL AUTHORITY UNCHANGED (owner condition on
+    // PR #63, 2026-08-31).
+    //
+    // This assertion used to embed the exact newlines and indentation of the class
+    // expression, so wrapping the trigger in a variant branch failed it while changing no
+    // styling at all — brittle in the one dimension that does not matter. It is now
+    // whitespace-insensitive and NOTHING ELSE was relaxed: every token it demanded is
+    // still demanded here.
+    //
+    // The geometry it protects is additionally proven on the RENDERED element by
+    // `pickerTriggerVariants.contract.test.tsx`: default variant is still the pill, full
+    // token set, height/radius, focus treatment, and the HOME icon variant cannot leak
+    // into a PRO caller. Source indentation is no longer part of the contract; visual and
+    // functional geometry is — in two places now, not one.
+    const flat = picker.replace(/\s+/g, ' ');
+    expect(flat).toContain(
+      "scope === 'BASE_FORMULATION' ? 'border border-ink/20 bg-white text-ink hover:border-ink/40' : 'border border-ink/10 bg-[var(--g-ivory)] text-stone-700 hover:border-ink/25'",
     );
     expect(picker).toContain('inline-flex h-11 items-center justify-center rounded-xl');
     expect(intelligenceHeader).toContain('flex h-11 shrink-0 items-center gap-2 rounded-xl');

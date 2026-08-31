@@ -23,6 +23,7 @@ import {
   type ResolvedScanProduct,
 } from '@/features/product-scanner/LiveProductScanner';
 import { cn } from '@/lib/cn';
+import { iconButtonClasses } from '@/components/ui/buttonStyles';
 import { preserveServerProductRank } from '@/features/global-catalog/ranking';
 import { useGlobalCatalogPicker } from '@/features/global-catalog/useGlobalCatalogPicker';
 import type { CatalogProductSearchHit } from '@/features/global-catalog/contracts';
@@ -166,6 +167,16 @@ interface PickerPosition {
 type ProductPickerPopoverProps = {
   library: IngredientLibrary;
   triggerLabel?: string;
+  /**
+   * How the trigger LOOKS. The picker itself is unchanged either way.
+   *
+   * `pill` (default) is the Pro workbench control and is what every existing caller
+   * gets. `icon` is the Designbook round icon-button used where the affordance sits
+   * against a list rather than in a toolbar — the label becomes the accessible name
+   * instead of visible text, so callers that want a visible label render their own
+   * beside it.
+   */
+  triggerVariant?: 'pill' | 'icon';
   className?: string;
   behaviorContext?: Omit<ProductBehaviorContext, 'processScope' | 'requestedRole' | 'module'>;
   /** Read-only Base duplicate check before ProductBehavior/network work. The
@@ -197,6 +208,7 @@ export function ProductPickerPopover({
   scope,
   onAdd,
   triggerLabel,
+  triggerVariant = 'pill',
   className,
   behaviorContext,
   onPreflightDuplicate,
@@ -804,33 +816,56 @@ export function ProductPickerPopover({
     : undefined;
   return (
     <div className={cn('relative', className)} data-picker-scope={scope}>
-      <button
-        ref={triggerRef}
-        type="button"
-        className={cn(
-          'pro-focus-ring relative inline-flex h-11 items-center justify-center rounded-xl px-4 text-xs font-semibold whitespace-nowrap transition-colors',
-          scope === 'BASE_FORMULATION'
-            ? 'border border-ink/20 bg-white text-ink hover:border-ink/40'
-            : 'border border-ink/10 bg-[var(--g-ivory)] text-stone-700 hover:border-ink/25',
-        )}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        aria-controls={dialogId}
-        onClick={toggle}
-      >
-        <span
-          className={cn(
-            'inline-flex items-center justify-center',
-            scope === 'BASE_FORMULATION' ? 'text-ink' : '',
-          )}
-          data-testid={scope === 'BASE_FORMULATION' ? 'ingredient-add-core' : undefined}
+      {triggerVariant === 'icon' ? (
+        <button
+          ref={triggerRef}
+          type="button"
+          /* Designbook round icon button: neutral/graphite at rest, orange focus ring
+             (`pro-focus-ring`), 44x44 so it clears the mobile touch target. */
+          className={cn(iconButtonClasses('md'), 'text-ink')}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          aria-controls={dialogId}
+          aria-label={label}
+          onClick={toggle}
         >
-          <span aria-hidden className="mr-1.5 text-base">
+          <span
+            aria-hidden
+            className="text-base leading-none"
+            data-testid={scope === 'BASE_FORMULATION' ? 'ingredient-add-core' : undefined}
+          >
             ＋
           </span>
-          {label}
-        </span>
-      </button>
+        </button>
+      ) : (
+        <button
+          ref={triggerRef}
+          type="button"
+          className={cn(
+            'pro-focus-ring relative inline-flex h-11 items-center justify-center rounded-xl px-4 text-xs font-semibold whitespace-nowrap transition-colors',
+            scope === 'BASE_FORMULATION'
+              ? 'border border-ink/20 bg-white text-ink hover:border-ink/40'
+              : 'border border-ink/10 bg-[var(--g-ivory)] text-stone-700 hover:border-ink/25',
+          )}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          aria-controls={dialogId}
+          onClick={toggle}
+        >
+          <span
+            className={cn(
+              'inline-flex items-center justify-center',
+              scope === 'BASE_FORMULATION' ? 'text-ink' : '',
+            )}
+            data-testid={scope === 'BASE_FORMULATION' ? 'ingredient-add-core' : undefined}
+          >
+            <span aria-hidden className="mr-1.5 text-base">
+              ＋
+            </span>
+            {label}
+          </span>
+        </button>
+      )}
       {open
         ? createPortal(
             <>
