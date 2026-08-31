@@ -538,10 +538,13 @@ export function HomeCreatorPage() {
           }}
           onCreateMyOwn={() => setMatchDismissed(true)}
           onDerived={() => {
-            // The canonical derivation already loaded the derived recipe into the
-            // shared store, so HOME only has to stop offering the choice.
+            // `HomeMatchGate` has already loaded the derived recipe into the shared
+            // store (the canonical derivation itself ends on the PRO route, which §13
+            // bounces for a HOME subscriber), so HOME stops offering the choice, opens
+            // the recipe stage and scrolls the customer to the recipe they now own.
             setMatchDismissed(true);
             useHomeDraftStore.getState().markRecipeReady(true);
+            scrollToStage('recipe');
           }}
         />
       ) : null}
