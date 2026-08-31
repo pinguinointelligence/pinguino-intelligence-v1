@@ -444,25 +444,44 @@ built** — the script is the foundation, not the finished seed.
 
 ## DERIVE-01 … DERIVE-10 — Community derivation through the HOME match popup
 
-Columns: **Work** = implementation state · **Auto** = automated tests · **SQA** = served QA
-on staging · **OWNER** = owner acceptance (never marked by me) · **Freeze** = ready to freeze.
+Served QA run: **2026-08-31**, `https://staging.pinguinoai.com`, staging `9b7f7a1d`,
+deployment `dpl_BcfTUCyFasHMWGEbdrc1d8Q7ZNmb`, bundle `index-CIs5FLzb.js`.
+Deploy identity taken from Vercel's alias record (alias → deployment → commit SHA),
+NOT from a changed bundle hash — an earlier attempt was voided by testing an
+intermediate deploy that merely had a different hash.
 
-| ID | Requirement | Work | Auto | SQA | OWNER | Freeze | PR / SHA | Problem / Why | Next action |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| DERIVE-01 | The entitled publication read carries the ProductBehavior authority (`product_composition`) | DONE | PASS | PENDING | NOT YET | NOT YET | #51 `b2650dca` | `gellatti_get_publication_full_v1` returned the recipe input but never the composition, so a derivation was written with N lines and 0 behaviour snapshots | — |
-| DERIVE-02 | `useRecipeDerivation` passes `productComposition` into the canonical `createRecipe` | DONE | PASS | PENDING | NOT YET | NOT YET | #51 `b2650dca` | The client half of the same gap | — |
-| DERIVE-03 | The guard, the scope check and `create_recipe_with_v1` are unchanged | DONE | PASS | PENDING | NOT YET | NOT YET | #51 `b2650dca` | 4 publications audited, **0 invalid** — the guard was right and was reporting a real upstream defect | — |
-| DERIVE-04 | The derivation runs on the canonical customer path — no service role, no fabricated lineage, no relaxed entitlement | DONE | PASS | PENDING | NOT YET | NOT YET | #51 `b2650dca` | — | — |
-| DERIVE-05 | Lineage recorded: `relation=copy`, `depth=1`, parent and root creator preserved | DONE | PASS | PENDING | NOT YET | NOT YET | #51 `b2650dca` | — | — |
-| DERIVE-06 | DNA regression A→B→C keeps the ROOT creator (Maria) at depth 2 | DONE | PASS | PENDING | NOT YET | NOT YET | #51 `b2650dca` | `based_on` now coalesces `root_publication_id` before `parent_publication_id` | — |
-| DERIVE-07 | The popup closes only on a real success; a refusal keeps it open with an honest message | DONE | PASS | PENDING | NOT YET | NOT YET | #37 `6c60a571` + #53 | Two defects behind one rule. #37: `onDerived` was called unconditionally, so a refusal closed the popup with 0 lines. #53: the corrected check read `derivation.state` AFTER awaiting — React state from its own render — so it reported `idle` for a real success and the success branch never ran; the popup only appeared to close because the hook's `navigate` remounted the page. The outcome now comes from the awaited RETURN value. | — |
-| DERIVE-08 | The derived recipe **opens in HOME with real recipe lines** | DONE | PASS | PENDING | NOT YET | NOT YET | #53 `SHA53` | The derivation succeeded server-side while the customer was returned to an empty intent screen: `useRecipeDerivation` ends at `/pro/recipe`, which §13 correctly bounces for a HOME subscriber | — |
-| DERIVE-09 | Negative control — the HOME saved-recipe cap refuses honestly, the popup stays open, the requested recipe is untouched, „Tworzę własną recepturę" stays available | DONE | PASS | PENDING | NOT YET | NOT YET | #53 `SHA53` | — | — |
-| DERIVE-10 | The share path gap is documented, not silently patched | DONE | PASS | N/A | NOT YET | NOT YET | #51 `b2650dca` | `gellatti_open_share_v1` / `gellatti_open_received_share_v1` still do not return `product_composition`, so a SHARE of a recipe with lines still hits the same refusal | Separate task — **not** fixed here |
+Columns: **Work** = implementation · **Auto** = automated tests · **SQA** = served QA ·
+**OWNER** = owner acceptance (never marked by me) · **Freeze** = ready to freeze.
+
+| ID | Requirement | Work | Auto | SQA | OWNER | Freeze | PR / SHA | Evidence |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| DERIVE-01 | Entitled publication read carries `product_composition` | DONE | PASS | PASS | WAITING | READY | #51 `b2650dca` | Derived recipe carries **6 behaviour snapshots**, `schemaVersion 1` |
+| DERIVE-02 | `useRecipeDerivation` passes `productComposition` to canonical `createRecipe` | DONE | PASS | PASS | WAITING | READY | #51 `b2650dca` | Same; contract test pins `productComposition: full.productComposition` |
+| DERIVE-03 | Guard, scope check and `create_recipe_with_v1` unchanged | DONE | PASS | PASS | WAITING | READY | #51 `b2650dca` | `assert_recipe_behavior_authority_all_lines_v1` present, md5 `ac08f5f1…`; the #51 migration contains exactly ONE `create or replace function` and it is `gellatti_get_publication_full_v1` |
+| DERIVE-04 | Canonical customer path — no service role, no fabricated lineage | DONE | PASS | PASS | WAITING | READY | #51 `b2650dca` | Whole run driven through the served UI as `home-dna-qa-20260831@qa.pinguinoai.com` |
+| DERIVE-05 | Lineage `relation=copy`, `depth=1`, root creator preserved | DONE | PASS | PASS | WAITING | READY | #51 `b2650dca` | `copy` / `1` / parent+root = QA Gelato Wanilia -11 / **Anna QA** |
+| DERIVE-06 | DNA regression A→B→C credits the ROOT | DONE | PASS | PASS | WAITING | READY | #51 `b2650dca` | C's card `based_on` = *QA-STAGING-SEED A — Maria original* / **Maria QA**, actual parent B (Tomek), depth 2 |
+| DERIVE-07 | Popup closes only on real success; refusal keeps it open | DONE | PASS | PASS | WAITING | READY | #37 `6c60a571` + #53 `45192609` | Success: popup closed, `derivationError: null`. Refusal (over-cap): popup **stayed open** with an honest message |
+| DERIVE-08 | Derived recipe opens in HOME with the SOURCE's own values | DONE | PASS | PASS | WAITING | READY | #53 `45192609` + #56 `9b7f7a1d` | `path "/"`, 6 lines, **MILK 670 g / TARA GUM 5 g**, `isAdoptedSource=true`, `isRegeneratedStarter=false`, `savedRecipeId` set, name `QA Gelato Wanilia -11` |
+| DERIVE-09 | Negative control: cap refuses honestly, nothing partial | DONE | PASS | PASS | WAITING | READY | #53/#56 | `home@home.com` stays at **4** saved, 0 lineage, 0 orphans, no store mutation |
+| DERIVE-10 | Share-path gap documented, not silently patched | DONE | PASS | N/A | WAITING | READY | #51 `b2650dca` | Share RPCs returning `product_composition`: **0** — unchanged |
+
+### §3 — the race is closed (served, not inferred)
+
+| Proof | Result |
+| --- | --- |
+| Popup open → `generateRecipe` did not execute | `storeItemCount: 0`, `starterKey: null`, `GENERATED_WHILE_POPUP_OPEN: false` |
+| Adoption survives all later effects | 670 g / 5 g held past settle; `savedRecipeId` stable |
+| Guard POSTPONES, does not suppress | Dismiss → machine answered → starter generated, `GENERATION_RESUMED: true` |
+| Generated exactly once | 8 consecutive samples identical (`402/84/30/48/75/29/2 | 670`) |
+
+Reproduced on **two independent runs** (`499a3967-…`, then `1cd7a015-…`).
 
 ### Follow-ups deliberately NOT done here
 
 | ID | Item | Why deferred |
 | --- | --- | --- |
-| §11C | The HOME\|PRO switch is missing on the PRO workspace | Owner instruction: record separately, do not fix in this phase |
-| SHARE-01 | Share RPCs do not carry `product_composition` | Out of scope; deriving a SHARE is a different entitled read than deriving a PUBLICATION |
+| §11C | HOME\|PRO switch missing on the PRO workspace | Owner instruction: record separately |
+| SHARE-01 | Share RPCs do not carry `product_composition` | Out of scope; a share is a different entitled read |
+| DATA-01 | 2 version-less `saved_recipes` rows on `home@home.com` from the 2026-08-30 DNA seed | Pre-existing seed artefacts, not caused by this work |
+| COPY-01 | The cap refusal says „Twoja receptura pozostała bez zmian. Spróbuj ponownie." without naming the cap | Copy change — forbidden by the visual-scope rule in this task |
