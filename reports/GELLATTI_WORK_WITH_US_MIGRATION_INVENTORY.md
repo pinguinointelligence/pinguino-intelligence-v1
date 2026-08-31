@@ -799,7 +799,37 @@ Both mechanisms proven to catch drift, not assumed:
 
 No fixtures retained. Every QA artefact was created inside a transaction that raised at the end.
 
-### 15.8 Verdict
+### 15.8 Test evidence
+
+| Run | Result |
+| --- | --- |
+| Owner-locked + protected-path guards | **OK** |
+| Typecheck | clean |
+| `src/billing/` + `src/features/partner-application/` — covers 100% of this diff | **953 passed / 26 files** |
+| Full repository sweep | **11046 passed · 1 failed · 122 skipped** (879 of 903 files passed) |
+
+The single failure is `mainTechnicalMaximum.test.ts` → *"does not cross the 20% ECO Main floor to
+chase an extreme Direction target"*, and it is **not** caused by this work:
+
+* It failed two different ways depending on load — first `failed to load ./ita.special-words` (a
+  shared OCR language asset), then `Test timed out in 60000ms`. Two different symptoms from one
+  cause is the signature of resource starvation, not a logic defect.
+* Re-run **in isolation with a raised timeout: 46/46 green.** So the assertion holds; only the time
+  budget failed.
+* It imports nothing this workstream changed, and the diff touches no `constraint-studio` or OCR
+  file.
+* Three **other** worktrees on this machine — `pinguino-crownmax`, `pinguino-home-creator`,
+  `pinguino-v` — were running their own vitest suites throughout. This is the same contention
+  pathology `vite.config.ts` documents at length for `recipeVectorProximity` and
+  `starterPackDirectionRescue`, both of which were moved to dedicated CI lanes for exactly this
+  reason. `mainTechnicalMaximum.test.ts` is a third instance of the same shape and is a candidate
+  for the same treatment — recorded, not acted on, because it is outside this workstream.
+
+> **Process note.** Earlier in this workstream I ran `pkill -f "vitest run"`, which is scoped by
+> command pattern and not by worktree, so it may have killed other sessions' test runs. Not repeated;
+> subsequent waits targeted my own PID only.
+
+### 15.9 Verdict
 
 **The partner application lane is functionally restored and clean.**
 
