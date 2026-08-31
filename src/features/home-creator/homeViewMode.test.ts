@@ -7,6 +7,7 @@ import {
   proUrlRedirectForHomeSubscriber,
   resolveDefaultLandingView,
   resolveViewSwitchPresentation,
+  segmentAccess,
   segmentTreatment,
   viewEntitlementFrom,
   viewSwitchSegments,
@@ -22,17 +23,37 @@ const proOnly: ViewEntitlement = { authed: true, canHome: false, canPro: true };
 describe('HOME/PRO switch presentation (§11)', () => {
   it('shows both segments to an anonymous visitor', () => {
     expect(resolveViewSwitchPresentation(anonymous)).toBe('demo_switch');
-    expect(viewSwitchSegments('demo_switch')).toEqual(['home', 'pro']);
+    expect(viewSwitchSegments()).toEqual(['home', 'pro']);
   });
 
   it('shows both segments to a signed-in user without a plan', () => {
     expect(resolveViewSwitchPresentation(freeAccount)).toBe('demo_switch');
   });
 
-  it('NEVER renders PRO for an active HOME subscriber (§11B, §74)', () => {
+  it('ALWAYS renders both segments — visibility is not access (owner override 2026-09-01)', () => {
+    // SUPERSEDES §11B/§74 ("a HOME subscriber must never SEE PRO"). The rule is now
+    // "must never ACCESS PRO without entitlement": the global header keeps one geometry
+    // for every audience, and the gate lives on the action, not on the rendering.
     expect(resolveViewSwitchPresentation(homeSubscriber)).toBe('home_only');
-    expect(viewSwitchSegments('home_only')).toEqual(['home']);
-    expect(viewSwitchSegments('home_only')).not.toContain('pro');
+    expect(viewSwitchSegments()).toEqual(['home', 'pro']);
+  });
+
+  it('gates the PRO segment for a HOME-only subscriber instead of hiding it', () => {
+    expect(segmentAccess('pro', 'home_only')).toBe('upgrade_required');
+    expect(segmentAccess('home', 'home_only')).toBe('allowed');
+  });
+
+  it('leaves PRO reachable for the audiences that may reach it', () => {
+    expect(segmentAccess('pro', 'full_switch')).toBe('allowed');
+    // Demo keeps its existing read-only PRO exploration (§73) — not an entitlement bypass.
+    expect(segmentAccess('pro', 'demo_switch')).toBe('allowed');
+  });
+
+  it('still refuses a HOME-only subscriber who reaches a PRO URL directly', () => {
+    // Visibility changed; the URL authority did not.
+    expect(
+      proUrlRedirectForHomeSubscriber({ entitlement: homeSubscriber, pathname: '/pro/recipe' }),
+    ).not.toBeNull();
   });
 
   it('shows both segments to an active PRO subscriber (§11C)', () => {
@@ -53,17 +74,19 @@ describe('HOME/PRO switch presentation (§11)', () => {
       canHome: false,
       canPro: false,
     });
-    expect(
-      viewEntitlementFrom(true, { canHome: true, canPro: false } as never),
-    ).toEqual({ authed: true, canHome: true, canPro: false });
+    expect(viewEntitlementFrom(true, { canHome: true, canPro: false } as never)).toEqual({
+      authed: true,
+      canHome: true,
+      canPro: false,
+    });
   });
 });
 
 describe('default landing view (§12, §75)', () => {
   it('defaults a PRO subscriber to PRO', () => {
-    expect(
-      resolveDefaultLandingView({ entitlement: proSubscriber, defaultExperience: null }),
-    ).toBe('pro');
+    expect(resolveDefaultLandingView({ entitlement: proSubscriber, defaultExperience: null })).toBe(
+      'pro',
+    );
     expect(DEFAULT_EXPERIENCE_FALLBACK).toBe('pro');
   });
 
@@ -80,9 +103,9 @@ describe('default landing view (§12, §75)', () => {
   });
 
   it('lands demo visitors in HOME — the public root is the creator (§9)', () => {
-    expect(
-      resolveDefaultLandingView({ entitlement: anonymous, defaultExperience: 'pro' }),
-    ).toBe('home');
+    expect(resolveDefaultLandingView({ entitlement: anonymous, defaultExperience: 'pro' })).toBe(
+      'home',
+    );
   });
 });
 
@@ -136,9 +159,7 @@ describe('legacy /pro URLs for a HOME subscriber (§13)', () => {
 
   it('leaves PRO subscribers and demo explorers on the PRO URL', () => {
     for (const entitlement of [proSubscriber, proOnly, anonymous, freeAccount]) {
-      expect(
-        proUrlRedirectForHomeSubscriber({ entitlement, pathname: '/pro/recipe' }),
-      ).toBeNull();
+      expect(proUrlRedirectForHomeSubscriber({ entitlement, pathname: '/pro/recipe' })).toBeNull();
     }
   });
 

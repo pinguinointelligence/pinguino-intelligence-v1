@@ -89,7 +89,14 @@ export function AppShell({
         className={cn(
           APP_HEADER_ROW,
           maxWidthClass,
-          viewportLock && `xl:grid ${DESKTOP_WORKBENCH_COLUMNS}`,
+          /* GLOBAL HEADER PARITY (owner, 2026-09-01). The two-track grid is the GLOBAL
+             geometry, not a workbench detail: it is what puts the hamburger, the logo
+             and the HOME|PRO switch on the same pixels in HOME and PRO. It is applied
+             independently of `viewportLock`, because that prop also locks the BODY to
+             the viewport (`h-dvh`, no page scroll) — correct for the workbench, wrong
+             for HOME's long sequential document. Geometry is shared; scroll behaviour
+             stays each page's own. */
+          `xl:grid ${DESKTOP_WORKBENCH_COLUMNS}`,
           stickyHeader && 'sticky top-0 z-40 bg-paper',
         )}
         style={{ paddingTop: 'max(env(safe-area-inset-top), 0.5rem)' }}
@@ -99,7 +106,7 @@ export function AppShell({
         <div
           className={cn(
             'flex min-w-0 items-center gap-3 sm:gap-5',
-            viewportLock && 'xl:col-start-1 xl:row-start-1',
+            'xl:col-start-1 xl:row-start-1',
           )}
         >
           <AppNavDrawer />
@@ -111,6 +118,13 @@ export function AppShell({
             {brand ?? <OfficialProLogo />}
           </Link>
           {viewportLock ? actions : null}
+          {/* Non-workbench pages put their actions at the TRAILING EDGE of this same
+              work column — never at the viewport edge — so the HOME|PRO switch keeps
+              one global x whether or not the right display column is occupied. The
+              workbench keeps its own accepted inline placement above, untouched. */}
+          {!viewportLock ? (
+            <div className="ml-auto hidden xl:flex xl:items-center xl:gap-3">{actions}</div>
+          ) : null}
           <DesignReviewOverlay />
         </div>
         {viewportLock ? workbenchChrome : null}
@@ -120,19 +134,15 @@ export function AppShell({
           className={cn(
             'flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3',
             viewportLock && 'hidden',
+            /* Above xl the actions live in the work column (above), so this trailing
+               group must not render them a second time. */
+            !viewportLock && 'xl:hidden',
           )}
         >
           {!viewportLock ? actions : null}
-          {!viewportLock &&
-          navigationPosition === 'trailing' &&
-          (audience === 'pro' || audience === 'home') ? (
-            <span
-              className="inline-flex h-7 items-center rounded-full border border-ink/15 bg-white px-3.5 text-[9px] font-bold tracking-[0.14em] text-ink"
-              data-testid="app-shell-plan-badge"
-            >
-              {audience === 'pro' ? 'PRO' : 'HOME'}
-            </span>
-          ) : null}
+          {/* The plan badge is GONE: the global header shows the real HomeProSwitch for
+              every audience (owner override 2026-09-01), and rendering both would be two
+              controls saying the same thing. */}
         </div>
       </header>
       <main
