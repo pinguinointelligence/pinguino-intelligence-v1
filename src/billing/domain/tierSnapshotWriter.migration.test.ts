@@ -91,8 +91,14 @@ describe('T3 — what counts', () => {
     expect(COUNT).toContain('cs.user_id <> p.user_id');
   });
 
-  it('only counts active attributions', () => {
-    expect(COUNT).toContain("ra.status = 'active'");
+  it('counts only attributions whose ownership is LOCKED, not the mutable status', () => {
+    // Was `expect(COUNT).toContain("ra.status = 'active'")`. That assertion
+    // codified a defect: A3 makes ownership permanent once locked, so
+    // `locked_at` is the durable historical fact and the as-of reader already
+    // used it. Keying the live reader on the mutable `status` gave the two
+    // readers different ownership rules for the same subscription.
+    expect(COUNT).toContain('ra.locked_at is not null');
+    expect(COUNT).not.toMatch(/ra\.status\s*=/);
   });
 
   it('counts active and trialing', () => {
@@ -105,8 +111,21 @@ describe('T3 — what counts', () => {
     expect(COUNT).not.toMatch(/interval\s+'\d+\s+day/i);
   });
 
-  it('ignores cancel_at_period_end, so a cancelling subscription still counts until access ends', () => {
-    expect(COUNT).not.toContain('cancel_at_period_end');
+  it('counts a cancelling subscription ONLY while its paid access has not ended', () => {
+    // Was `expect(COUNT).not.toContain('cancel_at_period_end')`, under a comment
+    // claiming a cancelling subscription "still counts until access ends".
+    // That is the canonical rule (T3), but ignoring the flag entirely does not
+    // implement it — it counts such a subscription FOREVER, including long
+    // after the paid window closed. The canonical predicate requires
+    // `atUtcMs < paidAccessEndsAtUtcMs` when cancelAtPeriodEnd is set.
+    expect(COUNT).toContain('cancel_at_period_end');
+    expect(COUNT).toMatch(
+      /not cs\.cancel_at_period_end\s*\n?\s*or \(cs\.current_period_end is not null and cs\.current_period_end > p_at\)/,
+    );
+  });
+
+  it('excludes fraud-reversed commissions, exactly as the as-of reader does', () => {
+    expect(COUNT).toContain("ca.reason = 'fraud'");
   });
 });
 
@@ -549,5 +568,87 @@ describe('owner point 6 — the same facts must give the same financial result, 
       )?.[0] ?? '';
     expect(catchup).toContain('if v_blocker is not null then');
     expect(catchup).toContain('continue;');
+  });
+});
+
+describe('T3 — ONE eligibility predicate, two state sources (pre-apply audit, 2026-08-31)', () => {
+  const strip = (x: string) => x.replace(/--.*$/gm, '');
+  const bodyOf = (fn: string) =>
+    strip(
+      new RegExp(`create or replace function public\\.${fn}[\\s\\S]*?\\$\\$;`).exec(SQL)?.[0] ?? '',
+    );
+
+  /** Reads the LIVE customer_subscriptions row. */
+  const LIVE = bodyOf('gellatti_partner_active_referred_count_v1');
+  /** Reads state RECONSTRUCTED from provider events at an instant. */
+  const ASOF = bodyOf('gellatti_partner_referred_count_asof_v1');
+
+  it('finds both readers, so nothing below is vacuous', () => {
+    expect(LIVE, 'live reader not found').not.toBe('');
+    expect(ASOF, 'as-of reader not found').not.toBe('');
+  });
+
+  /**
+   * WHY THIS EXISTS. The on-time writer calls the LIVE reader and the catch-up
+   * writer calls the AS-OF reader. If the two disagree about WHICH
+   * subscriptions are eligible, the same facts yield two different tiers and
+   * the on-time == late property is false.
+   *
+   * They did disagree. The live reader used the mutable `ra.status` instead of
+   * `locked_at`, had no fraud-reversal exclusion, and ignored
+   * `cancel_at_period_end` entirely — under a comment that described the
+   * canonical rule it was not implementing. Caught before this migration was
+   * ever applied; these assertions are what make it stay caught.
+   */
+  const SHARED_RULES: ReadonlyArray<readonly [string, RegExp]> = [
+    ['A3 durable ownership, not the mutable status', /ra\.locked_at is not null/],
+    ['self-referral excluded', /cs\.user_id <> p\.user_id/],
+    ['fraud-reversed commissions excluded', /ca\.reason = 'fraud'/],
+    ['cancel_at_period_end bounded by the paid window', /cancel_at_period_end/],
+    ['past_due only inside the paid window', /past_due/],
+    ['de-duplicated by subscription identity', /count\(distinct cs\.id\)/],
+  ];
+
+  for (const [label, rule] of SHARED_RULES) {
+    it(`LIVE reader applies: ${label}`, () => expect(LIVE).toMatch(rule));
+    it(`AS-OF reader applies: ${label}`, () => expect(ASOF).toMatch(rule));
+  }
+
+  it('neither reader falls back to the mutable attribution status', () => {
+    for (const [name, body] of [
+      ['live', LIVE],
+      ['as-of', ASOF],
+    ] as const) {
+      expect(body, `${name} reader uses mutable ra.status`).not.toMatch(/ra\.status\s*=/);
+    }
+  });
+
+  it('the two writers each use the reader appropriate to their state source', () => {
+    // CATCHUP is scoped to another describe block; derive both here so this
+    // assertion stands on its own.
+    const writer = bodyOf('gellatti_write_partner_tier_snapshots_v1');
+    const catchup = bodyOf('gellatti_catchup_partner_tier_snapshots_v1');
+    expect(writer, 'on-time writer not found').not.toBe('');
+    expect(catchup, 'catch-up writer not found').not.toBe('');
+    // on-time reads live state; catch-up reconstructs it at the boundary
+    expect(writer).toContain('gellatti_partner_active_referred_count_v1');
+    expect(catchup).toContain('gellatti_partner_referred_count_asof_v1');
+  });
+
+  it('every canonical TS branch has a counterpart in BOTH readers', () => {
+    // The canonical predicate is isEligibleReferredSubscription() in
+    // tierSnapshots.ts. Its branches, in order.
+    const canonical: ReadonlyArray<readonly [string, RegExp]> = [
+      ['attribution ownership', /ra\.partner_id = p_partner_id/],
+      ['self-referral', /user_id <> p\.user_id/],
+      ['fraud reversal', /reason = 'fraud'/],
+      ['active/trialing', /'active', 'trialing'/],
+      ['cancel-at-period-end window', /cancel_at_period_end/],
+      ['past_due grace', /past_due/],
+    ];
+    for (const [label, rule] of canonical) {
+      expect(LIVE, `live reader missing ${label}`).toMatch(rule);
+      expect(ASOF, `as-of reader missing ${label}`).toMatch(rule);
+    }
   });
 });

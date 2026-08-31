@@ -10,11 +10,7 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import {
-  MAX_CURRENT_PARTNER_CODES,
-  evaluateCodeClaim,
-  type CodeClaimRefusalReason,
-} from './partnerCodeSlots';
+import { MAX_CURRENT_PARTNER_CODES, evaluateCodeClaim } from './partnerCodeSlots';
 import {
   OFFENSIVE_CODE_WORDS,
   PARTNER_CODE_MAX_LENGTH,

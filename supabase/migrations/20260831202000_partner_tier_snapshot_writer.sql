@@ -35,19 +35,39 @@ returns integer language sql immutable
 as $$ select 100 $$;
 
 -- ── T3: the eligible active referred subscription count ─────────────────────
--- Eligible = attributed to this partner, belonging to a REAL OTHER customer,
--- currently granting paid access at the given instant.
+-- MIRRORS isEligibleReferredSubscription() in tierSnapshots.ts (T3) exactly,
+-- branch for branch. There is ONE definition of "active paid referral"; this is
+-- the LIVE-STATE reader of it and gellatti_partner_referred_count_asof_v1 is
+-- the RECONSTRUCTED-STATE reader. The two differ ONLY in where subscription
+-- state comes from — never in which subscriptions are eligible. That is what
+-- makes the on-time snapshot equal the late reconstruction.
 --
--- Counted (HOME + PRO combined, T3):
---   * 'active' and 'trialing' — the same statuses the app's access layer treats
---     as paid access, which T3 explicitly mirrors;
---   * 'past_due' ONLY while its already-paid period has not ended — that paid
---     window is the grace, not a fixed number of days.
---   * cancel_at_period_end is IGNORED on purpose: a subscription scheduled to
---     cancel still counts until its paid access actually ends.
+-- ── WHAT THIS FUNCTION USED TO GET WRONG ────────────────────────────────────
+-- Caught by the pre-apply audit, before this migration was ever applied. The
+-- earlier body diverged from the canonical predicate in three ways, and the
+-- on-time writer used THIS function while the catch-up writer used the
+-- correct as-of one — so the same facts produced two different answers and the
+-- on-time == late property could not hold:
 --
--- Excluded: any other Stripe status (canceled, unpaid, incomplete, paused);
--- the partner's own account (self-referral); attributions that are not active.
+--   1. `ra.status = 'active'` — the MUTABLE column. A3 makes ownership
+--      permanent once locked, so `locked_at` is the durable historical fact and
+--      the as-of function already used it. Two functions, two ownership rules.
+--   2. NO fraud-reversal exclusion. A commission reversed for fraud still
+--      counted toward Gold here, but not in the as-of path.
+--   3. `cancel_at_period_end` was ignored, with a comment claiming a cancelling
+--      subscription "still counts until its paid access actually ends" — which
+--      is the canonical rule, but the code never checked the end date, so it
+--      counted such a subscription FOREVER. The comment described T3; the code
+--      did not implement it.
+--
+-- entitlement = 'paid' is satisfied BY CONSTRUCTION, the same reasoning the
+-- as-of function records: an invite trial and a partner's own free access
+-- create no Stripe subscription at all (inviteCodes I5, locked decision 8), so
+-- anything in customer_subscriptions is a paid-subscription source. Zero-price
+-- and complimentary access never reach this table.
+--
+-- Excluded: canceled / unpaid / incomplete / incomplete_expired / paused; the
+-- partner's own account (self-referral); attributions never locked.
 --
 -- POLICY NOTE for the owner: 'trialing' counts because T3 mirrors the access
 -- layer. If Gold should require a subscription that has actually PAID, that is
@@ -67,14 +87,32 @@ as $$
   join public.customer_subscriptions cs on cs.id = ra.subscription_id
   join public.partners p on p.id = ra.partner_id
   where ra.partner_id = p_partner_id
-    and ra.status = 'active'
+    -- A3: ownership is permanent once locked. Same rule as the as-of function.
+    and ra.locked_at is not null
+    and ra.locked_at <= p_at
     -- T3: a real OTHER customer. A partner never counts their own subscription.
     and cs.user_id <> p.user_id
+    -- T3: fraud-reversed commissions never count. Same rule as the as-of function.
+    and not exists (
+      select 1 from public.commission_adjustments ca
+      join public.commission_entries ce on ce.id = ca.commission_entry_id
+      where ce.partner_id = p_partner_id
+        and ce.stripe_subscription_id = cs.stripe_subscription_id
+        and ca.reason = 'fraud'
+    )
     and (
-      cs.status in ('active', 'trialing')
-      -- grace is the already-paid window, never a fixed duration
-      or (cs.status = 'past_due' and cs.current_period_end is not null
-          and cs.current_period_end > p_at)
+      -- T3: active/trialing count; if cancelling at period end they count only
+      -- while the paid window has not closed.
+      (cs.status in ('active', 'trialing')
+        and (
+          not cs.cancel_at_period_end
+          or (cs.current_period_end is not null and cs.current_period_end > p_at)
+        ))
+      -- T3: past_due counts only inside the already-paid window
+      or (cs.status = 'past_due'
+        and cs.current_period_end is not null
+        and cs.current_period_end > p_at)
+      -- T3: canceled / unpaid / incomplete / incomplete_expired / paused never count
     );
 $$;
 

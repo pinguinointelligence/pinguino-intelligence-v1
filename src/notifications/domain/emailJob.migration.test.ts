@@ -43,7 +43,6 @@ const TAXONOMY_AREAS = [
   ...new Set(Object.values(OPERATIONAL_SUBJECTS).map((spec) => spec.area as string)),
 ].sort();
 
-const EMAIL_AREAS = TAXONOMY_AREAS;
 
 const REPO = resolve(import.meta.dirname, '..', '..', '..');
 const MIGRATION = readFileSync(

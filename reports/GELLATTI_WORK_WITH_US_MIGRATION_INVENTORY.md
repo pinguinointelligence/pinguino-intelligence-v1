@@ -1077,3 +1077,108 @@ written only by this lane.** An earlier count of "9 migrations from this workstr
 **8 are mine**, the ninth is the Shop lane's. Future pre-apply audits must re-read the live register
 rather than assume the previous snapshot still describes it.
 
+---
+
+## 18. 🔴 STOPPED BEFORE APPLY — `20260831202000` had TWO definitions of "active paid referral"
+
+**Nothing was applied.** §2 of the owner's instruction is explicit: *if the SQL mirror diverges from
+the canonical domain definition, STOP before apply.* It diverged.
+
+### 18.1 Live register first (owner §0)
+
+| | |
+| --- | --- |
+| Register rows | **187** |
+| Newest migration | `20260831175103 / email_jobs` (mine) |
+| Since this lane started | **9** — **8 mine**, **1 the Shop lane's** (`20260831162207 shop_orders_expected_checkout_total`) |
+
+Fresh baseline, re-measured rather than assumed: 3 partners · 0 commission entries · 0 tier
+snapshots · 6 codes · 0 email jobs · 0 rate profiles · **no** gaps table · **no** payouts table ·
+1 cron job (`upi-product-behavior-reclassification-v1`, pre-existing, unrelated) · 8 webhook events.
+
+### 18.2 Collision audit — clean
+
+**0** function collisions across all 11 names, **0** table collision. All dependencies present:
+`partner_tier_snapshots`, `referral_attributions`, `entitlements`, `stripe_webhook_events`,
+`customer_subscriptions`, `commission_adjustments`, `gellatti_admin_has_permission_v1`.
+**No `pg_cron` job. No payout function.** RLS enabled on the new table with the default-privilege
+trap revoked. 10 of 11 functions are SECURITY DEFINER with pinned `search_path`; the eleventh is
+`gellatti_gold_threshold_v1()`, an `immutable` function whose entire body is `select 100` — it reads
+no table, so it needs neither.
+
+### 18.3 🔴 THE DEFECT
+
+The migration contains **two** readers of "active paid referral", and they disagreed:
+
+| | on-time path | catch-up path |
+| --- | --- | --- |
+| Writer | `gellatti_write_partner_tier_snapshots_v1` | `gellatti_catchup_partner_tier_snapshots_v1` |
+| Reader | `gellatti_partner_active_referred_count_v1` | `gellatti_partner_referred_count_asof_v1` |
+| Attribution ownership | ❌ mutable `ra.status = 'active'` | ✅ `ra.locked_at` (A3) |
+| Fraud-reversed commissions | ❌ **not excluded** | ✅ excluded |
+| `cancel_at_period_end` | ❌ **ignored entirely** | ✅ bounded by the paid window |
+| `past_due` grace | ✅ | ✅ |
+| Self-referral | ✅ | ✅ |
+| De-duplication | ✅ | ✅ |
+
+**Why it matters:** the on-time writer and the catch-up writer would have produced **different tiers
+from identical facts**, so the owner's §14 on-time ≡ late property could not have held. A
+fraud-reversed referral and a long-cancelled subscription would both have counted toward Gold on the
+on-time path and not on the reconstruction path.
+
+**It was documented as deliberate**, which is what made it dangerous:
+
+> `cancel_at_period_end is IGNORED on purpose: a subscription scheduled to cancel still counts until
+> its paid access actually ends.`
+
+That sentence states the canonical rule correctly — and the code beneath it never checked the end
+date, so such a subscription counted **forever**. The comment described T3; the implementation did
+not.
+
+**Two tests were asserting the defect**, not catching it:
+
+* `only counts active attributions` → asserted `ra.status = 'active'`
+* `ignores cancel_at_period_end, …` → asserted the flag was **absent**
+
+Both have been corrected to assert the canonical behaviour, with the reason recorded inline.
+
+### 18.4 The correction — prepared, NOT applied
+
+`20260831202000` is unapplied, so the pending file is corrected in place rather than by a forward
+migration. The live reader now mirrors `isEligibleReferredSubscription()` branch for branch:
+`locked_at` ownership, fraud-reversal exclusion, `cancel_at_period_end` bounded by the paid window,
+`past_due` grace, self-referral exclusion, de-duplication by subscription identity.
+
+The two readers now differ **only in where subscription state comes from** — the live
+`customer_subscriptions` row versus state reconstructed from provider events — never in which
+subscriptions are eligible. That is precisely what makes on-time equal late.
+
+A parity contract now asserts every shared rule against **both** readers and refuses the mutable
+`ra.status` in either. **Proven to catch each omission**: reverting ownership to `ra.status`, dropping
+the fraud exclusion, or ignoring `cancel_at_period_end` each turns 3 tests red; restored, 74 green.
+
+### 18.5 What the audit found to be correct
+
+* **§7 Elite** — `case when elite then 'elite'` is evaluated **before** the Gold/Standard threshold,
+  so referral count can never demote a manually Elite partner. The override *is* the versioned rate
+  profile from `20260831200500`, so Elite and its rates cannot disagree. No new Elite rule invented.
+* **§5 gap reasons** — 7 machine-readable values under a CHECK: `no_event_history`,
+  `history_before_retention_start`, `attribution_history_missing`, `missing_initial_state`,
+  `ambiguous_event_sequence`, `subscription_state_unknown`, `payment_state_unproven`.
+* **§15 immutability** — `on conflict (partner_id, month) do nothing`.
+* **Admin gates** — both admin reads gate on `PARTNER`, which is correct **here**: partner tier
+  history is the partner programme's own domain, unlike `email_jobs`, which spans every area. Not
+  changed.
+
+### 18.6 Gates
+
+Owner-locked and protected-path guards **OK**; typecheck clean; **1093 passed** across billing +
+notifications. Lint: I fixed my two unused-symbol errors; **one pre-existing error remains** in
+`src/app/router.tsx` (`no-regex-spaces`), which this workstream has never touched — left alone rather
+than swept up.
+
+### 18.7 Awaiting owner review
+
+The correction is prepared and pushed. **`20260831202000` is NOT applied**, and neither is payout
+execution or the scheduler.
+
