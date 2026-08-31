@@ -247,7 +247,7 @@ export async function getPublication(handle: string, slug: string) {
 /** The entitled read. Refuses server-side when the caller has not paid (§9). */
 export async function getPublicationFull(publicationId: string) {
   return readRpc<
-    | { ok: true; entitlement: 'full'; recipe_input: unknown; recipe_id: string; version_number: number; total_batch_g: number; engine_version: string; config_version: string; title: string }
+    | { ok: true; entitlement: 'full'; recipe_input: unknown; product_composition: unknown; recipe_id: string; version_number: number; total_batch_g: number; engine_version: string; config_version: string; title: string }
     | { ok: false; reason: 'not_found' | 'entitlement_required' }
   >('community.getPublicationFull', 'gellatti_get_publication_full_v1', {
     p_publication_id: publicationId,

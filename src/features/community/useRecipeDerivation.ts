@@ -117,7 +117,11 @@ export function useRecipeDerivation(target: DerivationTarget) {
           title: payload.title,
           notes: payload.notes,
           recipeInput: payload.recipeInput as RecipeInput,
-          productComposition: null,
+          // Carry the source's resolved ProductBehavior snapshots. A copy keeps the
+          // lines it copied, so it keeps their product authority — inventing or
+          // nulling it is what made every ingredient-bearing recipe undecidable to
+          // the guard.
+          productComposition: full.productComposition as never,
           trace: {
             engineVersion: payload.engineVersion,
             configVersion: payload.configVersion,
@@ -174,6 +178,19 @@ type SourceRead =
   | {
       ok: true;
       recipeInput: unknown;
+      /**
+       * The source version's product composition — its RESOLVED ProductBehavior
+       * snapshots, keyed by line id.
+       *
+       * Without it every copy of a recipe that HAS ingredient lines was refused by
+       * `assert_recipe_behavior_authority_all_lines_v1`, which requires a resolved
+       * snapshot per line ("no new version/run may be written until every line is
+       * reconstructed and RESOLVED"). The guard was right; the read simply never
+       * returned the composition, so `null` was passed and every line looked
+       * unresolved. `buildDerivedRecipe` passes `recipeInput` through unchanged, so
+       * the line ids still match and the snapshots apply exactly.
+       */
+      productComposition: unknown;
       engineVersion?: string;
       configVersion?: string;
       totalBatchG: number;
@@ -197,6 +214,7 @@ async function readSource(target: DerivationTarget): Promise<SourceRead> {
     return {
       ok: true,
       recipeInput: result.recipe_input,
+      productComposition: result.product_composition ?? null,
       engineVersion: result.engine_version,
       configVersion: result.config_version,
       totalBatchG: result.total_batch_g,
@@ -213,6 +231,13 @@ async function readSource(target: DerivationTarget): Promise<SourceRead> {
   return {
     ok: true,
     recipeInput: result.recipe_input,
+    // KNOWN REMAINING GAP, stated rather than hidden: `gellatti_open_share_v1` and
+    // `gellatti_open_received_share_v1` do not return `product_composition` (verified
+    // 2026-08-31), so a SHARE of a recipe with ingredient lines still hits the same
+    // authority refusal the publication path just escaped. Fixing it means changing
+    // those two RPCs and re-proving the share flow, which is a separate task — this
+    // `null` is deliberate and documented, not an oversight.
+    productComposition: null,
     engineVersion: result.engine_version,
     configVersion: result.config_version,
     totalBatchG: result.total_batch_g ?? 0,
