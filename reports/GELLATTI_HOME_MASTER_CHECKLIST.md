@@ -439,3 +439,30 @@ This proves the DNA mechanism with 3 publications. The full **50-publication see
 the required distribution** (15 original DNA / 10 official-derived / 15 user-derived /
 5 second-generation / 5 exact-match search fixtures, each with an image) is **not yet
 built** — the script is the foundation, not the finished seed.
+
+---
+
+## DERIVE-01 … DERIVE-10 — Community derivation through the HOME match popup
+
+Columns: **Work** = implementation state · **Auto** = automated tests · **SQA** = served QA
+on staging · **OWNER** = owner acceptance (never marked by me) · **Freeze** = ready to freeze.
+
+| ID | Requirement | Work | Auto | SQA | OWNER | Freeze | PR / SHA | Problem / Why | Next action |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| DERIVE-01 | The entitled publication read carries the ProductBehavior authority (`product_composition`) | DONE | PASS | PENDING | NOT YET | NOT YET | #51 `b2650dca` | `gellatti_get_publication_full_v1` returned the recipe input but never the composition, so a derivation was written with N lines and 0 behaviour snapshots | — |
+| DERIVE-02 | `useRecipeDerivation` passes `productComposition` into the canonical `createRecipe` | DONE | PASS | PENDING | NOT YET | NOT YET | #51 `b2650dca` | The client half of the same gap | — |
+| DERIVE-03 | The guard, the scope check and `create_recipe_with_v1` are unchanged | DONE | PASS | PENDING | NOT YET | NOT YET | #51 `b2650dca` | 4 publications audited, **0 invalid** — the guard was right and was reporting a real upstream defect | — |
+| DERIVE-04 | The derivation runs on the canonical customer path — no service role, no fabricated lineage, no relaxed entitlement | DONE | PASS | PENDING | NOT YET | NOT YET | #51 `b2650dca` | — | — |
+| DERIVE-05 | Lineage recorded: `relation=copy`, `depth=1`, parent and root creator preserved | DONE | PASS | PENDING | NOT YET | NOT YET | #51 `b2650dca` | — | — |
+| DERIVE-06 | DNA regression A→B→C keeps the ROOT creator (Maria) at depth 2 | DONE | PASS | PENDING | NOT YET | NOT YET | #51 `b2650dca` | `based_on` now coalesces `root_publication_id` before `parent_publication_id` | — |
+| DERIVE-07 | The popup closes only on a real success; a refusal keeps it open with an honest message | DONE | PASS | PENDING | NOT YET | NOT YET | #37 `6c60a571` + #53 | Two defects behind one rule. #37: `onDerived` was called unconditionally, so a refusal closed the popup with 0 lines. #53: the corrected check read `derivation.state` AFTER awaiting — React state from its own render — so it reported `idle` for a real success and the success branch never ran; the popup only appeared to close because the hook's `navigate` remounted the page. The outcome now comes from the awaited RETURN value. | — |
+| DERIVE-08 | The derived recipe **opens in HOME with real recipe lines** | DONE | PASS | PENDING | NOT YET | NOT YET | #53 `SHA53` | The derivation succeeded server-side while the customer was returned to an empty intent screen: `useRecipeDerivation` ends at `/pro/recipe`, which §13 correctly bounces for a HOME subscriber | — |
+| DERIVE-09 | Negative control — the HOME saved-recipe cap refuses honestly, the popup stays open, the requested recipe is untouched, „Tworzę własną recepturę" stays available | DONE | PASS | PENDING | NOT YET | NOT YET | #53 `SHA53` | — | — |
+| DERIVE-10 | The share path gap is documented, not silently patched | DONE | PASS | N/A | NOT YET | NOT YET | #51 `b2650dca` | `gellatti_open_share_v1` / `gellatti_open_received_share_v1` still do not return `product_composition`, so a SHARE of a recipe with lines still hits the same refusal | Separate task — **not** fixed here |
+
+### Follow-ups deliberately NOT done here
+
+| ID | Item | Why deferred |
+| --- | --- | --- |
+| §11C | The HOME\|PRO switch is missing on the PRO workspace | Owner instruction: record separately, do not fix in this phase |
+| SHARE-01 | Share RPCs do not carry `product_composition` | Out of scope; deriving a SHARE is a different entitled read than deriving a PUBLICATION |
