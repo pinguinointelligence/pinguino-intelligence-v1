@@ -38,6 +38,33 @@ const SECONDARY_OFFERS = [w.offers.machinesApp, w.offers.machineMixtures, w.offe
  * either: the cart models are unproven, and W03 shows a different trailer from
  * A06/A07 and stays out of the primary story until its offer is resolved.
  */
+/**
+ * The three Partner personas the owner assigned. A04 is a PARTNER asset — a
+ * professional using Gellatti in a working gelateria — and is deliberately not
+ * on the Machines route, per the owner's correction of 2026-08-31.
+ */
+const PARTNER_PERSONAS: ReadonlyArray<{
+  asset: OwnerAssetId;
+  title: string;
+  body: string;
+}> = [
+  {
+    asset: 'A03',
+    title: 'Twórcy wideo',
+    body: 'Pokazujesz, jak powstaje receptura, i dajesz ludziom powód, żeby ją powtórzyli.',
+  },
+  {
+    asset: 'A02',
+    title: 'Społeczności i newslettery',
+    body: 'Masz grupę, która Ci ufa. Receptura, którą polecisz, wraca do Ciebie jako Twój link.',
+  },
+  {
+    asset: 'A04',
+    title: 'Profesjonaliści',
+    body: 'Pracujesz z gelato na co dzień. Twoja receptura ma pokrycie w praktyce, a nie w opisie.',
+  },
+];
+
 const LANE_CARDS: ReadonlyArray<(typeof LANES)[keyof typeof LANES] & { asset: OwnerAssetId }> = [
   { ...LANES.machines, asset: 'W01' },
   { ...LANES.mobile, asset: 'A05' },
@@ -138,6 +165,31 @@ export function WorkWithUsPage() {
                 ))}
               </ul>
             </div>
+          </div>
+        </DestinationSection>
+
+        {/* ── WHO THIS IS FOR ─────────────────────────────────────────────
+            The owner's three Partner personas. Each photograph carries its own
+            caption rather than a generic label, because "twórca" over a picture
+            of someone filming is a caption that adds nothing. */}
+        <DestinationSection>
+          <DestinationEyebrow>Dla kogo</DestinationEyebrow>
+          <div className="mt-5 grid gap-px border border-[var(--g-line)] bg-[var(--g-line)] sm:grid-cols-3">
+            {PARTNER_PERSONAS.map((persona) => (
+              <figure key={persona.asset} className="bg-white">
+                <div className="aspect-[4/3] overflow-hidden">
+                  <OwnerAssetImage id={persona.asset} sizes="(min-width: 640px) 31vw, 100vw" />
+                </div>
+                <figcaption className="p-[clamp(18px,2vw,26px)]">
+                  <strong className="block text-[14px] leading-[1.35] font-bold text-[var(--g-ink)]">
+                    {persona.title}
+                  </strong>
+                  <p className="mt-2 text-[13px] leading-relaxed text-[var(--g-text-secondary)]">
+                    {persona.body}
+                  </p>
+                </figcaption>
+              </figure>
+            ))}
           </div>
         </DestinationSection>
 
