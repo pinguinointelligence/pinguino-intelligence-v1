@@ -733,3 +733,75 @@ describe('on-time == late, proven BEFORE apply (owner §3, 2026-08-31)', () => {
     expect(LATE).not.toMatch(/\bp\.tier\b|partners\.tier/);
   });
 });
+
+describe('a live-state writer can never manufacture historical truth (owner ruling)', () => {
+  const GUARD = readFileSync(
+    join(REPO, 'supabase', 'migrations', '20260831204000_partner_tier_snapshot_on_time_guard.sql'),
+    'utf8',
+  );
+  const CODE = GUARD.replace(/--.*$/gm, '');
+
+  it('refuses a PAST month with a typed reason, pointing at the catch-up route', () => {
+    expect(CODE).toMatch(/v_month < v_current_month/);
+    expect(CODE).toContain("raise exception 'historical_month_requires_catchup'");
+  });
+
+  it('refuses a FUTURE month, which has no boundary state to measure', () => {
+    expect(CODE).toMatch(/v_month > v_current_month/);
+    expect(CODE).toContain("raise exception 'future_month_not_snapshottable'");
+  });
+
+  it('derives "current" from SERVER time, never from caller input', () => {
+    // Deriving it from p_month or p_count_at would let the caller redefine
+    // which month is current and walk back through the hole being closed.
+    expect(CODE).toMatch(
+      /v_current_month := date_trunc\('month', \(now\(\) at time zone 'Europe\/Madrid'\)\)::date/,
+    );
+    expect(CODE).not.toMatch(/v_current_month\s*:=[^;]*p_count_at/);
+    expect(CODE).not.toMatch(/v_current_month\s*:=[^;]*p_month/);
+  });
+
+  it('rejects a measurement instant in the future', () => {
+    expect(CODE).toContain("raise exception 'tier_snapshot_count_instant_in_future'");
+  });
+
+  it('does not silently redirect a historical call into the catch-up', () => {
+    // Explicit refusal is the contract: rerouting would hide a caller doing
+    // something it should not, and catch-up may legitimately decline to write.
+    expect(CODE).not.toMatch(/gellatti_catchup_partner_tier_snapshots_v1\s*\(/);
+  });
+
+  it('broadens no grant — the role surface is unchanged', () => {
+    expect(CODE).toMatch(
+      /revoke all on function public\.gellatti_write_partner_tier_snapshots_v1\(date, timestamptz\)\s*\n?\s*from public, anon, authenticated/,
+    );
+    expect(CODE).not.toMatch(/grant[^;]*gellatti_write_partner_tier_snapshots_v1/);
+    expect(CODE).not.toMatch(/grant[^;]*partner_tier_snapshot/);
+  });
+
+  it('leaves the tier decision, threshold and immutability untouched', () => {
+    // The guard is a precondition, not a rewrite of the arithmetic.
+    expect(CODE).toContain('public.gellatti_gold_threshold_v1()');
+    expect(CODE).toMatch(/when elite then 'elite'/);
+    expect(CODE).toMatch(/when active_count >= v_threshold then 'gold'/);
+    expect(CODE).toMatch(/on conflict \(partner_id, month\) do nothing/);
+  });
+
+  it('does not touch the catch-up, the readers, or the gaps table', () => {
+    for (const other of [
+      'gellatti_catchup_partner_tier_snapshots_v1',
+      'gellatti_partner_referred_count_asof_v1',
+      'gellatti_tier_reconstruction_blocker_v1',
+      'partner_tier_snapshot_gaps',
+    ]) {
+      expect(CODE, `guard must not redefine ${other}`).not.toMatch(
+        new RegExp(`create (or replace )?(function|table)[^;]*${other}`),
+      );
+    }
+  });
+
+  it('does not edit the applied migration', () => {
+    // 20260831202000 is registered as 20260831190352 and stays as history.
+    expect(SQL).not.toContain("raise exception 'historical_month_requires_catchup'");
+  });
+});
