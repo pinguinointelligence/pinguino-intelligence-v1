@@ -9,7 +9,7 @@
 | --- | --- | --- | --- |
 | **Q** | `Miles ice cream machine price list.pdf` — QUOTATION, Hangzhou Gelato Tech Co., Ltd (milestac.com), 12 line items, **EXW China** | Commercial quotation to the owner | ✅ text |
 | **B** | `Miles international catalog.pdf` — *Miles Galaxy Pro* international catalogue, per-model "DETAILED INFO" pages | Manufacturer marketing brochure | ⚠️ image-only; read by rendering |
-| **M** | `MILES MilanoV1&2.pdf` | Milano-series lifestyle brochure | ⚠️ image-only; **contains no spec table** |
+| **M** | `MILES MilanoV1&2.pdf` | Milano-series brochure — **carries full spec pages for Milano V1 (p.2) and Milano V2 (p.4)** | ⚠️ image-only; read by rendering |
 | **E** | `THE GELATO EV.pdf` | DC Gelato Cart brochure + real deployment photography | ⚠️ image-only; read by rendering |
 | **D** | Owner trailer drawing (3.5 × 2.1 m layout) | Owner-supplied technical drawing | image |
 
@@ -57,23 +57,35 @@ Legend — **Authority**: `Q+B` both agree · `BLOCKED` sources conflict · `Q o
 Across every Galaxy Pro model that appears in both sources, the conflicts are **not random**. The
 DC Battery Cart (a different series, documented in a different brochure) is the control case:
 
-| Field | Behaviour across the 8 reconciled models | Publish? |
+| Field | Behaviour across all 11 reconciled models | Publish? |
 | --- | --- | --- |
 | Dimensions (W×D×H) | **Q and B agree exactly, every model** | ✅ YES |
 | Production capacity (cups/80 g/h) | **Q and B agree exactly, every model** | ✅ YES |
 | Initial batching time | 12–18 min in both, every model | ✅ YES |
 | Cooling type / refrigerant | Air cooling / R290 in both, every model | ✅ YES |
 | Capacity per batch | Q gives max only; B gives max **and** minimum — compatible, B is richer | ✅ YES (use B) |
-| **Weight** | **B is higher than Q on every single model** (+7 to +51 kg), DC Cart included | ❌ **OMIT** |
-| **Peak power** | **B is higher than Q on every Galaxy Pro model** (+500 to +2000 W); the DC Battery Cart AGREES (1300 W both) | ❌ **OMIT** for Galaxy Pro · ✅ publishable for DC Cart |
-| **Power supply** | Agrees on V2/V4-A/V4-B/V2C; **conflicts on V6 and V8** | ⚠️ per-model |
+| **Weight** | Disagrees on the 7 Galaxy Pro floor/cart units (+7 to +51 kg) and the DC Cart. **Agrees exactly on Café Specialty (69), Milano V1 (54), Milano V2 (79)** | ❌ OMIT for the 8 · ✅ publish for the 3 countertop units |
+| **Peak power** | Disagrees on the 7 Galaxy Pro floor/cart units (+500 to +2000 W) and Milano V2 (950 vs 1200). **Agrees on Café Specialty (950), Milano V1 (950), DC Cart (1300)** | ❌ OMIT for the 8 · ✅ publish for the 3 |
+| **Power supply** | Agrees on every model **except V6 and V8** | ⚠️ per-model |
 
-Weight differs on *every* model in a consistent direction, and peak power differs on every
-*Galaxy Pro* model while agreeing exactly on the DC Cart. Consistent direction plus a clean control
-case means this is a systematic documentation difference (plausibly nett vs. gross weight, and
-rated vs. absolute peak draw), **not** a transcription error that can be resolved by picking the
-nicer number. §25 forbids silently choosing. Both fields are withheld from public specs until the
-manufacturer confirms — except DC Cart peak power, which two sources agree on.
+With all 11 models reconciled the pattern is sharper than it first appeared, and it splits by
+product line rather than by field:
+
+- **The three small countertop units — Café Specialty, Milano V1, Milano V2 — agree with the
+  quotation on weight**, and two of them agree on peak power too. Café Specialty agrees on
+  *every single field*.
+- **The seven Galaxy Pro floor and canopy units disagree on both weight and peak power**, always
+  with the brochure higher.
+- The DC Cart sits between: peak power agrees, weight does not.
+
+So this is not one uniform documentation difference. It is most consistent with the Galaxy Pro line
+using a different weight and power convention in the two documents (plausibly nett vs. gross, and
+rated vs. absolute peak draw), **plus** a handful of outright copy errors in the quotation for the
+small models — §2.4 demonstrates one transposition and one duplicated value.
+
+§25 forbids silently choosing, so the disputed fields stay withheld for the eight affected models.
+Where both sources agree the field is published. Overall the **brochure is the better authority for
+spec fields and the quotation is authoritative for price**.
 
 ### 2.2 Evidence table
 
@@ -180,28 +192,68 @@ resorts, restaurants and bars, café and bakery — with **customer branding app
 front panel**. That confirms the front panel is a designed branding surface, which matters for the
 trailer/mobile asset briefs.
 
-#### Models with no brochure page located
+#### PRO V1 Café Specialty — *Galaxy Pro V1 (Café Speciality)* (B p.19) — **total agreement**
 
-| Model | Status | Note |
+| Field | Q | B | Selected | Confidence | Conflict |
+| --- | --- | --- | --- | --- | --- |
+| Dimensions | 580 × 550 × 420 mm | 580 × 550 × 420 mm | **580 × 550 × 420 mm** | High | — |
+| Power supply | 10 A 1-ph 220 V | 10 A 1-ph 220 V | **10 A single phase** | High | — |
+| **Weight** | **69 kg** | **69 KG** | **69 kg — publishable** | **High** | — |
+| **Peak power** | **950 W** | **950 W** | **950 W — publishable** | **High** | — |
+| Capacity per batch | max 3 L | max 3.0 L / min 1.5 L | **3.0 / 1.5 L** | High | — |
+| Production | 165 cups/80 g/h | 165 cups/80 g/h | **165 cups/h** | High | — |
+
+**Every field agrees.** This is the second control case after the DC Cart, and the stronger one:
+weight *and* peak power both match. Branding note for renders: the body carries a "LA GALASSIA"
+side graphic in addition to the manufacturer wordmark — **both must be removed**.
+
+#### PRO V1 Milano — *Galaxy Pro Milano V1* (M p.2)
+
+| Field | Q | M (Milano brochure) | Selected | Confidence | Conflict |
+| --- | --- | --- | --- | --- | --- |
+| Dimensions | 410 × 540 × **374** mm | 410 × 540 × **365** mm | **410 × 540 mm footprint** (height withheld) | Medium | ⚠️ 9 mm height |
+| Power supply | 10 A 1-ph 220 V | 10 A 1-ph 220 V | **10 A single phase** | High | — |
+| Weight | 54 kg | 54 KG | **54 kg — publishable** | High | — |
+| Peak power | 950 W | 950 W | **950 W — publishable** | High | — |
+| Cylinder volume | batch max 2 L | 5.0 L × 1 | **1 cylinder** (different measures) | Medium | — |
+| **Production** | **200 cups/h** | **100 cups/h** | **100 cups/h (B)** — see §2.4 | **High after resolution** | ⚠️ resolved |
+| Pozzetti | — | **1** | **1** | High | — |
+
+#### PRO V2 Milano — *Galaxy Pro Milano V2* (M p.4)
+
+| Field | Q | M | Selected | Confidence | Conflict |
+| --- | --- | --- | --- | --- | --- |
+| Dimensions | 680 × 540 × **374** mm | 680 × 540 × **365** mm | **680 × 540 mm footprint** (height withheld) | Medium | ⚠️ 9 mm height |
+| Power supply | 12 A 1-ph 220 V | 12 A 1-ph 220 V | **12 A single phase** | High | — |
+| Weight | 79 kg | 79 KG | **79 kg — publishable** | High | — |
+| **Peak power** | **950 W** | **1200 W** | **WITHHELD** | — | ⚠️ 250 W — Q appears to have copied V1's 950 W |
+| Cylinder volume | batch max 2 L | 5.0 L × 2 | **2 cylinders** | Medium | — |
+| **Production** | **100 cups/h** | **200 cups/h** | **200 cups/h (B)** — see §2.4 | **High after resolution** | ⚠️ resolved |
+| Pozzetti | — | **2** | **2** | High | — |
+
+### 2.4 The Milano production anomaly — RESOLVED
+
+The earlier block on Milano output is lifted. With both brochure spec pages in hand:
+
+| Source | Milano V1 | Milano V2 |
 | --- | --- | --- |
+| Quotation (Q) | 200 cups/h | 100 cups/h |
+| Brochure (M) | **100 cups/h** | **200 cups/h** |
+
+**The quotation has the two figures transposed.** The brochure ordering is the coherent one and is
+corroborated by the physical hardware: Milano V1 has **one** cylinder and a 10 A supply, Milano V2
+has **two** cylinders and a 12 A supply. A machine with twice the cylinders and more current does
+not produce half the output.
+
+**Selected authority: the brochure. V1 = 100 cups/h, V2 = 200 cups/h.** This is the one place where
+the reconciliation overrides the quotation on a spec field, and it is done on stated evidence rather
+than preference. The quotation remains authoritative for **price** (§1), which is unaffected.
+
+The same page also shows the quotation repeating V1's 950 W for V2, where the brochure gives
+1200 W — consistent with a copy error in the same block of the quotation. That field stays withheld.
 | PRO V1 Café Specialty | 🔴 no spec source besides Q | Q: 580 × 550 × 420 mm, 69 kg, 10 A, 950 W, max 3 L, 165 cups/h |
 | PRO V1 Milano | 🔴 Milano brochure has **no spec table** | Q: 410 × 540 × 374 mm, 54 kg, 10 A, 950 W, max 2 L, **200 cups/h** |
 | PRO V2 Milano | 🔴 Milano brochure has **no spec table** | Q: 680 × 540 × 374 mm, 79 kg, 12 A, 950 W, max 2 L, **100 cups/h** |
-| PRO V1 Café Specialty | 🔴 no spec source besides Q | Q: 580 × 550 × 420 mm, 69 kg, 10 A, 950 W, max 3 L, 165 cups/h |
-| PRO V1 Milano | 🔴 Milano brochure has **no spec table** | Q: 410 × 540 × 374 mm, 54 kg, 10 A, 950 W, max 2 L, **200 cups/h** |
-| PRO V2 Milano | 🔴 Milano brochure has **no spec table** | Q: 680 × 540 × 374 mm, 79 kg, 12 A, 950 W, max 2 L, **100 cups/h** |
-
-### 2.3 Open anomaly — Milano production capacity (`L-SPEC-03`)
-
-The quotation states **PRO V1 Milano = 200 cups/80 g/h** and **PRO V2 Milano = 100 cups/80 g/h**.
-PRO V2 Milano is the larger, heavier, higher-amperage and roughly **twice as expensive** machine,
-yet is quoted at **half** the hourly output of PRO V1 Milano. Every other model in the range scales
-output upward with size and price.
-
-This is internally inconsistent and there is no second source: the Milano brochure contains
-photography only, no specification table. **Production capacity for both Milano models is
-BLOCKED** and must not appear publicly until the manufacturer confirms. It is more likely a
-transposition in the quotation than a real characteristic, but §25 forbids guessing.
 
 ---
 
@@ -233,34 +285,47 @@ opposite wall; the 30 mm is most cheaply taken from the cabinetry run rather tha
 
 ## 4. What may be published now (`L-SPEC-02`)
 
-For **PRO V2, V4, V4B, V2C** — dimensions · power supply · capacity per batch (max + min) ·
-initial batching time · cooling type · refrigerant · production capacity · Gellatti price.
+All 11 public models are now reconciled against a real manufacturer spec page. Nothing in the
+public catalogue rests on a single source any more.
 
-For **PRO V6, V8** — the same **except power supply**, which is blocked.
+| Model | Publish | Withhold |
+| --- | --- | --- |
+| **Café Specialty** | dimensions · power supply · **weight** · **peak power** · batch capacity · batching time · production · price | — *(nothing — all fields agree)* |
+| **Milano V1** | footprint 410 × 540 · power supply · **weight 54 kg** · **peak power 950 W** · cylinders (1) · batching time · **production 100 cups/h** · price | overall height (365 vs 374) |
+| **Milano V2** | footprint 680 × 540 · power supply · **weight 79 kg** · cylinders (2) · batching time · **production 200 cups/h** · price | overall height (365 vs 374) · peak power |
+| **V2 · V4 · V4B · V2C · V4C** | dimensions · power supply · batch capacity · batching time · production · price | weight · peak power |
+| **V6 · V8** | dimensions · batch capacity · batching time · production · price | weight · peak power · **power supply** |
+| **Battery Cart** | dimensions · power supply · **peak power 1300 W** · battery (8 h std, 12 h option) · cylinders (2) · batching time · production · price | weight |
 
-For **V4C, DC Battery Cart, V1 Café, V1 Milano, V2 Milano** — dimensions · power supply ·
-capacity · batching time · price only, and **not** production capacity for the two Milano models.
-
-**Never publish, for any model, until the manufacturer confirms:** weight · peak power.
+**Never publish without manufacturer confirmation:** weight and peak power for the seven Galaxy Pro
+floor/canopy units; weight for the Battery Cart; peak power for Milano V2; overall height for both
+Milano models; **power supply for V6 and V8**.
 
 ---
 
 ## 5. Questions for the manufacturer (owner to forward)
 
-1. **Weight** — brochure figures exceed quotation figures on every model. Which is nett machine
-   weight and which is gross/shipping weight?
-2. **Peak power (Galaxy Pro series only)** — same systematic gap on V2/V4/V4B/V6/V8/V2C/V4C, but
-   the DC Cart agrees at 1300 W in both documents. Which figure is the electrical design load an
-   installer should size for?
-3. **V6 / V8 power supply** — the quotation says single-phase 220 V; the catalogue says three-phase
-   380 V. Which is supplied to the EU, and is the other a regional variant?
-4. **Milano output** — is PRO V2 Milano really 100 cups/80 g/h when PRO V1 Milano is 200?
-5. **DC Battery Cart** — confirm the 8-hour battery runtime and what duty cycle it assumes.
-6. ~~Private-label rights~~ — **RESOLVED by owner override 2026-08-31 §5/§14**: the manufacturer
-   name is internal-only. Public pages name the model (V2, V4B, Battery Cart, Milano) with no
-   manufacturer attribution, and never imply Gellatti manufactures the equipment. Nothing to ask.
-7. **DC Cart 12-hour battery** — the EV brochure lists an 8 h and a 12 h battery option; the
-   quotation prices only the 8 h. Is the 12 h a priced option, and at what uplift?
+Five questions remain. Two earlier ones are closed.
+
+1. **Weight and peak power on the Galaxy Pro line** (V2, V4, V4B, V6, V8, V2C, V4C) — the catalogue
+   is consistently higher than the quotation. Which figure is nett machine weight and which is
+   gross/shipping? Which peak-power figure should an installer size the supply for?
+   *(The countertop models agree in both documents, so this is specific to the Galaxy Pro line.)*
+2. **V6 / V8 power supply — the one installation-critical conflict.** The quotation says
+   single-phase 220 V (20 A for V6, 32 A for V8); the catalogue says **three-phase 380 V, 32 A** for
+   both. Which is supplied to the EU, and is the other a regional variant?
+3. **Milano overall height** — the brochure gives 365 mm for both Milano models, the quotation 374 mm.
+   Is the difference feet, or lid clearance?
+4. **Milano V2 peak power** — brochure 1200 W, quotation 950 W. The quotation appears to have
+   repeated Milano V1's figure; please confirm 1200 W.
+5. **DC Cart 12-hour battery** — the EV brochure lists an 8 h and a 12 h option; the quotation prices
+   only the 8 h. Is the 12 h a priced option, and at what uplift?
+
+**Closed:**
+- ~~Private-label rights~~ — resolved by owner override §5/§14: the manufacturer name is
+  internal-only, so no permission question arises.
+- ~~Milano production capacity~~ — **resolved by evidence** in §2.4: the quotation transposed the
+  two figures. No manufacturer confirmation needed, though question 4 touches the same block.
 
 ---
 
@@ -268,4 +333,5 @@ capacity · batching time · price only, and **not** production capacity for the
 
 | Date | What |
 | --- | --- |
+| 2026-08-31 | **Correction run:** the owner was right that references existed — Café Specialty is catalogue p.22, Milano V1 is brochure p.2 and Milano V2 is brochure p.4. An earlier pass had sampled pages rather than reading all of them and wrongly recorded them as unavailable. **All 11 models are now reconciled.** Café Specialty agrees on every field. The Milano production anomaly is RESOLVED: the quotation transposed V1 and V2. Two new minor conflicts found (Milano height, Milano V2 peak power); manufacturer questions cut from 7 to 5 |
 | 2026-08-31 | Created. Quotation extracted in full; catalogue rendered and 6 Galaxy Pro model pages read; price authority verified 11/11; systematic weight/peak-power discrepancy identified; V6/V8 power-supply conflict identified; Milano output anomaly identified; **N-V4B-FIT confirmed as a real 30 mm conflict corroborated by two independent Miles sources** |

@@ -30,19 +30,23 @@ supplied PDFs into one folder, one file per model:
 | `V2C.png` | **V2C** | catalogue p.28 | Canopy cart, 2 pozzetti, 2 poles |
 | `V4C.png` | **V4C** | catalogue p.29 | Canopy cart, 4 pozzetti, decorative wheel |
 | `BATTERY-CART.png` | **Battery Cart** | EV brochure p.14 | Studio render + drawing, 2 pozzetti |
-| `MILANO-lifestyle-1.png` | **Milano** | Milano brochure p.3 | Lifestyle photo — angled panel silhouette clearly visible |
-| `MILANO-lifestyle-2.png` | **Milano** | Milano brochure p.9 | Close detail of panel, knob and vent |
+| `MILANO-V1.png` | **Milano V1** | Milano brochure **p.2** | **Full spec page** — studio render + dimensioned drawing, 1 pozzetto |
+| `MILANO-V2.png` | **Milano V2** | Milano brochure **p.4** | **Full spec page** — studio render + dimensioned drawing, 2 pozzetti |
+| `CAFE-SPECIALITY.png` | **Café Specialty** | catalogue **p.22** | **Full spec page** — studio render + drawing, 1 pozzetto |
+| `MILANO-V1-and-V2-in-cafe.png` | Milano V1 + V2 | Milano brochure p.5 | Both models in a real café — scene mood, and the clearest V1-vs-V2 size comparison |
 | `CONTEXT-gelateria-references.png` | — | catalogue p.30 | Six real gelateria installations — use for *scene* mood only |
 | `CONTEXT-battery-cart-in-use.png` | — | EV brochure p.3 | Cart in catering / hotel / restaurant / café — scene mood |
 
 **Attach the matching file to every machine render.** A prompt that only *describes* a machine will
 produce something that merely resembles it, which is exactly the failure mode the owner named.
 
-**Two references still missing (owner action):**
-- `TRL-A` / `TRL-B` — the two trailer renders were pasted into chat but are **not on disk**. Please
-  save them to `~/Desktop/PI/machines/trailer/`. T01, T02, T03 and T04 all depend on them.
-- **Milano V2** and **Café Specialty** have no isolated product render in any supplied document —
-  see §7 gap G4.
+**All 11 public models now have a real manufacturer spec page in the pack.** An earlier pass
+recorded Milano V2 and Café Specialty as unavailable; that was wrong — it had sampled pages rather
+than reading all of them. Both exist and are extracted.
+
+**One reference still to supply (owner):** `TRL-A` / `TRL-B`, the two trailer renders, were pasted
+into chat but are not on disk. Please save them to `~/Desktop/PI/machines/trailer/`. T01–T04 and the
+W03 card use them.
 
 ---
 
@@ -77,7 +81,8 @@ compositing isn't possible.
 accent** (the owner's own wording — it is Gellatti's accent, used sparingly). No random blue, no
 neon, no SaaS gloss.
 
-**2.7 Status vocabulary.** `⚪ BRIEF READY` · `🟡 IN GENERATION` · `🟢 SUPPLIED` · `🔴 BLOCKED`.
+**2.7 Status vocabulary.** `⚪ BRIEF READY` · `🟡 IN GENERATION` · `🟢 SUPPLIED` · `⏳ WAITING FOR OWNER ASSET` · `🔴 BLOCKED`.
+**⏳ never blocks backend work** — only the affected page's freeze.
 OWNER QA: `⬜ WAITING` · `✅ APPROVED` · `❌ REJECTED`.
 
 ---
@@ -189,10 +194,10 @@ anywhere in the frame — the cart is battery powered and the image must prove i
 | | |
 | --- | --- |
 | **Route · section** | `/machines` — "where it fits" |
-| **Attach** | **`MILANO-lifestyle-1.png`** + **`MILANO-lifestyle-2.png`** |
+| **Attach** | **`MILANO-V2.png`** (spec page, 2 pozzetti) — or `MILANO-V1.png` for the 1-pozzetto variant. `MILANO-V1-and-V2-in-cafe.png` for scene mood |
 | **Ratio** | 3:2 |
-| **Must not change** | **Countertop, never floor-standing** · 410 × 540 × 374 mm · **exactly 2 pozzetti** · the distinctive angled painted side panel · single round front knob · louvred base vent |
-| **Claude's note** | Milano has **no isolated studio render and no spec table** in any supplied document — these two lifestyle photos are the only geometry evidence. Expect lower fidelity than the catalogue models and review the silhouette carefully |
+| **Must not change** | **Countertop, never floor-standing** · Milano V2 footprint 680 × 540 mm · **exactly 2 pozzetti** · the distinctive angled painted side panel · single round front knob · louvred base vent · chrome feet |
+| **Claude's note** | A proper spec page now exists for both Milano models, so fidelity is as good as the catalogue models. **Decide which variant the café scene shows** — V1 has one pozzetto, V2 has two |
 | **Status · QA** | ⚪ · ⬜ · **Filename** `public/images/machines/m01-milano-cafe.webp` |
 
 ```
@@ -324,7 +329,9 @@ ADDITIONAL REQUIREMENT: no power cable, extension lead or wall socket anywhere i
 
 ## 6. PRIORITY A/B — trailer (owner's list)
 
-> **All four photographic trailer assets are blocked until `TRL-A` / `TRL-B` are saved to disk.**
+> **The four photographic trailer assets are ⏳ WAITING FOR OWNER ASSET** (`TRL-A` / `TRL-B` to be
+> saved to disk). Per the owner's instruction this is **not a blocker** for backend work — all
+> non-visual implementation continues regardless.
 
 ### T01 — Trailer exterior OPEN · **first render in the owner's order**
 | | |
@@ -333,7 +340,7 @@ ADDITIONAL REQUIREMENT: no power cable, extension lead or wall socket anywhere i
 | **Ratio** | 16:9 · **Route** `/trailer` hero · also crops to `W03` |
 | **Branding** | **Replace PINGÜINO with the real Gellatti logo asset** — composite, never invent lettering (§2.5) |
 | **Must not change** | Silhouette and corner radii · serving window aperture and gas-strut hatch · fold-out counter shelves · door and round porthole · wheel and mudguard position · drawbar and jockey wheel · all four stabiliser legs · two roof vents · the split line and proportion between polished upper body and dark lower band |
-| **Status · QA** | 🔴 blocked on reference · ⬜ · **Filename** `public/images/trailer/t01-open.webp` |
+| **Status · QA** | ⏳ WAITING FOR OWNER ASSET · ⬜ · **Filename** `public/images/trailer/t01-open.webp` |
 
 ```
 Edit the supplied Pinguino ice-cream trailer reference. Preserve the trailer body, dimensions, wheel
@@ -351,7 +358,7 @@ product render, three-quarter exterior view, 16:9.
 | **Attach** | **`TRL-A`** (silver trailer, closed, 3/4 rear) — 🔴 not yet on disk |
 | **Ratio** | 3:2 · **Route** `/trailer` |
 | **Must not change** | Closed silhouette · the large rear louvred vent grille and its exact position · **the number and placement of every marker light** · roof vents · drawbar, coupling, jockey wheel · stabiliser legs · wheel position · dark band ratio |
-| **Status · QA** | 🔴 blocked on reference · ⬜ · **Filename** `public/images/trailer/t02-closed.webp` |
+| **Status · QA** | ⏳ WAITING FOR OWNER ASSET · ⬜ · **Filename** `public/images/trailer/t02-closed.webp` |
 
 ```
 Edit the supplied trailer closed/back/side reference. Preserve exact trailer geometry and all
@@ -366,7 +373,7 @@ photorealistic, 3:2.
 | --- | --- |
 | **Attach** | **`TRL-B`** — 🔴 not yet on disk · **Ratio** 16:9 · **Route** `/trailer` |
 | **Must not change** | Everything listed for T01 |
-| **Status · QA** | 🔴 blocked on reference · ⬜ · **Filename** `public/images/trailer/t03-live-event.webp` |
+| **Status · QA** | ⏳ WAITING FOR OWNER ASSET · ⬜ · **Filename** `public/images/trailer/t03-live-event.webp` |
 
 ```
 Use the supplied Gellatti trailer exterior geometry as strict authority. Same exact trailer, service
@@ -381,7 +388,7 @@ lifestyle-commercial photography, 16:9.
 | --- | --- |
 | **Attach** | **`TRL-D`** (owner floorplan) + **`V2.png`** · **Ratio** 16:9 · **Route** `/trailer` configurator |
 | **Claude's verification** | **V2 genuinely fits.** 720 mm long × 600 mm deep against a ~1340 mm bay at exactly the 600 mm depth limit — ~620 mm of length to spare. This render is honest to publish |
-| **Status · QA** | 🔴 blocked on `TRL-D` being saved · ⬜ · **Filename** `public/images/trailer/t04-interior-v2.webp` |
+| **Status · QA** | ⏳ WAITING FOR OWNER ASSET · ⬜ · **Filename** `public/images/trailer/t04-interior-v2.webp` |
 
 ```
 Create a technically plausible photorealistic interior view of the existing 3.5 m × 2.1 m trailer
@@ -579,15 +586,30 @@ UI overlay. Photorealistic, premium Gellatti editorial style, 4:3 landscape with
 crop.
 ```
 
-### G4 — 🔴 **Milano V2 and Café Specialty cannot be rendered at all**
+### G4 — ✅ **RESOLVED — the references existed after all**
 
-Neither has an isolated product render or a spec table in any supplied document. The Milano
-brochure is lifestyle photography only. Generating them from description would produce machines
-that merely *resemble* the real products — precisely the failure the owner warned against.
+The owner was right. An earlier pass sampled pages instead of reading all of them and wrongly
+recorded these as unavailable. Both exist as **full manufacturer spec pages**:
 
-**Owner action: request isolated product renders for Milano V1, Milano V2 and Café Specialty from
-the supplier.** Until then those three catalogue entries cannot be illustrated, and `L-SPEC-03`
-already blocks the Milano production-capacity figure for the same evidential reason.
+- **Milano V1** — `MILES MilanoV1&2.pdf` **p.2** (Galaxy Pro Milano V1)
+- **Milano V2** — `MILES MilanoV1&2.pdf` **p.4** (Galaxy Pro Milano V2)
+- **Café Specialty** — `Miles international catalog.pdf` **p.22** (Galaxy Pro V1 Café Speciality)
+
+All three are extracted into the reference pack. They are rendered as **edits with strict geometry
+authority**, exactly like every other model — never from text description.
+
+Finding them also resolved a spec blocker: the Milano production-capacity anomaly is closed, because
+the quotation had simply **transposed** the V1 and V2 figures (see reconciliation §2.4). Café
+Specialty turned out to agree with the quotation on *every* field.
+
+| ID | Model | Attach | Ratio | Status |
+| --- | --- | --- | --- | --- |
+| **G-P1M** | Milano V1 | `MILANO-V1.png` | 4:3 | ⚪ |
+| **G-P2M** | Milano V2 | `MILANO-V2.png` | 4:3 | ⚪ |
+| **G-PCS** | Café Specialty | `CAFE-SPECIALITY.png` | 4:3 | ⚪ |
+
+Use the same edit prompt as G1/G2. **Café Specialty carries a "LA GALASSIA" side graphic in addition
+to the manufacturer wordmark — remove both.**
 
 ---
 

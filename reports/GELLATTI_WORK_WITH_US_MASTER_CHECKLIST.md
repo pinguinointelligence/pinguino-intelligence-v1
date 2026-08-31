@@ -14,7 +14,9 @@ testable requirement. Every numbered section of the prompt has at least one row.
 
 | Column | Values |
 | --- | --- |
-| **Work** | ⚪ TODO · 🟡 DOING · 🔴 BLOCKED · 🟢 DONE |
+| **Work** | ⚪ TODO · 🟡 DOING · ⏳ WAITING FOR OWNER ASSET · 🔴 BLOCKED · 🟢 DONE |
+
+**⏳ is not a blocker.** Per the owner correction of 2026-08-31, a row waiting on a marketing render never holds up backend or business implementation — it only prevents that page from freezing.
 | **Auto** | ⬜ NOT RUN · ✅ PASS · ❌ FAIL |
 | **Served** | ⬜ NOT RUN · ✅ PASS · ❌ FAIL |
 | **Owner** | ⬜ WAITING · ✅ APPROVED · ❌ REJECTED |
@@ -316,9 +318,9 @@ Copy authority: `src/copy/cooperation.ts` (PL + EN, `resolveCooperationCopy`). N
 | L-MACH-10 | Machines | Inquiry payload carries selector answers + recommended/requested model | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | With P rows |
 | L-PRICE-01 | Prices | 11 working prices = supplier purchase × 2; **UFO Sandwich Press excluded** | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | — | **VERIFIED 11/11** against the quotation: every owner price is exactly 2× the EXW price. UFO (€380) correctly excluded. Evidence: `GELLATTI_MACHINE_SPEC_RECONCILIATION.md` §1 | Encode as data + test |
 | L-PRICE-02 | Prices | Public wording: transport and destination tax/VAT handled in the final quote; no invented delivered pricing | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Quotation is **EXW China** (Hangzhou Gelato Tech Co., Ltd) — see N-TRAIL-05 for the related Incoterm risk | Copy + guard test |
-| L-SPEC-01 | Specs | Model-by-model reconciliation evidence table (field · quotation · brochure · other · selected authority · confidence · conflict) before any public spec | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | **6 of 11 models reconciled** (V2, V4, V4B, V6, V8, V2C) in `GELLATTI_MACHINE_SPEC_RECONCILIATION.md` §2. Remaining 5 (V4C, DC Cart, V1 Café, V1 Milano, V2 Milano) have no brochure spec page located — Milano brochure contains **no spec table at all** | Locate V4C/DC pages; else 6 questions to manufacturer |
+| L-SPEC-01 | Specs | Model-by-model reconciliation evidence table (field · quotation · brochure · other · selected authority · confidence · conflict) before any public spec | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | this run | **ALL 11 models reconciled** against a real manufacturer spec page. Nothing in the public catalogue rests on a single source. 5 manufacturer questions remain (was 7) | Encode the publishable allow-list in code |
 | L-SPEC-02 | Specs | Publish only basic verified fields: dimensions · power · positions · batch capacity · production time · application · price | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | Publishable set now defined per model in reconciliation §4. **Weight and peak power are withheld for ALL models** (brochure exceeds quotation on 100 % of models — systematic, not a typo) | Encode the allow-list in the catalog data |
-| L-SPEC-03 | Specs | Unresolved fields are omitted and their row marked BLOCKED — never silently pick the better-looking figure | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | **Three real conflicts found and blocked:** (a) weight — brochure higher on every model; (b) peak power — brochure higher on every model; (c) **V6/V8 power supply: quotation says single-phase 220 V, brochure says three-phase 380 V** — installation-critical, must never be published unresolved. Plus the Milano output anomaly (V2 Milano 100 cups/h vs V1 Milano 200 cups/h) | Enforce omission in code + test |
+| L-SPEC-03 | Specs | Unresolved fields are omitted — never silently pick the better-looking figure | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | Withheld: weight + peak power on the 7 Galaxy Pro units, weight on the Battery Cart, peak power on Milano V2, height on both Milano models, and **V6/V8 power supply (single-phase 220 V vs three-phase 380 V — installation-critical)**. **Milano output anomaly RESOLVED by evidence** — the quotation transposed V1 and V2; brochure is authority | Enforce the omission allow-list in code + test |
 | L-STORY-01 | Story | Real capabilities in premium Gellatti language, not pasted brochure text | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | After L-SPEC-01 |
 | L-STORY-02 | Story | **Manufacturer name is INTERNAL ONLY.** Public pages name the model (V2, V4B, Battery Cart, Milano) with no manufacturer attribution, and never imply Gellatti manufactures the equipment | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | **REVERSED by owner correction §5/§14.** Supplier identity stays in procurement, evidence and Admin only. Needs an automated guard so the name cannot leak into a public bundle | Copy + **public-bundle guard test** |
 
@@ -341,10 +343,10 @@ Copy authority: `src/copy/cooperation.ts` (PL + EN, `resolveCooperationCopy`). N
 | N-TRAIL-04 | Trailer | Standard trailer ≈3.5 m × 2.1 m, real geometry preserved | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Build from `TRL-D` |
 | N-TRAIL-07 | Trailer | **Machine bay rule: MAXIMUM MACHINE DEPTH 600 mm** | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | **New rule, owner correction §10.** Verified depths: V2 600 ✅ · V4B 600 ✅ · V4 800 ❌ · V6 800 ❌ · V8 800 ❌ · V4C 800 ❌ · Battery Cart 760 ❌. Countertop models (Milano 540, Café Specialty 550) pass on depth but are **countertop, not floor bay** — a different integration | Encode the rule + test |
 | N-TRAIL-08 | Trailer | **Nominal dimensions alone never declare a fit.** Service, ventilation, door/access and electrical compatibility must each be verified | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Owner correction §10 explicitly forbids declaring fit from external dimensions | Fit-verification checklist per model |
-| N-TRAIL-09 | Trailer | **V2 is a standard trailer option** | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | V2 is 720 long × 600 deep — fits the ~1340 mm bay with ~620 mm spare, and meets the 600 mm depth rule. The layout that can be drawn honestly today (`TRAILER-04`) | Build selector option + floorplan |
+| N-TRAIL-09 | Trailer | **V2 = CONFIRMED standard-trailer option** | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Owner correction §3. V2 is 720 long × 600 deep — meets the 600 mm depth rule exactly and leaves ~620 mm of length spare in the ~1340 mm bay. The only layout that can be drawn honestly today (`T05`) | Build selector option + floorplan |
 | N-TRAIL-10 | Trailer | **V4, V6, V8 are CUSTOM TRAILER · ON REQUEST** — never squeezed into the standard floorplan | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Owner correction §12. All three are 800 mm deep, failing the 600 mm bay rule outright | Selector routes them to "Indywidualny projekt przyczepy" |
 | N-TRAIL-05 | Trailer | **Never publish "FOB Germany".** Public wording is exactly: "Przyczepa bazowa od €10,000. Lokalizacja: Niemcy. Maszyna, wyposażenie, branding, transport i podatki dobieramy do projektu." | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | **RESOLVED by owner correction §9** — the incorrect Incoterm is banned outright rather than deferred | Copy + guard test forbidding the string "FOB" |
-| **N-V4B-FIT** | **Trailer** | **TRAILER-V4B-FIT — dimensional compatibility must be proven before any floorplan is frozen** | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | **CONFIRMED REAL — not a quotation typo.** Owner drawing equipment zone = **1340** × 600 × 910 mm. **Both** Miles quotation **and** Miles brochure (Galaxy Pro V4-B, p.22) independently state **1370** × 600 × 910 mm. Depth and height match exactly; length is short by **30 mm** | **Measure the physical trailer's clear opening.** Cheapest fix is 30 mm off the cabinetry run, not the machine. Marketing may list V4B; **floorplan may NOT be frozen** |
+| **N-V4B-FIT** | **Trailer** | **TRAILER-V4B-FIT — dimensional compatibility must be proven before any floorplan is frozen** | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | **CONFIRMED REAL — not a quotation typo.** Owner drawing equipment zone = **1340** × 600 × 910 mm. **Both** Miles quotation **and** Miles brochure (Galaxy Pro V4-B, p.22) independently state **1370** × 600 × 910 mm. Depth and height match exactly; length is short by **30 mm** | **Measure the physical trailer's clear opening.** Cheapest fix is 30 mm off the cabinetry run, not the machine. Owner correction §3: **V4B = intended standard option, fit pending.** Marketing may list it; the technical floorplan may NOT freeze |
 
 ### O — Franchise (§31) · CHECKPOINT I
 
@@ -381,21 +383,21 @@ neutral placeholders are development-only.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Q-ASSET-00 | Assets | Canonical manifest exists, built on the owner's 23-asset list | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | this run | Owner IDs adopted verbatim as authority; per-asset reference file, geometry guard and mobile-crop rule added | — |
 | Q-REF-01 | Assets | **Reference pack extracted so machines are rendered from real images, not descriptions** | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | this run | 12 files at `~/Desktop/PI/machines/REFERENCE-FOR-RENDERS/` — V2, V4, V4B, V6, V8, V2C, V4C, Battery Cart, 2x Milano, 2x context | Attach the matching file to every machine render |
-| Q-REF-02 | Assets | **Trailer references must be saved to disk** | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | `TRL-A`/`TRL-B` were pasted into chat only. **T01, T02, T03, T04 and the W03 gateway card are all blocked on this** — including T01, the owner's first render | **Owner: save both renders to `~/Desktop/PI/machines/trailer/`** |
-| Q-A01 | Assets | A01 Partner hero (16:9, 4:5 safe) | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Render order #2. Serves both `/work-with-us` and `/partner-program` | Owner renders |
-| Q-A02 | Assets | A02 community admin · A03 video creator | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Partner "who this is for" cards | Owner renders |
-| Q-A04 | Assets | A04 machines hero · A05 battery-cart hero | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Render order #3, #4. A05 must show **no power cable** — the battery is the whole claim | Owner renders |
-| Q-M01 | Assets | M01-M05 machine scenes | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | M05 lineup must state relative scale or the generator will normalise a 374 mm countertop unit against a 910 mm floor unit | Owner renders |
-| Q-MB01 | Assets | MB01-MB03 mobile scenes | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | MB01 mobile crop must be 4:5 not 1:1 — a square frame cuts the 2400 mm canopy off | Owner renders |
-| Q-T01 | Assets | T01-T04 trailer photography | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | Blocked on Q-REF-02 | After Q-REF-02 |
+| Q-REF-02 | Assets | **Trailer references to be saved to disk** | ⏳ | ⬜ | ⬜ | ⬜ | 🔓 | — | `TRL-A`/`TRL-B` were pasted into chat only. T01-T04 and the W03 card use them. **Not a blocker for backend work** | **Owner: save both renders to `~/Desktop/PI/machines/trailer/`** |
+| Q-A01 | Assets | A01 Partner hero (16:9, 4:5 safe) | ⏳ | ⬜ | ⬜ | ⬜ | 🔓 | — | Render order #2. Serves both `/work-with-us` and `/partner-program` | Owner renders |
+| Q-A02 | Assets | A02 community admin · A03 video creator | ⏳ | ⬜ | ⬜ | ⬜ | 🔓 | — | Partner "who this is for" cards | Owner renders |
+| Q-A04 | Assets | A04 machines hero · A05 battery-cart hero | ⏳ | ⬜ | ⬜ | ⬜ | 🔓 | — | Render order #3, #4. A05 must show **no power cable** — the battery is the whole claim | Owner renders |
+| Q-M01 | Assets | M01-M05 machine scenes | ⏳ | ⬜ | ⬜ | ⬜ | 🔓 | — | M05 lineup must state relative scale or the generator will normalise a 374 mm countertop unit against a 910 mm floor unit | Owner renders |
+| Q-MB01 | Assets | MB01-MB03 mobile scenes | ⏳ | ⬜ | ⬜ | ⬜ | 🔓 | — | MB01 mobile crop must be 4:5 not 1:1 — a square frame cuts the 2400 mm canopy off | Owner renders |
+| Q-T01 | Assets | T01-T04 trailer photography | ⏳ | ⬜ | ⬜ | ⬜ | 🔓 | — | Owner generates all final renders separately and delivers the files. Waiting, not blocking | Owner renders |
 | Q-T05 | Assets | T05 floorplan V2 — **vector, not generated** | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | V2 verified to fit: 720 x 600 in a ~1340 x 600 bay, exactly at the 600 mm depth limit, ~620 mm spare | Author SVG |
 | Q-T06 | Assets | T06 floorplan V4B | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | **BLOCKED — `N-V4B-FIT`**, owner agrees. 1340 available vs 1370 required, corroborated by two independent supplier sources | Measure the real clear bay length |
-| Q-F01 | Assets | F01-F03 franchise | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Render order #5, #10. Gellatti branding belongs on signage, never on the machine | Owner renders |
-| Q-W01 | Assets | W01-W04 gateway cards | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | W03 blocked on Q-REF-02 | Owner renders |
+| Q-F01 | Assets | F01-F03 franchise | ⏳ | ⬜ | ⬜ | ⬜ | 🔓 | — | Render order #5, #10. Gellatti branding belongs on signage, never on the machine | Owner renders |
+| Q-W01 | Assets | W01-W04 gateway cards | ⏳ | ⬜ | ⬜ | ⬜ | 🔓 | — | W03 blocked on Q-REF-02 | Owner renders |
 | Q-GAP-01 | Assets | **G1 — V4, V6 and V8 have no visual in the list** | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | The three most expensive products (EUR 15,400 / 24,000 / 33,000). `L-MACH-08` requires every model reachable with no dead end, so a V6/V8 recommendation would land on an imageless card. Reference renders already exist in the pack | Edit `V4.png`, `V6.png`, `V8.png` |
 | Q-GAP-02 | Assets | **G2 — no isolated product shots for selector result cards** | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Every listed asset is a scene; a cafe scene does not read at card size. These are edits, not generations | Edit the 8 reference files |
 | Q-GAP-03 | Assets | **G3 — no writer / newsletter persona** | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Master prompt §33 required it. Partner promises "dowolny kanal" and the platform strip includes blog + newsletter, but every persona image shows a camera | Render `G-A06` |
-| Q-GAP-04 | Assets | **G4 — Milano V2 and Cafe Specialty are unrenderable** | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | No isolated render and no spec table in any supplied document. Generating from description would produce machines that only resemble the real products | **Owner: request product renders from the supplier** |
+| Q-GAP-04 | Assets | **G4 — Milano V1/V2 and Cafe Specialty references** | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | this run | **RESOLVED — the owner was right, the references existed.** Milano V1 = brochure p.2, Milano V2 = brochure p.4, Cafe Specialty = catalogue p.22, all full spec pages. An earlier pass sampled pages instead of reading all of them. All three extracted to the reference pack | Render as edits (G-P1M, G-P2M, G-PCS) |
 | Q-ASSET-12 | Assets | **No manufacturer branding in any public asset**; machines stay clean and unbranded; Gellatti branding only on environment/signage/trailer | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Owner correction §5/§6 | Review gate at asset intake |
 | Q-ASSET-13 | Assets | **No social platform logos baked into photography** — real vector icons overlaid by the UI | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Owner correction §17. Every Partner brief reserves overlay space | Review gate + icon audit (A-GATE-03) |
 | Q-ASSET-14 | Assets | No ugly "asset missing" block survives into an owner-approved page | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Staging currently shows literal "Asset nie jest czescia preview" placeholders | Design graceful fallback |
@@ -436,15 +438,20 @@ neutral placeholders are development-only.
 
 ## 2. Counts
 
-| Work status | Count | Change this run |
-| --- | --- | --- |
-| 🟢 DONE | 25 | +1 (E-ELITE-03) |
-| 🟡 DOING / partially built | 39 | +6 (D-CODE-02/03/04/05, E-ELITE-02/04/05, L-SPEC-01/02/03 in, E-ELITE-03 out) |
-| 🔴 BLOCKED | 9 | −5 (D-CODE-02/04, E-ELITE-02/03/04 unblocked; L-SPEC-01 unblocked) |
-| ⚪ TODO | 64 | −2 |
-| **Total rows** | **137** | — |
+| Work status | Count |
+| --- | --- |
+| 🟢 DONE | 32 |
+| 🟡 DOING / partially built | 41 |
+| ⏳ WAITING FOR OWNER ASSET (not a blocker) | 9 |
+| 🔴 BLOCKED | 7 |
+| ⚪ TODO | 114 |
+| **Total rows** | **203** |
 
-Auto ✅ **8** · ⬜ 129. Served ⬜ 137 · Owner ⬜ 137 · Freeze 🔓 137.
+Auto ✅ **10** · ⬜ 193. Served ⬜ 203 · Owner ⬜ 203 · Freeze 🔓 203.
+
+The 7 remaining 🔴 blockers are: `N-V4B-FIT` + `Q-T06` (the 30 mm trailer measurement),
+`C-APP-05` (a `more_information_needed` application state needs a migration), and four rows
+downstream of those.
 
 Nothing is frozen. Nothing has owner approval. Most 🟢 rows are **pre-existing implementations
 found by audit**, not work completed by this run — they still need evidence, served QA and owner
