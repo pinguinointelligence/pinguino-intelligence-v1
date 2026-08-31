@@ -44,6 +44,8 @@ import {
   FranchisePage,
   HowItWorksPage,
   LabelsHubPage,
+  MachinesPage,
+  MobileEquipmentPage,
   ProductImportPage,
   ProductScanPage,
   ProductScannerV1Page,
@@ -52,6 +54,7 @@ import {
   RecipesHubPage,
   ShopPage,
   SubscriptionPage,
+  TrailerPage,
   WorkWithUsPage,
 } from '@/pages/destinations';
 
@@ -114,6 +117,11 @@ export function AppRoutes() {
       <Route path="/how-it-works" element={<HowItWorksPage />} />
       <Route path="/shop" element={<ShopPage />} />
       <Route path="/franchise" element={<FranchisePage />} />
+      {/* The three Work With Us lanes that had no route. The gateway links to
+          all four, and §27 forbids a card that only looks functional. */}
+      <Route path="/machines" element={<MachinesPage />} />
+      <Route path="/mobile" element={<MobileEquipmentPage />} />
+      <Route path="/trailer" element={<TrailerPage />} />
       {/* Owner decision (2026-07-17): retire the legacy dark AI-chat Home — „no page
           may look legacy”. /classic now redirects into the light flow, like /demo.
           The HomePage component is kept in the tree, just unrouted. */}

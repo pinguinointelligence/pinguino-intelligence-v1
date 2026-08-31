@@ -16,3 +16,6 @@ export {
   ProductionHubPage,
   ShopPage,
 } from './GlobalDestinationPages';
+export { MachinesPage } from './MachinesPage';
+export { MobileEquipmentPage } from './MobileEquipmentPage';
+export { TrailerPage } from './TrailerPage';
