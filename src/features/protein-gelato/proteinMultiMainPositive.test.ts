@@ -534,7 +534,22 @@ describe('Protein Crown group authority regressions', () => {
       proposalAuthorization,
     );
     expect(committed, JSON.stringify(committed)).toMatchObject({ ok: true });
-  });
+    // A HARNESS ALLOWANCE, NOT A PERFORMANCE TARGET — and not a contract.
+    //
+    // This test asserts nothing about elapsed time; every assertion above is
+    // correctness. It was simply inheriting Vitest's 5000 ms DEFAULT while its
+    // three timed siblings below carry explicit budgets, so the omission reads as
+    // an oversight rather than a decision.
+    //
+    // Measured on shared 4-core CI runners: 4619 ms and 4635 ms on two unrelated
+    // passing runs — 92 % of the default, a 7 % margin. That is the same signature
+    // `recipeVectorProximity` had (4468-5151 ms against the same 5000 ms) before it
+    // turned five of eight already-merged staging commits red from unchanged code.
+    //
+    // 30 s matches the allowance `vitest.solver-contracts.config.ts` already gives
+    // that suite for the same reason. Termination stays guaranteed structurally by
+    // the bounded Main frontier and iteration caps, never by the clock.
+  }, 30_000);
 
   it('reduces an above-ceiling 2:1 Crown group to the safe 20.7% envelope', () => {
     const base = fixture(2);
