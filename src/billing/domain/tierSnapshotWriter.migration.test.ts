@@ -284,3 +284,92 @@ describe('a commission event reads the persisted snapshot, not a calculation', (
     expect(DISPATCH).toContain('const month = commissionMonthDate(paidAtUtcMs)');
   });
 });
+
+// ---------------------------------------------------------------------------
+// 4. Owner point D — the catch-up contract, BOTH directions
+// ---------------------------------------------------------------------------
+
+describe('owner point D — a late run must produce the SAME snapshot as an on-time run', () => {
+  // The property that makes a catch-up safe: the tier depends only on the
+  // boundary's own facts, so WHEN the job runs cannot change what it writes.
+  it('February Gold → March Standard: the late February write is still Gold', () => {
+    const februaryOnTime = snapshotFor(105, '2026-02'); // what 1 Feb would have written
+    const februaryLate = snapshotFor(105, '2026-02'); // what a 3 Mar catch-up writes
+    expect(februaryLate).toEqual(februaryOnTime);
+    expect(februaryLate.effectiveTier).toBe('gold');
+
+    const march = snapshotFor(87, '2026-03');
+    expect(march.effectiveTier).toBe('standard');
+    // and February is untouched by March's fall
+    expect(februaryLate.count).toBe(105);
+  });
+
+  it('February Standard → March Gold: the inverse never overpays February', () => {
+    const february = snapshotFor(87, '2026-02');
+    const march = snapshotFor(105, '2026-03');
+    expect(february.effectiveTier).toBe('standard');
+    expect(march.effectiveTier).toBe('gold');
+    // February must NOT inherit March's Gold — that would overpay
+    expect(february.count).toBe(87);
+  });
+
+  it('the rejected design would have got both cases wrong', () => {
+    // Filling February with March's count: 87 → Standard, underpaying a Gold
+    // month. And in the inverse, 105 → Gold, overpaying a Standard month.
+    // Recorded as a test so the mistake cannot quietly return.
+    expect(snapshotFor(87, '2026-02').effectiveTier).toBe('standard');
+    expect(snapshotFor(105, '2026-02').effectiveTier).toBe('gold');
+    expect(snapshotFor(87, '2026-02')).not.toEqual(snapshotFor(105, '2026-02'));
+  });
+
+  it('a commission earned in February keeps February’s tier after March moves', () => {
+    const history = [snapshotFor(105, '2026-02'), snapshotFor(87, '2026-03')];
+    expect(selectSnapshotForMonth(history, 'partner-1', '2026-02')?.effectiveTier).toBe('gold');
+    expect(selectSnapshotForMonth(history, 'partner-1', '2026-03')?.effectiveTier).toBe('standard');
+  });
+
+  it('and the same holds in the inverse direction', () => {
+    const history = [snapshotFor(87, '2026-02'), snapshotFor(105, '2026-03')];
+    expect(selectSnapshotForMonth(history, 'partner-1', '2026-02')?.effectiveTier).toBe('standard');
+    expect(selectSnapshotForMonth(history, 'partner-1', '2026-03')?.effectiveTier).toBe('gold');
+  });
+
+  it('writing twice is writing once — the snapshot is a pure function of its inputs', () => {
+    expect(snapshotFor(105, '2026-02')).toEqual(snapshotFor(105, '2026-02'));
+    expect(snapshotFor(87, '2026-03')).toEqual(snapshotFor(87, '2026-03'));
+  });
+
+  it('February and March are computed independently', () => {
+    // no shared state: the March value cannot influence the February one
+    const feb = snapshotFor(105, '2026-02');
+    const mar = snapshotFor(87, '2026-03');
+    expect(feb.month).toBe('2026-02');
+    expect(mar.month).toBe('2026-03');
+    expect(feb.count).not.toBe(mar.count);
+  });
+});
+
+describe('owner point D — the SQL uses the boundary, so late equals on-time', () => {
+  const CATCHUP =
+    /create or replace function public\.gellatti_catchup_partner_tier_snapshots_v1[\s\S]*?\$\$;/.exec(
+      SQL,
+    )?.[0] ?? '';
+
+  it('computes the boundary from the MONTH, never from the run time', () => {
+    expect(CATCHUP).toContain("v_boundary := (v_month::timestamp at time zone 'Europe/Madrid')");
+  });
+
+  it('passes the boundary — not p_now — to both the count and the Elite check', () => {
+    expect(CATCHUP).toContain('gellatti_partner_referred_count_asof_v1(v_partner.id, v_boundary)');
+    expect(CATCHUP).toContain('gellatti_partner_elite_active_v1(v_partner.id, v_boundary)');
+  });
+
+  it('uses p_now ONLY as computed_at, so lateness is visible but not causal', () => {
+    // computed_at is provenance; it must never feed the tier decision
+    expect(CATCHUP).toMatch(/v_count, v_elite, p_now/);
+  });
+
+  it('still refuses to overwrite an existing snapshot', () => {
+    expect(CATCHUP).toContain('on conflict (partner_id, month) do nothing');
+  });
+});

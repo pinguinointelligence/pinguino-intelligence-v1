@@ -203,25 +203,166 @@ revoke all on function public.gellatti_write_partner_tier_snapshots_v1(date, tim
 
 -- ── CATCH-UP: a MISSED monthly invocation ────────────────────────────────────
 -- The writer above derives the CURRENT Madrid month, so an invocation on
--- 3 March writes March. On its own that means a missed 1 February run would
--- leave February with no snapshot forever — and a February commission would
--- defer on `tier_snapshot_missing` indefinitely, because dispatch.ts refuses to
--- borrow another month's tier.
+-- 3 March writes March. On its own a missed 1 February run would leave February
+-- with no snapshot forever — and a February commission would defer on
+-- `tier_snapshot_missing` indefinitely, because dispatch.ts refuses to borrow
+-- another month's tier.
 --
--- This finds the gaps and fills them.
+-- ── WHY THIS MAY NOT USE TODAY'S COUNT (owner ruling, 2026-08-31) ───────────
+-- An earlier draft filled a missing month with the CURRENT count. That is
+-- rejected, and rightly: a February boundary of 105 actives is Gold, but if
+-- March has fallen to 87 a late catch-up would write February as Standard and
+-- silently underpay every February commission. The inverse overpays. A tier
+-- snapshot must represent ITS OWN boundary or it must not exist.
 --
--- HONESTY ABOUT WHAT A BACKFILL CAN AND CANNOT KNOW:
--- `customer_subscriptions` is a cache of CURRENT state, not a history, so a
--- snapshot written late is computed from TODAY's counts, not from what was true
--- on the 1st of the missed month. That is visible rather than hidden: `month`
--- and `computed_at` sit side by side on the row, so a February snapshot with a
--- March computed_at is self-evidently late. A late snapshot is still far better
--- than none, because none blocks every commission in that month permanently.
--- The correct operational response to a large gap is to check the run log, not
--- to trust the backfilled count as historical truth.
+-- Equally forbidden: borrowing the previous month's tier, the next month's
+-- tier, the partners.tier mirror, or anything from a client payload.
+--
+-- ── WHAT THIS DOES INSTEAD ──────────────────────────────────────────────────
+-- It RECONSTRUCTS the count as-of the missed boundary from immutable history,
+-- and refuses to write anything when that reconstruction cannot be proven.
+--
+-- The historical source is `stripe_webhook_events`. Payloads are retained
+-- (0021: "payload is audit/debug evidence"), and a Stripe
+-- `customer.subscription.*` payload carries the subscription's status,
+-- current_period_end and cancellation fields at that instant. Ordering uses the
+-- payload's own `created` timestamp, NOT received_at: received_at is when we
+-- happened to receive it, which is wrong if delivery was late or out of order.
 
--- Which months are missing a snapshot? Observable on its own, so Admin can see
--- a gap before anything is written.
+-- The subscription's state as it stood at an arbitrary instant, read from the
+-- last event Stripe emitted about it at or before that instant.
+create or replace function public.gellatti_subscription_state_asof_v1(
+  p_stripe_subscription_id text,
+  p_at timestamptz
+) returns table (status text, current_period_end timestamptz, event_created timestamptz)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    e.payload->'data'->'object'->>'status',
+    case
+      when (e.payload->'data'->'object'->>'current_period_end') ~ '^[0-9]+$'
+      then to_timestamp((e.payload->'data'->'object'->>'current_period_end')::bigint)
+      else null
+    end,
+    to_timestamp((e.payload->>'created')::bigint)
+  from public.stripe_webhook_events e
+  where e.event_type like 'customer.subscription.%'
+    and e.payload->'data'->'object'->>'id' = p_stripe_subscription_id
+    and (e.payload->>'created') ~ '^[0-9]+$'
+    and to_timestamp((e.payload->>'created')::bigint) <= p_at
+  order by (e.payload->>'created')::bigint desc
+  limit 1;
+$$;
+
+revoke all on function public.gellatti_subscription_state_asof_v1(text, timestamptz)
+  from public, anon, authenticated;
+
+-- Can the count for this partner be reconstructed at this instant at all?
+--
+-- Two conditions, both necessary:
+--   1. the event log must reach back before the boundary — if the boundary
+--      predates the first event we ever stored there is simply no history;
+--   2. every attributed subscription that already existed at the boundary must
+--      have at least one subscription event at or before it. A subscription
+--      with no event is a hole, and a hole means the count is a guess.
+create or replace function public.gellatti_tier_reconstruction_blocker_v1(
+  p_partner_id uuid,
+  p_at timestamptz
+) returns text
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_log_start timestamptz;
+  v_holes integer;
+begin
+  select min(to_timestamp((payload->>'created')::bigint)) into v_log_start
+  from public.stripe_webhook_events
+  where (payload->>'created') ~ '^[0-9]+$';
+
+  if v_log_start is null then
+    return 'no_event_history';
+  end if;
+  if p_at < v_log_start then
+    return 'boundary_predates_event_history';
+  end if;
+
+  select count(*) into v_holes
+  from public.referral_attributions ra
+  join public.customer_subscriptions cs on cs.id = ra.subscription_id
+  where ra.partner_id = p_partner_id
+    and ra.created_at <= p_at
+    and cs.created_at <= p_at
+    and not exists (
+      select 1 from public.gellatti_subscription_state_asof_v1(cs.stripe_subscription_id, p_at)
+    );
+
+  if v_holes > 0 then
+    return 'subscription_without_event_history';
+  end if;
+  return null;
+end $$;
+
+revoke all on function public.gellatti_tier_reconstruction_blocker_v1(uuid, timestamptz)
+  from public, anon, authenticated;
+
+-- The count AS OF a historical boundary. Same T3 eligibility rule as the live
+-- counter, applied to the reconstructed state rather than the cache.
+create or replace function public.gellatti_partner_referred_count_asof_v1(
+  p_partner_id uuid,
+  p_at timestamptz
+) returns integer
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select count(distinct cs.id)::integer
+  from public.referral_attributions ra
+  join public.customer_subscriptions cs on cs.id = ra.subscription_id
+  join public.partners p on p.id = ra.partner_id
+  cross join lateral public.gellatti_subscription_state_asof_v1(cs.stripe_subscription_id, p_at) st
+  where ra.partner_id = p_partner_id
+    and ra.status = 'active'
+    and ra.created_at <= p_at
+    and cs.user_id <> p.user_id
+    and (
+      st.status in ('active', 'trialing')
+      or (st.status = 'past_due' and st.current_period_end is not null
+          and st.current_period_end > p_at)
+    );
+$$;
+
+revoke all on function public.gellatti_partner_referred_count_asof_v1(uuid, timestamptz)
+  from public, anon, authenticated;
+
+-- ── The typed state for a month that cannot be reconstructed ─────────────────
+-- Nothing is guessed and nothing is written. The gap is recorded so Admin can
+-- see the month, the partner, the reason and what it blocks; the affected
+-- commissions stay deferred until a human resolves it.
+create table if not exists public.partner_tier_snapshot_gaps (
+  id uuid primary key default gen_random_uuid(),
+  partner_id uuid not null references public.partners (id),
+  month date not null check (extract(day from month) = 1),
+  state text not null default 'historical_snapshot_reconciliation_required'
+    check (state in ('historical_snapshot_reconciliation_required', 'resolved')),
+  reason text not null,
+  detected_at timestamptz not null default now(),
+  resolved_at timestamptz,
+  resolved_by_user_id uuid references auth.users (id),
+  resolution_note text,
+  constraint partner_tier_snapshot_gaps_uniq unique (partner_id, month)
+);
+
+alter table public.partner_tier_snapshot_gaps enable row level security;
+-- No policy, no grant: operator-facing, read through the admin function below.
+
+-- Which months are missing a snapshot?
 create or replace function public.gellatti_missing_tier_snapshot_months_v1(
   p_now timestamptz default now()
 ) returns table (month date, partners_missing integer)
@@ -232,7 +373,6 @@ set search_path = public
 as $$
   with months as (
     select generate_series(
-      -- from the earliest month any still-active partner existed in
       coalesce(
         (select date_trunc('month', (min(p.created_at) at time zone 'Europe/Madrid'))::date
          from public.partners p where p.status = 'active'),
@@ -242,12 +382,10 @@ as $$
       interval '1 month'
     )::date as month
   )
-  select m.month,
-         count(p.id)::integer as partners_missing
+  select m.month, count(p.id)::integer
   from months m
   join public.partners p
     on p.status = 'active'
-   -- a partner needs no snapshot for a month that predates them
    and date_trunc('month', (p.created_at at time zone 'Europe/Madrid'))::date <= m.month
   where not exists (
     select 1 from public.partner_tier_snapshots s
@@ -261,10 +399,11 @@ $$;
 revoke all on function public.gellatti_missing_tier_snapshot_months_v1(timestamptz)
   from public, anon, authenticated;
 
--- Fill every missing month. Bounded, so a misconfigured call cannot walk years.
--- Each month is written by the SAME writer, so the on-conflict-do-nothing
--- immutability rule still holds: a month that already has a snapshot is skipped,
--- and running this twice writes nothing the second time.
+-- Fill every missing month FROM ITS OWN BOUNDARY, or record why it cannot be.
+--
+-- The boundary instant is Madrid midnight on the 1st — the same instant the
+-- on-time job would have measured, so a late run and an on-time run produce the
+-- SAME snapshot. That equality is the whole point.
 create or replace function public.gellatti_catchup_partner_tier_snapshots_v1(
   p_now timestamptz default now(),
   p_max_months integer default 12
@@ -275,31 +414,104 @@ set search_path = public
 as $$
 declare
   v_month date;
-  v_filled integer := 0;
-  v_result jsonb;
-  v_months jsonb := '[]'::jsonb;
+  v_boundary timestamptz;
+  v_threshold integer := public.gellatti_gold_threshold_v1();
+  v_partner record;
+  v_blocker text;
+  v_count integer;
+  v_elite boolean;
+  v_written integer := 0;
+  v_blocked integer := 0;
 begin
   for v_month in
     select month from public.gellatti_missing_tier_snapshot_months_v1(p_now)
     order by month
     limit greatest(coalesce(p_max_months, 12), 1)
   loop
-    -- p_count_at stays p_now: we cannot know the historical count (see above),
-    -- and computed_at then makes the lateness visible on the row.
-    v_result := public.gellatti_write_partner_tier_snapshots_v1(v_month, p_now);
-    v_filled := v_filled + 1;
-    v_months := v_months || jsonb_build_array(v_result);
+    -- Madrid midnight on the 1st, as a UTC instant.
+    v_boundary := (v_month::timestamp at time zone 'Europe/Madrid');
+
+    for v_partner in
+      select p.id from public.partners p
+      where p.status = 'active'
+        and date_trunc('month', (p.created_at at time zone 'Europe/Madrid'))::date <= v_month
+        and not exists (
+          select 1 from public.partner_tier_snapshots s
+          where s.partner_id = p.id and s.month = v_month
+        )
+    loop
+      v_blocker := public.gellatti_tier_reconstruction_blocker_v1(v_partner.id, v_boundary);
+
+      if v_blocker is not null then
+        -- NOTHING is written. The month stays absent, the commissions stay
+        -- deferred, and the reason is recorded for a human.
+        insert into public.partner_tier_snapshot_gaps (partner_id, month, reason)
+          values (v_partner.id, v_month, v_blocker)
+          on conflict (partner_id, month) do nothing;
+        v_blocked := v_blocked + 1;
+        continue;
+      end if;
+
+      v_count := public.gellatti_partner_referred_count_asof_v1(v_partner.id, v_boundary);
+      -- Elite obeys the same historical-time rule: the override in force AT the
+      -- boundary, never the one in force today.
+      v_elite := public.gellatti_partner_elite_active_v1(v_partner.id, v_boundary);
+
+      insert into public.partner_tier_snapshots
+        (partner_id, month, tier, active_subscription_count, elite_override, computed_at)
+      values (
+        v_partner.id, v_month,
+        case when v_elite then 'elite'
+             when v_count >= v_threshold then 'gold'
+             else 'standard' end,
+        v_count, v_elite, p_now
+      )
+      on conflict (partner_id, month) do nothing;
+      v_written := v_written + 1;
+    end loop;
   end loop;
 
   return jsonb_build_object(
-    'monthsFilled', v_filled,
-    'details', v_months,
-    'late', v_filled > 0
+    'snapshotsWritten', v_written,
+    'partnersBlocked', v_blocked,
+    'late', v_written > 0 or v_blocked > 0
   );
 end $$;
 
 revoke all on function public.gellatti_catchup_partner_tier_snapshots_v1(timestamptz, integer)
   from public, anon, authenticated;
+
+-- Admin: the unreconstructable months, with everything needed to act.
+create or replace function public.gellatti_admin_tier_snapshot_gaps_v1(
+  p_limit integer default 200
+) returns table (
+  partner_id uuid, month date, state text, reason text, detected_at timestamptz,
+  affected_commission_entries integer, affected_amount_cents bigint
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.gellatti_admin_has_permission_v1('PARTNER', auth.uid()) then
+    raise exception 'administrator_required';
+  end if;
+  return query
+    select g.partner_id, g.month, g.state, g.reason, g.detected_at,
+           (select count(*)::integer from public.commission_entries ce
+             where ce.partner_id = g.partner_id
+               and date_trunc('month', (ce.earned_at at time zone 'Europe/Madrid'))::date = g.month),
+           (select coalesce(sum(ce.amount_cents), 0)::bigint from public.commission_entries ce
+             where ce.partner_id = g.partner_id
+               and date_trunc('month', (ce.earned_at at time zone 'Europe/Madrid'))::date = g.month)
+    from public.partner_tier_snapshot_gaps g
+    where g.state = 'historical_snapshot_reconciliation_required'
+    order by g.month, g.partner_id
+    limit greatest(coalesce(p_limit, 200), 1);
+end $$;
+
+revoke all on function public.gellatti_admin_tier_snapshot_gaps_v1(integer) from public, anon;
+grant execute on function public.gellatti_admin_tier_snapshot_gaps_v1(integer) to authenticated;
 
 -- ── Admin read ───────────────────────────────────────────────────────────────
 create or replace function public.gellatti_admin_partner_tier_snapshots_v1(
@@ -336,8 +548,13 @@ grant execute on function public.gellatti_admin_partner_tier_snapshots_v1(uuid, 
 -- ============================================================================
 -- ROLLBACK (not applied — see docs/billing-partner/ROLLBACK_PLAN.md):
 --   drop function if exists public.gellatti_admin_partner_tier_snapshots_v1(uuid, integer);
+--   drop function if exists public.gellatti_admin_tier_snapshot_gaps_v1(integer);
 --   drop function if exists public.gellatti_catchup_partner_tier_snapshots_v1(timestamptz, integer);
 --   drop function if exists public.gellatti_missing_tier_snapshot_months_v1(timestamptz);
+--   drop function if exists public.gellatti_partner_referred_count_asof_v1(uuid, timestamptz);
+--   drop function if exists public.gellatti_tier_reconstruction_blocker_v1(uuid, timestamptz);
+--   drop function if exists public.gellatti_subscription_state_asof_v1(text, timestamptz);
+--   drop table if exists public.partner_tier_snapshot_gaps;
 --   drop function if exists public.gellatti_write_partner_tier_snapshots_v1(date, timestamptz);
 --   drop function if exists public.gellatti_partner_elite_active_v1(uuid, timestamptz);
 --   drop function if exists public.gellatti_partner_active_referred_count_v1(uuid, timestamptz);

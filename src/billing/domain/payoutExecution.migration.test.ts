@@ -353,64 +353,115 @@ describe('security posture', () => {
 const TIER_RAW = read('20260831202000_partner_tier_snapshot_writer.sql');
 const TIER = TIER_RAW.replace(/--.*$/gm, '');
 const CATCHUP = fn(TIER, 'gellatti_catchup_partner_tier_snapshots_v1');
-const MISSING_MONTHS = fn(TIER, 'gellatti_missing_tier_snapshot_months_v1');
 const MISSING_BATCHES = fn(PAYOUT, 'gellatti_missing_payout_batch_months_v1');
 
-describe('tier snapshots — a missed month is detected and filled exactly once', () => {
+describe('tier snapshots — a missed month is reconstructed, never guessed', () => {
+  const ASOF = fn(TIER, 'gellatti_partner_referred_count_asof_v1');
+  const STATE_ASOF = fn(TIER, 'gellatti_subscription_state_asof_v1');
+
   it('the plain writer alone would NOT repair a missed month', () => {
-    // it derives the CURRENT Madrid month, so a 3 March run targets March
     const writer = fn(TIER, 'gellatti_write_partner_tier_snapshots_v1');
     expect(writer).toContain(
       "date_trunc('month', (p_count_at at time zone 'Europe/Madrid'))::date",
     );
   });
 
-  it('so a catch-up detects every month that lacks a snapshot', () => {
-    expect(MISSING_MONTHS).toContain('generate_series');
-    expect(MISSING_MONTHS).toContain('not exists');
-    expect(MISSING_MONTHS).toContain('s.partner_id = p.id and s.month = m.month');
+  it('THE OWNER RULING: the catch-up never uses today’s count', () => {
+    // The rejected design called the live counter. The catch-up must call the
+    // AS-OF counter and nothing else.
+    expect(CATCHUP).toContain('gellatti_partner_referred_count_asof_v1');
+    expect(CATCHUP).not.toContain('gellatti_partner_active_referred_count_v1(');
   });
 
-  it('the gap search is observable on its own, before anything is written', () => {
-    expect(MISSING_MONTHS).toContain('partners_missing');
-    expect(MISSING_MONTHS).toContain('stable');
+  it('measures at Madrid midnight on the 1st — the same instant an on-time run would have used', () => {
+    expect(CATCHUP).toContain("v_boundary := (v_month::timestamp at time zone 'Europe/Madrid')");
+    expect(CATCHUP).toContain('v_boundary');
+    // and never "now" for the count
+    expect(CATCHUP).not.toMatch(/count_asof_v1\(v_partner\.id,\s*p_now\)/);
   });
 
-  it('never asks for a month that predates the partner', () => {
-    expect(MISSING_MONTHS).toContain(
-      "date_trunc('month', (p.created_at at time zone 'Europe/Madrid'))::date <= m.month",
+  it('reconstructs subscription state from the retained Stripe event payloads', () => {
+    expect(STATE_ASOF).toContain('from public.stripe_webhook_events');
+    expect(STATE_ASOF).toContain("event_type like 'customer.subscription.%'");
+  });
+
+  it('orders by the payload’s own created time, not by when we received it', () => {
+    // received_at is when WE got it, which is wrong for late or out-of-order delivery
+    expect(STATE_ASOF).toContain("order by (e.payload->>'created')::bigint desc");
+    expect(STATE_ASOF).not.toContain('received_at');
+  });
+
+  it('applies the same T3 eligibility rule to the reconstructed state', () => {
+    expect(ASOF).toContain("st.status in ('active', 'trialing')");
+    expect(ASOF).toContain("st.status = 'past_due'");
+    expect(ASOF).toContain('st.current_period_end > p_at');
+    expect(ASOF).toContain('cs.user_id <> p.user_id');
+    expect(ASOF).toContain('count(distinct cs.id)');
+  });
+
+  it('never borrows a neighbouring month, the mirror, or a payload tier', () => {
+    for (const forbidden of ['partners.tier', 'p.tier', 'lag(', 'lead(']) {
+      expect(CATCHUP, forbidden).not.toContain(forbidden);
+    }
+  });
+
+  it('Elite obeys the same historical-time rule', () => {
+    expect(CATCHUP).toContain('gellatti_partner_elite_active_v1(v_partner.id, v_boundary)');
+    expect(CATCHUP).not.toContain('gellatti_partner_elite_active_v1(v_partner.id, p_now)');
+  });
+});
+
+describe('when reconstruction cannot be proven, NOTHING is written', () => {
+  const BLOCKER = fn(TIER, 'gellatti_tier_reconstruction_blocker_v1');
+
+  it('refuses when the boundary predates all event history', () => {
+    expect(BLOCKER).toContain('boundary_predates_event_history');
+    expect(BLOCKER).toContain('no_event_history');
+  });
+
+  it('refuses when any attributed subscription has no event at or before the boundary', () => {
+    expect(BLOCKER).toContain('subscription_without_event_history');
+    expect(BLOCKER).toContain('not exists');
+  });
+
+  it('the catch-up skips the partner entirely rather than writing a guess', () => {
+    expect(CATCHUP).toContain('if v_blocker is not null then');
+    expect(CATCHUP).toContain('continue;');
+    // the insert must come AFTER the blocker check
+    expect(CATCHUP.indexOf('v_blocker is not null')).toBeLessThan(
+      CATCHUP.indexOf('insert into public.partner_tier_snapshots'),
     );
   });
 
-  it('fills each missing month through the SAME writer, so immutability still applies', () => {
-    expect(CATCHUP).toContain('public.gellatti_write_partner_tier_snapshots_v1(v_month, p_now)');
+  it('records a typed operational state instead', () => {
+    expect(TIER).toContain('create table if not exists public.partner_tier_snapshot_gaps');
+    expect(TIER).toContain("'historical_snapshot_reconciliation_required'");
+    expect(CATCHUP).toContain('insert into public.partner_tier_snapshot_gaps');
   });
 
-  it('writes exactly once — a second run finds no gaps and writes nothing', () => {
-    // the gap query drives the loop, and a filled month is no longer a gap
-    expect(CATCHUP).toContain('gellatti_missing_tier_snapshot_months_v1(p_now)');
-    expect(CATCHUP).toContain('monthsFilled');
+  it('the gap record is idempotent, so repeated runs do not pile up rows', () => {
+    expect(CATCHUP).toContain('on conflict (partner_id, month) do nothing');
   });
 
-  it('is bounded, so a misconfigured call cannot walk years', () => {
-    expect(CATCHUP).toContain('p_max_months');
-    expect(CATCHUP).toContain('limit greatest(coalesce(p_max_months, 12), 1)');
+  it('Admin can see the month, the partner, the reason and what it blocks', () => {
+    const admin = fn(TIER, 'gellatti_admin_tier_snapshot_gaps_v1');
+    expect(admin).toContain('g.month');
+    expect(admin).toContain('g.partner_id');
+    expect(admin).toContain('g.reason');
+    expect(admin).toContain('affected_commission_entries');
+    expect(admin).toContain('affected_amount_cents');
+    expect(admin).toContain('gellatti_admin_has_permission_v1');
   });
 
-  it('runs BEFORE the current month in the monthly schedule', () => {
-    // scoped to the monthly job body: the allowlist above it lists the jobs in
-    // a different order, which says nothing about execution order
-    const monthly = fn(SCHED, 'gellatti_partner_monthly_jobs_v1');
-    expect(monthly).toContain("'tier_snapshot_catchup'");
-    expect(monthly.indexOf("'tier_snapshot_catchup'")).toBeLessThan(
-      monthly.indexOf("public.gellatti_run_partner_job_v1('tier_snapshots')"),
+  it('the partner’s rate is never silently degraded — no snapshot means deferral', () => {
+    // dispatch.ts already defers on a missing snapshot; this asserts the
+    // catch-up does not paper over that by inventing one.
+    const dispatch = readFileSync(
+      join(REPO, 'supabase', 'functions', 'stripe-webhook', 'dispatch.ts'),
+      'utf8',
     );
-  });
-
-  it('is honest that a late count is not historical truth', () => {
-    expect(TIER_RAW).toContain('HONESTY ABOUT WHAT A BACKFILL CAN AND CANNOT KNOW');
-    expect(TIER_RAW).toContain('computed_at');
-    expect(CATCHUP).toContain("'late'");
+    expect(dispatch).toContain('tier_snapshot_missing');
+    expect(CATCHUP).not.toContain("'standard'::text");
   });
 });
 
@@ -448,5 +499,74 @@ describe('payout batches — a missed month loses no money and is reported, not 
     expect(PAYOUT).toMatch(
       /revoke all on function public\.gellatti_missing_payout_batch_months_v1/,
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Owner point E — the payout catch-up contract, pinned
+// ---------------------------------------------------------------------------
+
+describe('owner point E — a missed payout month cannot lose or duplicate money', () => {
+  it('entries stay eligible until a payout actually settles them', () => {
+    // only a successful settle marks them paid; a missed batch changes nothing
+    expect(PAID).toContain("set status = 'paid'");
+    expect(BUILD).toContain("ce.status = 'eligible'");
+  });
+
+  it('the next normal batch picks up whatever was left unsettled', () => {
+    // the balance query selects eligible entries not yet linked to any payout,
+    // so a month's worth simply rolls into the following batch
+    expect(BUILD).toContain('not exists');
+    expect(BUILD).toContain('i.commission_entry_id = ce.id');
+  });
+
+  it('each commission_entry_id can appear in at most ONE payout item, ever', () => {
+    // the global partial-unique index in 0019 is the guarantee; the settle uses
+    // on-conflict-do-nothing so a retry is harmless rather than a violation
+    const payouts = read('20260716102429_0019_payouts.sql');
+    expect(payouts).toContain('create unique index if not exists partner_payout_items_entry_uniq');
+    expect(payouts).toContain('on public.partner_payout_items (commission_entry_id)');
+    expect(PAID).toContain('on conflict do nothing');
+  });
+
+  it('the same holds for adjustments', () => {
+    const payouts = read('20260716102429_0019_payouts.sql');
+    expect(payouts).toContain(
+      'create unique index if not exists partner_payout_items_adjustment_uniq',
+    );
+  });
+
+  it('the Stripe idempotency key is deterministic, so a repeat cannot create a second transfer', () => {
+    expect(BUILD).toContain(
+      "v_month::text || ':' || partner_id::text || ':eur:' || case when p_livemode then 'live' else 'test' end",
+    );
+    // and the line carries it forward to the worker
+    expect(CLAIM).toContain('idempotency_key');
+  });
+
+  it('a claimed line already carrying a transfer id is never re-claimed', () => {
+    expect(CLAIM).toContain('pp.stripe_transfer_id is null');
+  });
+
+  it('repeated scheduler execution is a no-op at every level', () => {
+    expect(BUILD).toContain('on conflict (month, currency, livemode) do nothing');
+    expect(BUILD).toContain('on conflict (batch_id, partner_id) do nothing');
+    expect(BUILD).toContain('pg_advisory_xact_lock');
+    expect(CLAIM).toContain('for update skip locked');
+  });
+
+  it('the skipped period stays observable rather than being silently swallowed', () => {
+    const missing = fn(PAYOUT, 'gellatti_missing_payout_batch_months_v1');
+    expect(missing).toContain('not exists');
+    expect(missing).toContain('b.month = m.month');
+    // and every scheduled run is recorded either way
+    expect(SCHED).toContain('create table if not exists public.partner_job_runs');
+    expect(SCHED).toContain("'payout_batch_test'");
+  });
+
+  it('nothing invents a retroactive batch', () => {
+    const missing = fn(PAYOUT, 'gellatti_missing_payout_batch_months_v1');
+    expect(missing).not.toContain('insert into public.payout_batches');
+    expect(SCHED).toContain('gellatti_build_payout_batch_v1(null, false)');
   });
 });
