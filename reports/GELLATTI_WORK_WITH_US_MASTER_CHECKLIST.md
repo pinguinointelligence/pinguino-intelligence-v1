@@ -151,8 +151,8 @@ Copy authority: `src/copy/cooperation.ts` (PL + EN, `resolveCooperationCopy`). N
 | C-APP-02 | Application | Captures: public/creator name, country, languages, description, audience/topic, platform selection, platform URLs, site/blog/newsletter, audience size, promotion plan, code suggestions, consent | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Current panel captures a subset; `application_data` is jsonb so no migration needed | Extend form |
 | C-APP-03 | Application | Asks for no unnecessary private information | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Review at C-APP-02 |
 | C-APP-04 | Application | Duplicate active applications impossible for one account | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `partner_applications_open_uniq` partial unique index already enforces this | Add regression test |
-| C-APP-05 | Application | Customer-facing statuses RECEIVED / UNDER REVIEW / MORE INFORMATION NEEDED / APPROVED / REJECTED / SUSPENDED / TERMINATED | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | DB check constraint is `draft/submitted/under_review/approved/rejected/suspended/terminated` — **there is no `more_information_needed` state**; adding one is a migration | Migration + display map |
-| C-APP-06 | Application | Customer copy never exposes internal state names | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Repo rule already: raw values are contracts, shown through a display map | Add display map + guard test |
+| C-APP-05 | Application | Customer-facing statuses RECEIVED / UNDER REVIEW / MORE INFORMATION NEEDED / APPROVED / REJECTED / SUSPENDED / TERMINATED | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `b5963d85` | Migration adds `more_information_needed`. **It also fixed a latent bug**: the landed `request_information` action wrote `in_review`, which the CHECK rejects, so that admin action had never worked | Owner applies migration |
+| C-APP-06 | Application | Customer copy never exposes internal state names | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `b5963d85` | `partnerApplicationStatus.ts` pairs each contract value with customer copy; a guard test forbids any raw value, snake_case or SQL vocabulary in a customer string | — |
 | C-APP-07 | Application | Status page readable by the applicant | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | `gellatti_my_partner_application_v1` exists; no dedicated page | Build page |
 | C-APP-08 | Notifications | Emails: received · more info requested · approved · rejected · payout setup required · payout/account requirements | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | **UNBLOCKED by owner correction §3** — Resend adapter behind a provider-agnostic `EmailProvider` port. Depends on EMAIL-01..06 | Build the email lane first |
 | C-APP-09 | Approval | On approval: link partner, activate, grant HOME + PRO, grant PARTNER mode, codes available, Connect available, audit row, approval message | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | `gellatti_admin_partner_application_action_v1` already approves + mints first code; grant/audit coverage unverified | Verify each of the 8 effects |
@@ -183,15 +183,15 @@ Copy authority: `src/copy/cooperation.ts` (PL + EN, `resolveCooperationCopy`). N
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | E-STD-01 | Commission | Standard rates 1.99 / 9.00 / 4.99 / 29.00 | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | Match `RATE_TABLE_V1` exactly | Re-run tests |
 | E-GOLD-01 | Commission | Gold rates 2.49 / 14.00 / 5.99 / 39.00 | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | Match exactly | Re-run tests |
-| E-GOLD-02 | Tier | Gold automatic from 100 eligible active paid referred subs, HOME+PRO combined | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | **No monthly snapshot writer exists (0.4 #2)** — `dispatch.ts` reads `partner_tier_snapshots`, nothing writes it, so Gold can never activate at runtime | Build snapshot job (pg_cron + edge fn) |
+| E-GOLD-02 | Tier | Gold automatic from 100 eligible active paid referred subs, HOME+PRO combined | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `a8580c87`+`40120b3f` | Writer built and scheduled monthly. Immutable, idempotent, Madrid boundaries, Elite override wins. Owner scenarios proven: 99 Standard, 100 Gold, drop to 87 leaves February Gold intact and March reads Standard | Owner applies migration; then served QA |
 | E-GOLD-03 | Tier | cancel-at-period-end still counts until paid access ends; ended/unpaid/fraud/free excluded | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `tierSnapshots.ts` T3 | Regression test |
 | E-EVT-01 | Commission | Commission events: first monthly · monthly renewal · first annual/15-month · annual renewal · monthly→annual conversion once | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | C3–C5 | Re-run tests |
 | E-EVT-02 | Commission | No commission for failed/unpaid/void · zero invoice · partner's own free access · free invite · self-referral · duplicate event · fraud · Live test transaction | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | 7 of 8 covered by C6; **"Live report test transaction"** has no explicit rule | Add `livemode` refusal |
 | E-ELITE-01 | Elite | Elite is manually assigned by authorized Admin | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | T4 override record exists | — |
-| E-ELITE-02 | Elite | **Per-partner custom rate profile** (HOME m/a, PRO m/a) replaces the fixed Elite table (X1) | 🟡 | ✅ | ⬜ | ⬜ | 🔓 | `bd32c0e9` | Domain `partnerRateProfiles.ts` RP2 done (34 tests). **Still needs the `partner_rate_profiles` migration and the `dispatch.ts` resolver change** | Migration + wire into the webhook |
+| E-ELITE-02 | Elite | **Per-partner custom rate profile** replaces the fixed Elite table (X1) | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `b5963d85`+`a8580c87` | Domain, migration and the LIVE path all done: `dispatch.ts` resolves an elite amount from the partner's own profile at the earned instant, and defers when none is in force | Owner applies migration |
 | E-ELITE-03 | Elite | 2.99 / 19 / 6.99 / 49 become **default suggestions only** | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `bd32c0e9` | `ELITE_DEFAULT_SUGGESTION_RATES` (RP6). Never applied automatically — RP7 refuses instead of defaulting, asserted by test | Surface in the admin form (I-ADM-04) |
-| E-ELITE-04 | Elite | Every Elite profile is **versioned**: effective start/end, rates, reason, admin actor, timestamp, note, prior version, revocation history | 🟡 | ✅ | ⬜ | ⬜ | 🔓 | `bd32c0e9` | All 9 fields modelled; `supersedeRateProfileVersion` is append-only and cannot overlap (RP3/RP4) | `partner_rate_profiles` migration |
-| E-ELITE-05 | Elite | No retroactive rewriting; every earned commission snapshots the effective rate | 🟡 | ✅ | ⬜ | ⬜ | 🔓 | `bd32c0e9` | RP5 proven: resolution keys on the instant EARNED, so appending a version cannot change an earlier answer. `commission_entries` stores rate + rule version already | Add `rate_profile_version_id` to the ledger |
+| E-ELITE-04 | Elite | Every Elite profile is **versioned** with all nine audit fields | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `b5963d85` | Table + overlap trigger + one-open-version index; half-open windows so touching versions never overlap | Owner applies migration |
+| E-ELITE-05 | Elite | No retroactive rewriting; every earned commission snapshots the effective rate | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `a8580c87` | Resolver keys on the earned instant and never `now()`; `commission_entries.rate_profile_version_id` records which version produced the money | — |
 | E-HOLD-01 | Hold | Two FULL calendar months, Europe/Madrid, never "60 days"; Jan→Apr 1, Feb→May 1, Dec→Mar 1 | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `holdCalendar.ts` H1–H4, DST-correct | Re-run tests |
 | E-HOLD-02 | Hold | Dashboard shows earned / held / eligible date / eligible / batched / transfer / payout / reversed | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | Workspace RPC returns commission status + payouts; the 8 distinct states are not all surfaced | UI work in H |
 | E-REV-01 | Reversals | Full refund → full reversal; partial → proportional; cap; append-only; dispute lost/won | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `refundAdjustments.ts` R1–R6 | Re-run tests |
@@ -205,12 +205,12 @@ Copy authority: `src/copy/cooperation.ts` (PL + EN, `resolveCooperationCopy`). N
 | F-CON-01 | Connect | Connected account create/retrieve + hosted onboarding after approval | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | `create-connect-onboarding-link` edge fn + `startConnectOnboarding()` exist; never served-proven | Sandbox served run |
 | F-CON-02 | Connect | Requirements state · transfers allowed · payouts enabled · resume/update onboarding | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | `partners.onboarding_complete` / `payouts_enabled` columns exist; `account.updated` handled | Verify each state renders |
 | F-CON-03 | Connect | Gellatti stores no raw bank/document data | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | Hosted onboarding only; no such columns | Assert by schema test |
-| F-PAY-01 | Payout | **Monthly payout batch worker** — 1st of month, after reconciliation + tier snapshot | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | **Does not exist (0.4 #1).** `payoutNetting.ts` computes; nothing calls it | Build worker (pg_cron + edge fn) |
+| F-PAY-01 | Payout | **Monthly payout batch worker** — 1st of month, after reconciliation + tier snapshot | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `40120b3f` | Full execution layer + pg_cron, scheduled AFTER the tier snapshot. **Live transfers are hard-gated**: `payout_release_state` defaults to not released and every money-moving function asserts it | Owner applies migration |
 | F-PAY-02 | Payout | €25 default minimum; below → carry forward | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | P2 | Regression test |
 | F-PAY-03 | Payout | Dashboard distinguishes Gellatti batch / Stripe transfer / bank payout | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | Three-table model supports it; UI unverified | UI work in H |
 | F-PAY-04 | Payout | No exact bank arrival date promised | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Copy guard test |
-| F-PAY-05 | Payout | Transfer failures + reconciliation tested | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | With F-PAY-01 |
-| F-PAY-06 | Payout | **No live money during staging QA** | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | Staging is Stripe TEST mode | Assert `livemode=false` in QA evidence |
+| F-PAY-05 | Payout | Transfer failures + reconciliation tested | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `40120b3f` | All 12 owner failure scenarios covered by guard tests. The reconciler never auto-fails an ambiguous line — assuming failure could double-pay | Served QA |
+| F-PAY-06 | Payout | **No live money — production payouts stay disabled until an explicit owner release** | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `40120b3f` | Enforced by `payout_release_state` (defaults false, no policy, no grant) + a test asserting the scheduled batch is test-mode only | Owner release is a separate, deliberate act |
 
 ### G — Welcome Partner onboarding (§15) · CHECKPOINT C
 
@@ -280,13 +280,13 @@ Copy authority: `src/copy/cooperation.ts` (PL + EN, `resolveCooperationCopy`). N
 | ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | EMAIL-01 | Email | Canonical site `www.gellatti.com`; canonical mailbox `info@gellatti.com`; From `Gellatti <info@gellatti.com>`; Reply-To `info@gellatti.com` | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Single mailbox by design — no extra public mailboxes unless technically necessary | Constants + config |
-| EMAIL-02 | Email | **Provider-agnostic architecture:** business event → persisted email/notification job → idempotency → `EmailProvider` port → Resend adapter. The domain layer must not import Resend | 🟡 | ✅ | ⬜ | ⬜ | 🔓 | `db16a161` | `emailJob.ts` — port + job model done, with a guard test asserting no vendor reference in code and no import outside the domain folder. **Adapter and DB table still to build** | Resend adapter + migration |
+| EMAIL-02 | Email | **Provider-agnostic architecture:** business event → persisted job → idempotency → `EmailProvider` port → Resend adapter | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `4d790ecc` | Full chain built: `emailJob.ts` port, `email_jobs` table, `email-dispatch` adapter. The vendor is named in exactly one file | Owner applies migration + deploys the function |
 | EMAIL-03 | Email | **Mandatory subject taxonomy** — stable machine-filterable prefixes `[GELLATTI][AREA][EVENT][STATE]` plus a human identifier | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `fe5176e5` | `src/notifications/domain/emailSubject.ts` — all 13 owner-documented subjects asserted literally, both worked examples reproduced, closed enumerated set, 40 tests | Wire into the send lane |
-| EMAIL-04 | Email | Structured metadata (`area`, `event`, `entity_id`, `environment`) attached as provider metadata/headers **where supported** — but sorting must never depend on it | 🟡 | ✅ | ⬜ | ⬜ | 🔓 | `fe5176e5` | `buildEmailMetadata` done + a test proving the subject alone still carries area and event with no metadata present. Adapter attachment still to come | Resend adapter |
+| EMAIL-04 | Email | Structured metadata attached where supported — but sorting must never depend on it | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `4d790ecc` | Sent as `X-Gellatti-*` headers by the adapter; a test proves the subject alone still identifies the message with no metadata present | — |
 | EMAIL-05 | Email | **Never silently mark unsent mail as sent.** Job states must distinguish queued / sent / failed / retrying | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `db16a161` | Enforced structurally: `sent` reachable only from `sending` and only with a provider message id; `isDelivered` checks status AND evidence, so a forged row does not read as delivered | — |
-| EMAIL-06 | Email | Admin can see failed and pending email jobs relevant to operations | 🟡 | ✅ | ⬜ | ⬜ | 🔓 | `db16a161` | `requiresAdminAttention()` + retained `lastFailure` done in the domain. **Admin UI still to build** | Admin panel section |
-| EMAIL-07 | Email | Staging uses a capture/test provider; real sending only after domain/provider verification is valid | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | No live mail during staging QA | Capture provider + guard |
-| EMAIL-08 | Email | Idempotency: one business event produces at most one email, replay-safe | 🟡 | ✅ | ⬜ | ⬜ | 🔓 | `db16a161` | Deterministic key `env:subjectKey:entityId:recipient`, environment-scoped so a staging replay cannot collide with production. **Needs the DB unique index** | Migration |
+| EMAIL-06 | Email | Admin can see failed and pending email jobs relevant to operations | 🟡 | ✅ | ⬜ | ⬜ | 🔓 | `4d790ecc` | `gellatti_admin_email_jobs_v1` returns kind, message, attempts and next attempt — never bodies. **Admin UI still to build** | Admin panel section |
+| EMAIL-07 | Email | A missing credential blocks delivery but never produces a false `sent` | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `4d790ecc` | With no API key the worker records a RETRYABLE failure with a truthful reason and sends nothing; the job delivers itself once the key exists | Owner supplies `RESEND_API_KEY` when ready |
+| EMAIL-08 | Email | Idempotency: one business event produces at most one email, replay-safe | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `4d790ecc` | Deterministic environment-scoped key + a DB unique index; a replay returns the existing job rather than sending twice | — |
 
 ### K — QA personas (§22) · CHECKPOINT E/F
 
@@ -440,14 +440,22 @@ neutral placeholders are development-only.
 
 | Work status | Count |
 | --- | --- |
-| 🟢 DONE | 33 |
-| 🟡 DOING / partially built | 44 |
+| 🟢 DONE | 45 |
+| 🟡 DOING / partially built | 38 |
 | ⏳ WAITING FOR OWNER ASSET (not a blocker) | 9 |
-| 🔴 BLOCKED | 7 |
-| ⚪ TODO | 110 |
+| 🔴 BLOCKED | 4 |
+| ⚪ TODO | 107 |
 | **Total rows** | **203** |
 
-Auto ✅ **14** · ⬜ 189. Served ⬜ 203 · Owner ⬜ 203 · Freeze 🔓 203.
+Auto ✅ **21** · ⬜ 182. Served ⬜ 203 · Owner ⬜ 203 · Freeze 🔓 203.
+
+**The 4 remaining 🔴 blockers**, all needing a physical measurement or a supplier answer:
+`N-V4B-FIT` and `Q-T06` (the 30 mm trailer bay), plus two rows downstream of them.
+
+**Everything runtime now waits on two owner actions**, not on more code:
+apply the six migrations, and deploy the `email-dispatch` edge function. Per repo
+convention (`IMPLEMENTATION_STATUS.md`) migrations are file-first and the owner applies them, and
+Claude does not deploy Edge Functions.
 
 The 7 remaining 🔴 blockers are: `N-V4B-FIT` + `Q-T06` (the 30 mm trailer measurement),
 `C-APP-05` (a `more_information_needed` application state needs a migration), and four rows
