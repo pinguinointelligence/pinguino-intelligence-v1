@@ -264,6 +264,72 @@ at 400 g, so the old proportional rescale would have produced **19 g** at
 
 ---
 
+## SORBET STARTER / INULIN — **CLOSED** · a batch resize spent the Main's reservation
+
+| | |
+|---|---|
+| **SEVERITY** | HIGH — a brand-new recipe was invalid against Gellatti's own authority |
+| **STAGING** | fix `8416a947` (PR #60) · persistence `08771f21` (PR #62) |
+| **DEPLOYMENT** | `dpl_4UhU2be6yW7dWWGnjvKrdp87GYvx` · bundle `index-D4r9NuJ8.js` → `index-PsX4XCcD.js` |
+
+### Cause
+
+The canonical Sorbet starter is **deliberately incomplete**: ~40 % of the batch
+as support, the rest named `missingMainMassGrams` — the mass the customer's
+fruit Main will occupy. `resizeRecipeBatch` knew nothing about that reservation,
+so it treated the scaffold as a complete recipe and filled the batch with
+support ingredients: every line x2.5.
+
+INULIN went from the starter's 5.4 % to **13.8 %** and broke `OWNER_INULIN_POLICY`
+(2–8 %) — 90.6 g against a 13.4–53.6 g band at 670 g — before the customer had
+touched anything. It reproduced on **all ten** canonical Home machines. HOME
+reaches it by construction: `generateRecipe` rebuilds the starter and then
+re-asserts the machine, which *is* the resize.
+
+**The starter template was never wrong.** It is legal at every product x mode x
+batch tested; the excess was purely `5.5 % / 0.4`. The blast radius is
+Sorbet-only because it is the only profile with `missingMainMassGrams > 0` —
+Gelato/Vegan/Protein starters already sum to the batch and were unaffected.
+
+### The invariant
+
+For an incomplete starter it is **not** "lines sum to the batch":
+
+    sum(lines) + missingMainMassGrams === target batch
+
+A resize moves the support vector **and** the reservation, preserving support
+ratios. 1000 → 670: support 400 → 268, reservation 600 → 402.
+
+The discriminator is the reservation, never `productType === 'sorbet'`. It is
+recorded from the starter's own metrics and honoured only while it remains TRUE
+of the draft, so a completed draft reports zero and a whole-gram stabilizer
+shortfall is never mistaken for a Main reservation. `OWNER_INULIN_POLICY` is
+untouched.
+
+### Served QA — passed
+
+| step | result |
+|---|---|
+| new Sorbet → Ninja CREAMi Deluxe (before any fruit) | batch 670, sum **268**, reservation **402**, accounted **670** |
+| INULIN | **33 g = 4.93 %**, inside the derived 13.4–53.6 g band |
+| after a page refresh | reservation **402** survives |
+| refresh → amount 500 g | sum 199.25 + reservation 300.75 = **500**; INULIN **24.56 g = 4.91 %**, inside 10–40 g |
+
+The refresh case is why PR #62 exists: `starterReservedMainGrams` was a new store
+field and persistence is an explicit allow-list (GEL-P0-017), so it was
+non-persistent by default and the defect returned by reload alone (500 g gave
+INULIN 62 g = 12.4 %). Adding the field to the allow-list is the mechanism that
+contract exists to force; GEL-P0-017 itself is unchanged.
+
+### Separate debts — NOT fixed here
+
+* **NEW — Main insertion does not re-budget the batch.** Adding the fruit leaves
+  1072 g against a 670 g batch. Discovered during this work; own defect.
+* **Crown auto-seed 1 g** (1001/1000 on a new recipe).
+* **Signed-out Recalculate** silent no-op behind a `401`.
+
+---
+
 ## PC-03 — **CLOSED / FROZEN** · Sorbet exact-projection eligibility required an on-batch draft
 
 > **THE ORIGINAL ROOT-CAUSE NARRATIVE IS WITHDRAWN.** It named the citrus fibre
