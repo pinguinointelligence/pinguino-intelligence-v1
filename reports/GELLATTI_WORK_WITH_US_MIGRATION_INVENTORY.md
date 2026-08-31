@@ -21,7 +21,7 @@ And the check the owner asked for found a fourth problem that neither of us had 
 
 ---
 
-## 1. THE INVENTORY — TWELVE FILES, NINE APPLIED
+## 1. THE INVENTORY — THIRTEEN FILES, TEN APPLIED
 
 Referred to by **exact filename**. Ordinal shorthand is no longer used: inserting `200100` after the
 first apply made "#7/#8" ambiguous.
@@ -34,6 +34,7 @@ first apply made "#7/#8" ambiguous.
 | `20260831200100_partner_code_banned_words.sql` | `partner_code_banned_words` | **`20260831141738`** | `gellatti_partner_code_claim_refusal_v1` replaced; banned-word loop present; grants unchanged | **0 rows** |
 | `20260831200200_partner_code_slot_limit_dedupe.sql` | `partner_code_slot_limit_dedupe` | **`20260831143710`** | trigger `partner_codes_slot_limit` gone · `enforce_partner_code_slot_limit` gone (`0`) · `gellatti_partner_code_guard_v1` byte-identical · both global indexes intact · claim guard now returns the canonical reason | **0 rows** — 6 codes / 3 partners unchanged |
 | `20260831200500_partner_rate_profiles.sql` | `partner_rate_profiles` | **`20260831150753`** | table + 3 indexes + RLS + 1 policy present · both functions SECURITY DEFINER with `search_path=public` · ledger 20 → 21 columns · `commission_rules` still 12 rows (elite row kept) | **0 rows** — 0 profiles seeded, ledger still 0, 3 partners / 6 codes unchanged |
+| `20260831204000_partner_tier_snapshot_on_time_guard.sql` | `partner_tier_snapshot_on_time_guard` | **`20260831194031`** | live writer now refuses a past month (`historical_month_requires_catchup`), a future month, and a future measurement instant · catch-up byte-identical · **grants unchanged** | **0 rows** |
 | `20260831202000_partner_tier_snapshot_writer.sql` | `partner_tier_snapshot_writer` | **`20260831190352`** | 11 functions · `partner_tier_snapshot_gaps` with RLS on and ACL `postgres \| service_role` · **no pg_cron job** · **no payout function** · applied SQL **provably identical** to the repo file (473 code lines, md5 `894701df…` both sides) | **0 rows** — 0 snapshots, 0 gaps |
 | `20260831201500_email_jobs.sql` | `email_jobs` | **`20260831175103`** | table + 6 indexes + 11 CHECKs · RLS on with **0 policies** · table ACL `postgres \| service_role` only · 4 mutation fns service-role only, admin read granted to `authenticated` and super_admin-gated · applied **verbatim** | **0 rows** |
 | `20260831201100_partner_application_audit_actor_fix.sql` | `partner_application_audit_actor_fix` | **`20260831155647`** | one function replaced (`gellatti_submit_partner_application_v1`) · status CHECK, open-application index and the admin function all **unchanged** (admin fn md5 `27fd03a2…`) · ACLs still `postgres \| authenticated \| service_role` | **0 rows** |
@@ -1310,6 +1311,77 @@ Pre-existing counts unchanged: 1 subscription, 6 attributions, 8 webhook events,
 
 Owner-locked and protected-path guards **OK** · typecheck clean · lint **0 errors** ·
 **1101 passed** across billing + notifications.
+
+**Payout execution and the scheduler remain unapplied.**
+
+---
+
+## 20. `20260831204000_partner_tier_snapshot_on_time_guard.sql` — APPLIED
+
+**Registered `20260831194031`**, read back. Forward-only; `20260831202000` was **not** edited.
+
+### 20.1 Same-month late execution — the analysis the owner required (§5)
+
+| Question | Answer |
+| --- | --- |
+| Is the live writer meant to run only at/near the boundary? | The intended cadence is `45 2 1 * *` — 02:45 UTC on the 1st, i.e. **03:45/04:45 Madrid**. The intended invocation already carries **hours** of drift by design, so there is no "exactly at the boundary" contract to enforce |
+| What stops a late same-month manual call? | **Nothing did.** The only barrier is the grant: `postgres \| service_role`. It is not reachable by anon, authenticated or a partner |
+| Does an execution-window authority exist? | **No.** Searched `execution_window`, `snapshot_window`, `grace_period`, `boundary_tolerance`, `max_drift`, `run_window` — none exist |
+| Should the boundary come from server time? | **Yes**, and it now does. Trusting `p_month`/`p_count_at` would let the caller redefine which month is "current" and walk back through the same hole |
+
+**Why no window constant was invented.** Any non-zero tolerance is arbitrary, and the intended
+schedule already drifts hours. Instead the structure carries the safety: the monthly job runs
+`tier_snapshot_catchup` **before** `tier_snapshots`, and the catch-up's month range **includes the
+current month**. So on a normal run the boundary-exact authority claims the row first and this writer
+is a no-op under `on conflict do nothing`. The live writer remains the fallback for the one case
+catch-up cannot serve — a system whose event history does not reach the boundary, where live state is
+the only truth that exists.
+
+**Residual, reported not guessed:** a manual mid-month `service_role` call that beats catch-up to the
+row. Closing it needs an owner-set drift constant — a business decision. The guard removes the part
+that needs no constant: **any past month at all**.
+
+### 20.2 Guard design
+
+Server-derived current Madrid month, then three typed refusals:
+
+| Condition | Refusal |
+| --- | --- |
+| `p_month` < current month | **`historical_month_requires_catchup`** |
+| `p_month` > current month | **`future_month_not_snapshottable`** |
+| `p_count_at` in the future | **`tier_snapshot_count_instant_in_future`** |
+
+Explicit refusal, **not** an internal redirect: rerouting would hide a caller doing something it
+should not, and catch-up may legitimately decline to write at all.
+
+### 20.3 Live proof — all probes rolled back
+
+| Case | Result |
+| --- | --- |
+| Current month | **allowed**, 3 written |
+| Previous month | **REFUSED** `historical_month_requires_catchup` · no mutation · 0 rows for that month |
+| February (far past) | **REFUSED** `historical_month_requires_catchup` |
+| Next month | **REFUSED** `future_month_not_snapshottable` |
+| Measurement instant +2 days | **REFUSED** `tier_snapshot_count_instant_in_future` |
+| Re-run current month | written **0**, skipped 3 — immutable |
+| 99 / 100 / 101 | **standard / gold / gold** — unchanged |
+| Elite with 101 referrals | **elite** — precedence unchanged |
+| Past month via **catch-up**, complete history | **gold / 105** |
+| …and the live writer for that same month | **REFUSED** — catch-up is now the only route |
+| Past month via catch-up, **incomplete** history | **0 snapshots**, gap `missing_initial_state` |
+| Readers at the boundary | live **105** = as-of **105** — on-time ≡ late unchanged |
+
+### 20.4 Role surface unchanged (§8)
+
+`anon` on-time **DENIED 42501** · `anon` catch-up **DENIED 42501** · partner on-time **DENIED
+42501** · partner catch-up **DENIED 42501** · partner clear-gap **DENIED 42501**. Both writers remain
+`postgres | service_role`. The guard broadens nothing.
+
+### 20.5 Residue
+
+0 snapshots · 0 gaps · 0 QA subscriptions · 0 QA events · 0 rate profiles · 1 subscription ·
+8 webhook events · 6 attributions · 3 partners (earliest still **2026-08-23**, so the backdating
+rolled back) · 0 commissions · 1 unrelated cron job.
 
 **Payout execution and the scheduler remain unapplied.**
 
