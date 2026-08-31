@@ -739,7 +739,7 @@ describe('shop order settlement — the provider is the payment authority', () =
     seedOrder(db);
     const result = await settle(db, shopSession());
     expect(result.note).toBe('shop_order_settled');
-    const [row] = db.rows('shop_orders');
+    const row = db.rows('shop_orders')[0]!;
     expect(row.status).toBe('paid');
     expect(row.paid_at).toBeTruthy();
     expect(row.total_cents).toBe(7380);
@@ -765,7 +765,7 @@ describe('shop order settlement — the provider is the payment authority', () =
     seedOrder(db, { status: 'paid', paid_at: '2026-08-31T13:16:20.584Z' });
     const result = await settle(db, shopSession());
     expect(result.note).toBe('shop_order_already_paid');
-    expect(db.rows('shop_orders')[0].paid_at).toBe('2026-08-31T13:16:20.584Z');
+    expect(db.rows('shop_orders')[0]!.paid_at).toBe('2026-08-31T13:16:20.584Z');
   });
 
   it('never walks a refunded or cancelled order back to paid', async () => {
@@ -774,7 +774,7 @@ describe('shop order settlement — the provider is the payment authority', () =
       seedOrder(db, { status: terminal, paid_at: '2026-08-31T13:00:00.000Z' });
       const result = await settle(db, shopSession());
       expect(result.note).toBe(`shop_order_terminal:${terminal}`);
-      expect(db.rows('shop_orders')[0].status).toBe(terminal);
+      expect(db.rows('shop_orders')[0]!.status).toBe(terminal);
     }
   });
 
@@ -783,7 +783,7 @@ describe('shop order settlement — the provider is the payment authority', () =
     seedOrder(db);
     const result = await settle(db, shopSession({ payment_status: 'unpaid' }));
     expect(result.note).toBe('shop_order_not_paid:pending');
-    expect(db.rows('shop_orders')[0].status).toBe('pending');
+    expect(db.rows('shop_orders')[0]!.status).toBe('pending');
   });
 
   it('cancels an expired session, once', async () => {
@@ -791,7 +791,7 @@ describe('shop order settlement — the provider is the payment authority', () =
     seedOrder(db);
     const first = await settle(db, shopSession({ status: 'expired', payment_status: 'unpaid' }));
     expect(first.note).toBe('shop_order_expired');
-    expect(db.rows('shop_orders')[0].status).toBe('cancelled');
+    expect(db.rows('shop_orders')[0]!.status).toBe('cancelled');
     const after = db.snapshot();
     const second = await settle(db, shopSession({ status: 'expired', payment_status: 'unpaid' }), 'evt_shop_3');
     expect(second.note).toBe('shop_order_terminal:cancelled');
@@ -802,7 +802,7 @@ describe('shop order settlement — the provider is the payment authority', () =
     const db = new FakeDb();
     seedOrder(db);
     await settle(db, shopSession({ collected_information: null }));
-    const row = db.rows('shop_orders')[0];
+    const row = db.rows('shop_orders')[0]!;
     expect(row.status).toBe('paid');
     expect(row.shipping_city).toBeUndefined();
   });
@@ -812,7 +812,7 @@ describe('shop order settlement — the provider is the payment authority', () =
     seedOrder(db);
     const result = await settle(db, shopSession(), 'evt_shop_4', 'checkout.session.async_payment_succeeded');
     expect(result.note).toBeNull();
-    expect(db.rows('shop_orders')[0].status).toBe('paid');
+    expect(db.rows('shop_orders')[0]!.status).toBe('paid');
   });
 
   it('reports an unknown order rather than inventing one', async () => {
