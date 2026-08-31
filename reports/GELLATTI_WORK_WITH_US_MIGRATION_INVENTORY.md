@@ -21,7 +21,7 @@ And the check the owner asked for found a fourth problem that neither of us had 
 
 ---
 
-## 1. THE INVENTORY — TWELVE FILES, SIX APPLIED
+## 1. THE INVENTORY — TWELVE FILES, SEVEN APPLIED
 
 Referred to by **exact filename**. Ordinal shorthand is no longer used: inserting `200100` after the
 first apply made "#7/#8" ambiguous.
@@ -34,6 +34,7 @@ first apply made "#7/#8" ambiguous.
 | `20260831200100_partner_code_banned_words.sql` | `partner_code_banned_words` | **`20260831141738`** | `gellatti_partner_code_claim_refusal_v1` replaced; banned-word loop present; grants unchanged | **0 rows** |
 | `20260831200200_partner_code_slot_limit_dedupe.sql` | `partner_code_slot_limit_dedupe` | **`20260831143710`** | trigger `partner_codes_slot_limit` gone · `enforce_partner_code_slot_limit` gone (`0`) · `gellatti_partner_code_guard_v1` byte-identical · both global indexes intact · claim guard now returns the canonical reason | **0 rows** — 6 codes / 3 partners unchanged |
 | `20260831200500_partner_rate_profiles.sql` | `partner_rate_profiles` | **`20260831150753`** | table + 3 indexes + RLS + 1 policy present · both functions SECURITY DEFINER with `search_path=public` · ledger 20 → 21 columns · `commission_rules` still 12 rows (elite row kept) | **0 rows** — 0 profiles seeded, ledger still 0, 3 partners / 6 codes unchanged |
+| `20260831201100_partner_application_audit_actor_fix.sql` | `partner_application_audit_actor_fix` | **`20260831155647`** | one function replaced (`gellatti_submit_partner_application_v1`) · status CHECK, open-application index and the admin function all **unchanged** (admin fn md5 `27fd03a2…`) · ACLs still `postgres \| authenticated \| service_role` | **0 rows** |
 | `20260831201000_partner_application_more_information.sql` | `partner_application_more_information` | **`20260831154203`** | CHECK now 8 states incl. `more_information_needed` · open-application index widened to 4 states · both functions' ACL now `postgres \| authenticated \| service_role` (PUBLIC + anon removed) · code probe now case-insensitive · `in_review` gone from executable code | **0 rows** — 2 applications, both `approved`, unchanged. 🔴 **but see §14: it broke submission** |
 | `20260831200600_partner_rate_profiles_grant_surface.sql` | `partner_rate_profiles_grant_surface` | **`20260831153241`** | `anon`/`authenticated` removed from the ACL entirely (now `postgres \| service_role`) · RLS still on · policy retained but dormant · applied **verbatim**, comments included | **0 rows** |
 
@@ -46,14 +47,12 @@ first apply made "#7/#8" ambiguous.
 > My first report gave `20260831142312` for the second row. That was wrong — the register says
 > `20260831141738`. Confirmed by querying `supabase_migrations.schema_migrations` directly.
 
-### 1.2 PENDING — six files, exact names
+### 1.2 PENDING — five files, exact names
 
-`20260831201000` moved to the applied side and `20260831201100` — the **regression fix, written and
-pushed but NOT applied** (§14) — joined this list, so the count stays at six.
+`20260831201000` and `20260831201100` have both moved to the applied side, so **five remain**.
 
 | Repo filename | Purpose | Depends on |
 | --- | --- | --- |
-| 🔴 **`20260831201100_partner_application_audit_actor_fix.sql`** | **REGRESSION FIX — awaiting owner approval; staging submission is broken until it lands** | `20260831201000` |
 
 | Repo filename | Purpose | Depends on |
 | --- | --- | --- |
@@ -604,11 +603,16 @@ workstream.**
 
 ---
 
-## 14. 🔴 STOPPED — I broke partner application submission on staging
+## 14. THE REGRESSION — introduced by `20260831201000`, corrected by `20260831201100`
 
 **Standing rule followed:** unexpected live result → stop → diagnose → prepare the proposed forward
-migration → **report** → **wait**. `20260831201100` is written, pushed and **NOT applied**. Nothing
-further has been applied.
+migration → **report** → **wait**. The correction was held unapplied until the owner approved it, and
+is now applied as registered version **`20260831155647`**. Closed — see §15 for the live proof.
+
+> **Forensic note, per owner instruction.** `20260831201000` must **never** be described as fully
+> successful without naming this correction in the same breath. It delivered the
+> `more_information_needed` state and fixed two latent breaks — and it also broke every partner
+> application submission on staging until `20260831201100` landed.
 
 ### 14.1 What is broken, and it is mine
 
@@ -674,4 +678,128 @@ if a superseding fix exists in the repository.** A new migration with a bad valu
 
 Apply `20260831201100_partner_application_audit_actor_fix.sql`? It restores `'user'` and changes
 nothing else. **Staging partner application submission stays broken until it lands.**
+
+---
+
+## 15. `20260831201100_partner_application_audit_actor_fix.sql` — APPLIED, lane restored
+
+**Registered version `20260831155647`**, read back from the register.
+
+### 15.1 Pre-apply exact-diff proof
+
+The owner required proof that the fix changes **only** the audit actor type. Method: take the live
+body of `gellatti_submit_partner_application_v1` as applied by `20260831201000`, normalise
+`'customer'` → `'user'` (the substitution under test), strip comments and blank lines, and compare
+line by line against the same treatment of `20260831201100`.
+
+| | |
+| --- | --- |
+| Executable lines compared | **61** |
+| **Mismatches** | **0** |
+| `'customer'` occurrences in the fix | **0** |
+| `'user', v_user::text` occurrences | **2** — new submission and resubmit |
+
+> Live `pg_get_functiondef` renders one extra final line, the `$function$` delimiter, excluded from
+> both sides. An earlier attempt at this comparison sliced the file at the first literal `declare`,
+> which matched the word "declared" inside a comment and swept in the CREATE header — 69 lines
+> against 62. The slice was wrong, not the file; corrected, it is 61 against 61 with 0 mismatches.
+
+**Scope:** one function replaced. Zero references in the file to the admin action, approval logic,
+partner codes, notifications, the status CHECK or the index — `grep` count **0**. Header attributes
+identical: `language plpgsql`, `security definer`, `set search_path to 'pg_catalog', 'public'`.
+
+**Pushed before apply:** byte-identical on `origin/claude/work-with-us` at
+`774cc74a157f635f8b20aebd42998b145a3c1cf2` (`af498a87…`).
+
+### 15.2 Post-apply — nothing else moved
+
+| Check | Result |
+| --- | --- |
+| Migrations from this workstream | **7**, exactly one new |
+| Status CHECK | unchanged, still 8 states |
+| Open-application index | unchanged, still 4 states |
+| Admin function | **untouched** — md5 `27fd03a2f494f3ff0883333439bed92b` |
+| Both ACLs | `postgres \| authenticated \| service_role` — PUBLIC and anon still absent |
+
+### 15.3 Live lifecycle A–E — all probes rolled back
+
+| Step | Result | Audit actor_type |
+| --- | --- | --- |
+| **A** new application | `submitted`, persisted | **`user`** |
+| **B** `request_information` | `more_information_needed` | **`admin`** |
+| **C** resubmit | `submitted`, `resubmitted=true`, **1 row** not a duplicate | **`user`** |
+| **D** approve | `approved`, partner created | **`admin`** |
+| **E** reject | `rejected` | **`admin`** |
+
+`illegal_actor_rows = 0`.
+
+**D carried a deliberate collision test.** A lowercase `qatestcode` was seeded, then an application
+whose slug generates `QATESTCODE` was approved. The result was **`QATESTCO1`** — the collision was
+detected and a suffix appended. Under the previous case-sensitive probe the loop would have missed
+the lowercase row entirely and the insert would have violated `partner_codes_code_global_uniq`, so
+approval would have failed. `D_no_duplicate_upper = 1`.
+
+### 15.4 Authorization negative controls
+
+| Control | Result |
+| --- | --- |
+| anon submits | **REFUSED `42501`** — privilege layer, not merely the in-body guard |
+| non-admin runs a decision action | **REFUSED** `partner_administrator_required` |
+| applicant approves themselves | **REFUSED** `partner_administrator_required` |
+| applicant rejects themselves | **REFUSED** `partner_administrator_required` |
+| another user updates the application | **BLOCKED**, 0 rows (RLS) |
+| another user reads the application | **0 rows** (RLS) |
+| Admin gate | still the canonical `gellatti_admin_has_permission_v1('PARTNER', …)` — `true` for the admin, `false` for a non-admin |
+
+No internal guard was weakened.
+
+### 15.5 Status vocabulary — resolved from the LIVE definitions
+
+Both current functions, comments stripped:
+
+| Function | `more_information_needed` | executable `in_review` | executable `'customer'` |
+| --- | --- | --- | --- |
+| `gellatti_submit_partner_application_v1` | ✅ present | **absent** | **absent** (2 × `'user'`) |
+| `gellatti_admin_partner_application_action_v1` | ✅ present | **absent** | **absent** (3 × `'admin'`) |
+
+Applied history is untouched and still contains the superseded text, as it must.
+
+### 15.6 The owner-locked contract
+
+`auditActorTypes.test.ts`, rewritten to the owner's two requirements:
+
+1. **The legal set is parsed** from the migration that declares the CHECK
+   (`20260716102532_0021_webhook_events_audit_log.sql`), never retyped.
+2. **It resolves each function's LATEST definition** — the last migration in version order that
+   declares it — rather than grepping historical files naively.
+
+Both mechanisms proven to catch drift, not assumed:
+
+| Injection | Result |
+| --- | --- |
+| `'operator'` into the current definition | **RED** |
+| Narrow the canonical constraint to drop `user` | **RED** |
+| Both reverted | **GREEN**, working tree clean |
+
+> A first attempt at the injection used `sed -i '' "0,/re/s//…/"`, which BSD sed does not support —
+> the file never changed and the test "passed" against an unmodified file. Recorded because a
+> green result from an injection that never happened is worthless, and it is the same class of
+> harness artefact as the `insert … select` and `42703` false alarms earlier in this workstream.
+
+### 15.7 Residue
+
+| | Before | After |
+| --- | --- | --- |
+| Applications | 2, both `approved` | **2, both `approved`** |
+| QA application residue | — | **0** |
+| Partner codes | 6 | **6**, QA code residue **0** |
+| Partners / rate profiles / ledger / snapshots | 3 / 0 / 0 / 0 | **3 / 0 / 0 / 0** |
+| Illegal audit rows | 0 | **0** |
+| `cron.job` | 1 pre-existing | **1 pre-existing** — no partner scheduling job |
+
+No fixtures retained. Every QA artefact was created inside a transaction that raised at the end.
+
+### 15.8 Verdict
+
+**The partner application lane is functionally restored and clean.**
 

@@ -246,8 +246,15 @@ describe('AS3 — no LIVE definition still depends on the invalid value', () => 
   ]) {
     it(`the latest definition of ${functionName} contains no executable 'in_review'`, () => {
       const latest = latestDefinitionOf(functionName);
-      // our migration must be the one that wins
-      expect(latest.file).toBe('20260831201000_partner_application_more_information.sql');
+      // The winning file must belong to this workstream — that proves the
+      // resolution found our migration rather than an older one — but WHICH of
+      // our migrations wins is deliberately not pinned. It changes every time we
+      // correct forward, and it did: 20260831201100 superseded 20260831201000 as
+      // the latest definition of the submit function when the audit actor_type
+      // regression was fixed. Pinning the filename made this test fail for a
+      // correct change, which is the wrong thing to assert. The semantic claim
+      // below is the contract.
+      expect(latest.file).toMatch(/^202608312\d{5}_/);
       // strip comments: the fix is explained in prose above the code it replaces
       const executable = latest.body.replace(/--.*$/gm, '');
       expect(executable).not.toContain('in_review');
