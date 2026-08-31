@@ -7,7 +7,31 @@
 
 ---
 
-## 0. Headline
+## 0. ⚡ STATUS CHANGED DURING THIS AUDIT — BLOCKER A IS RESOLVED
+
+**PR #49 was merged into `staging` while this reconciliation was being written**
+(`3f56a03d`, "Merge pull request #49 from pinguinointelligence/claude/shop-final").
+
+All five shop migrations are now present in `origin/staging`. The drift this document was written to
+analyse **no longer exists**: the database and the repository describe the same schema again, and no
+cherry-pick, no migrations-only commit and no owner decision is required.
+
+The analysis below is kept because it is the evidence for that conclusion, and because §3 and §4
+document two facts that outlive the merge.
+
+**Post-merge verification (after rebasing this branch onto `3f56a03d`):**
+
+| Check | Result |
+| --- | --- |
+| Five shop migrations in `origin/staging` | ✅ all five |
+| Duplicate timestamps anywhere in the merged tree | ✅ none in my block |
+| My eight vs. the merged tree | ✅ exactly eight files differ, all additive |
+| Collision between my block and the shop block | ✅ none — `…200000`+ vs `…120000`–`…160000` |
+| Branch rebased onto merged staging | ✅ clean, one incidental formatting conflict resolved in staging's favour |
+
+---
+
+## 0b. Headline (as analysed before the merge)
 
 **The drift is real but benign, and it is a NAMING/NUMBERING drift, not a content drift.**
 
@@ -113,8 +137,8 @@ lands. Safe for my eight (no interaction), but the drift persists and the next p
 Not recommended: it holds partner/billing work hostage to an unrelated Shop review, for a conflict
 that has already been shown not to exist.
 
-**My recommendation is Option 1**, and it is a decision for the owner, not for me — it moves commits
-between branches.
+**My recommendation was Option 1** — and the owner effectively took it by merging PR #49, which
+brought the five migration files into `staging` along with the Shop work. No further action.
 
 ---
 
@@ -184,4 +208,5 @@ select
 
 | Date | What |
 | --- | --- |
+| 2026-08-31 | **PR #49 merged mid-audit (`3f56a03d`); blocker A resolved with no action required.** Branch rebased onto merged staging; the one conflict (`AdminShopSection.tsx`) was my own incidental prettier churn and was resolved in staging's favour |
 | 2026-08-31 | Created for owner acceptance blocker A. All 2026-08-29 → 2026-08-31 migrations reconciled by name AND by stored statement body. Drift confirmed as numbering-only, not content. Five shop migrations located in open PR #49, proven to share zero objects with this workstream in both directions. Three resolution options given, Option 1 recommended, decision left with the owner |
