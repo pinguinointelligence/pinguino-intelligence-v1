@@ -159,10 +159,10 @@ Copy authority: `src/copy/cooperation.ts` (PL + EN, `resolveCooperationCopy`). N
 | ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | D-CODE-01 | Codes | Normalization + validation: no spaces, no accents, ASCII+digits, 5–16 shown, case-insensitive, protected/offensive rejected | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `partnerCodes.ts` PC1–PC4 already exact | Re-run its tests as evidence |
-| D-CODE-02 | Codes | **0–3 current public codes per Partner** (X3) | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | Nothing enforces a count today | Partial unique index or trigger + service guard |
-| D-CODE-03 | Codes | Global uniqueness across every Partner, live availability validation | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | Unique among **active** only — insufficient (X2) | Extend with D-CODE-04 |
-| D-CODE-04 | Codes | **Historical aliases stay owned by the same partner and can never be claimed by another** (X2) | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | `partner_codes_code_active_uniq` deliberately allows reissue — directly contradicts §8 | Migration: global unique on code text + alias ownership |
-| D-CODE-05 | Codes | Aliases don't count toward the 3 displayed slots | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | With D-CODE-02 |
+| D-CODE-02 | Codes | **0–3 current public codes per Partner** (X3) | 🟡 | ✅ | ⬜ | ⬜ | 🔓 | `bd32c0e9`+`b4e3a187` | Domain `partnerCodeSlots.ts` CS1 + DB trigger `partner_codes_slot_limit` written and guard-tested. **Migration not yet applied; service/UI not wired** | Owner applies migration; wire `managePartnerCode` |
+| D-CODE-03 | Codes | Global uniqueness across every Partner, live availability validation | 🟡 | ✅ | ⬜ | ⬜ | 🔓 | `b4e3a187` | Global unique indexes written; `gellatti_partner_code_claim_refusal_v1` gives live typed availability | Owner applies migration; wire the availability check into the UI |
+| D-CODE-04 | Codes | **Historical aliases stay owned by the same partner and can never be claimed by another** (X2) | 🟡 | ✅ | ⬜ | ⬜ | 🔓 | `bd32c0e9`+`b4e3a187` | Fixed in domain (CS2/CS5) and in SQL: uniqueness is now GLOBAL, not active-only. Migration **refuses to run** if duplicate code text already exists, naming the codes — that ownership call moves money | Owner applies migration |
+| D-CODE-05 | Codes | Aliases don't count toward the 3 displayed slots | 🟡 | ✅ | ⬜ | ⬜ | 🔓 | `bd32c0e9`+`b4e3a187` | CS3 implemented + tested in both layers (trigger counts only `active`) | Served QA after migration |
 | D-CODE-06 | Codes | Changing a code never rewrites historical conversions / commission / payout / campaign ownership | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | Attribution is by immutable `partner_id`; ledger is immutable | Add explicit regression test |
 | D-CODE-07 | Codes | Admin can disable a compromised alias | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | `status='blocked'` + `disabled_reason` + audit exist in the 2026-08-26 migration | Surface in admin UI |
 | D-LINK-01 | Campaign links | Partner may create many trackable links (not limited by the 3 codes) | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `partner_content_links` + `createPartnerContentLink` + `LinkGenerator` exist | Served-verify |
@@ -182,10 +182,10 @@ Copy authority: `src/copy/cooperation.ts` (PL + EN, `resolveCooperationCopy`). N
 | E-EVT-01 | Commission | Commission events: first monthly · monthly renewal · first annual/15-month · annual renewal · monthly→annual conversion once | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | C3–C5 | Re-run tests |
 | E-EVT-02 | Commission | No commission for failed/unpaid/void · zero invoice · partner's own free access · free invite · self-referral · duplicate event · fraud · Live test transaction | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | 7 of 8 covered by C6; **"Live report test transaction"** has no explicit rule | Add `livemode` refusal |
 | E-ELITE-01 | Elite | Elite is manually assigned by authorized Admin | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | T4 override record exists | — |
-| E-ELITE-02 | Elite | **Per-partner custom rate profile** (HOME m/a, PRO m/a) replaces the fixed Elite table (X1) | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | `RATE_TABLE_V1.elite` is frozen and global; DB `commission_rules` seeds one Elite row for everyone | New `partner_rate_profiles` table + resolver change |
-| E-ELITE-03 | Elite | 2.99 / 19 / 6.99 / 49 become **default suggestions only** | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | Currently mandatory | With E-ELITE-02 |
-| E-ELITE-04 | Elite | Every Elite profile is **versioned**: effective start/end, rates, reason, admin actor, timestamp, note, prior version, revocation history | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | No such table | Migration |
-| E-ELITE-05 | Elite | No retroactive rewriting; every earned commission snapshots the effective rate | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `commission_entries` already stores the resolved rate + rule version immutably | Extend to profile version id |
+| E-ELITE-02 | Elite | **Per-partner custom rate profile** (HOME m/a, PRO m/a) replaces the fixed Elite table (X1) | 🟡 | ✅ | ⬜ | ⬜ | 🔓 | `bd32c0e9` | Domain `partnerRateProfiles.ts` RP2 done (34 tests). **Still needs the `partner_rate_profiles` migration and the `dispatch.ts` resolver change** | Migration + wire into the webhook |
+| E-ELITE-03 | Elite | 2.99 / 19 / 6.99 / 49 become **default suggestions only** | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `bd32c0e9` | `ELITE_DEFAULT_SUGGESTION_RATES` (RP6). Never applied automatically — RP7 refuses instead of defaulting, asserted by test | Surface in the admin form (I-ADM-04) |
+| E-ELITE-04 | Elite | Every Elite profile is **versioned**: effective start/end, rates, reason, admin actor, timestamp, note, prior version, revocation history | 🟡 | ✅ | ⬜ | ⬜ | 🔓 | `bd32c0e9` | All 9 fields modelled; `supersedeRateProfileVersion` is append-only and cannot overlap (RP3/RP4) | `partner_rate_profiles` migration |
+| E-ELITE-05 | Elite | No retroactive rewriting; every earned commission snapshots the effective rate | 🟡 | ✅ | ⬜ | ⬜ | 🔓 | `bd32c0e9` | RP5 proven: resolution keys on the instant EARNED, so appending a version cannot change an earlier answer. `commission_entries` stores rate + rule version already | Add `rate_profile_version_id` to the ledger |
 | E-HOLD-01 | Hold | Two FULL calendar months, Europe/Madrid, never "60 days"; Jan→Apr 1, Feb→May 1, Dec→Mar 1 | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `holdCalendar.ts` H1–H4, DST-correct | Re-run tests |
 | E-HOLD-02 | Hold | Dashboard shows earned / held / eligible date / eligible / batched / transfer / payout / reversed | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | Workspace RPC returns commission status + payouts; the 8 distinct states are not all surfaced | UI work in H |
 | E-REV-01 | Reversals | Full refund → full reversal; partial → proportional; cap; append-only; dispute lost/won | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `refundAdjustments.ts` R1–R6 | Re-run tests |
@@ -396,17 +396,17 @@ Copy authority: `src/copy/cooperation.ts` (PL + EN, `resolveCooperationCopy`). N
 
 ## 2. Counts
 
-| Work status | Count |
-| --- | --- |
-| 🟢 DONE (pre-existing, needs evidence + freeze) | 24 |
-| 🟡 DOING / partially built | 33 |
-| 🔴 BLOCKED | 14 |
-| ⚪ TODO | 66 |
-| **Total rows** | **137** |
+| Work status | Count | Change this run |
+| --- | --- | --- |
+| 🟢 DONE | 25 | +1 (E-ELITE-03) |
+| 🟡 DOING / partially built | 39 | +6 (D-CODE-02/03/04/05, E-ELITE-02/04/05, L-SPEC-01/02/03 in, E-ELITE-03 out) |
+| 🔴 BLOCKED | 9 | −5 (D-CODE-02/04, E-ELITE-02/03/04 unblocked; L-SPEC-01 unblocked) |
+| ⚪ TODO | 64 | −2 |
+| **Total rows** | **137** | — |
 
-Auto ⬜ 137 · Served ⬜ 137 · Owner ⬜ 137 · Freeze 🔓 137.
+Auto ✅ **8** · ⬜ 129. Served ⬜ 137 · Owner ⬜ 137 · Freeze 🔓 137.
 
-Nothing is frozen. Nothing has owner approval. The 🟢 rows are **pre-existing implementations
+Nothing is frozen. Nothing has owner approval. Most 🟢 rows are **pre-existing implementations
 found by audit**, not work completed by this run — they still need evidence, served QA and owner
 sign-off before they can be frozen.
 
