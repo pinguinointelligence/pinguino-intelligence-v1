@@ -457,6 +457,14 @@ was right.
 | Work With Us commits in staging at that moment | **zero** |
 | Proof it was absent | `/images/work-with-us/web/A01.webp` returned `content-type: text/html` — the SPA fallback, byte-identical in kind to a nonexistent path |
 
+**A second gap the same incident exposed.** My local gates were narrower than
+CI's, so CI failed where I had reported green. Two failures, both mine:
+`git diff --check` flagged a blank line at EOF I introduced, and
+`customerCopyGuard` — which lives in `src/copy` and was never in the targeted
+suites I was running — rejected two new alt strings naming the `gellattissimo`
+neon. **From here the pre-push gate is `npm test` across the repo plus the
+whitespace check, not a hand-picked set of suites.**
+
 **Rule from here:** served QA counts only on the canonical alias, proven by
 resolving alias → deployment → `meta.githubCommitSha` and matching it to the
 merge SHA. A `git-*` preview URL, a bundle hash or an HTTP 200 on an SPA route
