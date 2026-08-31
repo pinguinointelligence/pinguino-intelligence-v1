@@ -46,8 +46,11 @@ export const viewEntitlementFrom = (
  *
  *  - `demo_switch`  — anonymous, or signed in with no active plan: BOTH segments show
  *                     and both are explorable as demo presentations.
- *  - `home_only`    — an active HOME subscriber: PRO is NOT rendered at all. No locked
- *                     PRO, no grey PRO, no permanent "Upgrade" (§11B, §74).
+ *  - `home_only`    — an active HOME subscriber. SUPERSEDED 2026-09-01: PRO is now
+ *                     ALWAYS rendered. The old rule ("a HOME subscriber must never SEE
+ *                     PRO") is replaced by "a HOME subscriber must never ACCESS PRO
+ *                     without entitlement" — visibility is not access. The segment is
+ *                     shown; choosing it routes to the canonical upgrade gate.
  *  - `full_switch`  — an active PRO subscriber: both segments, full access to both.
  */
 export type ViewSwitchPresentation = 'demo_switch' | 'home_only' | 'full_switch';
@@ -61,9 +64,30 @@ export function resolveViewSwitchPresentation(
   return 'demo_switch';
 }
 
-/** Which segments the header renders, in order. `home_only` renders HOME alone. */
-export function viewSwitchSegments(presentation: ViewSwitchPresentation): readonly HomeViewMode[] {
-  return presentation === 'home_only' ? ['home'] : ['home', 'pro'];
+/**
+ * Which segments the header renders, in order.
+ *
+ * OWNER OVERRIDE 2026-09-01: ALWAYS both. The global header is one geometry for every
+ * audience, so a segment may never disappear — a header that changes its element count
+ * by plan cannot hold a shared x-coordinate.
+ */
+export function viewSwitchSegments(): readonly HomeViewMode[] {
+  return ['home', 'pro'];
+}
+
+/**
+ * Whether choosing a segment is permitted, or must route to the upgrade gate.
+ *
+ * VISIBILITY IS NOT ACCESS. `home_only` sees PRO and is refused by the canonical
+ * entitlement flow; it never reaches protected Workbench content. Demo keeps its
+ * existing read-only PRO exploration (§73), which is not an entitlement bypass.
+ */
+export function segmentAccess(
+  segment: HomeViewMode,
+  presentation: ViewSwitchPresentation,
+): 'allowed' | 'upgrade_required' {
+  if (segment === 'home') return 'allowed';
+  return presentation === 'home_only' ? 'upgrade_required' : 'allowed';
 }
 
 /**
@@ -73,10 +97,25 @@ export function viewSwitchSegments(presentation: ViewSwitchPresentation): readon
  */
 export type SegmentTreatment = 'active' | 'inactive';
 
+/**
+ * Which view a page claims to BE. `null` is the neutral state for a global
+ * destination — Work With Us, Shop — where the visitor is inside neither HOME
+ * nor PRO (owner ruling, 2026-09-01).
+ *
+ * Neutral is not a third segment and not a third label. The header still reads
+ * HOME | PRO, still navigates, still obeys the same entitlement rules; it simply
+ * stops asserting that one of them is where you already are. A destination that
+ * passed `'home'` merely to satisfy this type would be telling the visitor they
+ * are in HOME while they read a marketing page.
+ */
+export type ActiveViewOrNeutral = HomeViewMode | null;
+
 export function segmentTreatment(
   segment: HomeViewMode,
-  activeView: HomeViewMode,
+  activeView: ActiveViewOrNeutral,
 ): SegmentTreatment {
+  // No special case for neutral: a segment is never `null`, so a null activeView
+  // matches nothing and every segment resolves to `inactive`.
   return segment === activeView ? 'active' : 'inactive';
 }
 
