@@ -44,13 +44,19 @@ describe('the row uses the shared PRO control family, not a HOME copy', () => {
 describe('geometry does not change with entitlement', () => {
   it('shows the mask INSIDE the value segment, not instead of the control', () => {
     expect(control).toContain('maskedValue');
-    // The mask is rendered in the col-start-2 value cell, beside the same hidden input.
+    // The mask renders in the col-start-2 value cell — the same cell the input occupies
+    // when entitled — so the segment, and therefore the geometry, is unchanged.
     const valueCell = control.slice(
       control.indexOf("'col-start-2 row-start-1"),
       control.indexOf('onFocus='),
     );
     expect(valueCell).toContain('maskedValue');
-    expect(valueCell).toContain('hidden={masked}');
+    // The input is now ABSENT while masked rather than merely `hidden`: a hidden input
+    // still carries value/aria-valuenow into the accessibility tree, which was the
+    // served-QA leak. Confidentiality is asserted behaviourally in
+    // `maskedGramsConfidentiality.test.tsx`; this pins only the structural choice.
+    expect(valueCell).toContain('masked ? null : (');
+    expect(valueCell).not.toContain('hidden={masked}');
   });
 
   it('keeps the four-segment geometry in both states', () => {
