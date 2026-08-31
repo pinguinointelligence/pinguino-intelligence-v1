@@ -264,24 +264,93 @@ at 400 g, so the old proportional rescale would have produced **19 g** at
 
 ---
 
-## PC-03 — Sorbet `unsafe_proposal` with no NEAREST fallback
+## PC-03 — CORRECTED · Sorbet exact-projection eligibility required an on-batch draft — **FIXED**
+
+> **THE ORIGINAL ROOT-CAUSE NARRATIVE IS WITHDRAWN.** It named the citrus fibre
+> and NEAREST coverage. Both are wrong, and the record is corrected rather than
+> preserved. Second time the same acceptance harness encoded a false cause
+> (see PC-02).
+
+### The historical acceptance fixtures — HARNESS ARTEFACT / NOT VALID CUSTOMER INPUT
+
+All **22/22** recorded cells are invalid. `fullRecipeMatrix.acceptance.test.ts`
+→ `buildInput` first scales the support lines so the draft fills the target
+batch, then appends the rotation "extra" at `batch × 0.03` and, in BOTH mode, a
+second line at `batch × 0.02` — **without budgeting either**. That is exactly
+the recorded `base_sum_g` of 1030 / 1050 against `batch_target_g` 1000. The
+Sorbet rotation's extra is `PI-ING-000306` VITACEL CITRUS FIBER, which resolves
+to role `stabilizer` and so also bypasses the normal Sorbet stabilizer clamp
+(34 g against a 5 g ceiling).
+
+| original claim | verdict |
+|---|---|
+| "the Sorbet branch of the NEAREST fallback does not cover this region" | **REJECTED.** The fast path runs *exact projection first, NEAREST second*. The exact projection returns a candidate with sum = 1000, **0 Engine violations**, 0 critical warnings for every fixture examined. Nothing is missing from NEAREST's coverage. |
+| "fruit-Main + citrus-fibre start" is causal | **REJECTED.** Passing cells also sum 1030/1050; a 31.6 g stabilizer system passes while a legal 5 g one fails. The fibre is only the vehicle that carried the unbudgeted mass. |
+
+### The real defect — customer-reachable
 
 | | |
 |---|---|
-| **SEVERITY** | MEDIUM-HIGH — the customer receives no recipe and no route forward |
-| **FIRST OBSERVED SHA** | `04106031` |
-| **PROFILE** | Sorbet only (22 cells) |
-| **MACHINE** | Maszyna profesjonalna 19 · Ninja CREAMi Scoop & Swirl 2 · Sage Smart Scoop 1 |
-| **TEMPERATURE** | fresh 4 · −11 3 · −12 7 · −13 8 |
-| **MODE** | OPTIMAL 12 · ECO 10 |
-| **BATCH** | 1000 g (700–950 g on the Home machines) |
-| **EXACT INGREDIENTS (exemplar `dir-Sorbet-fresh-optimal-s-2-h-1`)** | WATER 179 g · SUCROSE 103 g · DEXTROSE 59 g · INULIN 55 g · TARA GUM 4 g · `PI-ING-000347` BLUEBERRY 600 g MAIN · VITACEL CITRUS FIBER 30 g |
-| **TOPPINGS** | `PI-ING-001221` GRANELLA 50 g |
-| **SWEETNESS / HARDNESS** | −2 / −1 (15 distinct combinations across the cluster) |
-| **EXPECTED** | `buildOptimizePreview` degrades `unsafe_proposal` to a truthful NEAREST candidate — the documented behaviour for an unreachable preference. |
-| **ACTUAL** | The direct search ends on an illegal candidate and the NEAREST retry also produces nothing; the customer-visible outcome is a bare `unsafe_proposal`. |
-| **REPRODUCED** | 22/1304 cells, deterministic. |
-| **LIKELY ROOT AREA** | The Sorbet branch of the NEAREST fallback (`sorbetNearestDirectionSearch`) does not cover the region reached from a fruit-Main + citrus-fibre start. |
+| **SEVERITY** | HIGH — a safe candidate exists and is not used |
+| **PROVEN ON** | `c004d659` (staging), served shape captured from `index-BEjANf2j.js` |
+| **ROOT CAUSE** | `applyPipeline.ts` — Sorbet exact-projection eligibility required `Math.abs(plannedSum(input) - target) <= BATCH_SUM_TOLERANCE_G`, i.e. the **incoming draft** had to already be on batch. But `projectSorbetDirectionCandidate` solves **FOR** `target_batch_grams` — the batch is the first row of its 3×3 system — so an off-batch draft is precisely the one it repairs. |
+| **CONSEQUENCE** | Off-batch drafts fell through to the general search: ~50–92 s instead of milliseconds, and at ±30 g the general search **published a proposal carrying an Engine violation**. |
+| **REACHABILITY** | Any ordinary edit puts a Sorbet off batch — `addIngredient` and `removeItem` do not re-budget. The canonical HOME journey also lands off batch because the Crown auto-seeds the fruit Main at 1 g on top of a batch-filling starter (1001 / 1000). |
+
+### The fix
+
+The relaxation is deliberately narrow: **off batch, exactly one Main**, and the
+batch is restored first through the canonical
+`rescalePreservingMainGroup(..., preserveCandidateMain: false)` — the same call
+the optimizer's own `restoreBatch` makes — so a draft that is short because its
+Main is short still grows the Main.
+
+* a **multi-Main** off-batch draft is off batch because its Main GROUP is short:
+  the certified Main frontier answers it, and the served two-Crown 150/150
+  Sorbet is still raised to 300/300. Without this condition
+  `userHeldMainAuthority` returns 220/220 against a required 300/300.
+* a draft with **no Main** is an incomplete scaffold: GEL-P0-014 requires it to
+  stop on the missing role, so it is not answered by a projection either.
+* **on-batch behaviour is untouched** for every Main count.
+
+Everything else — Sorbet, active exact Direction objective, no `actual_grams` —
+is unchanged, and every downstream authority still decides the candidate: Engine violations, critical warnings,
+constraints/locks, Main/Crown, ProductBehavior, the Sorbet stabilizer authority
+and `enforceTargetBatchInvariant`, which remains the final batch net. The fix
+lets the projection be **attempted**; it does not make it publishable.
+
+| batch delta | before | after |
+|---|---|---|
+| 0 g (on batch) | OK · 6 ms · 0 violations | OK · 6 ms · 0 violations |
+| +0.1 g | OK · 57.0 s · 0 | OK · 2 ms · 0 |
+| +1 g | OK · 50.5 s · 0 | OK · 1 ms · 0 |
+| **+30 g** | OK · 51.6 s · **1 violation** | OK · 2 ms · **0** |
+| −1 g | OK · 50.2 s · 0 | OK · 1 ms · 0 |
+| **−30 g** | OK · 51.4 s · **1 violation** | OK · 1 ms · **0** |
+
+The proposal sums to exactly 1000 g in every case and the crowned Main is
+preserved. Locked by `sorbetOffBatchDirection.test.ts` and by **GEL-P0-025**
+(`sorbetDirectionOffBatchEligibility.contract.test.ts`), which pins the narrow
+shape behaviourally — single-Main admitted, multi-Main and no-Main not. Before
+the fix the route assertion (`directionCandidateSource ===
+'sorbet_exact_projection'`) and the +30 g / −30 g violation assertions fail.
+
+### Recorded separately — NOT fixed here
+
+* **TECH DEBT — Crown auto-seed leaves a new recipe 1 g off batch.** The seeded
+  1 g Main is not budgeted into the starter, so a brand-new Sorbet is 1001 /
+  1000. PC-03 makes the pipeline robust to that; it does not remove the debt.
+* **OWNER POLICY — the served brand-new Sorbet is independently unpublishable.**
+  Scaling the starter to fill the batch while the Main is still 1 g pushes
+  INULIN to ~124 g against the Gellatti range of 20–80 g (2–8 % of batch), so
+  practicalization refuses it with `inulin_outside_owner_policy`: *„Inulina
+  138.0 g jest poza wewnętrznym zakresem Gellatti 20.0–80.0 g (2–8% partii)."*
+  That refusal is correct and is NOT the batch defect — the two were separate
+  causes on the same draft.
+* **HOME DEMO/AUTH — signed-out Recalculate can appear as a silent no-op.** On
+  staging the anonymous session hits `401` / `permission denied for view
+  mapper_basement_search`, the draft is left unchanged and no message is shown.
+  A separate UX/auth honesty problem.
 
 ---
 
