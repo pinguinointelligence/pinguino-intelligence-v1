@@ -1,8 +1,5 @@
 import { cn } from '@/lib/cn';
-import {
-  applicationPrimaryClasses,
-  applicationSecondaryClasses,
-} from '@/components/ui/applicationControlStyles';
+import { applicationPrimaryClasses } from '@/components/ui/applicationControlStyles';
 import { shopCopy as c, shopGrams, shopMoney } from '@/copy/shop';
 import type { ShopProduct } from '@/services/shop';
 import { SHOP_SHIPPING_FLAT_CENTS, shopOrderTotals } from './shopShipping';
@@ -84,7 +81,6 @@ export function ShopCart({
   onRemove,
   onCheckout,
   onSignIn,
-  onBrowse,
 }: {
   entries: readonly ShopCartEntry[];
   authed: boolean;
@@ -94,7 +90,6 @@ export function ShopCart({
   onRemove: (sku: string) => void;
   onCheckout: () => void;
   onSignIn: () => void;
-  onBrowse: () => void;
 }) {
   const units = entries.reduce((sum, entry) => sum + entry.line.quantity, 0);
   const totals = shopOrderTotals(
@@ -117,14 +112,10 @@ export function ShopCart({
       </h2>
 
       {entries.length === 0 ? (
-        /* Compact by design: an empty cart is one sentence and one way out, not
-           a large panel of nothing. */
-        <div className="mt-[18px] flex flex-wrap items-center justify-between gap-4 rounded-[12px] border border-[var(--g-line)] bg-white p-5">
-          <p className="text-[13px] text-[var(--g-text-secondary)]">{c.cart.empty}</p>
-          <button type="button" onClick={onBrowse} className={applicationSecondaryClasses()}>
-            {c.cart.emptyCta}
-          </button>
-        </div>
+        /* SHOP C3: one sentence, no panel and no button. The empty cart used to
+           carry „Zobacz zestaw startowy", which made it a fourth route back to
+           the one product the page already leads with. */
+        <p className="mt-3 text-[13px] text-[var(--g-text-secondary)]">{c.cart.empty}</p>
       ) : (
         <div className="mt-[18px] grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_344px]">
           <div className="rounded-[12px] border border-[var(--g-line)] bg-white">

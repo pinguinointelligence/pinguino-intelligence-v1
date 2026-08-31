@@ -140,14 +140,14 @@
 }
 
 /* ── Approved destination pages ─────────────────────────────────────────── */
-/* The preview's destination header is FULL-BLEED (it is the only full-width
-   element on the page) with a 58 px inset at the 1440 px reference, while the
-   page canvas below it is the centred 1280 px measure. */
+/* OWNER OVERRIDE (2026-09-01): the PRO header architecture is now the ONE
+   global Gellatti header authority. A destination no longer declares its own
+   full-bleed row with a 58 px inset — it inherits `APP_HEADER_ROW` exactly, so
+   the hamburger, the wordmark and HOME | PRO land on the same pixels on HOME,
+   PRO, Sklep and Współpraca. Only the row height stays declared here, so a
+   destination keeps the 82 px header at every width. */
 .gellatti-destination-shell > header {
   height: var(--pro-header-height);
-  max-width: none;
-  width: 100%;
-  padding-inline: clamp(1rem, 4.03vw, 58px);
   border-bottom-color: color-mix(in srgb, var(--g-ink) 8%, transparent);
 }
 
