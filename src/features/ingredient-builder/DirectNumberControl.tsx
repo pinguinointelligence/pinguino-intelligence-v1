@@ -35,6 +35,15 @@ interface DirectNumberControlProps {
    * comfortable 44 px targets.
    */
   density?: 'comfortable' | 'compact' | 'responsive';
+  /**
+   * Entitlement masking. When set, the VALUE segment shows this text instead of the
+   * number and every numeric interaction routes to `onMaskedInteract` rather than
+   * mutating. Geometry is untouched: same segments, same widths, same lock — revealing
+   * grams later changes the DATA, never the control. Omit it and nothing changes.
+   */
+  maskedValue?: string;
+  /** Invoked when a masked control is operated — wire the existing paywall/auth route. */
+  onMaskedInteract?: () => void;
   /** Optional fourth segment. It stays operable while the numeric segments are locked. */
   lockSegment?: {
     pressed: boolean;
@@ -82,7 +91,10 @@ export function DirectNumberControl({
   widthPreset = 'fluid',
   density = 'comfortable',
   lockSegment,
+  maskedValue,
+  onMaskedInteract,
 }: DirectNumberControlProps) {
+  const masked = maskedValue !== undefined;
   const compact = density === 'compact';
   const responsive = density === 'responsive';
   /**
@@ -247,11 +259,18 @@ export function DirectNumberControl({
           type="button"
           disabled={disabled}
           aria-label={`${ariaLabel} — ${direction < 0 ? 'zmniejsz' : 'zwiększ'}`}
-          onPointerDown={() => startRepeat(direction)}
+          onPointerDown={() => {
+            if (masked) return;
+            startRepeat(direction);
+          }}
           onPointerUp={stopRepeat}
           onPointerCancel={stopRepeat}
           onPointerLeave={stopRepeat}
           onClick={() => {
+            if (masked) {
+              onMaskedInteract?.();
+              return;
+            }
             if (repeated.current) {
               repeated.current = false;
               return;
@@ -275,10 +294,24 @@ export function DirectNumberControl({
         )}
       >
         <span className="sr-only">{ariaLabel}</span>
+        {masked ? (
+          /* The mask lives INSIDE the value segment, so the row keeps its exact geometry
+             when grams become visible: only the DATA changes, never the control. */
+          <button
+            type="button"
+            aria-label={ariaLabel}
+            data-testid={`${testId}-masked`}
+            onClick={() => onMaskedInteract?.()}
+            className="flex h-full w-full items-center justify-center font-mono text-[14px] text-stone-500 transition-colors hover:text-ink focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#f58a07]"
+          >
+            {maskedValue} {suffix}
+          </button>
+        ) : null}
         <input
           type="text"
           role="spinbutton"
           inputMode="decimal"
+          hidden={masked}
           disabled={disabled}
           aria-valuemin={min}
           aria-valuemax={Number.isFinite(max) ? max : undefined}

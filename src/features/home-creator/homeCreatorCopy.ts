@@ -106,6 +106,10 @@ export interface HomeCreatorCopy {
     readonly recalculate: string;
     readonly maskedGrams: string;
     readonly maskedGramsLabel: string;
+    /** The mask WITHOUT a unit — the gram control appends its own suffix. */
+    readonly maskedGramsValue: string;
+    readonly gramsFieldLabel: string;
+    readonly lockLabel: string;
     readonly grams: string;
   };
   readonly sweetness: {
@@ -243,6 +247,9 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     recalculate: 'Przelicz i popraw',
     maskedGrams: '••• g',
     maskedGramsLabel: 'Gramatura ukryta — dostępna w planie HOME lub PRO',
+    maskedGramsValue: '•••',
+    gramsFieldLabel: 'ilość w g',
+    lockLabel: 'Zablokuj ilość',
     grams: 'g',
   },
   sweetness: {
@@ -376,6 +383,9 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     recalculate: 'Recalculate and fix',
     maskedGrams: '••• g',
     maskedGramsLabel: 'Amount hidden — available on the HOME or PRO plan',
+    maskedGramsValue: '•••',
+    gramsFieldLabel: 'amount in g',
+    lockLabel: 'Lock the amount',
     grams: 'g',
   },
   sweetness: {

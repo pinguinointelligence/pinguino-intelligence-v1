@@ -5,9 +5,17 @@
  * NPAC, solids, kcal, cost, supplier and regulatory data. None of those values is read
  * by this component — they are not hidden with CSS, they never enter the render.
  *
- * §54: a Demo line shows `🔒 ••• g`. The masked string is a constant with no digits in
- * it (pinned by a copy test), so there is no code path that could leak a real gram
- * through the placeholder.
+ * §54 + owner-locked row, 2026-08-31. Every line carries the FINAL editing control:
+ *
+ *     ingredient | [ − ] [ grams/value ] [ + ] [ CLOSED lock ] [ ⋯ ]
+ *
+ * A Demo line shows the mask INSIDE the value segment — `••• g` — so the geometry is
+ * identical whether or not grams are visible: revealing them changes the DATA, never the
+ * control. The masked string is a constant with no digits in it (pinned by a copy test),
+ * so no code path can leak a real gram through the placeholder, and operating a masked
+ * control routes to the existing entitlement behaviour instead of doing nothing.
+ *
+ * The control is the shared PRO `DirectNumberControl`; HOME performs no arithmetic.
  */
 import { useState } from 'react';
 import { cn } from '@/lib/cn';
@@ -20,6 +28,8 @@ import { ProductPickerPopover } from '@/features/ingredient-builder/ProductPicke
 import type { IngredientLibrary } from '@/features/ingredient-builder/ingredientLibrary';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/contracts';
 import type { RecipeMatchScorePresentation } from '@/features/recipe-score';
+import { DirectNumberControl } from '@/features/ingredient-builder/DirectNumberControl';
+import { useRecipeStore } from '@/stores/recipeStore';
 import { homeCreatorCopy } from '../homeCreatorCopy';
 import {
   HOME_SWEETNESS_ORDER,
@@ -35,23 +45,61 @@ const SWEETNESS_LABEL: Readonly<Record<HomeSweetness, string>> = {
   sweeter: homeCreatorCopy.sweetness.sweeter,
 };
 
-function GramCell({ grams, canSeeGrams }: { grams: number; canSeeGrams: boolean }) {
-  if (!canSeeGrams) {
-    return (
-      <span
-        className="font-mono text-[14px]"
-        data-testid="home-masked-grams"
-        aria-label={homeCreatorCopy.recipe.maskedGramsLabel}
-        style={{ color: 'var(--g-lock)' }}
-      >
-        🔒 {homeCreatorCopy.recipe.maskedGrams}
-      </span>
-    );
-  }
+/**
+ * The FINAL recipe-editing control, owner-locked 2026-08-31:
+ *
+ *   [ − ] [ grams/value ] [ + ] [ CLOSED lock ]      then the row's [ ⋯ ]
+ *
+ * It is the shared PRO `DirectNumberControl` — same four-segment geometry, same 44 px
+ * targets, same single closed padlock in BOTH lock states (state is colour, never a
+ * different glyph), same orange focus. HOME contributes no arithmetic: `−`/`+` and the
+ * value field all route to `setPlannedGrams`, and the padlock to `setLockType`.
+ *
+ * When grams are entitlement-hidden the geometry does NOT change. The `•••` renders
+ * INSIDE the value segment and every numeric interaction routes to the existing
+ * paywall/auth behaviour, so the customer sees the final editor from the beginning and
+ * only the DATA becomes available later.
+ */
+function GramControl({
+  lineId,
+  name,
+  grams,
+  locked,
+  canSeeGrams,
+  onBlocked,
+}: {
+  lineId: string;
+  name: string;
+  grams: number;
+  locked: boolean;
+  canSeeGrams: boolean;
+  onBlocked: () => void;
+}) {
   return (
-    <span className="font-mono text-[14px]" style={{ color: 'var(--g-ink)' }}>
-      {Math.round(grams)} {homeCreatorCopy.recipe.grams}
-    </span>
+    <DirectNumberControl
+      value={grams}
+      step={1}
+      min={0}
+      decimals={0}
+      suffix={homeCreatorCopy.recipe.grams}
+      ariaLabel={`${name} — ${homeCreatorCopy.recipe.gramsFieldLabel}`}
+      testId={`home-grams-${lineId}`}
+      widthPreset="grams"
+      density="responsive"
+      onChange={(next) => useRecipeStore.getState().setPlannedGrams(lineId, next)}
+      {...(canSeeGrams
+        ? {}
+        : { maskedValue: homeCreatorCopy.recipe.maskedGramsValue, onMaskedInteract: onBlocked })}
+      lockSegment={{
+        pressed: locked,
+        ariaLabel: `${name} — ${homeCreatorCopy.recipe.lockLabel}`,
+        title: homeCreatorCopy.recipe.lockLabel,
+        suffix: 'g',
+        testId: `home-lock-${lineId}`,
+        onToggle: () =>
+          useRecipeStore.getState().setLockType(lineId, locked ? 'unlocked' : 'grams'),
+      }}
+    />
   );
 }
 
@@ -148,6 +196,7 @@ export function HomeRecipeSection({
   library,
   onAddIngredient,
   onAddTopping,
+  onGramsBlocked,
   onSave,
   onLetsMakeIt,
   onShare,
@@ -170,6 +219,8 @@ export function HomeRecipeSection({
   /** §56: the SAME Pro picker, in a simpler HOME presentation. */
   library: IngredientLibrary;
   onAddIngredient: (ingredient: EngineIngredient, behavior?: ProductBehaviorSnapshot) => void;
+  /** Entitlement route when a masked gram control is operated. */
+  onGramsBlocked: () => void;
   onAddTopping: (ingredient: RecipeToppingIngredient, behavior?: ProductBehaviorSnapshot) => void;
   onSave: () => void;
   onLetsMakeIt: () => void;
@@ -237,7 +288,14 @@ export function HomeRecipeSection({
                 </span>
               ) : null}
             </span>
-            <GramCell grams={item.planned_grams} canSeeGrams={canSeeGrams} />
+            <GramControl
+              lineId={item.id}
+              name={item.ingredient.name}
+              grams={item.planned_grams}
+              locked={item.lock_type === 'grams'}
+              canSeeGrams={canSeeGrams}
+              onBlocked={onGramsBlocked}
+            />
             <RowMenu
               onRemove={() => onRemoveItem(item.id)}
               onSubstitute={() => onSubstitute(item.id)}
@@ -262,7 +320,14 @@ export function HomeRecipeSection({
                 {homeCreatorCopy.recipe.topping.toUpperCase()}
               </span>
             </span>
-            <GramCell grams={topping.planned_grams} canSeeGrams={canSeeGrams} />
+            <GramControl
+              lineId={topping.id}
+              name={topping.ingredient.name}
+              grams={topping.planned_grams}
+              locked={false}
+              canSeeGrams={canSeeGrams}
+              onBlocked={onGramsBlocked}
+            />
             <RowMenu onRemove={() => onRemoveItem(topping.id)} />
           </li>
         ))}

@@ -490,6 +490,16 @@ export function HomeCreatorPage() {
             sweetnessStored={recipe.direction_targets.sweetness}
             onSweetness={onSweetness}
             onRemoveItem={(lineId) => useRecipeStore.getState().removeItem(lineId)}
+            onGramsBlocked={() => {
+              // The row keeps its controls for everyone (owner, 2026-08-31), so operating
+              // a masked one routes to the EXISTING entitlement behaviour rather than
+              // silently doing nothing. Same routing the canonical Save already uses.
+              if (recipeSave.blocked === 'signin') {
+                openAuthModal();
+                return;
+              }
+              navigate('/subscription');
+            }}
             onSubstitute={() => undefined}
             onUnavailable={(lineId) => useRecipeStore.getState().markIngredientUnavailable(lineId)}
             library={library}
