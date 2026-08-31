@@ -280,13 +280,13 @@ Copy authority: `src/copy/cooperation.ts` (PL + EN, `resolveCooperationCopy`). N
 | ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | EMAIL-01 | Email | Canonical site `www.gellatti.com`; canonical mailbox `info@gellatti.com`; From `Gellatti <info@gellatti.com>`; Reply-To `info@gellatti.com` | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Single mailbox by design — no extra public mailboxes unless technically necessary | Constants + config |
-| EMAIL-02 | Email | **Provider-agnostic architecture:** business event → persisted email/notification job → idempotency → `EmailProvider` port → Resend adapter. The domain layer must not import Resend | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Mirrors the existing billing pattern (pure domain + adapter) | Port + adapter + job table |
+| EMAIL-02 | Email | **Provider-agnostic architecture:** business event → persisted email/notification job → idempotency → `EmailProvider` port → Resend adapter. The domain layer must not import Resend | 🟡 | ✅ | ⬜ | ⬜ | 🔓 | `db16a161` | `emailJob.ts` — port + job model done, with a guard test asserting no vendor reference in code and no import outside the domain folder. **Adapter and DB table still to build** | Resend adapter + migration |
 | EMAIL-03 | Email | **Mandatory subject taxonomy** — stable machine-filterable prefixes `[GELLATTI][AREA][EVENT][STATE]` plus a human identifier | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `fe5176e5` | `src/notifications/domain/emailSubject.ts` — all 13 owner-documented subjects asserted literally, both worked examples reproduced, closed enumerated set, 40 tests | Wire into the send lane |
 | EMAIL-04 | Email | Structured metadata (`area`, `event`, `entity_id`, `environment`) attached as provider metadata/headers **where supported** — but sorting must never depend on it | 🟡 | ✅ | ⬜ | ⬜ | 🔓 | `fe5176e5` | `buildEmailMetadata` done + a test proving the subject alone still carries area and event with no metadata present. Adapter attachment still to come | Resend adapter |
-| EMAIL-05 | Email | **Never silently mark unsent mail as sent.** Job states must distinguish queued / sent / failed / retrying | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Highest-integrity rule in the email lane | State machine + test |
-| EMAIL-06 | Email | Admin can see failed and pending email jobs relevant to operations | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Admin panel section |
+| EMAIL-05 | Email | **Never silently mark unsent mail as sent.** Job states must distinguish queued / sent / failed / retrying | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `db16a161` | Enforced structurally: `sent` reachable only from `sending` and only with a provider message id; `isDelivered` checks status AND evidence, so a forged row does not read as delivered | — |
+| EMAIL-06 | Email | Admin can see failed and pending email jobs relevant to operations | 🟡 | ✅ | ⬜ | ⬜ | 🔓 | `db16a161` | `requiresAdminAttention()` + retained `lastFailure` done in the domain. **Admin UI still to build** | Admin panel section |
 | EMAIL-07 | Email | Staging uses a capture/test provider; real sending only after domain/provider verification is valid | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | No live mail during staging QA | Capture provider + guard |
-| EMAIL-08 | Email | Idempotency: one business event produces at most one email, replay-safe | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Same discipline as the commission ledger | Unique job key + test |
+| EMAIL-08 | Email | Idempotency: one business event produces at most one email, replay-safe | 🟡 | ✅ | ⬜ | ⬜ | 🔓 | `db16a161` | Deterministic key `env:subjectKey:entityId:recipient`, environment-scoped so a staging replay cannot collide with production. **Needs the DB unique index** | Migration |
 
 ### K — QA personas (§22) · CHECKPOINT E/F
 
@@ -440,14 +440,14 @@ neutral placeholders are development-only.
 
 | Work status | Count |
 | --- | --- |
-| 🟢 DONE | 32 |
-| 🟡 DOING / partially built | 41 |
+| 🟢 DONE | 33 |
+| 🟡 DOING / partially built | 44 |
 | ⏳ WAITING FOR OWNER ASSET (not a blocker) | 9 |
 | 🔴 BLOCKED | 7 |
-| ⚪ TODO | 114 |
+| ⚪ TODO | 110 |
 | **Total rows** | **203** |
 
-Auto ✅ **10** · ⬜ 193. Served ⬜ 203 · Owner ⬜ 203 · Freeze 🔓 203.
+Auto ✅ **14** · ⬜ 189. Served ⬜ 203 · Owner ⬜ 203 · Freeze 🔓 203.
 
 The 7 remaining 🔴 blockers are: `N-V4B-FIT` + `Q-T06` (the 30 mm trailer measurement),
 `C-APP-05` (a `more_information_needed` application state needs a migration), and four rows
