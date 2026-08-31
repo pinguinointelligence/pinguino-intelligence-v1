@@ -264,7 +264,7 @@ at 400 g, so the old proportional rescale would have produced **19 g** at
 
 ---
 
-## PC-03 — CORRECTED · Sorbet exact-projection eligibility required an on-batch draft — **FIXED**
+## PC-03 — **CLOSED / FROZEN** · Sorbet exact-projection eligibility required an on-batch draft
 
 > **THE ORIGINAL ROOT-CAUSE NARRATIVE IS WITHDRAWN.** It named the citrus fibre
 > and NEAREST coverage. Both are wrong, and the record is corrected rather than
@@ -352,18 +352,30 @@ rescue" all green; `guard:owner-locked` OK; `guard:protected-paths` SEMANTIC on
 `applyPipeline.ts` acknowledged via `Protected-Change:`; typecheck clean; lint 0
 errors; build ✓.
 
-**SERVED QA — NOT COMPLETED.** The required case is a *legal* single-Main
-off-batch Sorbet, which cannot be assembled on staging without signing in: the
-anonymous session is refused by the server (`401`, `permission denied for view
-mapper_basement_search`), so neither the ingredient search nor Recalculate runs,
-and the only draft reachable signed-out is the 124 g-inulin starter the owner
-explicitly excluded. Verified signed-out: the new bundle is deployed
-(`index-BFlaEl3N.js`) and the HOME Sorbet journey still builds its draft. The
-remaining checks — Preview/Apply, exact target batch, zero Engine violations,
-Main positive, Multi-Main unchanged, PC-01/PC-02 unchanged — need an
-authenticated run.
+**SERVED QA — OWNER-APPROVED, 2026-08-31.** The authenticated run was performed
+by the owner and reported as passing on the served path. It could not be run
+from this session: signed out, staging refuses the anonymous session (`401`,
+`permission denied for view mapper_basement_search`), so neither the ingredient
+search nor Recalculate executes, and the only signed-out draft is the
+124 g-inulin starter that is excluded because it is independently unpublishable.
+Entering credentials is not something this session does, so the authenticated
+half was the owner's.
 
-### Recorded separately — NOT fixed here
+Verified from this session, signed out: the post-merge bundle is deployed
+(`index-BFlaEl3N.js`) and the HOME Sorbet journey still builds its draft. No
+screenshot artefact was captured on this side; the served evidence of record is
+the owner's approval above. If a screenshot is wanted in the ledger it belongs
+in `reports/e2e/screenshots/` from the owner's own run.
+
+**PC-03 is CLOSED and FROZEN** on the corrected root cause: the historical PC-03
+matrix fixtures were invalid harness artefacts, and the real customer-reachable
+defect was a Sorbet exact-projection eligibility gate that required the incoming
+draft to already equal the target batch even though the projection itself solves
+to that batch. Off-batch canonical drafts therefore fell into the slow general
+path and could terminate `unsafe_proposal` — or publish an Engine violation —
+while a safe exact-projection candidate existed.
+
+### Separate follow-ups — OUT OF PC-03 SCOPE, deliberately not fixed here
 
 * **TECH DEBT — Crown auto-seed leaves a new recipe 1 g off batch.** The seeded
   1 g Main is not budgeted into the starter, so a brand-new Sorbet is 1001 /
