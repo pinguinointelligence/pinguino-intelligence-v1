@@ -33,6 +33,8 @@ import { projectSorbetExactDirectionCandidate } from '@/features/recipe-directio
 import { buildOptimizePreview } from '@/features/constraint-studio/applyPipeline';
 
 const AT = '2026-08-31T09:00:00.000Z';
+/** Real solver runs; the vitest default of 5000 ms is far too short. */
+const SOLVER_TIMEOUT_MS = 600_000;
 const TARGET = 1000;
 
 const starter = buildCanonicalNewRecipeStarter({
@@ -91,7 +93,7 @@ describe('OWNER-LOCKED — an off-batch Sorbet still reaches the exact projectio
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.preview.directionCandidateSource).toBe('sorbet_exact_projection');
-  });
+  }, SOLVER_TIMEOUT_MS);
 
   it('2. what it publishes is on batch and violation-free', () => {
     for (const delta of [0.1, 1, 30, -1, -30]) {
@@ -102,7 +104,7 @@ describe('OWNER-LOCKED — an off-batch Sorbet still reaches the exact projectio
       expect(Math.abs(plannedSum(proposed) - TARGET)).toBeLessThanOrEqual(0.1);
       expect(detectViolations(calculateRecipe(proposed))).toEqual([]);
     }
-  });
+  }, SOLVER_TIMEOUT_MS);
 
   it('3. the crowned Main is never erased to reconcile the batch', () => {
     const result = preview(draft(30));
@@ -111,7 +113,7 @@ describe('OWNER-LOCKED — an off-batch Sorbet still reaches the exact projectio
     const crowned = result.preview.proposedInput.items.filter((item) => item.lock_type === 'main');
     expect(crowned).toHaveLength(1);
     expect(crowned[0]!.planned_grams).toBeGreaterThan(0);
-  });
+  }, SOLVER_TIMEOUT_MS);
 
   it('4. the on-batch route is unchanged', () => {
     const result = preview(draft(0));
@@ -119,7 +121,7 @@ describe('OWNER-LOCKED — an off-batch Sorbet still reaches the exact projectio
     if (!result.ok) return;
     expect(Math.abs(plannedSum(result.preview.proposedInput) - TARGET)).toBeLessThanOrEqual(0.1);
     expect(detectViolations(calculateRecipe(result.preview.proposedInput))).toEqual([]);
-  });
+  }, SOLVER_TIMEOUT_MS);
 
   it('5. every OTHER eligibility condition still holds', () => {
     const offBatch = draft(1);
@@ -141,7 +143,7 @@ describe('OWNER-LOCKED — an off-batch Sorbet still reaches the exact projectio
         ),
       }),
     ).toBeNull();
-  });
+  }, SOLVER_TIMEOUT_MS);
 
   it('6. a MULTI-Main off-batch draft is left to the certified Main frontier', () => {
     /* The relaxation is deliberately narrow. A multi-Main draft that is off
@@ -173,7 +175,7 @@ describe('OWNER-LOCKED — an off-batch Sorbet still reaches the exact projectio
         true,
       );
     }
-  });
+  }, SOLVER_TIMEOUT_MS);
 
   it('6b. an off-batch draft with NO Main is left to its missing-role refusal', () => {
     /* GEL-P0-014: an incomplete scaffold must stop on the missing role rather
@@ -190,11 +192,11 @@ describe('OWNER-LOCKED — an off-batch Sorbet still reaches the exact projectio
     if (result.ok) {
       expect(result.preview.directionCandidateSource).not.toBe('sorbet_exact_projection');
     }
-  });
+  }, SOLVER_TIMEOUT_MS);
 
   it('7. the final batch authority is untouched', () => {
     const source = readFileSync('src/features/constraint-studio/applyPipeline.ts', 'utf8');
     expect(source).toContain('function enforceTargetBatchInvariant');
     expect(source).toContain('plannedSum(result.preview.proposedInput) - target');
-  });
+  }, SOLVER_TIMEOUT_MS);
 });

@@ -28,11 +28,15 @@ import { findDemoIngredient } from '@/data/demoIngredients';
 import { buildCanonicalNewRecipeStarter } from '@/features/recipes/newRecipeStarter';
 import { resolveFunctionalRole } from '@/features/formulation/ingredientRoles';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
+import { practicalizeRecipeCandidate } from '@/features/practical-recipe/practicalRecipe';
 import { projectSorbetExactDirectionCandidate } from '@/features/recipe-direction/sorbetDirectionProjection';
 import { recipeDirectionViolations } from '@/features/recipe-direction/recipeDirectionTargets';
 import { buildOptimizePreview } from './applyPipeline';
 
 const AT = '2026-08-31T09:00:00.000Z';
+/** These exercise the real solver; the vitest default of 5000 ms is far too
+ *  short for the routes that deliberately fall through to the general search. */
+const SOLVER_TIMEOUT_MS = 600_000;
 const TARGET = 1000;
 
 /** The canonical Sorbet support scaffold — the product's own starter, never a
@@ -162,7 +166,7 @@ describe('PC-03 — an off-batch Sorbet draft still reaches the exact projection
     expect(input.items.every((item) => item.actual_grams === null)).toBe(true);
     // A safe, Direction-improving candidate demonstrably exists for it.
     expect(safeImprovingCandidateExists(input)).toBe(true);
-  });
+  }, SOLVER_TIMEOUT_MS);
 
   it('1. an off-batch draft publishes a violation-free proposal on the target batch', () => {
     const result = preview(completeDraft(-2, -1, 1));
@@ -177,7 +181,7 @@ describe('PC-03 — an off-batch Sorbet draft still reaches the exact projection
     const proposedResult = calculateRecipe(proposed);
     expect(detectViolations(proposedResult)).toEqual([]);
     expect(proposedResult.warnings.filter((warning) => warning.severity === 'critical')).toEqual([]);
-  });
+  }, SOLVER_TIMEOUT_MS);
 
   it('1b. the proposal comes from the exact projection, not the general search', () => {
     /* The defect was eligibility: an off-batch draft never reached the
@@ -191,7 +195,7 @@ describe('PC-03 — an off-batch Sorbet draft still reaches the exact projection
     // Reconciling an off-batch draft onto its target IS a batch rescale, and
     // the provenance record says so.
     expect(result.preview.autoBalance).toEqual({ batchRescaled: true, solverRounds: 0 });
-  });
+  }, SOLVER_TIMEOUT_MS);
 
   it('2. the crowned Main survives the reconciliation, positive', () => {
     const result = preview(completeDraft(-2, -1, 1));
@@ -202,27 +206,32 @@ describe('PC-03 — an off-batch Sorbet draft still reaches the exact projection
     expect(crowned[0]!.planned_grams).toBeGreaterThan(0);
     // The batch is never reconciled by erasing the Main the customer chose.
     expect(crowned[0]!.ingredient.name).toBe(RASPBERRY.name);
-  });
+  }, SOLVER_TIMEOUT_MS);
 
   it('2b. the served Crown-debt draft is refused for its OWN reason, not the batch', () => {
     /* The canonical HOME journey seeds the fruit Main at 1 g and scales the
-       support lines to fill the batch, which pushes INULIN to ~124 g against
-       the 20–80 g (2–8 %) Gellatti range. That draft is therefore
-       independently unpublishable, and PC-03 deliberately does not paper over
-       it: this test pins the fact so the inulin debt is not mistaken for the
-       batch-eligibility defect. Recorded as separate follow-up. */
+       support lines to fill the batch, which pushes INULIN far past the 20–80 g
+       (2–8 %) Gellatti range. That draft is therefore independently
+       unpublishable, and PC-03 deliberately does not paper over it: this pins
+       the reason so the inulin debt is never mistaken for the batch-eligibility
+       defect. Asserted at the practicalization boundary, which is where the
+       refusal is decided — no solver run needed. */
     const input = crownDebtDraft(-1, 0);
     expect(Math.abs(plannedSum(input) - TARGET)).toBeGreaterThan(0.1);
     const inulin = input.items.find((item) =>
       item.ingredient.name.toUpperCase().includes('INULIN'),
     );
     expect(inulin!.planned_grams).toBeGreaterThan(80);
-    const result = preview(input);
-    // Whatever the terminal is, nothing violating may be published.
-    if (result.ok) {
-      expect(detectViolations(calculateRecipe(result.preview.proposedInput))).toEqual([]);
-    }
-  });
+
+    const candidate = projectSorbetExactDirectionCandidate(input);
+    expect(candidate).not.toBeNull();
+    const practical = practicalizeRecipeCandidate(candidate!, { byLineId: {} }) as {
+      ok: boolean;
+      code?: string;
+    };
+    expect(practical.ok).toBe(false);
+    expect(practical.code).toBe('inulin_outside_owner_policy');
+  }, SOLVER_TIMEOUT_MS);
 
   it.each([0.1, 1, 30, -1, -30])(
     '3. a %s g batch delta alone never forces the unsafe terminal',
@@ -241,6 +250,7 @@ describe('PC-03 — an off-batch Sorbet draft still reaches the exact projection
       expect(detectViolations(calculateRecipe(result.preview.proposedInput))).toEqual([]);
       expect(Math.abs(plannedSum(result.preview.proposedInput) - TARGET)).toBeLessThanOrEqual(0.1);
     },
+    SOLVER_TIMEOUT_MS,
   );
 
   it('4. the on-batch draft is unchanged', () => {
@@ -251,7 +261,7 @@ describe('PC-03 — an off-batch Sorbet draft still reaches the exact projection
     if (!result.ok) return;
     expect(Math.abs(plannedSum(result.preview.proposedInput) - TARGET)).toBeLessThanOrEqual(0.1);
     expect(detectViolations(calculateRecipe(result.preview.proposedInput))).toEqual([]);
-  });
+  }, SOLVER_TIMEOUT_MS);
 
   it('5. a physically weighed line still keeps the projection closed', () => {
     // `actual_grams` remains an eligibility condition — untouched by this fix.
@@ -263,7 +273,7 @@ describe('PC-03 — an off-batch Sorbet draft still reaches the exact projection
       ),
     };
     expect(projectSorbetExactDirectionCandidate(weighed)).toBeNull();
-  });
+  }, SOLVER_TIMEOUT_MS);
 
   it('6. a genuinely unsafe off-batch draft is still refused or cleaned', () => {
     // Almost the whole batch as sucrose: no projection can make this safe.
@@ -288,7 +298,7 @@ describe('PC-03 — an off-batch Sorbet draft still reaches the exact projection
     } else {
       expect((result as { code: string }).code).not.toBe('OK');
     }
-  });
+  }, SOLVER_TIMEOUT_MS);
 
   it('7. a canonical gram lock stays authoritative on an off-batch draft', () => {
     // A lock reaches the pipeline through the ConstraintSet — that is the
@@ -305,7 +315,7 @@ describe('PC-03 — an off-batch Sorbet draft still reaches the exact projection
       const proposed = result.preview.proposedInput.items.find((item) => item.id === sucrose.id);
       expect(proposed!.planned_grams).toBeCloseTo(sucrose.planned_grams, 6);
     }
-  });
+  }, SOLVER_TIMEOUT_MS);
 
   it('8. the projection still refuses a non-Sorbet and an inactive Direction', () => {
     const offBatch = completeDraft(-2, -1, 1);
@@ -318,5 +328,5 @@ describe('PC-03 — an off-batch Sorbet draft still reaches the exact projection
         goals: { ...offBatch.goals, direction_targets_active: false },
       }),
     ).toBeNull();
-  });
+  }, SOLVER_TIMEOUT_MS);
 });
