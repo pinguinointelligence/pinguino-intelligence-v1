@@ -2,7 +2,11 @@
 
 **Branch:** `claude/work-with-us` · **Worktree:** `~/Developer/pinguino-work-with-us`
 **Base:** `origin/staging` @ `c004d659` (fetched 2026-08-31)
-**Scope authority:** the Owner WORK WITH US master prompt (2026-08-31), §§0–44.
+**Scope authority:** the Owner WORK WITH US master prompt (2026-08-31), §§0–44, **as amended by
+the Owner Correction of 2026-08-31 §§1–20** (canonical site `www.gellatti.com`, canonical mailbox
+`info@gellatti.com`, Resend adapter, `/partner-program` + `/partner`, manufacturer name is
+internal-only, MOBILE and TRAILER are separate products, 600 mm trailer bay depth rule, asset
+manifest promoted to immediate priority).
 **This file is the ONLY status authority for this workstream.** One row per independently
 testable requirement. Every numbered section of the prompt has at least one row.
 
@@ -93,8 +97,8 @@ Copy authority: `src/copy/cooperation.ts` (PL + EN, `resolveCooperationCopy`). N
 | X1 | **Elite is a fixed global tier** | `RATE_TABLE_V1.elite` is hardcoded 299/1900/699/4900 and frozen; DB `commission_rules` seeds the same 12 rates | §11: Elite must be a **per-partner, versioned rate profile**; the old values become *default suggestions only* | E-ELITE-01..05 |
 | X2 | **Retired codes may be reissued to anyone** | `partner_codes_code_active_uniq` is `where status = 'active'` — a retired code's text is free for **another partner** to claim | §8: historical aliases "cannot be claimed by another Partner" — old social posts must never point at a different partner | D-CODE-04 |
 | X3 | **No limit on active codes** | Nothing constrains how many `active` codes a partner holds | §8: **0–3** current public codes | D-CODE-02 |
-| X4 | **`/partner` is the dashboard** | Public visitors hitting `/partner` get a workspace, not a pitch | §5 needs a public landing; §16 needs the dashboard | B-LAND-01, H-DASH-01 |
-| X5 | **Franchise concepts are the 4 formats** | `FranchiseConcept = punkt \| wozek \| przyczepa \| lokal` — "przyczepa" (trailer) is a *franchise* concept | §27–§30 make the trailer its own MOBILE product with a configurator | N-TRAIL-01 |
+| X4 | ~~`/partner` is the dashboard~~ **RESOLVED** | — | **Owner correction §4: `/partner-program` = public landing, `/partner` = authenticated dashboard.** Decided | B-LAND-01 |
+| X5 | **Franchise concepts include `przyczepa`** | `FranchiseConcept = punkt \| wozek \| przyczepa \| lokal` | **Owner correction §7/§9: the TRAILER is its own product at `/trailer`, separate from both MOBILE and FRANCHISE.** The franchise `przyczepa` card must point at `/trailer` | N-TRAIL-01 |
 | X6 | **Gold can never trigger** | No snapshot writer (0.4 #2) | §10 Gold automatic from 100 | E-GOLD-01 |
 
 ### 0.6 Protected / frozen assets this workstream must not break
@@ -120,7 +124,7 @@ Copy authority: `src/copy/cooperation.ts` (PL + EN, `resolveCooperationCopy`). N
 | A-GATE-02 | Gateway | Primary CTA "Dołącz do programu Partner" routes to the Partner landing | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Today it anchors to `#partner-application` on the same page | Point at new landing route |
 | A-GATE-03 | Gateway | Platform recognition strip (Instagram, TikTok, YouTube, Facebook, Reddit, X, Pinterest, blog, newsletter) using the existing icon system, no endorsement implied | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Icon set not yet audited for these 9 marks | Audit `src/components/icons`, add missing |
 | A-GATE-04 | Gateway | Bridge line "Chcesz sprzedawać Gellatti, a nie tylko je polecać?" | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Copy row in `cooperation.ts` |
-| A-GATE-05 | Gateway | Three premium cards MACHINES / MOBILE GELLATTI / FRANCHISE, each to its own route | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | **Replaces** the three "Maszyny + aplikacja / gotowe mieszanki / sama aplikacja" cards (§4) | Build cards after L/M/N routes exist |
+| A-GATE-05 | Gateway | **FOUR** premium cards MACHINES / MOBILE EQUIPMENT / GELLATTI TRAILER / FRANCHISE, each to its own route | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | **Owner correction §7: four paths, not three — the trailer is NOT hidden inside Mobile or Franchise.** Replaces the old "Maszyny + aplikacja / gotowe mieszanki / sama aplikacja" cards. Card art = `GATE-01..04` (crops, no new renders) | Build cards after L/M/N routes exist |
 | A-GATE-06 | Gateway | Legacy anchors/links to the removed cards redirect, nothing 404s | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | `w.offers.*` copy has downstream consumers | Grep consumers before deleting |
 | A-GATE-07 | Gateway | Desktop + mobile served QA of the gateway | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | After A-GATE-01..06 |
 
@@ -128,7 +132,7 @@ Copy authority: `src/copy/cooperation.ts` (PL + EN, `resolveCooperationCopy`). N
 
 | ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| B-LAND-01 | Partner landing | A public landing exists on its own route (`/partner` is the dashboard — X4) | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Route naming is an owner-visible URL decision; proposal `/partner-program`, `/partner` stays the workspace | Decide + implement |
+| B-LAND-01 | Partner landing | Public landing at **`/partner-program`**; `/partner` stays the authenticated dashboard | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | **Route CONFIRMED by owner correction §4** — no longer an open decision | Implement the route |
 | B-LAND-02 | Partner landing | Answers within seconds: who it's for · how they earn · **revenue is recurring** · own codes/links · dashboard visibility · volume raises level | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Copy + layout |
 | B-LAND-03 | Partner landing | Core message "Polecasz raz. Możesz zarabiać również przy kolejnych odnowieniach." | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Copy row |
 | B-LAND-04 | Partner landing | "Twój kod. Twój link. Dowolny kanał." + "Budujesz bazę klientów…" + "Wyniki, prowizje i przyszłe wypłaty…" | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Copy rows |
@@ -148,7 +152,7 @@ Copy authority: `src/copy/cooperation.ts` (PL + EN, `resolveCooperationCopy`). N
 | C-APP-05 | Application | Customer-facing statuses RECEIVED / UNDER REVIEW / MORE INFORMATION NEEDED / APPROVED / REJECTED / SUSPENDED / TERMINATED | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | DB check constraint is `draft/submitted/under_review/approved/rejected/suspended/terminated` — **there is no `more_information_needed` state**; adding one is a migration | Migration + display map |
 | C-APP-06 | Application | Customer copy never exposes internal state names | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Repo rule already: raw values are contracts, shown through a display map | Add display map + guard test |
 | C-APP-07 | Application | Status page readable by the applicant | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | `gellatti_my_partner_application_v1` exists; no dedicated page | Build page |
-| C-APP-08 | Notifications | Emails: received · more info requested · approved · rejected · payout setup required · payout/account requirements | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | **`IMPLEMENTATION_STATUS.md`: "Email provider: none — an adapter must be introduced."** No email can be sent today | Audit notification system; decide adapter vs in-app only — **owner decision** |
+| C-APP-08 | Notifications | Emails: received · more info requested · approved · rejected · payout setup required · payout/account requirements | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | **UNBLOCKED by owner correction §3** — Resend adapter behind a provider-agnostic `EmailProvider` port. Depends on EMAIL-01..06 | Build the email lane first |
 | C-APP-09 | Approval | On approval: link partner, activate, grant HOME + PRO, grant PARTNER mode, codes available, Connect available, audit row, approval message | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | `gellatti_admin_partner_application_action_v1` already approves + mints first code; grant/audit coverage unverified | Verify each of the 8 effects |
 | C-APP-10 | Approval | **No fake zero-price Stripe subscriptions** for Partner free access | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | Locked decision 8 already forbids it; `entitlements` rows are the mechanism | Add regression test |
 | C-APP-11 | Approval | Partner uses the SAME normal login; modes HOME \| PRO \| PARTNER | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | Partner is added on top of the existing plan per the 2026-08-29 lane | Served-verify all three modes |
@@ -269,6 +273,19 @@ Copy authority: `src/copy/cooperation.ts` (PL + EN, `resolveCooperationCopy`). N
 | J-PREC-01 | Precedence | One paid conversion never creates both a Partner cash commission and a normal-user free-time reward for two different owners | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | **Deterministic precedence rule must be designed, documented here, and tested** | Design; preserve A2/A3 partner-code authority |
 | J-PREC-02 | Precedence | Explicit valid Partner code before conversion is not double-rewarded; one owner per first paid conversion; immutable evidence; no self-referral; no client-side trust | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | With J-PREC-01 |
 
+### EM — Email + notification lane (owner correction §§1–3) · CHECKPOINTS B/E/F/G/H/I
+
+| ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| EMAIL-01 | Email | Canonical site `www.gellatti.com`; canonical mailbox `info@gellatti.com`; From `Gellatti <info@gellatti.com>`; Reply-To `info@gellatti.com` | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Single mailbox by design — no extra public mailboxes unless technically necessary | Constants + config |
+| EMAIL-02 | Email | **Provider-agnostic architecture:** business event → persisted email/notification job → idempotency → `EmailProvider` port → Resend adapter. The domain layer must not import Resend | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Mirrors the existing billing pattern (pure domain + adapter) | Port + adapter + job table |
+| EMAIL-03 | Email | **Mandatory subject taxonomy** — stable machine-filterable prefixes `[GELLATTI][AREA][EVENT][STATE]` plus a human identifier | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Prefixes stay stable across languages; only the customer-facing subject may be localized. Google Workspace filtering must work from the Subject **alone** | Typed subject builder + exhaustive test |
+| EMAIL-04 | Email | Structured metadata (`area`, `event`, `entity_id`, `environment`) attached as provider metadata/headers **where supported** — but sorting must never depend on it | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Explicitly belt-and-braces: the Subject is the contract | Adapter support + test |
+| EMAIL-05 | Email | **Never silently mark unsent mail as sent.** Job states must distinguish queued / sent / failed / retrying | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Highest-integrity rule in the email lane | State machine + test |
+| EMAIL-06 | Email | Admin can see failed and pending email jobs relevant to operations | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Admin panel section |
+| EMAIL-07 | Email | Staging uses a capture/test provider; real sending only after domain/provider verification is valid | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | No live mail during staging QA | Capture provider + guard |
+| EMAIL-08 | Email | Idempotency: one business event produces at most one email, replay-safe | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Same discipline as the commission ledger | Unique job key + test |
+
 ### K — QA personas (§22) · CHECKPOINT E/F
 
 | ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
@@ -303,14 +320,14 @@ Copy authority: `src/copy/cooperation.ts` (PL + EN, `resolveCooperationCopy`). N
 | L-SPEC-02 | Specs | Publish only basic verified fields: dimensions · power · positions · batch capacity · production time · application · price | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | Publishable set now defined per model in reconciliation §4. **Weight and peak power are withheld for ALL models** (brochure exceeds quotation on 100 % of models — systematic, not a typo) | Encode the allow-list in the catalog data |
 | L-SPEC-03 | Specs | Unresolved fields are omitted and their row marked BLOCKED — never silently pick the better-looking figure | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | **Three real conflicts found and blocked:** (a) weight — brochure higher on every model; (b) peak power — brochure higher on every model; (c) **V6/V8 power supply: quotation says single-phase 220 V, brochure says three-phase 380 V** — installation-critical, must never be published unresolved. Plus the Milano output anomaly (V2 Milano 100 cups/h vs V1 Milano 200 cups/h) | Enforce omission in code + test |
 | L-STORY-01 | Story | Real capabilities in premium Gellatti language, not pasted brochure text | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | After L-SPEC-01 |
-| L-STORY-02 | Story | Miles manufacturer identity retained on Miles equipment unless private-label rights are proven; Gellatti is the seller/solution layer | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Manufacturer of record per the quotation: **Hangzhou Gelato Tech Co., Ltd** (milestac.com) — private-label rights unknown | **Owner decision** on branding rights |
+| L-STORY-02 | Story | **Manufacturer name is INTERNAL ONLY.** Public pages name the model (V2, V4B, Battery Cart, Milano) with no manufacturer attribution, and never imply Gellatti manufactures the equipment | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | **REVERSED by owner correction §5/§14.** Supplier identity stays in procurement, evidence and Admin only. Needs an automated guard so the name cannot leak into a public bundle | Copy + **public-bundle guard test** |
 
 ### M — Mobile Miles machines (§27, §28) · CHECKPOINT H
 
 | ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| M-MOB-01 | Mobile | MOBILE GELLATTI has two paths: Miles mobile machine · complete Gellatti trailer | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
-| M-MOB-02 | Mobile | Mobile machine set = DC Battery Cart · V2C · V4C | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | All three confirmed in the quotation | — |
+| M-MOB-01 | Mobile | **MOBILE EQUIPMENT is its own product at `/mobile` and does NOT contain the trailer** | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | **Changed by owner correction §7/§8** — the trailer moved out to `/trailer` (N-TRAIL-01) | Build route |
+| M-MOB-02 | Mobile | Mobile equipment set = **Battery Cart · V2C · V4C** (public names, no manufacturer prefix) | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | All three confirmed in the quotation and reconciled against brochures | Build catalog data |
 | M-MOB-03 | Mobile | Use cases: events, catering, outdoor, pop-ups, food markets, hotels/restaurants, temporary points | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
 | M-MOB-04 | Mobile | Same inquiry-based selector, no checkout | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Reuse L selector |
 
@@ -318,11 +335,15 @@ Copy authority: `src/copy/cooperation.ts` (PL + EN, `resolveCooperationCopy`). N
 
 | ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| N-TRAIL-01 | Trailer | Separate route/section, "Twój mobilny punkt Gellatti." | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Conflicts with `FranchiseConcept='przyczepa'` (X5) — trailer must become its own product | Resolve overlap |
-| N-TRAIL-02 | Trailer | Base trailer working price FROM €10,000 | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Owner-supplied figure; no supporting document in the machine pack | — |
-| N-TRAIL-03 | Trailer | 5-step configurator: trailer · machine · equipment · branding · inquiry | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
-| N-TRAIL-04 | Trailer | Standard trailer ≈3.5 m × 2.1 m, real geometry preserved; standard machines V2, V4B; larger/custom → V4, V6, V8 | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
-| N-TRAIL-05 | Trailer | **Incoterm must be verified before publishing**; safe wording until then | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | Legacy notes say "FOB Germany". The machine quotation is **EXW China**, and the owner states the trailer ships from Germany with EU registration documentation. "FOB" is a sea-freight term and is technically wrong for a road delivery from Germany — publishing it would be an incorrect commercial claim | Publish only the owner's safe wording; **owner/legal decision** on the real term |
+| N-TRAIL-01 | Trailer | Own route **`/trailer`**, "Twój własny mobilny punkt Gellatti." | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | **Owner correction §9.** Franchise's `przyczepa` card must link here rather than duplicating the funnel | Build route; re-point franchise card |
+| N-TRAIL-02 | Trailer | Base trailer FROM €10,000 · Lokalizacja: Niemcy | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Owner-supplied figure; no supporting document in the machine pack | Copy row |
+| N-TRAIL-03 | Trailer | **9-step** configurator: trailer · machine · refrigeration/storage · water/sink · coffee · storage · branding · country/location · inquiry | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | **Expanded by owner correction §13** from 5 steps to 9 | Build |
+| N-TRAIL-04 | Trailer | Standard trailer ≈3.5 m × 2.1 m, real geometry preserved | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Build from `TRL-D` |
+| N-TRAIL-07 | Trailer | **Machine bay rule: MAXIMUM MACHINE DEPTH 600 mm** | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | **New rule, owner correction §10.** Verified depths: V2 600 ✅ · V4B 600 ✅ · V4 800 ❌ · V6 800 ❌ · V8 800 ❌ · V4C 800 ❌ · Battery Cart 760 ❌. Countertop models (Milano 540, Café Specialty 550) pass on depth but are **countertop, not floor bay** — a different integration | Encode the rule + test |
+| N-TRAIL-08 | Trailer | **Nominal dimensions alone never declare a fit.** Service, ventilation, door/access and electrical compatibility must each be verified | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Owner correction §10 explicitly forbids declaring fit from external dimensions | Fit-verification checklist per model |
+| N-TRAIL-09 | Trailer | **V2 is a standard trailer option** | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | V2 is 720 long × 600 deep — fits the ~1340 mm bay with ~620 mm spare, and meets the 600 mm depth rule. The layout that can be drawn honestly today (`TRAILER-04`) | Build selector option + floorplan |
+| N-TRAIL-10 | Trailer | **V4, V6, V8 are CUSTOM TRAILER · ON REQUEST** — never squeezed into the standard floorplan | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Owner correction §12. All three are 800 mm deep, failing the 600 mm bay rule outright | Selector routes them to "Indywidualny projekt przyczepy" |
+| N-TRAIL-05 | Trailer | **Never publish "FOB Germany".** Public wording is exactly: "Przyczepa bazowa od €10,000. Lokalizacja: Niemcy. Maszyna, wyposażenie, branding, transport i podatki dobieramy do projektu." | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | **RESOLVED by owner correction §9** — the incorrect Incoterm is banned outright rather than deferred | Copy + guard test forbidding the string "FOB" |
 | **N-V4B-FIT** | **Trailer** | **TRAILER-V4B-FIT — dimensional compatibility must be proven before any floorplan is frozen** | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | **CONFIRMED REAL — not a quotation typo.** Owner drawing equipment zone = **1340** × 600 × 910 mm. **Both** Miles quotation **and** Miles brochure (Galaxy Pro V4-B, p.22) independently state **1370** × 600 × 910 mm. Depth and height match exactly; length is short by **30 mm** | **Measure the physical trailer's clear opening.** Cheapest fix is 30 mm off the cabinetry run, not the machine. Marketing may list V4B; **floorplan may NOT be frozen** |
 
 ### O — Franchise (§31) · CHECKPOINT I
@@ -344,21 +365,40 @@ Copy authority: `src/copy/cooperation.ts` (PL + EN, `resolveCooperationCopy`). N
 | P-LEAD-03 | Leads | Statuses NEW / CONTACTED / QUALIFIED / QUOTED / WON / LOST | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | Franchise has `new/contacted/qualified/closed` — **missing QUOTED, WON, LOST** | Migration |
 | P-LEAD-04 | Leads | Admin: see all, filter by type/status, open details, see configuration, add notes, update status, audit history | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | `AdminFranchiseLeadsSection` exists for one type | Generalize |
 | P-LEAD-05 | Leads | Customer gets submission confirmation | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Verify per route |
-| P-LEAD-06 | Leads | Admin notified via the canonical notification system | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | Same blocker as C-APP-08 — no email adapter | **Owner decision** |
+| P-LEAD-06 | Leads | Admin notified at `info@gellatti.com` via the canonical notification system | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | **UNBLOCKED by owner correction §1–§3.** Subjects must use the §2 taxonomy | After EMAIL-01..06 |
 
-### Q — Asset manifest (§33) · CHECKPOINT J
+### Q — Asset manifest (§33, owner correction §§15–18 + the owner's 23-asset render list) · **IMMEDIATE PRIORITY**
+
+Briefs, prompts, reference-file assignments and render order live in
+**`reports/GELLATTI_WORK_WITH_US_ASSET_MANIFEST.md`**. **The owner's own A/M/MB/T/F/W IDs and
+prompts are the authority** (owner-approved addendum, 2026-08-31); Claude supplies the reference
+file per render, the geometry guards, and the gap analysis.
+
+**No asset-dependent page may reach OWNER FINAL / 🔒 FROZEN until its final assets are installed;**
+neutral placeholders are development-only.
 
 | ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Q-ASSET-00 | Assets | One canonical `GELLATTI_WORK_WITH_US_ASSET_MANIFEST` with the full 18-field row schema | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Claude writes briefs only; owner/ChatGPT renders | Write manifest |
-| Q-ASSET-01 | Assets | PARTNER-01..04 briefs (hero, influencer, community admin, blog/newsletter) | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
-| Q-ASSET-02 | Assets | MACHINE-01..04 briefs | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
-| Q-ASSET-03 | Assets | MOBILE-01..02 briefs | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
-| Q-ASSET-04 | Assets | TRAILER-01..03 briefs — **preserve real geometry, replace PINGÜINO branding with GELLATTI** | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Owner supplied 2 real trailer renders (silver closed, white open) as the geometry source | — |
-| Q-ASSET-05 | Assets | TRAILER-04 floorplan (3.5×2.1 m, V2) | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
-| Q-ASSET-06 | Assets | TRAILER-05 floorplan (V4B) — **cannot be briefed as final until N-V4B-FIT resolves** | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | Blocked by the 30 mm conflict | After N-V4B-FIT |
-| Q-ASSET-07 | Assets | FRANCHISE-01..03 briefs | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
-| Q-ASSET-08 | Assets | No ugly "asset missing" block survives into an owner-approved page; visual rows can't freeze without final assets | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Staging currently shows literal "Asset nie jest częścią preview" placeholders | Design graceful fallback |
+| Q-ASSET-00 | Assets | Canonical manifest exists, built on the owner's 23-asset list | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | this run | Owner IDs adopted verbatim as authority; per-asset reference file, geometry guard and mobile-crop rule added | — |
+| Q-REF-01 | Assets | **Reference pack extracted so machines are rendered from real images, not descriptions** | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | this run | 12 files at `~/Desktop/PI/machines/REFERENCE-FOR-RENDERS/` — V2, V4, V4B, V6, V8, V2C, V4C, Battery Cart, 2x Milano, 2x context | Attach the matching file to every machine render |
+| Q-REF-02 | Assets | **Trailer references must be saved to disk** | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | `TRL-A`/`TRL-B` were pasted into chat only. **T01, T02, T03, T04 and the W03 gateway card are all blocked on this** — including T01, the owner's first render | **Owner: save both renders to `~/Desktop/PI/machines/trailer/`** |
+| Q-A01 | Assets | A01 Partner hero (16:9, 4:5 safe) | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Render order #2. Serves both `/work-with-us` and `/partner-program` | Owner renders |
+| Q-A02 | Assets | A02 community admin · A03 video creator | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Partner "who this is for" cards | Owner renders |
+| Q-A04 | Assets | A04 machines hero · A05 battery-cart hero | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Render order #3, #4. A05 must show **no power cable** — the battery is the whole claim | Owner renders |
+| Q-M01 | Assets | M01-M05 machine scenes | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | M05 lineup must state relative scale or the generator will normalise a 374 mm countertop unit against a 910 mm floor unit | Owner renders |
+| Q-MB01 | Assets | MB01-MB03 mobile scenes | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | MB01 mobile crop must be 4:5 not 1:1 — a square frame cuts the 2400 mm canopy off | Owner renders |
+| Q-T01 | Assets | T01-T04 trailer photography | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | Blocked on Q-REF-02 | After Q-REF-02 |
+| Q-T05 | Assets | T05 floorplan V2 — **vector, not generated** | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | V2 verified to fit: 720 x 600 in a ~1340 x 600 bay, exactly at the 600 mm depth limit, ~620 mm spare | Author SVG |
+| Q-T06 | Assets | T06 floorplan V4B | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | **BLOCKED — `N-V4B-FIT`**, owner agrees. 1340 available vs 1370 required, corroborated by two independent supplier sources | Measure the real clear bay length |
+| Q-F01 | Assets | F01-F03 franchise | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Render order #5, #10. Gellatti branding belongs on signage, never on the machine | Owner renders |
+| Q-W01 | Assets | W01-W04 gateway cards | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | W03 blocked on Q-REF-02 | Owner renders |
+| Q-GAP-01 | Assets | **G1 — V4, V6 and V8 have no visual in the list** | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | The three most expensive products (EUR 15,400 / 24,000 / 33,000). `L-MACH-08` requires every model reachable with no dead end, so a V6/V8 recommendation would land on an imageless card. Reference renders already exist in the pack | Edit `V4.png`, `V6.png`, `V8.png` |
+| Q-GAP-02 | Assets | **G2 — no isolated product shots for selector result cards** | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Every listed asset is a scene; a cafe scene does not read at card size. These are edits, not generations | Edit the 8 reference files |
+| Q-GAP-03 | Assets | **G3 — no writer / newsletter persona** | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Master prompt §33 required it. Partner promises "dowolny kanal" and the platform strip includes blog + newsletter, but every persona image shows a camera | Render `G-A06` |
+| Q-GAP-04 | Assets | **G4 — Milano V2 and Cafe Specialty are unrenderable** | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | No isolated render and no spec table in any supplied document. Generating from description would produce machines that only resemble the real products | **Owner: request product renders from the supplier** |
+| Q-ASSET-12 | Assets | **No manufacturer branding in any public asset**; machines stay clean and unbranded; Gellatti branding only on environment/signage/trailer | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Owner correction §5/§6 | Review gate at asset intake |
+| Q-ASSET-13 | Assets | **No social platform logos baked into photography** — real vector icons overlaid by the UI | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Owner correction §17. Every Partner brief reserves overlay space | Review gate + icon audit (A-GATE-03) |
+| Q-ASSET-14 | Assets | No ugly "asset missing" block survives into an owner-approved page | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Staging currently shows literal "Asset nie jest czescia preview" placeholders | Design graceful fallback |
 
 ### R — Design language (§34)
 
@@ -435,28 +475,28 @@ Lead operations (P) land alongside whichever of G/H/I ships first and are extend
 
 ---
 
-## 4. Owner decisions required (blocking, collected — not asked one at a time)
+## 4. Owner decisions — ALL FIVE RESOLVED by the correction of 2026-08-31
 
-These cannot be resolved by inspection. Work continues around them; the listed rows stay 🔴.
+| # | Question asked | Owner's answer |
+| --- | --- | --- |
+| 1 | Email/notification adapter | **Resend**, behind a provider-agnostic `EmailProvider` port. Canonical mailbox `info@gellatti.com`, canonical site `www.gellatti.com`. Mandatory subject taxonomy. Never mark unsent mail as sent. → EMAIL-01..08 |
+| 2 | Partner landing route | **`/partner-program`** public, **`/partner`** authenticated dashboard. → B-LAND-01 |
+| 3 | Miles branding rights | **Reversed:** the manufacturer name is **internal-only** and must not appear publicly. Public copy uses model names and never implies Gellatti manufactures. → L-STORY-02, Q-ASSET-12 |
+| 4 | Trailer Incoterm | **"FOB Germany" is banned.** Publish the owner's exact safe wording instead. → N-TRAIL-05 |
+| 5 | Trailer vs franchise overlap | **The trailer is its own product at `/trailer`**, separate from both MOBILE and FRANCHISE. → N-TRAIL-01, X5 |
 
-1. **Email/notification adapter (C-APP-08, P-LEAD-06).** There is no email provider in the
-   project at all. Options: (a) introduce an adapter now, (b) ship in-app notifications only and
-   defer email, (c) name a provider you already hold credentials for. Until then no application,
-   approval or lead email can be sent.
-2. **Partner landing route name (B-LAND-01).** `/partner` is the authenticated dashboard. The
-   public landing needs its own URL — proposal: `/partner-program`, leaving `/partner` as the
-   workspace. This is a customer-visible URL.
-3. **Miles branding rights (L-STORY-02).** The equipment is manufactured by Hangzhou Gelato Tech
-   Co., Ltd. §26 says not to remove Miles identity "unless private-label rights are proven". Do
-   you hold private-label rights?
-4. **Trailer Incoterm (N-TRAIL-05).** Legacy notes say "FOB Germany"; FOB is a sea-freight term
-   and is technically wrong for road delivery from Germany. The safe wording will be published
-   until you or your legal/commercial authority confirm the correct term.
-5. **Trailer vs. franchise concept overlap (X5, N-TRAIL-01).** `przyczepa` is currently one of the
-   four *franchise* concepts, and §29 also makes the trailer its own MOBILE product. Confirm the
-   trailer is a MOBILE product and the franchise "Przyczepa" card should point at it.
+### New owner actions requested by this run (not blocking development)
 
----
+1. **Save the two trailer renders to disk** at `~/Desktop/PI/machines/trailer/` — they were pasted
+   into chat but cannot be referenced by path, and they are the geometry authority for
+   `TRAILER-01/02/03`.
+2. **Request isolated product renders** for Milano V1, Milano V2 and Café Specialty from the
+   supplier — three catalogue rows cannot be illustrated without them (Q-ASSET-04).
+3. **Measure the trailer's real clear bay length** — the single measurement that unblocks
+   `N-V4B-FIT`, `TRAILER-05` and the whole V4B standard-trailer option.
+4. **Seven questions for the supplier** are collected in
+   `reports/GELLATTI_MACHINE_SPEC_RECONCILIATION.md` §5 — weight, Galaxy Pro peak power, the
+   V6/V8 power-supply contradiction, Milano output, the DC Cart 12-hour battery option.
 
 ## 5. Change log
 

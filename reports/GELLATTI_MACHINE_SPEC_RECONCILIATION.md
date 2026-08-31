@@ -10,7 +10,7 @@
 | **Q** | `Miles ice cream machine price list.pdf` — QUOTATION, Hangzhou Gelato Tech Co., Ltd (milestac.com), 12 line items, **EXW China** | Commercial quotation to the owner | ✅ text |
 | **B** | `Miles international catalog.pdf` — *Miles Galaxy Pro* international catalogue, per-model "DETAILED INFO" pages | Manufacturer marketing brochure | ⚠️ image-only; read by rendering |
 | **M** | `MILES MilanoV1&2.pdf` | Milano-series lifestyle brochure | ⚠️ image-only; **contains no spec table** |
-| **E** | `THE GELATO EV.pdf` | EV/mobile concept brochure | ⚠️ image-only; not yet needed |
+| **E** | `THE GELATO EV.pdf` | DC Gelato Cart brochure + real deployment photography | ⚠️ image-only; read by rendering |
 | **D** | Owner trailer drawing (3.5 × 2.1 m layout) | Owner-supplied technical drawing | image |
 
 Brand: **Miles®** ("REDEFINE THE BEST"), series **GALAXY PRO**. Manufacturer of record is
@@ -54,23 +54,26 @@ Legend — **Authority**: `Q+B` both agree · `BLOCKED` sources conflict · `Q o
 
 ### 2.1 The systematic finding
 
-Across every Galaxy Pro model that appears in both sources, the conflicts are **not random**:
+Across every Galaxy Pro model that appears in both sources, the conflicts are **not random**. The
+DC Battery Cart (a different series, documented in a different brochure) is the control case:
 
-| Field | Behaviour across all 6 reconciled models | Publish? |
+| Field | Behaviour across the 8 reconciled models | Publish? |
 | --- | --- | --- |
 | Dimensions (W×D×H) | **Q and B agree exactly, every model** | ✅ YES |
 | Production capacity (cups/80 g/h) | **Q and B agree exactly, every model** | ✅ YES |
 | Initial batching time | 12–18 min in both, every model | ✅ YES |
 | Cooling type / refrigerant | Air cooling / R290 in both, every model | ✅ YES |
 | Capacity per batch | Q gives max only; B gives max **and** minimum — compatible, B is richer | ✅ YES (use B) |
-| **Weight** | **B is higher than Q on every single model** (+7 to +51 kg) | ❌ **OMIT** |
-| **Peak power** | **B is higher than Q on every single model** (+500 to +2000 W) | ❌ **OMIT** |
+| **Weight** | **B is higher than Q on every single model** (+7 to +51 kg), DC Cart included | ❌ **OMIT** |
+| **Peak power** | **B is higher than Q on every Galaxy Pro model** (+500 to +2000 W); the DC Battery Cart AGREES (1300 W both) | ❌ **OMIT** for Galaxy Pro · ✅ publishable for DC Cart |
 | **Power supply** | Agrees on V2/V4-A/V4-B/V2C; **conflicts on V6 and V8** | ⚠️ per-model |
 
-Because weight and peak power differ on *100 %* of models in a consistent direction, this is a
-systematic documentation difference (plausibly nett vs. gross weight, and rated vs. absolute peak
-draw), **not** a transcription error that can be resolved by picking the nicer number. §25 forbids
-silently choosing. Both fields are withheld from public specs until the manufacturer confirms.
+Weight differs on *every* model in a consistent direction, and peak power differs on every
+*Galaxy Pro* model while agreeing exactly on the DC Cart. Consistent direction plus a clean control
+case means this is a systematic documentation difference (plausibly nett vs. gross weight, and
+rated vs. absolute peak draw), **not** a transcription error that can be resolved by picking the
+nicer number. §25 forbids silently choosing. Both fields are withheld from public specs until the
+manufacturer confirms — except DC Cart peak power, which two sources agree on.
 
 ### 2.2 Evidence table
 
@@ -142,12 +145,48 @@ silently choosing. Both fields are withheld from public specs until the manufact
 | Weight | 178 kg | 195 KG | **WITHHELD** | — | ⚠️ 17 kg |
 | Peak power | 1400 W | 1900 W | **WITHHELD** | — | ⚠️ 500 W |
 
-#### Models with no brochure page reconciled yet
+#### PRO V4C — *Galaxy Pro V4C* (B p.26) — mobile cart
+
+| Field | Q | B | Selected | Confidence | Conflict |
+| --- | --- | --- | --- | --- | --- |
+| Dimensions | 1500 × 800 × 2400 mm | 1500 × 800 × 2400 mm | **1500 × 800 × 2400 mm** | High | — |
+| Power supply | 16 A 1-ph 220 V | 16 A 1-ph 220 V | **16 A single phase** | High | — |
+| Capacity per batch | max 3 L | max 3.0 L / min 1.5 L | **3.0 / 1.5 L** | High | — |
+| Production | 500 cups/80 g/h | 500 cups/80 g/h | **500 cups/h** | High | — |
+| Counter / canopy | — | counter 910 mm; canopy adjustable 1290–1490 mm; base 1500 × 500 mm | **B only** | Medium | — |
+| Weight | 326 kg | 360 KG | **WITHHELD** | — | ⚠️ 34 kg |
+| Peak power | 2800 W | 3800 W | **WITHHELD** | — | ⚠️ 1000 W |
+
+#### DC Battery Cart — *DC Gelato Cart* (E p.14) — **the one model where peak power AGREES**
+
+| Field | Q | E (EV brochure) | Selected | Confidence | Conflict |
+| --- | --- | --- | --- | --- | --- |
+| Dimensions | 520 × 760 × 890 mm | 520 × 760 × 890 mm | **520 × 760 × 890 mm** | High | — |
+| Power supply | 12 A 1-ph 220 V | 12 A 1-ph 220 V | **12 A single phase** | High | — |
+| **Battery** | rechargeable lithium, **8 hours** | **two options: 8 hours OR 12 hours** | **8 h standard; 12 h option** (E is richer) | Medium-High | — (E extends Q, does not contradict it) |
+| **Peak power** | **1300 W** | **1300 W** | **1300 W — publishable** | **High** | — |
+| Cylinder volume | batch max 2.0 L / min 1.0 L | 5.0 L × 2 cylinders | **2 cylinders** (different measures: cylinder volume ≠ usable batch) | Medium | — |
+| Production | 200 cups/80 g/h | 200 cups/80 g/h | **200 cups/h** | High | — |
+| Pozzetti | — | **2** | **2** | High | — |
+| Weight | 110 kg | 140 KG | **WITHHELD** | — | ⚠️ 30 kg |
+
+**Why this model matters to the pattern:** peak power agrees exactly (1300 W both). The
+peak-power discrepancy is therefore specific to the **Galaxy Pro series**, not to Miles
+documentation in general. Weight still disagrees here, so the weight discrepancy is the broader
+of the two. Question 2 to the manufacturer should be scoped to the Galaxy Pro series.
+
+The EV brochure also shows the cart in real deployments — catering and events, hotels and
+resorts, restaurants and bars, café and bakery — with **customer branding applied to the cart's
+front panel**. That confirms the front panel is a designed branding surface, which matters for the
+trailer/mobile asset briefs.
+
+#### Models with no brochure page located
 
 | Model | Status | Note |
 | --- | --- | --- |
-| PRO V4C | 🔴 not yet located in B | Q: 1500 × 800 × 2400 mm, 326 kg, 16 A, 2800 W, 500 cups/h. Expect the same weight/peak-power pattern — do not publish those two fields |
-| DC Battery Cart | 🔴 not yet located in B | Q: 520 × 760 × 890 mm, 110 kg, 12 A + rechargeable lithium battery (**8 hours**), 1300 W, max 2.0 L / min 1.0 L, 200 cups/h. The 8-hour battery is the headline mobile claim and needs brochure confirmation |
+| PRO V1 Café Specialty | 🔴 no spec source besides Q | Q: 580 × 550 × 420 mm, 69 kg, 10 A, 950 W, max 3 L, 165 cups/h |
+| PRO V1 Milano | 🔴 Milano brochure has **no spec table** | Q: 410 × 540 × 374 mm, 54 kg, 10 A, 950 W, max 2 L, **200 cups/h** |
+| PRO V2 Milano | 🔴 Milano brochure has **no spec table** | Q: 680 × 540 × 374 mm, 79 kg, 12 A, 950 W, max 2 L, **100 cups/h** |
 | PRO V1 Café Specialty | 🔴 no spec source besides Q | Q: 580 × 550 × 420 mm, 69 kg, 10 A, 950 W, max 3 L, 165 cups/h |
 | PRO V1 Milano | 🔴 Milano brochure has **no spec table** | Q: 410 × 540 × 374 mm, 54 kg, 10 A, 950 W, max 2 L, **200 cups/h** |
 | PRO V2 Milano | 🔴 Milano brochure has **no spec table** | Q: 680 × 540 × 374 mm, 79 kg, 12 A, 950 W, max 2 L, **100 cups/h** |
@@ -210,14 +249,18 @@ capacity · batching time · price only, and **not** production capacity for the
 
 1. **Weight** — brochure figures exceed quotation figures on every model. Which is nett machine
    weight and which is gross/shipping weight?
-2. **Peak power** — same systematic gap. Which figure is the electrical design load an installer
-   should size for?
+2. **Peak power (Galaxy Pro series only)** — same systematic gap on V2/V4/V4B/V6/V8/V2C/V4C, but
+   the DC Cart agrees at 1300 W in both documents. Which figure is the electrical design load an
+   installer should size for?
 3. **V6 / V8 power supply** — the quotation says single-phase 220 V; the catalogue says three-phase
    380 V. Which is supplied to the EU, and is the other a regional variant?
 4. **Milano output** — is PRO V2 Milano really 100 cups/80 g/h when PRO V1 Milano is 200?
 5. **DC Battery Cart** — confirm the 8-hour battery runtime and what duty cycle it assumes.
-6. **Private-label rights** — may Gellatti sell these under Gellatti branding, or must Miles®
-   identity be retained? (feeds `L-STORY-02`)
+6. ~~Private-label rights~~ — **RESOLVED by owner override 2026-08-31 §5/§14**: the manufacturer
+   name is internal-only. Public pages name the model (V2, V4B, Battery Cart, Milano) with no
+   manufacturer attribution, and never imply Gellatti manufactures the equipment. Nothing to ask.
+7. **DC Cart 12-hour battery** — the EV brochure lists an 8 h and a 12 h battery option; the
+   quotation prices only the 8 h. Is the 12 h a priced option, and at what uplift?
 
 ---
 
