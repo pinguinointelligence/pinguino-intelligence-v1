@@ -89,19 +89,21 @@ export function AppShell({
         className={cn(
           APP_HEADER_ROW,
           maxWidthClass,
-          viewportLock && `xl:grid ${DESKTOP_WORKBENCH_COLUMNS}`,
+          /* OWNER OVERRIDE (2026-09-01) — ONE global header geometry.
+             The workbench split is now applied on EVERY route, not only under
+             `viewportLock`. The primary (left) column is the global column: the
+             hamburger and the wordmark open it and HOME | PRO closes it, so the
+             three land on identical pixels on HOME, PRO, Sklep and Współpraca.
+             A route without a module strip simply leaves the display column
+             empty — the absence must never pull the primary column wider. */
+          `xl:grid ${DESKTOP_WORKBENCH_COLUMNS}`,
           stickyHeader && 'sticky top-0 z-40 bg-paper',
         )}
         style={{ paddingTop: 'max(env(safe-area-inset-top), 0.5rem)' }}
       >
         {/* The hamburger is the first element of the header on EVERY screen: one
             fixed origin the eye can rely on while moving between sections. */}
-        <div
-          className={cn(
-            'flex min-w-0 items-center gap-3 sm:gap-5',
-            viewportLock && 'xl:col-start-1 xl:row-start-1',
-          )}
-        >
+        <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-5 xl:col-start-1 xl:row-start-1">
           <AppNavDrawer />
           <Link
             to={brandDestination}
@@ -112,28 +114,27 @@ export function AppShell({
           </Link>
           {viewportLock ? actions : null}
           <DesignReviewOverlay />
+          {/* The trailing edge of the primary column — NOT the viewport edge.
+              min-w-0 + wrap: page actions may shrink on narrow screens; the
+              header must never force horizontal page overflow. */}
+          <div
+            className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3"
+            data-testid="app-shell-trailing"
+          >
+            {!viewportLock ? actions : null}
+            {!viewportLock &&
+            navigationPosition === 'trailing' &&
+            (audience === 'pro' || audience === 'home') ? (
+              <span
+                className="inline-flex h-7 items-center rounded-full border border-ink/15 bg-white px-3.5 text-[9px] font-bold tracking-[0.14em] text-ink"
+                data-testid="app-shell-plan-badge"
+              >
+                {audience === 'pro' ? 'PRO' : 'HOME'}
+              </span>
+            ) : null}
+          </div>
         </div>
         {viewportLock ? workbenchChrome : null}
-        {/* min-w-0 + wrap: page actions may shrink/wrap on narrow screens — the header must
-            never force horizontal page overflow (owner P0 responsive rule). */}
-        <div
-          className={cn(
-            'flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3',
-            viewportLock && 'hidden',
-          )}
-        >
-          {!viewportLock ? actions : null}
-          {!viewportLock &&
-          navigationPosition === 'trailing' &&
-          (audience === 'pro' || audience === 'home') ? (
-            <span
-              className="inline-flex h-7 items-center rounded-full border border-ink/15 bg-white px-3.5 text-[9px] font-bold tracking-[0.14em] text-ink"
-              data-testid="app-shell-plan-badge"
-            >
-              {audience === 'pro' ? 'PRO' : 'HOME'}
-            </span>
-          ) : null}
-        </div>
       </header>
       <main
         className={cn(contentClassName, viewportLock && 'xl:min-h-0 xl:flex-1 xl:overflow-hidden')}

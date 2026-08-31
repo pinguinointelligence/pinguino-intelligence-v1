@@ -12,7 +12,8 @@ import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const SRC = resolve(import.meta.dirname, '..', '..');
-const page = () => readFileSync(join(SRC, 'pages', 'destinations', 'GlobalDestinationPages.tsx'), 'utf8');
+const page = () =>
+  readFileSync(join(SRC, 'pages', 'destinations', 'GlobalDestinationPages.tsx'), 'utf8');
 
 describe('signed-out and entitlement gates are designed states', () => {
   it('puts every gate on the approved notice surface', () => {
@@ -66,10 +67,13 @@ describe('commerce surfaces draw from the token palette', () => {
     ['features', 'shop', 'ShopCart.tsx'],
     ['features', 'shop', 'ShopConfirmation.tsx'],
     ['features', 'shop', 'ShopProductCard.tsx'],
-    ['features', 'shop', 'ShopHeroActions.tsx'],
-    ['features', 'shop', 'ShopHeroPack.tsx'],
+    // SHOP C3 (2026-09-01): the hero and the old Starter Pack card are gone;
+    // the offer and the contents replace them. Same gate, current file set.
     ['features', 'shop', 'ShopPackaging.tsx'],
-    ['features', 'shop', 'ShopStarterPack.tsx'],
+    ['features', 'shop', 'shopStarterShots.ts'],
+    ['features', 'shop', 'ShopStarterOffer.tsx'],
+    ['features', 'shop', 'ShopStarterContents.tsx'],
+    ['features', 'shop', 'ShopCartCount.tsx'],
     ['features', 'shop', 'ShopOrdersPanel.tsx'],
     ['pages', 'destinations', 'SubscriptionPage.tsx'],
     ['features', 'global-catalog', 'GlobalCatalogSearchPanel.tsx'],

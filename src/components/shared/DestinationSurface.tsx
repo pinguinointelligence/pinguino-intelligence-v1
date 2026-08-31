@@ -30,6 +30,8 @@ export function DestinationSurface({
   blurb,
   actions,
   contextLabel,
+  canonicalHeader = false,
+  headerActions,
   bare = false,
   children,
 }: {
@@ -39,6 +41,22 @@ export function DestinationSurface({
   actions?: ReactNode;
   /** Compact lockup descriptor used by the approved global destination shell. */
   contextLabel?: string;
+  /**
+   * OWNER OVERRIDE (2026-09-01) — the ONE global Gellatti header.
+   *
+   * A destination that opts in renders the canonical lockup exactly as HOME
+   * and PRO do: the official wordmark alone, with no `<page> · Gellatti
+   * Workspace` descriptor beside it. The row geometry itself is already shared
+   * (`APP_HEADER_ROW`); this only removes the destination-specific lockup, so a
+   * route can never grow its own header identity.
+   */
+  canonicalHeader?: boolean;
+  /**
+   * Controls for the GLOBAL header row — the HOME | PRO switch. They land at
+   * the trailing edge of the primary column, in the one frozen position.
+   * `actions` (unprefixed) still belongs to the PAGE heading.
+   */
+  headerActions?: ReactNode;
   /**
    * GELLATTI V2.1 §5 — the commercial destinations (Sklep, Franchise,
    * Współpraca) open on a HERO that carries the page title itself, so the
@@ -54,21 +72,24 @@ export function DestinationSurface({
     <div className="pro-studio-radius-system theme-pro-light">
       <AppShell
         navigationPosition="trailing"
+        actions={headerActions}
         /* GELLATTI V2.1 §5 — the approved destination lockup: wordmark, then
            `<page> · Gellatti Workspace` at 11 px, the workspace half in ink.
            No vertical rule and no uppercase tracking: the preview reads it as
            one sentence, not as two competing labels. */
         brand={
-          <span className="gellatti-destination-brand flex min-w-0 items-center gap-[18px]">
-            <OfficialProLogo />
-            <span className="hidden min-w-0 items-center gap-2 text-[11px] leading-[17px] text-[var(--g-text-secondary)] sm:flex">
-              <span className="truncate">{contextLabel ?? eyebrow ?? title}</span>
-              <span aria-hidden>·</span>
-              <b className="font-bold whitespace-nowrap text-[var(--g-ink)]">
-                {copy.shell.workspace}
-              </b>
+          canonicalHeader ? undefined : (
+            <span className="gellatti-destination-brand flex min-w-0 items-center gap-[18px]">
+              <OfficialProLogo />
+              <span className="hidden min-w-0 items-center gap-2 text-[11px] leading-[17px] text-[var(--g-text-secondary)] sm:flex">
+                <span className="truncate">{contextLabel ?? eyebrow ?? title}</span>
+                <span aria-hidden>·</span>
+                <b className="font-bold whitespace-nowrap text-[var(--g-ink)]">
+                  {copy.shell.workspace}
+                </b>
+              </span>
             </span>
-          </span>
+          )
         }
       >
         <SurfaceToneContext.Provider value="paper">
