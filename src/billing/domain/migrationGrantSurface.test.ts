@@ -123,7 +123,12 @@ describe('inherited grant surface', () => {
       'utf8',
     );
     expect(fix).toMatch(/revoke all on public\.partner_rate_profiles from anon, authenticated/);
-    expect(fix).toMatch(/grant select on public\.partner_rate_profiles to authenticated/);
+    // Least privilege by PROVEN need, not by guess: the only consumer is
+    // stripe-webhook/dispatch.ts on service_role, through the SECURITY DEFINER
+    // resolver, which needs no table grant. Nothing in src/ reads this table.
+    // So the fix grants NOTHING back, and 200500's speculative
+    // `grant select ... to authenticated` is removed rather than re-issued.
+    expect(fix.replace(/--.*$/gm, '')).not.toMatch(/grant[^;]*on public\.partner_rate_profiles/);
     // It must not quietly widen the pre-existing money tables.
     for (const other of ['commission_entries', 'commission_rules', 'partners', 'partner_codes']) {
       expect(fix.replace(/--.*$/gm, ''), other).not.toMatch(
