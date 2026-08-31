@@ -1,6 +1,12 @@
 import { supabase } from '@/lib/supabase/client';
+import {
+  PARTNER_APPLICATION_STATUSES,
+  type PartnerApplicationStatus,
+} from '@/features/partner-application/partnerApplicationStatus';
 
-const unavailable = (): never => { throw new Error('Partner backend is unavailable in this build.'); };
+const unavailable = (): never => {
+  throw new Error('Partner backend is unavailable in this build.');
+};
 
 export interface PartnerCodeAnalytics {
   id: string;
@@ -88,16 +94,26 @@ export async function updatePartnerProfile(profile: {
 
 const imageDimensions = async (file: File): Promise<{ width: number; height: number }> => {
   const bitmap = await createImageBitmap(file);
-  try { return { width: bitmap.width, height: bitmap.height }; }
-  finally { bitmap.close(); }
+  try {
+    return { width: bitmap.width, height: bitmap.height };
+  } finally {
+    bitmap.close();
+  }
 };
 
 export async function uploadPartnerLogo(file: File): Promise<void> {
   if (!supabase) return unavailable();
-  if (!['image/jpeg','image/png','image/webp'].includes(file.type)) throw new Error('Logo musi być plikiem JPG, PNG lub WEBP.');
-  if (file.size < 1 || file.size > 2 * 1024 * 1024) throw new Error('Logo musi mieć maksymalnie 2 MB.');
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type))
+    throw new Error('Logo musi być plikiem JPG, PNG lub WEBP.');
+  if (file.size < 1 || file.size > 2 * 1024 * 1024)
+    throw new Error('Logo musi mieć maksymalnie 2 MB.');
   const dimensions = await imageDimensions(file);
-  if (dimensions.width < 128 || dimensions.height < 128 || dimensions.width > 2000 || dimensions.height > 2000) {
+  if (
+    dimensions.width < 128 ||
+    dimensions.height < 128 ||
+    dimensions.width > 2000 ||
+    dimensions.height > 2000
+  ) {
     throw new Error('Logo musi mieć wymiary od 128×128 do 2000×2000 px.');
   }
   const { data: auth, error: authError } = await supabase.auth.getUser();
@@ -105,7 +121,8 @@ export async function uploadPartnerLogo(file: File): Promise<void> {
   const extension = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
   const path = `${auth.user.id}/logo-${crypto.randomUUID()}.${extension}`;
   const { error: uploadError } = await supabase.storage
-    .from('partner-public-assets').upload(path, file, { contentType: file.type, upsert: false });
+    .from('partner-public-assets')
+    .upload(path, file, { contentType: file.type, upsert: false });
   if (uploadError) throw new Error(uploadError.message);
   const { error: registerError } = await supabase.rpc('gellatti_partner_register_logo_v1', {
     p_storage_path: path,
@@ -145,7 +162,8 @@ export async function startConnectOnboarding(): Promise<string> {
   });
   if (error) throw new Error(error.message);
   const url = (data as { url?: unknown } | null)?.url;
-  if (typeof url !== 'string' || !url.startsWith('https://')) throw new Error('Connect onboarding URL is unavailable.');
+  if (typeof url !== 'string' || !url.startsWith('https://'))
+    throw new Error('Connect onboarding URL is unavailable.');
   return url;
 }
 
@@ -198,9 +216,14 @@ export function getReferralEvidence(): ReferralEvidence | null {
     if (!raw) return null;
     const value = JSON.parse(raw) as Partial<ReferralEvidence>;
     if (typeof value.clickId !== 'string' || typeof value.expiresAt !== 'string') return null;
-    if (Date.parse(value.expiresAt) <= Date.now()) { localStorage.removeItem(REFERRAL_KEY); return null; }
+    if (Date.parse(value.expiresAt) <= Date.now()) {
+      localStorage.removeItem(REFERRAL_KEY);
+      return null;
+    }
     return value as ReferralEvidence;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 export async function claimReferralEvidence(): Promise<string | null> {
@@ -235,12 +258,11 @@ export interface PartnerApplicationDraft {
   proposedSlug?: string;
 }
 
-export type PartnerApplicationStatus =
-  | 'draft'
-  | 'submitted'
-  | 'in_review'
-  | 'approved'
-  | 'rejected';
+// The status contract lives with its customer copy so the two can never drift.
+// It previously listed 'in_review', which the database CHECK constraint never
+// allowed — see migration 20260831140000.
+export type { PartnerApplicationStatus };
+export { PARTNER_APPLICATION_STATUSES };
 
 export interface PartnerApplicationRecord {
   id: string;

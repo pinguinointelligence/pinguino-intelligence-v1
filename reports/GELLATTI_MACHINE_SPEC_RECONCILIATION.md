@@ -216,7 +216,7 @@ side graphic in addition to the manufacturer wordmark — **both must be removed
 | Weight | 54 kg | 54 KG | **54 kg — publishable** | High | — |
 | Peak power | 950 W | 950 W | **950 W — publishable** | High | — |
 | Cylinder volume | batch max 2 L | 5.0 L × 1 | **1 cylinder** (different measures) | Medium | — |
-| **Production** | **200 cups/h** | **100 cups/h** | **100 cups/h (B)** — see §2.4 | **High after resolution** | ⚠️ resolved |
+| **Production** | **200 cups/h** | **100 cups/h** | **100 cups/h (B)** — provenance §2.4 · **WITHHELD from public** | Medium | ⚠️ open conflict |
 | Pozzetti | — | **1** | **1** | High | — |
 
 #### PRO V2 Milano — *Galaxy Pro Milano V2* (M p.4)
@@ -228,32 +228,46 @@ side graphic in addition to the manufacturer wordmark — **both must be removed
 | Weight | 79 kg | 79 KG | **79 kg — publishable** | High | — |
 | **Peak power** | **950 W** | **1200 W** | **WITHHELD** | — | ⚠️ 250 W — Q appears to have copied V1's 950 W |
 | Cylinder volume | batch max 2 L | 5.0 L × 2 | **2 cylinders** | Medium | — |
-| **Production** | **100 cups/h** | **200 cups/h** | **200 cups/h (B)** — see §2.4 | **High after resolution** | ⚠️ resolved |
+| **Production** | **100 cups/h** | **200 cups/h** | **200 cups/h (B)** — provenance §2.4 · **WITHHELD from public** | Medium | ⚠️ open conflict |
 | Pozzetti | — | **2** | **2** | High | — |
 
-### 2.4 The Milano production anomaly — RESOLVED
+### 2.4 Provenance rule, and the Milano production conflict
 
-The earlier block on Milano output is lifted. With both brochure spec pages in hand:
+**Provenance rule (owner authority, 2026-08-31).** Applied to every row in this document:
+
+| Source | Authority for | Weight |
+| --- | --- | --- |
+| Official model brochure / spec page | **Technical specifications**, where the model and revision are unambiguous | Selecting authority |
+| Quotation | **Current commercial price** | Selecting authority for price only |
+| Cylinder count, power architecture, physical layout | — | **Corroborating evidence only** — never a selecting authority |
+
+A conflict is *documented*, never deleted. And a documented conflict is **kept off the public page
+until the manufacturer resolves it**, regardless of which source provenance would favour.
+
+#### The Milano production conflict
 
 | Source | Milano V1 | Milano V2 |
 | --- | --- | --- |
-| Quotation (Q) | 200 cups/h | 100 cups/h |
-| Brochure (M) | **100 cups/h** | **200 cups/h** |
+| Quotation (Q) | 200 cups/80 g/h | 100 cups/80 g/h |
+| Brochure (M) — *Galaxy Pro Milano V1* p.2 / *V2* p.4 | **100 cups/80 g/h** | **200 cups/80 g/h** |
 
-**The quotation has the two figures transposed.** The brochure ordering is the coherent one and is
-corroborated by the physical hardware: Milano V1 has **one** cylinder and a 10 A supply, Milano V2
-has **two** cylinders and a 12 A supply. A machine with twice the cylinders and more current does
-not produce half the output.
+**Selected value: the brochure figures — V1 = 100 cups/h, V2 = 200 cups/h.** The brochure pages are
+official model spec pages whose model and revision are unambiguous (each is titled for exactly one
+model and carries its own dimensioned drawing), so under the provenance rule they are the technical
+authority for this field.
 
-**Selected authority: the brochure. V1 = 100 cups/h, V2 = 200 cups/h.** This is the one place where
-the reconciliation overrides the quotation on a spec field, and it is done on stated evidence rather
-than preference. The quotation remains authoritative for **price** (§1), which is unaffected.
+**Corroborating evidence, not the reason for the selection:** Milano V1 carries one cylinder on a
+10 A supply and Milano V2 carries two cylinders on 12 A, which is consistent with the brochure
+ordering. This is recorded as corroboration only — it did not select the value.
 
-The same page also shows the quotation repeating V1's 950 W for V2, where the brochure gives
-1200 W — consistent with a copy error in the same block of the quotation. That field stays withheld.
-| PRO V1 Café Specialty | 🔴 no spec source besides Q | Q: 580 × 550 × 420 mm, 69 kg, 10 A, 950 W, max 3 L, 165 cups/h |
-| PRO V1 Milano | 🔴 Milano brochure has **no spec table** | Q: 410 × 540 × 374 mm, 54 kg, 10 A, 950 W, max 2 L, **200 cups/h** |
-| PRO V2 Milano | 🔴 Milano brochure has **no spec table** | Q: 680 × 540 × 374 mm, 79 kg, 12 A, 950 W, max 2 L, **100 cups/h** |
+**The quotation conflict is preserved, not deleted.** The quotation states the opposite ordering,
+and that discrepancy stands on the record until the manufacturer confirms. See §5 question 4, which
+covers the adjacent duplicated peak-power value in the same block of the quotation.
+
+**Public status: WITHHELD.** This is an unresolved manufacturer conflict, so production capacity for
+both Milano models stays off the public page until the manufacturer resolves it — the selected value
+is what Gellatti will use internally and what the question to the manufacturer is anchored on, not
+something to publish merely to fill a card.
 
 ---
 
@@ -291,15 +305,17 @@ public catalogue rests on a single source any more.
 | Model | Publish | Withhold |
 | --- | --- | --- |
 | **Café Specialty** | dimensions · power supply · **weight** · **peak power** · batch capacity · batching time · production · price | — *(nothing — all fields agree)* |
-| **Milano V1** | footprint 410 × 540 · power supply · **weight 54 kg** · **peak power 950 W** · cylinders (1) · batching time · **production 100 cups/h** · price | overall height (365 vs 374) |
-| **Milano V2** | footprint 680 × 540 · power supply · **weight 79 kg** · cylinders (2) · batching time · **production 200 cups/h** · price | overall height (365 vs 374) · peak power |
+| **Milano V1** | footprint 410 × 540 · power supply · **weight 54 kg** · **peak power 950 W** · cylinders (1) · batching time · price | overall height (365 vs 374) · **production capacity** (documented conflict) |
+| **Milano V2** | footprint 680 × 540 · power supply · **weight 79 kg** · cylinders (2) · batching time · price | overall height (365 vs 374) · peak power · **production capacity** (documented conflict) |
 | **V2 · V4 · V4B · V2C · V4C** | dimensions · power supply · batch capacity · batching time · production · price | weight · peak power |
 | **V6 · V8** | dimensions · batch capacity · batching time · production · price | weight · peak power · **power supply** |
 | **Battery Cart** | dimensions · power supply · **peak power 1300 W** · battery (8 h std, 12 h option) · cylinders (2) · batching time · production · price | weight |
 
 **Never publish without manufacturer confirmation:** weight and peak power for the seven Galaxy Pro
 floor/canopy units; weight for the Battery Cart; peak power for Milano V2; overall height for both
-Milano models; **power supply for V6 and V8**.
+Milano models; **production capacity for both Milano models**; **power supply for V6 and V8**.
+
+No disputed field is published to fill a card. Public cards carry only the reconciled values above.
 
 ---
 
@@ -320,12 +336,14 @@ Five questions remain. Two earlier ones are closed.
    repeated Milano V1's figure; please confirm 1200 W.
 5. **DC Cart 12-hour battery** — the EV brochure lists an 8 h and a 12 h option; the quotation prices
    only the 8 h. Is the 12 h a priced option, and at what uplift?
+6. **Milano production capacity** — the brochure gives V1 = 100 and V2 = 200 cups/80 g/h; the
+   quotation gives the opposite ordering. Please confirm which is correct for each model. Held off
+   the public page until answered.
 
 **Closed:**
 - ~~Private-label rights~~ — resolved by owner override §5/§14: the manufacturer name is
   internal-only, so no permission question arises.
-- ~~Milano production capacity~~ — **resolved by evidence** in §2.4: the quotation transposed the
-  two figures. No manufacturer confirmation needed, though question 4 touches the same block.
+
 
 ---
 

@@ -1,4 +1,8 @@
 import { useState } from 'react';
+import {
+  isApplicationInFlight,
+  type PartnerApplicationStatus,
+} from '@/features/partner-application/partnerApplicationStatus';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
 import { SectionLabel } from '@/components/shared/SectionLabel';
@@ -12,12 +16,18 @@ import {
 
 const field = 'pro-focus-ring min-h-11 w-full border border-[var(--g-line)] bg-white px-3 text-sm';
 
-const STATUS_LABEL: Record<string, string> = {
+// Admin labels stay admin-flavoured ("Nowe zgłoszenie" reads better in a queue
+// than the customer's "Zgłoszenie przyjęte"), but the KEYS are the contract
+// values and must cover every status the database can hold.
+const STATUS_LABEL: Record<PartnerApplicationStatus, string> = {
   draft: 'Szkic',
   submitted: 'Nowe zgłoszenie',
-  in_review: 'Oczekuje na informacje',
+  under_review: 'W recenzji',
+  more_information_needed: 'Oczekuje na informacje',
   approved: 'Zatwierdzone',
   rejected: 'Odrzucone',
+  suspended: 'Wstrzymany',
+  terminated: 'Zakończony',
 };
 
 const text = (value: unknown): string | null =>
@@ -35,7 +45,7 @@ function ApplicationRow({
   const [reason, setReason] = useState('');
   const data = row.application ?? {};
   const platforms = Array.isArray(data.platforms) ? (data.platforms as string[]) : [];
-  const open = row.status === 'submitted' || row.status === 'in_review';
+  const open = isApplicationInFlight(row.status as PartnerApplicationStatus);
   return (
     <article className="border border-[var(--g-line)] bg-white p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -53,7 +63,9 @@ function ApplicationRow({
       <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
         {text(data.primaryLink) ? (
           <div className="min-w-0">
-            <dt className="text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">Główny link</dt>
+            <dt className="text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">
+              Główny link
+            </dt>
             <dd className="truncate">
               <a
                 href={String(data.primaryLink)}
@@ -68,30 +80,40 @@ function ApplicationRow({
         ) : null}
         {text(data.otherLinks) ? (
           <div className="min-w-0">
-            <dt className="text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">Inne linki</dt>
+            <dt className="text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">
+              Inne linki
+            </dt>
             <dd className="truncate text-[var(--g-text-secondary)]">{String(data.otherLinks)}</dd>
           </div>
         ) : null}
         {platforms.length > 0 ? (
           <div>
-            <dt className="text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">Platformy</dt>
+            <dt className="text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">
+              Platformy
+            </dt>
             <dd className="text-[var(--g-text-secondary)]">{platforms.join(' · ')}</dd>
           </div>
         ) : null}
         {text(data.audience) ? (
           <div>
-            <dt className="text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">Publiczność</dt>
+            <dt className="text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">
+              Publiczność
+            </dt>
             <dd className="text-[var(--g-text-secondary)]">{String(data.audience)}</dd>
           </div>
         ) : null}
         {text(data.country) ? (
           <div>
-            <dt className="text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">Kraj</dt>
+            <dt className="text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">
+              Kraj
+            </dt>
             <dd className="text-[var(--g-text-secondary)]">{String(data.country)}</dd>
           </div>
         ) : null}
         <div>
-          <dt className="text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">Konto Gellatti</dt>
+          <dt className="text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">
+            Konto Gellatti
+          </dt>
           <dd className="text-[var(--g-text-secondary)]">
             {row.partnerActive ? 'Partner aktywny' : 'Bez roli Partner'}
           </dd>
@@ -105,7 +127,9 @@ function ApplicationRow({
       ) : null}
 
       {row.decision_reason ? (
-        <p className="mt-3 text-xs text-[var(--g-text-secondary)]">Decyzja: {row.decision_reason}</p>
+        <p className="mt-3 text-xs text-[var(--g-text-secondary)]">
+          Decyzja: {row.decision_reason}
+        </p>
       ) : null}
 
       {open ? (
@@ -171,8 +195,10 @@ export function AdminPartnerApplicationsPanel() {
   });
 
   const rows = applications.data ?? [];
-  const open = rows.filter((row) => row.status === 'submitted' || row.status === 'in_review');
-  const closed = rows.filter((row) => row.status === 'approved' || row.status === 'rejected');
+  const open = rows.filter((row) => isApplicationInFlight(row.status as PartnerApplicationStatus));
+  const closed = rows.filter(
+    (row) => !isApplicationInFlight(row.status as PartnerApplicationStatus),
+  );
 
   return (
     <section className="mt-7">
@@ -183,7 +209,9 @@ export function AdminPartnerApplicationsPanel() {
       </p>
 
       {decide.isError ? (
-        <p className="mt-3 text-sm text-status-error">{customerErrorMessage(decide.error, 'admin')}</p>
+        <p className="mt-3 text-sm text-status-error">
+          {customerErrorMessage(decide.error, 'admin')}
+        </p>
       ) : null}
       {decide.data?.code ? (
         <p className="mt-3 text-sm text-ink">

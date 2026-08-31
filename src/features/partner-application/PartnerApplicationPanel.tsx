@@ -98,7 +98,10 @@ export function PartnerApplicationPanel() {
 
   if (mine.data?.partnerActive) {
     return (
-      <div className="rounded-[12px] border border-ink/12 bg-[#e7e3dd] p-6" id="partner-application">
+      <div
+        className="rounded-[12px] border border-ink/12 bg-[#e7e3dd] p-6"
+        id="partner-application"
+      >
         <h3 className="text-lg font-semibold tracking-[-0.02em]">{c.state.activeTitle}</h3>
         <p className="mt-2 text-sm leading-relaxed text-stone-600">{c.state.activeBody}</p>
         <a href="/partner" className={cn(applicationPrimaryClasses(), 'mt-5 inline-flex')}>
@@ -109,13 +112,13 @@ export function PartnerApplicationPanel() {
   }
 
   const status = mine.data?.application?.status;
-  if (status === 'submitted' || status === 'in_review' || submit.data?.id) {
+  if (status === 'submitted' || status === 'more_information_needed' || submit.data?.id) {
     const reason = mine.data?.application?.decision_reason;
     return (
       <div className="rounded-[12px] border border-ink/12 bg-white p-6" id="partner-application">
         <h3 className="text-lg font-semibold tracking-[-0.02em]">{c.state.pendingTitle}</h3>
         <p className="mt-2 max-w-prose text-sm leading-relaxed text-stone-600">
-          {status === 'in_review' ? c.state.informationBody : c.state.pendingBody}
+          {status === 'more_information_needed' ? c.state.informationBody : c.state.pendingBody}
         </p>
         {reason ? <p className="mt-3 text-sm text-stone-600">{reason}</p> : null}
       </div>
@@ -232,9 +235,7 @@ export function PartnerApplicationPanel() {
         </label>
       </div>
 
-      {submit.isError ? (
-        <p className="mt-4 text-sm text-[#b3261e]">{c.form.error}</p>
-      ) : null}
+      {submit.isError ? <p className="mt-4 text-sm text-[#b3261e]">{c.form.error}</p> : null}
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <button
