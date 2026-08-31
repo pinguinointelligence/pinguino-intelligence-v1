@@ -177,6 +177,11 @@ type ProductPickerPopoverProps = {
    * beside it.
    */
   triggerVariant?: 'pill' | 'icon';
+  /**
+   * Icon-variant size. `md` (default) is the 44 px control used beside the recipe list;
+   * `sm` is the more compact refinement control, which still clears 44 px on touch.
+   */
+  triggerSize?: 'sm' | 'md';
   className?: string;
   behaviorContext?: Omit<ProductBehaviorContext, 'processScope' | 'requestedRole' | 'module'>;
   /** Read-only Base duplicate check before ProductBehavior/network work. The
@@ -209,6 +214,7 @@ export function ProductPickerPopover({
   onAdd,
   triggerLabel,
   triggerVariant = 'pill',
+  triggerSize = 'md',
   className,
   behaviorContext,
   onPreflightDuplicate,
@@ -822,7 +828,11 @@ export function ProductPickerPopover({
           type="button"
           /* Designbook round icon button: neutral/graphite at rest, orange focus ring
              (`pro-focus-ring`), 44x44 so it clears the mobile touch target. */
-          className={cn(iconButtonClasses('md'), 'text-ink')}
+          className={cn(
+            iconButtonClasses(triggerSize),
+            triggerSize === 'sm' && 'max-sm:size-11',
+            'text-ink',
+          )}
           aria-haspopup="dialog"
           aria-expanded={open}
           aria-controls={dialogId}
