@@ -265,6 +265,7 @@ export function extractCheckoutMapping(session: Payload): CheckoutMappingRow | n
  */
 export interface ShopOrderSettlement {
   orderId: string;
+  sessionId: string | null;
   paid: boolean;
   expired: boolean;
   paymentIntentId: string | null;
@@ -297,6 +298,7 @@ export function extractShopOrderSettlement(session: Payload): ShopOrderSettlemen
 
   return {
     orderId,
+    sessionId: asString(session.id),
     paid: asString(session.payment_status) === 'paid',
     expired: asString(session.status) === 'expired',
     paymentIntentId: asId(session.payment_intent),

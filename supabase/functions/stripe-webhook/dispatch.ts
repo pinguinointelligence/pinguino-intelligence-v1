@@ -166,11 +166,23 @@ async function applyShopOrderSettlement(
 
   const { data: current, error: readError } = await deps.db
     .from('shop_orders')
-    .select('id,status,paid_at')
+    .select('id,status,paid_at,subtotal_cents,currency,stripe_checkout_session_id')
     .eq('id', shop.orderId)
     .maybeSingle();
   throwOnDbError(readError, 'shop_orders lookup');
   if (!current) return `shop_order_not_found:${shop.orderId}`;
+
+  // PROVIDER TRUTH, NOT SELF-DESCRIPTION. `metadata` is attacker-shaped input
+  // as far as this writer is concerned: an event that merely NAMES an order
+  // must never settle it. The session in hand has to be the session this order
+  // was created against, and the money has to be the money we asked for.
+  if (
+    current.stripe_checkout_session_id &&
+    shop.sessionId &&
+    current.stripe_checkout_session_id !== shop.sessionId
+  ) {
+    return `shop_order_session_mismatch:${shop.orderId}`;
+  }
 
   const status = current.status as string;
   if (status === 'refunded' || status === 'cancelled') {
@@ -189,6 +201,18 @@ async function applyShopOrderSettlement(
 
   if (!shop.paid) return `shop_order_not_paid:${status}`;
   if (status === 'paid') return 'shop_order_already_paid';
+
+  // The currency must match, and the amount must be at least what the items
+  // cost — the provider adds shipping/tax on top, so it can legitimately
+  // exceed the subtotal, but it can never fall short of it.
+  const orderCurrency = typeof current.currency === 'string' ? current.currency : null;
+  if (orderCurrency && shop.currency && orderCurrency.toLowerCase() !== shop.currency.toLowerCase()) {
+    return `shop_order_currency_mismatch:${shop.currency}`;
+  }
+  const subtotal = typeof current.subtotal_cents === 'number' ? current.subtotal_cents : null;
+  if (subtotal !== null && shop.amountTotal !== null && shop.amountTotal < subtotal) {
+    return `shop_order_amount_mismatch:${shop.amountTotal}`;
+  }
 
   const patch: Record<string, unknown> = {
     status: 'paid',
@@ -733,6 +757,7 @@ export async function applyEventEffects(deps: DispatchDeps, event: WebhookEventF
       return { note: await applyCheckoutCompletion(deps, event) };
     case 'checkout_async_payment_succeeded':
     case 'checkout_async_payment_failed':
+    case 'checkout_session_expired':
       return { note: await applyShopOrderSettlement(deps, event) };
     case 'subscription_state_sync':
       return { note: await applySubscriptionSync(deps, event) };
