@@ -219,15 +219,43 @@ describe('PC3 banned words — the follow-up migration the live probe forced', (
   );
   const BANNED = BANNED_SQL.replace(/--.*$/gm, '');
 
+  /** The word array the SQL guard actually loops over, parsed from the source. */
+  function sqlBannedWords(): string[] {
+    const block = /foreach v_banned in array array\[([\s\S]*?)\]/.exec(BANNED)?.[1] ?? '';
+    return [...block.matchAll(/'([A-Z]+)'/g)].map((m) => m[1]);
+  }
+
+  it('PARITY: the SQL list equals the TS list exactly — no drift in either direction', () => {
+    // This is the contract the live defect earned. It fails if EITHER side
+    // gains or loses a word: a TS-only addition leaves the database weaker
+    // (the original defect), and a SQL-only addition silently refuses codes
+    // the application would have accepted.
+    const ts = [...PROTECTED_CODE_WORDS, ...OFFENSIVE_CODE_WORDS];
+    expect(new Set(sqlBannedWords())).toEqual(new Set(ts));
+  });
+
+  it('PARITY: the counts match, so a duplicate cannot mask a missing word', () => {
+    const ts = [...PROTECTED_CODE_WORDS, ...OFFENSIVE_CODE_WORDS];
+    expect(sqlBannedWords()).toHaveLength(new Set(ts).size);
+  });
+
   it('carries every protected word the TS module protects', () => {
     for (const word of PROTECTED_CODE_WORDS) {
-      expect(BANNED, word).toContain(`'${word}'`);
+      expect(sqlBannedWords(), word).toContain(word);
     }
   });
 
   it('carries every offensive word the TS module rejects', () => {
     for (const word of OFFENSIVE_CODE_WORDS) {
-      expect(BANNED, word).toContain(`'${word}'`);
+      expect(sqlBannedWords(), word).toContain(word);
+    }
+  });
+
+  it('the words proven refused on the live database are all in the list', () => {
+    // ADMINX, PINGUINO1, STRIPEX, MYPAYOUT were verified as `banned_word`
+    // against real staging after applying 20260831200100.
+    for (const stem of ['ADMIN', 'PINGUINO', 'STRIPE', 'PAYOUT']) {
+      expect(sqlBannedWords(), stem).toContain(stem);
     }
   });
 

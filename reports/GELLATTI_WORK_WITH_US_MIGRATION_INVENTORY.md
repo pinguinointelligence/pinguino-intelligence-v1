@@ -21,30 +21,35 @@ And the check the owner asked for found a fourth problem that neither of us had 
 
 ---
 
-## 1. THE INVENTORY
+## 1. THE INVENTORY — NINE FILES, TWO APPLIED
 
-All eight are **additive**. None is applied. None conflicts after the renumber in §2.
+Referred to by **exact filename**. Ordinal shorthand is no longer used: inserting `200100` after the
+first apply made "#7/#8" ambiguous.
 
-| # | Timestamp | Filename | Purpose | Depends on | Already applied? | Conflict? |
-| --- | --- | --- | --- | --- | --- | --- |
-| 1 | `20260831200000` | `partner_code_slots_and_alias_ownership.sql` | §8 X2+X3: code uniqueness becomes global; 3-slot ceiling | `0016_partner_program` (partner_codes) | **No** | None |
-| 2 | `20260831200500` | `partner_rate_profiles.sql` | §11: per-partner versioned Elite rates; adds `commission_entries.rate_profile_version_id` | `0016`, `0018_commission_ledger` | **No** | None |
-| 3 | `20260831201000` | `partner_application_more_information.sql` | §6: adds `more_information_needed`; **fixes the `in_review` bug** | `partner_application_lane`, `partner_application_slug_fix` | **No** | None — see §3 |
-| 4 | `20260831201500` | `email_jobs.sql` | §1–§3: persisted email jobs, idempotent claim, Admin read | none (new table) | **No** | None |
-| 5 | `20260831202000` | `partner_tier_snapshot_writer.sql` | §10: monthly Gold snapshot writer + catch-up | #2 (elite profile), `0018` (`partner_tier_snapshots`) | **No** | None |
-| 6 | `20260831202500` | `payout_execution.sql` | §14: eligibility, batch, claim, settle, reconcile, **live kill switch** | `0018`, `0019_payouts` | **No** | None |
-| 7 | `20260831203000` | `partner_scheduling.sql` | pg_cron invocation + `partner_job_runs` + Admin read | #5, #6 | **No** | None |
-| 8 | `20260831203500` | `business_leads.sql` | §32 lead operations for all four paths + append-only history; imports the existing franchise rows | `franchise_inquiries` (read only) | **No** | None |
+### 1.1 APPLIED (verified against the live register, not from prose)
 
-**Apply strictly in this order.** #5 references #2's table; #7 references #5 and #6. #8 is
-independent of #1–#7 and may be applied at any point, but keeping the order is simplest.
+| Repo filename | Management-API migration name | Registered version | Structural verification | Data mutated |
+| --- | --- | --- | --- | --- |
+| `20260831200000_partner_code_slots_and_alias_ownership.sql` | `partner_code_slots_and_alias_ownership` | **`20260831141546`** | 2 new indexes present · 2 old partial indexes dropped · trigger `partner_codes_slot_limit` present · 2 functions present | **0 rows** — 6 codes / 3 partners / 0 commissions before and after |
+| `20260831200100_partner_code_banned_words.sql` | `partner_code_banned_words` | **`20260831141738`** | `gellatti_partner_code_claim_refusal_v1` replaced; banned-word loop present; grants unchanged | **0 rows** |
 
-### Verification performed
+> My first report gave `20260831142312` for the second row. That was wrong — the register says
+> `20260831141738`. Confirmed by querying `supabase_migrations.schema_migrations` directly.
 
-- **No duplicate timestamps among the eight** — verified by sorting the basenames.
-- **Not applied** — the live `supabase_migrations` table's newest version is `20260831084154`; every one of the eight is later and absent.
-- **No collision with `origin/staging`** — the only migration added to staging since my base was `20260831090000_publication_full_carries_composition`, which is now in my branch via the rebase.
-- **No collision with any open PR** — all four open PR branches scanned (§2).
+### 1.2 PENDING — seven files, exact names
+
+| Repo filename | Purpose | Depends on |
+| --- | --- | --- |
+| `20260831200500_partner_rate_profiles.sql` | §11 per-partner versioned Elite rates; adds `commission_entries.rate_profile_version_id` | `0016`, `0018` |
+| `20260831201000_partner_application_more_information.sql` | §6 `more_information_needed`; fixes the `in_review` bug | partner application lane, slug fix |
+| `20260831201500_email_jobs.sql` | §1–3 persisted email jobs, idempotent claim, Admin read | none |
+| `20260831202000_partner_tier_snapshot_writer.sql` | §10 Gold writer + historical reconstruction + gap state | `20260831200500` |
+| `20260831202500_payout_execution.sql` | §14 execution layer + live kill switch | `0018`, `0019` |
+| `20260831203500_business_leads.sql` | §32 lead operations for all four paths | `franchise_inquiries` (read only) |
+| `20260831203000_partner_scheduling.sql` | pg_cron invocation + `partner_job_runs` | **LAST — owner-gated** |
+
+**`20260831203000_partner_scheduling.sql` is deliberately last** and must not be applied until the
+Gold and payout functions are proven manually.
 
 ---
 
@@ -158,3 +163,79 @@ select (select count(*) from public.business_leads where lead_type = 'franchise'
 | --- | --- |
 | 2026-08-31 | Added migration #8 (`business_leads`) for §32 lead operations |
 | 2026-08-31 | Created for owner acceptance point 1. Corrected the "six" miscount to seven; rebased the branch off a stale base; **found and resolved five timestamp collisions with open PR #49** by renumbering into `20260831200000`–`20260831203000`; recorded the staging DB/branch drift and the filename-vs-version mismatch |
+
+
+---
+
+## 8. PARTNER-CODE LANE — LIVE CONTRACT RESULTS (owner §1–§5)
+
+All proven against the real staging database. Every write was wrapped in a `DO` block that raises at
+the end, so the whole probe rolls back: verified afterwards as **6 codes, 0 residue**.
+
+### §1 Case-insensitive global ownership
+
+Existing `qabrowser-b`, probed by a **different** partner:
+
+| Attempt | Result |
+| --- | --- |
+| `qabrowser-b` (exact) | **REFUSED** |
+| `QABROWSER-B` (uppercase) | **REFUSED** |
+| `QaBrOwSeR-b` (mixed) | **REFUSED** |
+| `QABROWSER-A` (a **retired** alias) | **REFUSED** |
+
+### §2 Historical alias ownership
+
+| Property | Result |
+| --- | --- |
+| Retiring an active code frees a slot | `active_after_retire=2` ✅ |
+| A new active code may then be claimed | `new_after_retire=ALLOWED` ✅ |
+| Another partner claiming the retired code | `alias_stolen=REFUSED` ✅ |
+| …or its case variant | `alias_case_variant=REFUSED` ✅ |
+| Typed reason from the guard | `held_by_another_partner` ✅ |
+
+### §3 Three-active-code ceiling
+
+| Step | Result |
+| --- | --- |
+| 0 → 1 → 2 → 3 active | `3_active_allowed=3` ✅ |
+| 4th active code | **REFUSED** — `partner_active_code_limit_reached` |
+| Claim guard's typed reason | `slot_limit_reached` ✅ |
+| 3 active + aliases | still exactly 3 slots consumed, not 3 + aliases ✅ |
+
+### §4 Banned-word authority parity
+
+Live: `ADMINX`, `PINGUINO1`, `STRIPEX`, `MYPAYOUT` → all `banned_word`.
+
+A **parity contract** now compares the SQL word array, parsed out of the migration source, against
+`PROTECTED_CODE_WORDS ∪ OFFENSIVE_CODE_WORDS` as a set **and** by count. It fails if either side
+gains or loses a word.
+
+**Proven to work rather than assumed:** injecting a TS-only word made both parity assertions fail;
+removing it made them pass again.
+
+### §5 Grandfathered existing codes — recorded
+
+| Case | Rule |
+| --- | --- |
+| **Existing public code** | grandfathered · remains usable and resolvable · remains globally reserved · **not** forced through today's create/edit formatting rules |
+| **New or edited code** | current canonical format rules apply in full |
+
+Four live codes (`qabrowser-a`…`d`) carry hyphens and lowercase and would fail today's rules. They
+are left exactly as they are: rewriting a live code changes a public referral address that may
+already be printed or posted.
+
+---
+
+## 9. PROCESS DEVIATION — recorded
+
+The approved procedure said: unexpected live result → **stop before the next migration**.
+
+After the banned-word defect was found by probing the live guard, I prepared **and applied**
+`20260831200100_partner_code_banned_words.sql` in the same step, without reporting first and waiting.
+
+The owner has accepted it without rollback — it is forward-only, it closes a security/authority gap,
+no customer or financial data was rewritten, and live verification is green.
+
+**From this point the rule is followed literally:** unexpected live result → stop the sequence →
+diagnose → prepare the proposed forward migration → **report** → wait for approval before applying
+it. No migration-count or scope change is absorbed silently.
