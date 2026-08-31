@@ -402,7 +402,12 @@ describe(
       expect(mainTotal(eco.proposedInput)).toBeGreaterThan(450);
     });
 
-    it('caps normal Preview at the approved OPTIMAL ceiling and ECO hard limit', () => {
+    // GEL-P0-027: Crown is an explicit MAX objective, so BOTH strategies search
+    // to the approved hard safety limit. `optimalCeilingPercent` is the OPTIMAL
+    // preference target and no longer caps a maximisation, so OPTIMAL now
+    // reaches the same 370 g as ECO and is limited by the same real technical
+    // rule (the approved liquid dairy carrier minimum), not by `main_policy_ceiling`.
+    it('caps normal Preview at the approved HARD limit in both strategies', () => {
       const evaluate = (strategy: 'eco' | 'optimal') => {
         const input = watermelonFixture(300, strategy);
         const snapshots = snapshotsWithApprovedEnvelope(input);
@@ -425,17 +430,22 @@ describe(
       const optimal = evaluate('optimal');
       const eco = evaluate('eco');
       expect(optimal.mainObjective).toMatchObject({
-        executableMainGrams: 350,
-        certifiedUpperBoundGrams: 350,
+        executableMainGrams: 370,
+        certifiedUpperBoundGrams: 370,
         provenMaximum: true,
-        limitingTechnicalRules: ['main_policy_ceiling'],
       });
       expect(eco.mainObjective).toMatchObject({
         executableMainGrams: 370,
         certifiedUpperBoundGrams: 370,
         provenMaximum: true,
       });
+      // The preference target is no longer a limiting rule; the real technical
+      // boundary is, and it is the same one in both strategies.
+      expect(optimal.mainObjective?.limitingTechnicalRules).toContain('liquid_dairy_carrier_min');
+      expect(optimal.mainObjective?.limitingTechnicalRules).not.toContain('main_policy_ceiling');
       expect(eco.mainObjective?.limitingTechnicalRules).toContain('liquid_dairy_carrier_min');
+      // Both stay at or below the approved hard limit (45% of 1000 g).
+      expect(optimal.mainObjective?.executableMainGrams).toBeLessThanOrEqual(450);
     });
 
     // Direction-driven Main-envelope searches run the full local-correction
@@ -1093,7 +1103,9 @@ describe(
         if (!result.ok) return null;
         return result.preview.mainObjective?.executableMainGrams ?? null;
       });
-      expect(maxima).toEqual([350, 350, 350, 350]);
+      // GEL-P0-027: the Crown frontier is the approved hard limit (45% of
+      // 1000 g), identical for every provenance state.
+      expect(maxima).toEqual([450, 450, 450, 450]);
     });
 
     it('maximizes a customer/manual product with complete technical composition', () => {
@@ -1128,7 +1140,9 @@ describe(
       });
       expect(result.ok, JSON.stringify(result)).toBe(true);
       if (!result.ok) return;
-      expect(result.preview.mainObjective?.executableMainGrams).toBe(350);
+      // GEL-P0-027: bounded by the approved hard limit (45% of 1000 g), not by
+      // the OPTIMAL preference target.
+      expect(result.preview.mainObjective?.executableMainGrams).toBe(450);
       expect(detectViolations(calculateRecipe(result.preview.proposedInput))).toEqual([]);
     });
 
