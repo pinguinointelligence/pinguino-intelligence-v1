@@ -122,3 +122,47 @@ jobs:
       # match nothing — a vacuously green job, which is worse than the flake.
       - name: recipeVectorProximity — no competing workload
         run: npm run solver:contracts
+
+  # The single most expensive file in the repository, on a lane of its own.
+  #
+  # `starterPackDirectionRescue.test.ts` was 468.5 s of the default suite's 955.7 s —
+  # 49 % of all test time for 8 tests, one of which alone runs 459 s. Because
+  # `vite.config.ts` sets `fileParallelism: false` the suite is strictly serial, so this
+  # one file set the critical path of the whole gate: `verify` had a p50 of 21.8 min
+  # across 102 passing runs, and a bin-packing simulation over all 849 measured file
+  # durations put the floor at 468.5 s regardless of worker count. Splitting it out is
+  # the only move that lowers that floor, and both lanes stay serial so no test is
+  # newly observed under contention.
+  #
+  # It also asserts its OWN wall-clock budget — `exactRuntimeMs + totalRuntimeMs
+  # < 15_000`, observed at 7046-10131 ms — so, exactly as with the solver contract
+  # above, what it measures should be the Direction search rather than the runner.
+  #
+  # Nothing is weakened: the file runs in full, on every push and every PR, and a real
+  # regression fails the build here. `src/qa/solverContractsIsolation.test.ts` proves
+  # both that it left the default suite and that this job actually executes it.
+  direction-rescue:
+    name: Starter-pack Direction rescue (isolated)
+    runs-on: ubuntu-latest
+    env:
+      TZ: Europe/Madrid
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+
+      # Diagnostic evidence, so any future sizing decision is measured rather than
+      # assumed. Not a gate.
+      - name: Record runner resources
+        run: |
+          echo "cores:  $(nproc)"
+          echo "memory: $(free -h | awk '/^Mem:/{print $2}')"
+          echo "load:   $(uptime)"
+
+      # Runs through its OWN config, because the file is now excluded from the default
+      # suite. A bare `vitest run <path>` would honour that exclusion and match nothing.
+      - name: starterPackDirectionRescue — no competing workload
+        run: npm run direction:rescue

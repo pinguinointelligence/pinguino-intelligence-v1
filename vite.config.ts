@@ -48,6 +48,30 @@ export default defineConfig({
       // dedicated job still runs this exact file, and a genuine solver regression
       // still fails the build there.
       'src/features/constraint-studio/recipeVectorProximity.test.ts',
+
+      // STARTER-PACK DIRECTION RESCUE — same rule, fourth application, two reasons.
+      //
+      // 1. It IS the gate. Measured on the passing staging run 33345896110: this one
+      //    file takes 468.5 s of the suite's 955.7 s — 49 % of all test time, for 8
+      //    tests, one of which alone runs 459 s. Because `fileParallelism` is false the
+      //    whole suite is serial, so this single file sets the critical path of every
+      //    PR: `verify` has a p50 of 21.8 min across the last 102 passing runs. Nothing
+      //    else in the suite comes close (the runner-up is 162 s; the other 846 files
+      //    together are 267 s).
+      //
+      // 2. It carries its own WALL-CLOCK contract. Line 378 asserts
+      //    `exactRuntimeMs + report.totalRuntimeMs < 15_000`. Observed across 20 CI
+      //    runs: 7046-10131 ms, i.e. 47-68 % of the budget. That is a real assertion
+      //    about the Direction search, so what it measures must be the SEARCH and not
+      //    whatever else shares the runner — exactly the argument that moved
+      //    `recipeVectorProximity` out.
+      //
+      // Nothing is weakened and nothing is skipped: the file still runs in full, on
+      // every push and every PR, through its own job (`npm run direction:rescue`), and
+      // a genuine regression still fails the build there. `solverContractsIsolation`
+      // proves both halves — that it left this suite, and that the dedicated job
+      // actually executes it rather than passing vacuously.
+      'src/features/constraint-studio/starterPackDirectionRescue.test.ts',
     ],
     // Full formulation/Protein proofs are CPU-bound and OCR fixtures load
     // shared language assets. Run files serially so `npm test` exercises the
