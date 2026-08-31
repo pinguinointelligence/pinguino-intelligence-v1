@@ -86,9 +86,12 @@ export function HomeMatchPopup({
   onChooseOfficial,
   onChooseCommunity,
   onCreateMyOwn,
+  derivationMessage = null,
 }: {
   official: readonly RecipeMatch[];
   community: RecipeMatch | null;
+  /** A typed refusal from the canonical derivation, in customer language. */
+  derivationMessage?: string | null;
   onChooseOfficial: (match: RecipeMatch) => void;
   onChooseCommunity: (match: RecipeMatch) => void;
   /** §35 — always available, and what every dismissal resolves to. */
@@ -173,6 +176,19 @@ export function HomeMatchPopup({
               <MatchCard match={community} onChoose={() => onChooseCommunity(community)} />
             </ul>
           </section>
+        ) : null}
+
+        {/* A refused derivation keeps the user HERE, with an explanation, instead of
+            closing onto an empty recipe. */}
+        {derivationMessage ? (
+          <p
+            className="mt-4 rounded-[10px] px-3 py-2 text-[13px]"
+            data-testid="home-match-derivation-error"
+            role="status"
+            style={{ background: 'var(--g-attention-surface)', color: 'var(--g-attention-ink)' }}
+          >
+            {derivationMessage}
+          </p>
         ) : null}
 
         <button

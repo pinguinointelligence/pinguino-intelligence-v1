@@ -167,6 +167,38 @@ export function HomeCreatorPage() {
   }, [stagesKey, presentStage]);
 
   /**
+   * §32–§40: run existing-recipe matching for whatever identities are RESOLVED right
+   * now. Called after `Create my recipe`, and again after a §23 identity answer.
+   *
+   * The second call is not a nicety. Matching may only use resolved identities (§22),
+   * so an intent whose ingredient was still ambiguous at submit time matches nothing —
+   * and since "which cream did you mean?" is the common case, without a re-run the
+   * popup would almost never appear. Found in served QA on 2026-08-31.
+   */
+  const runMatching = useCallback(async () => {
+    const chips = useHomeDraftStore.getState().chips;
+    const requested = chips
+      .filter((chip) => chip.productId !== null && !chip.ambiguous)
+      .map((chip) => ({
+        productId: chip.productId as string,
+        statedRole: chip.role,
+        displayName: chip.productName ?? chip.label,
+      }));
+    if (requested.length === 0) {
+      setMatchResult(NO_MATCH);
+      return;
+    }
+    const canOpenOwnerReview = userId ? await currentUserHasOwnerReviewAccess(userId) : false;
+    setMatchResult(
+      await searchExistingRecipes({
+        requested,
+        profile: useHomeDraftStore.getState().profile,
+        canOpenOwnerReview,
+      }),
+    );
+  }, [userId]);
+
+  /**
    * Write the machine through the canonical `setMachineSelection` authority — the SAME
    * call the Pro selector makes, with the same derivation, serving-mode routing and
    * capacity rule (§44). HOME adds no machine logic; the write is recipe-scoped, so
@@ -312,32 +344,8 @@ export function HomeCreatorPage() {
                     if (chip.productId !== null) continue;
                     await intentIngredients.resolveOne(chip);
                   }
-                  // §32–§40: only RESOLVED identities may drive matching (§22), so
-                  // this runs after resolution and never on raw text.
-                  const chips = useHomeDraftStore.getState().chips;
-                  const requested = chips
-                    .filter((chip) => chip.productId !== null && !chip.ambiguous)
-                    .map((chip) => ({
-                      productId: chip.productId as string,
-                      statedRole: chip.role,
-                      displayName: chip.productName ?? chip.label,
-                    }));
-                  if (requested.length === 0) {
-                    setMatchResult(NO_MATCH);
-                    return;
-                  }
-                  // The offer gate is the SAME authority that guards opening an
-                  // owner-review template, so an offer and an open can never disagree.
-                  const canOpenOwnerReview = userId
-                    ? await currentUserHasOwnerReviewAccess(userId)
-                    : false;
-                  setMatchResult(
-                    await searchExistingRecipes({
-                      requested,
-                      profile: useHomeDraftStore.getState().profile,
-                      canOpenOwnerReview,
-                    }),
-                  );
+                  // §32–§40 matching runs on the RESOLVED identities (§22).
+                  await runMatching();
                 } finally {
                   setResolving(false);
                 }
@@ -358,11 +366,16 @@ export function HomeCreatorPage() {
                 ambiguous: false,
                 candidates: undefined,
               });
-              if (useHomeDraftStore.getState().recipeReady) {
-                const resolved = useHomeDraftStore
-                  .getState()
-                  .chips.find((entry) => entry.id === chip.id);
+              const state = useHomeDraftStore.getState();
+              if (state.recipeReady) {
+                const resolved = state.chips.find((entry) => entry.id === chip.id);
                 if (resolved) void intentIngredients.addResolvedChip(resolved);
+              } else if (state.intentSubmitted) {
+                // The answer completed the intent, so matching can finally run on a
+                // real identity. Without this the popup never appears for any
+                // ambiguous ingredient — which is most of them.
+                setMatchDismissed(false);
+                void runMatching();
               }
             }}
             onScan={() => {
