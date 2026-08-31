@@ -304,7 +304,9 @@ export function DirectNumberControl({
             onClick={() => onMaskedInteract?.()}
             className="flex h-full w-full items-center justify-center font-mono text-[14px] text-stone-500 transition-colors hover:text-ink focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#f58a07]"
           >
-            {maskedValue} {suffix}
+            {/* The unit is NOT repeated here: the control renders its own suffix span
+                after the input, so appending it produced "••• g g" on staging. */}
+            {maskedValue}
           </button>
         ) : null}
         <input

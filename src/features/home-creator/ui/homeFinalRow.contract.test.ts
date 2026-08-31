@@ -71,6 +71,18 @@ describe('geometry does not change with entitlement', () => {
   });
 });
 
+describe('the unit is rendered exactly once', () => {
+  it('the masked cell does not repeat the suffix the control already renders', () => {
+    // Served on the #67 preview: the row read "••• g g".
+    const maskedCell = control.slice(
+      control.indexOf('-masked`}'),
+      control.indexOf('</button>', control.indexOf('-masked`}')),
+    );
+    expect(maskedCell).toContain('{maskedValue}');
+    expect(maskedCell).not.toContain('{maskedValue} {suffix}');
+  });
+});
+
 describe('the padlock rule', () => {
   it('uses ONE closed padlock glyph in both lock states', () => {
     expect(control.match(/function LockGlyph/g) ?? []).toHaveLength(1);

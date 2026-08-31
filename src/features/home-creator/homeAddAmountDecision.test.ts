@@ -115,3 +115,56 @@ describe('the page never creates an invalid line', () => {
     }
   });
 });
+
+describe('the mainCapability state space is covered EXHAUSTIVELY, not by observation', () => {
+  // `MainCapabilityState` is a closed union of exactly four members. Enumerating it here
+  // (and asserting the count against the source) proves MAIN_TECHNICAL_BLOCKED is the
+  // ONLY category-B state rather than merely the one that happened to be observed.
+  const ALL_STATES = [
+    'MAIN_CAPABLE',
+    'MAIN_CAPABLE_UNCALIBRATED',
+    'MAIN_TECHNICAL_BLOCKED',
+    'MAIN_UNKNOWN',
+  ] as const;
+
+  const EXPECTED: Record<(typeof ALL_STATES)[number], string> = {
+    MAIN_CAPABLE: 'crown_decides',
+    MAIN_CAPABLE_UNCALIBRATED: 'crown_decides',
+    MAIN_TECHNICAL_BLOCKED: 'ask_amount',
+    MAIN_UNKNOWN: 'unresolved_authority',
+  };
+
+  it('the union really has exactly these four members', () => {
+    const source = readFileSync('src/features/product-intelligence/mainCapability.ts', 'utf8');
+    const union = source.slice(
+      source.indexOf('export type MainCapabilityState ='),
+      source.indexOf("export type MainCalibrationLevel"),
+    );
+    for (const state of ALL_STATES) expect(union, state).toContain(`'${state}'`);
+    // No fifth member has been added without this matrix being revisited.
+    expect((union.match(/\|\s*'MAIN_/g) ?? []).length).toBe(ALL_STATES.length);
+  });
+
+  it.each(ALL_STATES)('%s maps to its owner-defined category', (state) => {
+    expect(decideAddAmount(snapshotWith(state), dose).kind).toBe(EXPECTED[state]);
+  });
+
+  it('exactly ONE state may ask the customer for a manual amount', () => {
+    const asking = ALL_STATES.filter(
+      (state) => decideAddAmount(snapshotWith(state), dose).kind === 'ask_amount',
+    );
+    expect(asking).toEqual(['MAIN_TECHNICAL_BLOCKED']);
+  });
+
+  it('every route into MAIN_UNKNOWN refuses — missing, stale and unknown alike', () => {
+    // snapshot_missing
+    expect(decideAddAmount(null, dose).kind).toBe('unresolved_authority');
+    // revalidation_required — resolutionState gates before the capability layer
+    const stale = { ...snapshotWith('MAIN_CAPABLE'), resolutionState: 'REVALIDATION_REQUIRED' };
+    expect(decideAddAmount(stale as never, dose).kind).toBe('unresolved_authority');
+    const legacy = { ...snapshotWith('MAIN_CAPABLE'), resolutionState: 'LEGACY_RECONSTRUCTED' };
+    expect(decideAddAmount(legacy as never, dose).kind).toBe('unresolved_authority');
+    // unknown_product
+    expect(decideAddAmount(snapshotWith('MAIN_UNKNOWN'), dose).kind).toBe('unresolved_authority');
+  });
+});
