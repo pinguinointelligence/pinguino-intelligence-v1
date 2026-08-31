@@ -571,6 +571,9 @@ describe('connect account mirror + no-contract coverage', () => {
       'refund_reversal',
       'dispute_lifecycle',
       'connect_account_status',
+      // S-45: the delayed checkout events now settle a shop order.
+      'checkout_async_payment_succeeded',
+      'checkout_async_payment_failed',
     ]);
     for (const eventType of SUPPORTED_WEBHOOK_EVENTS) {
       const intent = routeWebhookEvent(eventType);
