@@ -131,15 +131,23 @@ describe('one global menu and four local contexts', () => {
     expect(page).toContain('AppShell');
   });
 
-  it('keeps the compact PRO badge and makes only the recipe-save overflow menu smaller', () => {
+  it('states the mode with the canonical switch, not a private badge, and keeps the small overflow menu', () => {
     const page = read('pages', 'pro', 'ProWorkspacePage.tsx');
     const workbar = read('features', 'pro-core', 'ProWorkbar.tsx');
     const ingredient = read('features', 'ingredient-builder', 'IngredientRow.tsx');
     const topping = read('features', 'ingredient-builder', 'ToppingRow.tsx');
     const buttons = read('components', 'ui', 'buttonStyles.ts');
-    expect(page).toContain('data-testid="pro-plan-indicator"');
-    // V2.1: the workbench plan mark is the approved graphite pill.
-    expect(page).toContain('bg-[var(--g-graphite)] px-2.5 text-[9px]');
+    // OWNER FROZEN PRO VISUAL, 2026-09-01. SUPERSEDES the private graphite plan pill.
+    // The workbench states its mode with the CANONICAL `HomeProSwitch` that the global
+    // header parity lane made global — one control per meaning, one geometry per route.
+    expect(page).not.toContain('data-testid="pro-plan-indicator"');
+    expect(page).not.toContain('bg-[var(--g-graphite)] px-2.5 text-[9px]');
+    expect(page).toContain(
+      "import { HomeProSwitch } from '@/features/home-creator/ui/HomeProSwitch'",
+    );
+    expect(page).toContain('<HomeProSwitch entitlement={entitlement} activeView="pro" />');
+    // ...and it sits on the WORK ↔ DISPLAY boundary: the trailing edge of column 1.
+    expect(page).toContain('className="ml-auto flex shrink-0 items-center"');
     for (const source of [workbar, ingredient, topping]) {
       expect(source).toContain("iconButtonClasses('xs')");
       expect(source).toContain('•••');
