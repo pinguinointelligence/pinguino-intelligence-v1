@@ -140,6 +140,19 @@ begin
 end;
 $$;
 
+-- ── GRANT SURFACE ───────────────────────────────────────────────────────────
+-- The project's ALTER DEFAULT PRIVILEGES grants EXECUTE on every NEW function
+-- to PUBLIC, anon, authenticated and service_role — the same trap as tables,
+-- found live after 20260831200500. Verified live on the CURRENT deployment of
+-- this function: acl = `=X/postgres | postgres | anon | authenticated |
+-- service_role`, i.e. anon can already call it.
+--
+-- No live exposure: the body refuses `auth.uid() is null` with
+-- 'authentication required', so an anon call always fails. But an anonymous
+-- caller has no business holding EXECUTE on the partner-application entry
+-- point, and least privilege is the contract, not the refusal inside the body.
+revoke all on function public.gellatti_submit_partner_application_v1(jsonb)
+  from public, anon;
 grant execute on function public.gellatti_submit_partner_application_v1(jsonb) to authenticated;
 
 -- ── 4. Decision: write the legal status ─────────────────────────────────────
@@ -302,6 +315,16 @@ begin
 end;
 $$;
 
+-- Same trap, and this one decides partner approval. Live acl today is
+-- `=X/postgres | postgres | anon | authenticated | service_role`.
+--
+-- No live exposure: the body calls gellatti_admin_has_permission_v1('PARTNER',
+-- auth.uid()) and raises 'partner_administrator_required' first, and auth.uid()
+-- is null for anon. It stays granted to `authenticated` because admins ARE
+-- authenticated users and the internal check is what distinguishes them — but
+-- PUBLIC and anon are removed.
+revoke all on function public.gellatti_admin_partner_application_action_v1(uuid, text, text)
+  from public, anon;
 grant execute on function public.gellatti_admin_partner_application_action_v1(uuid, text, text) to authenticated;
 
 -- ============================================================================

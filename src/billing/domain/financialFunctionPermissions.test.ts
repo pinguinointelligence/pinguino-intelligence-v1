@@ -89,6 +89,30 @@ const ADMIN_READ_FUNCTIONS = [
   'gellatti_admin_partner_job_runs_v1',
 ] as const;
 
+/**
+ * Functions an ordinary signed-in user IS meant to call, because the function
+ * itself decides who may proceed. They must still be revoked from PUBLIC and
+ * anon: the default privileges hand EXECUTE to anon on every new function, and
+ * "the body refuses anon anyway" is a refusal, not a privilege boundary.
+ *
+ * Added after 20260831201000 was found granting EXECUTE to authenticated while
+ * never revoking the inherited PUBLIC/anon grant — verified live on the
+ * deployed functions, whose acl was `=X/postgres | anon | authenticated | ...`.
+ * Neither function was in any list here, which is why nothing caught it.
+ */
+const AUTHENTICATED_ENTRYPOINTS: ReadonlyArray<readonly [string, string, RegExp]> = [
+  [
+    'gellatti_submit_partner_application_v1',
+    'jsonb',
+    /raise exception 'authentication required'/,
+  ],
+  [
+    'gellatti_admin_partner_application_action_v1',
+    'uuid, text, text',
+    /raise exception 'partner_administrator_required'/,
+  ],
+];
+
 function definitionOf(name: string): string {
   const match = new RegExp(`create or replace function public\\.${name}\\b[\\s\\S]*?\\$\\$;`).exec(
     ALL_SQL,
@@ -184,6 +208,32 @@ describe('admin read surfaces are granted but self-guarded', () => {
       expect(ALL_SQL).toMatch(
         new RegExp(`grant execute on function public\\.${name}\\s*\\([^)]*\\)\\s*to authenticated`),
       );
+    });
+  }
+});
+
+describe('authenticated entry points are revoked from PUBLIC and anon', () => {
+  for (const [name, , guard] of AUTHENTICATED_ENTRYPOINTS) {
+    it(`${name} revokes public and anon before granting authenticated`, () => {
+      expect(ALL_CODE).toMatch(
+        new RegExp(
+          `revoke all on function public\\.${name}\\s*\\([^)]*\\)\\s*\\n?\\s*from public, anon`,
+        ),
+      );
+      expect(ALL_CODE).toMatch(
+        new RegExp(`grant execute on function public\\.${name}\\s*\\([^)]*\\)\\s*to authenticated`),
+      );
+      // never handed back to anon by a later line
+      expect(ALL_CODE).not.toMatch(
+        new RegExp(`grant execute on function public\\.${name}[^;]*to[^;]*anon`),
+      );
+    });
+
+    it(`${name} still refuses a caller it must not serve`, () => {
+      // The revoke is the boundary; this guard is the second line, and both
+      // must exist. A revoke without the guard would be one grant away from
+      // being wide open again.
+      expect(definitionOf(name)).toMatch(guard);
     });
   }
 });
