@@ -5,10 +5,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { copy } from '@/copy/en';
-import {
-  assessSorbetStabilizerSystem,
-  sorbetStabilizerWholeGramBand,
-} from '@/features/recipe-constraints';
+import { assessSorbetStabilizerSystem } from '@/features/recipe-constraints';
 import { starterMilkBase } from '@/features/recipe-constraints/constraintFixtures';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
