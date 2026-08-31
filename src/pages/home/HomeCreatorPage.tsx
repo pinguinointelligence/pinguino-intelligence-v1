@@ -145,6 +145,12 @@ export function HomeCreatorPage() {
     };
   }, [matchResult]);
 
+  /**
+   * True while the customer is still being ASKED whether to start from an existing
+   * recipe. Used to hold back automatic generation — see the generate effect below.
+   */
+  const matchPopupOpen = matchPopup !== null && !matchDismissed;
+
   const proposedName = useMemo(
     () =>
       proposeRecipeName({
@@ -281,12 +287,22 @@ export function HomeCreatorPage() {
   const lastGeneratedFor = useRef<string | null>(null);
   useEffect(() => {
     // Generate once, when every required answer is in — never on every render.
+    //
+    // NOT while the match popup is open. „Czy zacząć od jednej z nich?" is an
+    // unanswered question, and building a recipe behind it does more than waste work:
+    // served QA 2026-08-31 showed this effect firing during a derivation, so
+    // `rebuildNewRecipeStarter` replaced the recipe the customer had just adopted and
+    // cleared its saved link. On screen that looked like a success — the ingredients
+    // are the same canonical `milk-base:*` skeleton — and only the grams gave it away
+    // (MILK 670 g -> 672 g, TARA GUM 5 g -> 3 g). The customer owned Anna's recipe and
+    // was shown a generated one.
     const key = `${draft.profile}|${machine?.id ?? 'none'}|${amount?.totalGrams ?? 0}`;
     if (
       draft.intentSubmitted &&
       draft.profile !== null &&
       !machineView.needsMachineChoice &&
       !draft.recipeReady &&
+      !matchPopupOpen &&
       lastGeneratedFor.current !== key
     ) {
       lastGeneratedFor.current = key;
@@ -296,6 +312,7 @@ export function HomeCreatorPage() {
     draft.intentSubmitted,
     draft.profile,
     draft.recipeReady,
+    matchPopupOpen,
     machine?.id,
     amount?.totalGrams,
     machineView.needsMachineChoice,
@@ -526,7 +543,7 @@ export function HomeCreatorPage() {
       {/* §36 — shown ONLY when a trustworthy match survived the strict matcher.
           No match means no modal at all: creation simply continues (§35), which is
           why there is no "nothing found" state here. */}
-      {matchPopup !== null && !matchDismissed ? (
+      {matchPopupOpen ? (
         <HomeMatchGate
           official={matchPopup.official}
           community={matchPopup.community}
@@ -544,6 +561,9 @@ export function HomeCreatorPage() {
             // the recipe stage and scrolls the customer to the recipe they now own.
             setMatchDismissed(true);
             useHomeDraftStore.getState().markRecipeReady(true);
+            // Claim the generate key WITHOUT generating: the adopted recipe IS the
+            // recipe, so the effect must not build one for these same answers.
+            lastGeneratedFor.current = `${draft.profile}|${machine?.id ?? 'none'}|${amount?.totalGrams ?? 0}`;
             scrollToStage('recipe');
           }}
         />
