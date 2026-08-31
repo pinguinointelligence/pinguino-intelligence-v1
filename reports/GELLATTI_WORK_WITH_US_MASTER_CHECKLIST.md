@@ -1,0 +1,465 @@
+# GELLATTI — WORK WITH US · MASTER CHECKLIST
+
+**Branch:** `claude/work-with-us` · **Worktree:** `~/Developer/pinguino-work-with-us`
+**Base:** `origin/staging` @ `c004d659` (fetched 2026-08-31)
+**Scope authority:** the Owner WORK WITH US master prompt (2026-08-31), §§0–44.
+**This file is the ONLY status authority for this workstream.** One row per independently
+testable requirement. Every numbered section of the prompt has at least one row.
+
+## Status legend
+
+| Column | Values |
+| --- | --- |
+| **Work** | ⚪ TODO · 🟡 DOING · 🔴 BLOCKED · 🟢 DONE |
+| **Auto** | ⬜ NOT RUN · ✅ PASS · ❌ FAIL |
+| **Served** | ⬜ NOT RUN · ✅ PASS · ❌ FAIL |
+| **Owner** | ⬜ WAITING · ✅ APPROVED · ❌ REJECTED |
+| **Freeze** | 🔓 OPEN · 🧊 READY TO FREEZE · 🔒 FROZEN |
+
+**Claude may never set Owner QA = ✅.** Only an explicit owner confirmation does that.
+
+---
+
+## 0. AUDIT — what actually exists on `c004d659`
+
+This inventory was produced by reading the repository, not by trusting prior reports.
+
+### 0.1 The financial core is real, tested, and mostly wired
+
+`src/billing/domain/` is a set of **pure, versioned, fully-tested** modules that already encode
+most of the owner's locked financial rules. This is the single most important audit finding:
+**most of §10–§14 is already built and must be reused, not rebuilt.**
+
+| Module | Locked rules implemented | Matches owner prompt? |
+| --- | --- | --- |
+| `commissionRules.ts` | C1–C6: rate table v1, keying by (product, cadence, tier), 15-month = ONE annual, event classifier, 8 typed refusal reasons | **§10 Standard + Gold values match the prompt exactly** (199/900/499/2900 · 249/1400/599/3900). **§11 Elite CONFLICTS** — see A-ELITE rows. |
+| `tierSnapshots.ts` | T1–T6: Standard default, Gold ≥100 at monthly snapshot, Home+Pro combined, cancel-at-period-end still counts, Elite override, no retroactive recompute | §10 Gold semantics ✅ · §11 Elite override exists but carries **no per-partner rates** |
+| `holdCalendar.ts` | H1–H4: two FULL calendar months (M → 1st of M+3), Europe/Madrid, DST-correct, never "60 days" | **§12 exactly as specified** ✅ |
+| `payoutNetting.ts` | P1–P7: batch math, €25 threshold, negative carry-forward, deterministic idempotency key, lifecycle state machine | **§14 payout math ✅** (worker missing — see below) |
+| `refundAdjustments.ts` | R1–R6: full/partial/proportional reversal, cumulative cap, append-only, dispute lost/won | **§13 exactly as specified** ✅ |
+| `attribution.ts` | A1–A8: 30-day window, explicit code overrides unconverted cookie, locked on first paid conversion, one partner per payment, self-referral rejection | **§9 exactly as specified** ✅ |
+| `partnerCodes.ts` | PC1–PC6: normalize (accents/spaces/case), 5–16 chars, ASCII+digits, banned words, collision-suffixed suggestions | **§8 validation rules ✅** (3-slot limit + alias ownership missing) |
+| `inviteCodes.ts` | I1–I6: `PIH-XXXX-XXXX`, state machine, redemption guard, **grant spec `{scope, days, createsStripeObjects:false}`** | Not required by this prompt, but **I5 is the reusable free-time grant primitive for §18** |
+
+**Runtime wiring:** the TS domain modules are the *specification and test oracle*; the actual
+runtime is the Deno edge function `supabase/functions/stripe-webhook/dispatch.ts`, which
+re-implements the same rules against the DB (reads `commission_rules`, `partner_tier_snapshots`,
+enforces the `commission_entries` invoice-unique index, refuses self-referral).
+`src/services/stripeWebhookEffects.test.ts` asserts parity between the two. Stripe **TEST mode is
+live on staging** and the webhook endpoint receives events.
+
+### 0.2 Database schema already present
+
+`partner_applications` · `partners` · `partner_codes` · `referral_clicks` ·
+`referral_attributions` · `partner_benefit_uses` · `partner_tier_snapshots` · `commission_rules` ·
+`commission_entries` (immutable) · `commission_adjustments` (append-only) · `payout_batches` ·
+`partner_payouts` · `partner_payout_items` · plus the 2026-08-26/29 additions: partner workspace
+RPC, public links, content links, the partner application lane (submit / my / admin queue /
+admin decision) and `franchise_inquiries`.
+
+RLS posture is correct: **all financial writes are service-role only**, no `insert/update/delete`
+grants to `authenticated`, partners read only their own rows.
+
+### 0.3 What exists in the UI
+
+| Route | What it actually is | Gap vs. prompt |
+| --- | --- | --- |
+| `/work-with-us` | `WorkWithUsPage` (209 lines) — partner block on top, then the three **"Maszyny + aplikacja / Maszyna + gotowe mieszanki / Sama aplikacja"** cards | §4 explicitly kills those three cards; needs MACHINES / MOBILE / FRANCHISE instead |
+| `/partner` | **The authenticated Partner DASHBOARD** (741 lines: Overview, Codes, LinkGenerator, ContentLinks, Earnings, Payouts, Profile, Settings) | **There is NO public Partner landing page at all.** §5 needs one, and `/partner` is already taken |
+| `/franchise` | `FranchisePage` in `GlobalDestinationPages.tsx` + `franchise_inquiries` + `AdminFranchiseLeadsSection` | Closest thing to "done"; needs §31 content review |
+| `/:slug/:code/l/:linkSlug` | `PartnerPublicRoute` — campaign link resolution | §9 largely present |
+| `/admin/:section` | `AdminPartnersSection` (474) + `AdminPartnerApplicationsPanel` (225) | §17 partial — no full Partner detail panel |
+
+Copy authority: `src/copy/cooperation.ts` (PL + EN, `resolveCooperationCopy`). New copy goes here.
+
+### 0.4 What does NOT exist
+
+1. **No payout batch worker.** `payoutNetting.ts` computes batches; nothing calls it. No pg_cron
+   job, no edge function. Money can be earned and held but never paid. (§14)
+2. **No tier snapshot job.** `tierSnapshots.ts` is pure; nothing writes `partner_tier_snapshots`
+   monthly. `dispatch.ts` *reads* the snapshot — so with no writer, Gold can never activate. (§10)
+3. **No normal-user referral program.** Zero code. No tables, no reward, no UI. (§18–§21)
+4. **No Miles machine catalog.** `src/features/machine-catalog` is **home appliances**
+   (Ninja CREAMi, Cuisinart, KitchenAid…) for recipe formulation — a completely different domain.
+   The 11 Miles professional machines do not exist anywhere. (§23–§26)
+5. **No mobile route, no trailer configurator.** (§27–§30)
+6. **No machine/mobile/trailer lead storage.** Only franchise has a lane. (§32)
+7. **No public Partner landing.** (§5)
+
+### 0.5 Conflicts with the OWNER OVERRIDES — must be resolved before implementing
+
+| # | Conflict | Existing behaviour | Owner override | Row |
+| --- | --- | --- | --- | --- |
+| X1 | **Elite is a fixed global tier** | `RATE_TABLE_V1.elite` is hardcoded 299/1900/699/4900 and frozen; DB `commission_rules` seeds the same 12 rates | §11: Elite must be a **per-partner, versioned rate profile**; the old values become *default suggestions only* | E-ELITE-01..05 |
+| X2 | **Retired codes may be reissued to anyone** | `partner_codes_code_active_uniq` is `where status = 'active'` — a retired code's text is free for **another partner** to claim | §8: historical aliases "cannot be claimed by another Partner" — old social posts must never point at a different partner | D-CODE-04 |
+| X3 | **No limit on active codes** | Nothing constrains how many `active` codes a partner holds | §8: **0–3** current public codes | D-CODE-02 |
+| X4 | **`/partner` is the dashboard** | Public visitors hitting `/partner` get a workspace, not a pitch | §5 needs a public landing; §16 needs the dashboard | B-LAND-01, H-DASH-01 |
+| X5 | **Franchise concepts are the 4 formats** | `FranchiseConcept = punkt \| wozek \| przyczepa \| lokal` — "przyczepa" (trailer) is a *franchise* concept | §27–§30 make the trailer its own MOBILE product with a configurator | N-TRAIL-01 |
+| X6 | **Gold can never trigger** | No snapshot writer (0.4 #2) | §10 Gold automatic from 100 | E-GOLD-01 |
+
+### 0.6 Protected / frozen assets this workstream must not break
+
+- `src/contracts/owner-locked/**` — 16 contract files. A normal task **must not modify them**
+  (AGENTS.md rule 12); adding new contracts is always allowed.
+- `scripts/protectedPaths.json` — zero semantic drift permitted; any change must be declared as a
+  `Protected-Change:` commit trailer.
+- `staging` is a **protected branch**: direct push is rejected (`GH006`). PR + the required check
+  *"Owner-locked contracts + protected paths"* is the only way in.
+- §41 no-drift boundary: Engine / Solver / Mapper / HOME recipe mathematics / Production logic are
+  **out of scope**. This workstream is business/commerce only.
+
+---
+
+## 1. ACTIVE MASTER CHECKLIST
+
+### A — `/work-with-us` public gateway (§4) · CHECKPOINT A
+
+| ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| A-GATE-01 | Gateway | Partner is the first and dominant section; hero states the recurring-earnings promise | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Current hero is generic cooperation copy | Rewrite hero via `cooperation.ts` |
+| A-GATE-02 | Gateway | Primary CTA "Dołącz do programu Partner" routes to the Partner landing | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Today it anchors to `#partner-application` on the same page | Point at new landing route |
+| A-GATE-03 | Gateway | Platform recognition strip (Instagram, TikTok, YouTube, Facebook, Reddit, X, Pinterest, blog, newsletter) using the existing icon system, no endorsement implied | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Icon set not yet audited for these 9 marks | Audit `src/components/icons`, add missing |
+| A-GATE-04 | Gateway | Bridge line "Chcesz sprzedawać Gellatti, a nie tylko je polecać?" | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Copy row in `cooperation.ts` |
+| A-GATE-05 | Gateway | Three premium cards MACHINES / MOBILE GELLATTI / FRANCHISE, each to its own route | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | **Replaces** the three "Maszyny + aplikacja / gotowe mieszanki / sama aplikacja" cards (§4) | Build cards after L/M/N routes exist |
+| A-GATE-06 | Gateway | Legacy anchors/links to the removed cards redirect, nothing 404s | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | `w.offers.*` copy has downstream consumers | Grep consumers before deleting |
+| A-GATE-07 | Gateway | Desktop + mobile served QA of the gateway | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | After A-GATE-01..06 |
+
+### B — Partner public landing (§5) · CHECKPOINT B
+
+| ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| B-LAND-01 | Partner landing | A public landing exists on its own route (`/partner` is the dashboard — X4) | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Route naming is an owner-visible URL decision; proposal `/partner-program`, `/partner` stays the workspace | Decide + implement |
+| B-LAND-02 | Partner landing | Answers within seconds: who it's for · how they earn · **revenue is recurring** · own codes/links · dashboard visibility · volume raises level | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Copy + layout |
+| B-LAND-03 | Partner landing | Core message "Polecasz raz. Możesz zarabiać również przy kolejnych odnowieniach." | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Copy row |
+| B-LAND-04 | Partner landing | "Twój kod. Twój link. Dowolny kanał." + "Budujesz bazę klientów…" + "Wyniki, prowizje i przyszłe wypłaty…" | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Copy rows |
+| B-LAND-05 | Partner landing | **Public landing MUST NOT show exact commission rates** — enforced by an automated test, not just review | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Highest-risk copy leak in this workstream | Write guard test first |
+| B-LAND-06 | Partner landing | Permitted public claims only: recurring · Standard→Gold · Gold from 100 · individual conditions possible · automatic payouts · codes/links · campaign tracking · approved Partner gets Home+Pro · annual benefit where billing allows | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Copy + guard test |
+| B-LAND-07 | Partner landing | Small CTA for non-creators → normal-user referral (§20) | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Depends on J rows | After J-REF-* |
+| B-LAND-08 | Partner landing | Desktop + mobile served QA, signed out and signed in | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | After B-LAND-01..07 |
+
+### C — Partner application + status (§6, §7) · CHECKPOINT B
+
+| ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| C-APP-01 | Application | Flow: landing → sign in/create account → verified identity → application → confirmation → status | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | `PartnerApplicationPanel` + `gellatti_submit_partner_application_v1` exist; the *flow* around them does not | Wire to new landing |
+| C-APP-02 | Application | Captures: public/creator name, country, languages, description, audience/topic, platform selection, platform URLs, site/blog/newsletter, audience size, promotion plan, code suggestions, consent | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Current panel captures a subset; `application_data` is jsonb so no migration needed | Extend form |
+| C-APP-03 | Application | Asks for no unnecessary private information | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Review at C-APP-02 |
+| C-APP-04 | Application | Duplicate active applications impossible for one account | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `partner_applications_open_uniq` partial unique index already enforces this | Add regression test |
+| C-APP-05 | Application | Customer-facing statuses RECEIVED / UNDER REVIEW / MORE INFORMATION NEEDED / APPROVED / REJECTED / SUSPENDED / TERMINATED | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | DB check constraint is `draft/submitted/under_review/approved/rejected/suspended/terminated` — **there is no `more_information_needed` state**; adding one is a migration | Migration + display map |
+| C-APP-06 | Application | Customer copy never exposes internal state names | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Repo rule already: raw values are contracts, shown through a display map | Add display map + guard test |
+| C-APP-07 | Application | Status page readable by the applicant | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | `gellatti_my_partner_application_v1` exists; no dedicated page | Build page |
+| C-APP-08 | Notifications | Emails: received · more info requested · approved · rejected · payout setup required · payout/account requirements | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | **`IMPLEMENTATION_STATUS.md`: "Email provider: none — an adapter must be introduced."** No email can be sent today | Audit notification system; decide adapter vs in-app only — **owner decision** |
+| C-APP-09 | Approval | On approval: link partner, activate, grant HOME + PRO, grant PARTNER mode, codes available, Connect available, audit row, approval message | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | `gellatti_admin_partner_application_action_v1` already approves + mints first code; grant/audit coverage unverified | Verify each of the 8 effects |
+| C-APP-10 | Approval | **No fake zero-price Stripe subscriptions** for Partner free access | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | Locked decision 8 already forbids it; `entitlements` rows are the mechanism | Add regression test |
+| C-APP-11 | Approval | Partner uses the SAME normal login; modes HOME \| PRO \| PARTNER | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | Partner is added on top of the existing plan per the 2026-08-29 lane | Served-verify all three modes |
+| C-APP-12 | Approval | No Partner-specific recipe mathematics (§41 boundary) | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | Nothing in scope touches the Engine | Guard by protected-paths check |
+
+### D — Partner codes (§8) + campaign links (§9) · CHECKPOINT C
+
+| ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| D-CODE-01 | Codes | Normalization + validation: no spaces, no accents, ASCII+digits, 5–16 shown, case-insensitive, protected/offensive rejected | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `partnerCodes.ts` PC1–PC4 already exact | Re-run its tests as evidence |
+| D-CODE-02 | Codes | **0–3 current public codes per Partner** (X3) | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | Nothing enforces a count today | Partial unique index or trigger + service guard |
+| D-CODE-03 | Codes | Global uniqueness across every Partner, live availability validation | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | Unique among **active** only — insufficient (X2) | Extend with D-CODE-04 |
+| D-CODE-04 | Codes | **Historical aliases stay owned by the same partner and can never be claimed by another** (X2) | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | `partner_codes_code_active_uniq` deliberately allows reissue — directly contradicts §8 | Migration: global unique on code text + alias ownership |
+| D-CODE-05 | Codes | Aliases don't count toward the 3 displayed slots | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | With D-CODE-02 |
+| D-CODE-06 | Codes | Changing a code never rewrites historical conversions / commission / payout / campaign ownership | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | Attribution is by immutable `partner_id`; ledger is immutable | Add explicit regression test |
+| D-CODE-07 | Codes | Admin can disable a compromised alias | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | `status='blocked'` + `disabled_reason` + audit exist in the 2026-08-26 migration | Surface in admin UI |
+| D-LINK-01 | Campaign links | Partner may create many trackable links (not limited by the 3 codes) | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `partner_content_links` + `createPartnerContentLink` + `LinkGenerator` exist | Served-verify |
+| D-LINK-02 | Campaign links | All links resolve to immutable `partner_id` | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `PartnerPublicRoute` + `partner-link-resolve` | Regression test |
+| D-LINK-03 | Campaign links | Aggregate clicks / signups / paid conversions / active subs / per-campaign performance | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | Workspace RPC returns clicks + signups; paid conversions and active counts unverified | Verify RPC completeness |
+| D-LINK-04 | Campaign links | No customer PII exposed anywhere in partner-visible data | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Write PII guard test over the RPC payload |
+| D-ATTR-01 | Attribution | 30-day window · explicit code overrides unconverted passive · locked on first paid · one owner per payment · self-referral rejected | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `attribution.ts` A1–A8 + `referral_attributions` unique indexes | Re-run tests as evidence |
+
+### E — Commission, tiers, hold, reversals (§10–§13) · CHECKPOINT E
+
+| ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| E-STD-01 | Commission | Standard rates 1.99 / 9.00 / 4.99 / 29.00 | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | Match `RATE_TABLE_V1` exactly | Re-run tests |
+| E-GOLD-01 | Commission | Gold rates 2.49 / 14.00 / 5.99 / 39.00 | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | Match exactly | Re-run tests |
+| E-GOLD-02 | Tier | Gold automatic from 100 eligible active paid referred subs, HOME+PRO combined | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | **No monthly snapshot writer exists (0.4 #2)** — `dispatch.ts` reads `partner_tier_snapshots`, nothing writes it, so Gold can never activate at runtime | Build snapshot job (pg_cron + edge fn) |
+| E-GOLD-03 | Tier | cancel-at-period-end still counts until paid access ends; ended/unpaid/fraud/free excluded | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `tierSnapshots.ts` T3 | Regression test |
+| E-EVT-01 | Commission | Commission events: first monthly · monthly renewal · first annual/15-month · annual renewal · monthly→annual conversion once | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | C3–C5 | Re-run tests |
+| E-EVT-02 | Commission | No commission for failed/unpaid/void · zero invoice · partner's own free access · free invite · self-referral · duplicate event · fraud · Live test transaction | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | 7 of 8 covered by C6; **"Live report test transaction"** has no explicit rule | Add `livemode` refusal |
+| E-ELITE-01 | Elite | Elite is manually assigned by authorized Admin | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | T4 override record exists | — |
+| E-ELITE-02 | Elite | **Per-partner custom rate profile** (HOME m/a, PRO m/a) replaces the fixed Elite table (X1) | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | `RATE_TABLE_V1.elite` is frozen and global; DB `commission_rules` seeds one Elite row for everyone | New `partner_rate_profiles` table + resolver change |
+| E-ELITE-03 | Elite | 2.99 / 19 / 6.99 / 49 become **default suggestions only** | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | Currently mandatory | With E-ELITE-02 |
+| E-ELITE-04 | Elite | Every Elite profile is **versioned**: effective start/end, rates, reason, admin actor, timestamp, note, prior version, revocation history | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | No such table | Migration |
+| E-ELITE-05 | Elite | No retroactive rewriting; every earned commission snapshots the effective rate | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `commission_entries` already stores the resolved rate + rule version immutably | Extend to profile version id |
+| E-HOLD-01 | Hold | Two FULL calendar months, Europe/Madrid, never "60 days"; Jan→Apr 1, Feb→May 1, Dec→Mar 1 | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `holdCalendar.ts` H1–H4, DST-correct | Re-run tests |
+| E-HOLD-02 | Hold | Dashboard shows earned / held / eligible date / eligible / batched / transfer / payout / reversed | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | Workspace RPC returns commission status + payouts; the 8 distinct states are not all surfaced | UI work in H |
+| E-REV-01 | Reversals | Full refund → full reversal; partial → proportional; cap; append-only; dispute lost/won | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `refundAdjustments.ts` R1–R6 | Re-run tests |
+| E-REV-02 | Reversals | Post-payout reversal → negative balance offset against future eligible | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `payoutNetting.ts` P3 | Regression test |
+| E-REV-03 | Reversals | Customer copy e.g. "Zwrot płatności · −€4.99", never raw codes, no PII | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Display map + guard test |
+
+### F — Stripe Connect + payouts (§14) · CHECKPOINT E
+
+| ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| F-CON-01 | Connect | Connected account create/retrieve + hosted onboarding after approval | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | `create-connect-onboarding-link` edge fn + `startConnectOnboarding()` exist; never served-proven | Sandbox served run |
+| F-CON-02 | Connect | Requirements state · transfers allowed · payouts enabled · resume/update onboarding | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | `partners.onboarding_complete` / `payouts_enabled` columns exist; `account.updated` handled | Verify each state renders |
+| F-CON-03 | Connect | Gellatti stores no raw bank/document data | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | Hosted onboarding only; no such columns | Assert by schema test |
+| F-PAY-01 | Payout | **Monthly payout batch worker** — 1st of month, after reconciliation + tier snapshot | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | **Does not exist (0.4 #1).** `payoutNetting.ts` computes; nothing calls it | Build worker (pg_cron + edge fn) |
+| F-PAY-02 | Payout | €25 default minimum; below → carry forward | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | P2 | Regression test |
+| F-PAY-03 | Payout | Dashboard distinguishes Gellatti batch / Stripe transfer / bank payout | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | Three-table model supports it; UI unverified | UI work in H |
+| F-PAY-04 | Payout | No exact bank arrival date promised | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Copy guard test |
+| F-PAY-05 | Payout | Transfer failures + reconciliation tested | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | With F-PAY-01 |
+| F-PAY-06 | Payout | **No live money during staging QA** | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | Staging is Stripe TEST mode | Assert `livemode=false` in QA evidence |
+
+### G — Welcome Partner onboarding (§15) · CHECKPOINT C
+
+| ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| G-WEL-01 | Welcome | Approved partner lands on a guided welcome, not the accounting dashboard | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Today approval drops straight into the workspace | Build 5-step flow |
+| G-WEL-02 | Welcome | Step 1 — set up to 3 public codes | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Depends on D-CODE-02 | After D |
+| G-WEL-03 | Welcome | Step 2 — create first campaign link | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Reuse `LinkGenerator` |
+| G-WEL-04 | Welcome | Step 3 — show the Partner's **actual exact** commission table | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Must read the resolved profile (Standard/Gold/Elite-custom), not a constant — depends on E-ELITE-02 | After E-ELITE |
+| G-WEL-05 | Welcome | Step 4 — complete Stripe Connect | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Reuse F-CON-01 |
+| G-WEL-06 | Welcome | Step 5 — enter Partner Dashboard | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+| G-WEL-07 | Welcome | Incomplete Connect → Partner mode still usable for non-payout functions, payout state clearly shown | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+
+### H — Partner dashboard (§16) · CHECKPOINT D
+
+| ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| H-DASH-01 | Dashboard | Reads as an earnings/growth workspace, not an admin database | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | 741-line page exists with all 8 sections; design intent not yet judged against §34 | Design pass |
+| H-DASH-02 | Dashboard | Top overview: current-month estimated commission · held · eligible · next payout batch | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | `Overview` exists; the 4 exact tiles unverified | Verify + build |
+| H-DASH-03 | Dashboard | Tier display STANDARD / GOLD / ELITE | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | `partner.tier` returned by RPC | Verify |
+| H-DASH-04 | Dashboard | If Standard: progress to Gold, e.g. 76 / 100 | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Needs the active-count source — depends on E-GOLD-02 | After E-GOLD-02 |
+| H-DASH-05 | Dashboard | Counts: HOME active · PRO active · TOTAL | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Same dependency | After E-GOLD-02 |
+| H-DASH-06 | Dashboard | Referral tools: 3 codes · copy · public URLs · campaign builder · copy links · per-campaign performance | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | `Codes` + `LinkGenerator` + `ContentLinks` exist | Add 3-slot UI |
+| H-DASH-07 | Dashboard | Commissions list: product · cadence · amount · earned · eligible · status · reversal · anonymized customer ref | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | `Earnings` exists; eligible date + anonymized ref unverified | Verify |
+| H-DASH-08 | Dashboard | Payouts: statement · amount · batch · transfer · bank state · failure messages · negative carry-forward | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | `Payouts` exists | Verify |
+| H-DASH-09 | Dashboard | Settings: profile · Connect onboarding/update · notification prefs · terms/status | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | `Profile` + `Settings` exist | Verify |
+| H-DASH-10 | Dashboard | Cancelled subscriptions visible as business effect without PII: Active · Cancels at period end · Ended · Payment failed · Refunded/reversed | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Not surfaced today | Build |
+| H-DASH-11 | Dashboard | Future renewals stop creating commission after paid entitlement ends | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | Falls out of C6 + T3 | Regression test |
+
+### I — Admin Partner operating panel (§17) · CHECKPOINT D
+
+| ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| I-ADM-01 | Admin | Application queue: received · review · more info · approve · reject · reason · audit | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | `AdminPartnerApplicationsPanel` (225 lines) + admin RPCs exist; "more info" blocked by C-APP-05 | Extend |
+| I-ADM-02 | Admin | Partner list with search/filter, status, tier, active HOME/PRO/total, codes, Connect status, held, eligible, lifetime paid | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | `AdminPartnersSection` (474 lines) exists; column set unverified | Audit + extend |
+| I-ADM-03 | Admin | Partner detail: identity, status, tier, counts, progress, 3 codes, aliases, links, attribution history, ledger, renewals, cancellations, refunds, chargebacks, adjustments, held, eligible, payout history, failed payouts, Connect, Elite rates, notes, audit | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | **No full detail panel exists** — the largest single admin gap | Build |
+| I-ADM-04 | Admin | Owner can change: approve/reject · suspend/reactivate/terminate · tier override · assign/remove Elite · Elite rate values · code values · disable code/alias · partner status · permitted payout settings | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | Partial (approve/reject, code disable) | Build with I-ADM-03 |
+| I-ADM-05 | Admin | Sensitive actions require confirmation + reason + audit | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | Audit pattern exists in the 2026-08-26 migration | Apply to every new action |
+| I-ADM-06 | Admin | **"Preview as Partner" is strictly read-only** — no impersonated writes | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Security-critical | Build + explicit write-refusal test |
+
+### J — Normal-user referral program (§18–§21) · CHECKPOINT F
+
+| ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| J-REF-01 | Referral | Separate from professional Partner; reward is free Gellatti time, never cash | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | **Nothing exists (0.4 #3)** | Design + migration |
+| J-REF-02 | Referral | FIRST PAID PURCHASE ONLY; later renewals create no further reward | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+| J-REF-03 | Referral | Monthly first purchase → referrer +7 days | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+| J-REF-04 | Referral | Annual first purchase → referrer +3 months | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+| J-REF-05 | Referral | Rewards stack (4 annual referrals = 12 months) | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+| J-REF-06 | Referral | PRO referrer → extends PRO; HOME referrer → extends HOME; **never silently upgrade HOME to PRO** | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+| J-REF-07 | Referral | No current eligible paid plan → store credit safely, apply when an eligible plan begins | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+| J-REF-08 | Referral | States PENDING / EARNED / APPLIED / REVERSED | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+| J-REF-09 | Referral | Reversed when first purchase fails / void / fully refunded / chargeback / never becomes valid entitlement | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+| J-REF-10 | Referral | Paid first period then merely disabling auto-renew does **NOT** remove an earned reward | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Subtle; needs an explicit test | — |
+| J-REF-11 | Referral | Late reversal never cuts into already-paid entitlement; use credit adjustment / future offset | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Mirrors E-REV-02 | Reuse netting pattern |
+| J-REF-12 | Referral | **Reward really changes entitlement/billing time** — not a visual badge | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | The hard part. `inviteCodes.ts` I5 grant spec (`days`, `createsStripeObjects:false`) + `entitlements` rows are the reusable primitive | Design against `entitlementResolver` |
+| J-REF-13 | Referral | Proven with Stripe Sandbox/Test Clock: +7d, +3mo, stacking, reversal, coherent future billing | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+| J-REF-14 | Referral UX | Account area "Poleć Gellatti" with ONE personal link (not 3 campaign codes) | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+| J-REF-15 | Referral UX | Copy · WhatsApp · Facebook · existing safe share actions | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Reuse existing share infrastructure | Audit `recipe_share_links` share UI |
+| J-REF-16 | Referral UX | Dashboard ZDOBYTE / OCZEKUJE / WYKORZYSTANE / COFNIĘTE with the owner's exact examples | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+| J-REF-17 | Referral UX | Never expose referred person's PII | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Guard test |
+| J-PREC-01 | Precedence | One paid conversion never creates both a Partner cash commission and a normal-user free-time reward for two different owners | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | **Deterministic precedence rule must be designed, documented here, and tested** | Design; preserve A2/A3 partner-code authority |
+| J-PREC-02 | Precedence | Explicit valid Partner code before conversion is not double-rewarded; one owner per first paid conversion; immutable evidence; no self-referral; no client-side trust | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | With J-PREC-01 |
+
+### K — QA personas (§22) · CHECKPOINT E/F
+
+| ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| K-P1 | Persona | P1 Standard monthly partner: own codes, monthly HOME conversion, renewal | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | After E/F |
+| K-P2 | Persona | P2 Annual partner: annual conversion + later annual renewal | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+| K-P3 | Persona | P3 Refund/cancel: commission → refund → reversal → cancellation state | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+| K-P4 | Persona | P4 Gold boundary: 99 → 100 → Gold → decline below 100 at the next correct snapshot | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Needs fixtures/Test Clock, **not** 100 browser customers | After E-GOLD-02 |
+| K-P5 | Persona | P5 Elite custom: assign, custom profile, rate change, historical commission unchanged | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | After E-ELITE |
+| K-P0 | Persona | P0 Normal referrer: +7d, +3mo, stacking, reversal | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | After J |
+| K-COL | Persona | Collision test: P2 tries to take P1's code → MUST FAIL | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | After D-CODE-03/04 |
+| K-3SIDE | Persona | Every financial test verified from 3 sides: CUSTOMER · PARTNER/REFERRER · ADMIN | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+| K-SEC | Persona | QA credentials never exposed in final reports | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | — | Standing rule already followed | — |
+
+### L — Machines (§23–§26) · CHECKPOINT G
+
+| ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| L-MACH-01 | Machines | Dedicated machine route, not a Partner subsection | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | **No Miles catalog exists (0.4 #4).** `src/features/machine-catalog` is HOME appliances for formulation — a different domain that must NOT be reused | New feature module |
+| L-MACH-02 | Machines | Click-by-click selector, not a raw 11-model table | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+| L-MACH-03 | Machines | Q1 where to sell (café / gelateria / restaurant-hotel / events / mobile / new business) | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+| L-MACH-04 | Machines | Q2 flavours (1–2 / 3–4 / 5–6 / 7+) | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+| L-MACH-05 | Machines | Q3 space (countertop / compact / full counter / mobile) | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+| L-MACH-06 | Machines | Q4 priority (lowest entry cost / capacity / mobility / live effect) | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+| L-MACH-07 | Machines | "Recommended for you" result: machine, image, starting price, basic verified specs, use cases, benefits, inquiry CTA | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+| L-MACH-08 | Machines | Every selector branch reachable, no dead ends, every intended model reachable | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Exhaustive branch test |
+| L-MACH-09 | Machines | No online machine checkout; CTA "Wyślij zapytanie" | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+| L-MACH-10 | Machines | Inquiry payload carries selector answers + recommended/requested model | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | With P rows |
+| L-PRICE-01 | Prices | 11 working prices = supplier purchase × 2; **UFO Sandwich Press excluded** | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | — | **VERIFIED 11/11** against the quotation: every owner price is exactly 2× the EXW price. UFO (€380) correctly excluded. Evidence: `GELLATTI_MACHINE_SPEC_RECONCILIATION.md` §1 | Encode as data + test |
+| L-PRICE-02 | Prices | Public wording: transport and destination tax/VAT handled in the final quote; no invented delivered pricing | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Quotation is **EXW China** (Hangzhou Gelato Tech Co., Ltd) — see N-TRAIL-05 for the related Incoterm risk | Copy + guard test |
+| L-SPEC-01 | Specs | Model-by-model reconciliation evidence table (field · quotation · brochure · other · selected authority · confidence · conflict) before any public spec | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | **6 of 11 models reconciled** (V2, V4, V4B, V6, V8, V2C) in `GELLATTI_MACHINE_SPEC_RECONCILIATION.md` §2. Remaining 5 (V4C, DC Cart, V1 Café, V1 Milano, V2 Milano) have no brochure spec page located — Milano brochure contains **no spec table at all** | Locate V4C/DC pages; else 6 questions to manufacturer |
+| L-SPEC-02 | Specs | Publish only basic verified fields: dimensions · power · positions · batch capacity · production time · application · price | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | Publishable set now defined per model in reconciliation §4. **Weight and peak power are withheld for ALL models** (brochure exceeds quotation on 100 % of models — systematic, not a typo) | Encode the allow-list in the catalog data |
+| L-SPEC-03 | Specs | Unresolved fields are omitted and their row marked BLOCKED — never silently pick the better-looking figure | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | **Three real conflicts found and blocked:** (a) weight — brochure higher on every model; (b) peak power — brochure higher on every model; (c) **V6/V8 power supply: quotation says single-phase 220 V, brochure says three-phase 380 V** — installation-critical, must never be published unresolved. Plus the Milano output anomaly (V2 Milano 100 cups/h vs V1 Milano 200 cups/h) | Enforce omission in code + test |
+| L-STORY-01 | Story | Real capabilities in premium Gellatti language, not pasted brochure text | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | After L-SPEC-01 |
+| L-STORY-02 | Story | Miles manufacturer identity retained on Miles equipment unless private-label rights are proven; Gellatti is the seller/solution layer | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Manufacturer of record per the quotation: **Hangzhou Gelato Tech Co., Ltd** (milestac.com) — private-label rights unknown | **Owner decision** on branding rights |
+
+### M — Mobile Miles machines (§27, §28) · CHECKPOINT H
+
+| ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| M-MOB-01 | Mobile | MOBILE GELLATTI has two paths: Miles mobile machine · complete Gellatti trailer | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+| M-MOB-02 | Mobile | Mobile machine set = DC Battery Cart · V2C · V4C | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | All three confirmed in the quotation | — |
+| M-MOB-03 | Mobile | Use cases: events, catering, outdoor, pop-ups, food markets, hotels/restaurants, temporary points | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+| M-MOB-04 | Mobile | Same inquiry-based selector, no checkout | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Reuse L selector |
+
+### N — Complete Gellatti trailer (§29, §30) · CHECKPOINT H
+
+| ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| N-TRAIL-01 | Trailer | Separate route/section, "Twój mobilny punkt Gellatti." | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Conflicts with `FranchiseConcept='przyczepa'` (X5) — trailer must become its own product | Resolve overlap |
+| N-TRAIL-02 | Trailer | Base trailer working price FROM €10,000 | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Owner-supplied figure; no supporting document in the machine pack | — |
+| N-TRAIL-03 | Trailer | 5-step configurator: trailer · machine · equipment · branding · inquiry | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+| N-TRAIL-04 | Trailer | Standard trailer ≈3.5 m × 2.1 m, real geometry preserved; standard machines V2, V4B; larger/custom → V4, V6, V8 | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+| N-TRAIL-05 | Trailer | **Incoterm must be verified before publishing**; safe wording until then | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | Legacy notes say "FOB Germany". The machine quotation is **EXW China**, and the owner states the trailer ships from Germany with EU registration documentation. "FOB" is a sea-freight term and is technically wrong for a road delivery from Germany — publishing it would be an incorrect commercial claim | Publish only the owner's safe wording; **owner/legal decision** on the real term |
+| **N-V4B-FIT** | **Trailer** | **TRAILER-V4B-FIT — dimensional compatibility must be proven before any floorplan is frozen** | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | **CONFIRMED REAL — not a quotation typo.** Owner drawing equipment zone = **1340** × 600 × 910 mm. **Both** Miles quotation **and** Miles brochure (Galaxy Pro V4-B, p.22) independently state **1370** × 600 × 910 mm. Depth and height match exactly; length is short by **30 mm** | **Measure the physical trailer's clear opening.** Cheapest fix is 30 mm off the cabinetry run, not the machine. Marketing may list V4B; **floorplan may NOT be frozen** |
+
+### O — Franchise (§31) · CHECKPOINT I
+
+| ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| O-FRAN-01 | Franchise | Distinct route, not ecommerce | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `/franchise` + `FranchisePage` exist | Content review |
+| O-FRAN-02 | Franchise | No invented fee / ROI / turnover / CAPEX / margin promises | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | Current copy already says "Szczegóły wymagają rozmowy i potwierdzonego źródła" — good posture | Guard test |
+| O-FRAN-03 | Franchise | Hero "Otwórz własne Gellatti." with a premium traditional gelateria visual (display, pans, fresh gelato, live machine, coherent brand) | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Needs FRANCHISE-01..03 assets | After Q |
+| O-FRAN-04 | Franchise | Inquiry captures country, city, location status, m², experience, opening time, budget, format, message, contact | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | Existing form captures concept/name/email/phone/city/country/note — **missing m², experience, timing, budget, location status** | Extend form + RPC |
+| O-FRAN-05 | Franchise | CTA "Porozmawiaj o Gellatti Franchise" | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Current CTA is "Wyślij zapytanie" | Copy change |
+
+### P — Lead operations (§32) · CHECKPOINTS G/H/I
+
+| ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| P-LEAD-01 | Leads | Canonical lead storage for machine / mobile / trailer / franchise | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | Only `franchise_inquiries` exists — the right pattern to generalize (0.4 #6) | Extend or add sibling table |
+| P-LEAD-02 | Leads | Each lead preserves id, source, route, type, model/format, configurator answers, country/city, contact, timestamp, status, assignee, notes, history | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Franchise row lacks configurator answers/route/assignee/history | Migration |
+| P-LEAD-03 | Leads | Statuses NEW / CONTACTED / QUALIFIED / QUOTED / WON / LOST | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | Franchise has `new/contacted/qualified/closed` — **missing QUOTED, WON, LOST** | Migration |
+| P-LEAD-04 | Leads | Admin: see all, filter by type/status, open details, see configuration, add notes, update status, audit history | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | `AdminFranchiseLeadsSection` exists for one type | Generalize |
+| P-LEAD-05 | Leads | Customer gets submission confirmation | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Verify per route |
+| P-LEAD-06 | Leads | Admin notified via the canonical notification system | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | Same blocker as C-APP-08 — no email adapter | **Owner decision** |
+
+### Q — Asset manifest (§33) · CHECKPOINT J
+
+| ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Q-ASSET-00 | Assets | One canonical `GELLATTI_WORK_WITH_US_ASSET_MANIFEST` with the full 18-field row schema | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Claude writes briefs only; owner/ChatGPT renders | Write manifest |
+| Q-ASSET-01 | Assets | PARTNER-01..04 briefs (hero, influencer, community admin, blog/newsletter) | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+| Q-ASSET-02 | Assets | MACHINE-01..04 briefs | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+| Q-ASSET-03 | Assets | MOBILE-01..02 briefs | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+| Q-ASSET-04 | Assets | TRAILER-01..03 briefs — **preserve real geometry, replace PINGÜINO branding with GELLATTI** | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Owner supplied 2 real trailer renders (silver closed, white open) as the geometry source | — |
+| Q-ASSET-05 | Assets | TRAILER-04 floorplan (3.5×2.1 m, V2) | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+| Q-ASSET-06 | Assets | TRAILER-05 floorplan (V4B) — **cannot be briefed as final until N-V4B-FIT resolves** | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | Blocked by the 30 mm conflict | After N-V4B-FIT |
+| Q-ASSET-07 | Assets | FRANCHISE-01..03 briefs | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | — |
+| Q-ASSET-08 | Assets | No ugly "asset missing" block survives into an owner-approved page; visual rows can't freeze without final assets | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Staging currently shows literal "Asset nie jest częścią preview" placeholders | Design graceful fallback |
+
+### R — Design language (§34)
+
+| ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| R-DES-01 | Design | Premium · minimal · calm · precise; ivory/charcoal/warm accent; strong type; no SaaS feel; no random blue | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Follow the V2.1 authority and the existing design-pass method | Per-route design pass |
+| R-DES-02 | Design | No internal codes / SQL / engine terms / Stripe IDs / enum labels outside authorized admin developer context | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | `customerCopyGuard.test.ts` already exists — extend it | Extend guard |
+| R-DES-03 | Design | All new visible copy through the canonical localization authority; language parity; no hardcoded Polish in business logic | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | `cooperation.ts` has PL+EN and `locale.ts` is the registry | Add keys in both |
+
+### S — Security / privacy (§35)
+
+| ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| S-SEC-01 | Security | Server authoritative: never trust client rate / tier / commission / payout status / partner identity | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | No write grants to `authenticated` on any financial table | Preserve; test each new RPC |
+| S-SEC-02 | Security | Idempotency · audit · unique constraints · Stripe verification · immutable ledger | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | All present | Preserve |
+| S-SEC-03 | Security | Partner sees only own permitted data; never customer name/email/card/recipes/PII | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | RLS is correct; the workspace RPC payload needs an explicit PII audit | PII guard test |
+| S-SEC-04 | Security | Admin permissions explicit | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | `c004d659` | `AdminRouteGuard` + admin RPCs | Preserve |
+
+### T — Testing + served QA (§36, §37)
+
+| ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| T-TEST-01 | Tests | Every checklist row references its tests | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Fill as rows complete |
+| T-TEST-02 | Tests | Financial matrix: duplicate/out-of-order webhooks, fail, success, refunds, partial, disputes, renewals, annual, monthly, monthly→annual, idempotency, concurrency | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | Large parts exist in the domain tests + `WEBHOOK_MATRIX.md` | Inventory, then fill gaps |
+| T-TEST-03 | Tests | Code matrix: collision, edit/history, 3 slots, campaign attribution, 30-day, self-referral | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | Partly covered | Fill after D |
+| T-TEST-04 | Tests | Tier/rate matrix: 99→100 Gold, decline below 100, Elite custom, rate versioning | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | After E |
+| T-TEST-05 | Tests | Payout matrix: 2-month hold, threshold, negative carry-forward, Connect incomplete/complete, failed transfer, reconciliation | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | Math covered; worker paths not | After F-PAY-01 |
+| T-TEST-06 | Tests | Referral matrix: +7d, +3mo, stacking, 4 annual = 12 months, failed first payment, refund, chargeback, cancel-at-period-end, no double reward, no self-referral, no PII | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | After J |
+| T-TEST-07 | Tests | Machines matrix: every branch, every model reachable, no dead end, payload, price, disputed spec omitted, mobile+desktop | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | After L |
+| T-TEST-08 | Tests | Leads matrix: all 4 types, admin receipt, state update, audit, confirmation | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | After P |
+| T-SQA-01 | Served QA | Every checkpoint served-verified on staging: signed out, signed in, role, desktop, mobile, empty/loading/error/success, permission boundaries, real DB, real Stripe Sandbox | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | localhost alone is never accepted | Per checkpoint |
+| T-SQA-02 | Served QA | Accessibility pass | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Per checkpoint |
+
+---
+
+## 2. Counts
+
+| Work status | Count |
+| --- | --- |
+| 🟢 DONE (pre-existing, needs evidence + freeze) | 24 |
+| 🟡 DOING / partially built | 33 |
+| 🔴 BLOCKED | 14 |
+| ⚪ TODO | 66 |
+| **Total rows** | **137** |
+
+Auto ⬜ 137 · Served ⬜ 137 · Owner ⬜ 137 · Freeze 🔓 137.
+
+Nothing is frozen. Nothing has owner approval. The 🟢 rows are **pre-existing implementations
+found by audit**, not work completed by this run — they still need evidence, served QA and owner
+sign-off before they can be frozen.
+
+---
+
+## 3. Implementation sequence
+
+The prompt's PHASE order is sound, with one correction: **§39 PHASE 2 (reconcile the OWNER
+OVERRIDES) must come before any Partner UI**, because E-ELITE-02 changes the rate resolver that
+G-WEL-04, H-DASH-03 and I-ADM-03 all read from, and D-CODE-02/04 change the code schema that
+G-WEL-02 and H-DASH-06 render.
+
+1. **PHASE 2 — override reconciliation (schema + domain):** D-CODE-02, D-CODE-04, E-ELITE-02..04,
+   E-GOLD-02 (snapshot writer), F-PAY-01 (payout worker). These are the six changes that turn the
+   existing engine into the owner's specified engine.
+2. **PHASE 3 — gateway (A):** CHECKPOINT A.
+3. **PHASE 4/5 — Partner landing, application, approval, welcome (B, C, G):** CHECKPOINTS B, C.
+4. **PHASE 6 — dashboard + admin (H, I):** CHECKPOINT D.
+5. **PHASE 7 — commission/payout end-to-end (E, F):** CHECKPOINT E.
+6. **PHASE 8 — normal referral (J):** CHECKPOINT F.
+7. **PHASE 9/10/11 — machines, mobile, trailer (L, M, N):** CHECKPOINTS G, H.
+8. **PHASE 12 — franchise (O):** CHECKPOINT I.
+9. **PHASE 13/14/15 — assets, personas, regression (Q, K, T):** CHECKPOINT J.
+
+Lead operations (P) land alongside whichever of G/H/I ships first and are extended by each.
+
+---
+
+## 4. Owner decisions required (blocking, collected — not asked one at a time)
+
+These cannot be resolved by inspection. Work continues around them; the listed rows stay 🔴.
+
+1. **Email/notification adapter (C-APP-08, P-LEAD-06).** There is no email provider in the
+   project at all. Options: (a) introduce an adapter now, (b) ship in-app notifications only and
+   defer email, (c) name a provider you already hold credentials for. Until then no application,
+   approval or lead email can be sent.
+2. **Partner landing route name (B-LAND-01).** `/partner` is the authenticated dashboard. The
+   public landing needs its own URL — proposal: `/partner-program`, leaving `/partner` as the
+   workspace. This is a customer-visible URL.
+3. **Miles branding rights (L-STORY-02).** The equipment is manufactured by Hangzhou Gelato Tech
+   Co., Ltd. §26 says not to remove Miles identity "unless private-label rights are proven". Do
+   you hold private-label rights?
+4. **Trailer Incoterm (N-TRAIL-05).** Legacy notes say "FOB Germany"; FOB is a sea-freight term
+   and is technically wrong for road delivery from Germany. The safe wording will be published
+   until you or your legal/commercial authority confirm the correct term.
+5. **Trailer vs. franchise concept overlap (X5, N-TRAIL-01).** `przyczepa` is currently one of the
+   four *franchise* concepts, and §29 also makes the trailer its own MOBILE product. Confirm the
+   trailer is a MOBILE product and the franchise "Przyczepa" card should point at it.
+
+---
+
+## 5. Change log
+
+| Date | Run | What changed |
+| --- | --- | --- |
+| 2026-08-31 | Audit + checklist creation | Repository audited against §§0–44 on `c004d659`; 137 rows created; 6 override conflicts (X1–X6) and 5 owner decisions recorded; machine quotation extracted and all 11 ×2 prices verified; TRAILER-V4B-FIT confirmed as a real 30 mm conflict from source documents |
