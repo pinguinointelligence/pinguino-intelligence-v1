@@ -483,6 +483,54 @@ end $$;
 revoke all on function public.gellatti_close_payout_batch_v1(uuid, timestamptz)
   from public, anon, authenticated;
 
+-- ── A MISSED monthly batch ───────────────────────────────────────────────────
+-- Unlike the tier snapshot, a missed payout batch does NOT lose anything and is
+-- NOT back-filled. The reasoning matters:
+--
+--   * commission entries stay 'eligible' until a payout actually settles them,
+--     so a missed February batch simply means March's batch pays that money;
+--   * creating a retroactive "February" batch in March would select the same
+--     eligible set March would take, so it adds no money and no accuracy — it
+--     only creates two batch rows competing for one set of entries;
+--   * partner_payout_items would then refuse the second one anyway, leaving a
+--     confusing empty batch on the record.
+--
+-- So the money self-heals and the batch row does not. What IS needed is to SEE
+-- that a month was skipped, which is what this reports. Filling it is a
+-- deliberate operator decision, made by calling the builder with an explicit
+-- p_month, not something the scheduler should do behind anyone's back.
+create or replace function public.gellatti_missing_payout_batch_months_v1(
+  p_now timestamptz default now(),
+  p_livemode boolean default false
+) returns table (month date)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  with months as (
+    select generate_series(
+      coalesce(
+        (select date_trunc('month', (min(ce.earned_at) at time zone 'Europe/Madrid'))::date
+         from public.commission_entries ce where ce.livemode = p_livemode),
+        date_trunc('month', (p_now at time zone 'Europe/Madrid'))::date
+      ),
+      date_trunc('month', (p_now at time zone 'Europe/Madrid'))::date,
+      interval '1 month'
+    )::date as month
+  )
+  select m.month
+  from months m
+  where not exists (
+    select 1 from public.payout_batches b
+    where b.month = m.month and b.currency = 'eur' and b.livemode = p_livemode
+  )
+  order by m.month;
+$$;
+
+revoke all on function public.gellatti_missing_payout_batch_months_v1(timestamptz, boolean)
+  from public, anon, authenticated;
+
 -- ── Partner statement + Admin ────────────────────────────────────────────────
 create or replace function public.gellatti_admin_payout_batches_v1(
   p_limit integer default 50
@@ -513,6 +561,7 @@ grant execute on function public.gellatti_admin_payout_batches_v1(integer) to au
 -- ============================================================================
 -- ROLLBACK (not applied — see docs/billing-partner/ROLLBACK_PLAN.md):
 --   drop function if exists public.gellatti_admin_payout_batches_v1(integer);
+--   drop function if exists public.gellatti_missing_payout_batch_months_v1(timestamptz, boolean);
 --   drop function if exists public.gellatti_close_payout_batch_v1(uuid, timestamptz);
 --   drop function if exists public.gellatti_stuck_payout_lines_v1(timestamptz, integer);
 --   drop function if exists public.gellatti_mark_payout_failed_v1(uuid, text, timestamptz);

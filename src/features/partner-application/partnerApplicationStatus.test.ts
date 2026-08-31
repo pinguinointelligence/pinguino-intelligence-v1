@@ -1,5 +1,5 @@
 /// <reference types="node" />
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -214,5 +214,64 @@ describe('migration safety', () => {
     for (const table of ['partners', 'partner_codes', 'commission_entries', 'partner_payouts']) {
       expect(new RegExp(`(drop|delete from)[^;]*\\b${table}\\b`, 'i').test(SQL), table).toBe(false);
     }
+  });
+});
+
+describe('AS3 — no LIVE definition still depends on the invalid value', () => {
+  // Historical migrations are append-only history and must never be edited:
+  // they record what was applied. What matters is that the LAST definition of
+  // each function — the one a fresh `supabase db reset` leaves in place, and
+  // the one `create or replace` leaves live on an existing database — is clean.
+  const MIGRATIONS_DIR = join(REPO, 'supabase', 'migrations');
+
+  function latestDefinitionOf(functionName: string): { file: string; body: string } {
+    const files = readdirSync(MIGRATIONS_DIR)
+      .filter((name) => name.endsWith('.sql'))
+      .sort(); // timestamp-prefixed, so lexical order IS application order
+    let found: { file: string; body: string } | null = null;
+    for (const file of files) {
+      const sql = readFileSync(join(MIGRATIONS_DIR, file), 'utf8');
+      const match = new RegExp(
+        `create or replace function public\\.${functionName}[\\s\\S]*?\\$\\$;`,
+      ).exec(sql);
+      if (match) found = { file, body: match[0] };
+    }
+    if (!found) throw new Error(`no definition found for ${functionName}`);
+    return found;
+  }
+
+  for (const functionName of [
+    'gellatti_submit_partner_application_v1',
+    'gellatti_admin_partner_application_action_v1',
+  ]) {
+    it(`the latest definition of ${functionName} contains no executable 'in_review'`, () => {
+      const latest = latestDefinitionOf(functionName);
+      // our migration must be the one that wins
+      expect(latest.file).toBe('20260831140000_partner_application_more_information.sql');
+      // strip comments: the fix is explained in prose above the code it replaces
+      const executable = latest.body.replace(/--.*$/gm, '');
+      expect(executable).not.toContain('in_review');
+    });
+  }
+
+  it('the latest definitions do write the legal state', () => {
+    expect(latestDefinitionOf('gellatti_admin_partner_application_action_v1').body).toContain(
+      "'more_information_needed'",
+    );
+    expect(latestDefinitionOf('gellatti_submit_partner_application_v1').body).toContain(
+      "'more_information_needed'",
+    );
+  });
+
+  it('no TypeScript outside a comment or an absence-assertion mentions it', () => {
+    // Scanned at authoring time across src/**: the only partner-scope hits are
+    // this file's assertions, two explanatory comments, and the unrelated
+    // mapper-verification state machine, which has a legitimate in_review state.
+    const statusModule = readFileSync(
+      new URL('./partnerApplicationStatus.ts', import.meta.url),
+      'utf8',
+    );
+    const executable = statusModule.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    expect(executable).not.toContain('in_review');
   });
 });

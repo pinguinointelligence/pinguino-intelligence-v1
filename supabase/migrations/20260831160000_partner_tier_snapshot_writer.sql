@@ -201,6 +201,106 @@ end $$;
 revoke all on function public.gellatti_write_partner_tier_snapshots_v1(date, timestamptz)
   from public, anon, authenticated;
 
+-- ── CATCH-UP: a MISSED monthly invocation ────────────────────────────────────
+-- The writer above derives the CURRENT Madrid month, so an invocation on
+-- 3 March writes March. On its own that means a missed 1 February run would
+-- leave February with no snapshot forever — and a February commission would
+-- defer on `tier_snapshot_missing` indefinitely, because dispatch.ts refuses to
+-- borrow another month's tier.
+--
+-- This finds the gaps and fills them.
+--
+-- HONESTY ABOUT WHAT A BACKFILL CAN AND CANNOT KNOW:
+-- `customer_subscriptions` is a cache of CURRENT state, not a history, so a
+-- snapshot written late is computed from TODAY's counts, not from what was true
+-- on the 1st of the missed month. That is visible rather than hidden: `month`
+-- and `computed_at` sit side by side on the row, so a February snapshot with a
+-- March computed_at is self-evidently late. A late snapshot is still far better
+-- than none, because none blocks every commission in that month permanently.
+-- The correct operational response to a large gap is to check the run log, not
+-- to trust the backfilled count as historical truth.
+
+-- Which months are missing a snapshot? Observable on its own, so Admin can see
+-- a gap before anything is written.
+create or replace function public.gellatti_missing_tier_snapshot_months_v1(
+  p_now timestamptz default now()
+) returns table (month date, partners_missing integer)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  with months as (
+    select generate_series(
+      -- from the earliest month any still-active partner existed in
+      coalesce(
+        (select date_trunc('month', (min(p.created_at) at time zone 'Europe/Madrid'))::date
+         from public.partners p where p.status = 'active'),
+        date_trunc('month', (p_now at time zone 'Europe/Madrid'))::date
+      ),
+      date_trunc('month', (p_now at time zone 'Europe/Madrid'))::date,
+      interval '1 month'
+    )::date as month
+  )
+  select m.month,
+         count(p.id)::integer as partners_missing
+  from months m
+  join public.partners p
+    on p.status = 'active'
+   -- a partner needs no snapshot for a month that predates them
+   and date_trunc('month', (p.created_at at time zone 'Europe/Madrid'))::date <= m.month
+  where not exists (
+    select 1 from public.partner_tier_snapshots s
+    where s.partner_id = p.id and s.month = m.month
+  )
+  group by m.month
+  having count(p.id) > 0
+  order by m.month;
+$$;
+
+revoke all on function public.gellatti_missing_tier_snapshot_months_v1(timestamptz)
+  from public, anon, authenticated;
+
+-- Fill every missing month. Bounded, so a misconfigured call cannot walk years.
+-- Each month is written by the SAME writer, so the on-conflict-do-nothing
+-- immutability rule still holds: a month that already has a snapshot is skipped,
+-- and running this twice writes nothing the second time.
+create or replace function public.gellatti_catchup_partner_tier_snapshots_v1(
+  p_now timestamptz default now(),
+  p_max_months integer default 12
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_month date;
+  v_filled integer := 0;
+  v_result jsonb;
+  v_months jsonb := '[]'::jsonb;
+begin
+  for v_month in
+    select month from public.gellatti_missing_tier_snapshot_months_v1(p_now)
+    order by month
+    limit greatest(coalesce(p_max_months, 12), 1)
+  loop
+    -- p_count_at stays p_now: we cannot know the historical count (see above),
+    -- and computed_at then makes the lateness visible on the row.
+    v_result := public.gellatti_write_partner_tier_snapshots_v1(v_month, p_now);
+    v_filled := v_filled + 1;
+    v_months := v_months || jsonb_build_array(v_result);
+  end loop;
+
+  return jsonb_build_object(
+    'monthsFilled', v_filled,
+    'details', v_months,
+    'late', v_filled > 0
+  );
+end $$;
+
+revoke all on function public.gellatti_catchup_partner_tier_snapshots_v1(timestamptz, integer)
+  from public, anon, authenticated;
+
 -- ── Admin read ───────────────────────────────────────────────────────────────
 create or replace function public.gellatti_admin_partner_tier_snapshots_v1(
   p_partner_id uuid default null,
@@ -236,6 +336,8 @@ grant execute on function public.gellatti_admin_partner_tier_snapshots_v1(uuid, 
 -- ============================================================================
 -- ROLLBACK (not applied — see docs/billing-partner/ROLLBACK_PLAN.md):
 --   drop function if exists public.gellatti_admin_partner_tier_snapshots_v1(uuid, integer);
+--   drop function if exists public.gellatti_catchup_partner_tier_snapshots_v1(timestamptz, integer);
+--   drop function if exists public.gellatti_missing_tier_snapshot_months_v1(timestamptz);
 --   drop function if exists public.gellatti_write_partner_tier_snapshots_v1(date, timestamptz);
 --   drop function if exists public.gellatti_partner_elite_active_v1(uuid, timestamptz);
 --   drop function if exists public.gellatti_partner_active_referred_count_v1(uuid, timestamptz);

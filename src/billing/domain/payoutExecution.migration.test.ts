@@ -85,7 +85,9 @@ describe('held → eligible uses the two-calendar-month date already computed', 
 describe('P2 — the EUR 25 threshold matches payoutNetting.ts', () => {
   it('shares the constant', () => {
     expect(DEFAULT_PAYOUT_THRESHOLD_CENTS).toBe(2500);
-    expect(BUILD).toMatch(new RegExp(`p_threshold_cents integer default ${DEFAULT_PAYOUT_THRESHOLD_CENTS}`));
+    expect(BUILD).toMatch(
+      new RegExp(`p_threshold_cents integer default ${DEFAULT_PAYOUT_THRESHOLD_CENTS}`),
+    );
   });
 
   it('below threshold is skipped and carried forward, not paid', () => {
@@ -109,7 +111,7 @@ describe('P3 — a negative net carries forward and blocks payment', () => {
   });
 
   it('P4 — a zero net produces no transfer', () => {
-    expect(BUILD).toContain("when net_cents = 0 then");
+    expect(BUILD).toContain('when net_cents = 0 then');
   });
 });
 
@@ -177,7 +179,9 @@ describe('failure scenario — crash after the Stripe transfer, before the local
 
 describe('failure scenario — Connect incomplete, transfers disabled, payouts disabled', () => {
   it('all three collapse to skipped_not_payable', () => {
-    expect(BUILD).toContain("when not (payouts_enabled and onboarding_complete) then 'skipped_not_payable'");
+    expect(BUILD).toContain(
+      "when not (payouts_enabled and onboarding_complete) then 'skipped_not_payable'",
+    );
   });
 
   it('the balance carries forward rather than being lost', () => {
@@ -323,7 +327,9 @@ describe('security posture', () => {
       'gellatti_live_payouts_released_v1',
     ]) {
       expect(PAYOUT, name).toMatch(new RegExp(`revoke all on function public\\.${name}`));
-      expect(new RegExp(`grant execute on function public\\.${name}`).test(PAYOUT), name).toBe(false);
+      expect(new RegExp(`grant execute on function public\\.${name}`).test(PAYOUT), name).toBe(
+        false,
+      );
     }
   });
 
@@ -337,5 +343,110 @@ describe('security posture', () => {
     expect(PAYOUT_RAW).toContain('ROLLBACK');
     expect(SCHED_RAW).toContain('ROLLBACK');
     expect(PAYOUT_RAW).toContain('Payout rows are NOT removed');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Owner acceptance point 4 — scheduler recovery after a MISSED invocation
+// ---------------------------------------------------------------------------
+
+const TIER_RAW = read('20260831160000_partner_tier_snapshot_writer.sql');
+const TIER = TIER_RAW.replace(/--.*$/gm, '');
+const CATCHUP = fn(TIER, 'gellatti_catchup_partner_tier_snapshots_v1');
+const MISSING_MONTHS = fn(TIER, 'gellatti_missing_tier_snapshot_months_v1');
+const MISSING_BATCHES = fn(PAYOUT, 'gellatti_missing_payout_batch_months_v1');
+
+describe('tier snapshots — a missed month is detected and filled exactly once', () => {
+  it('the plain writer alone would NOT repair a missed month', () => {
+    // it derives the CURRENT Madrid month, so a 3 March run targets March
+    const writer = fn(TIER, 'gellatti_write_partner_tier_snapshots_v1');
+    expect(writer).toContain(
+      "date_trunc('month', (p_count_at at time zone 'Europe/Madrid'))::date",
+    );
+  });
+
+  it('so a catch-up detects every month that lacks a snapshot', () => {
+    expect(MISSING_MONTHS).toContain('generate_series');
+    expect(MISSING_MONTHS).toContain('not exists');
+    expect(MISSING_MONTHS).toContain('s.partner_id = p.id and s.month = m.month');
+  });
+
+  it('the gap search is observable on its own, before anything is written', () => {
+    expect(MISSING_MONTHS).toContain('partners_missing');
+    expect(MISSING_MONTHS).toContain('stable');
+  });
+
+  it('never asks for a month that predates the partner', () => {
+    expect(MISSING_MONTHS).toContain(
+      "date_trunc('month', (p.created_at at time zone 'Europe/Madrid'))::date <= m.month",
+    );
+  });
+
+  it('fills each missing month through the SAME writer, so immutability still applies', () => {
+    expect(CATCHUP).toContain('public.gellatti_write_partner_tier_snapshots_v1(v_month, p_now)');
+  });
+
+  it('writes exactly once — a second run finds no gaps and writes nothing', () => {
+    // the gap query drives the loop, and a filled month is no longer a gap
+    expect(CATCHUP).toContain('gellatti_missing_tier_snapshot_months_v1(p_now)');
+    expect(CATCHUP).toContain('monthsFilled');
+  });
+
+  it('is bounded, so a misconfigured call cannot walk years', () => {
+    expect(CATCHUP).toContain('p_max_months');
+    expect(CATCHUP).toContain('limit greatest(coalesce(p_max_months, 12), 1)');
+  });
+
+  it('runs BEFORE the current month in the monthly schedule', () => {
+    // scoped to the monthly job body: the allowlist above it lists the jobs in
+    // a different order, which says nothing about execution order
+    const monthly = fn(SCHED, 'gellatti_partner_monthly_jobs_v1');
+    expect(monthly).toContain("'tier_snapshot_catchup'");
+    expect(monthly.indexOf("'tier_snapshot_catchup'")).toBeLessThan(
+      monthly.indexOf("public.gellatti_run_partner_job_v1('tier_snapshots')"),
+    );
+  });
+
+  it('is honest that a late count is not historical truth', () => {
+    expect(TIER_RAW).toContain('HONESTY ABOUT WHAT A BACKFILL CAN AND CANNOT KNOW');
+    expect(TIER_RAW).toContain('computed_at');
+    expect(CATCHUP).toContain("'late'");
+  });
+});
+
+describe('payout batches — a missed month loses no money and is reported, not back-filled', () => {
+  it('a skipped month is detectable', () => {
+    expect(MISSING_BATCHES).toContain('generate_series');
+    expect(MISSING_BATCHES).toContain('not exists');
+    expect(MISSING_BATCHES).toContain('b.month = m.month');
+  });
+
+  it('nothing auto-creates a retroactive batch', () => {
+    expect(MISSING_BATCHES).not.toContain('insert into public.payout_batches');
+    // and the scheduler only ever builds the CURRENT month
+    expect(SCHED).toContain('gellatti_build_payout_batch_v1(null, false)');
+  });
+
+  it('the money self-heals because entries stay eligible until settled', () => {
+    // only a successful payout marks entries paid; a missed batch changes nothing
+    expect(PAID).toContain("set status = 'paid'");
+    expect(BUILD).toContain("ce.status = 'eligible'");
+    expect(PAYOUT_RAW).toContain('the money self-heals and the batch row does not');
+  });
+
+  it('repeated invocation for the same month stays idempotent', () => {
+    expect(BUILD).toContain('on conflict (month, currency, livemode) do nothing');
+    expect(BUILD).toContain('on conflict (batch_id, partner_id) do nothing');
+    expect(BUILD).toContain('batchCreated');
+  });
+
+  it('both gap reporters are service-role only', () => {
+    expect(TIER).toMatch(/revoke all on function public\.gellatti_missing_tier_snapshot_months_v1/);
+    expect(TIER).toMatch(
+      /revoke all on function public\.gellatti_catchup_partner_tier_snapshots_v1/,
+    );
+    expect(PAYOUT).toMatch(
+      /revoke all on function public\.gellatti_missing_payout_batch_months_v1/,
+    );
   });
 });

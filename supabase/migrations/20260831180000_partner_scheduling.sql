@@ -11,14 +11,24 @@
 -- on a PERIOD or on a TIMESTAMP COMPARISON, so a missed invocation is repaired
 -- simply by running again:
 --
---   tier snapshot      keyed on (partner, month) + on-conflict-do-nothing.
---                      Missed the 1st? Running on the 3rd writes the same
---                      month's row. Running twice writes nothing the second
---                      time.
+--   tier snapshot      keyed on (partner, month) + on-conflict-do-nothing, so
+--                      running twice writes nothing the second time. But the
+--                      writer derives the CURRENT month, so a missed February
+--                      would otherwise never be written at all — and a February
+--                      commission would defer forever. The monthly job therefore
+--                      runs a CATCH-UP first, which finds every month lacking a
+--                      snapshot and fills it. See the honesty note in
+--                      20260831160000 about what a late count can and cannot
+--                      know.
 --   eligibility        `where status = 'held' and eligible_at <= now()`.
 --                      A missed day simply promotes more entries next run.
 --   payout batch       keyed on (month, currency, livemode) + advisory lock +
---                      on-conflict-do-nothing.
+--                      on-conflict-do-nothing. A missed month loses NO money:
+--                      entries stay 'eligible' until a payout settles them, so
+--                      the next batch pays them. The skipped month is reported
+--                      by gellatti_missing_payout_batch_months_v1 rather than
+--                      back-filled, because a retroactive batch would compete
+--                      for the same entries and add nothing.
 --   payout transfer    claimed with `for update skip locked`; the deterministic
 --                      idempotency key is also sent to Stripe.
 --   reconciliation     reads Stripe as the truth for ambiguous lines; it never
@@ -50,9 +60,15 @@ alter table public.partner_job_runs enable row level security;
 -- ── The wrapper every scheduled job goes through ─────────────────────────────
 -- Records the run whether it succeeds or fails, and never lets one job's
 -- failure abort the others.
+--
+-- SECURITY: the job is chosen from a FIXED ALLOWLIST, not passed in as SQL.
+-- An earlier draft took the statement as a parameter and `execute`d it; that is
+-- arbitrary dynamic SQL inside a SECURITY DEFINER function, and even though the
+-- function is revoked from every client role it is not a shape worth keeping in
+-- a financial path. The caller now names a job; this function decides what that
+-- means.
 create or replace function public.gellatti_run_partner_job_v1(
-  p_job_name text,
-  p_statement text
+  p_job_name text
 ) returns jsonb
 language plpgsql
 security definer
@@ -62,9 +78,23 @@ declare
   v_run uuid;
   v_result jsonb;
 begin
+  -- Allowlist: an unknown name is refused before anything is recorded or run.
+  if p_job_name not in ('commission_eligibility', 'tier_snapshots', 'tier_snapshot_catchup', 'payout_batch_test') then
+    raise exception 'unknown_partner_job:%', p_job_name;
+  end if;
+
   insert into public.partner_job_runs (job_name) values (p_job_name) returning id into v_run;
   begin
-    execute p_statement into v_result;
+    v_result := case p_job_name
+      when 'commission_eligibility' then public.gellatti_transition_eligible_commissions_v1()
+      when 'tier_snapshots'         then public.gellatti_write_partner_tier_snapshots_v1()
+      -- Repairs any month a missed invocation left without a snapshot. Runs
+      -- FIRST each month so an old gap is closed before the new month is written.
+      when 'tier_snapshot_catchup'  then public.gellatti_catchup_partner_tier_snapshots_v1()
+      -- p_livemode => false. A live batch additionally requires the owner
+      -- release, so no scheduled path can move real money.
+      when 'payout_batch_test'      then public.gellatti_build_payout_batch_v1(null, false)
+    end;
     update public.partner_job_runs
       set finished_at = now(), ok = true, result = v_result
       where id = v_run;
@@ -79,7 +109,7 @@ begin
   end;
 end $$;
 
-revoke all on function public.gellatti_run_partner_job_v1(text, text) from public, anon, authenticated;
+revoke all on function public.gellatti_run_partner_job_v1(text) from public, anon, authenticated;
 
 -- ── The daily/monthly entry points ───────────────────────────────────────────
 -- Daily: promote whatever has matured. Cheap, idempotent, and self-healing
@@ -92,10 +122,7 @@ set search_path = public
 as $$
   select jsonb_build_object(
     'eligibility',
-    public.gellatti_run_partner_job_v1(
-      'commission_eligibility',
-      'select public.gellatti_transition_eligible_commissions_v1()'
-    )
+    public.gellatti_run_partner_job_v1('commission_eligibility')
   );
 $$;
 
@@ -115,21 +142,15 @@ security definer
 set search_path = public
 as $$
   select jsonb_build_object(
+    -- catch-up BEFORE the current month, so a missed period is repaired first
+    'tierSnapshotCatchup',
+    public.gellatti_run_partner_job_v1('tier_snapshot_catchup'),
     'tierSnapshots',
-    public.gellatti_run_partner_job_v1(
-      'tier_snapshots',
-      'select public.gellatti_write_partner_tier_snapshots_v1()'
-    ),
+    public.gellatti_run_partner_job_v1('tier_snapshots'),
     'eligibility',
-    public.gellatti_run_partner_job_v1(
-      'commission_eligibility',
-      'select public.gellatti_transition_eligible_commissions_v1()'
-    ),
+    public.gellatti_run_partner_job_v1('commission_eligibility'),
     'payoutBatch',
-    public.gellatti_run_partner_job_v1(
-      'payout_batch_test',
-      'select public.gellatti_build_payout_batch_v1(null, false)'
-    )
+    public.gellatti_run_partner_job_v1('payout_batch_test')
   );
 $$;
 
@@ -208,7 +229,7 @@ grant execute on function public.gellatti_admin_partner_job_runs_v1(text, intege
 --   drop function if exists public.gellatti_admin_partner_job_runs_v1(text, integer);
 --   drop function if exists public.gellatti_partner_monthly_jobs_v1();
 --   drop function if exists public.gellatti_partner_daily_jobs_v1();
---   drop function if exists public.gellatti_run_partner_job_v1(text, text);
+--   drop function if exists public.gellatti_run_partner_job_v1(text);
 --   drop table if exists public.partner_job_runs;
 -- Unscheduling stops tier snapshots being written, which stops commissions
 -- resolving a tier. Do it knowingly.
