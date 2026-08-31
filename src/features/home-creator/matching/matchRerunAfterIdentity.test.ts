@@ -110,7 +110,10 @@ describe('the page wires the re-run', () => {
     const source = await import('node:fs').then((fs) =>
       fs.readFileSync('src/pages/home/HomeCreatorPage.tsx', 'utf8'),
     );
-    const handler = source.slice(source.indexOf('onChooseIdentity'), source.indexOf('onScan={'));
+    const handler = source.slice(
+      source.indexOf('onChooseIdentity'),
+      source.indexOf('onScan={'),
+    );
     expect(handler).toContain('runMatching()');
     // A stale dismissal must not suppress the newly-earned popup.
     expect(handler).toContain('setMatchDismissed(false)');

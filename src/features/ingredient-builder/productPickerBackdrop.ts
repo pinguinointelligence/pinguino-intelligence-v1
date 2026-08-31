@@ -8,8 +8,7 @@ export function closeProductPickerForPointer(
     window.requestAnimationFrame(callback);
   },
 ): boolean {
-  const piControl = document
-    .elementsFromPoint?.(point.clientX, point.clientY)
+  const piControl = document.elementsFromPoint?.(point.clientX, point.clientY)
     .find((element) => element.getAttribute('data-testid') === 'pro-workbar-recalc');
   close();
   if (!(piControl instanceof HTMLButtonElement) || piControl.disabled) return false;

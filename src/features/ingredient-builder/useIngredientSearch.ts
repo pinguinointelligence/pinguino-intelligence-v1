@@ -13,7 +13,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { IngredientSearchRow } from '@/services/ingredients';
 import { searchCanonicalProMapperIngredients } from '@/services/productPicker/mapperSearch';
-import { normalizeSearchText, type IngredientSearchHit } from './ingredientSearch';
+import {
+  normalizeSearchText,
+  type IngredientSearchHit,
+} from './ingredientSearch';
 
 export const SEARCH_DEBOUNCE_MS = 250;
 /** First page must cover real concept candidate sets whole (largest active
@@ -89,17 +92,15 @@ export function useIngredientSearch({
       const outcome = await searchCanonicalProMapperIngredients({ text: debounced, limit, signal });
       if (outcome.kind === 'results') {
         return {
-          rows: outcome.rows.map(
-            (row): IngredientSearchRow => ({
-              ingredient_id: row.ingredient_id,
-              ingredient_name_display: row.ingredient_name_display,
-              ingredient_name_internal: row.ingredient_name_internal ?? row.ingredient_name_display,
-              ingredient_category: row.ingredient_category ?? '',
-              ingredient_subcategory: row.ingredient_subcategory,
-              approved_for_base: row.approved_for_base,
-              approved_for_engines: row.approved_for_engines,
-            }),
-          ),
+          rows: outcome.rows.map((row): IngredientSearchRow => ({
+            ingredient_id: row.ingredient_id,
+            ingredient_name_display: row.ingredient_name_display,
+            ingredient_name_internal: row.ingredient_name_internal ?? row.ingredient_name_display,
+            ingredient_category: row.ingredient_category ?? '',
+            ingredient_subcategory: row.ingredient_subcategory,
+            approved_for_base: row.approved_for_base,
+            approved_for_engines: row.approved_for_engines,
+          })),
           hasMore: outcome.hasMore,
         };
       }

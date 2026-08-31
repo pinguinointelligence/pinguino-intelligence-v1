@@ -68,9 +68,7 @@ const mount = () => {
 
 /** The `+` half of the grams stepper for one row. */
 const incrementGrams = (container: HTMLElement, lineId: string) => {
-  const control = container.querySelector<HTMLElement>(
-    `[data-testid="row-grams-control-${lineId}"]`,
-  );
+  const control = container.querySelector<HTMLElement>(`[data-testid="row-grams-control-${lineId}"]`);
   expect(control).not.toBeNull();
   const step = control!.querySelector<HTMLButtonElement>('button[aria-label$="zwiększ"]');
   expect(step).not.toBeNull();
@@ -118,7 +116,9 @@ describe('grams editing on an unresolved product-behavior workspace', () => {
     incrementGrams(container, MILK);
 
     expect(plannedGrams(MILK)).toBe(before);
-    expect(notice(container)).toBe(`Brak zatwierdzonego uprawnienia BASE_RECIPE dla: ${MILK}.`);
+    expect(notice(container)).toBe(
+      `Brak zatwierdzonego uprawnienia BASE_RECIPE dla: ${MILK}.`,
+    );
     act(() => root.unmount());
     container.remove();
   });

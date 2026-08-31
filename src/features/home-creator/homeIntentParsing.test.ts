@@ -81,7 +81,9 @@ describe('§31 — profile detection', () => {
 
 describe('§20 — a whole spoken sentence is the same input as typed words', () => {
   it('extracts profile, ingredients and role from one natural sentence', () => {
-    const parsed = parseIntent('I want mango sorbet with raspberries and white chocolate pieces');
+    const parsed = parseIntent(
+      'I want mango sorbet with raspberries and white chocolate pieces',
+    );
     expect(parsed.profile).toBe('sorbet');
     const found = parsed.terms.map((t) => t.concept);
     expect(found).toContain('mango');

@@ -18,7 +18,8 @@ interface IngredientChangeState {
 
 export const useIngredientChangeStore = create<IngredientChangeState>((set) => ({
   changedByLastRecalculation: [],
-  captureRecalculation: (lineIds) => set({ changedByLastRecalculation: [...new Set(lineIds)] }),
+  captureRecalculation: (lineIds) =>
+    set({ changedByLastRecalculation: [...new Set(lineIds)] }),
   clearRecalculation: () => set({ changedByLastRecalculation: [] }),
   reset: () => set({ changedByLastRecalculation: [] }),
 }));

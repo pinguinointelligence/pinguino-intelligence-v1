@@ -24,7 +24,10 @@ interface IngredientTableUxState {
   markRequiredRemoved: (lineId: string, name: string) => void;
   hydrateRecipeMeta: (
     metaByLineId: Readonly<
-      Record<string, { role: IngredientCustomerRole; required: boolean; dose?: ProductDoseMeta }>
+      Record<
+        string,
+        { role: IngredientCustomerRole; required: boolean; dose?: ProductDoseMeta }
+      >
     >,
   ) => void;
   reset: () => void;
@@ -125,7 +128,9 @@ export const useIngredientTableUxStore = create<IngredientTableUxState>()(
                 ...DEFAULT_INGREDIENT_ROW_META,
                 role: meta.role,
                 required: meta.required,
-                dose: meta.dose ? { ...meta.dose } : { ...DEFAULT_INGREDIENT_ROW_META.dose },
+                dose: meta.dose
+                  ? { ...meta.dose }
+                  : { ...DEFAULT_INGREDIENT_ROW_META.dose },
               },
             ]),
           ),

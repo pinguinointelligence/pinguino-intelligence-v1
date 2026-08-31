@@ -45,9 +45,8 @@ describe('saved product-dose ownership', () => {
     expect(restored?.ingredientUxByLineId?.[lineId]?.dose).toEqual(dose);
 
     useRecipeStore.getState().loadRecipeInput(saved);
-    expect(
-      ingredientRowMeta(useIngredientTableUxStore.getState().metaByLineId, lineId).dose,
-    ).toEqual(dose);
+    expect(ingredientRowMeta(useIngredientTableUxStore.getState().metaByLineId, lineId).dose)
+      .toEqual(dose);
   });
 
   it('keeps legacy metadata valid and defaults absent dose ownership to NONE', () => {
@@ -55,11 +54,12 @@ describe('saved product-dose ownership', () => {
       legacy: { role: 'addition', required: true },
     });
     const restored = readRecipeProfileMetadata(saved);
-    useIngredientTableUxStore.getState().hydrateRecipeMeta(restored?.ingredientUxByLineId ?? {});
+    useIngredientTableUxStore
+      .getState()
+      .hydrateRecipeMeta(restored?.ingredientUxByLineId ?? {});
 
-    expect(
-      ingredientRowMeta(useIngredientTableUxStore.getState().metaByLineId, 'legacy').dose,
-    ).toMatchObject({ provenance: 'NONE', groupId: null });
+    expect(ingredientRowMeta(useIngredientTableUxStore.getState().metaByLineId, 'legacy').dose)
+      .toMatchObject({ provenance: 'NONE', groupId: null });
   });
 
   it('drops malformed dose evidence without dropping accepted role/required metadata', () => {

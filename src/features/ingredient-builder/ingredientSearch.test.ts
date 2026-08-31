@@ -22,54 +22,14 @@ interface Fixture {
 }
 
 const FIXTURES: Fixture[] = [
-  {
-    id: 'PI-ING-000986',
-    display: 'UVA FRAGOLA TRUSKAWKA · Aromitalia Base Mix · 3380',
-    internal: 'base_uva_fragola_truskawka_aromitalia_3380',
-    category: 'fruit',
-  },
-  {
-    id: 'PI-ING-000960',
-    display: 'FRAGOLA TRUSKAWKA SORBETTO TOP · Aromitalia Paste · 2867C',
-    internal: 'pasta_fragola_truskawka_sorbetto_aromitalia_2867c',
-    category: 'fruit',
-  },
-  {
-    id: 'PI-ING-000500',
-    display: 'STRAWBERRY PUREE · Fabbri · 7788',
-    internal: 'puree_strawberry_fabbri_7788',
-    category: 'fruit',
-  },
-  {
-    id: 'PI-ING-001111',
-    display: 'VANIGLIA · Comprital Specialty · PC636PB / 2022',
-    internal: 'vaniglia_pasta_giubileo_wanilia_comprital_pc636pb_2022',
-    category: 'flavor',
-  },
-  {
-    id: 'PI-ING-000748',
-    display: 'GOLDEN · PreGel Paste · ST-25822',
-    internal: 'pasta_golden_wanilia_pregel_st_25822',
-    category: 'flavor',
-  },
-  {
-    id: 'PI-ING-000400',
-    display: 'VANILLA BEAN PASTE · Nielsen · 4400',
-    internal: 'paste_vanilla_bean_nielsen_4400',
-    category: 'flavor',
-  },
-  {
-    id: 'PI-ING-000300',
-    display: 'PINEAPPLE CONCENTRATE · Agrimontana · 3300',
-    internal: 'concentrate_pineapple_agrimontana_3300',
-    category: 'fruit',
-  },
-  {
-    id: 'PI-ING-000020',
-    display: 'DARK CHOCOLATE 70% · Domori',
-    internal: 'dark_chocolate_70',
-    category: 'chocolate_cocoa',
-  },
+  { id: 'PI-ING-000986', display: 'UVA FRAGOLA TRUSKAWKA · Aromitalia Base Mix · 3380', internal: 'base_uva_fragola_truskawka_aromitalia_3380', category: 'fruit' },
+  { id: 'PI-ING-000960', display: 'FRAGOLA TRUSKAWKA SORBETTO TOP · Aromitalia Paste · 2867C', internal: 'pasta_fragola_truskawka_sorbetto_aromitalia_2867c', category: 'fruit' },
+  { id: 'PI-ING-000500', display: 'STRAWBERRY PUREE · Fabbri · 7788', internal: 'puree_strawberry_fabbri_7788', category: 'fruit' },
+  { id: 'PI-ING-001111', display: 'VANIGLIA · Comprital Specialty · PC636PB / 2022', internal: 'vaniglia_pasta_giubileo_wanilia_comprital_pc636pb_2022', category: 'flavor' },
+  { id: 'PI-ING-000748', display: 'GOLDEN · PreGel Paste · ST-25822', internal: 'pasta_golden_wanilia_pregel_st_25822', category: 'flavor' },
+  { id: 'PI-ING-000400', display: 'VANILLA BEAN PASTE · Nielsen · 4400', internal: 'paste_vanilla_bean_nielsen_4400', category: 'flavor' },
+  { id: 'PI-ING-000300', display: 'PINEAPPLE CONCENTRATE · Agrimontana · 3300', internal: 'concentrate_pineapple_agrimontana_3300', category: 'fruit' },
+  { id: 'PI-ING-000020', display: 'DARK CHOCOLATE 70% · Domori', internal: 'dark_chocolate_70', category: 'chocolate_cocoa' },
 ];
 
 const ingredients: EngineIngredient[] = FIXTURES.map((f) => ({
@@ -77,31 +37,13 @@ const ingredients: EngineIngredient[] = FIXTURES.map((f) => ({
   name: f.display,
   category: f.category,
   composition: {
-    water_percent: 0,
-    solids_percent: 100,
-    fat_percent: 0,
-    protein_percent: 0,
-    carbohydrate_percent: 0,
-    sugar_percent: 0,
-    sucrose_percent: 0,
-    glucose_percent: 0,
-    dextrose_percent: 0,
-    fructose_percent: 0,
-    lactose_percent: 0,
-    polyol_percent: 0,
-    fiber_percent: 0,
-    salt_percent: 0,
-    alcohol_percent: 0,
-    kcal_per_100g: 0,
+    water_percent: 0, solids_percent: 100, fat_percent: 0, protein_percent: 0,
+    carbohydrate_percent: 0, sugar_percent: 0, sucrose_percent: 0, glucose_percent: 0,
+    dextrose_percent: 0, fructose_percent: 0, lactose_percent: 0, polyol_percent: 0,
+    fiber_percent: 0, salt_percent: 0, alcohol_percent: 0, kcal_per_100g: 0,
   },
-  pod_value: null,
-  pac_value: null,
-  npac_value: null,
-  de_value: null,
-  cost_per_kg: 1,
-  confidence_score: 80,
-  source_type: 'manual',
-  is_verified: true,
+  pod_value: null, pac_value: null, npac_value: null, de_value: null,
+  cost_per_kg: 1, confidence_score: 80, source_type: 'manual', is_verified: true,
 }));
 
 const index: SearchIndex = new Map(
@@ -125,19 +67,15 @@ describe('normalization primitives', () => {
 });
 
 describe('strawberry family (truskawka)', () => {
-  it.each([
-    'truskawka',
-    'truskawki',
-    'truskawek',
-    'świeże truskawki',
-    'świeżych truskawek',
-    'truskawkowy',
-  ])('query "%s" returns the real strawberry rows', (q) => {
-    const ids = run(q);
-    expect(ids).toContain('PI-ING-000986'); // FRAGOLA TRUSKAWKA (display)
-    expect(ids).toContain('PI-ING-000960');
-    expect(ids).toContain('PI-ING-000500'); // STRAWBERRY PUREE (alias EN)
-  });
+  it.each(['truskawka', 'truskawki', 'truskawek', 'świeże truskawki', 'świeżych truskawek', 'truskawkowy'])(
+    'query "%s" returns the real strawberry rows',
+    (q) => {
+      const ids = run(q);
+      expect(ids).toContain('PI-ING-000986'); // FRAGOLA TRUSKAWKA (display)
+      expect(ids).toContain('PI-ING-000960');
+      expect(ids).toContain('PI-ING-000500'); // STRAWBERRY PUREE (alias EN)
+    },
+  );
   it('English "strawberry" and Italian "fragola" also resolve', () => {
     expect(run('strawberry')).toContain('PI-ING-000500');
     expect(run('fragola')).toContain('PI-ING-000986');
@@ -145,24 +83,18 @@ describe('strawberry family (truskawka)', () => {
 });
 
 describe('vanilla family (wanilia — Polish only in the internal name)', () => {
-  it.each(['wanilia', 'wanilii', 'waniliowy', 'vanilla'])(
-    'query "%s" returns the real vanilla rows',
-    (q) => {
-      const ids = run(q);
-      expect(ids).toContain('PI-ING-001111'); // VANIGLIA display / wanilia internal
-      expect(ids).toContain('PI-ING-000748'); // GOLDEN display / wanilia internal
-      expect(ids).toContain('PI-ING-000400'); // VANILLA BEAN (alias EN)
-    },
-  );
+  it.each(['wanilia', 'wanilii', 'waniliowy', 'vanilla'])('query "%s" returns the real vanilla rows', (q) => {
+    const ids = run(q);
+    expect(ids).toContain('PI-ING-001111'); // VANIGLIA display / wanilia internal
+    expect(ids).toContain('PI-ING-000748'); // GOLDEN display / wanilia internal
+    expect(ids).toContain('PI-ING-000400'); // VANILLA BEAN (alias EN)
+  });
 });
 
 describe('pineapple family (ananas → pineapple alias; no approved ananas row)', () => {
-  it.each(['ananas', 'ananasa', 'ananasowy', 'pineapple'])(
-    'query "%s" returns the pineapple row',
-    (q) => {
-      expect(run(q)).toContain('PI-ING-000300');
-    },
-  );
+  it.each(['ananas', 'ananasa', 'ananasowy', 'pineapple'])('query "%s" returns the pineapple row', (q) => {
+    expect(run(q)).toContain('PI-ING-000300');
+  });
 });
 
 describe('precision + regression', () => {

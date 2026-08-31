@@ -20,8 +20,10 @@ describe('ProductPickerPopover backdrop interaction', () => {
       value: () => [pi],
     });
 
-    const replayed = closeProductPickerForPointer({ clientX: 10, clientY: 20 }, close, (callback) =>
-      callback(),
+    const replayed = closeProductPickerForPointer(
+      { clientX: 10, clientY: 20 },
+      close,
+      (callback) => callback(),
     );
 
     expect(replayed).toBe(true);

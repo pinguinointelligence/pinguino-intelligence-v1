@@ -60,23 +60,20 @@ describe('PI product-dose preflight', () => {
 });
 
 describe('Topping 0 g remains outside Base', () => {
-  it.each(['eco', 'optimal'] as const)(
-    'starts at 0 g in %s and leaves Engine input/results unchanged',
-    (strategy) => {
-      const input = structuredClone(starterMilkBase());
-      input.goals = { ...input.goals, formulation_strategy: strategy };
-      useRecipeStore.getState().loadRecipeInput(input);
-      const beforeInput = buildRecipeInput(useRecipeStore.getState());
-      const beforeResult = calculateRecipe(beforeInput);
+  it.each(['eco', 'optimal'] as const)('starts at 0 g in %s and leaves Engine input/results unchanged', (strategy) => {
+    const input = structuredClone(starterMilkBase());
+    input.goals = { ...input.goals, formulation_strategy: strategy };
+    useRecipeStore.getState().loadRecipeInput(input);
+    const beforeInput = buildRecipeInput(useRecipeStore.getState());
+    const beforeResult = calculateRecipe(beforeInput);
 
-      useRecipeStore.getState().addTopping(input.items[0]!.ingredient);
+    useRecipeStore.getState().addTopping(input.items[0]!.ingredient);
 
-      expect(useRecipeStore.getState().toppings).toHaveLength(1);
-      expect(useRecipeStore.getState().toppings[0]!.planned_grams).toBe(0);
-      const afterInput = buildRecipeInput(useRecipeStore.getState());
-      expect(afterInput).toEqual(beforeInput);
-      expect(calculateRecipe(afterInput)).toEqual(beforeResult);
-      expect(missingProductDosePreviewIssue(afterInput)).toBeNull();
-    },
-  );
+    expect(useRecipeStore.getState().toppings).toHaveLength(1);
+    expect(useRecipeStore.getState().toppings[0]!.planned_grams).toBe(0);
+    const afterInput = buildRecipeInput(useRecipeStore.getState());
+    expect(afterInput).toEqual(beforeInput);
+    expect(calculateRecipe(afterInput)).toEqual(beforeResult);
+    expect(missingProductDosePreviewIssue(afterInput)).toBeNull();
+  });
 });
