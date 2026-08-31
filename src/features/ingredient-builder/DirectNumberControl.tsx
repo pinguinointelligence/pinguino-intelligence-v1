@@ -433,7 +433,17 @@ export function DirectNumberControl({
           aria-pressed={lockSegment.pressed}
           title={lockSegment.title}
           data-testid={lockSegment.testId}
-          onClick={lockSegment.onToggle}
+          /* Masked rows route EVERY amount control to the entitlement gate, not just the
+             steppers. The lock mutates protected recipe state (`lock_type`), so letting
+             it through while grams are withheld would be the same contract breach in a
+             different field. Served QA 2026-08-31. */
+          onClick={() => {
+            if (masked) {
+              onMaskedInteract?.();
+              return;
+            }
+            lockSegment.onToggle();
+          }}
           className={cn(
             'col-start-4 row-start-1 inline-flex items-center justify-center border-l border-ink/18 transition-colors focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#f58a07]',
             lockSegmentSize,
