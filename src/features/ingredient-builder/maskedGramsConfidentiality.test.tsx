@@ -138,6 +138,60 @@ describe('masked controls route to entitlement and mutate nothing', () => {
   });
 });
 
+describe('the masked lock routes to entitlement too', () => {
+  const lockSegment = (onToggle: () => void) => ({
+    pressed: false,
+    ariaLabel: 'MILK 3.5% — Zablokuj ilość',
+    title: 'Zablokuj ilość',
+    suffix: 'g' as const,
+    testId: 'row-lock',
+    onToggle,
+  });
+
+  it('does not call onToggle while masked — it opens the gate instead', () => {
+    const onToggle = vi.fn();
+    const onMaskedInteract = vi.fn();
+    const onChange = vi.fn();
+    const el = mount({
+      maskedValue: MASK,
+      maskedLabel: MASK_LABEL,
+      onChange,
+      onMaskedInteract,
+      lockSegment: lockSegment(onToggle),
+    });
+    const lock = el.querySelector('[data-testid="row-lock"]')!;
+    act(() => lock.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(onToggle).not.toHaveBeenCalled();
+    expect(onMaskedInteract).toHaveBeenCalledTimes(1);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('still renders the single closed padlock and leaks nothing', () => {
+    const el = mount({
+      maskedValue: MASK,
+      maskedLabel: MASK_LABEL,
+      onMaskedInteract: vi.fn(),
+      lockSegment: lockSegment(vi.fn()),
+    });
+    const lock = el.querySelector('[data-testid="row-lock"]')!;
+    expect(lock.querySelectorAll('svg')).toHaveLength(1);
+    expect(accessibleSurface(el)).not.toContain(String(SECRET));
+  });
+
+  it('the entitled lock still toggles normally', () => {
+    const onToggle = vi.fn();
+    const el = mount({ lockSegment: lockSegment(onToggle) });
+    const lock = el.querySelector('[data-testid="row-lock"]')!;
+    act(() => lock.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(onToggle).toHaveBeenCalledTimes(1);
+  });
+
+  it('the entitled lock keeps its pressed semantics', () => {
+    const el = mount({ lockSegment: { ...lockSegment(vi.fn()), pressed: true } });
+    expect(el.querySelector('[data-testid="row-lock"]')!.getAttribute('aria-pressed')).toBe('true');
+  });
+});
+
 describe('the entitled state is unchanged', () => {
   it('still renders the real value and a working spinbutton', () => {
     const el = mount({});
@@ -168,14 +222,18 @@ describe('geometry is identical in both states', () => {
     [...el.querySelectorAll('button')].map((b) => b.className).join('|');
 
   it('the control shell keeps the same classes', () => {
-    const maskedShell = shell(mount({ maskedValue: MASK, maskedLabel: MASK_LABEL, onMaskedInteract: vi.fn() }));
+    const maskedShell = shell(
+      mount({ maskedValue: MASK, maskedLabel: MASK_LABEL, onMaskedInteract: vi.fn() }),
+    );
     act(() => root.unmount());
     root = createRoot(host);
     expect(shell(mount({}))).toBe(maskedShell);
   });
 
   it('the stepper segments keep the same classes', () => {
-    const maskedSegs = segments(mount({ maskedValue: MASK, maskedLabel: MASK_LABEL, onMaskedInteract: vi.fn() }));
+    const maskedSegs = segments(
+      mount({ maskedValue: MASK, maskedLabel: MASK_LABEL, onMaskedInteract: vi.fn() }),
+    );
     act(() => root.unmount());
     root = createRoot(host);
     // Masked adds the value-cell button; compare only the two steppers.
