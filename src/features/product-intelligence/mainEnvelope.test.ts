@@ -273,15 +273,26 @@ describe('versioned Main envelope', () => {
     ).toBe(true);
   });
 
-  it('enforces the approved Main floor, OPTIMAL ceiling and hard limit', () => {
+  it('enforces the approved Main floor and hard limit, and treats the OPTIMAL ceiling as a preference', () => {
     expect(
       verifyMainEnvelope({ recipe: recipe(249, 400), snapshots: snapshots(), mode: 'eco' }),
     ).toMatchObject({
       ok: false,
       violations: [expect.objectContaining({ code: 'main_below_floor' })],
     });
+    // OWNER CROWN AUTHORITY: an active Crown is an explicit MAX request, so
+    // crossing the OPTIMAL *preference* target no longer invalidates it. The
+    // boundary is still available to any caller that opts in explicitly.
     expect(
-      verifyMainEnvelope({ recipe: recipe(351, 400), snapshots: snapshots(), mode: 'optimal' }),
+      verifyMainEnvelope({ recipe: recipe(351, 400), snapshots: snapshots(), mode: 'optimal' }).ok,
+    ).toBe(true);
+    expect(
+      verifyMainEnvelope({
+        recipe: recipe(351, 400),
+        snapshots: snapshots(),
+        mode: 'optimal',
+        enforceOptimalPreferenceCeiling: true,
+      }),
     ).toMatchObject({
       ok: false,
       violations: expect.arrayContaining([
@@ -298,10 +309,13 @@ describe('versioned Main envelope', () => {
     });
   });
 
-  it('feeds the approved Main ceiling into candidate search', () => {
+  it('feeds the approved Main HARD SAFETY limit into candidate search', () => {
+    // OWNER CROWN AUTHORITY: Crown is an explicit MAX objective, so its search
+    // frontier is the published hard limit (45% of 1000 g), not the OPTIMAL
+    // preference target (35%). The preference never caps a maximisation.
     expect(
       mainEnvelopeSearchCeilingGrams({ recipe: recipe(250, 400), snapshots: snapshots() }),
-    ).toBe(350);
+    ).toBe(450);
   });
 
   it('feeds the approved Main floor into candidate search without creating a gram hold', () => {

@@ -293,6 +293,16 @@ export interface RecipeState {
    * from an actual user edit without relying on the generic `dirty` flag. */
   newRecipeStarterMaterialFingerprint: string | null;
   /**
+   * Mass an INCOMPLETE canonical starter has reserved for the Main the customer
+   * has not chosen yet (`NewRecipeStarterMetrics.missingMainMassGrams`). The
+   * Sorbet scaffold lays down ~40 % of the batch and names the rest as the
+   * fruit's; it is a real part of the batch, not a shortfall to be filled with
+   * support ingredients. A batch resize therefore has to move it too — see
+   * `resizeRecipeBatch`. Zero for every complete starter, which is why the
+   * discriminator is the reservation and never the product type.
+   */
+  starterReservedMainGrams: number;
+  /**
    * The CANONICAL saved-recipe aggregate link (= `saved_recipes.id` = pro-core `recipeId`).
    * Drives the ONE save flow: null → "Zapisz recepturę" (create); set → "Zapisz nową wersję".
    * Persisted so version continuity survives reload/login; the adapter always re-reads the
@@ -602,6 +612,76 @@ const moveWithin = <T extends { id: string }>(
 
 const ENGINE_KEPT_LOCKS: ReadonlySet<LockType> = new Set(['main', 'already_added', 'required']);
 
+/**
+ * Has the required Main role been RESOLVED?
+ *
+ * `starterReservedMainGrams` says one thing only — "the required Main role is
+ * not resolved yet" — so this is the single transition that retires it. The
+ * answer comes from the canonical ProductBehavior Main authority, deliberately
+ * NOT from the product type, the ingredient's name, the Crown flag alone, or
+ * merely having positive grams: a Cocoa line must never retire a Sorbet's Main
+ * reservation.
+ *
+ * `snapshotRequired` is true, so a line with no resolver authority fails CLOSED
+ * and the reservation stands. A crowned line counts as resolved because
+ * `setMainIngredient` can only crown what this same authority already approved.
+ */
+const requiredMainRoleResolved = (state: {
+  items: readonly RecipeItem[];
+  productBehaviorSnapshots: Readonly<Record<string, ProductBehaviorSnapshot>>;
+}): boolean =>
+  state.items.some(
+    (item) =>
+      item.planned_grams > 0 &&
+      (item.lock_type === 'main' ||
+        mainBehaviorBlockReason(state.productBehaviorSnapshots[item.id], true) === null),
+  );
+
+/**
+ * The reservation after any change that can resolve the Main role. It is
+ * RETIRED, never decremented: the reservation is not "remaining desired Main
+ * grams", so a 300 g Main against a 402 g reservation does not leave 102 g
+ * owing. The draft is simply allowed to sit under its target until Recalculate.
+ */
+const reservationAfterMainCheck = (state: {
+  items: readonly RecipeItem[];
+  productBehaviorSnapshots: Readonly<Record<string, ProductBehaviorSnapshot>>;
+  starterReservedMainGrams: number;
+}): number =>
+  state.starterReservedMainGrams > 0 && requiredMainRoleResolved(state)
+    ? 0
+    : state.starterReservedMainGrams;
+
+/**
+ * The reservation an incomplete canonical starter still owes its unchosen Main,
+ * but only while it is still TRUE of this draft: the lines plus the reservation
+ * must still account for exactly the current batch. A draft the customer has
+ * since completed reports 0, so a stale figure can never revive — and a
+ * shortfall that is merely a whole-gram stabilizer pin is never mistaken for a
+ * Main reservation.
+ */
+const activeStarterReservation = (state: {
+  items: readonly RecipeItem[];
+  target_batch_grams: number;
+  starterReservedMainGrams: number;
+}): number => {
+  const reserved = state.starterReservedMainGrams;
+  if (!(reserved > 0)) return 0;
+  const lineSum = state.items.reduce((total, item) => total + item.planned_grams, 0);
+  return Math.abs(lineSum + reserved - state.target_batch_grams) <= BATCH_RESIZE_TOLERANCE_GRAMS
+    ? reserved
+    : 0;
+};
+
+/** What is left of the reservation once the lines have taken their share of the
+ *  new batch. Only an ACTIVE reservation carries forward. */
+const nextStarterReservation = (
+  activeReservedGrams: number,
+  lineSumAfter: number,
+  nextBatchGrams: number,
+): number =>
+  activeReservedGrams > 0 ? Math.max(0, nextBatchGrams - lineSumAfter) : 0;
+
 /** A row the batch resize must not move: physically weighed, or pinned in grams. */
 const isBatchFixedLine = (item: RecipeItem): boolean =>
   item.actual_grams !== null ||
@@ -622,6 +702,17 @@ const isBatchFixedLine = (item: RecipeItem): boolean =>
  * `pinnedLineIds` holds lines whose grams a canonical authority has already
  * decided for the NEW batch — they are committed exactly as given, like any
  * other fixed row, and the remaining mass reconciles around them.
+ *
+ * `reservedMainGrams` is mass an INCOMPLETE canonical starter has already
+ * promised to a Main the customer has not chosen yet. It is part of the batch,
+ * not a shortfall: the Sorbet scaffold lays down ~40 % of the batch and names
+ * the rest as the fruit's. Filling the batch with support ingredients spends
+ * that reservation and inflates every line by ~2.5x — which is how a starter's
+ * 5.4 % Inulin became 13.8 % and broke the 2–8 % owner policy before the
+ * customer had touched anything. When a reservation is present the LINES are
+ * resized to their own share of the new batch and the reservation keeps the
+ * rest, so `sum(lines) + reservation === target batch` still holds. With no
+ * reservation — every complete recipe — the semantics are untouched.
  */
 export const resizeRecipeBatch = (
   items: readonly RecipeItem[],
@@ -629,6 +720,7 @@ export const resizeRecipeBatch = (
   nextBatchGrams: number,
   percentByLineId?: Readonly<Record<string, number>>,
   pinnedLineIds?: ReadonlySet<string>,
+  reservedMainGrams = 0,
 ): BatchResizeResult => {
   const currentSum = items.reduce((sum, item) => sum + item.planned_grams, 0);
   if (!Number.isFinite(nextBatchGrams) || nextBatchGrams <= 0) {
@@ -638,6 +730,22 @@ export const resizeRecipeBatch = (
     };
   }
   const previousBatchKnown = Number.isFinite(previousBatchGrams) && previousBatchGrams > 0;
+  // A reservation is honoured only while it is still TRUE of this draft — the
+  // lines plus the reservation must still account for exactly the current
+  // batch. The moment the customer adds the Main the equation breaks and
+  // ordinary fill-the-batch semantics resume by themselves, with nothing to
+  // clear. Percentage instructions are shares of the REAL batch, so a draft
+  // carrying any is left on the ordinary path rather than mixing two targets.
+  const reservationHolds =
+    reservedMainGrams > 0 &&
+    previousBatchKnown &&
+    currentSum > 0 &&
+    Math.abs(currentSum + reservedMainGrams - previousBatchGrams) <= BATCH_RESIZE_TOLERANCE_GRAMS &&
+    percentByLineId === undefined &&
+    !items.some((item) => item.percent_constraint !== undefined || item.lock_type === 'percent');
+  const lineTargetGrams = reservationHolds
+    ? (nextBatchGrams * currentSum) / (currentSum + reservedMainGrams)
+    : nextBatchGrams;
   const percentById = new Map<string, number>();
   const fixedIds = new Set<string>();
   const flexibleIds = new Set<string>();
@@ -675,7 +783,7 @@ export const resizeRecipeBatch = (
     flexibleCurrent += item.planned_grams;
   }
 
-  const remaining = nextBatchGrams - committed;
+  const remaining = lineTargetGrams - committed;
   if (remaining < -BATCH_RESIZE_TOLERANCE_GRAMS) {
     return {
       ok: false,
@@ -740,7 +848,7 @@ export const resizeRecipeBatch = (
   }
   const nextItems = resized as RecipeItem[];
   const nextSum = nextItems.reduce((sum, item) => sum + item.planned_grams, 0);
-  if (Math.abs(nextSum - nextBatchGrams) > BATCH_RESIZE_TOLERANCE_GRAMS) {
+  if (Math.abs(nextSum - lineTargetGrams) > BATCH_RESIZE_TOLERANCE_GRAMS) {
     return {
       ok: false,
       conflict: {
@@ -773,7 +881,17 @@ const rescaleWithOwnerStabilizerSystem = (
   resized: RecipeItem[],
   nextBatchGrams: number,
   percentByLineId?: Readonly<Record<string, number>>,
+  reservedMainGrams = 0,
 ): RecipeItem[] => {
+  // The reservation is honoured here only if it is still TRUE of the incoming
+  // draft — exactly the test the outer resize applies. Re-deriving it from the
+  // pinned vector without this guard would resurrect a stale starter
+  // reservation on a draft the customer has since completed.
+  const draftSum = state.items.reduce((total, item) => total + item.planned_grams, 0);
+  const honoursReservation =
+    reservedMainGrams > 0 &&
+    Math.abs(draftSum + reservedMainGrams - state.target_batch_grams) <=
+      BATCH_RESIZE_TOLERANCE_GRAMS;
   const components = sorbetStabilizerSystemItems(resized);
   if (components.length === 0) return resized;
   const adjustable = components.every(
@@ -792,14 +910,27 @@ const rescaleWithOwnerStabilizerSystem = (
   );
   if (plan === null) return resized;
 
+  const pinnedItems = state.items.map((item) =>
+    plan.has(item.id) ? { ...item, planned_grams: plan.get(item.id)! } : item,
+  );
   const reconciled = resizeRecipeBatch(
-    state.items.map((item) =>
-      plan.has(item.id) ? { ...item, planned_grams: plan.get(item.id)! } : item,
-    ),
+    pinnedItems,
     state.target_batch_grams,
     nextBatchGrams,
     percentByLineId,
     new Set(plan.keys()),
+    // The stabilizer projection reconciles the SAME draft, so it inherits the
+    // same Main reservation; dropping it would re-inflate the support vector
+    // the outer resize just protected. Pinning the stabilizer to whole grams
+    // moves a gram or two, so the reservation is re-read off the pinned vector
+    // the way it is defined everywhere else — whatever the lines do not hold.
+    honoursReservation
+      ? Math.max(
+          0,
+          state.target_batch_grams -
+            pinnedItems.reduce((total, item) => total + item.planned_grams, 0),
+        )
+      : 0,
   );
   return reconciled.ok ? reconciled.items : resized;
 };
@@ -842,6 +973,7 @@ const fromPreset = (preset: DemoPreset) => ({
   newRecipeStarterTemplateId: null,
   newRecipeStarterKey: null,
   newRecipeStarterMaterialFingerprint: null,
+  starterReservedMainGrams: 0,
   savedRecipeId: null,
   savedRecipeName: null,
   currentVersionNumber: null,
@@ -1091,6 +1223,14 @@ export function recipePersistPartialize(state: RecipeState) {
     newRecipeStarterTemplateId: state.newRecipeStarterTemplateId,
     newRecipeStarterKey: state.newRecipeStarterKey,
     newRecipeStarterMaterialFingerprint: state.newRecipeStarterMaterialFingerprint,
+    // Draft material, not provenance: it is the part of the batch the unchosen
+    // Main already owns. Dropping it on reload leaves an incomplete starter
+    // looking merely off-batch, and the next batch change spends the
+    // reservation on the support vector again — INULIN 4.9 % -> 12.4 % at the
+    // first amount edit after a refresh. Persisted for the same reason as the
+    // rest of this slice: the live payload and the post-refresh payload have to
+    // describe the same draft.
+    starterReservedMainGrams: state.starterReservedMainGrams,
     savedRecipeId: state.savedRecipeId,
     savedRecipeName: state.savedRecipeName,
     currentVersionNumber: state.currentVersionNumber,
@@ -1229,6 +1369,7 @@ export const useRecipeStore = create<RecipeState>()(
             newRecipeStarterTemplateId: null,
             newRecipeStarterKey: null,
             newRecipeStarterMaterialFingerprint: null,
+            starterReservedMainGrams: 0,
             dirty: true,
             draftRevision: state.draftRevision + 1,
           };
@@ -1295,11 +1436,14 @@ export const useRecipeStore = create<RecipeState>()(
         })),
       setBatchGrams: (target_batch_grams, percentByLineId, source) => {
         const state = get();
+        const reservedMainGrams = activeStarterReservation(state);
         const resized = resizeRecipeBatch(
           state.items,
           state.target_batch_grams,
           target_batch_grams,
           percentByLineId,
+          undefined,
+          reservedMainGrams,
         );
         if (!resized.ok) {
           set({ batchResizeConflict: resized.conflict });
@@ -1317,12 +1461,18 @@ export const useRecipeStore = create<RecipeState>()(
           resized.items,
           target_batch_grams,
           percentByLineId,
+          reservedMainGrams,
         );
         const batchSource = source ?? manualBatchSourceForState(state);
         const customBatch = batchSource === 'CUSTOM_MACHINE_BATCH';
         set({
           target_batch_grams,
           items: projected,
+          starterReservedMainGrams: nextStarterReservation(
+            reservedMainGrams,
+            projected.reduce((total, item) => total + item.planned_grams, 0),
+            target_batch_grams,
+          ),
           batch_source: batchSource,
           batchResizeConflict: null,
           ...(customBatch
@@ -1566,6 +1716,13 @@ export const useRecipeStore = create<RecipeState>()(
           const orderedItems = sortedBaseItems([...state.items, added]);
           return {
             items: orderedItems,
+            // A valid Main may have just arrived; the reservation is retired,
+            // never decremented.
+            starterReservedMainGrams: reservationAfterMainCheck({
+              items: orderedItems,
+              productBehaviorSnapshots: state.productBehaviorSnapshots,
+              starterReservedMainGrams: state.starterReservedMainGrams,
+            }),
             baseOrder: [
               ...state.baseOrder.filter((id) => orderedItems.some((item) => item.id === id)),
               added.id,
@@ -1762,6 +1919,13 @@ export const useRecipeStore = create<RecipeState>()(
           } else delete next[lineId];
           return {
             productBehaviorSnapshots: next,
+            // Resolver authority can arrive AFTER the line does, so the Main
+            // role may resolve here rather than at insertion.
+            starterReservedMainGrams: reservationAfterMainCheck({
+              items: state.items,
+              productBehaviorSnapshots: next,
+              starterReservedMainGrams: state.starterReservedMainGrams,
+            }),
             dirty: true,
             draftRevision: state.draftRevision + 1,
           };
@@ -1778,13 +1942,21 @@ export const useRecipeStore = create<RecipeState>()(
                 (toppingIds.has(lineId) && snapshot.processScope === 'POST_PROCESS_ADDON')),
           );
           if (!valid) return {};
+          const synced = Object.fromEntries(
+            entries.map(([lineId, snapshot]) => [
+              lineId,
+              preserveOwnerReviewGate(state.ownerReviewGate, snapshot),
+            ]),
+          );
           return {
-            productBehaviorSnapshots: Object.fromEntries(
-              entries.map(([lineId, snapshot]) => [
-                lineId,
-                preserveOwnerReviewGate(state.ownerReviewGate, snapshot),
-              ]),
-            ),
+            productBehaviorSnapshots: synced,
+            // Same transition as the single-line door: authority arriving here
+            // can resolve the required Main role.
+            starterReservedMainGrams: reservationAfterMainCheck({
+              items: state.items,
+              productBehaviorSnapshots: synced,
+              starterReservedMainGrams: state.starterReservedMainGrams,
+            }),
           };
         }),
 
@@ -2211,17 +2383,24 @@ export const useRecipeStore = create<RecipeState>()(
           // role transition and every later grams edit is refused. Seed one
           // ordinary gram and remember that WE seeded it.
           const seed = roleChanged ? crownOnPlannedGrams(current.planned_grams) : null;
-          const items = state.items.map((item) =>
-            item.id === lineId
-              ? {
-                  ...item,
-                  lock_type: 'main' as const,
-                  ...(seed ? { planned_grams: seed.plannedGrams } : {}),
-                }
-              : item,
-          );
+          const items = state.items.map((item) => {
+            if (item.id !== lineId) return item;
+            const next = {
+              ...item,
+              lock_type: 'main' as const,
+              ...(seed ? { planned_grams: seed.plannedGrams } : {}),
+            };
+            delete next.user_intent_anchor_grams;
+            return next;
+          });
+          const crowned = equalCrownSeedWeights(items);
           return {
-            items: equalCrownSeedWeights(items),
+            items: crowned,
+            starterReservedMainGrams: reservationAfterMainCheck({
+              items: crowned,
+              productBehaviorSnapshots: state.productBehaviorSnapshots,
+              starterReservedMainGrams: state.starterReservedMainGrams,
+            }),
             // Re-asserting a crown the line already wears changes nothing, so
             // it must not quietly discard the provenance of the seeded gram.
             crownAutoSeededLineIds: !seed
@@ -2487,6 +2666,7 @@ export const useRecipeStore = create<RecipeState>()(
           newRecipeStarterTemplateId: null,
           newRecipeStarterKey: null,
           newRecipeStarterMaterialFingerprint: null,
+          starterReservedMainGrams: 0,
           savedRecipeId: link.savedId ?? null,
           savedRecipeName: link.savedName ?? null,
           currentVersionNumber: link.versionNumber ?? null,
@@ -2539,6 +2719,7 @@ export const useRecipeStore = create<RecipeState>()(
           newRecipeStarterTemplateId: null,
           newRecipeStarterKey: null,
           newRecipeStarterMaterialFingerprint: null,
+          starterReservedMainGrams: 0,
           ...(practicalRecipeAudit === undefined ? {} : { practicalRecipeAudit }),
           savedProductionFingerprint,
         });
@@ -2619,6 +2800,7 @@ export const useRecipeStore = create<RecipeState>()(
           baseOrder: starter.items.map((item) => item.id),
           activePresetId: null,
           newRecipeStarterTemplateId: starter.templateId,
+          starterReservedMainGrams: Math.max(0, starter.metrics.missingMainMassGrams),
           newRecipeStarterKey: {
             visibleProductType: starter.visibleProductType,
             servingModeId: starter.servingModeId,
@@ -2699,6 +2881,7 @@ export const useRecipeStore = create<RecipeState>()(
             unavailableMainIngredientIds: [],
             activePresetId: null,
             newRecipeStarterTemplateId: starter.templateId,
+          starterReservedMainGrams: Math.max(0, starter.metrics.missingMainMassGrams),
             newRecipeStarterKey: {
               visibleProductType: starter.visibleProductType,
               servingModeId: starter.servingModeId,
@@ -2769,6 +2952,7 @@ export const useRecipeStore = create<RecipeState>()(
         const state = get();
         const enteringProfessionalFromHome =
           sel.kind === 'professional' && state.machineKind === 'home';
+        const reservedMainGrams = activeStarterReservation(state);
         const targetBatchGrams =
           sel.batchGrams ??
           (enteringProfessionalFromHome
@@ -2777,7 +2961,14 @@ export const useRecipeStore = create<RecipeState>()(
         const resized =
           sel.batchGrams == null && !enteringProfessionalFromHome
             ? ({ ok: true, items: state.items } as const)
-            : resizeRecipeBatch(state.items, state.target_batch_grams, targetBatchGrams);
+            : resizeRecipeBatch(
+                state.items,
+                state.target_batch_grams,
+                targetBatchGrams,
+                undefined,
+                undefined,
+                reservedMainGrams,
+              );
         if (!resized.ok) {
           set({ batchResizeConflict: resized.conflict });
           return { ok: false, conflict: resized.conflict };
@@ -2789,7 +2980,13 @@ export const useRecipeStore = create<RecipeState>()(
         const projectedItems =
           sel.batchGrams == null && !enteringProfessionalFromHome
             ? resized.items
-            : rescaleWithOwnerStabilizerSystem(state, resized.items, targetBatchGrams);
+            : rescaleWithOwnerStabilizerSystem(
+                state,
+                resized.items,
+                targetBatchGrams,
+                undefined,
+                reservedMainGrams,
+              );
         const batchSource =
           sel.batchGrams == null
             ? sel.kind === 'professional'
@@ -2818,6 +3015,11 @@ export const useRecipeStore = create<RecipeState>()(
           target_temperature_c: sel.temperatureC,
           target_batch_grams: targetBatchGrams,
           items: projectedItems,
+          starterReservedMainGrams: nextStarterReservation(
+            reservedMainGrams,
+            projectedItems.reduce((total, item) => total + item.planned_grams, 0),
+            targetBatchGrams,
+          ),
           batch_source: batchSource,
           batchResizeConflict: null,
           machine_capacity_grams: sel.kind === 'home' ? (sel.capacityGrams ?? null) : null,

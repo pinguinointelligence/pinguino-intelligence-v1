@@ -5,9 +5,17 @@
  * NPAC, solids, kcal, cost, supplier and regulatory data. None of those values is read
  * by this component — they are not hidden with CSS, they never enter the render.
  *
- * §54: a Demo line shows `🔒 ••• g`. The masked string is a constant with no digits in
- * it (pinned by a copy test), so there is no code path that could leak a real gram
- * through the placeholder.
+ * §54 + owner-locked row, 2026-08-31. Every line carries the FINAL editing control:
+ *
+ *     ingredient | [ − ] [ grams/value ] [ + ] [ CLOSED lock ] [ ⋯ ]
+ *
+ * A Demo line shows the mask INSIDE the value segment — `••• g` — so the geometry is
+ * identical whether or not grams are visible: revealing them changes the DATA, never the
+ * control. The masked string is a constant with no digits in it (pinned by a copy test),
+ * so no code path can leak a real gram through the placeholder, and operating a masked
+ * control routes to the existing entitlement behaviour instead of doing nothing.
+ *
+ * The control is the shared PRO `DirectNumberControl`; HOME performs no arithmetic.
  */
 import { useState } from 'react';
 import { cn } from '@/lib/cn';
@@ -20,6 +28,9 @@ import { ProductPickerPopover } from '@/features/ingredient-builder/ProductPicke
 import type { IngredientLibrary } from '@/features/ingredient-builder/ingredientLibrary';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/contracts';
 import type { RecipeMatchScorePresentation } from '@/features/recipe-score';
+import { DirectNumberControl } from '@/features/ingredient-builder/DirectNumberControl';
+import { useRecipeStore } from '@/stores/recipeStore';
+import { useHomeBehaviorContext } from '../useHomeBehaviorContext';
 import { homeCreatorCopy } from '../homeCreatorCopy';
 import {
   HOME_SWEETNESS_ORDER,
@@ -35,23 +46,65 @@ const SWEETNESS_LABEL: Readonly<Record<HomeSweetness, string>> = {
   sweeter: homeCreatorCopy.sweetness.sweeter,
 };
 
-function GramCell({ grams, canSeeGrams }: { grams: number; canSeeGrams: boolean }) {
-  if (!canSeeGrams) {
-    return (
-      <span
-        className="font-mono text-[14px]"
-        data-testid="home-masked-grams"
-        aria-label={homeCreatorCopy.recipe.maskedGramsLabel}
-        style={{ color: 'var(--g-lock)' }}
-      >
-        🔒 {homeCreatorCopy.recipe.maskedGrams}
-      </span>
-    );
-  }
+/**
+ * The FINAL recipe-editing control, owner-locked 2026-08-31:
+ *
+ *   [ − ] [ grams/value ] [ + ] [ CLOSED lock ]      then the row's [ ⋯ ]
+ *
+ * It is the shared PRO `DirectNumberControl` — same four-segment geometry, same 44 px
+ * targets, same single closed padlock in BOTH lock states (state is colour, never a
+ * different glyph), same orange focus. HOME contributes no arithmetic: `−`/`+` and the
+ * value field all route to `setPlannedGrams`, and the padlock to `setLockType`.
+ *
+ * When grams are entitlement-hidden the geometry does NOT change. The `•••` renders
+ * INSIDE the value segment and every numeric interaction routes to the existing
+ * paywall/auth behaviour, so the customer sees the final editor from the beginning and
+ * only the DATA becomes available later.
+ */
+function GramControl({
+  lineId,
+  name,
+  grams,
+  locked,
+  canSeeGrams,
+  onBlocked,
+}: {
+  lineId: string;
+  name: string;
+  grams: number;
+  locked: boolean;
+  canSeeGrams: boolean;
+  onBlocked: () => void;
+}) {
   return (
-    <span className="font-mono text-[14px]" style={{ color: 'var(--g-ink)' }}>
-      {Math.round(grams)} {homeCreatorCopy.recipe.grams}
-    </span>
+    <DirectNumberControl
+      value={grams}
+      step={1}
+      min={0}
+      decimals={0}
+      suffix={homeCreatorCopy.recipe.grams}
+      ariaLabel={`${name} — ${homeCreatorCopy.recipe.gramsFieldLabel}`}
+      testId={`home-grams-${lineId}`}
+      widthPreset="grams"
+      density="responsive"
+      onChange={(next) => useRecipeStore.getState().setPlannedGrams(lineId, next)}
+      {...(canSeeGrams
+        ? {}
+        : {
+            maskedValue: homeCreatorCopy.recipe.maskedGramsValue,
+            maskedLabel: homeCreatorCopy.recipe.maskedGramsLabel,
+            onMaskedInteract: onBlocked,
+          })}
+      lockSegment={{
+        pressed: locked,
+        ariaLabel: `${name} — ${homeCreatorCopy.recipe.lockLabel}`,
+        title: homeCreatorCopy.recipe.lockLabel,
+        suffix: 'g',
+        testId: `home-lock-${lineId}`,
+        onToggle: () =>
+          useRecipeStore.getState().setLockType(lineId, locked ? 'unlocked' : 'grams'),
+      }}
+    />
   );
 }
 
@@ -148,6 +201,7 @@ export function HomeRecipeSection({
   library,
   onAddIngredient,
   onAddTopping,
+  onGramsBlocked,
   onSave,
   onLetsMakeIt,
   onShare,
@@ -170,6 +224,8 @@ export function HomeRecipeSection({
   /** §56: the SAME Pro picker, in a simpler HOME presentation. */
   library: IngredientLibrary;
   onAddIngredient: (ingredient: EngineIngredient, behavior?: ProductBehaviorSnapshot) => void;
+  /** Entitlement route when a masked gram control is operated. */
+  onGramsBlocked: () => void;
   onAddTopping: (ingredient: RecipeToppingIngredient, behavior?: ProductBehaviorSnapshot) => void;
   onSave: () => void;
   onLetsMakeIt: () => void;
@@ -178,6 +234,13 @@ export function HomeRecipeSection({
   onBack?: (() => void) | null;
 }) {
   const activeSweetness = projectSweetnessForDisplay(sweetnessStored as -2 | -1 | 0 | 1 | 2);
+
+  const {
+    accountId: behaviorAccountId,
+    productProfile: behaviorProfile,
+    temperatureC: behaviorTemperatureC,
+    mode: behaviorMode,
+  } = useHomeBehaviorContext();
 
   return (
     <HomeSection id="recipe" onBack={onBack} fill={false} data-testid="home-section-recipe">
@@ -237,7 +300,14 @@ export function HomeRecipeSection({
                 </span>
               ) : null}
             </span>
-            <GramCell grams={item.planned_grams} canSeeGrams={canSeeGrams} />
+            <GramControl
+              lineId={item.id}
+              name={item.ingredient.name}
+              grams={item.planned_grams}
+              locked={item.lock_type === 'grams'}
+              canSeeGrams={canSeeGrams}
+              onBlocked={onGramsBlocked}
+            />
             <RowMenu
               onRemove={() => onRemoveItem(item.id)}
               onSubstitute={() => onSubstitute(item.id)}
@@ -262,11 +332,82 @@ export function HomeRecipeSection({
                 {homeCreatorCopy.recipe.topping.toUpperCase()}
               </span>
             </span>
-            <GramCell grams={topping.planned_grams} canSeeGrams={canSeeGrams} />
+            <GramControl
+              lineId={topping.id}
+              name={topping.ingredient.name}
+              grams={topping.planned_grams}
+              locked={false}
+              canSeeGrams={canSeeGrams}
+              onBlocked={onGramsBlocked}
+            />
             <RowMenu onRemove={() => onRemoveItem(topping.id)} />
           </li>
         ))}
       </ul>
+
+      {/* OWNER CORRECTION (HOME-UX-ADD-INGREDIENT, 2026-08-31): after the first
+          ingredient it was not obvious how to add another. The add controls existed,
+          but far below — past sweetness, past Przelicz, past a paragraph — so they read
+          as unrelated to the list. They now sit immediately after the last row.
+
+          ONE affordance for the section, not one per row, and it stays put at 1, 2 or
+          3+ ingredients because it is a sibling of the list, not part of it. The button
+          IS the canonical `ProductPickerPopover` trigger — HOME adds no selection
+          logic — rendered in the Designbook round icon-button variant. The visible
+          label is a desktop-only hint; the accessible name comes from the trigger. */}
+      <div
+        className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-2"
+        data-testid="home-add-controls"
+      >
+        <span className="inline-flex items-center gap-2" data-testid="home-add-ingredient">
+          <ProductPickerPopover
+            library={library}
+            scope="BASE_FORMULATION"
+            triggerVariant="icon"
+            behaviorContext={{
+              accountId: behaviorAccountId,
+              productProfile: behaviorProfile,
+              temperatureC: behaviorTemperatureC,
+              mode: behaviorMode,
+            }}
+            triggerLabel={homeCreatorCopy.recipe.addIngredient}
+            onAdd={(ingredient, behavior) => onAddIngredient(ingredient, behavior)}
+          />
+          <span
+            aria-hidden
+            className="max-sm:hidden text-[13px]"
+            style={{ color: 'var(--g-text-secondary)' }}
+          >
+            {homeCreatorCopy.recipe.addIngredient}
+          </span>
+        </span>
+        {/* Toppings get the analogous affordance wherever toppings are offered. HOME has
+            no toppings-availability gate today — the topping picker has always been
+            rendered unconditionally — so this follows the SAME availability rather than
+            inventing a new rule. Recorded as HOME-UX-TOPPING-GATE. */}
+        <span className="inline-flex items-center gap-2" data-testid="home-add-topping">
+          <ProductPickerPopover
+            library={library}
+            scope="POST_PROCESS_ADDON"
+            triggerVariant="icon"
+            behaviorContext={{
+              accountId: behaviorAccountId,
+              productProfile: behaviorProfile,
+              temperatureC: behaviorTemperatureC,
+              mode: behaviorMode,
+            }}
+            triggerLabel={homeCreatorCopy.recipe.addTopping}
+            onAdd={(ingredient, behavior) => onAddTopping(ingredient, behavior)}
+          />
+          <span
+            aria-hidden
+            className="max-sm:hidden text-[13px]"
+            style={{ color: 'var(--g-text-secondary)' }}
+          >
+            {homeCreatorCopy.recipe.addTopping}
+          </span>
+        </span>
+      </div>
 
       {/* §61/§62 sweetness — three choices over the existing Direction axis. */}
       <div className="mt-6" data-testid="home-sweetness">
@@ -308,36 +449,6 @@ export function HomeRecipeSection({
 
       {/* §60: the existing Recalculate → Preview → Apply workflow, plainly worded. */}
       <HomeRecalculate />
-
-      {/* §57 */}
-      <p className="mt-8 text-[15px]" style={{ color: 'var(--g-text-secondary)' }}>
-        {homeCreatorCopy.recipe.anythingElse}
-      </p>
-      {/* §56/§57: the SAME picker Pro uses — search, filters, scanner, catalogue and
-          ProductBehavior all come with it. HOME only supplies a plainer trigger label;
-          it does not reimplement selection, readiness or role routing. The popover
-          renders its own ＋ affordance, so the label carries no second plus sign. */}
-      <div
-        className="mt-3 flex flex-wrap gap-2 [&_button]:min-h-[44px]"
-        data-testid="home-add-controls"
-      >
-        <span data-testid="home-add-ingredient">
-          <ProductPickerPopover
-            library={library}
-            scope="BASE_FORMULATION"
-            triggerLabel={homeCreatorCopy.recipe.addIngredient}
-            onAdd={(ingredient, behavior) => onAddIngredient(ingredient, behavior)}
-          />
-        </span>
-        <span data-testid="home-add-topping">
-          <ProductPickerPopover
-            library={library}
-            scope="POST_PROCESS_ADDON"
-            triggerLabel={homeCreatorCopy.recipe.addTopping}
-            onAdd={(ingredient, behavior) => onAddTopping(ingredient, behavior)}
-          />
-        </span>
-      </div>
 
       <div className="mt-10 flex flex-col gap-2.5">
         <button

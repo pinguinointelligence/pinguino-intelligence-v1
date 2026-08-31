@@ -33,15 +33,15 @@ const matrixDoc = readFileSync(
 );
 
 describe('routing table — the deliberate §13.3 event matrix', () => {
-  it('supports exactly the deliberate event list (40 events, no wildcards)', () => {
-    expect(SUPPORTED_WEBHOOK_EVENTS).toHaveLength(40);
-    expect(new Set(SUPPORTED_WEBHOOK_EVENTS).size).toBe(40);
+  it('supports exactly the deliberate event list (41 events, no wildcards)', () => {
+    expect(SUPPORTED_WEBHOOK_EVENTS).toHaveLength(41);
+    expect(new Set(SUPPORTED_WEBHOOK_EVENTS).size).toBe(41);
   });
 
   it('pins the per-domain event counts', () => {
     const domain = (prefix: string) =>
       SUPPORTED_WEBHOOK_EVENTS.filter((e) => e.startsWith(prefix)).length;
-    expect(domain('checkout.session.')).toBe(3);
+    expect(domain('checkout.session.')).toBe(4);
     expect(domain('customer.subscription.')).toBe(3);
     expect(domain('subscription_schedule.')).toBe(5);
     expect(domain('invoice.')).toBe(7);

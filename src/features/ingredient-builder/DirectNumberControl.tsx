@@ -35,6 +35,21 @@ interface DirectNumberControlProps {
    * comfortable 44 px targets.
    */
   density?: 'comfortable' | 'compact' | 'responsive';
+  /**
+   * Entitlement masking. When set, the VALUE segment shows this text instead of the
+   * number and every numeric interaction routes to `onMaskedInteract` rather than
+   * mutating. Geometry is untouched: same segments, same widths, same lock — revealing
+   * grams later changes the DATA, never the control. Omit it and nothing changes.
+   */
+  maskedValue?: string;
+  /**
+   * What assistive technology hears instead of the number. REQUIRED whenever
+   * `maskedValue` is set: without it the control would either announce nothing useful or
+   * fall back to the real value, which is the leak this exists to prevent.
+   */
+  maskedLabel?: string;
+  /** Invoked when a masked control is operated — wire the existing paywall/auth route. */
+  onMaskedInteract?: () => void;
   /** Optional fourth segment. It stays operable while the numeric segments are locked. */
   lockSegment?: {
     pressed: boolean;
@@ -82,7 +97,13 @@ export function DirectNumberControl({
   widthPreset = 'fluid',
   density = 'comfortable',
   lockSegment,
+  maskedValue,
+  maskedLabel,
+  onMaskedInteract,
 }: DirectNumberControlProps) {
+  const masked = maskedValue !== undefined;
+  /** Never falls back to the value: an absent label degrades to the mask, not the number. */
+  const maskedAnnouncement = maskedLabel ?? maskedValue ?? '';
   const compact = density === 'compact';
   const responsive = density === 'responsive';
   /**
@@ -238,20 +259,36 @@ export function DirectNumberControl({
       data-soft-danger={softDanger ? 'true' : undefined}
       data-value-padding="roomy"
     >
+      {/* CONFIDENTIALITY: while masked this region must never carry the number. Served QA
+          2026-08-31 found it announcing "— ilość w g: 402 g" behind a `•••` display, so
+          the mask was visual only and a screen-reader user heard the exact grams. */}
       <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
-        {ariaLabel}: {value.toFixed(decimals)} {suffix}
+        {masked
+          ? `${ariaLabel}: ${maskedAnnouncement}`
+          : `${ariaLabel}: ${value.toFixed(decimals)} ${suffix}`}
       </span>
       {([-1, 1] as const).map((direction) => (
         <button
           key={direction}
           type="button"
           disabled={disabled}
-          aria-label={`${ariaLabel} — ${direction < 0 ? 'zmniejsz' : 'zwiększ'}`}
-          onPointerDown={() => startRepeat(direction)}
+          aria-label={
+            masked
+              ? `${ariaLabel} — ${direction < 0 ? 'zmniejsz' : 'zwiększ'} — ${maskedAnnouncement}`
+              : `${ariaLabel} — ${direction < 0 ? 'zmniejsz' : 'zwiększ'}`
+          }
+          onPointerDown={() => {
+            if (masked) return;
+            startRepeat(direction);
+          }}
           onPointerUp={stopRepeat}
           onPointerCancel={stopRepeat}
           onPointerLeave={stopRepeat}
           onClick={() => {
+            if (masked) {
+              onMaskedInteract?.();
+              return;
+            }
             if (repeated.current) {
               repeated.current = false;
               return;
@@ -275,88 +312,105 @@ export function DirectNumberControl({
         )}
       >
         <span className="sr-only">{ariaLabel}</span>
-        <input
-          type="text"
-          role="spinbutton"
-          inputMode="decimal"
-          disabled={disabled}
-          aria-valuemin={min}
-          aria-valuemax={Number.isFinite(max) ? max : undefined}
-          aria-valuenow={accessibleValue}
-          aria-label={ariaLabel}
-          aria-describedby={ariaDescribedBy}
-          value={editing ? draft : value.toFixed(decimals)}
-          onFocus={() => {
-            setDraft(valueRef.current.toFixed(decimals));
-            draftDirty.current = false;
-            setEditing(true);
-          }}
-          onChange={(event) => {
-            const nextDraft = event.currentTarget.value.replace(',', '.');
-            draftDirty.current = true;
-            setEditing(true);
-            setDraft(nextDraft);
-            const parsed = Number(nextDraft);
-            if (publishValidDraft && nextDraft.trim() !== '' && Number.isFinite(parsed)) {
-              const published = committedNumberValue({
-                value: parsed,
-                min,
-                max,
-                decimals,
-                preservePrecision,
-              });
-              if (published !== valueRef.current) {
-                valueRef.current = published;
-                onChange(published);
+        {masked ? (
+          /* The mask lives INSIDE the value segment, so the row keeps its exact geometry
+             when grams become visible: only the DATA changes, never the control. */
+          <button
+            type="button"
+            aria-label={`${ariaLabel} — ${maskedAnnouncement}`}
+            data-testid={`${testId}-masked`}
+            onClick={() => onMaskedInteract?.()}
+            className="flex h-full w-full items-center justify-center font-mono text-[14px] text-stone-500 transition-colors hover:text-ink focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#f58a07]"
+          >
+            {/* The unit is NOT repeated here: the control renders its own suffix span
+                after the input, so appending it produced "••• g g" on staging. */}
+            {maskedValue}
+          </button>
+        ) : null}
+        {masked ? null : (
+          <input
+            type="text"
+            role="spinbutton"
+            inputMode="decimal"
+            disabled={disabled}
+            aria-valuemin={min}
+            aria-valuemax={Number.isFinite(max) ? max : undefined}
+            aria-valuenow={accessibleValue}
+            aria-label={ariaLabel}
+            aria-describedby={ariaDescribedBy}
+            value={editing ? draft : value.toFixed(decimals)}
+            onFocus={() => {
+              setDraft(valueRef.current.toFixed(decimals));
+              draftDirty.current = false;
+              setEditing(true);
+            }}
+            onChange={(event) => {
+              const nextDraft = event.currentTarget.value.replace(',', '.');
+              draftDirty.current = true;
+              setEditing(true);
+              setDraft(nextDraft);
+              const parsed = Number(nextDraft);
+              if (publishValidDraft && nextDraft.trim() !== '' && Number.isFinite(parsed)) {
+                const published = committedNumberValue({
+                  value: parsed,
+                  min,
+                  max,
+                  decimals,
+                  preservePrecision,
+                });
+                if (published !== valueRef.current) {
+                  valueRef.current = published;
+                  onChange(published);
+                }
               }
-            }
-          }}
-          onBlur={() => {
-            if (!draftDirty.current) {
-              setDraft(valueRef.current.toFixed(decimals));
-              setEditing(false);
-              return;
-            }
-            const parsed = Number(draft);
-            if (Number.isFinite(parsed)) {
-              const committed = committedNumberValue({
-                value: parsed,
-                min,
-                max,
-                decimals,
-                preservePrecision,
-              });
-              if (publishValidDraft && committed === valueRef.current) {
-                setDraft(committed.toFixed(decimals));
-                draftDirty.current = false;
+            }}
+            onBlur={() => {
+              if (!draftDirty.current) {
+                setDraft(valueRef.current.toFixed(decimals));
                 setEditing(false);
-              } else commit(parsed);
-            } else {
-              setDraft(valueRef.current.toFixed(decimals));
-              setEditing(false);
-            }
-          }}
-          onKeyDown={(event) => {
-            if (event.key === 'ArrowDown') {
-              event.preventDefault();
-              nudge(-1);
-            } else if (event.key === 'ArrowUp') {
-              event.preventDefault();
-              nudge(1);
-            } else if (event.key === 'Enter') {
-              event.currentTarget.blur();
-            }
-          }}
-          onPointerDown={onScrubStart}
-          onPointerMove={onScrubMove}
-          onPointerUp={onScrubEnd}
-          onPointerCancel={onScrubEnd}
-          data-scrubbable="horizontal"
-          className={cn(
-            'h-full min-w-0 flex-1 touch-pan-y select-none bg-transparent text-right font-mono leading-none font-semibold tabular-nums text-ink outline-none disabled:cursor-not-allowed',
-            compact ? 'text-[13px]' : responsive ? 'text-sm lg:text-[13px]' : 'text-sm',
-          )}
-        />
+                return;
+              }
+              const parsed = Number(draft);
+              if (Number.isFinite(parsed)) {
+                const committed = committedNumberValue({
+                  value: parsed,
+                  min,
+                  max,
+                  decimals,
+                  preservePrecision,
+                });
+                if (publishValidDraft && committed === valueRef.current) {
+                  setDraft(committed.toFixed(decimals));
+                  draftDirty.current = false;
+                  setEditing(false);
+                } else commit(parsed);
+              } else {
+                setDraft(valueRef.current.toFixed(decimals));
+                setEditing(false);
+              }
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                nudge(-1);
+              } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                nudge(1);
+              } else if (event.key === 'Enter') {
+                event.currentTarget.blur();
+              }
+            }}
+            onPointerDown={onScrubStart}
+            onPointerMove={onScrubMove}
+            onPointerUp={onScrubEnd}
+            onPointerCancel={onScrubEnd}
+            data-scrubbable="horizontal"
+            className={cn(
+              'h-full min-w-0 flex-1 touch-pan-y select-none bg-transparent text-right font-mono leading-none font-semibold tabular-nums text-ink outline-none disabled:cursor-not-allowed',
+              compact ? 'text-[13px]' : responsive ? 'text-sm lg:text-[13px]' : 'text-sm',
+            )}
+          />
+        )}
         <span
           aria-hidden
           className={cn(

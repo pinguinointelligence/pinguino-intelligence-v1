@@ -4431,7 +4431,7 @@ function verifyMainEnvelope(input) {
 		lineIds: managed.map((item) => item.id),
 		messagePl: `Grupa Main ma ${equivalentPercent.toFixed(1)}%; wymagane minimum to ${floor.toFixed(1)}%.`
 	});
-	if (input.mode === "optimal" && equivalentPercent > ceiling + EPSILON) violations.push({
+	if (input.enforceOptimalPreferenceCeiling === true && input.mode === "optimal" && equivalentPercent > ceiling + EPSILON) violations.push({
 		code: "main_above_optimal_ceiling",
 		lineIds: managed.map((item) => item.id),
 		messagePl: `Grupa Main przekracza zatwierdzony poziom OPTIMAL ${ceiling.toFixed(1)}%.`

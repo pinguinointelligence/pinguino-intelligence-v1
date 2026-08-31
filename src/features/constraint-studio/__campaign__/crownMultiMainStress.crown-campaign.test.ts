@@ -1315,7 +1315,6 @@ const executeCase = async (
   const ceiling = mainEnvelopeSearchCeilingGrams({
     recipe: input,
     snapshots,
-    mode: spec.strategy,
   });
   const groupHard = envelope.ok
     ? envelope.hardLimitPercent

@@ -46,7 +46,7 @@ describe('HOME creator copy', () => {
     expect(HOME_CREATOR_COPY_BY_LOCALE.en.intent.question).toBe(
       'What flavour are we making today?',
     );
-    expect(HOME_CREATOR_COPY_BY_LOCALE.en.intent.cta).toBe('Create my recipe');
+    expect(HOME_CREATOR_COPY_BY_LOCALE.en.intent.cta).toBe('Create your recipe');
   });
 
   it('never shows a fabricated gram value in the masked state (§54)', () => {

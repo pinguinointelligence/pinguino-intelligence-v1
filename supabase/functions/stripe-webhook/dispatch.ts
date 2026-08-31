@@ -31,6 +31,7 @@
  * invite entitlements, deletes, or edits of financial history (adjustments
  * are append-only; entries only ever advance status).
  */
+import { decideShopSettlement } from '../_shared/shopSettlement.ts';
 import { buildIdempotencyKey, routeWebhookEvent } from './handlers.ts';
 import {
   buildCommissionAdjustmentRow,
@@ -56,6 +57,7 @@ import {
   type ChargeSnapshot,
   type CommissionRuleRow,
   type RefundSnapshot,
+  extractShopOrderSettlement,
 } from './effects.ts';
 
 // ── minimal structural DB client (satisfied by supabase-js) ──────────────────
@@ -146,7 +148,109 @@ async function insertIgnoringDuplicate(db: DbClient, table: string, row: Row, co
 
 // ── checkout completion → billing_customers ─────────────────────────────────
 
+/**
+ * SHOP ORDER SETTLEMENT — the provider's own event is the payment authority.
+ *
+ * Before this writer existed the Shop became `paid` ONLY when the customer's
+ * browser came back to the success URL and triggered `shop-order-sync`.
+ * Forensic evidence on staging: Stripe delivered `checkout.session.completed`
+ * for order G-20260831-2DA655 at 13:16:13.98 carrying `pi_shop_order_id`, and
+ * `paid_at` was written 6.6 s later by the browser return — the webhook was
+ * live but shop-blind. A customer who paid and closed the tab left the money
+ * captured and the order `pending` for ever. Three such sessions already sit
+ * in the table from 2026-08-29.
+ *
+ * The transition is state-guarded so the webhook and the return path converge
+ * instead of fighting:
+ *  - only `pending` moves to `paid` — a `refunded` order is never walked back;
+ *  - `paid_at` is stamped once, by whichever authority arrives first;
+ *  - the destination is only written when the session actually carries one;
+ *  - re-delivery is a no-op, on top of the durable event-id uniqueness.
+ */
+async function applyShopOrderSettlement(
+  deps: DispatchDeps,
+  event: WebhookEventFacts,
+): Promise<string | null> {
+  const shop = extractShopOrderSettlement(event.object);
+  if (!shop) return null; // not a shop session — billing owns this event
+
+  const { data: current, error: readError } = await deps.db
+    .from('shop_orders')
+    .select('id,status,paid_at,expected_total_cents,expected_currency,stripe_checkout_session_id')
+    .eq('id', shop.orderId)
+    .maybeSingle();
+  throwOnDbError(readError, 'shop_orders lookup');
+  if (!current) return `shop_order_not_found:${shop.orderId}`;
+
+  // ONE settlement authority, shared with shop-order-sync.
+  const verdict = decideShopSettlement(
+    {
+      id: String(current.id),
+      status: String(current.status),
+      paidAt: (current.paid_at as string | null) ?? null,
+      expectedTotalCents: (current.expected_total_cents as number | null) ?? null,
+      expectedCurrency: (current.expected_currency as string | null) ?? null,
+      sessionId: (current.stripe_checkout_session_id as string | null) ?? null,
+    },
+    {
+      orderId: shop.orderId,
+      sessionId: shop.sessionId,
+      mode: shop.mode,
+      paymentStatus: shop.paymentStatus,
+      status: shop.sessionStatus,
+      amountTotal: shop.amountTotal,
+      currency: shop.currency,
+    },
+  );
+
+  if (verdict.kind === 'refuse') return verdict.note;
+
+  if (verdict.kind === 'expire') {
+    const now = new Date().toISOString();
+    const { error } = await deps.db
+      .from('shop_orders')
+      .update({ status: 'cancelled', cancelled_at: now, updated_at: now })
+      .eq('id', shop.orderId)
+      .eq('status', 'pending');
+    throwOnDbError(error, 'shop_orders expire');
+    return 'shop_order_expired';
+  }
+
+  const now = new Date().toISOString();
+  const patch: Record<string, unknown> = { status: 'paid', updated_at: now };
+  if (!current.paid_at) patch.paid_at = now;
+  if (shop.paymentIntentId) patch.stripe_payment_intent_id = shop.paymentIntentId;
+  if (shop.amountTotal !== null) patch.total_cents = shop.amountTotal;
+  if (shop.shippingCents !== null) patch.shipping_cents = shop.shippingCents;
+  if (shop.taxCents !== null) patch.tax_cents = shop.taxCents;
+  if (shop.shipping) {
+    patch.shipping_name = shop.shipping.name;
+    patch.shipping_line1 = shop.shipping.line1;
+    patch.shipping_line2 = shop.shipping.line2;
+    patch.shipping_postal_code = shop.shipping.postalCode;
+    patch.shipping_city = shop.shipping.city;
+    patch.shipping_state = shop.shipping.state;
+    patch.shipping_country = shop.shipping.country;
+    patch.shipping_phone = shop.shipping.phone;
+  }
+
+  // Guarded on `pending`: a concurrent shop-order-sync can win the race, and
+  // the loser writes nothing rather than stamping a second paid transition.
+  const { error } = await deps.db
+    .from('shop_orders')
+    .update(patch)
+    .eq('id', shop.orderId)
+    .eq('status', 'pending');
+  throwOnDbError(error, 'shop_orders settle');
+  return null;
+}
+
 async function applyCheckoutCompletion(deps: DispatchDeps, event: WebhookEventFacts): Promise<string | null> {
+  // A shop session settles here FIRST; it carries no billing customer mapping,
+  // so the subscription path below would otherwise skip the event entirely.
+  const shopNote = await applyShopOrderSettlement(deps, event);
+  if (extractShopOrderSettlement(event.object)) return shopNote ?? 'shop_order_settled';
+
   const mapping = extractCheckoutMapping(event.object);
   if (!mapping) return 'skipped_no_user_or_customer_reference';
   const { error } = await deps.db
@@ -683,6 +787,10 @@ export async function applyEventEffects(deps: DispatchDeps, event: WebhookEventF
   switch (intent.kind) {
     case 'checkout_completion':
       return { note: await applyCheckoutCompletion(deps, event) };
+    case 'checkout_async_payment_succeeded':
+    case 'checkout_async_payment_failed':
+    case 'checkout_session_expired':
+      return { note: await applyShopOrderSettlement(deps, event) };
     case 'subscription_state_sync':
       return { note: await applySubscriptionSync(deps, event) };
     case 'commissionable_payment':

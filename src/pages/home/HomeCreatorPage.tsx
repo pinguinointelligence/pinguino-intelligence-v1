@@ -10,6 +10,12 @@
  * document itself; a CTA scrolls to the next section and a subtle Back goes up.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { EngineIngredient } from '@/engine';
+import type { RecipeToppingIngredient } from '@/features/recipe-composition/recipeCompositionPersistence';
+import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/contracts';
+import { productRecommendedDosagePl } from '@/features/product-intelligence/productDosageAuthority';
+import { decideAddAmount } from '@/features/home-creator/homeAddAmountDecision';
+import { HomeAmountPrompt } from '@/features/home-creator/ui/HomeAmountPrompt';
 import { useNavigate } from 'react-router';
 import { AppShell } from '@/features/shell/AppShell';
 import { deriveMachineSetup, type HomeMachineProfile } from '@/features/machine-catalog';
@@ -284,6 +290,72 @@ export function HomeCreatorPage() {
     ],
   );
 
+  /** The picked product waiting for its confirmed amount. No line exists yet. */
+  const [pendingAdd, setPendingAdd] = useState<{
+    ingredient: EngineIngredient;
+    behavior: ProductBehaviorSnapshot | null;
+    recommendedDose: string | null;
+  } | null>(null);
+
+  /**
+   * The one place a Base line is created. Grams come either from the existing Crown flow
+   * (0, meaning Crown decides) or from the customer's confirmed amount — never invented.
+   */
+  const addIngredientLine = useCallback(
+    (ingredient: EngineIngredient, behavior: ProductBehaviorSnapshot | null, grams: number) => {
+      const added = useRecipeStore.getState().addIngredient(ingredient, grams);
+      if (added.status !== 'duplicate' && behavior) {
+        useRecipeStore
+          .getState()
+          .setProductBehaviorSnapshot(added.lineId, { ...behavior, lineId: added.lineId });
+      }
+    },
+    [],
+  );
+
+  /**
+   * ONE add path for every HOME surface — the refinement controls beside the chips and
+   * the add controls beside the recipe list both land here, so the §B decision cannot
+   * apply on one surface and not the other.
+   */
+  const handleAddIngredient = useCallback(
+    (ingredient: EngineIngredient, behavior?: ProductBehaviorSnapshot) => {
+      const decision = decideAddAmount(behavior ?? null, productRecommendedDosagePl);
+      if (decision.kind === 'unresolved_authority') {
+        // Owner ruling §6: never guess. The picker already refuses a product it cannot
+        // confirm, so reaching here means the authority went stale between resolution
+        // and add — we create nothing rather than invent semantics.
+        return;
+      }
+      if (decision.kind === 'ask_amount') {
+        setPendingAdd({
+          ingredient,
+          behavior: behavior ?? null,
+          recommendedDose: decision.recommendedDose,
+        });
+        return;
+      }
+      addIngredientLine(ingredient, behavior ?? null, 0);
+    },
+    [addIngredientLine],
+  );
+
+  /** §57: the existing Topping behaviour — no Crown, editable grams. Shared identically. */
+  const handleAddTopping = useCallback(
+    (ingredient: RecipeToppingIngredient, behavior?: ProductBehaviorSnapshot) => {
+      useRecipeStore.getState().addTopping(ingredient, 0);
+      const topping = useRecipeStore
+        .getState()
+        .toppings.find((line) => line.ingredient.id === ingredient.id);
+      if (topping && behavior) {
+        useRecipeStore
+          .getState()
+          .setProductBehaviorSnapshot(topping.id, { ...behavior, lineId: topping.id });
+      }
+    },
+    [],
+  );
+
   const lastGeneratedFor = useRef<string | null>(null);
   useEffect(() => {
     // Generate once, when every required answer is in — never on every render.
@@ -373,6 +445,9 @@ export function HomeCreatorPage() {
               }, 60);
             }}
             resolving={resolving}
+            library={library}
+            onAddIngredient={handleAddIngredient}
+            onAddTopping={handleAddTopping}
             onChooseIdentity={(chip, candidate) => {
               // §23: the user answered the identity question. Record the real
               // catalogue identity, clear the question, and — if the recipe already
@@ -490,30 +565,21 @@ export function HomeCreatorPage() {
             sweetnessStored={recipe.direction_targets.sweetness}
             onSweetness={onSweetness}
             onRemoveItem={(lineId) => useRecipeStore.getState().removeItem(lineId)}
+            onGramsBlocked={() => {
+              // The row keeps its controls for everyone (owner, 2026-08-31), so operating
+              // a masked one routes to the EXISTING entitlement behaviour rather than
+              // silently doing nothing. Same routing the canonical Save already uses.
+              if (recipeSave.blocked === 'signin') {
+                openAuthModal();
+                return;
+              }
+              navigate('/subscription');
+            }}
             onSubstitute={() => undefined}
             onUnavailable={(lineId) => useRecipeStore.getState().markIngredientUnavailable(lineId)}
             library={library}
-            onAddIngredient={(ingredient, behavior) => {
-              // Added at 0 g exactly as the Pro builder does — HOME invents no amount.
-              const added = useRecipeStore.getState().addIngredient(ingredient, 0);
-              if (added.status !== 'duplicate' && behavior) {
-                useRecipeStore
-                  .getState()
-                  .setProductBehaviorSnapshot(added.lineId, { ...behavior, lineId: added.lineId });
-              }
-            }}
-            onAddTopping={(ingredient, behavior) => {
-              // §57: the existing Topping behaviour — no Crown, editable grams.
-              useRecipeStore.getState().addTopping(ingredient, 0);
-              const topping = useRecipeStore
-                .getState()
-                .toppings.find((line) => line.ingredient.id === ingredient.id);
-              if (topping && behavior) {
-                useRecipeStore
-                  .getState()
-                  .setProductBehaviorSnapshot(topping.id, { ...behavior, lineId: topping.id });
-              }
-            }}
+            onAddIngredient={handleAddIngredient}
+            onAddTopping={handleAddTopping}
             onSave={() => {
               // §65: an explicit action, never an autosave. The canonical handler
               // already knows WHY a save cannot proceed, so HOME routes on its answer
@@ -565,6 +631,19 @@ export function HomeCreatorPage() {
             // recipe, so the effect must not build one for these same answers.
             lastGeneratedFor.current = `${draft.profile}|${machine?.id ?? 'none'}|${amount?.totalGrams ?? 0}`;
             scrollToStage('recipe');
+          }}
+        />
+      ) : null}
+
+      {/* §B: asked BEFORE the line exists, so a refusal costs the customer nothing. */}
+      {pendingAdd ? (
+        <HomeAmountPrompt
+          productName={pendingAdd.ingredient.name}
+          recommendedDose={pendingAdd.recommendedDose}
+          onCancel={() => setPendingAdd(null)}
+          onConfirm={(grams) => {
+            addIngredientLine(pendingAdd.ingredient, pendingAdd.behavior, grams);
+            setPendingAdd(null);
           }}
         />
       ) : null}
