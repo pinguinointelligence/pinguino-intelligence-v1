@@ -96,7 +96,7 @@ describe('shop C3 · the product carries the emphasis, never the money', () => {
     expect(offer).toContain('SHOP_STARTER_SHOTS.filter((s) => s.id !== primary.id)');
     // No single-ingredient photography exists: the frame stays reserved.
     expect(packaging).toContain('ShopReservedFrame');
-    expect(packaging).toContain('#fcfbf9');
+    expect(packaging).toContain('bg-[var(--g-ivory)]');
     expect(read('features', 'shop', 'ShopProductCard.tsx')).toContain('<ShopReservedFrame />');
   });
 });
