@@ -6947,23 +6947,77 @@ function buildOptimizePreviewWithDirection(
   // roles), which never reached the closed-form projection; a held Main then
   // turned "nearest" into a premature no-correction. Exact projection first,
   // Main-constrained NEAREST second, regular optimizer third.
+  // PC-03: eligibility deliberately does NOT require the incoming draft to
+  // already sit on the target batch. `projectSorbetDirectionCandidate` solves
+  // FOR `target_batch_grams` — the batch is the first row of its 3x3 system —
+  // so an off-batch draft is exactly the one it can repair, not one it must be
+  // protected from. Requiring the input to be on batch excluded the canonical
+  // HOME journey, where the Crown auto-seeds the fruit Main at 1 g without
+  // re-budgeting the starter and a brand-new Sorbet therefore sits at 1001 g
+  // against 1000 g. Those drafts fell through to the general search and could
+  // terminate `unsafe_proposal` while this projection already held a candidate
+  // with zero Engine violations. Nothing here decides publication: the
+  // candidate still passes every Engine, constraint, Main and Direction gate in
+  // `buildSorbetDirectionCandidatePreview`, and `enforceTargetBatchInvariant`
+  // remains the final batch authority on the way out.
+  // The relaxation is deliberately narrow: off batch, EXACTLY ONE Main.
+  //  · a MULTI-Main draft that is off batch is off batch because its Main GROUP
+  //    is short, and the certified Main frontier — not a projection that holds
+  //    the Main — must answer it, so the served two-Crown 150/150 Sorbet is
+  //    still raised to 300/300;
+  //  · a draft with NO Main is an incomplete scaffold. GEL-P0-014 requires it to
+  //    stop on the missing role rather than read as a batch/solver failure, so
+  //    it must not be answered by a projection either.
+  // One Main is the shape the Crown auto-seed and an ordinary added line
+  // actually produce. On-batch behaviour is untouched for every Main count.
+  const sorbetMainLineCount = input.items.filter((item) => item.lock_type === 'main').length;
+  const sorbetDraftOffBatch =
+    Math.abs(plannedSum(input) - input.target_batch_grams) > BATCH_SUM_TOLERANCE_G;
   if (
     input.category === 'sorbet' &&
     hasActiveExactDirectionObjective(input) &&
     !input.items.some((item) => item.actual_grams !== null) &&
-    Math.abs(plannedSum(input) - input.target_batch_grams) <= BATCH_SUM_TOLERANCE_G
+    !(sorbetDraftOffBatch && sorbetMainLineCount !== 1)
   ) {
     const preConstrained = applyConstraintsToRecipe(input, set);
     if (preConstrained.ok) {
+      const sorbetSolverSet = solverHolds(input, set);
+      // An off-batch draft is restored onto its target FIRST, exactly as the
+      // optimizer's own `restoreBatch` does further down, and for the same
+      // reason: `rescalePreservingMainGroup` lets the Main group scale while
+      // keeping its ratio, so a draft that is short because its Main is short
+      // still grows the Main. Projecting the raw off-batch vector instead would
+      // freeze an under-supplied Main and reconcile the batch out of water and
+      // sugar — which is precisely what the served two-Crown 150/150 Sorbet
+      // regression forbids.
+      const sorbetOffBatch =
+        Math.abs(plannedSum(preConstrained.input) - input.target_batch_grams) >
+        BATCH_SUM_TOLERANCE_G;
+      const restoredForSorbet = sorbetOffBatch
+        ? rescalePreservingMainGroup(
+            input,
+            preConstrained.input,
+            sorbetSolverSet,
+            input.target_batch_grams,
+            false,
+            false,
+          )
+        : null;
+      const sorbetWorking =
+        restoredForSorbet !== null && restoredForSorbet.ok
+          ? restoredForSorbet.input
+          : preConstrained.input;
       const sorbetDirectionPreview = buildSorbetDirectionCandidatePreview({
         input,
-        working: preConstrained.input,
+        working: sorbetWorking,
         set,
-        solverSet: solverHolds(input, set),
+        solverSet: sorbetSolverSet,
         createdAt,
         options,
-        violationsBefore: violationCount(calculateRecipe(preConstrained.input)),
-        batchRescaled: false,
+        violationsBefore: violationCount(calculateRecipe(sorbetWorking)),
+        // Provenance, not a gate: reconciling an off-batch draft onto its
+        // target IS a batch rescale, and the record should say so.
+        batchRescaled: sorbetOffBatch,
       });
       if (sorbetDirectionPreview !== null) return sorbetDirectionPreview;
     }
