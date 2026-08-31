@@ -14,14 +14,36 @@ import { DEFAULT_MAX_ATTEMPTS, LEGAL_EMAIL_TRANSITIONS } from './emailJob';
 import { OPERATIONAL_SUBJECTS } from './emailSubject';
 
 /**
- * `EmailArea` is a TYPE, so it cannot be enumerated at runtime. The canonical
- * runtime source is OPERATIONAL_SUBJECTS — the same table `buildEmailMetadata()`
- * reads to stamp `metadata.area` — so the vocabulary is derived from it rather
- * than by declaring a second list that could drift from the first.
+ * THREE-WAY PARITY (owner ruling §2, 2026-08-31): when a new email domain is
+ * introduced, the canonical TS vocabulary, the SQL accepted vocabulary and the
+ * subject taxonomy must all change together. So all three are read
+ * independently and compared — a two-way check would let the third drift.
+ *
+ *  1. `EmailArea`          — the DECLARED vocabulary. A type, so it cannot be
+ *                            enumerated at runtime; parsed from source, the
+ *                            same way the SQL CHECK is.
+ *  2. OPERATIONAL_SUBJECTS — the SUBJECT TAXONOMY actually in use, and the
+ *                            table `buildEmailMetadata()` reads to stamp
+ *                            `metadata.area`.
+ *  3. the SQL CHECK        — what the database will ACCEPT.
  */
-const EMAIL_AREAS = [
+const EMAIL_SUBJECT_SOURCE = readFileSync(
+  join(resolve(__dirname), 'emailSubject.ts'),
+  'utf8',
+);
+
+/** 1. the declared union, parsed from the type itself. */
+const DECLARED_AREAS = (() => {
+  const union = /export type EmailArea\s*=\s*([^;]+);/.exec(EMAIL_SUBJECT_SOURCE)?.[1] ?? '';
+  return [...union.matchAll(/'([A-Z_]+)'/g)].map((m) => m[1]).sort();
+})();
+
+/** 2. the areas the subject taxonomy actually uses. */
+const TAXONOMY_AREAS = [
   ...new Set(Object.values(OPERATIONAL_SUBJECTS).map((spec) => spec.area as string)),
-];
+].sort();
+
+const EMAIL_AREAS = TAXONOMY_AREAS;
 
 const REPO = resolve(import.meta.dirname, '..', '..', '..');
 const MIGRATION = readFileSync(
@@ -270,14 +292,28 @@ describe('security posture', () => {
 describe('EJ9 — the business-domain discriminator (owner §1–§3, 2026-08-31)', () => {
   const CODE = SQL.replace(/--.*$/gm, '');
 
-  it('constrains the domain to the CANONICAL EmailArea vocabulary, in lockstep', () => {
-    // Parsed out of the CHECK rather than retyped, so the two cannot drift
-    // silently. EmailArea is the authority; SQL follows it.
+  /** 3. what the database will accept, parsed out of the CHECK. */
+  const SQL_AREAS = (() => {
     const check = /email_jobs_metadata_has_domain check \(([\s\S]*?)\n  \)/.exec(CODE)?.[1] ?? '';
-    expect(check, 'domain CHECK not found').not.toBe('');
-    const sqlAreas = [...check.matchAll(/'([A-Z]+)'/g)].map((m) => m[1]).sort();
-    const tsAreas = [...EMAIL_AREAS].sort();
-    expect(sqlAreas).toEqual(tsAreas);
+    return [...check.matchAll(/'([A-Z_]+)'/g)].map((m) => m[1]).sort();
+  })();
+
+  it('finds all three vocabularies, so the comparison is not vacuous', () => {
+    expect(DECLARED_AREAS.length, 'EmailArea union not parsed').toBeGreaterThan(0);
+    expect(TAXONOMY_AREAS.length, 'OPERATIONAL_SUBJECTS empty').toBeGreaterThan(0);
+    expect(SQL_AREAS.length, 'SQL CHECK vocabulary not parsed').toBeGreaterThan(0);
+  });
+
+  it('DECLARED type vocabulary equals what the database accepts', () => {
+    expect(SQL_AREAS).toEqual(DECLARED_AREAS);
+  });
+
+  it('SUBJECT TAXONOMY uses no area outside the declared vocabulary', () => {
+    for (const area of TAXONOMY_AREAS) expect(DECLARED_AREAS).toContain(area);
+  });
+
+  it('SUBJECT TAXONOMY uses no area the database would reject', () => {
+    for (const area of TAXONOMY_AREAS) expect(SQL_AREAS).toContain(area);
   });
 
   it('requires area AND event to be present on every row', () => {
