@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { buttonClasses } from '@/components/ui/buttonStyles';
+import { applicationPrimaryClasses } from '@/components/ui/applicationControlStyles';
 import { cn } from '@/lib/cn';
 import { getShopCatalog } from '@/services/shop';
 import { shopAvailabilityLabelPl, shopCopy as c } from '@/copy/shop';
@@ -42,7 +42,7 @@ export function ShopHeroActions() {
         onClick={() => cart.add(bundle.sku)}
         disabled={soldOut}
         className={cn(
-          buttonClasses('primary', 'md'),
+          applicationPrimaryClasses(),
           'disabled:cursor-not-allowed disabled:border-[var(--g-line-strong)] disabled:bg-[var(--g-line-quiet)] disabled:text-[var(--g-lock)] disabled:opacity-100',
         )}
         data-testid={`shop-add-${bundle.sku}`}

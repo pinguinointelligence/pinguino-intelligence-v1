@@ -1,5 +1,5 @@
 import { cn } from '@/lib/cn';
-import { buttonClasses } from '@/components/ui/buttonStyles';
+import { applicationPrimaryClasses } from '@/components/ui/applicationControlStyles';
 import { shopAvailabilityLabelPl, shopCopy as c, shopGrams, shopMoney } from '@/copy/shop';
 import type { ShopAllergen, ShopProduct } from '@/services/shop';
 import { shopContentTitle } from './shopContentTitle';
@@ -124,7 +124,7 @@ export function ShopProductCard({
           onClick={onAdd}
           disabled={soldOut}
           className={cn(
-            buttonClasses('primary', 'sm'),
+            applicationPrimaryClasses(),
             'shrink-0',
             // Readable disabled: --g-lock on --g-line-quiet is 5.03:1, where the
             // shared `disabled:opacity-45` drops the label to 2.88:1.

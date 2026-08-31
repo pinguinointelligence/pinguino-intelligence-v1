@@ -1,5 +1,8 @@
 import { cn } from '@/lib/cn';
-import { buttonClasses } from '@/components/ui/buttonStyles';
+import {
+  applicationPrimaryClasses,
+  applicationSecondaryClasses,
+} from '@/components/ui/applicationControlStyles';
 import { shopCopy as c, shopGrams, shopMoney } from '@/copy/shop';
 import type { ShopProduct } from '@/services/shop';
 import { shopContentTitle } from './shopContentTitle';
@@ -101,14 +104,14 @@ export function ShopStarterPack({
             onClick={onAdd}
             disabled={soldOut}
             className={cn(
-              buttonClasses('primary', 'md'),
+              applicationPrimaryClasses(),
               'disabled:cursor-not-allowed disabled:border-[var(--g-line-strong)] disabled:bg-[var(--g-line-quiet)] disabled:text-[var(--g-lock)] disabled:opacity-100',
             )}
             data-testid={`shop-detail-add-${product.sku}`}
           >
             {inCart ? c.product.added : c.product.add}
           </button>
-          <a href="#shop-contents" className={buttonClasses('ghost', 'md')}>
+          <a href="#shop-contents" className={applicationSecondaryClasses()}>
             {c.starterPack.contentsCta}
           </a>
         </div>

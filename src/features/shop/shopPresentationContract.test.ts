@@ -104,9 +104,18 @@ describe('shop presentation', () => {
     }
   });
 
-  it('uses the shared button family rather than a second one', () => {
-    for (const file of ['ShopProductCard.tsx', 'ShopStarterPack.tsx', 'ShopHeroActions.tsx'] as const) {
-      expect(read('features', 'shop', file)).toContain('buttonClasses(');
+  it('uses ONE button family at the approved 12 px radius', () => {
+    // The approved `.btn` is `border-radius: var(--radius)` = 12 px. The bare
+    // `buttonClasses` recipe renders 10 px, so mixing the two put two button
+    // radii on one page. `applicationPrimaryClasses` forces
+    // `--radius-pro-studio` (0.75rem = 12 px), which is the approved value.
+    for (const file of [
+      'ShopProductCard.tsx', 'ShopStarterPack.tsx', 'ShopHeroActions.tsx',
+      'ShopCart.tsx', 'ShopConfirmation.tsx',
+    ] as const) {
+      const source = read('features', 'shop', file);
+      expect(source).toMatch(/application(Primary|Secondary)Classes\(/);
+      expect(source).not.toMatch(/\bbuttonClasses\(/);
     }
   });
 
