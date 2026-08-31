@@ -67,7 +67,19 @@ export interface DerivationTarget {
  * never delete a saved recipe to tidy up bookkeeping, and never report a
  * success that did not happen.
  */
-export function useRecipeDerivation(target: DerivationTarget) {
+export interface DerivationOptions {
+  /**
+   * Where the finished recipe is opened.
+   *
+   * Default: navigate to the PRO editor, which is right for the Community pages.
+   * A HOME subscriber never lands there — §13 correctly bounces them — so HOME
+   * passes its own opener and the hook does NOT navigate. This is a seam, not a
+   * second derivation: steps 1–3 above are identical for every caller.
+   */
+  readonly openDerived?: (recipeId: string) => void | Promise<void>;
+}
+
+export function useRecipeDerivation(target: DerivationTarget, options: DerivationOptions = {}) {
   const navigate = useNavigate();
   const persona = useProCorePersona();
   const ownerId = useAuthStore((state) => state.user?.id ?? null);
@@ -75,18 +87,25 @@ export function useRecipeDerivation(target: DerivationTarget) {
   const [state, setState] = useState<DerivationState>({ status: 'idle' });
   const inFlight = useRef(false);
 
+  const openDerived = options.openDerived;
   const derive = useCallback(
-    async (relation: LineageRelation): Promise<void> => {
+    // Returns the TERMINAL state it reached. Callers must branch on this value,
+    // never on `state` after awaiting: `state` is React state, so a handler that
+    // read it back would still see the value from its own render and mistake a
+    // success for a no-op.
+    async (relation: LineageRelation): Promise<DerivationState> => {
       const gate = canDerive({
         isEntitled: true, // the server decides; this only blocks obvious no-ops
         inFlight: inFlight.current,
         sourceAvailable: Boolean(repoState.repository) && Boolean(ownerId),
       });
       if (!gate.ok) {
-        if (gate.reason !== 'already_in_flight') {
-          setState({ status: 'failed', reason: gate.reason });
-        }
-        return;
+        const refused: DerivationState =
+          gate.reason === 'already_in_flight'
+            ? { status: 'working' }
+            : { status: 'failed', reason: gate.reason };
+        if (gate.reason !== 'already_in_flight') setState(refused);
+        return refused;
       }
 
       inFlight.current = true;
@@ -95,8 +114,9 @@ export function useRecipeDerivation(target: DerivationTarget) {
         // 1. Read the source formulation through the entitlement-gated RPC.
         const full = await readSource(target);
         if (!full.ok) {
-          setState({ status: 'failed', reason: full.reason });
-          return;
+          const refused: DerivationState = { status: 'failed', reason: full.reason };
+          setState(refused);
+          return refused;
         }
 
         const payload = buildDerivedRecipe({
@@ -138,30 +158,36 @@ export function useRecipeDerivation(target: DerivationTarget) {
         try {
           await recordDerivation(derivationRpcArgs(target.source, relation, recipe.recipeId));
         } catch {
-          setState({
+          const refused: DerivationState = {
             status: 'failed',
             reason: 'save_failed',
             message:
               'Receptura została zapisana, ale nie udało się zachować informacji o źródle. ' +
               'Sama receptura jest bezpieczna — spróbuj ponownie później.',
-          });
-          return;
+          };
+          setState(refused);
+          return refused;
         }
 
-        setState({ status: 'done', recipeId: recipe.recipeId });
-        // 4. Open it.
-        navigate('/pro/recipe');
+        const done: DerivationState = { status: 'done', recipeId: recipe.recipeId };
+        setState(done);
+        // 4. Open it — in the caller's surface when it has one, otherwise the editor.
+        if (openDerived) await openDerived(recipe.recipeId);
+        else navigate('/pro/recipe');
+        return done;
       } catch (cause) {
-        setState({
+        const refused: DerivationState = {
           status: 'failed',
           reason: 'save_failed',
           message: customerErrorMessage(cause, 'community'),
-        });
+        };
+        setState(refused);
+        return refused;
       } finally {
         inFlight.current = false;
       }
     },
-    [navigate, ownerId, persona, repoState.repository, target],
+    [navigate, openDerived, ownerId, persona, repoState.repository, target],
   );
 
   return {
