@@ -53,7 +53,12 @@ async function openDerivedRecipe(recipeId: string): Promise<void> {
   const recipe = await repository.getRecipe(recipeId);
   if (!recipe) return;
   const versions = await repository.getVersions(recipeId);
-  const latest = versions.at(-1);
+  // Pick by version NUMBER, not array position: ordering is a property of the backend
+  // query, not of the port contract, and opening the wrong version would be silent.
+  const latest = versions.reduce<(typeof versions)[number] | null>(
+    (best, v) => (best === null || v.versionNumber > best.versionNumber ? v : best),
+    null,
+  );
   if (!latest) return;
   useRecipeStore.getState().loadRecipeInput(latest.recipeInput, {
     savedId: recipeId,
