@@ -78,10 +78,17 @@ function RegulatorRow({
               disabled={disabled}
               onClick={() => onSet(detent)}
               className={cn(
-                'pro-focus-ring relative z-10 grid size-7 place-items-center rounded-full border text-[9px] font-bold tabular-nums transition-colors disabled:opacity-35',
+                'pro-focus-ring relative z-10 grid size-7 place-items-center rounded-full border text-[9px] font-bold tabular-nums transition-colors',
                 position === detent
                   ? 'border-[#f58a07] bg-[#f58a07] text-white'
-                  : 'border-[var(--g-line)] bg-white text-[var(--g-ink)] hover:border-[#f58a07]/60',
+                  : 'border-[var(--g-line)] bg-white text-[var(--g-ink)] enabled:hover:border-[#f58a07]/60',
+                /* An unavailable axis still reports the chosen detent, so the row
+                   carries explicit muted colours instead of a group opacity.
+                   Dimming the group flattened the selected point to white on
+                   #fcd6a8 (1.37:1) and hid the very value it reports. */
+                position === detent
+                  ? 'disabled:border-[#fcd6a8] disabled:bg-[#fcd6a8] disabled:text-[var(--g-attention-ink)]'
+                  : 'disabled:border-[var(--g-line-quiet)] disabled:bg-white disabled:text-[var(--g-text-muted)]',
               )}
             >
               {detent > 0 ? `+${detent}` : detent}
