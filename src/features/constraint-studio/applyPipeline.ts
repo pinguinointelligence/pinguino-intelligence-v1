@@ -846,6 +846,16 @@ export interface MainFlavourObjectiveProof {
    * Main total can satisfy the relaxation's necessary technical conditions. */
   certifiedUpperBoundGrams?: number;
   proofKind?: 'linear_relaxation' | 'exact_contract' | 'heuristic_search';
+  /** Set when the certified descending Crown sweep found no admissible
+   * candidate anywhere in `[floorGrams, frontierGrams]`. The objective then
+   * refuses: it never echoes the incoming grams as an accepted maximum, and it
+   * never inflates `searchUpperBoundGrams` past the derived safety frontier. */
+  crownRefusal?: {
+    blockingRule: string;
+    frontierGrams: number;
+    floorGrams: number;
+    lineIds: string[];
+  };
 }
 
 const mainObjectiveCache = new WeakMap<
@@ -3664,12 +3674,6 @@ function maximizeMainFromStart(
     recipe: identityInput,
     snapshots: options.productBehaviorSnapshots ?? {},
     technicalOnlyMainLineIds: options.technicalOnlyMainLineIds,
-    mode:
-      normalizeFormulationStrategy(
-        identityInput.goals?.formulation_strategy ?? identityInput.mode,
-      ) === 'eco'
-        ? 'eco'
-        : 'optimal',
   });
   const behaviorFloor = mainEnvelopeSearchFloorGrams({
     recipe: identityInput,
@@ -3940,7 +3944,6 @@ function maximizeMainTechnicalObjective(
     recipe: identityInput,
     snapshots: options.productBehaviorSnapshots ?? {},
     technicalOnlyMainLineIds: options.technicalOnlyMainLineIds,
-    mode: behaviorMode,
   });
   const behaviorFloor = mainEnvelopeSearchFloorGrams({
     recipe: identityInput,
@@ -4539,13 +4542,19 @@ function maximizeMainTechnicalObjective(
         firstHigherRejectedReason: firstHigherFailure?.reason ?? null,
         technicalScore: recipeFitForInput(identityInput, calculateRecipe(identityInput)).score,
         attempts,
-        searchUpperBoundGrams: Math.max(
-          searchStart,
-          Math.ceil(startingMainGrams - MAIN_OBJECTIVE_EPSILON_G),
-        ),
+        // OWNER CROWN AUTHORITY: the reported frontier is the derived safety
+        // frontier itself. Widening it to the incoming grams is what let a
+        // failed sweep present its own input as a certified maximum.
+        searchUpperBoundGrams: searchStart,
         provenMaximum: false,
         testedHigherCandidateCount,
         limitingTechnicalRules: failure?.rules ?? ['no_technically_valid_main_candidate'],
+        crownRefusal: {
+          blockingRule: failure?.rules?.[0] ?? 'no_technically_valid_main_candidate',
+          frontierGrams: searchStart,
+          floorGrams: searchFloor,
+          lineIds: mains.map((main) => main.lineId),
+        },
         ...(linearBound.status === 'certified' && linearBound.wholeGramUpperBound !== null
           ? {
               certifiedUpperBoundGrams: linearBound.wholeGramUpperBound,
@@ -4611,7 +4620,9 @@ function maximizeMainTechnicalObjective(
   };
 }
 
-function maximizeMainFlavourObjective(
+/** Exported for the GEL-P0-027 Crown path-independence contract: the Crown
+ * objective must be provable directly, not only through a full preview. */
+export function maximizeMainFlavourObjective(
   identityInput: RecipeInput,
   start: RecipeInput,
   set: ConstraintSet,

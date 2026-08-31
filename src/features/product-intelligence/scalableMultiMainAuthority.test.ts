@@ -182,8 +182,8 @@ describe('scalable Multi-Main authority derived from individual envelopes', () =
       targetPercent: 30,
       hardLimitPercent: 30,
     });
-    expect(mainEnvelopeSearchCeilingGrams({ recipe, snapshots, mode: 'optimal' })).toBe(300);
-    expect(mainEnvelopeSearchCeilingGrams({ recipe, snapshots, mode: 'eco' })).toBe(300);
+    expect(mainEnvelopeSearchCeilingGrams({ recipe, snapshots})).toBe(300);
+    expect(mainEnvelopeSearchCeilingGrams({ recipe, snapshots})).toBe(300);
   });
 
   it('derives a three-Main envelope in O(N) from three individual policies', () => {
@@ -260,13 +260,16 @@ describe('scalable Multi-Main authority derived from individual envelopes', () =
       banana: group('banana', 17.1),
     };
 
+    // The derived multi-Main envelope collapses ceiling and hard limit onto the
+    // same combined percentage, so an over-limit group now fails closed on the
+    // hard limit itself rather than on the OPTIMAL preference target.
     expect(verifyMainEnvelope({ recipe, snapshots, mode: 'optimal' })).toMatchObject({
       ok: false,
       violations: expect.arrayContaining([
-        expect.objectContaining({ code: 'main_above_optimal_ceiling' }),
+        expect.objectContaining({ code: 'main_above_hard_limit' }),
       ]),
     });
-    expect(mainEnvelopeSearchCeilingGrams({ recipe, snapshots, mode: 'optimal' })).toBe(207);
+    expect(mainEnvelopeSearchCeilingGrams({ recipe, snapshots })).toBe(207);
   });
 
   it('fails closed when Main bases/families are genuinely incompatible', () => {
@@ -331,8 +334,8 @@ describe('scalable Multi-Main authority derived from individual envelopes', () =
       cranberry: BERRY('cranberry', 'PI-ING-001556'),
     };
 
-    expect(mainEnvelopeSearchCeilingGrams({ recipe, snapshots, mode: 'optimal' })).toBe(300);
-    expect(mainEnvelopeSearchCeilingGrams({ recipe, snapshots, mode: 'eco' })).toBe(300);
+    expect(mainEnvelopeSearchCeilingGrams({ recipe, snapshots})).toBe(300);
+    expect(mainEnvelopeSearchCeilingGrams({ recipe, snapshots})).toBe(300);
   });
 
   it('uses the stored ratio and equivalence factors to convert the group cap to raw grams', () => {
@@ -349,7 +352,7 @@ describe('scalable Multi-Main authority derived from individual envelopes', () =
       mainEquivalentFactor: 0.5,
     };
 
-    expect(mainEnvelopeSearchCeilingGrams({ recipe, snapshots, mode: 'optimal' })).toBe(360);
+    expect(mainEnvelopeSearchCeilingGrams({ recipe, snapshots})).toBe(360);
     expect(verifyMainEnvelope({ recipe, snapshots, mode: 'optimal' })).toMatchObject({
       ok: true,
       equivalentPercent: 30,

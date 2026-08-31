@@ -566,7 +566,7 @@ describe('Protein Crown group authority regressions', () => {
       ),
     };
     const snapshots = calibratedProteinFruitSnapshots(input);
-    expect(mainEnvelopeSearchCeilingGrams({ recipe: input, snapshots, mode: 'optimal' })).toBe(207);
+    expect(mainEnvelopeSearchCeilingGrams({ recipe: input, snapshots})).toBe(207);
     const raw = buildOptimizePreview(input, NONE, AT, {
       productBehaviorSnapshots: snapshots,
       technicalOnlyMainLineIds: [],
