@@ -1183,6 +1183,14 @@ export function recipePersistPartialize(state: RecipeState) {
     newRecipeStarterTemplateId: state.newRecipeStarterTemplateId,
     newRecipeStarterKey: state.newRecipeStarterKey,
     newRecipeStarterMaterialFingerprint: state.newRecipeStarterMaterialFingerprint,
+    // Draft material, not provenance: it is the part of the batch the unchosen
+    // Main already owns. Dropping it on reload leaves an incomplete starter
+    // looking merely off-batch, and the next batch change spends the
+    // reservation on the support vector again — INULIN 4.9 % -> 12.4 % at the
+    // first amount edit after a refresh. Persisted for the same reason as the
+    // rest of this slice: the live payload and the post-refresh payload have to
+    // describe the same draft.
+    starterReservedMainGrams: state.starterReservedMainGrams,
     savedRecipeId: state.savedRecipeId,
     savedRecipeName: state.savedRecipeName,
     currentVersionNumber: state.currentVersionNumber,

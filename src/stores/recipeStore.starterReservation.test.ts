@@ -32,7 +32,7 @@ import {
   ownerInulinPolicyIssues,
 } from '@/features/product-intelligence/ownerInulinPolicy';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
-import { useRecipeStore } from './recipeStore';
+import { recipePersistPartialize, useRecipeStore } from './recipeStore';
 
 const INULIN = OWNER_INULIN_POLICY.mapperIngredientId;
 const st = () => useRecipeStore.getState();
@@ -163,6 +163,33 @@ describe('an incomplete starter keeps its Main reservation across a batch resize
       });
       expect(ownerInulinPolicyIssues(buildRecipeInput(st()))).toEqual([]);
     }
+  });
+
+  it('4b. the reservation survives a reload, so a later resize cannot re-inflate', () => {
+    /* The reservation is draft MATERIAL, not provenance. When it was left out of
+       the persisted slice the fix silently lapsed on refresh: the draft came
+       back looking merely off-batch, and the very next amount edit spent the
+       reservation on the support vector again — measured on staging as INULIN
+       4.93 % → 12.4 % at 500 g. */
+    newSorbetThenMachine(NINJA_CREAMI_DELUXE_NC502EU);
+    const live = st();
+    const persisted = recipePersistPartialize(live) as unknown as Record<string, unknown>;
+    expect(persisted.starterReservedMainGrams).toBe(live.starterReservedMainGrams);
+    expect(live.starterReservedMainGrams).toBeGreaterThan(0);
+
+    // Rehydrate exactly what a reload would restore, then change the batch.
+    useRecipeStore.setState({
+      items: persisted.items as never,
+      target_batch_grams: persisted.target_batch_grams as number,
+      starterReservedMainGrams: persisted.starterReservedMainGrams as number,
+    });
+    useRecipeStore.getState().setBatchGrams(500);
+
+    const band = ownerInulinGramBand(500);
+    expect(inulin()).toBeGreaterThanOrEqual(band.minGrams);
+    expect(inulin()).toBeLessThanOrEqual(band.maxGrams);
+    expect(ownerInulinPolicyIssues(buildRecipeInput(st()))).toEqual([]);
+    expect(sum() + st().starterReservedMainGrams).toBeCloseTo(500, 6);
   });
 
   it('5. once the Main arrives the reservation is spent, not re-applied', () => {
