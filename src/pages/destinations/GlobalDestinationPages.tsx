@@ -28,10 +28,11 @@ import {
   DestinationSectionHead,
 } from '@/components/shared/destinationEditorial';
 import { ShopCatalog } from '@/features/shop/ShopCatalog';
-import { ShopStarterSpecimen } from '@/features/shop/ShopStarterSpecimen';
-import { ShopHeroFacts } from '@/features/shop/ShopHeroFacts';
+import { ShopHeroPack } from '@/features/shop/ShopHeroPack';
+import { ShopHeroActions } from '@/features/shop/ShopHeroActions';
+import { SHOP_SHIPPING_FLAT_CENTS } from '@/features/shop/shopShipping';
 import { ShopOrdersPanel } from '@/features/shop/ShopOrdersPanel';
-import { shopCopy } from '@/copy/shop';
+import { shopCopy, shopMoney } from '@/copy/shop';
 import { FranchiseInquiryForm } from '@/features/franchise/FranchiseInquiryForm';
 import {
   FRANCHISE_CONCEPT_INITIAL,
@@ -96,30 +97,20 @@ export function ShopPage() {
       contextLabel={shopCopy.page.contextLabel}
       bare
     >
-      {/* GELLATTI V2.1 §5 — the approved Sklep hero: 470 px band, 1.05 / 0.95
-          split, graphite right half. The geometry is unchanged; what fills it
-          is not.
-          The graphite half used to hold a dashed panel announcing that no
-          packaging photograph existed — a placeholder where a product should
-          be. Gellatti still has no product photography, so the panel now
-          PRESENTS the Starter Pack with the one thing the shop genuinely owns:
-          exactly what is in the box, drawn to scale, totalling 1 125 g.
-          The left half carries the three commerce facts a buyer needs before
-          scrolling — shipping, lead time, and that the amount shown is the
-          amount charged — instead of empty band. */}
+      {/* MASTER DESIGNBOOK §7 · approved Shop screen (`?preview=shop`).
+          The hero leads with the PRODUCT, not the page: greige copy on the
+          left, a controlled graphite half on the right holding a real
+          packaging card. Composition, band height and column split are the
+          approved ones; only the content inside is the live product.
+          Owner correction B (hamburger LEFT) is already carried by AppShell. */}
       <DestinationHero
         variant="shop"
-        eyebrow={shopCopy.page.eyebrow}
-        title={shopCopy.page.title}
-        blurb={shopCopy.page.blurb}
-        note={undefined}
-        actions={<ShopHeroFacts />}
-        visual={
-          /* The graphite half stays on a phone — the approved mobile hero runs
-             the full band with its visual, so hiding it below `lg` shortens the
-             band and knocks everything under it out of register. */
-          <ShopStarterSpecimen />
-        }
+        eyebrow={shopCopy.hero.eyebrow}
+        title={shopCopy.hero.title}
+        blurb={shopCopy.hero.lede}
+        actions={<ShopHeroActions />}
+        note={shopCopy.hero.note.replace('{shipping}', shopMoney(SHOP_SHIPPING_FLAT_CENTS))}
+        visual={<ShopHeroPack />}
       />
       <DestinationSection id="sklep-katalog">
         <ShopCatalog />

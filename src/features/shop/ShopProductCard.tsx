@@ -1,20 +1,18 @@
 import { cn } from '@/lib/cn';
-import { applicationSecondaryClasses } from '@/components/ui/applicationControlStyles';
+import { buttonClasses } from '@/components/ui/buttonStyles';
 import { shopAvailabilityLabelPl, shopCopy as c, shopGrams, shopMoney } from '@/copy/shop';
 import type { ShopAllergen, ShopProduct } from '@/services/shop';
 import { shopContentTitle } from './shopContentTitle';
+import { ShopPackFrame } from './ShopPackaging';
 
 /**
- * One article, one card.
+ * One article, in the approved Shop card language.
  *
- * The cards used to disagree with each other: the availability chip sat beside
- * the title, so a long title pushed it onto a second line and that card stood
- * taller than its neighbours. Availability is a fact about BUYING, so it now
- * lives once, in the footer beside the price and the button — where the
- * decision is made — and the header only ever holds the name.
- *
- * The description flexes, which is what keeps every card in a row the same
- * height without truncating anything.
+ * MASTER DESIGNBOOK §7 "Shop" and the approved screen (`?preview=shop`): a
+ * white 12 px card with an 18 px inset, opening on a dashed neutral packaging
+ * frame; then the product title with its pack size in mono, an availability
+ * chip aligned to the title, one short line of copy, and a single graphite
+ * action. No second CTA, no orange, no shadow on the card itself.
  */
 
 const ALLERGEN_LABEL: Readonly<Record<ShopAllergen, string>> = {
@@ -41,6 +39,27 @@ export function ShopAllergenTags({ allergens }: { allergens: readonly ShopAllerg
   );
 }
 
+/** The availability chip. State is named in words; colour only supports it. */
+export function ShopAvailabilityChip({ product }: { product: ShopProduct }) {
+  const preorder = product.availability === 'preorder';
+  const soldOut = product.availability === 'out_of_stock';
+  return (
+    <span
+      className={cn(
+        'inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-[11px]',
+        preorder
+          ? 'border-[var(--g-orange)]/45 bg-[var(--g-attention-surface)] text-[var(--g-attention-ink)]'
+          : soldOut
+            ? 'border-[var(--g-line-strong)] bg-[var(--g-line-quiet)] text-[var(--g-lock)]'
+            : 'border-status-ideal/35 bg-status-ideal/10 text-[#46513f]',
+      )}
+      data-availability={product.availability}
+    >
+      {shopAvailabilityLabelPl(product.availability, product.leadTimeWeeks)}
+    </span>
+  );
+}
+
 export function ShopProductCard({
   product,
   inCart,
@@ -51,7 +70,7 @@ export function ShopProductCard({
   onAdd: () => void;
 }) {
   const soldOut = product.availability === 'out_of_stock';
-  const preorder = product.availability === 'preorder';
+  const name = shopContentTitle(product.title);
   const perKg =
     product.packSizeG && product.packSizeG > 0
       ? shopMoney(Math.round((product.priceCents / product.packSizeG) * 1000), product.currency)
@@ -59,20 +78,29 @@ export function ShopProductCard({
 
   return (
     <article
-      className="flex flex-col rounded-[var(--g-card-radius)] border border-[var(--g-line)] bg-white p-[18px] transition-colors hover:border-[var(--g-line-strong)]"
+      className="flex flex-col rounded-[12px] border border-[var(--g-line)] bg-white p-[18px]"
       data-testid={`shop-card-${product.sku}`}
       data-availability={product.availability}
     >
-      <h3 className="text-[17px] leading-[1.25] font-semibold tracking-[-0.02em]">
-        {shopContentTitle(product.title)}
-      </h3>
-      {product.packSizeG ? (
-        <p className="mt-1 font-mono text-[11.5px] text-[var(--g-text-secondary)]">
-          {shopGrams(product.packSizeG)}
-        </p>
-      ) : null}
+      <ShopPackFrame
+        title={name}
+        meta={product.packSizeG ? shopGrams(product.packSizeG) : null}
+      />
+
+      <div className="mt-[18px] flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="text-[19px] leading-[1.2] font-bold tracking-[-0.02em]">{name}</h3>
+          {product.packSizeG ? (
+            <p className="mt-1 font-mono text-[12px] text-[var(--g-text-secondary)]">
+              {shopGrams(product.packSizeG)}
+            </p>
+          ) : null}
+        </div>
+        <ShopAvailabilityChip product={product} />
+      </div>
+
       {product.description ? (
-        <p className="mt-3 flex-1 text-[12.5px] leading-relaxed text-[var(--g-text-secondary)]">
+        <p className="mt-3 flex-1 text-[13px] leading-relaxed text-[var(--g-text-secondary)]">
           {product.description}
         </p>
       ) : (
@@ -80,7 +108,7 @@ export function ShopProductCard({
       )}
       <ShopAllergenTags allergens={product.allergens} />
 
-      <footer className="mt-4 flex items-end justify-between gap-3 border-t border-[var(--g-line)] pt-3.5">
+      <div className="mt-[18px] flex items-end justify-between gap-3">
         <div className="min-w-0">
           <p className="font-mono text-[20px] text-ink tabular-nums">
             {shopMoney(product.priceCents, product.currency)}
@@ -90,35 +118,23 @@ export function ShopProductCard({
               {perKg} {c.product.perKg}
             </p>
           ) : null}
-          <p
-            className={cn(
-              'mt-1.5 text-[11px]',
-              preorder
-                ? 'text-[var(--g-attention-ink)]'
-                : soldOut
-                  ? 'text-[var(--g-lock)]'
-                  : 'text-[var(--g-text-secondary)]',
-            )}
-          >
-            {shopAvailabilityLabelPl(product.availability, product.leadTimeWeeks)}
-          </p>
         </div>
         <button
           type="button"
           onClick={onAdd}
           disabled={soldOut}
           className={cn(
-            applicationSecondaryClasses(),
+            buttonClasses('primary', 'sm'),
             'shrink-0',
-            // AA-safe disabled: --g-lock on --g-line-quiet measures 5.03:1,
-            // where the old `opacity-45` dropped the label to 2.88:1.
-            'disabled:cursor-not-allowed disabled:border-[var(--g-line-strong)] disabled:bg-[var(--g-line-quiet)] disabled:text-[var(--g-lock)]',
+            // Readable disabled: --g-lock on --g-line-quiet is 5.03:1, where the
+            // shared `disabled:opacity-45` drops the label to 2.88:1.
+            'disabled:cursor-not-allowed disabled:border-[var(--g-line-strong)] disabled:bg-[var(--g-line-quiet)] disabled:text-[var(--g-lock)] disabled:opacity-100',
           )}
           data-testid={`shop-add-${product.sku}`}
         >
           {inCart ? c.product.added : c.product.add}
         </button>
-      </footer>
+      </div>
     </article>
   );
 }

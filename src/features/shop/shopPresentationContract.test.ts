@@ -3,35 +3,65 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 /**
- * SHOP FINAL PASS (2026-08-31) — the presentation defects the owner named, and
- * the fixes that must not be undone by a later sweep.
+ * SHOP — reconciled to GELLATTI_MASTER_DESIGNBOOK_FINAL (v1.0, 2026-08-31).
  *
- * Each assertion below is a defect that was actually on served staging, not a
- * style preference.
+ * The composition target is the approved V2.1 Shop screen
+ * (`index.html?preview=shop`), PDF pages 8-9. Each assertion below pins a rule
+ * the Designbook states, or a defect that was actually on served staging —
+ * never a style preference.
  */
 const SRC = join(process.cwd(), 'src');
 const read = (...parts: string[]) => readFileSync(join(SRC, ...parts), 'utf8');
 
 describe('shop presentation', () => {
-  it('presents the Starter Pack where a placeholder used to announce itself', () => {
-    // The hero's graphite half held a dashed panel whose own copy said no
-    // photograph existed. A shop does not tell a customer what it is missing.
+  it('leads the hero with the product, as the approved screen does', () => {
+    // The approved Shop hero's h1 is the PRODUCT, not the page: greige copy
+    // left, graphite media right, one chip + one primary action.
     const page = read('pages', 'destinations', 'GlobalDestinationPages.tsx');
-    expect(page).toContain('<ShopStarterSpecimen />');
+    expect(page).toContain('<ShopHeroPack />');
+    expect(page).toContain('<ShopHeroActions />');
+    expect(page).toContain('shopCopy.hero.title');
     expect(page).not.toContain('Neutralny placeholder');
     expect(page).not.toContain('brak zatwierdzonego zdjęcia lub packaging assetu');
   });
 
-  it('draws the pack contents to scale from real packed grams', () => {
-    const specimen = read('features', 'shop', 'ShopStarterSpecimen.tsx');
-    expect(specimen).toContain('entry.packSizeG');
-    expect(specimen).toContain('contentsTotalG');
-    // The light PRO theme remaps `--color-ivory` to ink, so `text-ivory` here
-    // painted near-black on graphite and the panel rendered blank.
-    // Delimited so the class is matched, not the comment that explains it.
-    expect(specimen).not.toMatch(/["' ]text-ivory["' ]/);
-    expect(specimen).not.toMatch(/["' ]bg-ivory["' ]/);
-    expect(specimen).toContain('--color-education-ivory');
+  it('fills the hero media with a real packaging card, never an empty rectangle', () => {
+    const packaging = read('features', 'shop', 'ShopPackaging.tsx');
+    // Measured from the approved screen: 260 wide, radius 8, ivory, on graphite.
+    expect(packaging).toContain('w-[260px]');
+    expect(packaging).toContain('rounded-[8px]');
+    expect(packaging).toContain('bg-[var(--g-graphite)]');
+    // The wordmark is the official asset, never redrawn (Designbook §3).
+    expect(packaging).toContain("/brand/gellatti-wordmark-graphite.svg");
+    // The light PRO theme remaps `--color-ivory` to ink, so `bg-ivory` here
+    // would paint near-black on near-black graphite.
+    expect(packaging).not.toMatch(/["' ]text-ivory["' ]/);
+    expect(packaging).not.toMatch(/["' ]bg-ivory["' ]/);
+    expect(packaging).toContain('--color-education-ivory');
+  });
+
+  it('shows every product inside the approved dashed packaging frame', () => {
+    const packaging = read('features', 'shop', 'ShopPackaging.tsx');
+    expect(packaging).toContain('border-dashed');
+    expect(packaging).toContain('min-h-[230px]');
+    expect(packaging).toContain('w-[118px]');
+    for (const file of ['ShopProductCard.tsx', 'ShopStarterPack.tsx'] as const) {
+      expect(read('features', 'shop', file)).toContain('ShopPackFrame');
+    }
+  });
+
+  it('states the packed gramatures once, and the total with them', () => {
+    const contents = read('features', 'shop', 'ShopStarterPack.tsx');
+    expect(contents).toContain('entry.packSizeG');
+    expect(contents).toContain('contentsTotalG');
+    expect(contents).toContain('shop-contents-total');
+  });
+
+  it('closes the page on the approved orange-ruled note', () => {
+    const catalog = read('features', 'shop', 'ShopCatalog.tsx');
+    // 2 px rule, warm paper, meaning-bearing — not decoration.
+    expect(catalog).toContain('border-l-2 border-[var(--g-orange)]');
+    expect(catalog).toContain('shop-closing-note');
   });
 
   it('states one pack size per line', () => {
@@ -40,7 +70,7 @@ describe('shop presentation', () => {
     const helper = read('features', 'shop', 'shopContentTitle.ts');
     expect(helper).toContain('export const shopContentTitle');
     for (const file of [
-      ['features', 'shop', 'ShopStarterSpecimen.tsx'],
+      ['features', 'shop', 'ShopStarterPack.tsx'],
       ['features', 'shop', 'ShopProductCard.tsx'],
       ['features', 'shop', 'ShopCart.tsx'],
     ] as const) {
@@ -48,15 +78,47 @@ describe('shop presentation', () => {
     }
   });
 
-  it('carries availability once per card, below the title', () => {
-    // The chip used to sit beside the title, so a long name pushed it onto a
-    // second line and that card stood taller than the ones beside it.
+  it('carries availability once per card, in one shared chip', () => {
     const card = read('features', 'shop', 'ShopProductCard.tsx');
-    // Call sites only — the import line is not a second rendering.
+    // One chip component, used by the card, the detail block and the hero —
+    // never three near-identical availability treatments.
     const availability = card.match(/shopAvailabilityLabelPl\(/g) ?? [];
     expect(availability).toHaveLength(1);
+    expect(card).toContain('export function ShopAvailabilityChip');
     expect(card).toContain('flex flex-col');
     expect(card).toContain('flex-1');
+  });
+
+  it('keeps orange to its approved roles across the Shop', () => {
+    // Designbook §5: orange is focus, active tab, ONE key CTA, attention.
+    // It is never a page surface, body copy or an ordinary selected state.
+    for (const file of [
+      'ShopCatalog.tsx', 'ShopProductCard.tsx', 'ShopStarterPack.tsx',
+      'ShopCart.tsx', 'ShopHeroActions.tsx', 'ShopPackaging.tsx',
+    ] as const) {
+      const source = read('features', 'shop', file);
+      // No orange page/section fill.
+      expect(source).not.toMatch(/bg-\[var\(--g-orange\)\](?!\/)/);
+      // No orange body text.
+      expect(source).not.toMatch(/text-\[var\(--g-orange\)\]/);
+    }
+  });
+
+  it('uses the shared button family rather than a second one', () => {
+    for (const file of ['ShopProductCard.tsx', 'ShopStarterPack.tsx', 'ShopHeroActions.tsx'] as const) {
+      expect(read('features', 'shop', file)).toContain('buttonClasses(');
+    }
+  });
+
+  it('keeps disabled controls readable', () => {
+    // `opacity-45` measures 2.88:1 on a graphite primary; --g-lock on
+    // --g-line-quiet measures 5.03:1.
+    for (const file of ['ShopProductCard.tsx', 'ShopStarterPack.tsx', 'ShopHeroActions.tsx'] as const) {
+      const source = read('features', 'shop', file);
+      expect(source).toContain('disabled:bg-[var(--g-line-quiet)]');
+      expect(source).toContain('disabled:text-[var(--g-lock)]');
+      expect(source).toContain('disabled:opacity-100');
+    }
   });
 
   it('states the shipping cost before the payment page, from one authority', () => {

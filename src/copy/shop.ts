@@ -19,21 +19,30 @@ export interface ShopCopy {
     readonly blurb: string;
     readonly contextLabel: string;
   };
-  /** The three commerce facts the hero states before anyone scrolls. */
+  /** The approved Shop hero — Starter Pack first, one CTA, one honest note. */
   readonly hero: {
-    readonly shippingLabel: string;
-    readonly shippingValue: string;
-    readonly starterLabel: string;
-    readonly starterValue: string;
-    readonly paymentLabel: string;
-    readonly paymentValue: string;
+    readonly eyebrow: string;
+    readonly title: string;
+    readonly lede: string;
+    readonly note: string;
   };
   readonly starterPack: {
     readonly kicker: string;
     readonly body: string;
     readonly contents: string;
-    readonly specimenSub: string;
+    readonly packShotTitle: string;
+    readonly packCaption: string;
+    readonly contentsCta: string;
+    readonly contentsTitle: string;
+    readonly contentsHelper: string;
     readonly packTotal: string;
+    readonly detailKicker: string;
+    readonly detailBody: string;
+    readonly massRow: string;
+    readonly priceRow: string;
+    readonly availabilityRow: string;
+    readonly closingTitle: string;
+    readonly closingBody: string;
     readonly lede: string;
     readonly whyTitle: string;
     readonly whyBodyTitle: string;
@@ -65,6 +74,7 @@ export interface ShopCopy {
     readonly singlesHelper: string;
     readonly containsMilk: string;
     readonly containsEgg: string;
+    readonly detailKicker: string;
   };
   readonly cart: {
     readonly title: string;
@@ -166,12 +176,12 @@ export const shopCopyPl: ShopCopy = {
     contextLabel: 'Sklep',
   },
   hero: {
-    shippingLabel: 'Wysyłka',
-    shippingValue: 'Kurier · {shipping}\n2–5 dni roboczych',
-    starterLabel: 'Zestaw startowy',
-    starterValue: 'Na zamówienie\nokoło {weeks} tygodni',
-    paymentLabel: 'Płatność',
-    paymentValue: 'Karta\nkwota końcowa',
+    eyebrow: 'Sklep Gellatti',
+    title: 'Gellatti Starter Pack',
+    lede:
+      'Pierwszy zestaw składników Gellatti — siedem pozycji w proporcjach dobranych pod ' +
+      'pierwsze receptury.',
+    note: 'Wysyłka kurierem {shipping} · 2–5 dni roboczych. Kwota końcowa przy płatności.',
   },
   starterPack: {
     kicker: 'Zestaw startowy',
@@ -179,8 +189,23 @@ export const shopCopyPl: ShopCopy = {
       'Siedem składników dobranych tak, żeby Gellatti mogło policzyć recepturę bez szukania ' +
       'specjalistycznych produktów po sklepach. Nie musisz go kupować, żeby korzystać z Gellatti.',
     contents: 'W zestawie',
-    specimenSub: 'Siedem składników · zawartość opakowania',
+    packShotTitle: 'Starter Pack',
+    packCaption: '{count} składników · {grams}',
+    contentsCta: 'Zobacz zawartość',
+    contentsTitle: 'Zawartość zestawu',
+    contentsHelper: 'Dokładne gramatury spakowane w jednym pudełku.',
     packTotal: 'Razem w opakowaniu',
+    detailKicker: 'Zestaw Gellatti',
+    detailBody:
+      'Karta pokazuje dokładną zawartość, masę, cenę i termin realizacji. Skład każdego ' +
+      'składnika opisany jest osobno niżej.',
+    massRow: 'Masa',
+    priceRow: 'Cena',
+    availabilityRow: 'Dostępność',
+    closingTitle: 'Zamówienie i wysyłka.',
+    closingBody:
+      'Płatność kartą, wysyłka kurierem {shipping} do 15 krajów UE. Kwota widoczna w koszyku ' +
+      'jest kwotą pobieraną — przy płatności nie doliczamy dodatkowych opłat.',
     lede:
       'Siedem składników, na których Gellatti liczy receptury — w proporcjach dobranych pod ' +
       'pierwsze wyroby. Zamiast szukać każdego z nich osobno, dostajesz komplet gotowy do pracy.',
@@ -214,6 +239,7 @@ export const shopCopyPl: ShopCopy = {
     singlesHelper: 'Te same składniki co w zestawie, w opakowaniach 500 g.',
     containsMilk: 'Zawiera mleko',
     containsEgg: 'Zawiera jaja',
+    detailKicker: 'Składnik Gellatti',
   },
   cart: {
     title: 'Twoje zamówienie',
@@ -317,12 +343,11 @@ export const shopCopyEn: ShopCopy = {
     contextLabel: 'Shop',
   },
   hero: {
-    shippingLabel: 'Shipping',
-    shippingValue: 'Courier · {shipping}\n2–5 business days',
-    starterLabel: 'Starter pack',
-    starterValue: 'On order\nabout {weeks} weeks',
-    paymentLabel: 'Payment',
-    paymentValue: 'Card\nfinal amount',
+    eyebrow: 'Gellatti shop',
+    title: 'Gellatti Starter Pack',
+    lede:
+      'The first Gellatti ingredient set — seven items in the proportions a first batch needs.',
+    note: 'Courier shipping {shipping} · 2–5 business days. The amount shown is the amount charged.',
   },
   starterPack: {
     kicker: 'Starter pack',
@@ -330,8 +355,23 @@ export const shopCopyEn: ShopCopy = {
       'Seven ingredients chosen so Gellatti can work out a recipe without you hunting for ' +
       'specialist products. You do not need it to use Gellatti.',
     contents: 'In the pack',
-    specimenSub: 'Seven ingredients · what is in the box',
+    packShotTitle: 'Starter Pack',
+    packCaption: '{count} ingredients · {grams}',
+    contentsCta: 'See what is inside',
+    contentsTitle: 'What is in the box',
+    contentsHelper: 'Exact packed amounts, in one box.',
     packTotal: 'Total in the box',
+    detailKicker: 'Gellatti set',
+    detailBody:
+      'This card shows the exact contents, mass, price and lead time. Each ingredient is ' +
+      'described separately below.',
+    massRow: 'Mass',
+    priceRow: 'Price',
+    availabilityRow: 'Availability',
+    closingTitle: 'Ordering and delivery.',
+    closingBody:
+      'Card payment, courier delivery {shipping} to 15 EU countries. The amount shown in the ' +
+      'cart is the amount charged — nothing is added at payment.',
     lede:
       'The seven ingredients Gellatti formulates with, in the proportions a first batch needs. ' +
       'Instead of sourcing each one separately, you get a set that is ready to work with.',
@@ -365,6 +405,7 @@ export const shopCopyEn: ShopCopy = {
     singlesHelper: 'The same ingredients as the pack, in 500 g bags.',
     containsMilk: 'Contains milk',
     containsEgg: 'Contains eggs',
+    detailKicker: 'Gellatti ingredient',
   },
   cart: {
     title: 'Your order',
