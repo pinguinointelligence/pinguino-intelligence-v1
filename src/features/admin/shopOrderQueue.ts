@@ -27,6 +27,8 @@ export const shopOrderQueue = (
   // A refunded order still needs to leave the queues: nothing is packed for it.
   if (order.status === 'refunded' || order.fulfillmentStatus === 'cancelled') return null;
   if (!OPEN.includes(order.fulfillmentStatus)) return null;
+  // `preparing` is the operator saying the goods are in hand.
+  if (order.fulfillmentStatus === 'preparing') return 'toShip';
   return order.containsPreorder ? 'waiting' : 'toShip';
 };
 

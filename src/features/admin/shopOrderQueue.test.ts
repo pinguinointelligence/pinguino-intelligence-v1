@@ -22,6 +22,13 @@ describe('shopOrderQueue', () => {
     expect(shopOrderQueue(order('paid', 'awaiting', true))).toBe('waiting');
   });
 
+  it('moves a preorder to the bench once an operator takes it in hand', () => {
+    // The preorder hand-off. `preparing` is the operator's own existing
+    // transition and it means the goods are here — so the order stops waiting
+    // and joins the packing queue. No invented stock policy (see S-42).
+    expect(shopOrderQueue(order('paid', 'preparing', true))).toBe('toShip');
+  });
+
   it('keeps money that never arrived out of the packing queues', () => {
     expect(shopOrderQueue(order('pending', 'awaiting'))).toBe('unpaid');
     expect(shopOrderQueue(order('failed', 'awaiting'))).toBe('unpaid');
@@ -45,10 +52,11 @@ describe('shopOrderQueue', () => {
       shopOrderQueueCounts([
         order('paid', 'awaiting'),
         order('paid', 'awaiting', true),
+        order('paid', 'preparing', true),
         order('pending', 'awaiting'),
         order('paid', 'shipped'),
         order('refunded', 'awaiting'),
       ]),
-    ).toEqual({ toShip: 1, waiting: 1, unpaid: 1, shipped: 1 });
+    ).toEqual({ toShip: 2, waiting: 1, unpaid: 1, shipped: 1 });
   });
 });
