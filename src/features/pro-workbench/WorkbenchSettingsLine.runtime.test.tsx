@@ -327,34 +327,20 @@ describe('WorkbenchSettingsLine deferred batch editing', () => {
 
       const target = useRecipeStore.getState();
       const expected = NATIVE_PROFILE_STARTERS[targetProfile];
-      const expectedBase = Object.values(expected.grams).reduce((sum, grams) => sum + grams, 0);
-      /* PC-02 — a Sorbet's stabilizer system is capped at a PERCENTAGE of the
-         batch that rounds inward to whole grams, so it cannot ride the one
-         proportional factor with everything else. This assertion used to pin
-         `PI-ING-000492` at 10 g, which is what scaling the native starter's
-         4 g from 400 g to 1000 g produces — DOUBLE the 5 g that batch derives,
-         and an `aggregate_above_maximum` the Apply door would then refuse.
-         `setBatchGrams` now projects the system onto the band through the
-         canonical authority, and the ordinary lines absorb the difference in
-         their own unchanged proportions. The ceiling is read from the policy
-         here, never written down. */
-      const stabilizerId = 'PI-ING-000492';
-      const starterStabilizer =
-        expected.category === 'sorbet' ? (expected.grams[stabilizerId] ?? 0) : 0;
-      const projectedStabilizer = Math.min(
-        Math.round((starterStabilizer * 1_000) / expectedBase),
-        sorbetStabilizerWholeGramBand(1_000).maxGrams,
-      );
-      const ordinaryBase = expectedBase - starterStabilizer;
-      const expectedGrams = Object.fromEntries(
-        Object.entries(expected.grams).map(([id, grams]) =>
-          starterStabilizer === 0
-            ? [id, (grams * 1_000) / expectedBase]
-            : id === stabilizerId
-              ? [id, projectedStabilizer]
-              : [id, (grams * (1_000 - projectedStabilizer)) / ordinaryBase],
-        ),
-      );
+      /* Every native starter is DEFINED at 1000 g, so converting to the
+         professional batch reproduces it line for line — no scaling factor.
+
+         For Sorbet that is the whole point: its scaffold is deliberately
+         INCOMPLETE (~40 % support, the rest reserved for the fruit Main the
+         customer has not chosen yet). This assertion previously expected the
+         inflated vector — WATER 404.53 g — which is what filling the batch with
+         support ingredients produces, and which pushed INULIN to 13.8 % against
+         the 2–8 % owner policy. The lines now stay at their native grams and
+         the reservation holds the rest:
+
+             sum(lines) + starterReservedMainGrams === target batch          */
+      const expectedGrams = { ...expected.grams } as Record<string, number>;
+      const expectedLineSum = Object.values(expectedGrams).reduce((sum, grams) => sum + grams, 0);
       expect(target.visibleProductType).toBe(targetProfile);
       expect(target.category).toBe(expected.category);
       expect(target.newRecipeStarterTemplateId).toBe(expected.templateId);
@@ -369,18 +355,13 @@ describe('WorkbenchSettingsLine deferred batch editing', () => {
           item.planned_grams,
         ]),
       );
-      if (starterStabilizer === 0) {
-        expect(actualGrams).toEqual(expectedGrams);
-      } else {
-        // The stabilizer is whole-grammed exactly; the lines that absorb the
-        // difference reconcile through the resize authority, so they are
-        // compared as the real numbers they are.
-        expect(Object.keys(actualGrams).sort()).toEqual(Object.keys(expectedGrams).sort());
-        for (const [id, grams] of Object.entries(expectedGrams)) {
-          if (id === stabilizerId) expect(actualGrams[id]).toBe(grams);
-          else expect(actualGrams[id]).toBeCloseTo(grams, 9);
-        }
-      }
+      expect(actualGrams).toEqual(expectedGrams);
+      // The incomplete Sorbet scaffold reserves the balance; a complete starter
+      // reserves nothing. Either way the batch is fully accounted for.
+      expect(expectedLineSum + target.starterReservedMainGrams).toBeCloseTo(1_000, 6);
+      expect(target.starterReservedMainGrams).toBe(
+        expected.category === 'sorbet' ? 1_000 - expectedLineSum : 0,
+      );
       expect(target.target_batch_grams).toBe(1_000);
       expect(target.batch_source).toBe('PROFESSIONAL_USER_BATCH');
       if (expected.category === 'sorbet') {
