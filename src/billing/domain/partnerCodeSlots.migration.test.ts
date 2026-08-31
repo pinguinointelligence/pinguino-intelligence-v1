@@ -11,7 +11,12 @@ import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { MAX_CURRENT_PARTNER_CODES, type CodeClaimRefusalReason } from './partnerCodeSlots';
-import { PARTNER_CODE_MAX_LENGTH, PARTNER_CODE_MIN_LENGTH } from './partnerCodes';
+import {
+  OFFENSIVE_CODE_WORDS,
+  PARTNER_CODE_MAX_LENGTH,
+  PARTNER_CODE_MIN_LENGTH,
+  PROTECTED_CODE_WORDS,
+} from './partnerCodes';
 
 const REPO = resolve(import.meta.dirname, '..', '..', '..');
 const SQL = readFileSync(
@@ -204,5 +209,46 @@ describe('safety invariants', () => {
     // the rollback plan lives in comments, so assert against the raw SQL
     expect(SQL).toContain('ROLLBACK');
     expect(SQL).toContain('create unique index partner_codes_code_active_uniq');
+  });
+});
+
+describe('PC3 banned words — the follow-up migration the live probe forced', () => {
+  const BANNED_SQL = readFileSync(
+    join(REPO, 'supabase', 'migrations', '20260831200100_partner_code_banned_words.sql'),
+    'utf8',
+  );
+  const BANNED = BANNED_SQL.replace(/--.*$/gm, '');
+
+  it('carries every protected word the TS module protects', () => {
+    for (const word of PROTECTED_CODE_WORDS) {
+      expect(BANNED, word).toContain(`'${word}'`);
+    }
+  });
+
+  it('carries every offensive word the TS module rejects', () => {
+    for (const word of OFFENSIVE_CODE_WORDS) {
+      expect(BANNED, word).toContain(`'${word}'`);
+    }
+  });
+
+  it('matches by containment, exactly as PC3 does', () => {
+    expect(BANNED).toContain('position(v_banned in v_code) > 0');
+    expect(BANNED).toContain("return 'banned_word'");
+  });
+
+  it('checks banned words BEFORE the ownership lookup', () => {
+    // a banned code should report WHY it is banned, not who happens to hold it
+    expect(BANNED.indexOf("return 'banned_word'")).toBeLessThan(
+      BANNED.indexOf('select * into v_holder'),
+    );
+  });
+
+  it('does not re-validate or rewrite existing codes', () => {
+    expect(/update public\.partner_codes/i.test(BANNED)).toBe(false);
+    expect(BANNED_SQL).toContain('Existing codes are NOT re-validated');
+  });
+
+  it('keeps the case-insensitive lookup from the previous migration', () => {
+    expect(BANNED).toContain('where upper(code) = v_code');
   });
 });
