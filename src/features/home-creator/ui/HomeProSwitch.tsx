@@ -15,8 +15,10 @@ import { cn } from '@/lib/cn';
 import {
   proModulePath,
   resolveViewSwitchPresentation,
+  segmentAccess,
   segmentTreatment,
   viewSwitchSegments,
+  type ActiveViewOrNeutral,
   type HomeViewMode,
   type ViewEntitlement,
 } from '../homeViewMode';
@@ -34,7 +36,11 @@ export function HomeProSwitch({
   className,
 }: {
   entitlement: ViewEntitlement;
-  activeView: HomeViewMode;
+  /**
+   * `null` on a global destination (Work With Us, Shop): neither segment presents
+   * as the current page. Same component, same geometry, same entitlement rules.
+   */
+  activeView: ActiveViewOrNeutral;
   className?: string;
 }) {
   const navigate = useNavigate();
@@ -42,13 +48,18 @@ export function HomeProSwitch({
   const setView = useHomeViewStore((state) => state.setView);
 
   const presentation = resolveViewSwitchPresentation(entitlement);
-  const segments = viewSwitchSegments(presentation);
+  const segments = viewSwitchSegments();
 
-  // §11B: for a HOME subscriber there is nothing to switch to — render nothing at
-  // all rather than a single dead segment that reads as a disabled control.
-  if (segments.length < 2) return null;
-
+  // OWNER OVERRIDE 2026-09-01: the switch renders for EVERY audience, so the global
+  // header keeps one geometry and one x-coordinate regardless of plan. Visibility is
+  // not access — see `go`.
   const go = (segment: HomeViewMode) => {
+    if (segmentAccess(segment, presentation) === 'upgrade_required') {
+      // The canonical upgrade route, the same one the canonical Save uses when the
+      // blocker is `plan`. No entitlement is granted and no PRO content is reached.
+      navigate('/subscription');
+      return;
+    }
     setView(segment);
     // §15: returning to PRO restores the module the user left.
     navigate(segment === 'pro' ? proModulePath(lastProModule) : '/');
@@ -59,6 +70,7 @@ export function HomeProSwitch({
       role="tablist"
       aria-label={homeCreatorCopy.switch.ariaLabel}
       data-testid="home-pro-switch"
+      data-neutral={activeView === null ? 'true' : undefined}
       className={cn(
         'inline-flex shrink-0 items-center gap-0 overflow-hidden rounded-full border p-0.5',
         className,

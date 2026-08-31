@@ -139,7 +139,7 @@ describe('one global menu and four local contexts', () => {
     const buttons = read('components', 'ui', 'buttonStyles.ts');
     expect(page).toContain('data-testid="pro-plan-indicator"');
     // V2.1: the workbench plan mark is the approved graphite pill.
-    expect(page).toContain("bg-[var(--g-graphite)] px-2.5 text-[9px]");
+    expect(page).toContain('bg-[var(--g-graphite)] px-2.5 text-[9px]');
     for (const source of [workbar, ingredient, topping]) {
       expect(source).toContain("iconButtonClasses('xs')");
       expect(source).toContain('•••');
@@ -190,8 +190,7 @@ describe('recipe and production table modes', () => {
 
   it('Production replaces builder controls with one weighing control and SR labels', () => {
     const html = renderIngredients('production');
-    for (const label of ['Plan', 'Faktycznie', 'Odchylenie'])
-      expect(html).toContain(label);
+    for (const label of ['Plan', 'Faktycznie', 'Odchylenie']) expect(html).toContain(label);
     expect(html).toContain('data-testid="production-table-header"');
     expect(html).toContain('data-table-family="recipe"');
     expect(html).not.toContain('Składnik / status');
@@ -399,7 +398,11 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     expect(shell).toContain('xl:h-dvh');
     expect(shell).toContain('xl:overflow-hidden');
     expect(shell).toContain('DESKTOP_WORKBENCH_COLUMNS');
-    expect(shell).toContain("viewportLock && 'xl:col-start-1 xl:row-start-1'");
+    // The workbench's global elements still sit in column 1 of the shared two-track
+    // grid. The condition became unconditional when that grid was promoted to the
+    // GLOBAL header geometry (owner parity decision, 2026-09-01) — the guarantee this
+    // pins is the column placement, which is unchanged and now applies everywhere.
+    expect(shell).toContain("'xl:col-start-1 xl:row-start-1'");
     expect(read('styles', 'theme-pro-light.css')).toContain(
       '@container right-pane (max-width: 420px)',
     );
