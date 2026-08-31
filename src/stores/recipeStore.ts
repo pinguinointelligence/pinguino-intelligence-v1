@@ -613,6 +613,46 @@ const moveWithin = <T extends { id: string }>(
 const ENGINE_KEPT_LOCKS: ReadonlySet<LockType> = new Set(['main', 'already_added', 'required']);
 
 /**
+ * Has the required Main role been RESOLVED?
+ *
+ * `starterReservedMainGrams` says one thing only — "the required Main role is
+ * not resolved yet" — so this is the single transition that retires it. The
+ * answer comes from the canonical ProductBehavior Main authority, deliberately
+ * NOT from the product type, the ingredient's name, the Crown flag alone, or
+ * merely having positive grams: a Cocoa line must never retire a Sorbet's Main
+ * reservation.
+ *
+ * `snapshotRequired` is true, so a line with no resolver authority fails CLOSED
+ * and the reservation stands. A crowned line counts as resolved because
+ * `setMainIngredient` can only crown what this same authority already approved.
+ */
+const requiredMainRoleResolved = (state: {
+  items: readonly RecipeItem[];
+  productBehaviorSnapshots: Readonly<Record<string, ProductBehaviorSnapshot>>;
+}): boolean =>
+  state.items.some(
+    (item) =>
+      item.planned_grams > 0 &&
+      (item.lock_type === 'main' ||
+        mainBehaviorBlockReason(state.productBehaviorSnapshots[item.id], true) === null),
+  );
+
+/**
+ * The reservation after any change that can resolve the Main role. It is
+ * RETIRED, never decremented: the reservation is not "remaining desired Main
+ * grams", so a 300 g Main against a 402 g reservation does not leave 102 g
+ * owing. The draft is simply allowed to sit under its target until Recalculate.
+ */
+const reservationAfterMainCheck = (state: {
+  items: readonly RecipeItem[];
+  productBehaviorSnapshots: Readonly<Record<string, ProductBehaviorSnapshot>>;
+  starterReservedMainGrams: number;
+}): number =>
+  state.starterReservedMainGrams > 0 && requiredMainRoleResolved(state)
+    ? 0
+    : state.starterReservedMainGrams;
+
+/**
  * The reservation an incomplete canonical starter still owes its unchosen Main,
  * but only while it is still TRUE of this draft: the lines plus the reservation
  * must still account for exactly the current batch. A draft the customer has
@@ -1676,6 +1716,13 @@ export const useRecipeStore = create<RecipeState>()(
           const orderedItems = sortedBaseItems([...state.items, added]);
           return {
             items: orderedItems,
+            // A valid Main may have just arrived; the reservation is retired,
+            // never decremented.
+            starterReservedMainGrams: reservationAfterMainCheck({
+              items: orderedItems,
+              productBehaviorSnapshots: state.productBehaviorSnapshots,
+              starterReservedMainGrams: state.starterReservedMainGrams,
+            }),
             baseOrder: [
               ...state.baseOrder.filter((id) => orderedItems.some((item) => item.id === id)),
               added.id,
@@ -1872,6 +1919,13 @@ export const useRecipeStore = create<RecipeState>()(
           } else delete next[lineId];
           return {
             productBehaviorSnapshots: next,
+            // Resolver authority can arrive AFTER the line does, so the Main
+            // role may resolve here rather than at insertion.
+            starterReservedMainGrams: reservationAfterMainCheck({
+              items: state.items,
+              productBehaviorSnapshots: next,
+              starterReservedMainGrams: state.starterReservedMainGrams,
+            }),
             dirty: true,
             draftRevision: state.draftRevision + 1,
           };
@@ -1888,13 +1942,21 @@ export const useRecipeStore = create<RecipeState>()(
                 (toppingIds.has(lineId) && snapshot.processScope === 'POST_PROCESS_ADDON')),
           );
           if (!valid) return {};
+          const synced = Object.fromEntries(
+            entries.map(([lineId, snapshot]) => [
+              lineId,
+              preserveOwnerReviewGate(state.ownerReviewGate, snapshot),
+            ]),
+          );
           return {
-            productBehaviorSnapshots: Object.fromEntries(
-              entries.map(([lineId, snapshot]) => [
-                lineId,
-                preserveOwnerReviewGate(state.ownerReviewGate, snapshot),
-              ]),
-            ),
+            productBehaviorSnapshots: synced,
+            // Same transition as the single-line door: authority arriving here
+            // can resolve the required Main role.
+            starterReservedMainGrams: reservationAfterMainCheck({
+              items: state.items,
+              productBehaviorSnapshots: synced,
+              starterReservedMainGrams: state.starterReservedMainGrams,
+            }),
           };
         }),
 
@@ -2321,17 +2383,24 @@ export const useRecipeStore = create<RecipeState>()(
           // role transition and every later grams edit is refused. Seed one
           // ordinary gram and remember that WE seeded it.
           const seed = roleChanged ? crownOnPlannedGrams(current.planned_grams) : null;
-          const items = state.items.map((item) =>
-            item.id === lineId
-              ? {
-                  ...item,
-                  lock_type: 'main' as const,
-                  ...(seed ? { planned_grams: seed.plannedGrams } : {}),
-                }
-              : item,
-          );
+          const items = state.items.map((item) => {
+            if (item.id !== lineId) return item;
+            const next = {
+              ...item,
+              lock_type: 'main' as const,
+              ...(seed ? { planned_grams: seed.plannedGrams } : {}),
+            };
+            delete next.user_intent_anchor_grams;
+            return next;
+          });
+          const crowned = equalCrownSeedWeights(items);
           return {
-            items: equalCrownSeedWeights(items),
+            items: crowned,
+            starterReservedMainGrams: reservationAfterMainCheck({
+              items: crowned,
+              productBehaviorSnapshots: state.productBehaviorSnapshots,
+              starterReservedMainGrams: state.starterReservedMainGrams,
+            }),
             // Re-asserting a crown the line already wears changes nothing, so
             // it must not quietly discard the provenance of the seeded gram.
             crownAutoSeededLineIds: !seed
