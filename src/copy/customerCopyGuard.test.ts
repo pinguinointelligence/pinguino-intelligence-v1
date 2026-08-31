@@ -110,8 +110,26 @@ describe('customer copy guard', () => {
   });
 
   it('allows only the two remaining approved Italian success moments', () => {
-    const italian = entries.filter((entry) =>
-      /\b(?:Mamma mia|Perfetto|Andiamo|Gellattissimo|Bellissimo)\b/i.test(entry.text),
+    /**
+     * This rule caps Italian CELEBRATION copy at two approved moments. It is not
+     * a ban on the word itself.
+     *
+     * `gellattissimo` is also the name of a neon sign physically present in the
+     * owner's approved photographs (F01, F03, W03), and the owner ruled on
+     * 2026-08-31 that it is intentional Gellatti branding which must never be
+     * removed. Alt text that describes what is in a frame is a factual
+     * description, not a success exclamation, so those two strings are carved
+     * out by exact text — narrowly, so a NEW celebratory "Gellattissimo!"
+     * anywhere, including in this file, still fails.
+     */
+    const imageDescriptionAllowlist = new Set([
+      'src/features/work-with-us/ownerAssets.ts\0Przyczepa Gellatti w drodze na festiwal food trucków, z neonem gellattissimo.',
+      'src/features/work-with-us/ownerAssets.ts\0Wnętrze lodziarni Gellatti: długa witryna z pozzetti, neon „gellattissimo”, stoliki dla gości.',
+    ]);
+    const italian = entries.filter(
+      (entry) =>
+        /\b(?:Mamma mia|Perfetto|Andiamo|Gellattissimo|Bellissimo)\b/i.test(entry.text) &&
+        !imageDescriptionAllowlist.has(`${entry.file}\0${entry.text}`),
     );
     expect(italian.map(({ file, text }) => ({ file, text }))).toEqual([
       {
