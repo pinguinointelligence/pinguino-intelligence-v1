@@ -101,3 +101,43 @@ repository (`getRecipe` + `getVersions`) and loads the one shared store via
 No HOME-side derive, copy or formulation logic was added; a test forbids
 `createRecipe(`, `recordDerivation(`, `saveNewVersion(` and `buildDerivedRecipe(` in
 that file. HOME remains a presentation layer.
+
+
+---
+
+## 6. Third defect — HOME generated a recipe behind an unanswered question
+
+With the composition fix and the opener seam both deployed, the derivation was correct
+end to end and the customer was STILL shown the wrong recipe.
+
+The auto-generate effect fires as soon as profile + machine are known. The match popup
+did not block it. So while the popup was still asking *„Możesz zacząć od jednej z nich"*,
+the effect ran `rebuildNewRecipeStarter` — deliberately a NEW draft — which replaced the
+just-adopted recipe and cleared its saved link.
+
+**Why it nearly passed review.** The publication was itself built from the canonical
+milk-base starter, so a regenerated recipe has the SAME six ingredients and the SAME
+`milk-base:*` line ids. Every identity-based check passes. Only two things differed:
+
+| Line | Adopted (source) | Regenerated |
+| --- | --- | --- |
+| MILK 3.5% | 670 g | 672 g |
+| TARA GUM | 5 g | 3 g |
+
+plus `savedRecipeId: null`, which is also why the header showed HOME's proposed name
+instead of `QA Gelato Wanilia -11`. That name mismatch was the visible thread; it would
+have been easy to dismiss as cosmetic.
+
+**Fix (PR #56).** Generation is held while the popup is open, and adopting claims the
+generate key without generating. The guard POSTPONES — a customer who dismisses the
+popup still gets exactly one starter, proven served.
+
+## 7. Two process errors worth recording
+
+1. **A changed bundle hash is not proof of the right deployment.** Two deploys were in
+   flight; the intermediate one did not contain the fix, and a whole QA run was void.
+   Deploy identity now comes from Vercel's alias record: alias → deployment → commit SHA.
+2. **A stale-state read can imitate success.** `derive()` returned `void` and set React
+   state, so a caller that awaited it and read `state` saw `idle` for a real success. The
+   popup still appeared to close — but only because the hook's `navigate` remounted the
+   page. `derive()` now returns its terminal state, and a test forbids the old signature.
