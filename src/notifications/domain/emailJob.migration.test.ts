@@ -293,7 +293,7 @@ describe('EJ9 — the business-domain discriminator (owner §1–§3, 2026-08-31
 
   /** 3. what the database will accept, parsed out of the CHECK. */
   const SQL_AREAS = (() => {
-    const check = /email_jobs_metadata_has_domain check \(([\s\S]*?)\n  \)/.exec(CODE)?.[1] ?? '';
+    const check = /email_jobs_metadata_has_domain check \(([\s\S]*?)\n {2}\)/.exec(CODE)?.[1] ?? '';
     return [...check.matchAll(/'([A-Z_]+)'/g)].map((m) => m[1]).sort();
   })();
 

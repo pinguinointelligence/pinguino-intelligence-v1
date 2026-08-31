@@ -652,3 +652,84 @@ describe('T3 — ONE eligibility predicate, two state sources (pre-apply audit, 
     }
   });
 });
+
+describe('on-time == late, proven BEFORE apply (owner §3, 2026-08-31)', () => {
+  const strip = (x: string) => x.replace(/--.*$/gm, '');
+  const bodyOf = (fn: string) =>
+    strip(
+      new RegExp(`create or replace function public\\.${fn}[\\s\\S]*?\\$\\$;`).exec(SQL)?.[0] ?? '',
+    );
+  const ONTIME = bodyOf('gellatti_write_partner_tier_snapshots_v1');
+  const LATE = bodyOf('gellatti_catchup_partner_tier_snapshots_v1');
+
+  it('finds both writers', () => {
+    expect(ONTIME, 'on-time writer not found').not.toBe('');
+    expect(LATE, 'catch-up writer not found').not.toBe('');
+  });
+
+  /**
+   * The two writers may differ ONLY in where subscription state comes from.
+   * Everything that turns a count into a tier must be identical, or the same
+   * facts yield different tiers depending on which path happened to run.
+   */
+  it('both derive the threshold from the SAME function, never a literal', () => {
+    for (const [name, body] of [
+      ['on-time', ONTIME],
+      ['late', LATE],
+    ] as const) {
+      expect(body, `${name} must call gellatti_gold_threshold_v1`).toContain(
+        'gellatti_gold_threshold_v1()',
+      );
+      // a hard-coded 100 would drift the moment the threshold changed
+      expect(body, `${name} hard-codes the threshold`).not.toMatch(/>=\s*100\b/);
+    }
+  });
+
+  it('both use >= so exactly the threshold is Gold', () => {
+    for (const body of [ONTIME, LATE]) expect(body).toMatch(/>=\s*v_threshold|>=\s*threshold/);
+  });
+
+  it('both put Elite BEFORE the automatic tier', () => {
+    for (const [name, body] of [
+      ['on-time', ONTIME],
+      ['late', LATE],
+    ] as const) {
+      const branch = /case\s+when [a-z_]*elite[a-z_]* then 'elite'[\s\S]*?end/.exec(body)?.[0] ?? '';
+      expect(branch, `${name} has no elite-first branch`).not.toBe('');
+      expect(branch.indexOf("'elite'")).toBeLessThan(branch.indexOf("'gold'"));
+      expect(branch.indexOf("'gold'")).toBeLessThan(branch.indexOf("'standard'"));
+    }
+  });
+
+  it('both resolve Elite AT the boundary instant, not today', () => {
+    for (const body of [ONTIME, LATE]) {
+      expect(body).toMatch(/gellatti_partner_elite_active_v1\([^)]*(p_count_at|v_boundary)\)/);
+    }
+  });
+
+  it('both are idempotent on (partner, month) — a month is never rewritten', () => {
+    for (const body of [ONTIME, LATE]) {
+      expect(body).toMatch(/on conflict \(partner_id, month\) do nothing/);
+    }
+  });
+
+  it('only the LATE path may refuse, and it refuses rather than guessing', () => {
+    // The unknown-at-threshold case: a blocker means NO snapshot and a typed
+    // gap, never a count that silently drops the unprovable subscription.
+    expect(LATE).toContain('gellatti_tier_reconstruction_blocker_v1');
+    expect(LATE).toContain('if v_blocker is not null then');
+    expect(LATE).toMatch(/insert into public\.partner_tier_snapshot_gaps/);
+    // the refusal must skip the write entirely
+    const blockerBranch = /if v_blocker is not null then[\s\S]*?continue;/.exec(LATE)?.[0] ?? '';
+    expect(blockerBranch, 'blocker branch not found').not.toBe('');
+    expect(blockerBranch).not.toMatch(/insert into public\.partner_tier_snapshots\b/);
+  });
+
+  it('the late path never falls back to a current count or partners.tier', () => {
+    // It must read the AS-OF count at the boundary, and must not consult the
+    // live reader or the denormalised partners.tier column.
+    expect(LATE).toContain('gellatti_partner_referred_count_asof_v1(v_partner.id, v_boundary)');
+    expect(LATE).not.toContain('gellatti_partner_active_referred_count_v1');
+    expect(LATE).not.toMatch(/\bp\.tier\b|partners\.tier/);
+  });
+});
