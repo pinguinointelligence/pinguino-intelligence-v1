@@ -23,7 +23,7 @@ And the check the owner asked for found a fourth problem that neither of us had 
 
 ## 1. THE INVENTORY
 
-All seven are **additive**. None is applied. None conflicts after the renumber in §2.
+All eight are **additive**. None is applied. None conflicts after the renumber in §2.
 
 | # | Timestamp | Filename | Purpose | Depends on | Already applied? | Conflict? |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -34,12 +34,14 @@ All seven are **additive**. None is applied. None conflicts after the renumber i
 | 5 | `20260831202000` | `partner_tier_snapshot_writer.sql` | §10: monthly Gold snapshot writer + catch-up | #2 (elite profile), `0018` (`partner_tier_snapshots`) | **No** | None |
 | 6 | `20260831202500` | `payout_execution.sql` | §14: eligibility, batch, claim, settle, reconcile, **live kill switch** | `0018`, `0019_payouts` | **No** | None |
 | 7 | `20260831203000` | `partner_scheduling.sql` | pg_cron invocation + `partner_job_runs` + Admin read | #5, #6 | **No** | None |
+| 8 | `20260831203500` | `business_leads.sql` | §32 lead operations for all four paths + append-only history; imports the existing franchise rows | `franchise_inquiries` (read only) | **No** | None |
 
-**Apply strictly in this order.** #5 references #2's table; #7 references #5 and #6.
+**Apply strictly in this order.** #5 references #2's table; #7 references #5 and #6. #8 is
+independent of #1–#7 and may be applied at any point, but keeping the order is simplest.
 
 ### Verification performed
 
-- **No duplicate timestamps among the seven** — verified by sorting the basenames.
+- **No duplicate timestamps among the eight** — verified by sorting the basenames.
 - **Not applied** — the live `supabase_migrations` table's newest version is `20260831084154`; every one of the seven is later and absent.
 - **No collision with `origin/staging`** — the only migration added to staging since my base was `20260831090000_publication_full_carries_composition`, which is now in my branch via the rebase.
 - **No collision with any open PR** — all four open PR branches scanned (§2).
@@ -62,7 +64,7 @@ Merging both branches would have put five pairs of identically-timestamped migra
 
 **PR #49 has precedence:** its work is already applied to the staging database (as versions `20260831073556`–`20260831080735`), so those timestamps are effectively spoken for.
 
-**Resolution: my seven were renumbered** into `20260831200000`–`20260831203000`, a block clear of everything in every open branch. Every test reference and in-file comment was updated with them; a repo-wide scan confirms no stale reference to the old numbers remains.
+**Resolution: my migrations were renumbered** into `20260831200000`–`20260831203500`, a block clear of everything in every open branch. Every test reference and in-file comment was updated with them; a repo-wide scan confirms no stale reference to the old numbers remains.
 
 ### Open-PR scan (all four branches)
 
@@ -116,7 +118,7 @@ version, so the slug fix is carried forward. Both paths converge correctly:
 | # | Precondition | If unmet |
 | --- | --- | --- |
 | 1 | No two `partner_codes` rows share a code or slug | The migration **refuses to run** and names the offending codes. It will not guess which partner keeps a code, because that decision moves money. |
-| 2–7 | None beyond the ordering above | — |
+| 2–8 | None beyond the ordering above | — |
 
 Migration 1 is the only one that can refuse. That refusal is deliberate.
 
@@ -125,7 +127,7 @@ Migration 1 is the only one that can refuse. That refusal is deliberate.
 ## 5. Post-apply verification the owner can run
 
 ```sql
--- 1. all seven registered
+-- 1. all eight registered
 select version, name from supabase_migrations.schema_migrations
 where version >= '20260831200000' order by version;
 
@@ -142,6 +144,10 @@ where status = 'active' group by partner_id having count(*) > 3;
 -- 5. the application status constraint carries the new state
 select pg_get_constraintdef(oid) from pg_constraint
 where conname = 'partner_applications_status_check';
+
+-- 6. the franchise import ran once and the source survived
+select (select count(*) from public.business_leads where lead_type = 'franchise') as imported,
+       (select count(*) from public.franchise_inquiries) as source_still_there;
 ```
 
 ---
@@ -150,4 +156,5 @@ where conname = 'partner_applications_status_check';
 
 | Date | What |
 | --- | --- |
+| 2026-08-31 | Added migration #8 (`business_leads`) for §32 lead operations |
 | 2026-08-31 | Created for owner acceptance point 1. Corrected the "six" miscount to seven; rebased the branch off a stale base; **found and resolved five timestamp collisions with open PR #49** by renumbering into `20260831200000`–`20260831203000`; recorded the staging DB/branch drift and the filename-vs-version mismatch |
