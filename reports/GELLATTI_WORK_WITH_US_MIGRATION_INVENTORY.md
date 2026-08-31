@@ -21,7 +21,7 @@ And the check the owner asked for found a fourth problem that neither of us had 
 
 ---
 
-## 1. THE INVENTORY — TWELVE FILES, EIGHT APPLIED
+## 1. THE INVENTORY — TWELVE FILES, NINE APPLIED
 
 Referred to by **exact filename**. Ordinal shorthand is no longer used: inserting `200100` after the
 first apply made "#7/#8" ambiguous.
@@ -34,6 +34,7 @@ first apply made "#7/#8" ambiguous.
 | `20260831200100_partner_code_banned_words.sql` | `partner_code_banned_words` | **`20260831141738`** | `gellatti_partner_code_claim_refusal_v1` replaced; banned-word loop present; grants unchanged | **0 rows** |
 | `20260831200200_partner_code_slot_limit_dedupe.sql` | `partner_code_slot_limit_dedupe` | **`20260831143710`** | trigger `partner_codes_slot_limit` gone · `enforce_partner_code_slot_limit` gone (`0`) · `gellatti_partner_code_guard_v1` byte-identical · both global indexes intact · claim guard now returns the canonical reason | **0 rows** — 6 codes / 3 partners unchanged |
 | `20260831200500_partner_rate_profiles.sql` | `partner_rate_profiles` | **`20260831150753`** | table + 3 indexes + RLS + 1 policy present · both functions SECURITY DEFINER with `search_path=public` · ledger 20 → 21 columns · `commission_rules` still 12 rows (elite row kept) | **0 rows** — 0 profiles seeded, ledger still 0, 3 partners / 6 codes unchanged |
+| `20260831202000_partner_tier_snapshot_writer.sql` | `partner_tier_snapshot_writer` | **`20260831190352`** | 11 functions · `partner_tier_snapshot_gaps` with RLS on and ACL `postgres \| service_role` · **no pg_cron job** · **no payout function** · applied SQL **provably identical** to the repo file (473 code lines, md5 `894701df…` both sides) | **0 rows** — 0 snapshots, 0 gaps |
 | `20260831201500_email_jobs.sql` | `email_jobs` | **`20260831175103`** | table + 6 indexes + 11 CHECKs · RLS on with **0 policies** · table ACL `postgres \| service_role` only · 4 mutation fns service-role only, admin read granted to `authenticated` and super_admin-gated · applied **verbatim** | **0 rows** |
 | `20260831201100_partner_application_audit_actor_fix.sql` | `partner_application_audit_actor_fix` | **`20260831155647`** | one function replaced (`gellatti_submit_partner_application_v1`) · status CHECK, open-application index and the admin function all **unchanged** (admin fn md5 `27fd03a2…`) · ACLs still `postgres \| authenticated \| service_role` | **0 rows** |
 | `20260831201000_partner_application_more_information.sql` | `partner_application_more_information` | **`20260831154203`** | CHECK now 8 states incl. `more_information_needed` · open-application index widened to 4 states · both functions' ACL now `postgres \| authenticated \| service_role` (PUBLIC + anon removed) · code probe now case-insensitive · `in_review` gone from executable code | **0 rows** — 2 applications, both `approved`, unchanged. 🔴 **but see §14: it broke submission** |
@@ -48,16 +49,15 @@ first apply made "#7/#8" ambiguous.
 > My first report gave `20260831142312` for the second row. That was wrong — the register says
 > `20260831141738`. Confirmed by querying `supabase_migrations.schema_migrations` directly.
 
-### 1.2 PENDING — four files, exact names
+### 1.2 PENDING — three files, exact names
 
-`20260831201500` has moved to the applied side, so **four remain**.
-
-| Repo filename | Purpose | Depends on |
-| --- | --- | --- |
+`20260831202000` has moved to the applied side, so **three remain**: payout execution, business leads, and the scheduler.
 
 | Repo filename | Purpose | Depends on |
 | --- | --- | --- |
-| `20260831202000_partner_tier_snapshot_writer.sql` | §10 Gold writer + historical reconstruction + gap state | `20260831200500` |
+
+| Repo filename | Purpose | Depends on |
+| --- | --- | --- |
 | `20260831202500_payout_execution.sql` | §14 execution layer + live kill switch | `0018`, `0019` |
 | `20260831203500_business_leads.sql` | §32 lead operations for all four paths | `franchise_inquiries` (read only) |
 | `20260831203000_partner_scheduling.sql` | pg_cron invocation + `partner_job_runs` | **LAST — owner-gated** |
@@ -1181,4 +1181,135 @@ than swept up.
 
 The correction is prepared and pushed. **`20260831202000` is NOT applied**, and neither is payout
 execution or the scheduler.
+
+---
+
+## 19. `20260831202000_partner_tier_snapshot_writer.sql` — APPLIED and proven live
+
+**Registered version `20260831190352`**, read back. Applied verbatim from pushed commit `239e0653`.
+
+**Transcription verified, not assumed:** the register's stored statements and the repo file, both
+normalised to executable lines, are **473 lines and md5 `894701dfdd14b4df703f8b89e6ff10ab` on both
+sides**. What ran is what the repository says.
+
+### 19.1 Lint causality (owner §1) — my earlier classification was WRONG
+
+I previously reported the remaining lint error as pre-existing in `src/app/router.tsx`. **That was
+wrong.** I had paired the error to a nearby filename in the lint output instead of to its own file.
+
+* `router.tsx` run directly: **0 errors**, 1 warning. Its content hash is `64e766be…` on both HEAD
+  and `origin/staging`, diff against merge-base and staging is **zero**, and `eslint.config.js` plus
+  `package.json` are byte-identical between the two — so the comparison cannot be explained by a
+  weakened config.
+* The `no-regex-spaces` error was **mine**: `emailJob.migration.test.ts:296`, two literal spaces in a
+  regex I wrote this session. Fixed to `{2}`.
+
+**Lint is now 0 errors.** The 7 remaining warnings are pre-existing; the only warning-bearing file
+this branch touches is `adminUi.tsx`, which reports the same 3 warnings on staging as here.
+
+### 19.2 Live role probes (§5) — real queries, all rolled back
+
+| Role | Probe | Result |
+| --- | --- | --- |
+| `anon` | write snapshot · write gap · clear gap · run writer | **all DENIED `42501`** |
+| partner (own account) | self-promote to Gold | **DENIED `42501`** |
+| partner | rewrite historical tier | **0 rows** |
+| partner | write gap · clear gap · run writer · run catch-up · read the counter | **all DENIED `42501`** |
+| partner | admin read RPC | **REFUSED** `administrator_required` |
+| `super_admin` | admin snapshot read · admin gap read | **both work** |
+| service_role | canonical writer | **works** |
+
+### 19.3 Threshold matrix (§6)
+
+| Case | Count | Tier |
+| --- | --- | --- |
+| 99 | 99 | **standard** |
+| 100 | 100 | **gold** |
+| 101 | 101 | **gold** |
+| February with 100 | 100 | **gold** |
+| March after 13 cancel | 87 | **standard** |
+| February re-read after March | 100 | **gold — unchanged** |
+
+### 19.4 Historical A and B (§7) — no current-count fallback
+
+| | Case A | Case B |
+| --- | --- | --- |
+| February reconstructed | **gold / 105** | **standard / 87** |
+| March reconstructed | **standard / 87** | **gold / 105** |
+| Live count *today* | 87 | 105 |
+
+In **both** directions the late reconstruction of February contradicts today's live count and matches
+February's own boundary facts. Case A refuses to underpay; Case B refuses to grant retroactive Gold.
+
+### 19.5 Unknown at the threshold (§8) — the load-bearing case
+
+99 provable actives plus **one** whose state at the boundary cannot be proven (no event at or before
+it):
+
+| | |
+| --- | --- |
+| Blocker | **`missing_initial_state`** |
+| What a naive count would have said | **99 → Standard** |
+| Snapshots written | **0** |
+| Gap recorded | **`missing_initial_state`** |
+
+The system decided **neither** 99/Standard **nor** 100/Gold. The month stays absent and a human is
+told why.
+
+### 19.6 On-time ≡ late (§14)
+
+Evaluated at the **same** boundary with consistent state: live reader **105**, as-of reader **105**,
+`equal: true`; on-time snapshot **gold**, late reconstruction **gold / 105**.
+
+> **Method note.** My first attempt at this comparison was invalid and is recorded so the result is
+> not over-claimed. I mutated live subscription state *after* the boundary and then ran the on-time
+> writer for that past boundary — it returned today's 87 rather than the boundary's 105. That is not
+> a writer defect: the live reader reads live state, which equals boundary state only when it is run
+> at the boundary. It does mean **the on-time writer must never be used to write a historical
+> month**; the catch-up path, which is the only historical path, correctly uses the as-of reader.
+> Flagged in §19.8.
+
+### 19.7 Elite (§9) and idempotence (§10)
+
+| Case | Result |
+| --- | --- |
+| Elite with **0** referrals | **elite** — not Standard |
+| Elite with **105** referrals | **elite** — not Gold |
+| Elite revoked, 105 referrals | **gold** — the automatic tier resumes |
+| Re-run the same month | `snapshotsWritten: 0`, `snapshotsSkipped: 3`, **1 row** |
+
+### 19.8 ⚠️ Observation for the owner — not a defect, not changed
+
+`gellatti_write_partner_tier_snapshots_v1` accepts any `p_month` and `p_count_at`, and it reads
+**live** subscription state. Called for the current month by the scheduler it is correct. Called for
+a **past** month it would write that month using today's statuses — the exact error the catch-up path
+exists to avoid. Nothing in the function refuses a historical `p_month`.
+
+The intended flow never does this, and the catch-up path is correct. Recorded rather than fixed,
+because adding a guard is a behavioural change to an applied financial function and is the owner's
+call.
+
+### 19.9 Commission deferral (§11)
+
+`stripe-webhook/dispatch.ts` queries `partner_tier_snapshots` for **the earned month only** and
+throws `RetryableEffectError('tier_snapshot_missing:<month>')` when it is absent. It never borrows an
+adjacent month and never reads the `partners.tier` mirror — the only textual match for a fallback is
+a comment saying exactly that. So an unprovable month leaves its commissions deferred and retryable,
+never silently Standard.
+
+### 19.10 Residue (§17)
+
+**0 tier snapshots · 0 gaps · 0 QA subscriptions · 0 QA webhook events · 0 rate profiles.**
+Pre-existing counts unchanged: 1 subscription, 6 attributions, 8 webhook events, 3 partners,
+0 commission entries, 0 email jobs, 1 unrelated cron job. The fixture that backdated
+`partners.created_at` to 2026-01-05 rolled back — the earliest partner is still **2026-08-23**.
+
+**No synthetic history was created.** Every fixture lived inside a transaction that raised at the end.
+
+### 19.11 Gates
+
+Owner-locked and protected-path guards **OK** · typecheck clean · lint **0 errors** ·
+**1101 passed** across billing + notifications.
+
+**Payout execution and the scheduler remain unapplied.**
 
