@@ -90,7 +90,11 @@ function GramControl({
       onChange={(next) => useRecipeStore.getState().setPlannedGrams(lineId, next)}
       {...(canSeeGrams
         ? {}
-        : { maskedValue: homeCreatorCopy.recipe.maskedGramsValue, onMaskedInteract: onBlocked })}
+        : {
+            maskedValue: homeCreatorCopy.recipe.maskedGramsValue,
+            maskedLabel: homeCreatorCopy.recipe.maskedGramsLabel,
+            onMaskedInteract: onBlocked,
+          })}
       lockSegment={{
         pressed: locked,
         ariaLabel: `${name} — ${homeCreatorCopy.recipe.lockLabel}`,
