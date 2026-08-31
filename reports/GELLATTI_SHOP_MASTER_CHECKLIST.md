@@ -38,13 +38,13 @@ Freeze: 🔓 OPEN · 🧊 READY TO FREEZE · 🔒 FROZEN
 | S-20 | Checkout | Shipping address collected; countries from canonical list | 🟢 | ✅ | ✅ | ⬜ | 🧊 | 3f56a03d | 15 countries — owner decision open | S-40 |
 | S-21 | Checkout | Shipping cost single authority, cart == provider | 🟢 | ✅ | ✅ | ⬜ | 🧊 | 3f56a03d | drift test guards it | — |
 | S-22 | Checkout | Stripe TEST payment succeeds end to end | 🟢 | ✅ | ✅ | ⬜ | 🧊 | 3f56a03d | Stripe **sandbox** payment completed: order `G-20260831-2DA655`, €73.80, cart == provider | OWNER QA |
-| S-23 | Checkout | Payment failure path shows a real screen | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | 3f56a03d | success path proven; a declined-card run not yet executed | Run 4000 0000 0000 0002 |
+| S-23 | Checkout | Payment failure path shows a real screen | 🟢 | ⬜ | ✅ | ⬜ | 🔓 | 3f56a03d | Declined `4000…0002` → "Karta kredytowa została odrzucona", customer stays on a recoverable session, **no** paid order. Retry on the same session succeeded → `G-20260831-A0AD39`. Exactly one order created. | — |
 | S-24 | Checkout | Cancelled checkout shows a real screen | 🟢 | ✅ | ✅ | ⬜ | 🧊 | 3f56a03d | `?checkout=cancelled` | Served proof |
 | S-25 | Checkout | Duplicate CTA click cannot mint a second order | 🟢 | ✅ | ✅ | ⬜ | 🧊 | 3f56a03d | ref guard + server reuse | Served proof |
-| S-26 | Checkout | Reconciliation idempotent; `paid_at` stamped once; refund never walked back | 🟢 | ⬜ | ✅ | ⬜ | 🧊 | 3f56a03d | — | Add auto test |
+| S-26 | Checkout | Reconciliation idempotent; `paid_at` stamped once; refund never walked back | 🟢 | ✅ | ✅ | ⬜ | 🧊 | 3f56a03d | Repeated reconciliation proven live: an expired session moved `pending → cancelled`, no `paid_at`, no intent. `paid_at` stamped once; refunded never walked back. | — |
 | S-27 | Order | Confirmation shows number, items, total, payment status, address, next steps | 🟢 | ✅ | ✅ | ⬜ | 🧊 | 3f56a03d | number, items, €73.80, address, 3 next steps, preorder lead time | OWNER QA |
-| S-28 | Order | Customer order visibility (`/account`) shows address, shipping, tracking | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | 3f56a03d | panel renders; not yet exercised on the new paid order | Served QA on /account |
-| S-29 | Email | Order confirmation / paid / shipped / refund emails | 🔴 | ✅ | ⬜ | ⬜ | 🔓 | #49 | **AUDITED: no email architecture exists.** No provider (Resend/Postmark/SendGrid), no shared mail module, no email job anywhere in `supabase/functions/**` or `src/**`. Partner/Home invites ride Supabase Auth's own mailer, which is not a Gellatti-branded transactional sender. Needs a provider account, a verified `gellatti.com` sending domain (SPF/DKIM) and a shared job — all owner decisions/credentials. | Owner decision. Meanwhile the Shop makes **no** email promise: confirmation points at the order history, pinned by a contract test |
+| S-28 | Order | Customer order visibility (`/account`) shows address, shipping, tracking | 🟢 | ⬜ | ✅ | ⬜ | 🔓 | 3f56a03d | `/account` desktop + 390: number, items, quantities, preorder line, total, shipping cost, full address, payment + fulfilment state in customer language. **No internal terminology leaks** (asserted). | — |
+| S-29 | Email | Order confirmation / paid / shipped / refund emails | 🔴 | ✅ | ⬜ | ⬜ | 🔓 | #49 | **AUDITED: no email architecture exists.** No provider (Resend/Postmark/SendGrid), no shared mail module, no email job anywhere in `supabase/functions/**` or `src/**`. Partner/Home invites ride Supabase Auth's own mailer, which is not a Gellatti-branded transactional sender. Needs a provider account, a verified `gellatti.com` sending domain (SPF/DKIM) and a shared job — all owner decisions/credentials. | Emit into the shared email-job architecture once it exists — do not build a Shop-specific provider |
 | S-30 | Admin | Order list with paid / unpaid / refunded visibility | 🟢 | ✅ | ✅ | ⬜ | 🧊 | 3f56a03d | — | Served proof |
 | S-31 | Admin | Fulfilment queues: to ship / waiting preorder / unpaid / shipped | 🟢 | ✅ | ✅ | ⬜ | 🧊 | 3f56a03d | live queues: to-ship 0 · waiting-preorder 1 · unpaid 3 · shipped 0 | OWNER QA |
 | S-32 | Admin | Order detail answers "what to pack, where to send" | 🟢 | ✅ | ✅ | ⬜ | 🧊 | 3f56a03d | card answers pack/where/paid/next on the real order | OWNER QA |
@@ -55,20 +55,23 @@ Freeze: 🔓 OPEN · 🧊 READY TO FREEZE · 🔒 FROZEN
 | S-37 | QA | Served staging QA across all states | 🟢 | ⬜ | ✅ | ⬜ | 🧊 | 3f56a03d | — | After merge |
 | S-38 | QA | OWNER QA checkpoint with evidence pack | 🟡 | ⬜ | ⬜ | ⬜ | 🧊 | 3f56a03d | evidence pack ready | Owner review |
 | S-39 | Freeze | Freeze record: route, SHA, deployment, bundle, screenshots, regressions | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | 3f56a03d | route /shop · merge 3f56a03d · bundle index-Ds9UxYPp.js / index-ButNLFOJ.css | After owner approval |
-| S-40 | Policy | Shipping rate €9.90 and 15-country list — owner/business decision | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | #49 | Value is a business decision, not a code one | Owner decision |
-| S-41 | Policy | VAT / invoicing — provider tax not enabled; no VAT row published | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | #49 | Registration + gross/net is a legal decision | Owner decision |
-| S-42 | Policy | Stock authority — no inventory counts; availability is manual | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | Real inventory is a business decision | Owner decision |
+| S-40 | Policy | Shipping rate €9.90 and 15-country list — owner/business decision | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | #49 | Sandbox/staging test value only — origin, storage and the path to final policy documented in GELLATTI_SHOP_COMMERCE_POLICY_ORIGINS.md. Not production policy. | Owner decision |
+| S-41 | Policy | VAT / invoicing — provider tax not enabled; no VAT row published | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | #49 | Sandbox/staging test value only — origin, storage and the path to final policy documented in GELLATTI_SHOP_COMMERCE_POLICY_ORIGINS.md. Not production policy. | Owner decision |
+| S-42 | Policy | Stock authority — no inventory counts; availability is manual | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | `availability` + `lead_time_weeks` are operator-controlled and canonical. There is **no stock quantity** and nothing decrements. Preorder hand-off uses the operator's existing `preparing` transition — no invented stock rule. Origins documented in GELLATTI_SHOP_COMMERCE_POLICY_ORIGINS.md | Owner inventory decision |
 | S-43 | Policy | Refund from Admin — reconciled only, not initiated | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | Whether Admin may refund is an owner decision | Owner decision |
 | S-44 | Policy | Legal commerce pages (terms, returns, withdrawal) | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | Legal decision | Owner decision |
-| S-45 | Resilience | Payment webhook — reconciliation is pull-based only | 🔴 | ⬜ | ⬜ | ⬜ | 🔓 | — | Endpoint + secret is an owner decision | Owner decision |
+| S-45 | Payment authority | Provider event — not the browser — settles the order | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | — | **RECLASSIFIED technical, not business.** Forensic: Stripe delivered `checkout.session.completed` 13:16:13.98 carrying `pi_shop_order_id`; `paid_at` written 13:16:20.58 by the browser return — the canonical webhook was live but shop-blind. Answer = **B, server-side verification after the success return**. Fixed by extending the EXISTING webhook (no second architecture): guarded `pending→paid`, `paid_at` once, refunded never reversed, expired cancels once, async events settle too. 11 regressions. | Deploy the function, then prove pay-and-close-the-tab |
 
 ## TOTALS
 
-Work: 🟢 33 · 🟡 3 · 🔴 8 · ⚪ 1 — of 45
-Served QA: ✅ 33 · ⬜ 12 · ❌ 0
+Work: 🟢 37 · 🟡 1 · 🔴 7 · ⚪ 0 — of 45
+Served QA: ✅ 36 · ⬜ 9 · ❌ 0
 OWNER QA: ⬜ 45 (never self-marked)
 Freeze: 🧊 33 · 🔓 12 · 🔒 0
 
-**Freeze candidate** — route `/shop`, merge SHA `3f56a03d`, deployment READY,
-served bundle `index-Ds9UxYPp.js` / `index-ButNLFOJ.css`, Master Designbook v1.0,
-test order `G-20260831-2DA655`.
+**NOT a freeze candidate yet.** Payment finality (S-45) is fixed in code and
+proven by 11 regressions, but the webhook must be deployed and the
+pay-and-close-the-tab regression run on Sandbox before the Shop can be frozen.
+
+Route `/shop` · Master Designbook v1.0 · test orders `G-20260831-2DA655`
+(success) and `G-20260831-A0AD39` (decline → retry).
