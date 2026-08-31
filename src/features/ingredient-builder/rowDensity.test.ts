@@ -155,8 +155,14 @@ describe('D11 — the complete left Recipe workspace follows the row system', ()
   });
 
   it('uses one 44 px / rounded-xl action family with an explicit hierarchy', () => {
-    expect(picker).toContain(
-      "scope === 'BASE_FORMULATION'\n            ? 'border border-ink/20 bg-white text-ink hover:border-ink/40'\n            : 'border border-ink/10 bg-[var(--g-ivory)] text-stone-700 hover:border-ink/25'",
+    // Whitespace-insensitive ON PURPOSE, and only that. Every token below is still
+    // required; the assertion used to embed the exact newlines and indentation of the
+    // expression, so wrapping the trigger in a variant branch (HOME-UX-ADD-INGREDIENT,
+    // 2026-08-31) failed it while changing no styling at all. Indentation is not the
+    // contract — the 44 px / rounded-xl family and its two-level hierarchy are.
+    const flat = picker.replace(/\s+/g, ' ');
+    expect(flat).toContain(
+      "scope === 'BASE_FORMULATION' ? 'border border-ink/20 bg-white text-ink hover:border-ink/40' : 'border border-ink/10 bg-[var(--g-ivory)] text-stone-700 hover:border-ink/25'",
     );
     expect(picker).toContain('inline-flex h-11 items-center justify-center rounded-xl');
     expect(intelligenceHeader).toContain('flex h-11 shrink-0 items-center gap-2 rounded-xl');
