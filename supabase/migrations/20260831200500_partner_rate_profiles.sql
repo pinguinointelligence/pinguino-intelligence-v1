@@ -138,21 +138,36 @@ stable
 security definer
 set search_path = public
 as $$
-  select
-    case
-      when p_product = 'home' and p_cadence = 'monthly' then p.home_monthly_cents
-      when p_product = 'home' and p_cadence = 'annual'  then p.home_annual_cents
-      when p_product = 'pro'  and p_cadence = 'monthly' then p.pro_monthly_cents
-      when p_product = 'pro'  and p_cadence = 'annual'  then p.pro_annual_cents
-    end as amount_cents,
-    p.id as rate_profile_version_id
-  from public.partner_rate_profiles p
-  where p.partner_id = p_partner_id
-    and p.effective_start <= p_at
-    -- revocation narrows the window; whichever ends first wins
-    and (p.effective_end is null or p_at < p.effective_end)
-    and (p.revoked_at    is null or p_at < p.revoked_at)
-  limit 1;
+  select amount_cents, rate_profile_version_id
+  from (
+    select
+      case
+        when p_product = 'home' and p_cadence = 'monthly' then p.home_monthly_cents
+        when p_product = 'home' and p_cadence = 'annual'  then p.home_annual_cents
+        when p_product = 'pro'  and p_cadence = 'monthly' then p.pro_monthly_cents
+        when p_product = 'pro'  and p_cadence = 'annual'  then p.pro_annual_cents
+      end as amount_cents,
+      p.id as rate_profile_version_id
+    from public.partner_rate_profiles p
+    where p.partner_id = p_partner_id
+      and p.effective_start <= p_at
+      -- revocation narrows the window; whichever ends first wins
+      and (p.effective_end is null or p_at < p.effective_end)
+      and (p.revoked_at    is null or p_at < p.revoked_at)
+    -- DETERMINISM. The no-overlap trigger already makes at most one version
+    -- match, so this ordering is unreachable in a healthy database. It exists
+    -- because `limit 1` without `order by` is arbitrary, and if the trigger were
+    -- ever disabled — which is exactly what QA does inside rolled-back
+    -- transactions — an arbitrary pick would pay a WRONG rate silently. The
+    -- latest applicable version wins.
+    order by p.effective_start desc, p.created_at desc, p.id
+    limit 1
+  ) resolved
+  -- RP7: unknown product/cadence vocabulary must produce NO ROW, not a row
+  -- carrying a null amount beside a real version id. A half-row looks resolved
+  -- to a caller checking `found`, and would pay null. Returning nothing routes
+  -- it into the same deferral path as "no profile in force".
+  where resolved.amount_cents is not null;
 $$;
 
 revoke all on function public.gellatti_partner_elite_rate_v1(uuid, text, text, timestamptz)

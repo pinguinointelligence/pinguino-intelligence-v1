@@ -291,3 +291,34 @@ describe('the live commission path resolves elite from the profile', () => {
     expect(DISPATCH).toContain("from('commission_rules')");
   });
 });
+
+describe('resolver determinism and vocabulary (pre-apply hardening)', () => {
+  it('never resolves with an arbitrary limit 1', () => {
+    // `limit 1` with no `order by` picks an arbitrary row. The no-overlap
+    // trigger makes that unreachable normally, but a disabled trigger would
+    // then pay a silently wrong rate.
+    expect(CODE).toMatch(/order by p\.effective_start desc[^;]*limit 1/s);
+  });
+
+  it('returns no row rather than a null amount beside a real version id', () => {
+    // A half-row reads as "resolved" to a caller checking `found`, and pays null.
+    expect(CODE).toContain('where resolved.amount_cents is not null');
+  });
+
+  it('covers exactly the product/cadence vocabulary the ledger CHECK allows', () => {
+    // Live: CHECK (product = ANY ('home','pro')) and (cadence = ANY ('monthly','annual')).
+    for (const branch of [
+      "p_product = 'home' and p_cadence = 'monthly'",
+      "p_product = 'home' and p_cadence = 'annual'",
+      "p_product = 'pro'  and p_cadence = 'monthly'",
+      "p_product = 'pro'  and p_cadence = 'annual'",
+    ]) {
+      expect(CODE).toContain(branch);
+    }
+  });
+
+  it('keeps the elite commission_rules row as history, never deleting it', () => {
+    expect(CODE).not.toMatch(/delete\s+from\s+public\.commission_rules/i);
+    expect(CODE).not.toMatch(/update\s+public\.commission_entries/i);
+  });
+});

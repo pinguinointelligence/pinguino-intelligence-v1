@@ -10,7 +10,11 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { MAX_CURRENT_PARTNER_CODES, type CodeClaimRefusalReason } from './partnerCodeSlots';
+import {
+  MAX_CURRENT_PARTNER_CODES,
+  evaluateCodeClaim,
+  type CodeClaimRefusalReason,
+} from './partnerCodeSlots';
 import {
   OFFENSIVE_CODE_WORDS,
   PARTNER_CODE_MAX_LENGTH,
@@ -126,16 +130,15 @@ describe('claim guard mirrors evaluateCodeClaim()', () => {
     expect(guard).toContain('set search_path = public');
   });
 
-  it('returns every ownership refusal reason the TS module can return', () => {
-    const ownershipReasons: readonly CodeClaimRefusalReason[] = [
-      'held_by_another_partner',
-      'blocked_code',
-      'slot_limit_reached',
-      'already_current',
-    ];
-    for (const reason of ownershipReasons) {
+  it('returns the ownership refusal reasons that existed at this migration', () => {
+    // 20260831200000 shipped the ceiling reason as `slot_limit_reached`. It was
+    // renamed to the canonical `partner_active_code_limit_reached` by
+    // 20260831200200 — see the supersession test below. This migration is
+    // applied history and is deliberately not edited.
+    for (const reason of ['held_by_another_partner', 'blocked_code', 'already_current'] as const) {
       expect(guard, reason).toContain(`'${reason}'`);
     }
+    expect(guard).toContain("'slot_limit_reached'");
   });
 
   it('returns the format refusal reasons too', () => {
@@ -278,5 +281,42 @@ describe('PC3 banned words — the follow-up migration the live probe forced', (
 
   it('keeps the case-insensitive lookup from the previous migration', () => {
     expect(BANNED).toContain('where upper(code) = v_code');
+  });
+});
+
+describe('ONE canonical ceiling reason (owner ruling §3)', () => {
+  const DEDUPE = readFileSync(
+    join(REPO, 'supabase', 'migrations', '20260831200200_partner_code_slot_limit_dedupe.sql'),
+    'utf8',
+  ).replace(/--.*$/gm, '');
+
+  it('the latest claim-guard definition emits the canonical identifier', () => {
+    expect(DEDUPE).toContain("return 'partner_active_code_limit_reached'");
+    expect(DEDUPE).not.toContain("return 'slot_limit_reached'");
+  });
+
+  it('the TS domain uses the identical string, so there is no second spelling', () => {
+    const outcome = evaluateCodeClaim({
+      registry: [
+        { code: 'AAAAA', partnerId: 'p1', state: 'current' },
+        { code: 'BBBBB', partnerId: 'p1', state: 'current' },
+        { code: 'CCCCC', partnerId: 'p1', state: 'current' },
+      ],
+      partnerId: 'p1',
+      rawCode: 'DDDDD',
+    });
+    expect(outcome.ok).toBe(false);
+    if (!outcome.ok) expect(outcome.reason).toBe('partner_active_code_limit_reached');
+  });
+
+  it('the redundant trigger and function are dropped, the canonical guard untouched', () => {
+    expect(DEDUPE).toContain('drop trigger if exists partner_codes_slot_limit');
+    expect(DEDUPE).toContain('drop function if exists public.enforce_partner_code_slot_limit()');
+    expect(DEDUPE).not.toMatch(/(drop|create or replace)[^;]*gellatti_partner_code_guard_v1/);
+  });
+
+  it('does not rewrite any historical migration', () => {
+    expect(DEDUPE).not.toContain('20260826122000');
+    expect(/update public\.partner_codes/i.test(DEDUPE)).toBe(false);
   });
 });

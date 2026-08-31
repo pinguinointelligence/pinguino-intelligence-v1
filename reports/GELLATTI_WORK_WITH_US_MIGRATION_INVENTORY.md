@@ -21,7 +21,7 @@ And the check the owner asked for found a fourth problem that neither of us had 
 
 ---
 
-## 1. THE INVENTORY — NINE FILES, TWO APPLIED
+## 1. THE INVENTORY — TEN FILES, THREE APPLIED
 
 Referred to by **exact filename**. Ordinal shorthand is no longer used: inserting `200100` after the
 first apply made "#7/#8" ambiguous.
@@ -32,11 +32,18 @@ first apply made "#7/#8" ambiguous.
 | --- | --- | --- | --- | --- |
 | `20260831200000_partner_code_slots_and_alias_ownership.sql` | `partner_code_slots_and_alias_ownership` | **`20260831141546`** | 2 new indexes present · 2 old partial indexes dropped · trigger `partner_codes_slot_limit` present · 2 functions present | **0 rows** — 6 codes / 3 partners / 0 commissions before and after |
 | `20260831200100_partner_code_banned_words.sql` | `partner_code_banned_words` | **`20260831141738`** | `gellatti_partner_code_claim_refusal_v1` replaced; banned-word loop present; grants unchanged | **0 rows** |
+| `20260831200200_partner_code_slot_limit_dedupe.sql` | `partner_code_slot_limit_dedupe` | **`20260831143710`** | trigger `partner_codes_slot_limit` gone · `enforce_partner_code_slot_limit` gone (`0`) · `gellatti_partner_code_guard_v1` byte-identical · both global indexes intact · claim guard now returns the canonical reason | **0 rows** — 6 codes / 3 partners unchanged |
+
+> Registered versions are **read back from `supabase_migrations.schema_migrations` after each
+> apply**, never predicted. `20260831143710` is the value the server assigned; nothing in the
+> filename or in this report chose it.
 
 > My first report gave `20260831142312` for the second row. That was wrong — the register says
 > `20260831141738`. Confirmed by querying `supabase_migrations.schema_migrations` directly.
 
 ### 1.2 PENDING — seven files, exact names
+
+Unchanged by the dedupe: it added a file to the applied side, not to this list.
 
 | Repo filename | Purpose | Depends on |
 | --- | --- | --- |
@@ -162,6 +169,7 @@ select (select count(*) from public.business_leads where lead_type = 'franchise'
 | Date | What |
 | --- | --- |
 | 2026-08-31 | Added migration #8 (`business_leads`) for §32 lead operations |
+| 2026-08-31 | **Dedupe applied.** `20260831200200_partner_code_slot_limit_dedupe.sql` → registered `20260831143710`, read back from the register. Owner Option 1: the pre-existing `gellatti_partner_code_guard_v1` is the single ceiling authority; the trigger this workstream added is dropped. UPDATE contract A–E proven live *before* applying. Claim guard and `partnerCodeSlots.ts` aligned to the canonical `partner_active_code_limit_reached` — no fourth spelling, no customer copy affected (none exists). **Audit record corrected: the X3 "no ceiling exists" claim was WRONG.** Inventory now TEN files, three applied |
 | 2026-08-31 | Created for owner acceptance point 1. Corrected the "six" miscount to seven; rebased the branch off a stale base; **found and resolved five timestamp collisions with open PR #49** by renumbering into `20260831200000`–`20260831203000`; recorded the staging DB/branch drift and the filename-vs-version mismatch |
 
 
@@ -199,7 +207,7 @@ Existing `qabrowser-b`, probed by a **different** partner:
 | --- | --- |
 | 0 → 1 → 2 → 3 active | `3_active_allowed=3` ✅ |
 | 4th active code | **REFUSED** — `partner_active_code_limit_reached` |
-| Claim guard's typed reason | `slot_limit_reached` ✅ |
+| Claim guard's typed reason | `partner_active_code_limit_reached` — see §10 |
 | 3 active + aliases | still exactly 3 slots consumed, not 3 + aliases ✅ |
 
 ### §4 Banned-word authority parity
@@ -239,3 +247,96 @@ no customer or financial data was rewritten, and live verification is green.
 **From this point the rule is followed literally:** unexpected live result → stop the sequence →
 diagnose → prepare the proposed forward migration → **report** → wait for approval before applying
 it. No migration-count or scope change is absorbed silently.
+
+
+---
+
+## 10. DUPLICATE CEILING AUTHORITY — audit record corrected
+
+### 10.1 The audit was WRONG
+
+The original audit recorded **X3 — "nothing limits a partner to 3 active codes"** as a MISSING
+runtime capability. **That claim was false.** `gellatti_partner_code_guard_v1`, installed by
+`20260826122000_partner_workspace_and_public_links`, had enforced the ceiling all along. The audit
+searched for a count CHECK constraint and did not look for an existing trigger.
+
+`20260831200000` therefore added a **second** enforcement of a rule that was never absent. It was
+also dead code: `partner_codes_controlled_guard` sorts before `partner_codes_slot_limit`, so the
+pre-existing guard always fired first.
+
+**How it was caught:** live staging QA. A 4th-code probe refused with
+`partner_active_code_limit_reached` — a string this workstream never wrote. Caught before any
+financial migration was applied. This is the case for live probing over reading one's own diff.
+
+### 10.2 Owner decision: OPTION 1 — keep the pre-existing guard
+
+Before applying anything, the pre-existing guard was proven to accept every legitimate UPDATE that
+does not increase the active count. Run with **my** trigger disabled inside a rolled-back
+transaction, so only the older guard was active:
+
+| Case | Expected | Live result |
+| --- | --- | --- |
+| A · update an active row, no count increase, at 3 active | ALLOWED | **ALLOWED** |
+| B · retire an active code | ALLOWED, 3→2 | **ALLOWED, active=2** |
+| C · promote a retired code to active while at 3 active | REFUSED | **REFUSED** `partner_active_code_limit_reached` |
+| D · activate one more while at 2 active | ALLOWED, 2→3 | **ALLOWED, active=3** |
+| E · unrelated column update while at 3 active | ALLOWED | **ALLOWED** |
+
+The newer trigger's `tg_op = 'UPDATE'` short-circuit was the only refinement it carried, and case A
+and case E prove it is unnecessary: the older guard's `c.id <> new.id` covers the same ground. **No
+legitimate UPDATE fails**, so the replacement condition ("if the existing guard fails any legitimate
+no-count-increase UPDATE: STOP") never triggered.
+
+### 10.3 ONE canonical reason — no fourth spelling
+
+The same condition was reporting three different strings by path. The canonical guard's identifier
+wins; the claim guard adopts it. Nothing new was invented.
+
+| Path | Before | After |
+| --- | --- | --- |
+| `gellatti_partner_code_guard_v1` (authority) | `partner_active_code_limit_reached` | unchanged — **not touched** |
+| `enforce_partner_code_slot_limit` (dropped) | `partner_code_slot_limit` | gone |
+| `gellatti_partner_code_claim_refusal_v1` | `slot_limit_reached` | `partner_active_code_limit_reached` |
+| `partnerCodeSlots.ts` `CodeClaimRefusalReason` | `slot_limit_reached` | `partner_active_code_limit_reached` |
+
+**Customer-visible semantics are unchanged.** These are internal refusal reasons. No component maps
+them to copy — `grep` for `CodeClaimRefusalReason`/`evaluateCodeClaim` outside `src/billing/domain/`
+returns nothing, because the code-management UI is not built yet. So this is a rename of an internal
+token with no rendered string anywhere to preserve or break. When that UI is built, the mapping is
+written once against the canonical identifier.
+
+The two applied migrations that emit `slot_limit_reached` are **left exactly as they are**. Editing
+an applied migration is the divergence this workstream's preflight exists to prevent. A supersession
+test asserts the old string in the old file and the canonical one in the dedupe, so the history stays
+readable and the drift stays impossible.
+
+### 10.4 Live proof after applying `20260831200200` (registered `20260831143710`)
+
+Structural:
+
+| Check | Result |
+| --- | --- |
+| Slot-limit trigger authorities remaining | **1** — `partner_codes_controlled_guard` (plus the unrelated `partner_codes_touch`) |
+| `enforce_partner_code_slot_limit` | **0** — dropped |
+| `gellatti_partner_code_guard_v1` | **intact**, byte-identical |
+| Global unique indexes (`upper(code)`, `lower(slug)`) | **2** — both intact |
+| Codes / partners | **6 / 3** — unchanged |
+
+Functional, all inside a transaction that raised at the end so **every probe rolled back**:
+
+| Owner requirement | Live result |
+| --- | --- |
+| 0→1→2→3 works | `0to3=3` ✅ |
+| 4th active code refused | **REFUSED** `partner_active_code_limit_reached` ✅ |
+| Claim guard agrees with the trigger | `guard_reason=partner_active_code_limit_reached` ✅ |
+| Retiring frees a slot | `retire_frees=2`, then a new code **ALLOWED** ✅ |
+| Alias does not consume a slot | 3 current + aliases still leaves the ceiling at 3 ✅ |
+| Old alias remains globally reserved | another partner → `held_by_another_partner` ✅ |
+| Case variants blocked | `dedupeqa3` vs `DEDUPEQA3` → **REFUSED** (unique violation) ✅ |
+| Banned words blocked | `ADMINX` → `banned_word` ✅ |
+| Grandfathered codes unchanged | all 6 identical, `MARYSIALOD` still resolves ✅ |
+| No unintended mutation | residue `0`; commissions `0`; snapshots `0` ✅ |
+
+Post-rollback re-count: **6 codes, 0 `DEDUPEQA%` rows, 0 commission entries, 0 tier snapshots.**
+
+---

@@ -55,7 +55,7 @@ describe('CS1 — a partner holds 0 to 3 current codes', () => {
     ];
     const outcome = evaluateCodeClaim({ registry, partnerId: P1, rawCode: 'CZWARTY' });
     expect(outcome.ok).toBe(false);
-    if (!outcome.ok) expect(outcome.reason).toBe('slot_limit_reached');
+    if (!outcome.ok) expect(outcome.reason).toBe('partner_active_code_limit_reached');
   });
 
   it("one partner's full slots do not restrict another partner", () => {
@@ -135,7 +135,7 @@ describe('CS2/CS5 — a historical alias stays with its original partner (X2)', 
     ];
     const outcome = evaluateCodeClaim({ registry, partnerId: P1, rawCode: 'TOMASZ' });
     expect(outcome.ok).toBe(false);
-    if (!outcome.ok) expect(outcome.reason).toBe('slot_limit_reached');
+    if (!outcome.ok) expect(outcome.reason).toBe('partner_active_code_limit_reached');
   });
 
   it('a fresh claim of a never-used code is not flagged as a reclaim', () => {

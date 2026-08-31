@@ -61,7 +61,13 @@ export type CodeClaimRefusalReason =
   | PartnerCodeRefusalReason
   | 'held_by_another_partner'
   | 'blocked_code'
-  | 'slot_limit_reached'
+  /**
+   * CS1 ceiling. The identifier is the one the canonical database guard
+   * `gellatti_partner_code_guard_v1` has always raised — adopted here so ONE
+   * string names this condition everywhere (owner ruling 2026-08-31 §3). It
+   * is an internal reason; the customer message is unchanged.
+   */
+  | 'partner_active_code_limit_reached'
   | 'already_current';
 
 export type CodeClaimOutcome =
@@ -133,7 +139,7 @@ export function evaluateCodeClaim(input: {
 
   // CS1: the slot ceiling applies to reclaiming an own alias too.
   if (remainingCodeSlots(input.registry, input.partnerId) === 0) {
-    return frozen({ ok: false as const, reason: 'slot_limit_reached' as const });
+    return frozen({ ok: false as const, reason: 'partner_active_code_limit_reached' as const });
   }
 
   return frozen({
