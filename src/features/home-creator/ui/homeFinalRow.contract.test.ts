@@ -24,12 +24,17 @@ describe('the row uses the shared PRO control family, not a HOME copy', () => {
   });
 
   it('adds no HOME-specific arithmetic', () => {
+    // Precise names, not loose substrings. `solve` alone also matched
+    // `resolveProductBehaviorForSelection` — canonical resolution, i.e. the OPPOSITE of
+    // the defect this guards. A guard that fires on the right behaviour teaches people
+    // to work around it.
     for (const forbidden of [
       'calculateRecipe(',
       'Math.round(grams *',
-      'rescale',
-      '* 0.01',
-      'solve',
+      'rescale(',
+      'runSolver',
+      'solveRecipe',
+      'solveFor',
     ]) {
       expect(row, forbidden).not.toContain(forbidden);
     }

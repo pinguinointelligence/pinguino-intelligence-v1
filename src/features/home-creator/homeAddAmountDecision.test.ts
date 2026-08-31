@@ -35,9 +35,20 @@ describe('who decides the amount', () => {
     expect(decideAddAmount(snapshot, dose).kind).toBe('ask_amount');
   });
 
-  it('asks rather than guessing when the product is unknown', () => {
-    // Fails toward the question, never toward silently handing an unknown to Crown.
-    expect(decideAddAmount(null, dose).kind).toBe('ask_amount');
+  it('refuses — never guesses — when there is no trustworthy authority', () => {
+    // Owner ruling §6: "snapshot unknown" must not become a backdoor for creating a line
+    // with guessed semantics. Not Crown, not non-Crown: no line.
+    expect(decideAddAmount(null, dose).kind).toBe('unresolved_authority');
+  });
+
+  it('refuses a snapshot that is not currently resolved', () => {
+    const stale = { ...snapshotWith('MAIN_CAPABLE'), resolutionState: 'REVALIDATION_REQUIRED' };
+    expect(decideAddAmount(stale as never, dose).kind).toBe('unresolved_authority');
+  });
+
+  it('asks ONLY when a current authority says Crown cannot carry the product', () => {
+    expect(decideAddAmount(snapshotWith('MAIN_TECHNICAL_BLOCKED'), dose).kind).toBe('ask_amount');
+    expect(decideAddAmount(snapshotWith('MAIN_UNKNOWN'), dose).kind).toBe('unresolved_authority');
   });
 });
 
@@ -81,6 +92,16 @@ describe('the page never creates an invalid line', () => {
 
   it('never persists a fake minimum', () => {
     expect(page).not.toMatch(/addIngredient\([^)]*,\s*1\s*\)/);
+  });
+
+  it('creates nothing when the authority is unresolved', () => {
+    expect(page).toContain("decision.kind === 'unresolved_authority'");
+  });
+
+  it('passes the canonical behaviour context so the picker can resolve and refuse', () => {
+    const section = readFileSync('src/features/home-creator/ui/HomeRecipeSection.tsx', 'utf8');
+    expect(section).toContain('behaviorContext={{');
+    expect(section).toContain('accountId: behaviorAccountId');
   });
 
   it('creates the line only from Crown (0) or a confirmed amount', () => {

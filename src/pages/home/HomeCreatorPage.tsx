@@ -540,6 +540,12 @@ export function HomeCreatorPage() {
               // Not Crown-capable → ASK first. Nothing is created until a positive amount
               //                  is confirmed, so no 0 g line and no fake 1 g ever exists.
               const decision = decideAddAmount(behavior ?? null, productRecommendedDosagePl);
+              if (decision.kind === 'unresolved_authority') {
+                // Owner ruling §6: never guess. The picker already refuses a product it
+                // cannot confirm, so reaching here means the authority went stale between
+                // resolution and add — we create nothing rather than invent semantics.
+                return;
+              }
               if (decision.kind === 'ask_amount') {
                 setPendingAdd({
                   ingredient,

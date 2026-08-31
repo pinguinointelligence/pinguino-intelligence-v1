@@ -22,12 +22,22 @@ import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/co
 
 export type HomeAddAmountDecision =
   | { readonly kind: 'crown_decides' }
-  | { readonly kind: 'ask_amount'; readonly recommendedDose: string | null };
+  | { readonly kind: 'ask_amount'; readonly recommendedDose: string | null }
+  /**
+   * No trustworthy current authority. Owner ruling, 2026-08-31: this must NOT become a
+   * backdoor for creating a line with guessed semantics. We guess neither Crown nor
+   * non-Crown — the canonical product-authority refusal applies and no line is created.
+   */
+  | { readonly kind: 'unresolved_authority' };
 
 /**
- * `snapshotRequired` is deliberately true. Without a resolved snapshot the capability
- * authority answers MAIN_UNKNOWN, and an unknown product is exactly the one we must NOT
- * silently hand to Crown — asking is the safe direction, and it is also the honest one.
+ * `snapshotRequired` is deliberately true: without a resolved snapshot the capability
+ * authority answers MAIN_UNKNOWN, and an unknown product must reach the refusal rather
+ * than either flow.
+ *
+ * In practice the picker refuses first — it resolves ProductBehavior before `onAdd` and
+ * never calls back for a product it cannot confirm — so `unresolved_authority` is the
+ * belt-and-braces guard behind that, not the primary path.
  */
 export function decideAddAmount(
   snapshot: ProductBehaviorSnapshot | null | undefined,
@@ -36,6 +46,11 @@ export function decideAddAmount(
   const capability = resolveMainCapability({ snapshot, snapshotRequired: true });
   if (capability.state === 'MAIN_CAPABLE' || capability.state === 'MAIN_CAPABLE_UNCALIBRATED') {
     return { kind: 'crown_decides' };
+  }
+  // Only a product whose authority is CURRENT and says Crown cannot carry it may be
+  // asked for a manual amount. Unknown is not a quiet synonym for non-Crown.
+  if (capability.state !== 'MAIN_TECHNICAL_BLOCKED') {
+    return { kind: 'unresolved_authority' };
   }
   // Show a range ONLY when the canonical dosage authority actually carries one. HOME
   // never invents a range, and never converts a percent into grams on its own.
