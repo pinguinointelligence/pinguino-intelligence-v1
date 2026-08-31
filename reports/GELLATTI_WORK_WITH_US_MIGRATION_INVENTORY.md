@@ -21,7 +21,7 @@ And the check the owner asked for found a fourth problem that neither of us had 
 
 ---
 
-## 1. THE INVENTORY — ELEVEN FILES, FOUR APPLIED
+## 1. THE INVENTORY — ELEVEN FILES, FIVE APPLIED
 
 Referred to by **exact filename**. Ordinal shorthand is no longer used: inserting `200100` after the
 first apply made "#7/#8" ambiguous.
@@ -32,25 +32,22 @@ first apply made "#7/#8" ambiguous.
 | --- | --- | --- | --- | --- |
 | `20260831200000_partner_code_slots_and_alias_ownership.sql` | `partner_code_slots_and_alias_ownership` | **`20260831141546`** | 2 new indexes present · 2 old partial indexes dropped · trigger `partner_codes_slot_limit` present · 2 functions present | **0 rows** — 6 codes / 3 partners / 0 commissions before and after |
 | `20260831200100_partner_code_banned_words.sql` | `partner_code_banned_words` | **`20260831141738`** | `gellatti_partner_code_claim_refusal_v1` replaced; banned-word loop present; grants unchanged | **0 rows** |
-| `20260831200500_partner_rate_profiles.sql` | `partner_rate_profiles` | **`20260831150753`** | table + 3 indexes + RLS + 1 policy present · both functions SECURITY DEFINER with `search_path=public` · ledger 20 → 21 columns · `commission_rules` still 12 rows (elite row kept) | **0 rows** — 0 profiles seeded, ledger still 0, 3 partners / 6 codes unchanged |
 | `20260831200200_partner_code_slot_limit_dedupe.sql` | `partner_code_slot_limit_dedupe` | **`20260831143710`** | trigger `partner_codes_slot_limit` gone · `enforce_partner_code_slot_limit` gone (`0`) · `gellatti_partner_code_guard_v1` byte-identical · both global indexes intact · claim guard now returns the canonical reason | **0 rows** — 6 codes / 3 partners unchanged |
+| `20260831200500_partner_rate_profiles.sql` | `partner_rate_profiles` | **`20260831150753`** | table + 3 indexes + RLS + 1 policy present · both functions SECURITY DEFINER with `search_path=public` · ledger 20 → 21 columns · `commission_rules` still 12 rows (elite row kept) | **0 rows** — 0 profiles seeded, ledger still 0, 3 partners / 6 codes unchanged |
+| `20260831200600_partner_rate_profiles_grant_surface.sql` | `partner_rate_profiles_grant_surface` | **`20260831153241`** | `anon`/`authenticated` removed from the ACL entirely (now `postgres \| service_role`) · RLS still on · policy retained but dormant · applied **verbatim**, comments included | **0 rows** |
 
 > Registered versions are **read back from `supabase_migrations.schema_migrations` after each
-> apply**, never predicted. `20260831143710` is the value the server assigned; nothing in the
-> filename or in this report chose it.
+> apply**, never predicted — the register carries no timestamp column, so the server-assigned
+> `version` **is** the applied timestamp. Note that the registered order (`…141546` → `…153241`)
+> follows apply time, not filename order: `20260831200600` was applied after `20260831200500`, which
+> is why it sorts last despite a lower filename prefix than `…203000`.
 
 > My first report gave `20260831142312` for the second row. That was wrong — the register says
 > `20260831141738`. Confirmed by querying `supabase_migrations.schema_migrations` directly.
 
-### 1.2 PENDING — seven files, exact names
+### 1.2 PENDING — six files, exact names
 
-`20260831200500_partner_rate_profiles.sql` has moved to the applied side, and
-`20260831200600_partner_rate_profiles_grant_surface.sql` — **written but deliberately NOT
-applied** (§11) — has joined this list, so the count is unchanged at seven.
-
-| Repo filename | Purpose | Depends on |
-| --- | --- | --- |
-| **`20260831200600_partner_rate_profiles_grant_surface.sql`** | **§11 correction — awaiting owner approval** | `20260831200500` |
+Both `20260831200500` and `20260831200600` have moved to the applied side, so **six remain**.
 
 | Repo filename | Purpose | Depends on |
 | --- | --- | --- |
@@ -493,5 +490,110 @@ edited to match: it is applied history.
 | `20260831200200_partner_code_slot_limit_dedupe.sql` | `5efb4a49` |
 | `20260831200500_partner_rate_profiles.sql` | `5efb4a49` |
 
-Remote branch and PR recorded in §12.4 below once pushed.
+### 12.4 Remote authority
+
+| | |
+| --- | --- |
+| Remote branch | `origin/claude/work-with-us` |
+| PR | [#68](https://github.com/pinguinointelligence/pinguino-intelligence-v1/pull/68) → base `staging` |
+| Commit holding all four applied bodies | `e193c7d8d25366768ae8de870dfdef16f5a25444` |
+| Commit holding `20260831200600` as applied | `46b722f1c5df9d50699e5aba3d3cec1adb3537c9` |
+
+Verified by `git show <sha>:<path> | md5` against the working file for all five migrations — every
+one byte-identical on the remote **before** the apply.
+
+**Standing rule now in force:** a live DB apply requires the exact migration body to already exist in
+a pushed commit. `20260831200600` was the first applied under it, and was applied **verbatim**
+(comments included), so its register entry is an exact copy of the repository file rather than a
+comment-stripped subset.
+
+---
+
+## 13. `20260831200600_partner_rate_profiles_grant_surface.sql` — APPLIED
+
+**Registered version `20260831153241`**, read back from the register.
+
+### 13.1 Least privilege chosen by CONSUMER PROOF, not by guess
+
+The first draft revoked the inherited grants and then handed `select` straight back to
+`authenticated`, justified by "§15 step 3 and §16 need it". That is a guess dressed as a requirement.
+The owner's principle is the opposite, so the consumer was searched for instead of assumed:
+
+| Question | Answer |
+| --- | --- |
+| Who reads `partner_rate_profiles`? | exactly one caller — `supabase/functions/stripe-webhook/dispatch.ts:392` |
+| As what role? | `SUPABASE_SERVICE_ROLE_KEY` |
+| Through a table SELECT? | **No** — `db.rpc('gellatti_partner_elite_rate_v1', …)`, a SECURITY DEFINER function that executes as its owner and needs no table grant |
+| Any browser consumer? | **none** — `grep -rn partner_rate_profiles src` returns 0 non-test hits |
+| Does the partner dashboard exist? | **no** |
+
+So `authenticated` needed nothing, and `20260831200500`'s `grant select … to authenticated` was
+speculative. **`20260831200600` revokes and grants nothing back.**
+
+The RLS policy is deliberately left in place and **dormant** — with no grant, no policy can admit
+anyone. It is the right predicate for the day a proven consumer appears.
+
+### 13.2 ACL before and after
+
+| Role | Before | After |
+| --- | --- | --- |
+| `anon` | `arwdDxtm` | **absent** |
+| `authenticated` | `arwdDxtm` | **absent** |
+| `postgres`, `service_role` | `arwdDxtm` | unchanged |
+
+### 13.3 Live acceptance — real read/write probes, not `has_table_privilege`
+
+All inside a transaction that raised at the end, so every probe rolled back.
+
+**Privilege (§2)**
+
+| Probe | Result |
+| --- | --- |
+| `authenticated` SELECT | **DENIED** `42501` |
+| `authenticated` INSERT for self | **DENIED** `42501` |
+| `authenticated` INSERT for another partner | **DENIED** `42501` |
+| `authenticated` UPDATE | **DENIED** `42501` |
+| `authenticated` DELETE | **DENIED** `42501` |
+| `authenticated` calls the resolver | **DENIED** `42501` |
+| `anon` SELECT | **DENIED** `42501` |
+
+The refusal is now at the **privilege** layer. Before this migration the same partner could read their
+own row; RLS was doing all the work.
+
+**Runtime not broken (§3)**
+
+| Probe | Result |
+| --- | --- |
+| Admin/server creates Elite v1 | **OK** |
+| Admin/server creates adjacent v2 | **OK** |
+| Overlapping window | **REFUSED** `23P01` |
+| `service_role` SELECT | **2 rows** |
+| `service_role` calls the dispatch resolver | **500** |
+
+**Elite matrix (§7)**
+
+| Case | Result |
+| --- | --- |
+| June `home/monthly` after v2 exists | `500` **at v1** — later profile does not rewrite history |
+| June `home/annual` · `pro/monthly` · `pro/annual` | `5000` · `900` · `9000` — all four fields correct |
+| August `home/monthly` | `800` **at v2** |
+| Before the first window | **NO ROW** |
+| After revocation | **NO ROW** |
+| Partner with no profile | **NO ROW** |
+| Never falls back to Standard `199` / Gold `249` / historical Elite `299` | all three **true** |
+
+**Residue:** 0 rate profiles, 0 commission entries, 0 tier snapshots, 6 codes, 3 partners, 12 rules —
+identical to the pre-apply snapshot. `cron.job` holds exactly one job,
+`upi-product-behavior-reclassification-v1`, which is pre-existing and not this workstream's. **No
+partner scheduling job exists; the scheduler remains unapplied.**
+
+### 13.4 The five pre-existing money tables — UNTOUCHED
+
+Per owner instruction they are not modified here. Each now has its own checklist row
+(`DB-ACL-02` … `DB-ACL-06`) requiring a consumer inventory — direct client reads/writes, RPC,
+SECURITY DEFINER, Edge Function/service-role, Admin, webhook/reconciliation — with every privilege
+classified **NEEDED / NOT NEEDED / UNKNOWN** before any revoke. No broad sweep.
+
+The root cause is recorded as `DB-ACL-01`. **Global default privileges are not changed by this
+workstream.**
 

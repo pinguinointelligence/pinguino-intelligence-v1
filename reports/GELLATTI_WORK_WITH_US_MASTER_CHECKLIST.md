@@ -434,6 +434,25 @@ neutral placeholders are development-only.
 | T-SQA-01 | Served QA | Every checkpoint served-verified on staging: signed out, signed in, role, desktop, mobile, empty/loading/error/success, permission boundaries, real DB, real Stripe Sandbox | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | localhost alone is never accepted | Per checkpoint |
 | T-SQA-02 | Served QA | Accessibility pass | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Per checkpoint |
 
+### DB-ACL — database privilege debt (opened 2026-08-31)
+
+Opened after the live grant check on `partner_rate_profiles`. The finding is structural and predates
+this workstream: `ALTER DEFAULT PRIVILEGES` on schema `public`, set by `postgres` **and**
+`supabase_admin`, grants `arwdDxtm` (ALL) on **every new table** to `anon` and `authenticated`.
+Writing no GRANT does not produce a table with no grants.
+
+| ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | Evidence | Notes | Next |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| DB-ACL-01 | DB security | **`public` schema default privileges vs financial tables** — decide whether the project-wide default should keep granting ALL on every new table to `anon`/`authenticated` | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | live `pg_default_acl` | **Not changed by this workstream, by owner instruction.** Changing global default privileges has system-wide consequences and needs its own forensic. Every new table in every future workstream inherits this until it is addressed | Owner schedules the forensic |
+| DB-ACL-02 | DB security | Least-privilege forensic — **`commission_entries`** | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | live ACL `anon=arwdDxtm, authenticated=arwdDxtm` | Consumer inventory required before any revoke: direct client reads/writes · RPC · SECURITY DEFINER · Edge Function/service-role · Admin · webhook/reconciliation. Classify each privilege NEEDED / NOT NEEDED / UNKNOWN | Forensic, then a proposed migration |
+| DB-ACL-03 | DB security | Least-privilege forensic — **`commission_rules`** | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | same ACL | as DB-ACL-02 | Forensic |
+| DB-ACL-04 | DB security | Least-privilege forensic — **`partners`** | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | same ACL | as DB-ACL-02 | Forensic |
+| DB-ACL-05 | DB security | Least-privilege forensic — **`partner_codes`** | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | same ACL | as DB-ACL-02 | Forensic |
+| DB-ACL-06 | DB security | Least-privilege forensic — **`partner_tier_snapshots`** | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | same ACL | as DB-ACL-02 | Forensic |
+| DB-ACL-07 | DB security | **`partner_rate_profiles` least privilege — CLOSED** | 🟢 | ✅ | ✅ | ⬜ | 🔓 | `20260831153241` | `anon`/`authenticated` revoked entirely; ACL is now `postgres \| service_role` only. Proven with real probes, not `has_table_privilege`: authenticated SELECT/INSERT-own/INSERT-other/UPDATE/DELETE and the resolver call all **DENIED 42501**, anon SELECT **DENIED 42501**, while `service_role` reads 2 rows and the dispatch resolver returns 500 | OWNER QA |
+| DB-ACL-08 | DB security | **No new table may rely on inherited default privileges** | 🟢 | ✅ | ✅ | ⬜ | 🔓 | `migrationGrantSurface.test.ts` | Contract over every table this workstream creates: must revoke, must never grant a write to `anon`/`authenticated`, must enable RLS. **Proven to catch drift** — deleting one `revoke` turns it red. `20260831200500` is exempt only because its correction is forward-only in `20260831200600` | Keep green |
+| DB-ACL-09 | DB security | Partner dashboard rate-history read has **no privilege today** | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | `20260831153241` | Consequence of DB-ACL-07, recorded so it is not discovered as a bug later: a partner currently **cannot** read their own rate history, because no consumer exists to justify the grant. §15 step 3 / §16 will need either a narrow grant or (preferred) a SECURITY DEFINER reader | Decide when the dashboard is built |
+
 ---
 
 ## 2. Counts
