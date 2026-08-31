@@ -264,7 +264,7 @@ at 400 g, so the old proportional rescale would have produced **19 g** at
 
 ---
 
-## SORBET STARTER / INULIN — **CLOSED** · a batch resize spent the Main's reservation
+## SORBET STARTER / INULIN — **CLOSED / FROZEN** · a batch resize spent the Main's reservation
 
 | | |
 |---|---|
@@ -320,6 +320,17 @@ field and persistence is an explicit allow-list (GEL-P0-017), so it was
 non-persistent by default and the defect returned by reload alone (500 g gave
 INULIN 62 g = 12.4 %). Adding the field to the allow-list is the mechanism that
 contract exists to force; GEL-P0-017 itself is unchanged.
+
+### Frozen
+
+Owner-approved 2026-08-31 on the served 670 g and reload → 500 g results. The
+invariant and its regression protection are locked by **GEL-P0-026**
+(`starterMainReservation.contract.test.ts`): the accounted-batch equation on
+every canonical Home machine, the derived INULIN band, the reservation as the
+discriminator (complete starters unchanged), persistence across a reload, and
+the self-invalidation that stops a stale reservation reviving.
+
+PC-02 (GEL-P0-023) and PC-03 (GEL-P0-025) are unchanged and green.
 
 ### Separate debts — NOT fixed here
 
