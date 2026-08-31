@@ -5,13 +5,13 @@ import {
   DestinationHero,
   DestinationSection,
   DestinationSectionHead,
-  ImageDirection,
 } from '@/components/shared/destinationEditorial';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { cn } from '@/lib/cn';
 import { copy } from '@/copy/en';
 import { cooperationCopy } from '@/copy/cooperation';
 import { PartnerApplicationPanel } from '@/features/partner-application/PartnerApplicationPanel';
+import { OwnerAssetImage } from '@/features/work-with-us/OwnerAssetImage';
 
 const c = cooperationCopy;
 const w = copy.nav.work;
@@ -64,19 +64,23 @@ export function WorkWithUsPage() {
           </a>
         }
         visual={
-          /* The approved hero keeps its image direction ON A PHONE too — the
-             authority's mobile hero runs the full graphite band with the frame
-             under the CTA, so hiding it below `lg` shortened the band and
-             pushed everything beneath it out of register. */
+          /* The approved hero keeps its image ON A PHONE too — the authority's
+             mobile hero runs the full graphite band with the frame under the
+             CTA, so hiding it below `lg` shortened the band and pushed
+             everything beneath it out of register.
+
+             A01 is the owner's Partner hero. Its subject sits right-of-centre
+             and its left third is close to empty, which is why it survives the
+             tall mobile crop: `object-cover` trims the empty side first. */
           <div className="grid place-items-center p-[26px] pt-0 lg:p-[26px]">
-            <ImageDirection
-              tone="inverse"
-              className="h-full min-h-[190px] w-full"
-              lines={[
-                'Kierunek assetu: zespół i pracownia Gellatti',
-                'Asset nie jest częścią preview.',
-              ]}
-            />
+            <div className="h-full min-h-[190px] w-full overflow-hidden rounded-[12px]">
+              <OwnerAssetImage
+                id="A01"
+                priority
+                sizes="(min-width: 1024px) 40vw, 100vw"
+                className="object-[70%_center]"
+              />
+            </div>
           </div>
         }
       />

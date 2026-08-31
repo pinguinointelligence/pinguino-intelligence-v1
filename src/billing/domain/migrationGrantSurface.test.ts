@@ -58,7 +58,7 @@ function createdTables(): readonly Created[] {
     const sql = readFileSync(join(MIGRATIONS, file), 'utf8');
     const bodyOnly = sql.replace(/--.*$/gm, '');
     for (const m of bodyOnly.matchAll(/create table if not exists public\.([a-z0-9_]+)/g)) {
-      out.push({ file, table: m[1], sql: bodyOnly });
+      if (m[1] !== undefined) out.push({ file, table: m[1], sql: bodyOnly });
     }
   }
   return out;
@@ -94,6 +94,7 @@ describe('inherited grant surface', () => {
       )) {
         const privileges = m[1];
         const grantees = m[2];
+        if (privileges === undefined || grantees === undefined) continue;
         if (!/anon|authenticated/.test(grantees)) continue;
         expect(privileges, `${table} -> ${grantees}`).not.toMatch(
           /insert|update|delete|truncate|all/,

@@ -186,6 +186,10 @@ export function assertNoOverlappingVersions(versions: readonly EliteRateProfileV
   for (let i = 1; i < sorted.length; i += 1) {
     const previous = sorted[i - 1];
     const current = sorted[i];
+    // Both indices are inside the loop bounds; the guard exists because the
+    // build indexes arrays as possibly-undefined, and an assertion would trade
+    // a compile-time check for a runtime crash.
+    if (previous === undefined || current === undefined) continue;
     if (
       previous.effectiveEndUtcMs === null ||
       current.effectiveStartUtcMs < previous.effectiveEndUtcMs
@@ -207,12 +211,13 @@ export function selectVersionInForce(
   assertUtcMs(atUtcMs, 'atUtcMs');
   const inForce = versions.filter((version) => isVersionInForceAt(version, atUtcMs));
   if (inForce.length === 0) return null;
-  if (inForce.length > 1) {
+  const [a, b] = inForce;
+  if (a === undefined) return null;
+  if (b !== undefined) {
     // RP4: two live versions at one instant is a data error, never last-wins.
-    const [a, b] = inForce;
     throw new OverlappingRateVersionsError(a.versionId, b.versionId);
   }
-  return inForce[0];
+  return a;
 }
 
 /** Pick the single rate for (product, cadence) out of a version's four rates. */

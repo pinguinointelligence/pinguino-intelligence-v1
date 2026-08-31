@@ -94,6 +94,15 @@ export interface DbTable {
 
 export interface DbClient {
   from(table: string): DbTable;
+  /**
+   * Elite rate resolution (owner override 2026-08-31 §11) calls
+   * `gellatti_partner_elite_rate_v1` as an RPC rather than through `from`,
+   * because it is a SECURITY DEFINER function, not a table. The member was
+   * missing from this interface even though the call site existed, so the
+   * strict build failed while `tsc --noEmit` did not — the two use different
+   * configs and only the build type-checks the Edge functions.
+   */
+  rpc(fn: string, args: Record<string, unknown>): Promise<{ data: unknown; error: DbError | null }>;
 }
 
 /** Re-fetch the CURRENT Stripe object (requiresRefetch intents). */

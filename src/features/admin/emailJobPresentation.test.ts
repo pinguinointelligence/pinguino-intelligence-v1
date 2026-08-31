@@ -23,6 +23,9 @@ const STATUSES: EmailJobStatus[] = [
 const job = (overrides: Partial<AdminEmailJob> = {}): AdminEmailJob => ({
   id: 'job-1',
   subject_key: 'partnerApplicationNew',
+  // EJ9: the domain/event discriminator the RPC now returns, from metadata.
+  domain: 'PARTNER',
+  event: 'APPLICATION',
   subject: '[GELLATTI][PARTNER][APPLICATION][NEW] GelatoConAnna · Italy',
   recipient: 'info@gellatti.com',
   environment: 'production',

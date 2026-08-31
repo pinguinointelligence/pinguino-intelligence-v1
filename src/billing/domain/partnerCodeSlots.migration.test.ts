@@ -221,7 +221,7 @@ describe('PC3 banned words — the follow-up migration the live probe forced', (
   /** The word array the SQL guard actually loops over, parsed from the source. */
   function sqlBannedWords(): string[] {
     const block = /foreach v_banned in array array\[([\s\S]*?)\]/.exec(BANNED)?.[1] ?? '';
-    return [...block.matchAll(/'([A-Z]+)'/g)].map((m) => m[1]);
+    return [...block.matchAll(/'([A-Z]+)'/g)].flatMap((m) => (m[1] === undefined ? [] : [m[1]]));
   }
 
   it('PARITY: the SQL list equals the TS list exactly — no drift in either direction', () => {

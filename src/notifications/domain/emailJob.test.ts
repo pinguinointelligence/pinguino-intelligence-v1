@@ -65,7 +65,13 @@ describe('EJ1 — the domain never depends on a provider', () => {
     const source = await import('node:fs').then((fs) =>
       fs.readFileSync(new URL('./emailJob.ts', import.meta.url), 'utf8'),
     );
-    const imports = [...source.matchAll(/from\s+'([^']+)'/g)].map((m) => m[1]);
+    // The capture group is always present when the regex matches, but the
+    // build config indexes tuples as possibly-undefined, so narrow explicitly
+    // rather than assert non-null.
+    const imports = [...source.matchAll(/from\s+'([^']+)'/g)].flatMap((m) =>
+      m[1] === undefined ? [] : [m[1]],
+    );
+    expect(imports.length, 'no import specifiers parsed').toBeGreaterThan(0);
     for (const specifier of imports) {
       expect(specifier.startsWith('./'), specifier).toBe(true);
     }

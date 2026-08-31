@@ -43,7 +43,9 @@ function legalActorTypes(): readonly string[] {
   for (const file of ALL_MIGRATIONS) {
     const sql = readFileSync(join(MIGRATIONS, file), 'utf8').replace(/--.*$/gm, '');
     const m = /check\s*\(\s*actor_type\s+in\s*\(([^)]*)\)/i.exec(sql);
-    if (m) return [...m[1].matchAll(/'([a-z_]+)'/g)].map((x) => x[1]);
+    if (m?.[1] !== undefined) {
+      return [...m[1].matchAll(/'([a-z_]+)'/g)].flatMap((x) => (x[1] === undefined ? [] : [x[1]]));
+    }
   }
   return [];
 }
@@ -57,7 +59,8 @@ function latestDefinition(fn: string): { file: string; body: string } | null {
     const sql = readFileSync(join(MIGRATIONS, file), 'utf8');
     const re = new RegExp(`create or replace function public\\.${fn}\\b[\\s\\S]*?\\n\\$\\$;`, 'g');
     const hits = [...sql.matchAll(re)];
-    if (hits.length > 0) latest = { file, body: hits[hits.length - 1][0] };
+    const last = hits[hits.length - 1];
+    if (last !== undefined) latest = { file, body: last[0] };
   }
   return latest;
 }
@@ -67,7 +70,9 @@ function actorTypesIn(body: string): readonly string[] {
   const code = body.replace(/--.*$/gm, '');
   const found: string[] = [];
   for (const call of code.matchAll(/gellatti_write_audit_v1\s*\(([\s\S]*?)\)\s*;/g)) {
-    for (const lit of call[0].matchAll(/'([a-z_]+)'\s*,\s*[^,()]*?::text\s*\)/g)) found.push(lit[1]);
+    for (const lit of call[0].matchAll(/'([a-z_]+)'\s*,\s*[^,()]*?::text\s*\)/g)) {
+      if (lit[1] !== undefined) found.push(lit[1]);
+    }
   }
   return found;
 }

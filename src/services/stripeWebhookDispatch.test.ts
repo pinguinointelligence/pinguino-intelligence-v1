@@ -53,6 +53,15 @@ class FakeDb implements DbClient {
   tables = new Map<string, Row[]>();
   private idCounter = 0;
 
+  /**
+   * Elite rate resolution goes through an RPC, not a table. These tests never
+   * exercise an elite partner, so the default is "no rate in force" — which is
+   * RP7's deferral signal, not a zero rate. A test that needs an elite rate
+   * overrides this.
+   */
+  rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: null }> =
+    async () => ({ data: [], error: null });
+
   seed(table: string, row: Row): Row {
     const rows = this.tables.get(table) ?? [];
     const stored = { id: `${table}-${++this.idCounter}`, ...row };
