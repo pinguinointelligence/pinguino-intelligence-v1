@@ -438,3 +438,60 @@ line. The grant surface should match the contract each migration already claims.
 2. Open a separate lane to narrow the five pre-existing money tables — or accept RLS-only there?
 
 Nothing further will be applied until this is answered.
+
+---
+
+## 12. DURABLE REPOSITORY AUTHORITY — applied bodies vs repository files
+
+**Owner requirement, 2026-08-31:** *"LIVE DB APPLY → exact migration body must already exist in a
+pushed commit."* This section establishes the baseline for the four already applied.
+
+### 12.1 🔴 The honest answer: NONE is byte-identical to its file
+
+`apply_migration` takes a name and a SQL body. **I passed a comment-stripped body every time**, so
+the register holds the executable statements without the header, rationale and rollback comments.
+The repository file is the fuller document; the register is a subset of it.
+
+That is a real gap in durable authority, and it is corrected forward: **from now on the file is
+passed verbatim, comments included**, so the register holds an exact copy of what the repository
+says.
+
+### 12.2 Every executable statement DOES match
+
+Method, and it is self-calibrating rather than trusted: the register's stored `statements` were
+normalised in SQL (strip `--` comments, drop blank lines, rtrim) and hashed; the same normalisation
+was applied to the repository file in Python and hashed. The SQL normalisation was **calibrated
+first** by reproducing a hash independently computed in Python for `20260831150753`
+(`befbe5fc806696aa5a4a4d8c5cba800c`) — so the two normalisations are proven equivalent before being
+relied on for the rest.
+
+| Repository filename | DB name | Version = applied timestamp | Statements-only md5 | Verdict |
+| --- | --- | --- | --- | --- |
+| `20260831200000_partner_code_slots_and_alias_ownership.sql` | `partner_code_slots_and_alias_ownership` | `20260831141546` | `c60456d5763795fee5e12f0277ee30e4`¹ | ✅ identical¹ |
+| `20260831200100_partner_code_banned_words.sql` | `partner_code_banned_words` | `20260831141738` | `7d2e205f736634d6c934da0c6c14f1a2` | ✅ identical |
+| `20260831200200_partner_code_slot_limit_dedupe.sql` | `partner_code_slot_limit_dedupe` | `20260831143710` | `346d59cdfaec41b320d15c9682cc2d4b` | ✅ identical |
+| `20260831200500_partner_rate_profiles.sql` | `partner_rate_profiles` | `20260831150753` | `befbe5fc806696aa5a4a4d8c5cba800c` | ✅ identical |
+
+¹ **One lexical difference, recorded rather than hidden.** The repository file quotes both function
+bodies with `$$`; the applied body used `$fn$`, because the body was nested inside a `do $$ … $$`
+block when it was passed through. A dollar-quote tag is a *delimiter*, not semantics — PostgreSQL
+stores the identical function body either way. With the tag normalised, both sides are
+`c60456d5763795fee5e12f0277ee30e4` at 101 lines and 3668 characters. The repository file is **not**
+edited to match: it is applied history.
+
+> `supabase_migrations.schema_migrations` carries no timestamp column — the columns are
+> `version, statements, name, created_by, idempotency_key, rollback`. The **version is** the
+> server-assigned wall-clock at apply time, and is the only applied-timestamp that exists. It is
+> read back from the database after every apply, never inferred.
+
+### 12.3 Pushed commit holding each applied body
+
+| Repository filename | Commit holding the applied bytes |
+| --- | --- |
+| `20260831200000_partner_code_slots_and_alias_ownership.sql` | `af9dbe47` |
+| `20260831200100_partner_code_banned_words.sql` | `1bf8c33d` |
+| `20260831200200_partner_code_slot_limit_dedupe.sql` | `5efb4a49` |
+| `20260831200500_partner_rate_profiles.sql` | `5efb4a49` |
+
+Remote branch and PR recorded in §12.4 below once pushed.
+
