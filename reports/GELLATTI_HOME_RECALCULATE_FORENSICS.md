@@ -38,23 +38,28 @@ Against the owner's five candidates:
 | Historical recipe data | **No.** Reproduced on a recipe created minutes earlier. |
 | **Another guard** | **Yes** — the server-validation layer, refusing correctly on an unreachable server. |
 
-## The aggravating defect: the shell shows a stale signed-in state
+## WITHDRAWN: the "stale signed-in shell" was my own test artefact
 
-With the session token gone, the drawer still offered **„Wyloguj się"** and never
-offered „Zaloguj się":
+An earlier draft of this document reported that the shell keeps offering „Wyloguj się"
+after the session is gone, and called it the most likely shape of the owner's failure.
+**That is withdrawn.** I produced it by deleting the stored token directly, and the
+Supabase SDK does not watch `localStorage` — so no auth event fired and the store was
+never told. It is an artefact of the test method, not a product behaviour.
 
-```
-{ tokenRemoved: true, showsSignOut: true, showsSignIn: false,
-  STALE_SESSION_MISMATCH: true }
-```
+Checked afterwards: `useAuthStore.init()` subscribes through `onAuthChange` →
+`supabase.auth.onAuthStateChange` and sets `{ user: null, status: 'anon' }` on any real
+session loss. A genuine expiry, sign-out or failed refresh therefore DOES flip the shell
+to „Zaloguj się". I have not demonstrated any real path that leaves it stale, and the
+case 3 message above was captured in that artificial state — treat it as unverified.
 
-So a customer whose session has lapsed still looks signed in, presses `Przelicz`, and is
-told their product data is stale. Neither message mentions the session
-(`mentionsSignIn: false`). This is the most likely shape of what the owner hit.
+## What survives, and is genuinely reachable
 
-Honest limit: I **simulated** the lapse by dropping the stored token without a reload. I
-did not observe a natural token expiry. The mismatch and both refusals are real and
-reproducible; the trigger in the owner's own run is not established.
+Case 2 stands on its own and needs no simulation: **a signed-out HOME user can build a
+recipe and press `Przelicz`**, which is exactly how it was first captured here — no sign
+in at any point. They are told their PRODUCT DATA is stale („brak aktualnego snapshotu
+ProductBehavior … Mapper brak; odśwież dane produktu") when the real condition is that
+an anonymous session may not read the Mapper. The advice is unactionable and the
+attribution is wrong. That is the defect to fix.
 
 ## A separate latent risk found while reading the code — NOT the cause here
 
@@ -71,10 +76,12 @@ customer copy; that is a copy decision for the owner.
 
 ## Recommended next step (not taken)
 
-1. Make the shell's session state truthful, so a lapsed session offers „Zaloguj się".
-2. Let the server-validation refusal say the session could not be confirmed, instead of
-   blaming product data — a copy change, so it needs owner approval.
-3. Give HOME a fallback for the eight message-less refusal codes.
+1. When the ProductBehavior binding cannot be confirmed **because the caller is not
+   authenticated**, say so and offer sign-in, instead of blaming product data. Copy
+   change → needs owner approval.
+2. Give HOME a fallback sentence for the eight message-less refusal codes, so `Przelicz`
+   is never silently inert. Copy change → needs owner approval.
+3. Nothing to do about the shell's session state: it already reacts correctly.
 
 None of these weakens ProductBehavior or the Engine: the guard keeps refusing exactly
 when it cannot confirm the binding.
