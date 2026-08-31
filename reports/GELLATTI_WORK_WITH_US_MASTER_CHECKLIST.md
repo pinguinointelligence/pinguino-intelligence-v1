@@ -382,14 +382,14 @@ neutral placeholders are development-only.
 | ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Q-ASSET-00 | Assets | Canonical manifest exists, built on the owner's 23-asset list | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | this run | Owner IDs adopted verbatim as authority; per-asset reference file, geometry guard and mobile-crop rule added | — |
-| Q-ASSET-20 | Assets | **Owner's final 13 assets imported, unmodified** | 🟢 | ✅ | ✅ | ⬜ | 🔓 | `248bbfd9` | A01–A07, F01, F03, W01–W04 in `public/images/work-with-us/`, **md5-verified byte-identical** to the owner's files. WebP delivery derivatives at 1600/800px (27 MB → 1.7 MB); originals kept as the authority. No crop, no filter, no logo touched | — |
-| Q-ASSET-21 | Assets | Manifest reconciled to the owner's FINAL mapping | 🟢 | ✅ | ✅ | ⬜ | 🔓 | `ownerAssets.ts` | **No outstanding mismatch.** Owner correction 2026-08-31: the earlier manifest slots for A04/A06/W01 were STALE. Canonical set is A04 → Partner/professional · A06 → Trailer product · W01 → Machines/equipment detail. All 13 approved, none to be regenerated | — |
-| Q-ASSET-22 | Assets | `/machines` hero — typography-first, no photograph | 🟢 | ✅ | ✅ | ⬜ | 🔓 | `765f533e` | Owner decision: do NOT invent a machine image. The route uses a warm-white typography-first hero with one CTA, and W01 as the equipment detail lower down. **Not a blocker.** A dedicated Machines hero stays recorded as a future asset, not an open defect | OWNER QA |
-| Q-ASSET-23 | Assets | Cart model identity stays unassigned | 🟢 | ✅ | ✅ | ⬜ | 🔓 | `765f533e` | A05 (hero) and W02 (events) carry **no model label**. Public wording is model-neutral until a specific cart is proven, per owner instruction. Canonical set Battery Cart · V2C · V4C remains internal | Owner supplies the mapping when ready |
-| Q-ASSET-24 | Assets | **W03 IS the Gellatti Trailer** | 🟢 | ✅ | ✅ | ⬜ | 🔓 | owner correction | My earlier reading — that W03 showed a different trailer — was **wrong and is withdrawn**. A06, A07 and W03 are one product story on `/trailer` with **no disclaimer**. `gellattissimo` in W03/F01/F03 is intentional Gellatti branding and is never removed | — |
+| Q-ASSET-20 | Assets | **Owner's final 13 assets imported, unmodified** | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `248bbfd9` | A01–A07, F01, F03, W01–W04 in `public/images/work-with-us/`, **md5-verified byte-identical** to the owner's files. WebP delivery derivatives at 1600/800px (27 MB → 1.7 MB); originals kept as the authority. No crop, no filter, no logo touched | — |
+| Q-ASSET-21 | Assets | Manifest reconciled to the owner's FINAL mapping | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `ownerAssets.ts` | **No outstanding mismatch.** Owner correction 2026-08-31: the earlier manifest slots for A04/A06/W01 were STALE. Canonical set is A04 → Partner/professional · A06 → Trailer product · W01 → Machines/equipment detail. All 13 approved, none to be regenerated | — |
+| Q-ASSET-22 | Assets | `/machines` hero — typography-first, no photograph | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `765f533e` | Owner decision: do NOT invent a machine image. The route uses a warm-white typography-first hero with one CTA, and W01 as the equipment detail lower down. **Not a blocker.** A dedicated Machines hero stays recorded as a future asset, not an open defect | OWNER QA |
+| Q-ASSET-23 | Assets | Cart model identity stays unassigned | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `765f533e` | A05 (hero) and W02 (events) carry **no model label**. Public wording is model-neutral until a specific cart is proven, per owner instruction. Canonical set Battery Cart · V2C · V4C remains internal | Owner supplies the mapping when ready |
+| Q-ASSET-24 | Assets | **W03 IS the Gellatti Trailer** | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | owner correction | My earlier reading — that W03 showed a different trailer — was **wrong and is withdrawn**. A06, A07 and W03 are one product story on `/trailer` with **no disclaimer**. `gellattissimo` in W03/F01/F03 is intentional Gellatti branding and is never removed | — |
 | Q-ASSET-25 | Assets | **All 13 approved assets placed on a route** | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `bb471350` | A01 gateway hero · A02/A03/A04 Partner personas · A05+W02 `/mobile` · A06+A07+W03 `/trailer` · F01 Franchise hero, F03+W04 Franchise views · W01 gateway Machines card + `/machines` detail. Nothing unused, nothing regenerated | Served QA, then OWNER QA |
 | O-FRAN-09 | Franchise | **Franchise still offers przyczepa and wozek as concepts** | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | **OWNER_DECISION_REQUIRED.** §22 says Franchise must not be presented as a cart or trailer, and `/trailer` + `/mobile` now exist as their own lanes — so a visitor meets both twice, framed differently. NOT restructured unilaterally: `concept` is a NOT NULL CHECK column on the applied `franchise_inquiries` table (`punkt, wozek, przyczepa, lokal`), so narrowing the lane needs a migration and would strand existing rows | Owner decides whether Franchise narrows to `lokal` |
-| A-GATE-08 | Gateway | Hero carries the owner's A01, served | 🟢 | ✅ | ✅ | ⬜ | 🔓 | `248bbfd9` | Served on staging preview: desktop 1440 and 375 px, image decodes, no horizontal scroll, subject held through the tall mobile crop via object-position | **OWNER QA** |
+| A-GATE-08 | Gateway | Hero carries the owner's A01, served | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `248bbfd9` | Served on staging preview: desktop 1440 and 375 px, image decodes, no horizontal scroll, subject held through the tall mobile crop via object-position | **OWNER QA** |
 | Q-REF-01 | Assets | **Reference pack extracted so machines are rendered from real images, not descriptions** | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | this run | 12 files at `~/Desktop/PI/machines/REFERENCE-FOR-RENDERS/` — V2, V4, V4B, V6, V8, V2C, V4C, Battery Cart, 2x Milano, 2x context | Attach the matching file to every machine render |
 | Q-REF-02 | Assets | **Trailer references to be saved to disk** | ⏳ | ⬜ | ⬜ | ⬜ | 🔓 | — | `TRL-A`/`TRL-B` were pasted into chat only. T01-T04 and the W03 card use them. **Not a blocker for backend work** | **Owner: save both renders to `~/Desktop/PI/machines/trailer/`** |
 | Q-A01 | Assets | A01 Partner hero (16:9, 4:5 safe) | ⏳ | ⬜ | ⬜ | ⬜ | 🔓 | — | Render order #2. Serves both `/work-with-us` and `/partner-program` | Owner renders |
@@ -441,6 +441,29 @@ neutral placeholders are development-only.
 | T-TEST-08 | Tests | Leads matrix: all 4 types, admin receipt, state update, audit, confirmation | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | After P |
 | T-SQA-01 | Served QA | Every checkpoint served-verified on staging: signed out, signed in, role, desktop, mobile, empty/loading/error/success, permission boundaries, real DB, real Stripe Sandbox | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | localhost alone is never accepted | Per checkpoint |
 | T-SQA-02 | Served QA | Accessibility pass | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Per checkpoint |
+
+### ⚠️ SERVED-QA EVIDENCE RULE — corrected 2026-08-31
+
+**A branch preview is NOT staging.** I reported five Work With Us routes as
+"served on staging" using
+`pinguino-staging-git-9b60ac-…vercel.app` — a **branch preview** of an unmerged
+PR. The owner checked the canonical alias and found none of the work there, and
+was right.
+
+| | |
+| --- | --- |
+| Canonical staging alias | **`https://staging.pinguinoai.com`** |
+| It served | `dpl_3MYetuhTL9aBcXAu5gnxbMvTkzco` → `githubCommitSha e398fdad` = `origin/staging` |
+| Work With Us commits in staging at that moment | **zero** |
+| Proof it was absent | `/images/work-with-us/web/A01.webp` returned `content-type: text/html` — the SPA fallback, byte-identical in kind to a nonexistent path |
+
+**Rule from here:** served QA counts only on the canonical alias, proven by
+resolving alias → deployment → `meta.githubCommitSha` and matching it to the
+merge SHA. A `git-*` preview URL, a bundle hash or an HTTP 200 on an SPA route
+is **not** proof. Rows verified on the preview are downgraded to Served ⬜ until
+the alias serves them.
+
+---
 
 ### PARTNER APPLICATION LANE — **CLEAN / VERIFIED**, owner-accepted 2026-08-31
 
