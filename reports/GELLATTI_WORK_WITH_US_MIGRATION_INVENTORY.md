@@ -21,7 +21,7 @@ And the check the owner asked for found a fourth problem that neither of us had 
 
 ---
 
-## 1. THE INVENTORY — ELEVEN FILES, FIVE APPLIED
+## 1. THE INVENTORY — TWELVE FILES, SIX APPLIED
 
 Referred to by **exact filename**. Ordinal shorthand is no longer used: inserting `200100` after the
 first apply made "#7/#8" ambiguous.
@@ -34,6 +34,7 @@ first apply made "#7/#8" ambiguous.
 | `20260831200100_partner_code_banned_words.sql` | `partner_code_banned_words` | **`20260831141738`** | `gellatti_partner_code_claim_refusal_v1` replaced; banned-word loop present; grants unchanged | **0 rows** |
 | `20260831200200_partner_code_slot_limit_dedupe.sql` | `partner_code_slot_limit_dedupe` | **`20260831143710`** | trigger `partner_codes_slot_limit` gone · `enforce_partner_code_slot_limit` gone (`0`) · `gellatti_partner_code_guard_v1` byte-identical · both global indexes intact · claim guard now returns the canonical reason | **0 rows** — 6 codes / 3 partners unchanged |
 | `20260831200500_partner_rate_profiles.sql` | `partner_rate_profiles` | **`20260831150753`** | table + 3 indexes + RLS + 1 policy present · both functions SECURITY DEFINER with `search_path=public` · ledger 20 → 21 columns · `commission_rules` still 12 rows (elite row kept) | **0 rows** — 0 profiles seeded, ledger still 0, 3 partners / 6 codes unchanged |
+| `20260831201000_partner_application_more_information.sql` | `partner_application_more_information` | **`20260831154203`** | CHECK now 8 states incl. `more_information_needed` · open-application index widened to 4 states · both functions' ACL now `postgres \| authenticated \| service_role` (PUBLIC + anon removed) · code probe now case-insensitive · `in_review` gone from executable code | **0 rows** — 2 applications, both `approved`, unchanged. 🔴 **but see §14: it broke submission** |
 | `20260831200600_partner_rate_profiles_grant_surface.sql` | `partner_rate_profiles_grant_surface` | **`20260831153241`** | `anon`/`authenticated` removed from the ACL entirely (now `postgres \| service_role`) · RLS still on · policy retained but dormant · applied **verbatim**, comments included | **0 rows** |
 
 > Registered versions are **read back from `supabase_migrations.schema_migrations` after each
@@ -47,11 +48,15 @@ first apply made "#7/#8" ambiguous.
 
 ### 1.2 PENDING — six files, exact names
 
-Both `20260831200500` and `20260831200600` have moved to the applied side, so **six remain**.
+`20260831201000` moved to the applied side and `20260831201100` — the **regression fix, written and
+pushed but NOT applied** (§14) — joined this list, so the count stays at six.
 
 | Repo filename | Purpose | Depends on |
 | --- | --- | --- |
-| `20260831201000_partner_application_more_information.sql` | §6 `more_information_needed`; fixes the `in_review` bug | partner application lane, slug fix |
+| 🔴 **`20260831201100_partner_application_audit_actor_fix.sql`** | **REGRESSION FIX — awaiting owner approval; staging submission is broken until it lands** | `20260831201000` |
+
+| Repo filename | Purpose | Depends on |
+| --- | --- | --- |
 | `20260831201500_email_jobs.sql` | §1–3 persisted email jobs, idempotent claim, Admin read | none |
 | `20260831202000_partner_tier_snapshot_writer.sql` | §10 Gold writer + historical reconstruction + gap state | `20260831200500` |
 | `20260831202500_payout_execution.sql` | §14 execution layer + live kill switch | `0018`, `0019` |
@@ -596,4 +601,77 @@ classified **NEEDED / NOT NEEDED / UNKNOWN** before any revoke. No broad sweep.
 
 The root cause is recorded as `DB-ACL-01`. **Global default privileges are not changed by this
 workstream.**
+
+---
+
+## 14. 🔴 STOPPED — I broke partner application submission on staging
+
+**Standing rule followed:** unexpected live result → stop → diagnose → prepare the proposed forward
+migration → **report** → **wait**. `20260831201100` is written, pushed and **NOT applied**. Nothing
+further has been applied.
+
+### 14.1 What is broken, and it is mine
+
+`20260831201000` (registered `20260831154203`) re-declared
+`gellatti_submit_partner_application_v1` and changed the audit `actor_type` from `'user'` to
+`'customer'`. `audit_log_actor_type_check` allows only:
+
+```
+system · admin · user · webhook
+```
+
+So **every call to the submit function now fails on the audit write**. Both branches, because both
+pass the same wrong literal:
+
+| Path | Live result |
+| --- | --- |
+| Brand-new application | **BROKEN** — `new row for relation "audit_log" violates check constraint "audit_log_actor_type_check"` |
+| Resubmit after MORE INFORMATION NEEDED | **BROKEN** — same constraint |
+| Admin `request_information` / `reject` / `approve` | **works** — passes `'admin'`, which is legal |
+
+The original `20260829190000_partner_application_lane` passed `'user'` and was correct. This is a
+regression introduced by this workstream, not a pre-existing defect.
+
+### 14.2 Why my pre-apply checks missed it
+
+Before applying I diffed the **approve** branch against the live function line by line — 78 lines,
+76 byte-identical, the two differences proven to be slicing artefacts — because that branch is
+reproduced wholesale and a silent revert there would be expensive.
+
+I did not apply the same scrutiny to the **submit** function, which I had also rewritten. I checked
+the part I had reasoned about instead of the part I had changed. The apply succeeded, the constraint
+was satisfied, the structural verification was green — and the feature was broken, because a
+function body is parsed at apply time and only executed when a real customer uses it.
+
+### 14.3 What 201000 did get right — proven live, rolled back
+
+Worth stating, because the migration is not being reverted:
+
+| Contract | Result |
+| --- | --- |
+| `request_information` → `more_information_needed` | **works** — it could **never** succeed before, it wrote the illegal `in_review` |
+| Second application while awaiting information | **REFUSED** — widened index treats it as in-flight |
+| `reject` | → `rejected` |
+| Non-admin calling the admin action | **REFUSED** `partner_administrator_required` |
+| `anon` calling either function | **REFUSED** `42501` — the new revokes work |
+| `in_review` in executable code | **0 occurrences** (the one textual hit is my own comment — verified, not assumed) |
+| 2 existing applications | unchanged, both `approved` |
+
+It also fixed a **second latent break this workstream had caused**: `20260831200000` made
+`partner_codes_code_global_uniq` case-insensitive, but the live approve path still probed
+`where code = v_code`, so partner approval could pick a code the index then refuses. Now
+`upper(code) = upper(v_code)`, confirmed live.
+
+### 14.4 The permanent guard
+
+`auditActorTypes.test.ts` parses every `gellatti_write_audit_v1` call in this workstream's migrations
+and checks the `actor_type` against the constraint's set. Because `20260831201000` is applied and
+must not be edited, the contract is precise: **a bad actor_type in applied history is tolerated only
+if a superseding fix exists in the repository.** A new migration with a bad value and no fix fails.
+**Proven to catch drift** — injecting `'operator'` into the unfixed `20260831203500` turns it red.
+
+### 14.5 Decision needed
+
+Apply `20260831201100_partner_application_audit_actor_fix.sql`? It restores `'user'` and changes
+nothing else. **Staging partner application submission stays broken until it lands.**
 

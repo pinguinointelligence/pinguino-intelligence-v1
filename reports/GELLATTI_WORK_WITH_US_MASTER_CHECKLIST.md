@@ -434,6 +434,16 @@ neutral placeholders are development-only.
 | T-SQA-01 | Served QA | Every checkpoint served-verified on staging: signed out, signed in, role, desktop, mobile, empty/loading/error/success, permission boundaries, real DB, real Stripe Sandbox | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | localhost alone is never accepted | Per checkpoint |
 | T-SQA-02 | Served QA | Accessibility pass | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Per checkpoint |
 
+### 🔴 LIVE REGRESSION — staging partner application submission is BROKEN
+
+| ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | Evidence | Notes | Next |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| REG-01 | Partner application | **`gellatti_submit_partner_application_v1` fails on every call** | 🔴 | ✅ | ❌ | ⬜ | 🔓 | applied `20260831154203` | **Caused by this workstream.** `20260831201000` changed the audit `actor_type` from `'user'` to `'customer'`; `audit_log_actor_type_check` allows only `system \| admin \| user \| webhook`. Both branches fail — new submission and resubmit. Proven live: `NEW_SUBMISSION=BROKEN(...violates audit_log_actor_type_check)`. The admin action is unaffected (it passes `'admin'`). Fix `20260831201100_partner_application_audit_actor_fix.sql` is **written, pushed and NOT applied** — awaiting owner approval per the standing rule | **Owner approval to apply `20260831201100`** |
+| REG-02 | Partner application | `more_information_needed` state works end to end | 🟢 | ✅ | ✅ | ⬜ | 🔓 | `20260831154203` | Proven live: `request_information` → `more_information_needed` persisted (it **could never succeed before** — it wrote the illegal `in_review`); a second application while in that state is **REFUSED** by the widened open-application index; `reject` → `rejected`; non-admin **REFUSED** `partner_administrator_required`; anon **REFUSED** `42501` on both functions. Resubmit is blocked only by REG-01 | Re-prove resubmit after REG-01 |
+| REG-03 | Partner approval | Partner-code collision probe is case-insensitive | 🟢 | ✅ | ✅ | ⬜ | 🔓 | `20260831154203` | A second latent break, also caused by this workstream: `20260831200000` made `partner_codes_code_global_uniq` case-insensitive (`upper(code)`), but the live approve path still probed `where code = v_code`, so approval could pick a code the index then refuses. Now `upper(code) = upper(v_code)`, verified live | Served QA on a real approval |
+
+---
+
 ### DB-ACL — database privilege debt (opened 2026-08-31)
 
 Opened after the live grant check on `partner_rate_profiles`. The finding is structural and predates
