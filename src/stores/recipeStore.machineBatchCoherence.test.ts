@@ -53,10 +53,27 @@ const select = (profile: HomeMachineProfile) => {
   });
 };
 
+/**
+ * Batch coherence, stated for BOTH shapes a draft can take.
+ *
+ * A complete recipe's lines account for the whole batch. An INCOMPLETE
+ * canonical starter (the Sorbet scaffold) deliberately lays down only its
+ * support vector and reserves the rest for the Main the customer has not chosen
+ * yet, so the coherent statement there is
+ *
+ *     sum(lines) + starterReservedMainGrams === target batch
+ *
+ * Asserting `sum(lines) === batch` on an incomplete starter is what let a batch
+ * resize spend the Main's reservation on the support ingredients, inflating
+ * every line ~2.5x and pushing the starter's 5.4 % Inulin to 13.8 %, outside the
+ * 2–8 % owner policy. This is the same invariant, correctly stated — the Engine
+ * total is still checked against the batch where the draft is complete.
+ */
 const expectCoherent = (grams: number, source: RecipeBatchSource) => {
   const state = useRecipeStore.getState();
   expect(state.target_batch_grams).toBe(grams);
-  expect(Math.abs(baseSum() - grams)).toBeLessThanOrEqual(BATCH_RESIZE_TOLERANCE_GRAMS);
+  const reserved = state.starterReservedMainGrams;
+  expect(Math.abs(baseSum() + reserved - grams)).toBeLessThanOrEqual(BATCH_RESIZE_TOLERANCE_GRAMS);
   expect(state.batch_source).toBe(source);
   expect(state.batchResizeConflict).toBeNull();
 };
