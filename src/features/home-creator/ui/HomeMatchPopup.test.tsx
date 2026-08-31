@@ -168,3 +168,40 @@ describe('a REFUSED derivation must not look like success', () => {
     expect(source).not.toMatch(/\.then\(onDerived\)/);
   });
 });
+
+describe('a SUCCESSFUL derivation must actually open the recipe', () => {
+  it('reads the derived recipe through the canonical repository and loads the shared store', async () => {
+    const source = await import('node:fs').then((fs) =>
+      fs.readFileSync('src/features/home-creator/matching/HomeMatchGate.tsx', 'utf8'),
+    );
+    // Served QA 2026-08-31: the derivation succeeded server-side (recipe + lineage
+    // written) but `useRecipeDerivation` finishes by navigating to /pro/recipe, which
+    // §13 bounces for a HOME subscriber — leaving the customer on an empty intent
+    // screen holding a recipe they could not see.
+    expect(source).toContain('repository.getRecipe');
+    expect(source).toContain('repository.getVersions');
+    expect(source).toContain('loadRecipeInput');
+  });
+
+  it('adds no HOME-specific derive or copy logic — it only READS the result', async () => {
+    const source = await import('node:fs').then((fs) =>
+      fs.readFileSync('src/features/home-creator/matching/HomeMatchGate.tsx', 'utf8'),
+    );
+    for (const forbidden of [
+      'createRecipe(',
+      'recordDerivation(',
+      'saveNewVersion(',
+      'buildDerivedRecipe(',
+    ]) {
+      expect(source, forbidden).not.toContain(forbidden);
+    }
+    expect(source).toContain('useRecipeDerivation');
+  });
+
+  it('opens only after success, never on a refusal', async () => {
+    const source = await import('node:fs').then((fs) =>
+      fs.readFileSync('src/features/home-creator/matching/HomeMatchGate.tsx', 'utf8'),
+    );
+    expect(source).toMatch(/if \(!derivationSucceeded\(derivation\)\) return;/);
+  });
+});

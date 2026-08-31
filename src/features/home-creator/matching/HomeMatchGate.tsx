@@ -11,6 +11,8 @@
  * `useRecipeDerivation` + `recordDerivation`. There is no HOME lineage code.
  */
 import { useRecipeDerivation } from '@/features/community/useRecipeDerivation';
+import { resolveRecipesRepository } from '@/features/pro-core/proCoreRecipeRepo';
+import { useRecipeStore } from '@/stores/recipeStore';
 import { homeCreatorCopy } from '../homeCreatorCopy';
 import type { RecipeMatch } from '../homeRecipeMatching';
 import { HomeMatchPopup } from '../ui/HomeMatchPopup';
@@ -30,6 +32,38 @@ const derivationRefusalMessage = (derivation: Derivation): string | null =>
   derivation.state.status === 'failed'
     ? (derivation.state.message ?? homeCreatorCopy.match.couldNotOpen)
     : null;
+
+/**
+ * Open the freshly derived recipe in HOME.
+ *
+ * `useRecipeDerivation` finishes by navigating to `/pro/recipe`, where the Pro
+ * workspace loads the recipe by id. A HOME subscriber never lands there — §13
+ * correctly redirects them back — so without this the derivation SUCCEEDED server-side
+ * (recipe + lineage written) while the customer was returned to an empty intent
+ * screen. Observed on staging 2026-08-31.
+ *
+ * This adds no HOME-specific derive or copy logic: the recipe was created entirely by
+ * the canonical flow. It only READS the result through the same repository the Pro
+ * workspace reads, and loads it into the one shared store with `loadRecipeInput` —
+ * exactly the pattern `RecipeVersionsSection` uses.
+ */
+async function openDerivedRecipe(recipeId: string): Promise<void> {
+  const { repository } = resolveRecipesRepository();
+  if (!repository) return;
+  const recipe = await repository.getRecipe(recipeId);
+  if (!recipe) return;
+  const versions = await repository.getVersions(recipeId);
+  const latest = versions.at(-1);
+  if (!latest) return;
+  useRecipeStore.getState().loadRecipeInput(latest.recipeInput, {
+    savedId: recipeId,
+    savedName: recipe.title,
+    versionNumber: latest.versionNumber,
+    versionId: latest.versionId,
+    versionDate: latest.createdAt,
+    composition: latest.productComposition,
+  });
+}
 
 export function HomeMatchGate({
   official,
@@ -76,8 +110,11 @@ export function HomeMatchGate({
         // so a refused derivation closed the popup and marked the recipe ready with
         // ZERO lines. Found in served QA: the user got an empty recipe screen and no
         // explanation. A refusal must stay on the popup and say so.
-        void Promise.resolve(derivation.useThisRecipe()).then(() => {
-          if (derivationSucceeded(derivation)) onDerived();
+        void Promise.resolve(derivation.useThisRecipe()).then(async () => {
+          if (!derivationSucceeded(derivation)) return;
+          const recipeId = derivation.state.status === 'done' ? derivation.state.recipeId : null;
+          if (recipeId !== null) await openDerivedRecipe(recipeId);
+          onDerived();
         });
       }}
       derivationMessage={derivationRefusalMessage(derivation)}
