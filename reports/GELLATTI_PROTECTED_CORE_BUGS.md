@@ -335,6 +335,34 @@ shape behaviourally — single-Main admitted, multi-Main and no-Main not. Before
 the fix the route assertion (`directionCandidateSource ===
 'sorbet_exact_projection'`) and the +30 g / −30 g violation assertions fail.
 
+### Merge identity and served status
+
+| | |
+|---|---|
+| staging before | `c004d659` (branch base), rebased through `45192609` |
+| **staging after** | **`c464075e`** — PR [#55], squash, no `--admin` |
+| deployment | `dpl_9yuYc1zxhN6nKmF54kJY42Mrx7s9` (target production, READY) |
+| served bundle | `index-CPmtThKc.js` → **`index-BFlaEl3N.js`** |
+| contract | **GEL-P0-025** (staging claimed 024 for the CI-lane contract mid-flight) |
+
+Gates on the merged commit: full local suite **857 files / 10 404 tests / 0
+failures**; CI "Owner-locked contracts + protected paths" (required), "Typecheck,
+lint, tests, build" (17m21s), "Solver time contracts" and "Starter-pack Direction
+rescue" all green; `guard:owner-locked` OK; `guard:protected-paths` SEMANTIC on
+`applyPipeline.ts` acknowledged via `Protected-Change:`; typecheck clean; lint 0
+errors; build ✓.
+
+**SERVED QA — NOT COMPLETED.** The required case is a *legal* single-Main
+off-batch Sorbet, which cannot be assembled on staging without signing in: the
+anonymous session is refused by the server (`401`, `permission denied for view
+mapper_basement_search`), so neither the ingredient search nor Recalculate runs,
+and the only draft reachable signed-out is the 124 g-inulin starter the owner
+explicitly excluded. Verified signed-out: the new bundle is deployed
+(`index-BFlaEl3N.js`) and the HOME Sorbet journey still builds its draft. The
+remaining checks — Preview/Apply, exact target batch, zero Engine violations,
+Main positive, Multi-Main unchanged, PC-01/PC-02 unchanged — need an
+authenticated run.
+
 ### Recorded separately — NOT fixed here
 
 * **TECH DEBT — Crown auto-seed leaves a new recipe 1 g off batch.** The seeded
