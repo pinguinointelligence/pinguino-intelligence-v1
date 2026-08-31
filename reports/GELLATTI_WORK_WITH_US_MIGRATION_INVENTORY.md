@@ -42,7 +42,7 @@ independent of #1–#7 and may be applied at any point, but keeping the order is
 ### Verification performed
 
 - **No duplicate timestamps among the eight** — verified by sorting the basenames.
-- **Not applied** — the live `supabase_migrations` table's newest version is `20260831084154`; every one of the seven is later and absent.
+- **Not applied** — the live `supabase_migrations` table's newest version is `20260831084154`; every one of the eight is later and absent.
 - **No collision with `origin/staging`** — the only migration added to staging since my base was `20260831090000_publication_full_carries_composition`, which is now in my branch via the rebase.
 - **No collision with any open PR** — all four open PR branches scanned (§2).
 
@@ -87,7 +87,7 @@ Five migrations are **applied to the staging database but absent from `origin/st
 `shop_starter_pack_and_fulfilment`, `shop_catalog_packed_grams`, `shop_starter_pack_description`,
 `shop_allergens_and_fulfilment_reads`, `shop_allergen_statement_moved_out_of_prose`.
 
-They live in the open PR #49. So the database already carries work the branch does not. That is normal for an in-flight PR applied early, but it means **`origin/staging` alone does not describe the staging database.** Nothing in my seven touches shop tables, so there is no interaction.
+They live in the open PR #49. So the database already carries work the branch does not. That is normal for an in-flight PR applied early, but it means **`origin/staging` alone does not describe the staging database.** Nothing in my eight touches shop tables, so there is no interaction.
 
 ### 3.2 Applied *versions* do not match repo *filenames*
 
