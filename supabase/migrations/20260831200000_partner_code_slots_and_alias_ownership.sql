@@ -36,12 +36,15 @@ do $$
 declare
   v_dupes text;
 begin
-  select string_agg(format('%s (%s rows)', upper(code), n), ', ')
+  -- Case-INSENSITIVE, matching the index created below. Real staging data
+  -- contains lowercase codes (`qabrowser-b`), so a case-sensitive check here
+  -- would pass while the case-insensitive index then failed to build.
+  select string_agg(format('%s (%s rows)', u, n), ', ')
     into v_dupes
   from (
-    select code, count(*) as n
+    select upper(code) as u, count(*) as n
     from public.partner_codes
-    group by code
+    group by upper(code)
     having count(*) > 1
   ) d;
 
@@ -51,12 +54,12 @@ begin
       v_dupes;
   end if;
 
-  select string_agg(format('%s (%s rows)', slug, n), ', ')
+  select string_agg(format('%s (%s rows)', l, n), ', ')
     into v_dupes
   from (
-    select slug, count(*) as n
+    select lower(slug) as l, count(*) as n
     from public.partner_codes
-    group by slug
+    group by lower(slug)
     having count(*) > 1
   ) d;
 
@@ -70,10 +73,16 @@ end $$;
 -- ── 1. X2: uniqueness becomes GLOBAL, not active-only ───────────────────────
 -- Create the replacements FIRST, then drop the old partial indexes, so the
 -- namespace is never unprotected mid-migration.
+-- CASE-INSENSITIVE on purpose (§8: "case-insensitive collision check"). Live
+-- staging stores some codes lowercase (`qabrowser-b`), so a plain (code) index
+-- would let a second partner take `QABROWSER-B` — reintroducing the very
+-- collision this migration exists to prevent.
 create unique index if not exists partner_codes_code_global_uniq
-  on public.partner_codes (code);
+  on public.partner_codes (upper(code));
+-- slug already carries a `slug = lower(slug)` CHECK from 0016, so it is
+-- canonical already; lower() here simply makes that explicit and future-proof.
 create unique index if not exists partner_codes_slug_global_uniq
-  on public.partner_codes (slug);
+  on public.partner_codes (lower(slug));
 
 drop index if exists public.partner_codes_code_active_uniq;
 drop index if exists public.partner_codes_slug_active_uniq;
@@ -146,7 +155,10 @@ begin
   if length(v_code) > 16 then return 'too_long'; end if;
   if v_code !~ '^[A-Z0-9]+$' then return 'invalid_characters'; end if;
 
-  select * into v_holder from public.partner_codes where code = v_code;
+  -- upper(code) = v_code, NOT code = v_code: stored codes are not guaranteed
+  -- uppercase, and a case-sensitive lookup would report an existing code as
+  -- available.
+  select * into v_holder from public.partner_codes where upper(code) = v_code;
 
   if found then
     -- CS6: a blocked code is unclaimable by anyone, its owner included.

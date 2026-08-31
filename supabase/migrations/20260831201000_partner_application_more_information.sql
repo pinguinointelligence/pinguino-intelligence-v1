@@ -260,7 +260,10 @@ begin
     v_code := upper(left(regexp_replace(v_slug, '[^a-z0-9]', '', 'g'), 10));
     if length(v_code) < 4 then v_code := 'GEL' || upper(left(replace(v_partner::text,'-',''), 5)); end if;
     v_suffix := 0;
-    while exists (select 1 from public.partner_codes where code = v_code) loop
+    -- upper(code): partner_codes_code_global_uniq is case-insensitive
+    -- (migration 20260831200000), so a case-sensitive probe here would pick a
+    -- code the index then refuses, and approval would fail.
+    while exists (select 1 from public.partner_codes where upper(code) = upper(v_code)) loop
       v_suffix := v_suffix + 1;
       v_code := left(v_code, 8) || v_suffix::text;
       if v_suffix > 99 then raise exception 'partner_code_unavailable'; end if;

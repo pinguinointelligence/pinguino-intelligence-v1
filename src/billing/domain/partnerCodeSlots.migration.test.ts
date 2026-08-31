@@ -21,13 +21,20 @@ const SQL = readFileSync(
 const CODE = SQL.replace(/--.*$/gm, ''); // strip line comments
 
 describe('X2 — alias ownership: uniqueness becomes global', () => {
-  it('creates a GLOBAL unique index on code and on slug', () => {
+  it('creates a GLOBAL, CASE-INSENSITIVE unique index on code and on slug', () => {
+    // Live staging stores some codes lowercase, so a plain (code) index would
+    // let a second partner take the uppercase spelling of an existing code.
     expect(CODE).toMatch(
-      /create unique index if not exists partner_codes_code_global_uniq\s*\n?\s*on public\.partner_codes \(code\)/,
+      /create unique index if not exists partner_codes_code_global_uniq\s*\n?\s*on public\.partner_codes \(upper\(code\)\)/,
     );
     expect(CODE).toMatch(
-      /create unique index if not exists partner_codes_slug_global_uniq\s*\n?\s*on public\.partner_codes \(slug\)/,
+      /create unique index if not exists partner_codes_slug_global_uniq\s*\n?\s*on public\.partner_codes \(lower\(slug\)\)/,
     );
+  });
+
+  it('the pre-flight duplicate check is case-insensitive too, matching the index', () => {
+    expect(CODE).toContain('group by upper(code)');
+    expect(CODE).toContain('group by lower(slug)');
   });
 
   it('the new indexes are NOT scoped to active rows — that was the whole defect', () => {
@@ -148,9 +155,9 @@ describe('claim guard mirrors evaluateCodeClaim()', () => {
   it('treats a retired code held by another partner as unclaimable (the X2 fix)', () => {
     // the holder lookup must NOT filter by status — any row blocks the claim
     expect(guard).toMatch(
-      /select \* into v_holder from public\.partner_codes where code = v_code;/,
+      /select \* into v_holder from public\.partner_codes where upper\(code\) = v_code;/,
     );
-    expect(guard).not.toMatch(/where code = v_code and status = 'active'/);
+    expect(guard).not.toMatch(/where upper\(code\) = v_code and status = 'active'/);
   });
 
   it('normalizes case and whitespace before lookup (CS4)', () => {
