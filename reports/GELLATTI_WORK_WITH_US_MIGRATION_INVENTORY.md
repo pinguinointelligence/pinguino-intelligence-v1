@@ -21,7 +21,7 @@ And the check the owner asked for found a fourth problem that neither of us had 
 
 ---
 
-## 1. THE INVENTORY — TWELVE FILES, SEVEN APPLIED
+## 1. THE INVENTORY — TWELVE FILES, EIGHT APPLIED
 
 Referred to by **exact filename**. Ordinal shorthand is no longer used: inserting `200100` after the
 first apply made "#7/#8" ambiguous.
@@ -34,6 +34,7 @@ first apply made "#7/#8" ambiguous.
 | `20260831200100_partner_code_banned_words.sql` | `partner_code_banned_words` | **`20260831141738`** | `gellatti_partner_code_claim_refusal_v1` replaced; banned-word loop present; grants unchanged | **0 rows** |
 | `20260831200200_partner_code_slot_limit_dedupe.sql` | `partner_code_slot_limit_dedupe` | **`20260831143710`** | trigger `partner_codes_slot_limit` gone · `enforce_partner_code_slot_limit` gone (`0`) · `gellatti_partner_code_guard_v1` byte-identical · both global indexes intact · claim guard now returns the canonical reason | **0 rows** — 6 codes / 3 partners unchanged |
 | `20260831200500_partner_rate_profiles.sql` | `partner_rate_profiles` | **`20260831150753`** | table + 3 indexes + RLS + 1 policy present · both functions SECURITY DEFINER with `search_path=public` · ledger 20 → 21 columns · `commission_rules` still 12 rows (elite row kept) | **0 rows** — 0 profiles seeded, ledger still 0, 3 partners / 6 codes unchanged |
+| `20260831201500_email_jobs.sql` | `email_jobs` | **`20260831175103`** | table + 6 indexes + 11 CHECKs · RLS on with **0 policies** · table ACL `postgres \| service_role` only · 4 mutation fns service-role only, admin read granted to `authenticated` and super_admin-gated · applied **verbatim** | **0 rows** |
 | `20260831201100_partner_application_audit_actor_fix.sql` | `partner_application_audit_actor_fix` | **`20260831155647`** | one function replaced (`gellatti_submit_partner_application_v1`) · status CHECK, open-application index and the admin function all **unchanged** (admin fn md5 `27fd03a2…`) · ACLs still `postgres \| authenticated \| service_role` | **0 rows** |
 | `20260831201000_partner_application_more_information.sql` | `partner_application_more_information` | **`20260831154203`** | CHECK now 8 states incl. `more_information_needed` · open-application index widened to 4 states · both functions' ACL now `postgres \| authenticated \| service_role` (PUBLIC + anon removed) · code probe now case-insensitive · `in_review` gone from executable code | **0 rows** — 2 applications, both `approved`, unchanged. 🔴 **but see §14: it broke submission** |
 | `20260831200600_partner_rate_profiles_grant_surface.sql` | `partner_rate_profiles_grant_surface` | **`20260831153241`** | `anon`/`authenticated` removed from the ACL entirely (now `postgres \| service_role`) · RLS still on · policy retained but dormant · applied **verbatim**, comments included | **0 rows** |
@@ -47,16 +48,15 @@ first apply made "#7/#8" ambiguous.
 > My first report gave `20260831142312` for the second row. That was wrong — the register says
 > `20260831141738`. Confirmed by querying `supabase_migrations.schema_migrations` directly.
 
-### 1.2 PENDING — five files, exact names
+### 1.2 PENDING — four files, exact names
 
-`20260831201000` and `20260831201100` have both moved to the applied side, so **five remain**.
-
-| Repo filename | Purpose | Depends on |
-| --- | --- | --- |
+`20260831201500` has moved to the applied side, so **four remain**.
 
 | Repo filename | Purpose | Depends on |
 | --- | --- | --- |
-| `20260831201500_email_jobs.sql` | §1–3 persisted email jobs, idempotent claim, Admin read | none |
+
+| Repo filename | Purpose | Depends on |
+| --- | --- | --- |
 | `20260831202000_partner_tier_snapshot_writer.sql` | §10 Gold writer + historical reconstruction + gap state | `20260831200500` |
 | `20260831202500_payout_execution.sql` | §14 execution layer + live kill switch | `0018`, `0019` |
 | `20260831203500_business_leads.sql` | §32 lead operations for all four paths | `franchise_inquiries` (read only) |
@@ -985,4 +985,95 @@ No `RESEND_API_KEY` is required for the DB proof, and none is used. When credent
 contract is: job persists → dispatcher attempts → truthful retryable/failed state → **no** provider
 id, **no** `sent_at`, **never** `sent`. That is enforced by the constraints above, so a missing
 credential cannot produce a silent no-op or a false success.
+
+---
+
+## 17. `20260831201500_email_jobs.sql` — APPLIED
+
+**Registered version `20260831175103`**, read back. Applied **verbatim** from the pushed remote file
+(`c68300fb`, md5 `77b704db…` verified byte-identical before apply).
+
+### 17.1 Gate satisfied first
+
+One uncontended full sweep on the exact current HEAD:
+
+| | |
+| --- | --- |
+| Machine quiet at | 19:39:36 — after the last commit (19:05:02), so the sweep ran on current HEAD |
+| Result | **880 files passed · 23 skipped** · **11060 tests passed · 122 skipped** |
+| **EXIT** | **0** |
+
+`mainTechnicalMaximum.test.ts` passed, which settles the earlier failure as contention rather than a
+defect. No timeouts changed, no sessions killed, no parallel sweeps.
+
+### 17.2 Structure
+
+RLS **on** with **0 policies**; table ACL `postgres | service_role` only — anon and authenticated
+absent. 6 indexes, 11 CHECK constraints, **0 rows seeded**.
+
+| Function | ACL |
+| --- | --- |
+| `gellatti_enqueue_email_v1` | postgres, service_role |
+| `gellatti_claim_email_jobs_v1` | postgres, service_role |
+| `gellatti_mark_email_sent_v1` | postgres, service_role |
+| `gellatti_mark_email_failed_v1` | postgres, service_role |
+| `gellatti_admin_email_jobs_v1` | postgres, **authenticated**, service_role — super_admin-gated inside |
+
+### 17.3 Live security probes — real role queries, all rolled back
+
+| Role | Probe | Result |
+| --- | --- | --- |
+| `anon` | read / insert / update / claim / mark_sent / admin read | **all DENIED `42501`** |
+| ordinary `authenticated` | read / insert / enqueue / claim / mark_failed | **all DENIED `42501`** |
+| ordinary `authenticated` | admin read RPC | **REFUSED** `administrator_required` |
+| **`partner_admin`** (seeded live, `gellatti_admin_has_permission_v1('PARTNER') = true`) | admin read RPC | **REFUSED** `administrator_required` |
+| `super_admin` | admin read RPC | **1 row — works** |
+| server / service_role | enqueue | **works** |
+
+The `partner_admin` probe is the decisive one: an admin who genuinely holds the PARTNER permission is
+refused, so the old gate's cross-domain leak is closed in fact, not only in intent.
+
+### 17.4 Live state machine and idempotency
+
+| # | Contract | Result |
+| --- | --- | --- |
+| 1 | business event → enqueue | `queued`, `deduplicated=false` |
+| 2 | **same business event replayed** | `deduplicated=true`, **same id**, **1 row** |
+| 3 | claim | 1 job → `sending`, `attempts=1` |
+| 4 | claim again while `sending` | **0 jobs** — no second owner |
+| 5 | mark sent with a **blank** provider id | **REFUSED** `email_sent_requires_provider_message_id` |
+| 6 | mark sent with a provider id | `sent`, provider id **present**, `sent_at` **present** |
+| 7 | claim after `sent` | **0 jobs** — no re-send |
+| 8 | direct write of `sent` with no evidence | **REFUSED** `check_violation` |
+| 9 | retryable failure | `failed`, **no** provider id, **no** `sent_at`, retry scheduled, `kind=retryable` |
+| 10 | permanent failure | `abandoned`, no retry scheduled |
+| 11 | `area='SHOP'` (outside the vocabulary) | **REFUSED** `check_violation` |
+| 11 | metadata with no `area` | **REFUSED** `check_violation` |
+| 12 | real provider calls made | **0** |
+
+**No external delivery occurred and none is claimed.** No `RESEND_API_KEY` was used or required; the
+only `provider_name` written was the literal `testprovider` inside a rolled-back transaction.
+
+### 17.5 Residue
+
+0 email jobs · `admin_users` back to **1 super_admin** (the seeded `partner_admin` rolled back) ·
+2 applications · 6 codes · 3 partners · 0 rate profiles · 0 ledger · 0 snapshots · 1 pre-existing
+cron job. Identical to the pre-apply snapshot.
+
+### 17.6 ⚠️ ANOTHER SESSION IS APPLYING TO THIS DATABASE
+
+The register carries a migration that is **not mine and not in this branch**:
+
+```
+20260831162207  shop_orders_expected_checkout_total
+```
+
+Applied at 16:22, between my `…155647` and `…175103`. It adds `expected_total_cents` and
+`expected_currency` to `public.shop_orders` and touches nothing else — **zero intersection** with the
+partner, email or rate lanes, and my table and all five functions are intact.
+
+Recorded because it changes an assumption this workstream has relied on: **staging is no longer
+written only by this lane.** An earlier count of "9 migrations from this workstream" was wrong —
+**8 are mine**, the ninth is the Shop lane's. Future pre-apply audits must re-read the live register
+rather than assume the previous snapshot still describes it.
 
