@@ -208,3 +208,95 @@ quietly return.
 | Date | What |
 | --- | --- |
 | 2026-08-31 | Created for owner blockers B/C/D. Data model audited against the live staging database. `entitlements` ruled out as a history source with the reason. `stripe_webhook_events` payloads identified as the usable spine, ordered by the payload's own `created`. Catch-up rewritten to reconstruct at the boundary or refuse; typed gap state added with Admin visibility including affected commission count and value |
+
+
+---
+
+## 9. THE CANONICAL "ACTIVE PAID REFERRAL" PREDICATE (owner point 4)
+
+**There is exactly one definition and it already existed.**
+`isEligibleReferredSubscription()` in `src/billing/domain/tierSnapshots.ts` (rule T3) is the
+authority. The SQL reconstruction mirrors it clause for clause; it does not restate or reinterpret it.
+
+**A defect I found and fixed while writing this.** My first `..._asof_v1` was a *second definition*:
+it checked only `status in (active, trialing)` plus a `past_due` window, and silently omitted
+`entitlement`, `fraudReversed`, and the `cancel_at_period_end` branch. That is precisely what the
+owner forbade. It now mirrors T3.
+
+### The predicate, status by status, at instant T
+
+| Stripe `status` | Counts? | Authority / condition |
+| --- | --- | --- |
+| `active` | ✅ **unless cancelling** | counts outright; if `cancel_at_period_end` is true it counts only while `current_period_end > T` |
+| `trialing` | ✅ **unless cancelling** | same branch as `active`. T3 mirrors the app's access layer, which treats trialing as paid access |
+| `past_due` | ⚠️ **only inside the paid window** | counts only while `current_period_end > T`. The grace **is** the already-paid window, never a fixed number of days |
+| `unpaid` | ❌ never | T3 |
+| `canceled` | ❌ never | T3 — a historical cancellation does not count |
+| `incomplete` | ❌ never | T3 — never completed |
+| `incomplete_expired` | ❌ never | T3 |
+| `paused` | ❌ never | T3 |
+| anything else | ⛔ **not a "no" — a BLOCKER** | an unclassifiable status returns `subscription_state_unknown` |
+
+### The non-status conditions, all of which also apply
+
+| Condition | Rule | How it is satisfied historically |
+| --- | --- | --- |
+| **Attribution ownership** | must belong to this partner at T | `referral_attributions.locked_at <= T`. A3 makes ownership permanent once locked, so `locked_at` is durable. The mutable `status` column is **deliberately not used** |
+| **Self-referral** | a partner never counts their own subscription | `customer_subscriptions.user_id <> partners.user_id` |
+| **Entitlement must be `paid`** | invite trials and partner free access never count | **satisfied by construction**: an invite trial and a partner's own free access create *no Stripe subscription* (inviteCodes I5, locked decision 8), so anything in `customer_subscriptions` with a Stripe id is a paid-subscription source |
+| **Complimentary / zero-price** | must not count | same construction — no Stripe subscription object exists |
+| **Fraud-reversed** | never counts | a `commission_adjustments` row with `reason = 'fraud'` against that subscription |
+| **Refunded first period** | counts only if it still grants paid access at T | a refund produces an adjustment and, where it ends access, a Stripe status change — both visible at T |
+| **Monthly vs annual** | **irrelevant to the count** | cadence affects the commission *rate*, never eligibility. HOME and PRO are counted **combined**, with no product filter |
+| **Duplicates** | one subscription counts once | `count(distinct cs.id)`, matching T3's de-duplication by `subscriptionId` |
+
+---
+
+## 10. THE PROOF PREDICATE (owner point 3)
+
+Reconstruction may call itself **PROVEN** only when *every* threshold-relevant subscription's state
+at the boundary is determinable from stored facts. Six clauses, checked in order; the first failure
+returns a machine-readable reason and **no snapshot is written**.
+
+| # | Clause | Reason returned when it fails |
+| --- | --- | --- |
+| 1 | Any event history exists at all | `no_event_history` |
+| 2 | The boundary is at or after the first stored event | `history_before_retention_start` |
+| 3 | Every attribution existing at the boundary was **locked** by then — ownership is a settled fact, not a current-status guess | `attribution_history_missing` |
+| 4 | Every owned subscription that already existed has at least one `customer.subscription.*` event at or before the boundary | `missing_initial_state` |
+| 5 | The newest event at the boundary is unambiguous — no tie at the same `created` second with disagreeing statuses | `ambiguous_event_sequence` |
+| 6 | Every reconstructed status is inside the T3 vocabulary | `subscription_state_unknown` |
+| 7 | Where the verdict *depends* on the paid window (`past_due`, or cancelling `active`/`trialing`), `current_period_end` is known | `payment_state_unproven` |
+
+The reason is **constrained by a CHECK** on `partner_tier_snapshot_gaps`, so free text cannot leak in.
+
+### The rule that matters most
+
+**An unknown is never resolved to "inactive", and never to "active".**
+
+Clauses 4–7 return a blocker rather than filtering the row out of the count. Filtering would be a
+silent "inactive" assumption — the direction that under-counts and downgrades a partner. The test
+`F. one unknown threshold-relevant subscription at 99 known` makes the stakes explicit: assuming
+inactive gives 99 → Standard, assuming active gives 100 → Gold. The two assumptions produce
+*different tiers*, so neither may be taken and the month is refused.
+
+### Subscriptions created after the boundary
+
+Not a gap: `cs.created_at <= T` excludes them, which is a determinable fact, not an assumption.
+
+---
+
+## 11. STAGING IS A BLANK FINANCIAL SLATE (owner point 7)
+
+Recorded explicitly, measured live:
+
+| Table | Rows |
+| --- | ---: |
+| `commission_entries` | **0** |
+| `partner_tier_snapshots` | **0** |
+| `partner_payouts` | 0 |
+| `payout_batches` | 0 |
+
+**There is no existing staging financial history to repair.** No synthetic historical snapshot will
+be created to populate the table — the first real snapshot must come from the sanctioned Sandbox
+scenario, against real events, after the migrations are applied.

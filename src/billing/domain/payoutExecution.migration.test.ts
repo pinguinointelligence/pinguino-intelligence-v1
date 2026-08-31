@@ -385,18 +385,36 @@ describe('tier snapshots — a missed month is reconstructed, never guessed', ()
     expect(STATE_ASOF).toContain("event_type like 'customer.subscription.%'");
   });
 
-  it('orders by the payload’s own created time, not by when we received it', () => {
+  it('selects by the payload’s own created time, not by when we received it', () => {
     // received_at is when WE got it, which is wrong for late or out-of-order delivery
-    expect(STATE_ASOF).toContain("order by (e.payload->>'created')::bigint desc");
+    expect(STATE_ASOF).toContain("(e.payload->>'created')::bigint as created_epoch");
+    expect(STATE_ASOF).toContain('max(created_epoch)');
     expect(STATE_ASOF).not.toContain('received_at');
   });
 
-  it('applies the same T3 eligibility rule to the reconstructed state', () => {
+  it('flags a tie it cannot order rather than picking one arbitrarily', () => {
+    expect(STATE_ASOF).toContain('count(distinct c2.status) > 1');
+  });
+
+  it('mirrors the canonical T3 predicate rather than defining a second one', () => {
     expect(ASOF).toContain("st.status in ('active', 'trialing')");
     expect(ASOF).toContain("st.status = 'past_due'");
     expect(ASOF).toContain('st.current_period_end > p_at');
     expect(ASOF).toContain('cs.user_id <> p.user_id');
     expect(ASOF).toContain('count(distinct cs.id)');
+    // the branches the first draft was MISSING, and which T3 requires
+    expect(ASOF).toContain('not st.cancel_at_period_end');
+    expect(ASOF).toContain("ca.reason = 'fraud'");
+    // the provenance note lives in a comment, so assert it against the raw file
+    expect(TIER_RAW).toContain('MIRRORS isEligibleReferredSubscription() in tierSnapshots.ts');
+  });
+
+  it('every T3 status is accounted for, none silently omitted', () => {
+    // the five that never count are named in a comment so the omission is
+    // deliberate rather than accidental
+    expect(TIER_RAW).toContain(
+      'canceled / unpaid / incomplete / incomplete_expired / paused never count',
+    );
   });
 
   it('never borrows a neighbouring month, the mirror, or a payload tier', () => {
@@ -414,14 +432,42 @@ describe('tier snapshots — a missed month is reconstructed, never guessed', ()
 describe('when reconstruction cannot be proven, NOTHING is written', () => {
   const BLOCKER = fn(TIER, 'gellatti_tier_reconstruction_blocker_v1');
 
-  it('refuses when the boundary predates all event history', () => {
-    expect(BLOCKER).toContain('boundary_predates_event_history');
-    expect(BLOCKER).toContain('no_event_history');
+  it('covers every clause of the proof predicate with a machine-readable reason', () => {
+    for (const reason of [
+      'no_event_history',
+      'history_before_retention_start',
+      'attribution_history_missing',
+      'missing_initial_state',
+      'ambiguous_event_sequence',
+      'subscription_state_unknown',
+      'payment_state_unproven',
+    ]) {
+      expect(BLOCKER, reason).toContain(`return '${reason}'`);
+    }
   });
 
-  it('refuses when any attributed subscription has no event at or before the boundary', () => {
-    expect(BLOCKER).toContain('subscription_without_event_history');
-    expect(BLOCKER).toContain('not exists');
+  it('the gap table constrains the reason, so free text cannot leak in', () => {
+    const table =
+      /create table if not exists public\.partner_tier_snapshot_gaps[\s\S]*?\n\);/.exec(
+        TIER,
+      )?.[0] ?? '';
+    expect(table).toContain('reason text not null check (reason in (');
+    expect(table).toContain("'payment_state_unproven'");
+  });
+
+  it('uses locked_at for ownership, never the mutable status column', () => {
+    // A3: attribution ownership is permanent once locked, so locked_at is the
+    // durable fact. `status` is current-only and says nothing about the past.
+    expect(BLOCKER).toContain('ra.locked_at is null or ra.locked_at > p_at');
+    const asof = fn(TIER, 'gellatti_partner_referred_count_asof_v1');
+    expect(asof).toContain('ra.locked_at is not null');
+    expect(asof).not.toMatch(/ra\.status\s*=\s*'active'/);
+  });
+
+  it('an unknown is never resolved to inactive OR active', () => {
+    // every clause RETURNS a blocker rather than filtering the row away
+    expect(BLOCKER).not.toMatch(/and st\.status is null\s*\)?\s*$/m);
+    expect(BLOCKER.match(/return '/g)?.length).toBeGreaterThanOrEqual(7);
   });
 
   it('the catch-up skips the partner entirely rather than writing a guess', () => {

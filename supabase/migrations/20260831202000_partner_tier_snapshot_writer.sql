@@ -234,26 +234,47 @@ revoke all on function public.gellatti_write_partner_tier_snapshots_v1(date, tim
 create or replace function public.gellatti_subscription_state_asof_v1(
   p_stripe_subscription_id text,
   p_at timestamptz
-) returns table (status text, current_period_end timestamptz, event_created timestamptz)
+) returns table (
+  status text,
+  current_period_end timestamptz,
+  cancel_at_period_end boolean,
+  event_created timestamptz,
+  ambiguous boolean
+)
 language sql
 stable
 security definer
 set search_path = public
 as $$
+  with candidates as (
+    select
+      e.payload->'data'->'object'->>'status' as status,
+      case
+        when (e.payload->'data'->'object'->>'current_period_end') ~ '^[0-9]+$'
+        then to_timestamp((e.payload->'data'->'object'->>'current_period_end')::bigint)
+      end as current_period_end,
+      coalesce((e.payload->'data'->'object'->>'cancel_at_period_end')::boolean, false)
+        as cancel_at_period_end,
+      (e.payload->>'created')::bigint as created_epoch
+    from public.stripe_webhook_events e
+    where e.event_type like 'customer.subscription.%'
+      and e.payload->'data'->'object'->>'id' = p_stripe_subscription_id
+      and (e.payload->>'created') ~ '^[0-9]+$'
+      and to_timestamp((e.payload->>'created')::bigint) <= p_at
+  ),
+  newest as (select max(created_epoch) as created_epoch from candidates)
   select
-    e.payload->'data'->'object'->>'status',
-    case
-      when (e.payload->'data'->'object'->>'current_period_end') ~ '^[0-9]+$'
-      then to_timestamp((e.payload->'data'->'object'->>'current_period_end')::bigint)
-      else null
-    end,
-    to_timestamp((e.payload->>'created')::bigint)
-  from public.stripe_webhook_events e
-  where e.event_type like 'customer.subscription.%'
-    and e.payload->'data'->'object'->>'id' = p_stripe_subscription_id
-    and (e.payload->>'created') ~ '^[0-9]+$'
-    and to_timestamp((e.payload->>'created')::bigint) <= p_at
-  order by (e.payload->>'created')::bigint desc
+    c.status,
+    c.current_period_end,
+    c.cancel_at_period_end,
+    to_timestamp(c.created_epoch),
+    -- AMBIGUOUS: two or more events share the newest timestamp AND disagree on
+    -- status. Stripe emits at second resolution, so a tie is possible; a tie we
+    -- cannot order is a fact we do not have.
+    (select count(distinct c2.status) > 1 from candidates c2
+      where c2.created_epoch = c.created_epoch)
+  from candidates c
+  join newest n on n.created_epoch = c.created_epoch
   limit 1;
 $$;
 
@@ -279,8 +300,15 @@ set search_path = public
 as $$
 declare
   v_log_start timestamptz;
-  v_holes integer;
+  v_n integer;
 begin
+  -- THE PROOF PREDICATE. Reconstruction may call itself PROVEN only when every
+  -- threshold-relevant subscription's state at the boundary is DETERMINABLE
+  -- from stored facts. An unknown is never resolved to "inactive" — that would
+  -- undercount and silently downgrade a partner — nor to "active", which would
+  -- overcount. An unknown makes the whole month unproven.
+
+  -- (1) Is there any history at all, and does it reach back far enough?
   select min(to_timestamp((payload->>'created')::bigint)) into v_log_start
   from public.stripe_webhook_events
   where (payload->>'created') ~ '^[0-9]+$';
@@ -289,22 +317,87 @@ begin
     return 'no_event_history';
   end if;
   if p_at < v_log_start then
-    return 'boundary_predates_event_history';
+    return 'history_before_retention_start';
   end if;
 
-  select count(*) into v_holes
+  -- (2) Attribution ownership must be a settled historical fact at the
+  -- boundary. `locked_at` is durable (A3: locked for the commissionable
+  -- lifetime); `status` is mutable and tells us nothing about the past. A row
+  -- that existed at the boundary but was not yet locked is genuinely unknown.
+  select count(*) into v_n
+  from public.referral_attributions ra
+  where ra.partner_id = p_partner_id
+    and ra.created_at <= p_at
+    and ra.subscription_id is not null
+    and (ra.locked_at is null or ra.locked_at > p_at)
+    and ra.status <> 'expired';
+  if v_n > 0 then
+    return 'attribution_history_missing';
+  end if;
+
+  -- (3) Every owned subscription that already existed must have a state we can
+  -- read at the boundary. No event at or before it = missing initial state.
+  select count(*) into v_n
   from public.referral_attributions ra
   join public.customer_subscriptions cs on cs.id = ra.subscription_id
   where ra.partner_id = p_partner_id
-    and ra.created_at <= p_at
+    and ra.locked_at is not null and ra.locked_at <= p_at
     and cs.created_at <= p_at
     and not exists (
       select 1 from public.gellatti_subscription_state_asof_v1(cs.stripe_subscription_id, p_at)
     );
-
-  if v_holes > 0 then
-    return 'subscription_without_event_history';
+  if v_n > 0 then
+    return 'missing_initial_state';
   end if;
+
+  -- (4) The newest event at the boundary must be unambiguous. Stripe stamps at
+  -- second resolution, so two events can tie; a tie whose statuses disagree
+  -- cannot be ordered from stored facts.
+  select count(*) into v_n
+  from public.referral_attributions ra
+  join public.customer_subscriptions cs on cs.id = ra.subscription_id
+  cross join lateral public.gellatti_subscription_state_asof_v1(cs.stripe_subscription_id, p_at) st
+  where ra.partner_id = p_partner_id
+    and ra.locked_at is not null and ra.locked_at <= p_at
+    and cs.created_at <= p_at
+    and st.ambiguous;
+  if v_n > 0 then
+    return 'ambiguous_event_sequence';
+  end if;
+
+  -- (5) A state we cannot classify is not a state we know. Any status outside
+  -- the T3 vocabulary means the predicate cannot be evaluated.
+  select count(*) into v_n
+  from public.referral_attributions ra
+  join public.customer_subscriptions cs on cs.id = ra.subscription_id
+  cross join lateral public.gellatti_subscription_state_asof_v1(cs.stripe_subscription_id, p_at) st
+  where ra.partner_id = p_partner_id
+    and ra.locked_at is not null and ra.locked_at <= p_at
+    and cs.created_at <= p_at
+    and (st.status is null
+         or st.status not in ('active','trialing','past_due','canceled','unpaid',
+                              'incomplete','incomplete_expired','paused'));
+  if v_n > 0 then
+    return 'subscription_state_unknown';
+  end if;
+
+  -- (6) Where the verdict DEPENDS on the paid window, that window must be
+  -- known. past_due, and active/trialing that is cancelling, both turn on
+  -- current_period_end; without it the answer is unproven rather than false.
+  select count(*) into v_n
+  from public.referral_attributions ra
+  join public.customer_subscriptions cs on cs.id = ra.subscription_id
+  cross join lateral public.gellatti_subscription_state_asof_v1(cs.stripe_subscription_id, p_at) st
+  where ra.partner_id = p_partner_id
+    and ra.locked_at is not null and ra.locked_at <= p_at
+    and cs.created_at <= p_at
+    and st.current_period_end is null
+    and (st.status = 'past_due'
+         or (st.status in ('active','trialing') and st.cancel_at_period_end));
+  if v_n > 0 then
+    return 'payment_state_unproven';
+  end if;
+
   return null;
 end $$;
 
@@ -322,19 +415,47 @@ stable
 security definer
 set search_path = public
 as $$
+  -- MIRRORS isEligibleReferredSubscription() in tierSnapshots.ts (T3) exactly.
+  -- There is ONE definition of "active paid referral" and this is not a second
+  -- one: every branch below corresponds to a branch there.
+  --
+  -- entitlement = 'paid' is satisfied BY CONSTRUCTION here: an invite trial and
+  -- a partner's own free access create no Stripe subscription at all
+  -- (inviteCodes I5, locked decision 8), so anything present in
+  -- customer_subscriptions with a Stripe id is a paid-subscription source.
   select count(distinct cs.id)::integer
   from public.referral_attributions ra
   join public.customer_subscriptions cs on cs.id = ra.subscription_id
   join public.partners p on p.id = ra.partner_id
   cross join lateral public.gellatti_subscription_state_asof_v1(cs.stripe_subscription_id, p_at) st
   where ra.partner_id = p_partner_id
-    and ra.status = 'active'
-    and ra.created_at <= p_at
+    -- A3: ownership is permanent once locked, so locked_at is the durable
+    -- historical fact. The mutable `status` column is deliberately NOT used.
+    and ra.locked_at is not null
+    and ra.locked_at <= p_at
+    -- T3: a real OTHER customer
     and cs.user_id <> p.user_id
+    -- T3: fraud-reversed commissions never count
+    and not exists (
+      select 1 from public.commission_adjustments ca
+      join public.commission_entries ce on ce.id = ca.commission_entry_id
+      where ce.partner_id = p_partner_id
+        and ce.stripe_subscription_id = cs.stripe_subscription_id
+        and ca.reason = 'fraud'
+    )
     and (
-      st.status in ('active', 'trialing')
-      or (st.status = 'past_due' and st.current_period_end is not null
-          and st.current_period_end > p_at)
+      -- T3: active/trialing count; if cancelling at period end they count only
+      -- while the paid window has not closed.
+      (st.status in ('active', 'trialing')
+        and (
+          not st.cancel_at_period_end
+          or (st.current_period_end is not null and st.current_period_end > p_at)
+        ))
+      -- T3: past_due counts only inside the already-paid window
+      or (st.status = 'past_due'
+        and st.current_period_end is not null
+        and st.current_period_end > p_at)
+      -- T3: canceled / unpaid / incomplete / incomplete_expired / paused never count
     );
 $$;
 
@@ -351,7 +472,16 @@ create table if not exists public.partner_tier_snapshot_gaps (
   month date not null check (extract(day from month) = 1),
   state text not null default 'historical_snapshot_reconciliation_required'
     check (state in ('historical_snapshot_reconciliation_required', 'resolved')),
-  reason text not null,
+  -- Machine-readable, one per proof-predicate clause. Never free text.
+  reason text not null check (reason in (
+    'no_event_history',
+    'history_before_retention_start',
+    'attribution_history_missing',
+    'missing_initial_state',
+    'ambiguous_event_sequence',
+    'subscription_state_unknown',
+    'payment_state_unproven'
+  )),
   detected_at timestamptz not null default now(),
   resolved_at timestamptz,
   resolved_by_user_id uuid references auth.users (id),

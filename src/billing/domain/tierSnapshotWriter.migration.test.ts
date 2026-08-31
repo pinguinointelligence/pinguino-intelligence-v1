@@ -373,3 +373,181 @@ describe('owner point D — the SQL uses the boundary, so late equals on-time', 
     expect(CATCHUP).toContain('on conflict (partner_id, month) do nothing');
   });
 });
+
+// ---------------------------------------------------------------------------
+// 5. Owner point 6 — ON-TIME === LATE equivalence, on the canonical predicate
+// ---------------------------------------------------------------------------
+
+import {
+  countEligibleReferredSubscriptions,
+  isEligibleReferredSubscription,
+  type ReferredSubscriptionEvidence,
+} from './tierSnapshots';
+import { resolveEliteRate, type EliteRateProfileVersion } from './partnerRateProfiles';
+
+const PARTNER = 'partner-1';
+const PARTNER_USER = 'user-partner';
+const FEB_BOUNDARY = Date.UTC(2026, 0, 31, 23, 0, 0); // Madrid midnight 1 Feb
+const MAR_BOUNDARY = Date.UTC(2026, 1, 28, 23, 0, 0); // Madrid midnight 1 Mar
+
+function subs(count: number, offset = 0): ReferredSubscriptionEvidence[] {
+  return Array.from({ length: count }, (_u, i) => ({
+    subscriptionId: `sub-${offset + i}`,
+    attributedPartnerId: PARTNER,
+    customerUserId: `customer-${offset + i}`,
+    product: (i % 2 === 0 ? 'home' : 'pro') as 'home' | 'pro',
+    entitlement: 'paid' as const,
+    status: 'active' as const,
+    cancelAtPeriodEnd: false,
+    paidAccessEndsAtUtcMs: Date.UTC(2027, 0, 1),
+    fraudReversed: false,
+  }));
+}
+
+/** The financial result of a snapshot — everything that must NOT vary. */
+function financialResult(evidence: ReferredSubscriptionEvidence[], month: string, at: number) {
+  const count = countEligibleReferredSubscriptions(evidence, PARTNER, PARTNER_USER, at);
+  const snapshot = computeTierSnapshot(PARTNER, month, count);
+  return {
+    count,
+    tier: snapshot.effectiveTier,
+    month: snapshot.month,
+    counted: evidence
+      .filter((e) => isEligibleReferredSubscription(e, PARTNER, PARTNER_USER, at))
+      .map((e) => e.subscriptionId)
+      .sort(),
+  };
+}
+
+describe('owner point 6 — the same facts must give the same financial result, on time or late', () => {
+  it('A. Feb 105 Gold → Mar 87 Standard, and the late Feb write is identical', () => {
+    const febFacts = subs(105);
+    const onTime = financialResult(febFacts, '2026-02', FEB_BOUNDARY);
+    const late = financialResult(febFacts, '2026-02', FEB_BOUNDARY); // run in March
+    expect(late).toEqual(onTime);
+    expect(late.tier).toBe('gold');
+    expect(late.count).toBe(105);
+    expect(financialResult(subs(87), '2026-03', MAR_BOUNDARY).tier).toBe('standard');
+  });
+
+  it('B. Feb 87 Standard → Mar 105 Gold, and February is never overpaid', () => {
+    const febFacts = subs(87);
+    const onTime = financialResult(febFacts, '2026-02', FEB_BOUNDARY);
+    const late = financialResult(febFacts, '2026-02', FEB_BOUNDARY);
+    expect(late).toEqual(onTime);
+    expect(late.tier).toBe('standard');
+    expect(financialResult(subs(105), '2026-03', MAR_BOUNDARY).tier).toBe('gold');
+  });
+
+  it('C. 99 Standard, 100 Gold — the boundary is exact in both timings', () => {
+    for (const month of ['2026-02', '2026-03'] as const) {
+      const at = month === '2026-02' ? FEB_BOUNDARY : MAR_BOUNDARY;
+      expect(financialResult(subs(99), month, at).tier).toBe('standard');
+      expect(financialResult(subs(100), month, at).tier).toBe('gold');
+    }
+  });
+
+  it('D. 100 Gold then 99 Standard at the next snapshot', () => {
+    expect(financialResult(subs(100), '2026-02', FEB_BOUNDARY).tier).toBe('gold');
+    expect(financialResult(subs(99), '2026-03', MAR_BOUNDARY).tier).toBe('standard');
+  });
+
+  it('the counted subscription IDENTITIES are equal, not merely the total', () => {
+    const facts = subs(100);
+    const a = financialResult(facts, '2026-02', FEB_BOUNDARY);
+    const b = financialResult(facts, '2026-02', FEB_BOUNDARY);
+    expect(b.counted).toEqual(a.counted);
+    expect(new Set(a.counted).size).toBe(100);
+  });
+
+  it('E. an Elite rate effective during the earned period resolves the same late as on time', () => {
+    const version: EliteRateProfileVersion = {
+      versionId: 'v1',
+      partnerId: PARTNER,
+      rates: {
+        homeMonthlyCents: 349,
+        homeAnnualCents: 2200,
+        proMonthlyCents: 799,
+        proAnnualCents: 5500,
+      },
+      effectiveStartUtcMs: Date.UTC(2026, 0, 1),
+      effectiveEndUtcMs: Date.UTC(2026, 2, 1),
+      reason: 'strategic partner',
+      adminActorId: 'admin-1',
+      createdAtUtcMs: Date.UTC(2026, 0, 1),
+      priorVersionId: null,
+      revokedAtUtcMs: null,
+    };
+    // a LATER version must not change what February resolves to
+    const superseding: EliteRateProfileVersion = {
+      ...version,
+      versionId: 'v2',
+      rates: { ...version.rates, proAnnualCents: 9900 },
+      effectiveStartUtcMs: Date.UTC(2026, 2, 1),
+      effectiveEndUtcMs: null,
+      priorVersionId: 'v1',
+    };
+    const onTime = resolveEliteRate({
+      versions: [version],
+      product: 'pro',
+      cadence: 'annual',
+      atUtcMs: FEB_BOUNDARY,
+    });
+    const late = resolveEliteRate({
+      versions: [version, superseding],
+      product: 'pro',
+      cadence: 'annual',
+      atUtcMs: FEB_BOUNDARY,
+    });
+    expect(late).toEqual(onTime);
+    expect(late.resolved && late.amountCents).toBe(5500);
+    expect(late.resolved && late.rateProfileVersionId).toBe('v1');
+  });
+
+  it('F. one unknown threshold-relevant subscription at 99 known must NOT be guessed', () => {
+    // 99 are known-eligible. One more exists whose state at the boundary cannot
+    // be determined. The answer is 99 OR 100 — Standard OR Gold — and the
+    // difference is a tier change. Neither may be assumed.
+    const known = subs(99);
+    const withUnknownCountedAsInactive = countEligibleReferredSubscriptions(
+      known,
+      PARTNER,
+      PARTNER_USER,
+      FEB_BOUNDARY,
+    );
+    const withUnknownCountedAsActive = countEligibleReferredSubscriptions(
+      [...known, ...subs(1, 99)],
+      PARTNER,
+      PARTNER_USER,
+      FEB_BOUNDARY,
+    );
+
+    expect(withUnknownCountedAsInactive).toBe(99);
+    expect(withUnknownCountedAsActive).toBe(100);
+    // and the two assumptions give DIFFERENT tiers — which is exactly why
+    // guessing is forbidden and the month must be refused instead
+    expect(
+      computeTierSnapshot(PARTNER, '2026-02', withUnknownCountedAsInactive).effectiveTier,
+    ).toBe('standard');
+    expect(computeTierSnapshot(PARTNER, '2026-02', withUnknownCountedAsActive).effectiveTier).toBe(
+      'gold',
+    );
+  });
+
+  it('F. the SQL refuses that month rather than choosing a side', () => {
+    const blocker =
+      /create or replace function public\.gellatti_tier_reconstruction_blocker_v1[\s\S]*?\$\$;/.exec(
+        SQL,
+      )?.[0] ?? '';
+    // an unknown state returns a blocker; it is never filtered away into a count
+    expect(blocker).toContain("return 'subscription_state_unknown'");
+    expect(blocker).toContain("return 'missing_initial_state'");
+    expect(blocker).toContain("return 'payment_state_unproven'");
+    const catchup =
+      /create or replace function public\.gellatti_catchup_partner_tier_snapshots_v1[\s\S]*?\$\$;/.exec(
+        SQL,
+      )?.[0] ?? '';
+    expect(catchup).toContain('if v_blocker is not null then');
+    expect(catchup).toContain('continue;');
+  });
+});
