@@ -39,7 +39,7 @@ export function ApplicationState({
       data-application-state={kind}
       className={cn(
         'rounded-[var(--radius-pro-studio)] border p-5 sm:p-6',
-        shell ? 'border-ivory/12 bg-charcoal/20' : 'border-ink/10 bg-white',
+        shell ? 'border-ivory/12 bg-charcoal/20' : 'border-[var(--g-line)] bg-white',
         className,
       )}
     >
@@ -58,7 +58,7 @@ export function ApplicationState({
           <p
             className={cn(
               'text-[10px] font-semibold tracking-[0.08em] uppercase',
-              shell ? 'text-ivory/50' : 'text-stone-500',
+              shell ? 'text-ivory/50' : 'text-[var(--g-text-secondary)]',
             )}
           >
             {stateLabel[kind]}
@@ -70,7 +70,7 @@ export function ApplicationState({
             <p
               className={cn(
                 'mt-2 max-w-2xl text-sm leading-6',
-                shell ? 'text-ivory-soft' : 'text-stone-600',
+                shell ? 'text-ivory-soft' : 'text-[var(--g-text-secondary)]',
               )}
             >
               {body}
