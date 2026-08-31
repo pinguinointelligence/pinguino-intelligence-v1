@@ -861,3 +861,128 @@ future reader treat `20260831201000` as a clean success, which it was not.
 
 **This lane is CLOSED. No further changes to it in this workstream.**
 
+---
+
+## 16. `20260831201500_email_jobs.sql` — PRE-APPLY AUDIT (not yet applied)
+
+Gated behind one uncontended full sweep at EXIT 0. Audit performed against the **live** staging
+database and the **whole** repository, not inferred from the Shop lane.
+
+### 16.1 Collision audit — nothing to overwrite
+
+| Search | Result |
+| --- | --- |
+| Repo migrations mentioning email job / queue / outbox infrastructure | **only `20260831201500` itself** |
+| Tables in the repo named `*email*` / `*mail*` | `email_jobs` (mine), `user_notifications`, `user_notification_receipts` |
+| Live tables matching `email\|mail\|outbox\|queue\|notif` | `product_behavior_reclassification_queue`, `user_notifications`, `user_notification_receipts` |
+| Live functions matching `email\|mail\|outbox\|dispatch` | **none** |
+| Live indexes matching `email\|mail\|outbox` | `partner_invitations_open_email_uniq` only — unrelated |
+| Live `email_jobs` table | **absent** |
+| Live mail types / mail triggers | **none / none** |
+| My 5 function names | **0 collisions** |
+| My 3 index names | **0 collisions** |
+| My trigger + constraints | **0 collisions** |
+
+`user_notifications` is the **in-app** notification system — the partner application action writes to
+it — not an email sender. It is untouched.
+
+**Dependencies verified present live:** `touch_updated_at` (the row trigger) and
+`gellatti_admin_has_permission_v1` (the admin read guard).
+
+**Runtime consumer:** `supabase/functions/email-dispatch` calls exactly
+`gellatti_claim_email_jobs_v1`, `gellatti_mark_email_sent_v1`, `gellatti_mark_email_failed_v1` — all
+three defined by this migration, none pre-existing, so nothing is overwritten.
+
+### 16.2 State model
+
+| Owner's required distinction | Column value |
+| --- | --- |
+| pending | `queued` |
+| processing / claimed | `sending` |
+| sent | `sent` |
+| retryable failure | `failed` + `last_failure_kind = 'retryable'` + `next_attempt_at` |
+| terminal failure | `abandoned` (attempts exhausted or permanent), plus `cancelled` |
+
+**The `sent` invariant is a database constraint, not a convention** — and it is a true biconditional:
+
+```sql
+constraint email_jobs_sent_requires_evidence check (
+  (status = 'sent') = (provider_message_id is not null
+                       and btrim(provider_message_id) <> ''
+                       and sent_at is not null)
+)
+```
+
+A second constraint closes the half-evidence gap the biconditional alone would allow (a provider id
+with no `sent_at` on a non-sent row):
+
+```sql
+constraint email_jobs_unsent_has_no_evidence check (
+  status = 'sent' or (provider_message_id is null and sent_at is null)
+)
+```
+
+`gellatti_mark_email_sent_v1` additionally raises `email_sent_requires_provider_message_id` on a
+blank id, so the caller gets a named error rather than a raw constraint violation. **No code path can
+write a false success.**
+
+### 16.3 Idempotent claim (§6)
+
+The canonical pattern, verbatim:
+
+```sql
+select id from public.email_jobs
+where status in ('queued','failed') and attempts < max_attempts
+  and (next_attempt_at is null or next_attempt_at <= p_now)
+order by next_attempt_at nulls first, created_at
+limit ... for update skip locked
+```
+
+then a single `update … from due` that moves the row to `sending` and increments `attempts` **in the
+same statement**. Two schedulers racing therefore claim disjoint sets — the second skips locked rows
+instead of waiting and re-sending. A crash after the claim leaves a visible, countable `sending` row,
+never an invisible re-send.
+
+### 16.4 Idempotency authority (§7)
+
+`idempotency_key text not null unique`, supplied by the caller from the **business event** — not a
+random job id. `gellatti_enqueue_email_v1` uses `on conflict (idempotency_key) do nothing` and, on
+collision, returns the existing job with `deduplicated: true` rather than raising, so a webhook retry
+is harmless. **The authority is the database, not the provider.**
+
+### 16.5 Provider-agnostic boundary (§8)
+
+`grep -inE "resend|sendgrid|postmark|mailgun|ses|smtp"` over the migration returns **nothing**. The
+table carries only generic `provider_name` and `provider_message_id`. Provider choice lives in the
+adapter/runtime layer. The contract is: business event → persisted job → claim → EmailProvider →
+adapter.
+
+### 16.6 Security surface
+
+| Check | Result |
+| --- | --- |
+| Functions | 5 |
+| SECURITY DEFINER | 5 / 5 |
+| Explicit pinned `search_path` | 5 / 5 (`= public`) |
+| RLS on `email_jobs` | **enabled**, and **no SELECT policy** |
+| Default-privilege trap | **explicitly neutralized** — `revoke all on public.email_jobs from anon, authenticated` |
+| Table grants to anon / authenticated | **none** |
+| `enqueue` / `claim` / `mark_sent` / `mark_failed` | revoked from `public, anon, authenticated` — service-role only |
+| `gellatti_admin_email_jobs_v1` | revoked from `public, anon`; granted to `authenticated`, and self-guards with `gellatti_admin_has_permission_v1('PARTNER', auth.uid())` → `administrator_required` |
+
+The admin read surface deliberately **excludes `body_html` / `body_text`** — operational metadata
+only, never message bodies.
+
+> **Observation for the owner, not a defect and not changed here.** The admin read gates on the
+> `PARTNER` permission, but email jobs will eventually span franchise and lead traffic too, so a
+> `partner_admin` would be able to read subjects and recipients outside their area. `super_admin`
+> passes regardless. Worth a decision when the Admin surface is built; not altered now.
+
+### 16.7 Not proven yet, by design
+
+Persistence, claim, idempotency and security are what this migration is for. **No external delivery.**
+No `RESEND_API_KEY` is required for the DB proof, and none is used. When credentials are absent the
+contract is: job persists → dispatcher attempts → truthful retryable/failed state → **no** provider
+id, **no** `sent_at`, **never** `sent`. That is enforced by the constraints above, so a missing
+credential cannot produce a silent no-op or a false success.
+
