@@ -660,7 +660,6 @@ describe('connect_account_status writer + skipped_no_contract intents', () => {
       ['subscription_schedule.released', 'sched_fake_1'],
       ['invoice.finalized', 'in_fake_1'],
       ['invoice.payment_failed', 'in_fake_1'],
-      ['checkout.session.async_payment_succeeded', 'cs_fake_1'],
       ['charge.dispute.created', 'dp_fake_1'],
     ] as const) {
       const db = new FakeDb();
@@ -671,5 +670,242 @@ describe('connect_account_status writer + skipped_no_contract intents', () => {
       expect(result.note, eventType).toMatch(/^skipped_no_contract:/);
       expect(db.snapshot(), eventType).toBe(JSON.stringify([]));
     }
+  });
+
+  it('no longer treats the delayed checkout events as contract-less', async () => {
+    // S-45: `checkout.session.async_payment_succeeded/_failed` used to be
+    // honest no-ops ("no_checkout_correlation_table"). They now settle a shop
+    // order, so they must NOT report skipped_no_contract — while a session
+    // that is not a shop session still writes nothing.
+    for (const eventType of [
+      'checkout.session.async_payment_succeeded',
+      'checkout.session.async_payment_failed',
+    ] as const) {
+      const db = new FakeDb();
+      const result = await applyEventEffects(
+        { db, refetch: makeRefetcher({}) },
+        event(eventType, 'evt_fake_61', { id: 'cs_fake_1' }),
+      );
+      expect(result.note, eventType).toBeNull();
+      expect(db.snapshot(), eventType).toBe(JSON.stringify([]));
+    }
+  });
+});
+
+// ── shop order settlement (S-45) ─────────────────────────────────────────────
+
+/**
+ * S-45. FORENSIC FINDING (2026-08-31): the Shop became `paid` ONLY when the
+ * customer's browser returned to the success URL and triggered
+ * `shop-order-sync`. Stripe delivered `checkout.session.completed` for order
+ * G-20260831-2DA655 at 13:16:13.98 carrying `pi_shop_order_id`, and `paid_at`
+ * was written 6.6 s later by that browser return — the canonical webhook was
+ * live but shop-blind. Pay-and-close-the-tab meant money captured and the
+ * order `pending` for ever.
+ *
+ * These cover the orderings the payment authority must survive.
+ */
+const shopSession = (over: Row = {}): Row => ({
+  id: 'cs_test_shop_1',
+  payment_status: 'paid',
+  status: 'complete',
+  payment_intent: 'pi_test_shop_1',
+  amount_total: 7380,
+  currency: 'eur',
+  mode: 'payment',
+  total_details: { amount_shipping: 990, amount_tax: 0 },
+  customer_details: { phone: '+48600100200' },
+  collected_information: {
+    shipping_details: {
+      name: 'Gellatti QA Test',
+      address: {
+        line1: 'ul. Testowa 12', line2: null, postal_code: '00-001',
+        city: 'Warszawa', state: null, country: 'PL',
+      },
+    },
+  },
+  metadata: { pi_shop_order_id: 'order-1' },
+  ...over,
+});
+
+const seedOrder = (db: FakeDb, over: Row = {}) =>
+  db.seed('shop_orders', {
+    id: 'order-1', status: 'pending', paid_at: null,
+    subtotal_cents: 6390, currency: 'eur',
+    expected_total_cents: 7380, expected_currency: 'eur',
+    stripe_checkout_session_id: 'cs_test_shop_1',
+    ...over,
+  });
+
+const settle = (db: FakeDb, session: Row, evt = 'evt_shop_1', type = 'checkout.session.completed') =>
+  applyEventEffects({ db, refetch: makeRefetcher({}) }, event(type, evt, session));
+
+describe('shop order settlement — the provider is the payment authority', () => {
+  it('settles a paid order the customer never came back for', async () => {
+    const db = new FakeDb();
+    seedOrder(db);
+    const result = await settle(db, shopSession());
+    expect(result.note).toBe('shop_order_settled');
+    const row = db.rows('shop_orders')[0]!;
+    expect(row.status).toBe('paid');
+    expect(row.paid_at).toBeTruthy();
+    expect(row.total_cents).toBe(7380);
+    expect(row.shipping_cents).toBe(990);
+    expect(row.tax_cents).toBe(0);
+    expect(row.shipping_city).toBe('Warszawa');
+    expect(row.shipping_country).toBe('PL');
+    expect(row.stripe_payment_intent_id).toBe('pi_test_shop_1');
+  });
+
+  it('is a byte-identical no-op on redelivery', async () => {
+    const db = new FakeDb();
+    seedOrder(db);
+    await settle(db, shopSession());
+    const after = db.snapshot();
+    const second = await settle(db, shopSession(), 'evt_shop_2');
+    expect(second.note).toBe('shop_order_already_paid');
+    expect(db.snapshot()).toBe(after);
+  });
+
+  it('does not re-stamp paid_at when the return path already settled it', async () => {
+    const db = new FakeDb();
+    seedOrder(db, { status: 'paid', paid_at: '2026-08-31T13:16:20.584Z' });
+    const result = await settle(db, shopSession());
+    expect(result.note).toBe('shop_order_already_paid');
+    expect(db.rows('shop_orders')[0]!.paid_at).toBe('2026-08-31T13:16:20.584Z');
+  });
+
+  it('never lets a stale expiry event unpay a paid order', async () => {
+    // Monotonic: a late expiry delivery must not regress a settled order.
+    const db = new FakeDb();
+    seedOrder(db, { status: 'paid', paid_at: '2026-08-31T13:16:20.584Z' });
+    const result = await settle(
+      db, shopSession({ status: 'expired', payment_status: 'unpaid' }),
+      'evt_stale', 'checkout.session.expired',
+    );
+    // The shared authority refuses on the ORDER being settled already,
+    // before it ever looks at the stale session.
+    expect(result.note).toBe('shop_order_already_paid');
+    expect(db.rows('shop_orders')[0]!.status).toBe('paid');
+    expect(db.rows('shop_orders')[0]!.paid_at).toBe('2026-08-31T13:16:20.584Z');
+  });
+
+  it('never walks a refunded or cancelled order back to paid', async () => {
+    for (const terminal of ['refunded', 'cancelled']) {
+      const db = new FakeDb();
+      seedOrder(db, { status: terminal, paid_at: '2026-08-31T13:00:00.000Z' });
+      const result = await settle(db, shopSession());
+      expect(result.note).toBe(`shop_order_terminal:${terminal}`);
+      expect(db.rows('shop_orders')[0]!.status).toBe(terminal);
+    }
+  });
+
+  it('leaves an unpaid session alone', async () => {
+    const db = new FakeDb();
+    seedOrder(db);
+    const result = await settle(db, shopSession({ payment_status: 'unpaid' }));
+    // The note names the PROVIDER's payment status, which is the fact that
+    // matters, not the local order status.
+    expect(result.note).toBe('shop_order_not_paid:unpaid');
+    expect(db.rows('shop_orders')[0]!.status).toBe('pending');
+  });
+
+  it('cancels an expired session, once, on the real expiry event', async () => {
+    const db = new FakeDb();
+    seedOrder(db);
+    const first = await settle(
+      db, shopSession({ status: 'expired', payment_status: 'unpaid' }),
+      'evt_shop_exp', 'checkout.session.expired',
+    );
+    expect(first.note).toBe('shop_order_expired');
+    expect(db.rows('shop_orders')[0]!.status).toBe('cancelled');
+    const after = db.snapshot();
+    const second = await settle(
+      db, shopSession({ status: 'expired', payment_status: 'unpaid' }),
+      'evt_shop_3', 'checkout.session.expired',
+    );
+    expect(second.note).toBe('shop_order_terminal:cancelled');
+    expect(db.snapshot()).toBe(after);
+  });
+
+  it('writes the destination only when the session carries one', async () => {
+    const db = new FakeDb();
+    seedOrder(db);
+    await settle(db, shopSession({ collected_information: null }));
+    const row = db.rows('shop_orders')[0]!;
+    expect(row.status).toBe('paid');
+    expect(row.shipping_city).toBeUndefined();
+  });
+
+  it('settles the delayed-payment events too', async () => {
+    const db = new FakeDb();
+    seedOrder(db);
+    const result = await settle(db, shopSession(), 'evt_shop_4', 'checkout.session.async_payment_succeeded');
+    expect(result.note).toBeNull();
+    expect(db.rows('shop_orders')[0]!.status).toBe('paid');
+  });
+
+  it('reports an unknown order rather than inventing one', async () => {
+    const db = new FakeDb();
+    const result = await settle(db, shopSession());
+    expect(result.note).toBe('shop_order_not_found:order-1');
+    expect(db.rows('shop_orders')).toHaveLength(0);
+  });
+
+  it('refuses an event naming an order it does not belong to', async () => {
+    // metadata is attacker-shaped input: naming an order must never settle it.
+    const db = new FakeDb();
+    seedOrder(db, { stripe_checkout_session_id: 'cs_test_the_real_one' });
+    const result = await settle(db, shopSession());
+    expect(result.note).toBe('shop_order_session_mismatch:order-1');
+    expect(db.rows('shop_orders')[0]!.status).toBe('pending');
+  });
+
+  it('refuses a mismatched currency', async () => {
+    const db = new FakeDb();
+    seedOrder(db);
+    const result = await settle(db, shopSession({ currency: 'usd' }));
+    expect(result.note).toBe('shop_order_currency_mismatch:usd');
+    expect(db.rows('shop_orders')[0]!.status).toBe('pending');
+  });
+
+  it('refuses any amount that is not EXACTLY the expected total', async () => {
+    // Not "at least the subtotal": 7000 clears the 6390 items but is not the
+    // 7380 that was actually asked for.
+    for (const amount_total of [7000, 7379, 7381, 6390, 10000]) {
+      const db = new FakeDb();
+      seedOrder(db);
+      const result = await settle(db, shopSession({ amount_total }));
+      expect(result.note).toContain('amount_mismatch');
+      expect(db.rows('shop_orders')[0]!.status).toBe('pending');
+    }
+  });
+
+  it('refuses an order with no immutable expected total', async () => {
+    const db = new FakeDb();
+    seedOrder(db, { expected_total_cents: null, expected_currency: null });
+    const result = await settle(db, shopSession());
+    expect(result.note).toBe('shop_order_no_expected_total:order-1');
+    expect(db.rows('shop_orders')[0]!.status).toBe('pending');
+  });
+
+  it('refuses a completed-but-unpaid session, then settles on async success', async () => {
+    const db = new FakeDb();
+    seedOrder(db);
+    const pending = await settle(db, shopSession({ payment_status: 'unpaid' }));
+    expect(pending.note).toBe('shop_order_not_paid:unpaid');
+    expect(db.rows('shop_orders')[0]!.status).toBe('pending');
+    const later = await settle(
+      db, shopSession(), 'evt_async', 'checkout.session.async_payment_succeeded');
+    expect(later.note).toBeNull();
+    expect(db.rows('shop_orders')[0]!.status).toBe('paid');
+  });
+
+  it('leaves a billing session entirely to the billing writer', async () => {
+    const db = new FakeDb();
+    const result = await settle(db, { id: 'cs_fake_9', client_reference_id: 'user-9', customer: 'cus_9' });
+    expect(result.note).toBeNull();
+    expect(db.rows('billing_customers')).toHaveLength(1);
+    expect(db.rows('shop_orders')).toHaveLength(0);
   });
 });

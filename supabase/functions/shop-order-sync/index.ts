@@ -11,6 +11,7 @@
  */
 import Stripe from 'npm:stripe@18';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { decideShopSettlement } from '../_shared/shopSettlement.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -58,7 +59,7 @@ Deno.serve(async (req) => {
 
   const { data: order, error: orderError } = await admin
     .from('shop_orders')
-    .select('id,user_id,status,paid_at,stripe_checkout_session_id,order_number')
+    .select('id,user_id,status,paid_at,expected_total_cents,expected_currency,stripe_checkout_session_id,order_number')
     .eq('id', orderId)
     .maybeSingle();
   if (orderError) return json(500, { error: 'order_lookup_failed' });
@@ -83,19 +84,35 @@ Deno.serve(async (req) => {
     return json(502, { error: 'stripe_lookup_failed' });
   }
 
-  const paid = session.payment_status === 'paid';
-  const expired = session.status === 'expired';
-  /* A refund is recorded against the order, not against the session — Stripe
-     still reports the session as paid afterwards. Re-syncing must never walk a
-     refunded order back to `paid`. */
+  /* ONE settlement authority, shared with the canonical webhook. The browser
+     return may RECONCILE and DISPLAY payment truth; it may never create it on
+     terms of its own. Both paths import `decideShopSettlement`, so they agree
+     by construction rather than by two developers remembering the same rules. */
+  const verdict = decideShopSettlement(
+    {
+      id: order.id,
+      status: order.status,
+      paidAt: order.paid_at ?? null,
+      expectedTotalCents: order.expected_total_cents ?? null,
+      expectedCurrency: order.expected_currency ?? null,
+      sessionId: order.stripe_checkout_session_id ?? null,
+    },
+    {
+      orderId: order.id,
+      sessionId: session.id,
+      mode: session.mode ?? null,
+      paymentStatus: session.payment_status ?? null,
+      status: session.status ?? null,
+      amountTotal: session.amount_total ?? null,
+      currency: session.currency ?? null,
+    },
+  );
+  const paid = verdict.kind === 'settle';
   const status =
-    order.status === 'refunded'
-      ? 'refunded'
-      : paid
-        ? 'paid'
-        : expired
-          ? 'cancelled'
-          : order.status;
+    verdict.kind === 'settle' ? 'paid' : verdict.kind === 'expire' ? 'cancelled' : order.status;
+  if (verdict.kind === 'refuse') {
+    console.log(`shop-order-sync: ${order.order_number} refused — ${verdict.note}`);
+  }
   const paymentIntentId =
     typeof session.payment_intent === 'string'
       ? session.payment_intent
@@ -116,6 +133,7 @@ Deno.serve(async (req) => {
       /* Stamped once, when the money actually arrived. Re-syncing an order must
          not keep moving the moment it was paid, and must not blank it out. */
       ...(paid && !order.paid_at ? { paid_at: new Date().toISOString() } : {}),
+      ...(verdict.kind === 'expire' ? { cancelled_at: new Date().toISOString() } : {}),
       ...(session.amount_total !== null && session.amount_total !== undefined
         ? { total_cents: session.amount_total }
         : {}),
