@@ -232,6 +232,9 @@ export function verifyMainEnvelope(input: {
   snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
   mode: 'optimal' | 'eco';
   enforceFloor?: boolean;
+  /** Opt-in for the OPTIMAL preference ceiling. Default `false`: an active
+   * Crown overrides the preference target and is bounded by the hard limit. */
+  enforceOptimalPreferenceCeiling?: boolean;
   /** Owner Review keeps these rows visibly locked as Main, but they remain
    * technical-only seeds until an exact sensory Main policy is approved. */
   technicalOnlyMainLineIds?: readonly string[];
@@ -346,7 +349,17 @@ export function verifyMainEnvelope(input: {
         `wymagane minimum to ${floor.toFixed(1)}%.`,
     });
   }
-  if (input.mode === 'optimal' && equivalentPercent > ceiling + EPSILON) {
+  // OWNER CROWN AUTHORITY: reaching this point means a managed Crown line is
+  // active, and Crown is an explicit request to maximise. `optimalCeiling` is
+  // the OPTIMAL *target* (see `targetPercent` below), not a safety boundary, so
+  // crossing it must never invalidate the candidate. The hard limit below stays
+  // enforced in every mode. Callers that genuinely want the preference boundary
+  // (non-Crown formulation) must opt in explicitly.
+  if (
+    input.enforceOptimalPreferenceCeiling === true &&
+    input.mode === 'optimal' &&
+    equivalentPercent > ceiling + EPSILON
+  ) {
     violations.push({
       code: 'main_above_optimal_ceiling',
       lineIds: managed.map((item) => item.id),
@@ -379,7 +392,6 @@ export function mainEnvelopeSearchCeilingGrams(input: {
   recipe: RecipeInput;
   snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
   technicalOnlyMainLineIds?: readonly string[];
-  mode?: 'optimal' | 'eco';
 }): number | null {
   const technicalOnlyMainLineIds = new Set(input.technicalOnlyMainLineIds ?? []);
   const mains = input.recipe.items.filter(
@@ -396,8 +408,11 @@ export function mainEnvelopeSearchCeilingGrams(input: {
   const first = snapshots[0]!;
   const multi = snapshots.length > 1;
   if (!multi) {
-    const ceilingPercent =
-      input.mode === 'eco' ? first.hardLimitPercent : first.optimalCeilingPercent;
+    // OWNER CROWN AUTHORITY: an active Crown is an explicit MAX request, so the
+    // search frontier is the published HARD SAFETY limit in every mode.
+    // `optimalCeilingPercent` is a preference target (see `verifyMainEnvelope`),
+    // never a safety boundary, so it must not cap an explicit maximisation.
+    const ceilingPercent = first.hardLimitPercent;
     if (ceilingPercent === null || first.mainEquivalentFactor === null) return null;
     return (input.recipe.target_batch_grams * ceilingPercent) / 100 / first.mainEquivalentFactor;
   }
@@ -406,8 +421,7 @@ export function mainEnvelopeSearchCeilingGrams(input: {
     mains.map((item) => ({ item, snapshot: input.snapshots[item.id]! })),
   );
   if (envelope === null) return null;
-  const ceilingPercent =
-    input.mode === 'eco' ? envelope.hardLimitPercent : envelope.optimalCeilingPercent;
+  const ceilingPercent = envelope.hardLimitPercent;
   return (
     (((input.recipe.target_batch_grams * ceilingPercent) / 100) * envelope.totalRatioWeight) /
     envelope.totalWeightedEquivalentFactor
