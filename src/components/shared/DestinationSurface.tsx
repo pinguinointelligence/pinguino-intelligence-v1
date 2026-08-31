@@ -5,6 +5,7 @@ import { SurfaceToneContext } from '@/components/ui/surface';
 import { copy } from '@/copy/en';
 import { cn } from '@/lib/cn';
 import { AppShell } from '@/features/shell/AppShell';
+import { DestinationHomeProSwitch } from './DestinationHomeProSwitch';
 import {
   APP_PAGE_BLOCK,
   APP_PAGE_CANVAS,
@@ -53,6 +54,11 @@ export function DestinationSurface({
   return (
     <div className="pro-studio-radius-system theme-pro-light">
       <AppShell
+        /* The canonical global header (PR #76) carries hamburger, logo and
+           HOME | PRO at one x on every route. Work With Us consumes it and adds
+           nothing: no workbenchChrome, so no PRO module strip, and no header CSS
+           of its own. */
+        actions={<DestinationHomeProSwitch />}
         navigationPosition="trailing"
         /* GELLATTI V2.1 §5 — the approved destination lockup: wordmark, then
            `<page> · Gellatti Workspace` at 11 px, the workspace half in ink.
