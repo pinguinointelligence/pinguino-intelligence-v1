@@ -87,7 +87,9 @@ export function AdminProductCapabilityReanalysisDetail({
           <SectionLabel>Ponowna analiza</SectionLabel>
           <StatusChip status={statusTone(request.status)}>{request.status}</StatusChip>
         </div>
-        <h1 className="mt-2 text-[25px] leading-[1.08] font-[750] tracking-[-0.04em] text-[var(--g-ink)] sm:text-[30px]">{request.name}</h1>
+        <h1 className="mt-2 text-[25px] leading-[1.08] font-[750] tracking-[-0.04em] text-[var(--g-ink)] sm:text-[30px]">
+          {request.name}
+        </h1>
         <p className="mt-2 font-mono text-xs text-[var(--g-text-secondary)]">
           {request.productCode ?? request.canonicalProductId} · EAN {request.ean ?? '—'}
         </p>

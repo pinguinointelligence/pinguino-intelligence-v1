@@ -284,7 +284,7 @@ Copy authority: `src/copy/cooperation.ts` (PL + EN, `resolveCooperationCopy`). N
 | EMAIL-03 | Email | **Mandatory subject taxonomy** — stable machine-filterable prefixes `[GELLATTI][AREA][EVENT][STATE]` plus a human identifier | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `fe5176e5` | `src/notifications/domain/emailSubject.ts` — all 13 owner-documented subjects asserted literally, both worked examples reproduced, closed enumerated set, 40 tests | Wire into the send lane |
 | EMAIL-04 | Email | Structured metadata attached where supported — but sorting must never depend on it | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `4d790ecc` | Sent as `X-Gellatti-*` headers by the adapter; a test proves the subject alone still identifies the message with no metadata present | — |
 | EMAIL-05 | Email | **Never silently mark unsent mail as sent.** Job states must distinguish queued / sent / failed / retrying | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `db16a161` | Enforced structurally: `sent` reachable only from `sending` and only with a provider message id; `isDelivered` checks status AND evidence, so a forged row does not read as delivered | — |
-| EMAIL-06 | Email | Admin can see failed and pending email jobs relevant to operations | 🟡 | ✅ | ⬜ | ⬜ | 🔓 | `4d790ecc` | `gellatti_admin_email_jobs_v1` returns kind, message, attempts and next attempt — never bodies. **Admin UI still to build** | Admin panel section |
+| EMAIL-06 | Email | Admin can see failed and pending email jobs relevant to operations | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `be25e29a` | `AdminEmailJobsSection` — first UI under the Designbook. Each row names the state, the meaning and the next action; a `sent` row with no provider id is surfaced as a reportable problem, never a green pill | Served QA after migration |
 | EMAIL-07 | Email | A missing credential blocks delivery but never produces a false `sent` | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `4d790ecc` | With no API key the worker records a RETRYABLE failure with a truthful reason and sends nothing; the job delivers itself once the key exists | Owner supplies `RESEND_API_KEY` when ready |
 | EMAIL-08 | Email | Idempotency: one business event produces at most one email, replay-safe | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `4d790ecc` | Deterministic environment-scoped key + a DB unique index; a replay returns the existing job rather than sending twice | — |
 
@@ -362,10 +362,10 @@ Copy authority: `src/copy/cooperation.ts` (PL + EN, `resolveCooperationCopy`). N
 
 | ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| P-LEAD-01 | Leads | Canonical lead storage for machine / mobile / trailer / franchise | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | Only `franchise_inquiries` exists — the right pattern to generalize (0.4 #6) | Extend or add sibling table |
-| P-LEAD-02 | Leads | Each lead preserves id, source, route, type, model/format, configurator answers, country/city, contact, timestamp, status, assignee, notes, history | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Franchise row lacks configurator answers/route/assignee/history | Migration |
-| P-LEAD-03 | Leads | Statuses NEW / CONTACTED / QUALIFIED / QUOTED / WON / LOST | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | Franchise has `new/contacted/qualified/closed` — **missing QUOTED, WON, LOST** | Migration |
-| P-LEAD-04 | Leads | Admin: see all, filter by type/status, open details, see configuration, add notes, update status, audit history | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | `AdminFranchiseLeadsSection` exists for one type | Generalize |
+| P-LEAD-01 | Leads | Canonical lead storage for machine / mobile / trailer / franchise | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | this run | `business_leads` covers all four paths. Existing franchise rows are imported idempotently; `franchise_inquiries` is left intact so the import is never the only copy | Owner applies migration |
+| P-LEAD-02 | Leads | Each lead preserves id, source, route, type, model/format, configurator answers, country/city, contact, timestamp, status, assignee, notes, history | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | this run | All 15 fields present. Sequence-backed reference (`MCH-2026-00142`); configurator answers kept verbatim as jsonb; history is an append-only event log | Owner applies migration |
+| P-LEAD-03 | Leads | Statuses NEW / CONTACTED / QUALIFIED / QUOTED / WON / LOST | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | this run | All six, asserted identical in SQL and TS. A legacy `closed` row maps to `qualified` rather than `lost`, because `lost` would assert an outcome nobody recorded | Owner applies migration |
+| P-LEAD-04 | Leads | Admin: see all, filter by type/status, open details, see configuration, add notes, update status, audit history | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | this run | `AdminBusinessLeadsSection` — filter by path, humanised configurator answers, inline notes, status moves, expandable history. A settled lead offers no forward move, so reopening is deliberate | Served QA after migration |
 | P-LEAD-05 | Leads | Customer gets submission confirmation | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Verify per route |
 | P-LEAD-06 | Leads | Admin notified at `info@gellatti.com` via the canonical notification system | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | **UNBLOCKED by owner correction §1–§3.** Subjects must use the §2 taxonomy | After EMAIL-01..06 |
 
@@ -440,14 +440,14 @@ neutral placeholders are development-only.
 
 | Work status | Count |
 | --- | --- |
-| 🟢 DONE | 45 |
-| 🟡 DOING / partially built | 38 |
+| 🟢 DONE | 49 |
+| 🟡 DOING / partially built | 35 |
 | ⏳ WAITING FOR OWNER ASSET (not a blocker) | 9 |
 | 🔴 BLOCKED | 4 |
-| ⚪ TODO | 107 |
+| ⚪ TODO | 106 |
 | **Total rows** | **203** |
 
-Auto ✅ **21** · ⬜ 182. Served ⬜ 203 · Owner ⬜ 203 · Freeze 🔓 203.
+Auto ✅ **24** · ⬜ 179. Served ⬜ 203 · Owner ⬜ 203 · Freeze 🔓 203.
 
 **The 4 remaining 🔴 blockers**, all needing a physical measurement or a supplier answer:
 `N-V4B-FIT` and `Q-T06` (the 30 mm trailer bay), plus two rows downstream of them.

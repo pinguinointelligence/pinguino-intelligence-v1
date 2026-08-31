@@ -10,7 +10,8 @@ import {
   type AdminCatalogProduct,
 } from '@/services/adminControl';
 
-const inputClass = 'pro-focus-ring min-h-11 w-full border border-[var(--g-line)] bg-white px-3 text-sm';
+const inputClass =
+  'pro-focus-ring min-h-11 w-full border border-[var(--g-line)] bg-white px-3 text-sm';
 
 export function AdminCatalogSection() {
   const queryClient = useQueryClient();
@@ -96,7 +97,9 @@ export function AdminCatalogSection() {
                 <tr key={product.id} className="border-b border-[var(--g-line)]">
                   <td className="px-3 py-4">
                     <span className="font-mono text-ink">{product.articleId}</span>
-                    <span className="mt-1 block text-[10px] text-[var(--g-text-muted)]">{product.origin}</span>
+                    <span className="mt-1 block text-[10px] text-[var(--g-text-muted)]">
+                      {product.origin}
+                    </span>
                   </td>
                   <td className="px-3 py-4">
                     <strong className="text-ink">{product.name ?? '—'}</strong>
@@ -107,7 +110,9 @@ export function AdminCatalogSection() {
                   <td className="px-3 py-4 font-mono">{product.ean ?? '—'}</td>
                   <td className="px-3 py-4">
                     {product.active ? 'PUBLISHED' : 'UNPUBLISHED'}
-                    <span className="mt-1 block text-[var(--g-text-secondary)]">{product.verificationStatus}</span>
+                    <span className="mt-1 block text-[var(--g-text-secondary)]">
+                      {product.verificationStatus}
+                    </span>
                   </td>
                   <td className="px-3 py-4">
                     {String(product.behavior?.mainEligibility ?? 'MISSING')}
@@ -147,7 +152,9 @@ export function AdminCatalogSection() {
                 <strong className="text-sm text-ink">
                   {selected.articleId} · {selected.name}
                 </strong>
-                <p className="mt-1 break-all font-mono text-[10px] text-[var(--g-text-secondary)]">{selected.id}</p>
+                <p className="mt-1 break-all font-mono text-[10px] text-[var(--g-text-secondary)]">
+                  {selected.id}
+                </p>
               </div>
               {selected.origin === 'PI' ? (
                 <p className="border border-amber-300 bg-amber-50 p-3 text-xs">

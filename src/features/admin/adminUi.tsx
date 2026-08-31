@@ -48,13 +48,7 @@ export function AdminPanel({
 }
 
 /** The one admin eyebrow — same 10 px/0.08em as every other Gellatti surface. */
-export function AdminEyebrow({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
+export function AdminEyebrow({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <span
       className={cn(

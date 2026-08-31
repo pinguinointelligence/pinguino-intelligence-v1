@@ -13,6 +13,7 @@ import { AdminCatalogSection } from '@/features/admin/AdminCatalogSection';
 import { AdminShopSection } from '@/features/admin/AdminShopSection';
 import { AdminFranchiseLeadsSection } from '@/features/admin/AdminFranchiseLeadsSection';
 import { AdminEmailJobsSection } from '@/features/admin/AdminEmailJobsSection';
+import { AdminBusinessLeadsSection } from '@/features/admin/AdminBusinessLeadsSection';
 import { AdminCommunitySection } from '@/features/admin/AdminCommunitySection';
 import { AdminInvitesSection } from '@/features/admin/AdminInvitesSection';
 import { AdminPartnersSection } from '@/features/admin/AdminPartnersSection';
@@ -46,6 +47,7 @@ const NAV = [
   ['partners', 'Partnerzy'],
   ['community', 'Community i treści'],
   ['franchise', 'Zapytania Franchise'],
+  ['leads', 'Zapytania biznesowe'],
   ['email', 'Wiadomości operacyjne'],
   ['operations', 'Operacje'],
   ['audit', 'Dziennik zdarzeń'],
@@ -116,6 +118,7 @@ function AdminSection({ section }: { section: Section }) {
   if (section === 'partners') return <AdminPartnersSection />;
   if (section === 'community') return <AdminCommunitySection />;
   if (section === 'franchise') return <AdminFranchiseLeadsSection />;
+  if (section === 'leads') return <AdminBusinessLeadsSection />;
   if (section === 'email') return <AdminEmailJobsSection />;
   if (section === 'audit') return <Directory section="AUDIT" />;
   if (section === 'catalog') return <AdminCatalogSection />;
