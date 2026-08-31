@@ -28,7 +28,34 @@ export interface ShopProduct {
   imageUrl: string | null;
   availability: ShopAvailability;
   leadTimeWeeks: number | null;
-  contents: Array<{ sku: string; title: string; packSizeG: number | null }>;
+  /** What is actually PACKED in a bundle — `packSizeG` here is the packed
+   *  amount, which for the Starter Pack differs from each item's retail SKU. */
+  contents: Array<{ sku: string; title: string; packSizeG: number | null; quantity: number }>;
+  /** Total packed grams of a bundle. Null for a single product. */
+  contentsTotalG: number | null;
+  /** Raw allergen tokens. Empty means NO STATEMENT EXISTS for this article —
+   *  never render that as an "allergen free" claim. */
+  allergens: ShopAllergen[];
+}
+
+export type ShopAllergen = 'milk' | 'egg';
+
+/** Where a parcel goes. Written back from the payment session, so it is empty
+ *  until the order is paid. */
+export interface ShopShippingAddress {
+  name: string | null;
+  line1: string | null;
+  line2: string | null;
+  postalCode: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  phone: string | null;
+}
+
+export interface ShopTracking {
+  carrier: string | null;
+  number: string | null;
 }
 
 export interface ShopOrderItem {
@@ -47,10 +74,16 @@ export interface ShopOrder {
   fulfillmentStatus: ShopFulfillmentStatus;
   containsPreorder: boolean;
   leadTimeWeeks: number | null;
+  subtotalCents: number;
+  shippingCents: number;
+  taxCents: number;
   totalCents: number;
   currency: string;
   created_at: string;
   paidAt: string | null;
+  shippedAt: string | null;
+  shipping: ShopShippingAddress;
+  tracking: ShopTracking;
   items: ShopOrderItem[];
 }
 
@@ -90,12 +123,18 @@ export async function startShopCheckout(input: {
   return data as { url: string; orderId: string; orderNumber: string };
 }
 
-/** Payment truth comes from Stripe, never from the browser. */
-export async function syncShopOrder(orderId: string): Promise<{
+export interface ShopOrderSyncResult {
   orderNumber: string;
   status: ShopOrderStatus;
   paymentStatus: string;
-}> {
+  /** The whole order, so the confirmation screen can close the purchase
+   *  without a second round trip — and without the browser reconstructing
+   *  what was bought from a cart it has already cleared. */
+  order: ShopOrder | null;
+}
+
+/** Payment truth comes from Stripe, never from the browser. */
+export async function syncShopOrder(orderId: string): Promise<ShopOrderSyncResult> {
   if (!supabase) return unavailable();
   const { data, error } = await supabase.functions.invoke('shop-order-sync', {
     body: { orderId },
@@ -104,7 +143,7 @@ export async function syncShopOrder(orderId: string): Promise<{
     const detail = await error.context?.text?.().catch(() => null);
     throw new Error(detail ?? error.message);
   }
-  return data as { orderNumber: string; status: ShopOrderStatus; paymentStatus: string };
+  return data as ShopOrderSyncResult;
 }
 
 /* ------------------------------- admin ---------------------------------- */
@@ -174,14 +213,16 @@ export interface PaymentReference {
 export interface AdminShopOrder extends ShopOrder {
   email: string;
   userId: string | null;
-  subtotalCents: number;
+  cancelledAt: string | null;
+  refundedAt: string | null;
   paymentReference: PaymentReference;
 }
 
 interface AdminShopOrderRow extends ShopOrder {
   email: string;
   userId: string | null;
-  subtotalCents: number;
+  cancelledAt: string | null;
+  refundedAt: string | null;
   stripeCheckoutSessionId: string | null;
   stripePaymentIntentId: string | null;
 }
@@ -199,14 +240,21 @@ export async function getAdminShopOrders(): Promise<AdminShopOrder[]> {
   }));
 }
 
+/** Moving an order along its lifecycle. A shipment is recorded in the SAME
+ *  call that marks it shipped, so a parcel can never be „shipped" with nobody
+ *  able to say by whom or under what number. */
 export async function setShopOrderFulfillment(input: {
   orderId: string;
   fulfillmentStatus: ShopFulfillmentStatus;
+  trackingCarrier?: string | null;
+  trackingNumber?: string | null;
 }): Promise<void> {
   if (!supabase) return unavailable();
   const { error } = await supabase.rpc('gellatti_admin_shop_order_action_v1', {
     p_order_id: input.orderId,
     p_fulfillment_status: input.fulfillmentStatus,
+    p_tracking_carrier: input.trackingCarrier ?? null,
+    p_tracking_number: input.trackingNumber ?? null,
   });
   if (error) throw new Error(error.message);
 }

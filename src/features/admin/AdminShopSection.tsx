@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
+import { cn } from '@/lib/cn';
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ApplicationState } from '@/components/shared/ApplicationState';
@@ -15,12 +16,9 @@ import {
   type ShopAvailability,
   type ShopFulfillmentStatus,
 } from '@/services/shop';
-import {
-  shopCopy,
-  shopFulfillmentLabelPl,
-  shopMoney,
-  shopOrderStatusLabelPl,
-} from '@/copy/shop';
+import { shopCopy, shopMoney } from '@/copy/shop';
+import { AdminShopOrderCard } from './AdminShopOrderCard';
+import { shopOrderQueue, shopOrderQueueCounts, type ShopOrderQueue } from './shopOrderQueue';
 
 const field = 'pro-focus-ring min-h-11 w-full border border-[var(--g-line)] bg-white px-3 text-sm';
 const th = 'border-b border-[var(--g-line)] px-3 py-2.5 text-left font-semibold text-[var(--g-text-secondary)]';
@@ -32,12 +30,14 @@ const AVAILABILITY_LABEL: Readonly<Record<ShopAvailability, string>> = {
   preorder: 'Na zamówienie',
   out_of_stock: 'Niedostępny',
 };
-const FULFILLMENT: readonly ShopFulfillmentStatus[] = [
-  'awaiting',
-  'preparing',
-  'shipped',
-  'delivered',
-  'cancelled',
+
+/** The bench, in the order somebody actually works it. */
+const QUEUES: ReadonlyArray<{ key: ShopOrderQueue | 'all'; label: string }> = [
+  { key: 'toShip', label: shopCopy.admin.queueToShip },
+  { key: 'waiting', label: shopCopy.admin.queueWaiting },
+  { key: 'unpaid', label: shopCopy.admin.queueUnpaid },
+  { key: 'shipped', label: shopCopy.admin.queueShipped },
+  { key: 'all', label: shopCopy.admin.filterAll },
 ];
 
 function ProductRow({
@@ -175,8 +175,12 @@ export function AdminShopSection() {
   });
 
   const fulfil = useMutation({
-    mutationFn: (input: { orderId: string; fulfillmentStatus: ShopFulfillmentStatus }) =>
-      setShopOrderFulfillment(input),
+    mutationFn: (input: {
+      orderId: string;
+      fulfillmentStatus: ShopFulfillmentStatus;
+      trackingCarrier?: string | null;
+      trackingNumber?: string | null;
+    }) => setShopOrderFulfillment(input),
     onSuccess: refresh,
   });
 
@@ -184,6 +188,14 @@ export function AdminShopSection() {
     mutationFn: (orderId: string) => syncShopOrder(orderId),
     onSuccess: refresh,
   });
+
+  const [queue, setQueue] = useState<ShopOrderQueue | 'all'>('toShip');
+  const allOrders = useMemo(() => orders.data ?? [], [orders.data]);
+  const counts = useMemo(() => shopOrderQueueCounts(allOrders), [allOrders]);
+  const visible = useMemo(
+    () => (queue === 'all' ? allOrders : allOrders.filter((o) => shopOrderQueue(o) === queue)),
+    [allOrders, queue],
+  );
 
   return (
     <>
@@ -240,88 +252,57 @@ export function AdminShopSection() {
         {orders.isLoading ? (
           <ApplicationState kind="loading" title="Wczytuję zamówienia…" />
         ) : null}
-        {orders.data && orders.data.length === 0 ? (
-          <EmptyState title="Brak zamówień." />
+        {orders.isError ? (
+          <ApplicationState kind="error" title="Nie udało się wczytać zamówień." />
+        ) : null}
+
+        {/* The bench, not a list. What has to go out today is the default view;
+            everything else is one click away. The counts come from the two
+            status columns the shop already keeps — nothing is stored twice. */}
+        {orders.data ? (
+          <div
+            className="mt-4 flex flex-wrap gap-2"
+            role="tablist"
+            aria-label={shopCopy.admin.ordersTitle}
+          >
+            {QUEUES.map(({ key, label }) => {
+              const count = key === 'all' ? allOrders.length : counts[key];
+              const selected = queue === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={selected}
+                  onClick={() => setQueue(key)}
+                  data-testid={`admin-orders-queue-${key}`}
+                  className={cn(
+                    'pro-focus-ring inline-flex min-h-9 items-center gap-2 border px-3 text-xs transition-colors',
+                    selected
+                      ? 'border-[var(--g-ink)] bg-[var(--g-ink)] text-white'
+                      : 'border-[var(--g-line)] bg-white text-[var(--g-text-secondary)] hover:border-[var(--g-line-strong)]',
+                  )}
+                >
+                  {label}
+                  <span className="font-mono text-[11px] tabular-nums">{count}</span>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+
+        {orders.data && visible.length === 0 ? (
+          <EmptyState title="Brak zamówień w tym widoku." />
         ) : null}
         <div className="mt-4 grid gap-3">
-          {(orders.data ?? []).map((order) => (
-            <article key={order.id} className="border border-[var(--g-line)] bg-white p-5">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="font-mono text-sm text-ink">{order.orderNumber}</p>
-                  <p className="mt-1 text-xs text-[var(--g-text-secondary)]">{order.email}</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="border border-[var(--g-line)] px-2 py-1 text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">
-                    {shopOrderStatusLabelPl(order.status)}
-                  </span>
-                  {order.containsPreorder ? (
-                    <span className="border rounded-full border-[var(--g-orange)]/40 bg-[var(--g-orange)]/10 px-2.5 py-1 text-[10px] font-bold tracking-[0.04em] text-[var(--g-attention-ink)] uppercase">
-                      Na zamówienie · {order.leadTimeWeeks ?? '?'} tyg.
-                    </span>
-                  ) : null}
-                  <span className="border border-[var(--g-line)] px-2 py-1 text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">
-                    {shopFulfillmentLabelPl(order.fulfillmentStatus)}
-                  </span>
-                </div>
-              </div>
-
-              <ul className="mt-4 divide-y divide-[var(--g-line)] text-sm">
-                {order.items.map((item) => (
-                  <li key={item.sku} className="flex justify-between gap-3 py-2">
-                    <span className="text-[var(--g-ink)]">
-                      {item.title} × {item.quantity}
-                    </span>
-                    <span className="font-mono text-[var(--g-text-secondary)]">
-                      {shopMoney(item.unitPriceCents * item.quantity, order.currency)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-
-              <dl className="mt-4 grid gap-2 text-xs sm:grid-cols-3">
-                <div>
-                  <dt className="text-[var(--g-text-secondary)]">Wartość</dt>
-                  <dd className="font-mono text-sm text-ink">
-                    {shopMoney(order.totalCents, order.currency)}
-                  </dd>
-                </div>
-                <div className="min-w-0">
-                  <dt className="text-[var(--g-text-secondary)]">{shopCopy.admin.sessionReference}</dt>
-                  <dd className="truncate font-mono text-[11px] text-[var(--g-text-secondary)]">
-                    {order.paymentReference.sessionId ?? '—'}
-                  </dd>
-                </div>
-                <div className="min-w-0">
-                  <dt className="text-[var(--g-text-secondary)]">{shopCopy.admin.intentReference}</dt>
-                  <dd className="truncate font-mono text-[11px] text-[var(--g-text-secondary)]">
-                    {order.paymentReference.intentId ?? '—'}
-                  </dd>
-                </div>
-              </dl>
-
-              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[var(--g-line)] pt-4">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  disabled={sync.isPending}
-                  onClick={() => sync.mutate(order.id)}
-                >
-                  {shopCopy.admin.syncPayment}
-                </Button>
-                {FULFILLMENT.filter((status) => status !== order.fulfillmentStatus).map((status) => (
-                  <Button
-                    key={status}
-                    type="button"
-                    variant="ghost"
-                    disabled={fulfil.isPending}
-                    onClick={() => fulfil.mutate({ orderId: order.id, fulfillmentStatus: status })}
-                  >
-                    {shopFulfillmentLabelPl(status)}
-                  </Button>
-                ))}
-              </div>
-            </article>
+          {visible.map((order) => (
+            <AdminShopOrderCard
+              key={order.id}
+              order={order}
+              pending={fulfil.isPending || sync.isPending}
+              onSync={() => sync.mutate(order.id)}
+              onFulfil={(input) => fulfil.mutate({ orderId: order.id, ...input })}
+            />
           ))}
         </div>
       </section>

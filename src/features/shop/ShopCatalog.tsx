@@ -1,13 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router';
 import { ApplicationState } from '@/components/shared/ApplicationState';
 import { EmptyState } from '@/components/shared/EmptyState';
-import {
-  applicationFieldClasses,
-  applicationPrimaryClasses,
-  applicationSecondaryClasses,
-} from '@/components/ui/applicationControlStyles';
+import { applicationPrimaryClasses } from '@/components/ui/applicationControlStyles';
 import { cn } from '@/lib/cn';
 import { useAuthStore } from '@/stores/authStore';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
@@ -17,30 +13,33 @@ import {
   syncShopOrder,
   type ShopProduct,
 } from '@/services/shop';
-import { shopAvailabilityLabelPl, shopCopy as c, shopMoney } from '@/copy/shop';
+import {
+  shopAvailabilityLabelPl,
+  shopCopy as c,
+  shopGrams,
+  shopMoney,
+} from '@/copy/shop';
 import { useShopCartStore } from './shopCartStore';
+import { ShopCart, type ShopCartEntry } from './ShopCart';
+import { ShopConfirmation } from './ShopConfirmation';
+import { ShopAllergenTags, ShopProductCard } from './ShopProductCard';
+import { SHOP_SHIPPING_FLAT_CENTS } from './shopShipping';
 
-const sectionLabel = 'text-[10px] font-semibold tracking-[0.13em] text-[var(--g-text-secondary)] uppercase';
+/** The Gellatti shop: a small, factual catalogue and one honest checkout. */
 
-function AvailabilityChip({ product }: { product: ShopProduct }) {
-  const preorder = product.availability === 'preorder';
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center rounded-full border px-3 py-1 text-[11px]',
-        preorder
-          ? 'border-[var(--g-orange)]/45 bg-[var(--g-orange)]/10 text-[var(--g-attention-ink)]'
-          : product.availability === 'out_of_stock'
-            ? 'border-[var(--g-line)] bg-[var(--g-ivory-deep)] text-[var(--g-text-secondary)]'
-            : 'border-[var(--g-line)] bg-white text-[var(--g-text-secondary)]',
-      )}
-    >
-      {shopAvailabilityLabelPl(product.availability, product.leadTimeWeeks)}
-    </span>
-  );
-}
+const label =
+  'text-[10px] leading-[1.25] font-bold tracking-[0.1em] text-[var(--g-text-secondary)] uppercase';
 
-function ProductCard({
+/**
+ * The Starter Pack, merchandised.
+ *
+ * It is the shop's lead product, so it gets the shape a lead product needs:
+ * what it is, why these seven and not seven others, and — separately, in a buy
+ * box — price, per-kilogram, availability with its real lead time, what is in
+ * the box, what shipping costs, and one button. The full contents list lives in
+ * the hero panel above; repeating it here would be the same list twice.
+ */
+function StarterPackPanel({
   product,
   inCart,
   onAdd,
@@ -50,58 +49,125 @@ function ProductCard({
   onAdd: () => void;
 }) {
   const perKg =
-    product.packSizeG && product.packSizeG > 0
-      ? shopMoney(Math.round((product.priceCents / product.packSizeG) * 1000), product.currency)
+    product.contentsTotalG && product.contentsTotalG > 0
+      ? shopMoney(
+          Math.round((product.priceCents / product.contentsTotalG) * 1000),
+          product.currency,
+        )
       : null;
+  const soldOut = product.availability === 'out_of_stock';
+  const preorder = product.availability === 'preorder';
+
   return (
-    <article className="flex flex-col rounded-[12px] border border-[var(--g-line)] bg-white p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <h3 className="text-lg font-semibold tracking-[-0.02em]">{product.title}</h3>
-        <AvailabilityChip product={product} />
+    <div
+      className="grid overflow-hidden rounded-[12px] border border-[var(--g-line)] bg-[var(--g-ivory)] lg:grid-cols-[minmax(0,1fr)_372px]"
+      data-testid="shop-starter-pack"
+    >
+      <div className="p-[clamp(24px,3vw,40px)]">
+        <p className={label}>{c.starterPack.kicker}</p>
+        <h2
+          id="shop-starter"
+          className="mt-2 text-[28px] leading-[1.1] font-bold tracking-[-0.032em]"
+        >
+          {product.title}
+        </h2>
+        <p className="mt-2.5 max-w-[60ch] text-[14.5px] leading-[1.65] text-[var(--g-text-secondary)]">
+          {c.starterPack.lede}
+        </p>
+
+        <dl className="mt-7 grid border-t border-[var(--g-line)] sm:grid-cols-3">
+          {[
+            [c.starterPack.whyBodyTitle, c.starterPack.whyBodyText],
+            [c.starterPack.whySweetTitle, c.starterPack.whySweetText],
+            [c.starterPack.whyCreamTitle, c.starterPack.whyCreamText],
+          ].map(([term, detail], index) => (
+            <div
+              key={term}
+              className={cn(
+                'pt-4 pr-4',
+                index > 0 &&
+                  'mt-3.5 border-t border-[var(--g-line)] sm:mt-0 sm:border-t-0 sm:border-l sm:pl-4',
+              )}
+            >
+              <dt className="text-[12.5px] font-semibold tracking-[-0.01em]">{term}</dt>
+              <dd className="mt-1.5 text-[12px] leading-[1.5] text-[var(--g-text-secondary)]">
+                {detail}
+              </dd>
+            </div>
+          ))}
+        </dl>
+
+        <p className="mt-5 text-[12px] text-[var(--g-text-muted)]">{c.starterPack.allergens}</p>
+        <ShopAllergenTags allergens={product.allergens} />
       </div>
-      {product.description ? (
-        <p className="mt-2 text-xs leading-relaxed text-[var(--g-text-secondary)]">{product.description}</p>
-      ) : null}
-      {product.contents.length > 0 ? (
-        <div className="mt-4">
-          <p className={sectionLabel}>{c.starterPack.contents}</p>
-          <ul className="mt-2 grid gap-1 text-xs text-[var(--g-text-secondary)]">
-            {product.contents.map((entry) => (
-              <li key={entry.sku}>
-                {/* Article titles already carry their pack size ("Dekstroza ·
-                    500 g"), so only append it when the title does not. */}
-                {entry.packSizeG && !entry.title.includes(`${entry.packSizeG} g`)
-                  ? `${entry.title} · ${entry.packSizeG} g`
-                  : entry.title}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-      <div className="mt-5 flex flex-wrap items-end justify-between gap-3 border-t border-[var(--g-line)] pt-4">
-        <div>
-          <p className="font-mono text-xl text-ink">{shopMoney(product.priceCents, product.currency)}</p>
-          {perKg ? (
-            <p className="mt-0.5 font-mono text-[11px] text-[var(--g-text-secondary)]">
-              {perKg} {c.product.perKg}
-            </p>
-          ) : null}
-        </div>
+
+      <div className="flex flex-col border-t border-[var(--g-line)] bg-white p-[30px] lg:border-t-0 lg:border-l">
+        <p className="font-mono text-[30px] leading-none tracking-[-0.01em] tabular-nums">
+          {shopMoney(product.priceCents, product.currency)}
+        </p>
+        {perKg ? (
+          <p className="mt-1.5 font-mono text-[11px] text-[var(--g-text-secondary)]">
+            {perKg} {c.product.perKg}
+          </p>
+        ) : null}
+        <span
+          className={cn(
+            'mt-4 inline-flex w-fit items-center rounded-full border px-[11px] py-[5px] text-[11px]',
+            preorder
+              ? 'border-[var(--g-orange)]/45 bg-[var(--g-attention-surface)] text-[var(--g-attention-ink)]'
+              : soldOut
+                ? 'border-[var(--g-line-strong)] bg-[var(--g-line-quiet)] text-[var(--g-lock)]'
+                : 'border-[var(--g-line)] bg-white text-[var(--g-text-secondary)]',
+          )}
+        >
+          {shopAvailabilityLabelPl(product.availability, product.leadTimeWeeks)}
+        </span>
+
+        <dl className="mt-5 border-t border-[var(--g-line-quiet)]">
+          {[
+            [
+              c.starterPack.contentsRecap,
+              c.starterPack.contentsRecapValue
+                .replace('{count}', String(product.contents.length))
+                .replace('{grams}', product.contentsTotalG ? shopGrams(product.contentsTotalG) : '—'),
+            ],
+            [
+              c.starterPack.shippingRow,
+              shopMoney(SHOP_SHIPPING_FLAT_CENTS, product.currency),
+            ],
+            [c.starterPack.deliveryRow, c.starterPack.deliveryValue],
+          ].map(([term, detail]) => (
+            <div
+              key={term}
+              className="flex justify-between gap-3 border-b border-[var(--g-line-quiet)] py-2.5 text-[12px]"
+            >
+              <dt className="text-[var(--g-text-secondary)]">{term}</dt>
+              <dd className="text-right font-mono text-[11.5px] tabular-nums">{detail}</dd>
+            </div>
+          ))}
+        </dl>
+
         <button
           type="button"
           onClick={onAdd}
-          disabled={product.availability === 'out_of_stock'}
-          className={cn(applicationSecondaryClasses(), 'disabled:opacity-45')}
+          disabled={soldOut}
+          className={cn(
+            applicationPrimaryClasses(),
+            'mt-6 w-full',
+            'disabled:cursor-not-allowed disabled:border-[var(--g-line-strong)] disabled:bg-[var(--g-line-quiet)] disabled:text-[var(--g-lock)]',
+          )}
           data-testid={`shop-add-${product.sku}`}
         >
           {inCart ? c.product.added : c.product.add}
         </button>
+        <p className="mt-3 text-[11px] leading-relaxed text-[var(--g-text-muted)]">
+          {c.starterPack.finalAmountNote}
+        </p>
       </div>
-    </article>
+    </div>
   );
 }
 
-/** The Gellatti shop: a small, factual catalogue and one honest checkout. */
 export function ShopCatalog() {
   const [params, setParams] = useSearchParams();
   const catalog = useQuery({ queryKey: ['shop-catalog'], queryFn: getShopCatalog });
@@ -115,41 +181,46 @@ export function ShopCatalog() {
   const bundle = products.find((product) => product.kind === 'bundle');
   const singles = products.filter((product) => product.kind === 'single');
 
-  const lines = cart.lines
+  const entries: ShopCartEntry[] = cart.lines
     .map((line) => ({ line, product: bySku.get(line.sku) }))
-    .filter((entry): entry is { line: typeof entry.line; product: ShopProduct } =>
-      entry.product !== undefined,
-    );
-  const total = lines.reduce(
-    (sum, entry) => sum + entry.product.priceCents * entry.line.quantity,
-    0,
-  );
-  const preorderWeeks = lines.reduce(
-    (max, entry) =>
-      entry.product.availability === 'preorder'
-        ? Math.max(max, entry.product.leadTimeWeeks ?? 0)
-        : max,
-    0,
-  );
+    .filter((entry): entry is ShopCartEntry => entry.product !== undefined);
 
+  /* Two guards against paying twice for the same click: the button disables on
+     `isPending`, and this ref closes the window before React re-renders. The
+     checkout function reuses an unpaid order for the same cart on top of that,
+     so even a duplicated request cannot mint a second order. */
+  const starting = useRef(false);
   const checkout = useMutation({
     mutationFn: () =>
       startShopCheckout({
-        items: lines.map((entry) => ({ sku: entry.product.sku, quantity: entry.line.quantity })),
+        items: entries.map((entry) => ({
+          sku: entry.product.sku,
+          quantity: entry.line.quantity,
+        })),
         successUrl: `${window.location.origin}/shop`,
-        cancelUrl: `${window.location.origin}/shop`,
+        cancelUrl: `${window.location.origin}/shop?checkout=cancelled`,
       }),
     onSuccess: (result) => {
       cart.clear();
       window.location.assign(result.url);
     },
-    onError: () => setCheckoutError(c.cart.error),
+    onError: () => {
+      starting.current = false;
+      setCheckoutError(c.cart.error);
+    },
   });
+  const startCheckout = () => {
+    if (starting.current || checkout.isPending) return;
+    starting.current = true;
+    setCheckoutError(null);
+    checkout.mutate();
+  };
 
   // Returning from the payment page: the payment status is verified server-side
   // against the provider, never inferred from the redirect. The order id travels
   // in the success URL the server built.
   const returnedOrderId = params.get('order');
+  const cancelled = params.get('checkout') === 'cancelled';
   const sync = useMutation({ mutationFn: (orderId: string) => syncShopOrder(orderId) });
   useEffect(() => {
     if (!returnedOrderId || sync.isPending || sync.data || sync.isError) return;
@@ -164,54 +235,51 @@ export function ShopCatalog() {
     return <EmptyState title="Katalog jest pusty." />;
   }
 
+  const confirmationState = returnedOrderId
+    ? sync.isPending
+      ? 'checking'
+      : sync.data?.status === 'paid'
+        ? 'paid'
+        : sync.data?.status === 'failed'
+          ? 'failed'
+          : sync.data?.status === 'cancelled'
+            ? 'cancelled'
+            : 'pending'
+    : cancelled
+      ? 'cancelled'
+      : null;
+
   return (
-    <div className="flex flex-col gap-10">
-      {returnedOrderId ? (
-        <div className="rounded-[12px] border border-[var(--g-line)] bg-[var(--g-ivory-deep)] p-5" data-testid="shop-return">
-          <p className="text-sm text-ink">
-            {sync.data?.status === 'paid'
-              ? `${c.orders.paidConfirmation} ${sync.data.orderNumber}`
-              : sync.isPending
-                ? 'Sprawdzam płatność…'
-                : 'Płatność nie została jeszcze potwierdzona.'}
-          </p>
-          <button
-            type="button"
-            onClick={() => setParams({})}
-            className={cn(applicationSecondaryClasses(), 'mt-4')}
-          >
-            Wróć do sklepu
-          </button>
-        </div>
+    <div className="flex flex-col gap-[58px]">
+      {confirmationState ? (
+        <ShopConfirmation
+          state={confirmationState}
+          order={sync.data?.order ?? null}
+          onBack={() => setParams({})}
+        />
       ) : null}
 
       {bundle ? (
         <section aria-labelledby="shop-starter">
-          <p className={sectionLabel}>{c.starterPack.kicker}</p>
-          <h2 id="shop-starter" className="mt-2 text-2xl font-semibold tracking-[-0.035em]">
-            {bundle.title}
-          </h2>
-          <p className="mt-2 max-w-prose text-sm leading-relaxed text-[var(--g-text-secondary)]">
-            {c.starterPack.body}
-          </p>
-          <div className="mt-5">
-            <ProductCard
-              product={bundle}
-              inCart={cart.lines.some((line) => line.sku === bundle.sku)}
-              onAdd={() => cart.add(bundle.sku)}
-            />
-          </div>
+          <StarterPackPanel
+            product={bundle}
+            inCart={cart.lines.some((line) => line.sku === bundle.sku)}
+            onAdd={() => cart.add(bundle.sku)}
+          />
         </section>
       ) : null}
 
       <section aria-labelledby="shop-singles">
-        <p className={sectionLabel}>Pojedyncze składniki</p>
-        <h2 id="shop-singles" className="mt-2 text-2xl font-semibold tracking-[-0.035em]">
-          Każdy składnik osobno
+        <p className={label}>{c.product.singlesKicker}</p>
+        <h2 id="shop-singles" className="mt-2 text-[22px] leading-[1.2] font-bold tracking-[-0.025em]">
+          {c.product.singlesTitle}
         </h2>
-        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <p className="mt-1 text-[12px] leading-[1.5] text-[var(--g-text-secondary)]">
+          {c.product.singlesHelper}
+        </p>
+        <div className="mt-[18px] grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {singles.map((product) => (
-            <ProductCard
+            <ShopProductCard
               key={product.sku}
               product={product}
               inCart={cart.lines.some((line) => line.sku === product.sku)}
@@ -221,90 +289,19 @@ export function ShopCatalog() {
         </div>
       </section>
 
-      <section
-        aria-labelledby="shop-cart"
-        className="rounded-[12px] border border-[var(--g-line)] bg-white p-5"
-        data-testid="shop-cart"
-      >
-        <h2 id="shop-cart" className="text-lg font-semibold tracking-[-0.02em]">
-          {c.cart.title}
-        </h2>
-        {lines.length === 0 ? (
-          <p className="mt-2 text-sm text-[var(--g-text-secondary)]">{c.cart.empty}</p>
-        ) : (
-          <>
-            <ul className="mt-4 divide-y divide-[var(--g-line)]">
-              {lines.map(({ line, product }) => (
-                <li key={product.sku} className="flex flex-wrap items-center gap-3 py-3">
-                  <span className="min-w-0 flex-1 text-sm text-ink">{product.title}</span>
-                  <label className="flex items-center gap-2">
-                    <span className="sr-only">{c.cart.quantity}</span>
-                    <input
-                      type="number"
-                      min={1}
-                      max={20}
-                      value={line.quantity}
-                      onChange={(event) =>
-                        cart.setQuantity(product.sku, Number(event.currentTarget.value))
-                      }
-                      className={applicationFieldClasses('w-20 text-center')}
-                    />
-                  </label>
-                  <span className="w-24 text-right font-mono text-sm">
-                    {shopMoney(product.priceCents * line.quantity, product.currency)}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => cart.remove(product.sku)}
-                    className="min-h-11 px-2 text-xs text-[var(--g-text-secondary)] hover:text-ink"
-                  >
-                    {c.cart.remove}
-                  </button>
-                </li>
-              ))}
-            </ul>
-
-            {preorderWeeks > 0 ? (
-              <p className="mt-4 rounded-[10px] border border-[var(--g-orange)]/40 bg-[var(--g-orange)]/10 px-4 py-3 text-sm text-[var(--g-attention-ink)]">
-                {c.cart.preorderNotice.replace('{weeks}', String(preorderWeeks))}
-              </p>
-            ) : null}
-
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--g-line)] pt-4">
-              <p className="font-mono text-xl">
-                {c.cart.total} {shopMoney(total)}
-              </p>
-              {authStatus === 'authed' ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCheckoutError(null);
-                    checkout.mutate();
-                  }}
-                  disabled={checkout.isPending}
-                  className={cn(applicationPrimaryClasses(), 'disabled:opacity-45')}
-                  data-testid="shop-checkout"
-                >
-                  {checkout.isPending ? c.cart.redirecting : c.cart.checkout}
-                </button>
-              ) : (
-                <div className="text-right">
-                  <p className="text-sm text-[var(--g-text-secondary)]">{c.cart.signInFirst}</p>
-                  <button
-                    type="button"
-                    onClick={() => openAuthModal()}
-                    className={cn(applicationPrimaryClasses(), 'mt-2')}
-                  >
-                    {c.cart.signInCta}
-                  </button>
-                </div>
-              )}
-            </div>
-            {checkoutError ? <p className="mt-3 text-sm text-status-error">{checkoutError}</p> : null}
-            <p className="mt-3 text-xs text-[var(--g-text-secondary)]">{c.cart.testMode}</p>
-          </>
-        )}
-      </section>
+      <ShopCart
+        entries={entries}
+        authed={authStatus === 'authed'}
+        checkoutPending={checkout.isPending}
+        checkoutError={checkoutError}
+        onQuantity={(sku, quantity) => cart.setQuantity(sku, quantity)}
+        onRemove={(sku) => cart.remove(sku)}
+        onCheckout={startCheckout}
+        onSignIn={() => openAuthModal()}
+        onBrowse={() =>
+          document.getElementById('shop-starter')?.scrollIntoView({ behavior: 'smooth' })
+        }
+      />
     </div>
   );
 }

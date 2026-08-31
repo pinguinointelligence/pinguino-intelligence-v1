@@ -26,9 +26,10 @@ import {
   DestinationHero,
   DestinationSection,
   DestinationSectionHead,
-  ImageDirection,
 } from '@/components/shared/destinationEditorial';
 import { ShopCatalog } from '@/features/shop/ShopCatalog';
+import { ShopStarterSpecimen } from '@/features/shop/ShopStarterSpecimen';
+import { ShopHeroFacts } from '@/features/shop/ShopHeroFacts';
 import { ShopOrdersPanel } from '@/features/shop/ShopOrdersPanel';
 import { shopCopy } from '@/copy/shop';
 import { FranchiseInquiryForm } from '@/features/franchise/FranchiseInquiryForm';
@@ -96,31 +97,28 @@ export function ShopPage() {
       bare
     >
       {/* GELLATTI V2.1 §5 — the approved Sklep hero: 470 px band, 1.05 / 0.95
-          split, graphite right half. The catalogue underneath is untouched;
-          only the top of the page changes.
-          The hero deliberately carries ONLY the page-level copy. `ShopCatalog`
-          already opens on „Zestaw startowy / Gellatti Starter Pack" with the
-          same `starterPack` kicker and body, so putting those in the hero too
-          printed them twice on served staging. It also carries no CTA: the
-          approved label for that slot belongs to a design-only Starter Pack
-          page this route no longer is — the composition is preserved, the
-          invented button is not. */}
+          split, graphite right half. The geometry is unchanged; what fills it
+          is not.
+          The graphite half used to hold a dashed panel announcing that no
+          packaging photograph existed — a placeholder where a product should
+          be. Gellatti still has no product photography, so the panel now
+          PRESENTS the Starter Pack with the one thing the shop genuinely owns:
+          exactly what is in the box, drawn to scale, totalling 1 125 g.
+          The left half carries the three commerce facts a buyer needs before
+          scrolling — shipping, lead time, and that the amount shown is the
+          amount charged — instead of empty band. */}
       <DestinationHero
         variant="shop"
         eyebrow={shopCopy.page.eyebrow}
         title={shopCopy.page.title}
         blurb={shopCopy.page.blurb}
+        note={undefined}
+        actions={<ShopHeroFacts />}
         visual={
           /* The graphite half stays on a phone — the approved mobile hero runs
              the full band with its visual, so hiding it below `lg` shortens the
              band and knocks everything under it out of register. */
-          <div className="grid place-items-center bg-[var(--g-graphite)] p-[26px]">
-            <ImageDirection
-              tone="inverse"
-              className="h-full min-h-[190px] w-full"
-              lines={['Neutralny placeholder', 'brak zatwierdzonego zdjęcia lub packaging assetu']}
-            />
-          </div>
+          <ShopStarterSpecimen />
         }
       />
       <DestinationSection id="sklep-katalog">
