@@ -28,6 +28,9 @@ export interface HomeCreatorCopy {
     readonly listening: string;
     readonly voiceUnavailable: string;
     readonly chipsLabel: string;
+    /** Refinement actions shown beside the chips once an idea exists (OWNER FROZEN). */
+    readonly refineIngredient: string;
+    readonly refineTopping: string;
     readonly removeChip: string;
     readonly cta: string;
     readonly emptyHint: string;
@@ -174,8 +177,10 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     listening: 'Słucham…',
     voiceUnavailable: 'Ta przeglądarka nie obsługuje mowy. Napisz albo zeskanuj.',
     chipsLabel: 'Twój pomysł',
+    refineIngredient: 'Składnik',
+    refineTopping: 'Topping',
     removeChip: 'Usuń',
-    cta: 'Stwórz moją recepturę',
+    cta: 'Stwórz swoją recepturę',
     emptyHint: 'Dodaj przynajmniej jeden składnik albo smak.',
     resolving: 'Sprawdzam produkty…',
   },
@@ -234,9 +239,9 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     namePlaceholder: 'Nazwij swoje lody',
     score: 'Ocena',
     crown: 'Główny',
-    topping: 'Posypka',
+    topping: 'Topping',
     addIngredient: 'Dodaj składnik',
-    addTopping: 'Dodaj posypkę',
+    addTopping: 'Dodaj topping',
     anythingElse: 'Chcesz dodać coś jeszcze?',
     rowMenu: 'Więcej',
     remove: 'Usuń',
@@ -244,7 +249,7 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     dontHaveThis: 'Nie mam tego składnika',
     howToUse: 'Jak chcesz tego użyć?',
     asIngredient: 'Jako składnik',
-    asTopping: 'Jako posypka',
+    asTopping: 'Jako topping',
     save: 'Zapisz recepturę',
     saved: 'Zapisano',
     shareWithCommunity: 'Pokaż w Community',
@@ -272,7 +277,7 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     title: 'Robimy lody',
     addedTooMuch: 'Wsypałem za dużo',
     scaleQuestion: 'Ile pokazuje teraz waga?',
-    toppingStage: 'Na koniec dodaj posypkę.',
+    toppingStage: 'Na koniec dodaj topping.',
     done: 'Gotowe!',
   },
   draft: {
@@ -315,8 +320,10 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     listening: 'Listening…',
     voiceUnavailable: 'This browser has no speech input. Type or scan instead.',
     chipsLabel: 'Your idea',
+    refineIngredient: 'Ingredient',
+    refineTopping: 'Topping',
     removeChip: 'Remove',
-    cta: 'Create my recipe',
+    cta: 'Create your recipe',
     emptyHint: 'Add at least one ingredient or flavour.',
     resolving: 'Checking products…',
   },

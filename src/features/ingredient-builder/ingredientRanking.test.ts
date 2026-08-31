@@ -15,16 +15,48 @@ interface Row {
 }
 
 const ROWS: Row[] = [
-  { id: 'PI-ING-001889', name: 'FANTA PINEAPPLE · Beverage', internal: 'fanta_pineapple', form: 'fruit_soda' },
-  { id: 'PI-ING-000726', name: 'FORTEFRUTTO PINEAPPLE N · PreGel Paste · ST-45272', internal: 'fortefrutto_pineapple_n_pregel', form: 'fruit_flavor_paste' },
-  { id: 'PI-ING-000390', name: 'PINEAPPLE · Fresh Fruit', internal: 'pineapple', form: 'fresh_fruit_profile' },
-  { id: 'PI-ING-000389', name: 'PINEAPPLE · Puree · Frozen/Chilled', internal: 'pineapple_puree', form: 'fruit_puree' },
-  { id: 'PI-ING-000345', name: 'BANANA · Fresh Fruit', internal: 'banana', form: 'fresh_fruit_profile' },
+  {
+    id: 'PI-ING-001889',
+    name: 'FANTA PINEAPPLE · Beverage',
+    internal: 'fanta_pineapple',
+    form: 'fruit_soda',
+  },
+  {
+    id: 'PI-ING-000726',
+    name: 'FORTEFRUTTO PINEAPPLE N · PreGel Paste · ST-45272',
+    internal: 'fortefrutto_pineapple_n_pregel',
+    form: 'fruit_flavor_paste',
+  },
+  {
+    id: 'PI-ING-000390',
+    name: 'PINEAPPLE · Fresh Fruit',
+    internal: 'pineapple',
+    form: 'fresh_fruit_profile',
+  },
+  {
+    id: 'PI-ING-000389',
+    name: 'PINEAPPLE · Puree · Frozen/Chilled',
+    internal: 'pineapple_puree',
+    form: 'fruit_puree',
+  },
+  {
+    id: 'PI-ING-000345',
+    name: 'BANANA · Fresh Fruit',
+    internal: 'banana',
+    form: 'fresh_fruit_profile',
+  },
   // An unrelated row whose SKU fragment contains „ban" — must NOT top a „banana" query.
-  { id: 'PI-ING-000900', name: 'WHITE CHOCOLATE · Callebaix · W2BANX', internal: 'white_chocolate_callebaix_w2banx', form: 'flavored_ice_cream_paste' },
+  {
+    id: 'PI-ING-000900',
+    name: 'WHITE CHOCOLATE · Callebaix · W2BANX',
+    internal: 'white_chocolate_callebaix_w2banx',
+    form: 'flavored_ice_cream_paste',
+  },
 ];
 
-const ingredients: EngineIngredient[] = ROWS.map((r) => ({ id: r.id, name: r.name } as unknown as EngineIngredient));
+const ingredients: EngineIngredient[] = ROWS.map(
+  (r) => ({ id: r.id, name: r.name }) as unknown as EngineIngredient,
+);
 const nameIndex = new Map(ROWS.map((r) => [r.id, normalizeSearchText(`${r.name} ${r.internal}`)]));
 const formIndex = new Map(ROWS.map((r) => [r.id, r.form]));
 const meta = { nameIndex, formIndex };

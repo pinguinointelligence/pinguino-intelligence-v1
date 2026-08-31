@@ -6,7 +6,13 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { IngredientSearchRow } from '@/services/ingredients';
-import { buildSearchTermGroups, conceptCategoriesFor, nameMatchQuality, normalizeSearchText, rankSearchHits } from './ingredientSearch';
+import {
+  buildSearchTermGroups,
+  conceptCategoriesFor,
+  nameMatchQuality,
+  normalizeSearchText,
+  rankSearchHits,
+} from './ingredientSearch';
 import { toSearchHit } from './useIngredientSearch';
 
 const row = (
@@ -28,25 +34,79 @@ const row = (
 const MILK_ROWS = [
   row('PI-ING-000236', 'MILK 3.5% · Milk · Chilled', 'milk_3_5_chilled', 'dairy', 'milk'),
   row('PI-ING-000296', 'WHOLE MILK · Milk', 'whole_milk', 'dairy', 'milk'),
-  row('PI-ING-000270', 'SKIMMED MILK · Milk', 'skimmed_milk_powder', 'dairy', 'skimmed_milk_powder'),
+  row(
+    'PI-ING-000270',
+    'SKIMMED MILK · Milk',
+    'skimmed_milk_powder',
+    'dairy',
+    'skimmed_milk_powder',
+  ),
   row('PI-ING-000177', 'BUTTERMILK · Milk · Chilled', 'buttermilk_chilled', 'dairy', 'buttermilk'),
-  row('PI-ING-000171', 'CONDENSED MILK 7.5% · Milk · Chilled', 'condensed_milk_7_5', 'dairy', 'condensed_milk'),
-  row('PI-ING-000149', 'COCONUT MILK · Coconut · Dry', 'coconut_milk_dry', 'coconut', 'coconut_milk'),
-  row('PI-ING-000119', 'MILK CHOCOLATE 33.6% · Callebaut Couverture · Dry', 'milk_chocolate_callebaut', 'chocolate', 'couverture'),
-  row('PI-ING-000073', 'MILK 30 · Gourmego Base Mix · 40120 / 40130', 'milk_30_gourmego', 'base_mix', 'powdered_ice_cream_base'),
-  row('PI-ING-000322', 'MILK STRAWBERRY KAMES · MEC3 Paste · 18047A', 'milk_strawberry_kames', 'flavor_paste', 'flavored_ice_cream_paste'),
+  row(
+    'PI-ING-000171',
+    'CONDENSED MILK 7.5% · Milk · Chilled',
+    'condensed_milk_7_5',
+    'dairy',
+    'condensed_milk',
+  ),
+  row(
+    'PI-ING-000149',
+    'COCONUT MILK · Coconut · Dry',
+    'coconut_milk_dry',
+    'coconut',
+    'coconut_milk',
+  ),
+  row(
+    'PI-ING-000119',
+    'MILK CHOCOLATE 33.6% · Callebaut Couverture · Dry',
+    'milk_chocolate_callebaut',
+    'chocolate',
+    'couverture',
+  ),
+  row(
+    'PI-ING-000073',
+    'MILK 30 · Gourmego Base Mix · 40120 / 40130',
+    'milk_30_gourmego',
+    'base_mix',
+    'powdered_ice_cream_base',
+  ),
+  row(
+    'PI-ING-000322',
+    'MILK STRAWBERRY KAMES · MEC3 Paste · 18047A',
+    'milk_strawberry_kames',
+    'flavor_paste',
+    'flavored_ice_cream_paste',
+  ),
 ];
 
 const PINEAPPLE_ROWS = [
   row('PI-ING-001889', 'FANTA PINEAPPLE · Beverage', 'fanta_pineapple', 'beverage', 'fruit_soda'),
-  row('PI-ING-000726', 'FORTEFRUTTO PINEAPPLE N · PreGel Paste · ST-45272', 'fortefrutto_pineapple_n', 'fruit', 'fruit_flavor_paste'),
+  row(
+    'PI-ING-000726',
+    'FORTEFRUTTO PINEAPPLE N · PreGel Paste · ST-45272',
+    'fortefrutto_pineapple_n',
+    'fruit',
+    'fruit_flavor_paste',
+  ),
   row('PI-ING-000390', 'PINEAPPLE · Fresh Fruit', 'pineapple', 'fruit', 'fresh_fruit_profile'),
-  row('PI-ING-000389', 'PINEAPPLE · Puree · Frozen/Chilled', 'pineapple_puree', 'fruit', 'fruit_puree'),
+  row(
+    'PI-ING-000389',
+    'PINEAPPLE · Puree · Frozen/Chilled',
+    'pineapple_puree',
+    'fruit',
+    'fruit_puree',
+  ),
 ];
 
 const HERB_ROWS = [
   row('PI-ING-001654', 'BASIL · Botanical · Fresh', 'basil_fresh', 'botanical', 'fresh_herb'),
-  row('PI-ING-000752', 'MINT GREEN · PreGel Paste · ST-51172', 'mint_green_pregel', 'flavor_paste', 'flavored_ice_cream_paste'),
+  row(
+    'PI-ING-000752',
+    'MINT GREEN · PreGel Paste · ST-51172',
+    'mint_green_pregel',
+    'flavor_paste',
+    'flavored_ice_cream_paste',
+  ),
   row('PI-ING-001561', 'MINT · Botanical · Fresh', 'mint_fresh', 'botanical', 'fresh_herb'),
 ];
 
@@ -61,7 +121,9 @@ describe('term-group builder (the server filter contract)', () => {
     for (const term of groups.flat()) expect(term).toMatch(/^[a-z0-9]+$/);
   });
   it('mleko expands to the milk family; empty query yields no groups', () => {
-    expect(buildSearchTermGroups('mleko')[0]).toEqual(expect.arrayContaining(['mlek', 'milk', 'latte']));
+    expect(buildSearchTermGroups('mleko')[0]).toEqual(
+      expect.arrayContaining(['mlek', 'milk', 'latte']),
+    );
     expect(buildSearchTermGroups('   ')).toEqual([]);
   });
 });
@@ -77,18 +139,21 @@ describe('concept categories', () => {
 });
 
 describe('milk ranking (owner-proven failure)', () => {
-  it.each(['milk', 'mleko'])('"%s": canonical dairy milk first; chocolate/coconut/base mixes sink', (q) => {
-    const ids = rank(MILK_ROWS, q);
-    // canonical plain milk rows lead
-    expect(ids.slice(0, 2)).toEqual(expect.arrayContaining(['PI-ING-000236', 'PI-ING-000296']));
-    const pos = (id: string) => ids.indexOf(id);
-    expect(pos('PI-ING-000236')).toBeLessThan(pos('PI-ING-000177')); // milk < buttermilk
-    expect(pos('PI-ING-000177')).toBeLessThan(pos('PI-ING-000119')); // buttermilk < milk chocolate
-    expect(pos('PI-ING-000171')).toBeLessThan(pos('PI-ING-000119')); // condensed < milk chocolate
-    expect(pos('PI-ING-000236')).toBeLessThan(pos('PI-ING-000149')); // milk < coconut milk
-    expect(pos('PI-ING-000236')).toBeLessThan(pos('PI-ING-000073')); // milk < base mix
-    expect(pos('PI-ING-000236')).toBeLessThan(pos('PI-ING-000322')); // milk < strawberry paste
-  });
+  it.each(['milk', 'mleko'])(
+    '"%s": canonical dairy milk first; chocolate/coconut/base mixes sink',
+    (q) => {
+      const ids = rank(MILK_ROWS, q);
+      // canonical plain milk rows lead
+      expect(ids.slice(0, 2)).toEqual(expect.arrayContaining(['PI-ING-000236', 'PI-ING-000296']));
+      const pos = (id: string) => ids.indexOf(id);
+      expect(pos('PI-ING-000236')).toBeLessThan(pos('PI-ING-000177')); // milk < buttermilk
+      expect(pos('PI-ING-000177')).toBeLessThan(pos('PI-ING-000119')); // buttermilk < milk chocolate
+      expect(pos('PI-ING-000171')).toBeLessThan(pos('PI-ING-000119')); // condensed < milk chocolate
+      expect(pos('PI-ING-000236')).toBeLessThan(pos('PI-ING-000149')); // milk < coconut milk
+      expect(pos('PI-ING-000236')).toBeLessThan(pos('PI-ING-000073')); // milk < base mix
+      expect(pos('PI-ING-000236')).toBeLessThan(pos('PI-ING-000322')); // milk < strawberry paste
+    },
+  );
   it('"milk 3.5%" and „mleko 3,5%" hit the exact record first', () => {
     expect(rank(MILK_ROWS, 'milk 3.5%')[0]).toBe('PI-ING-000236');
     expect(rank(MILK_ROWS, 'mleko 3,5%')[0]).toBe('PI-ING-000236');
@@ -121,7 +186,13 @@ describe('SKU-only matches never outrank semantic matches', () => {
   it('a row matching only via SKU ranks below every name match', () => {
     const rows = [
       ...PINEAPPLE_ROWS,
-      row('PI-ING-000999', 'WHITE CHOCOLATE · Callebaix', 'white_chocolate_pineapplex_code', 'chocolate', 'couverture'),
+      row(
+        'PI-ING-000999',
+        'WHITE CHOCOLATE · Callebaix',
+        'white_chocolate_pineapplex_code',
+        'chocolate',
+        'couverture',
+      ),
     ];
     const ids = rank(rows, 'pineapple');
     expect(ids[0]).toBe('PI-ING-000390');
@@ -133,7 +204,14 @@ describe('safe payload', () => {
   it('a search hit exposes only safe presentation and approval flags — no PAC/POD/composition', () => {
     const hit = toSearchHit(MILK_ROWS[0]!) as unknown as Record<string, unknown>;
     expect(Object.keys(hit).sort()).toEqual([
-      'baseSelectable', 'category', 'engineApproved', 'form', 'id', 'internal', 'name', 'nameNorm',
+      'baseSelectable',
+      'category',
+      'engineApproved',
+      'form',
+      'id',
+      'internal',
+      'name',
+      'nameNorm',
     ]);
   });
 });

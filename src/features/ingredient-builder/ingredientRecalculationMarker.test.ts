@@ -57,7 +57,10 @@ describe('ingredient marker — last Recalculate truth', () => {
       'inulin',
     ]);
     expect([
-      ...recalculatedIngredientLineIds(before, before.filter((item) => item.id !== 'apple')),
+      ...recalculatedIngredientLineIds(
+        before,
+        before.filter((item) => item.id !== 'apple'),
+      ),
     ]).toEqual([]);
   });
 });

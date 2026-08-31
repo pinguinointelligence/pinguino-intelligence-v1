@@ -138,7 +138,7 @@ describe('the mainCapability state space is covered EXHAUSTIVELY, not by observa
     const source = readFileSync('src/features/product-intelligence/mainCapability.ts', 'utf8');
     const union = source.slice(
       source.indexOf('export type MainCapabilityState ='),
-      source.indexOf("export type MainCalibrationLevel"),
+      source.indexOf('export type MainCalibrationLevel'),
     );
     for (const state of ALL_STATES) expect(union, state).toContain(`'${state}'`);
     // No fifth member has been added without this matrix being revisited.

@@ -59,7 +59,7 @@ describe('the add-ingredient affordance is attached to the ingredient list', () 
 
 describe('the icon trigger follows the Designbook family', () => {
   it('uses the shared round icon button, not a large orange CTA', () => {
-    expect(picker).toContain("iconButtonClasses('md')");
+    expect(picker).toContain('iconButtonClasses(triggerSize)');
     const iconBranch = picker.slice(
       picker.indexOf("triggerVariant === 'icon'"),
       picker.indexOf('</button>'),
@@ -69,8 +69,11 @@ describe('the icon trigger follows the Designbook family', () => {
   });
 
   it('is at least a 44x44 touch target', () => {
-    // iconButtonClasses('md') is size-11 == 44px.
-    expect(picker).toContain("iconButtonClasses('md')");
+    // The list affordance takes the default md size, which is size-11 == 44px. The
+    // compact refinement variant is covered in pickerTriggerVariants.contract.test.tsx.
+    expect(picker).toContain("triggerSize = 'md'");
+    expect(section).toContain('triggerVariant="icon"');
+    expect(section).not.toContain('triggerSize="sm"');
   });
 
   it('keeps the orange focus treatment via the shared ring', () => {

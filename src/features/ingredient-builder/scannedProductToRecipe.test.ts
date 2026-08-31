@@ -187,8 +187,9 @@ describe('a scanned product returning to the recipe', () => {
     expect('composition' in ingredient && ingredient.composition.protein_percent).toBe(24);
     expect('pac_value' in ingredient && ingredient.pac_value).toBe(0.5);
     expect('composition' in ingredient && ingredient.composition.water_percent).toBe(51);
-    expect('composition' in ingredient && ingredient.composition.water_percent)
-      .not.toBe(mapperRow.water_percent);
+    expect('composition' in ingredient && ingredient.composition.water_percent).not.toBe(
+      mapperRow.water_percent,
+    );
   });
 
   it('keeps Baitz PR-ING-006308 distinct from PI-ING-000091 at runtime', () => {

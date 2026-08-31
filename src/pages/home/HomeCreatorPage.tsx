@@ -11,6 +11,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { EngineIngredient } from '@/engine';
+import type { RecipeToppingIngredient } from '@/features/recipe-composition/recipeCompositionPersistence';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/contracts';
 import { productRecommendedDosagePl } from '@/features/product-intelligence/productDosageAuthority';
 import { decideAddAmount } from '@/features/home-creator/homeAddAmountDecision';
@@ -312,6 +313,49 @@ export function HomeCreatorPage() {
     [],
   );
 
+  /**
+   * ONE add path for every HOME surface — the refinement controls beside the chips and
+   * the add controls beside the recipe list both land here, so the §B decision cannot
+   * apply on one surface and not the other.
+   */
+  const handleAddIngredient = useCallback(
+    (ingredient: EngineIngredient, behavior?: ProductBehaviorSnapshot) => {
+      const decision = decideAddAmount(behavior ?? null, productRecommendedDosagePl);
+      if (decision.kind === 'unresolved_authority') {
+        // Owner ruling §6: never guess. The picker already refuses a product it cannot
+        // confirm, so reaching here means the authority went stale between resolution
+        // and add — we create nothing rather than invent semantics.
+        return;
+      }
+      if (decision.kind === 'ask_amount') {
+        setPendingAdd({
+          ingredient,
+          behavior: behavior ?? null,
+          recommendedDose: decision.recommendedDose,
+        });
+        return;
+      }
+      addIngredientLine(ingredient, behavior ?? null, 0);
+    },
+    [addIngredientLine],
+  );
+
+  /** §57: the existing Topping behaviour — no Crown, editable grams. Shared identically. */
+  const handleAddTopping = useCallback(
+    (ingredient: RecipeToppingIngredient, behavior?: ProductBehaviorSnapshot) => {
+      useRecipeStore.getState().addTopping(ingredient, 0);
+      const topping = useRecipeStore
+        .getState()
+        .toppings.find((line) => line.ingredient.id === ingredient.id);
+      if (topping && behavior) {
+        useRecipeStore
+          .getState()
+          .setProductBehaviorSnapshot(topping.id, { ...behavior, lineId: topping.id });
+      }
+    },
+    [],
+  );
+
   const lastGeneratedFor = useRef<string | null>(null);
   useEffect(() => {
     // Generate once, when every required answer is in — never on every render.
@@ -401,6 +445,9 @@ export function HomeCreatorPage() {
               }, 60);
             }}
             resolving={resolving}
+            library={library}
+            onAddIngredient={handleAddIngredient}
+            onAddTopping={handleAddTopping}
             onChooseIdentity={(chip, candidate) => {
               // §23: the user answered the identity question. Record the real
               // catalogue identity, clear the question, and — if the recipe already
@@ -531,43 +578,8 @@ export function HomeCreatorPage() {
             onSubstitute={() => undefined}
             onUnavailable={(lineId) => useRecipeStore.getState().markIngredientUnavailable(lineId)}
             library={library}
-            onAddIngredient={(ingredient, behavior) => {
-              // §B, owner-locked 2026-08-31. Adding at 0 g and then reporting the
-              // minimum-1-g rule back to the customer was the defect, not the rule.
-              //
-              // Crown-capable  → the existing Crown authority decides the amount, so the
-              //                  line is created exactly as before.
-              // Not Crown-capable → ASK first. Nothing is created until a positive amount
-              //                  is confirmed, so no 0 g line and no fake 1 g ever exists.
-              const decision = decideAddAmount(behavior ?? null, productRecommendedDosagePl);
-              if (decision.kind === 'unresolved_authority') {
-                // Owner ruling §6: never guess. The picker already refuses a product it
-                // cannot confirm, so reaching here means the authority went stale between
-                // resolution and add — we create nothing rather than invent semantics.
-                return;
-              }
-              if (decision.kind === 'ask_amount') {
-                setPendingAdd({
-                  ingredient,
-                  behavior: behavior ?? null,
-                  recommendedDose: decision.recommendedDose,
-                });
-                return;
-              }
-              addIngredientLine(ingredient, behavior ?? null, 0);
-            }}
-            onAddTopping={(ingredient, behavior) => {
-              // §57: the existing Topping behaviour — no Crown, editable grams.
-              useRecipeStore.getState().addTopping(ingredient, 0);
-              const topping = useRecipeStore
-                .getState()
-                .toppings.find((line) => line.ingredient.id === ingredient.id);
-              if (topping && behavior) {
-                useRecipeStore
-                  .getState()
-                  .setProductBehaviorSnapshot(topping.id, { ...behavior, lineId: topping.id });
-              }
-            }}
+            onAddIngredient={handleAddIngredient}
+            onAddTopping={handleAddTopping}
             onSave={() => {
               // §65: an explicit action, never an autosave. The canonical handler
               // already knows WHY a save cannot proceed, so HOME routes on its answer

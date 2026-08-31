@@ -1,8 +1,5 @@
 import type { EngineIngredient, LockType } from '@/engine';
-import {
-  EMPTY_PRODUCT_DOSE_META,
-  type ProductDoseMeta,
-} from './productDoseSuggestion';
+import { EMPTY_PRODUCT_DOSE_META, type ProductDoseMeta } from './productDoseSuggestion';
 
 /** Customer vocabulary only. Engine lock enums are deliberately not exposed here. */
 export type IngredientCustomerRole = 'standard' | 'addition';

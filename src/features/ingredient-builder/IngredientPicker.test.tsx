@@ -6,7 +6,8 @@ import { IngredientPicker, PickerEmptyState } from './IngredientPicker';
 import type { IngredientLibrary } from './ingredientLibrary';
 import type { ProductLibraryProvenance } from '@/data/products/productEngineLibrary';
 
-const prod = (id: string, name: string): EngineIngredient => ({ id, name } as unknown as EngineIngredient);
+const prod = (id: string, name: string): EngineIngredient =>
+  ({ id, name }) as unknown as EngineIngredient;
 const provenance = (id: string, p: ProductLibraryProvenance) => new Map([[id, p]]);
 
 const lib = (over: Partial<IngredientLibrary> = {}): IngredientLibrary => ({
@@ -30,7 +31,12 @@ describe('IngredientPicker — My Products', () => {
       <IngredientPicker
         library={lib({
           products: [prod('PR-ING-000010', 'Nata para montar')],
-          productProvenance: provenance('PR-ING-000010', { reference_linked: true, blocked_by_red_flags: false, warnings: [], status_label: 'PI Generated' }),
+          productProvenance: provenance('PR-ING-000010', {
+            reference_linked: true,
+            blocked_by_red_flags: false,
+            warnings: [],
+            status_label: 'PI Generated',
+          }),
         })}
         onAdd={() => {}}
       />,
@@ -50,7 +56,12 @@ describe('IngredientPicker — My Products', () => {
       <IngredientPicker
         library={lib({
           products: [prod('PR-ING-000031', 'Chocolate 0% azúcares')],
-          productProvenance: provenance('PR-ING-000031', { reference_linked: true, blocked_by_red_flags: true, warnings: ['sweetener'], status_label: 'PI Generated' }),
+          productProvenance: provenance('PR-ING-000031', {
+            reference_linked: true,
+            blocked_by_red_flags: true,
+            warnings: ['sweetener'],
+            status_label: 'PI Generated',
+          }),
         })}
         onAdd={() => {}}
       />,
@@ -59,9 +70,16 @@ describe('IngredientPicker — My Products', () => {
   });
 
   it('basement ingredients still render in their category group; no products → no My Products group', () => {
-    const milk = { id: 'PI-ING-1', name: 'Whole Milk', category: 'dairy' } as unknown as EngineIngredient;
+    const milk = {
+      id: 'PI-ING-1',
+      name: 'Whole Milk',
+      category: 'dairy',
+    } as unknown as EngineIngredient;
     const html = renderToStaticMarkup(
-      <IngredientPicker library={lib({ ingredients: [milk], searchIndex: new Map([['PI-ING-1', 'whole milk']]) })} onAdd={() => {}} />,
+      <IngredientPicker
+        library={lib({ ingredients: [milk], searchIndex: new Map([['PI-ING-1', 'whole milk']]) })}
+        onAdd={() => {}}
+      />,
     );
     expect(text(html)).toContain('Whole Milk');
     expect(html).not.toMatch(/Moje produkty/);

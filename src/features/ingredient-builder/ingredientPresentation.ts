@@ -27,7 +27,16 @@ export type FormGroup =
 
 /** The owner-mandated group order (only non-empty groups render). */
 export const FORM_GROUP_ORDER: readonly FormGroup[] = [
-  'fresh', 'frozen', 'puree', 'concentrate', 'paste', 'liquid', 'powder', 'aroma', 'inclusion', 'other',
+  'fresh',
+  'frozen',
+  'puree',
+  'concentrate',
+  'paste',
+  'liquid',
+  'powder',
+  'aroma',
+  'inclusion',
+  'other',
 ];
 
 export const FORM_GROUP_HEADING_PL: Record<FormGroup, string> = {
@@ -50,16 +59,45 @@ export const FORM_GROUP_HEADING_PL: Record<FormGroup, string> = {
  * „Świeże", exactly like plain milk (MILK must never read as fruit, and
  * CREAM 18% must never read as „Inne"). */
 const FRESH_FORMS: ReadonlySet<string> = new Set([
-  'fresh_fruit_profile', 'fruit_profile', 'tropical_fruit_profile', 'fruit_peel',
-  'frozen_or_fresh', 'fresh_herb', 'milk', 'fresh_milk', 'cream', 'buttermilk',
-  'cream_18_percent', 'cream_33_percent', 'cream_33_percent_uht', 'cream_36_percent_uht',
-  'clotted_cream', 'creme_fraiche', 'fresh_whipping_cream', 'unsalted_butter',
-  'cream_cheese', 'mascarpone_cheese', 'mascarpone_cream_cheese', 'cottage_cheese',
-  'fatty_cottage_cheese', 'fatty_cottage_cheese_8_percent', 'soft_cheese',
-  'blue_cheese', 'blue_cheese_roquefort', 'brie_cheese', 'gorgonzola_cheese',
-  'mozzarella_cheese', 'parmesan_cheese', 'ricotta_cheese',
-  'greek_yogurt', 'natural_yogurt', 'skyr_yoghurt', 'yoghurt_9_percent',
-  'vegetable_profile', 'root_vegetable', 'leafy_green',
+  'fresh_fruit_profile',
+  'fruit_profile',
+  'tropical_fruit_profile',
+  'fruit_peel',
+  'frozen_or_fresh',
+  'fresh_herb',
+  'milk',
+  'fresh_milk',
+  'cream',
+  'buttermilk',
+  'cream_18_percent',
+  'cream_33_percent',
+  'cream_33_percent_uht',
+  'cream_36_percent_uht',
+  'clotted_cream',
+  'creme_fraiche',
+  'fresh_whipping_cream',
+  'unsalted_butter',
+  'cream_cheese',
+  'mascarpone_cheese',
+  'mascarpone_cream_cheese',
+  'cottage_cheese',
+  'fatty_cottage_cheese',
+  'fatty_cottage_cheese_8_percent',
+  'soft_cheese',
+  'blue_cheese',
+  'blue_cheese_roquefort',
+  'brie_cheese',
+  'gorgonzola_cheese',
+  'mozzarella_cheese',
+  'parmesan_cheese',
+  'ricotta_cheese',
+  'greek_yogurt',
+  'natural_yogurt',
+  'skyr_yoghurt',
+  'yoghurt_9_percent',
+  'vegetable_profile',
+  'root_vegetable',
+  'leafy_green',
 ]);
 
 const has = (f: string, ...needles: string[]): boolean => needles.some((n) => f.includes(n));
@@ -81,7 +119,21 @@ export function formGroupOf(subcategory: string | null | undefined, category?: s
   if (has(f, 'frozen')) return 'frozen';
   if (has(f, 'puree')) return 'puree';
   if (has(f, 'concentrate', 'nectar')) return 'concentrate';
-  if (has(f, 'inclusion', 'pieces', 'chips', 'crisp', 'flakes', 'wafer', 'cookie', 'cracker', 'crumble', 'topping')) {
+  if (
+    has(
+      f,
+      'inclusion',
+      'pieces',
+      'chips',
+      'crisp',
+      'flakes',
+      'wafer',
+      'cookie',
+      'cracker',
+      'crumble',
+      'topping',
+    )
+  ) {
     return 'inclusion';
   }
   if (has(f, 'paste', 'variegat', 'compound', 'spread')) return 'paste';
@@ -94,14 +146,62 @@ export function formGroupOf(subcategory: string | null | undefined, category?: s
   // glucose_syrup_liquid) is liquid — never „Proszki i suche" via mix/emulsifier.
   if (has(f, 'liquid')) return 'liquid';
   if (
-    has(f, 'powder', 'powdered', 'mix', 'dry', 'dried', 'icing', 'flour', 'maltodextrin', 'lactose') ||
-    has(f, 'sucrose', 'dextrose', 'fructose', 'invert_sugar', 'sugar', 'sweetener', 'stabilizer', 'emulsifier', 'gum', 'fiber', 'starch', 'agar', 'pectin')
+    has(
+      f,
+      'powder',
+      'powdered',
+      'mix',
+      'dry',
+      'dried',
+      'icing',
+      'flour',
+      'maltodextrin',
+      'lactose',
+    ) ||
+    has(
+      f,
+      'sucrose',
+      'dextrose',
+      'fructose',
+      'invert_sugar',
+      'sugar',
+      'sweetener',
+      'stabilizer',
+      'emulsifier',
+      'gum',
+      'fiber',
+      'starch',
+      'agar',
+      'pectin',
+    )
   ) {
     return 'powder';
   }
   if (
-    has(f, 'drink', 'soda', 'beverage', 'juice', 'syrup', 'cordial', 'beer', 'wine', 'liqueur', 'vodka',
-      'whiskey', 'whisky', 'rum', 'gin', 'spirit', 'tequila', 'cola', 'tea', 'water', 'honey', 'coconut_milk') ||
+    has(
+      f,
+      'drink',
+      'soda',
+      'beverage',
+      'juice',
+      'syrup',
+      'cordial',
+      'beer',
+      'wine',
+      'liqueur',
+      'vodka',
+      'whiskey',
+      'whisky',
+      'rum',
+      'gin',
+      'spirit',
+      'tequila',
+      'cola',
+      'tea',
+      'water',
+      'honey',
+      'coconut_milk',
+    ) ||
     (category ?? '').toLowerCase() === 'alcohol' ||
     (category ?? '').toLowerCase() === 'beverage'
   ) {
@@ -128,11 +228,31 @@ export function rowFormLabelPl(subcategory: string | null | undefined, category?
     case 'liquid':
       if (has(f, 'juice')) return 'Sok';
       if (has(f, 'syrup', 'cordial', 'honey')) return 'Syrop';
-      if (has(f, 'drink', 'soda', 'beverage', 'cola', 'tea') || (category ?? '').toLowerCase() === 'beverage') return 'Napój';
+      if (
+        has(f, 'drink', 'soda', 'beverage', 'cola', 'tea') ||
+        (category ?? '').toLowerCase() === 'beverage'
+      )
+        return 'Napój';
       return 'Płynne';
     case 'powder':
       if (has(f, 'dried')) return 'Suszone';
-      if (has(f, 'sucrose', 'dextrose', 'fructose', 'invert', 'sugar', 'sweetener', 'stabilizer', 'emulsifier', 'gum', 'fiber', 'starch', 'dry')) {
+      if (
+        has(
+          f,
+          'sucrose',
+          'dextrose',
+          'fructose',
+          'invert',
+          'sugar',
+          'sweetener',
+          'stabilizer',
+          'emulsifier',
+          'gum',
+          'fiber',
+          'starch',
+          'dry',
+        )
+      ) {
         return 'Suche';
       }
       return 'Proszek';
@@ -202,7 +322,7 @@ const CATEGORY_PL: Record<string, string> = {
 
 export function categoryLabelPl(category: string | null | undefined): string {
   const key = (category ?? '').toLowerCase().trim();
-  return CATEGORY_PL[key] ?? (category ?? '');
+  return CATEGORY_PL[key] ?? category ?? '';
 }
 
 /* ───────────────────────────────────────────────────────────── row text ── */

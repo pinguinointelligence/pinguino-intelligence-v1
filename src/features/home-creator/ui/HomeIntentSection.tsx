@@ -11,6 +11,12 @@
  */
 import { useCallback, useId, useState } from 'react';
 import { cn } from '@/lib/cn';
+import type { EngineIngredient } from '@/engine';
+import { ProductPickerPopover } from '@/features/ingredient-builder/ProductPickerPopover';
+import type { IngredientLibrary } from '@/features/ingredient-builder/ingredientLibrary';
+import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/contracts';
+import type { RecipeToppingIngredient } from '@/features/recipe-composition/recipeCompositionPersistence';
+import { useHomeBehaviorContext } from '../useHomeBehaviorContext';
 import { homeCreatorCopy } from '../homeCreatorCopy';
 import { parseIntent } from '../homeIntentParsing';
 import { useHomeDraftStore, type IntentChip } from '../homeDraftStore';
@@ -26,6 +32,9 @@ export function HomeIntentSection({
   onSubmit,
   onScan,
   onChipClick,
+  library,
+  onAddIngredient,
+  onAddTopping,
   onChooseIdentity,
   resolving = false,
 }: {
@@ -33,10 +42,15 @@ export function HomeIntentSection({
   onScan: () => void;
   onChipClick?: (chip: IntentChip) => void;
   /** §23: the user picked one of the offered real products. */
+  /** The canonical picker library — refinement opens the SAME picker, never a new one. */
+  library: IngredientLibrary;
+  onAddIngredient: (ingredient: EngineIngredient, behavior?: ProductBehaviorSnapshot) => void;
+  onAddTopping: (ingredient: RecipeToppingIngredient, behavior?: ProductBehaviorSnapshot) => void;
   onChooseIdentity?: (chip: IntentChip, candidate: { id: string; name: string }) => void;
   /** §18: identity resolution runs only after `Create my recipe`. */
   resolving?: boolean;
 }) {
+  const behaviorContext = useHomeBehaviorContext();
   const [value, setValue] = useState('');
   const fieldId = useId();
   const chips = useHomeDraftStore((state) => state.chips);
@@ -215,6 +229,54 @@ export function HomeIntentSection({
                   />
                 ))
             : null}
+
+          {/* OWNER FROZEN, 2026-08-31. Refinement actions appear only once an idea
+              exists — never inside the empty initial input, which stays a text field
+              plus Powiedz and Zeskanuj. They are deliberately subordinate to
+              „Stwórz swoją recepturę": the same light icon-button family as the lower
+              add controls, one size smaller, graphite on a thin border, no orange fill
+              (orange is the focus ring only). They open the canonical pickers. */}
+          <div
+            className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2"
+            data-testid="home-intent-refine"
+          >
+            <span className="inline-flex items-center gap-2" data-testid="home-refine-ingredient">
+              <ProductPickerPopover
+                library={library}
+                scope="BASE_FORMULATION"
+                triggerVariant="icon"
+                triggerSize="sm"
+                behaviorContext={behaviorContext}
+                triggerLabel={homeCreatorCopy.intent.refineIngredient}
+                onAdd={(ingredient, behavior) => onAddIngredient(ingredient, behavior)}
+              />
+              <span
+                aria-hidden
+                className="text-[13px]"
+                style={{ color: 'var(--g-text-secondary)' }}
+              >
+                {homeCreatorCopy.intent.refineIngredient}
+              </span>
+            </span>
+            <span className="inline-flex items-center gap-2" data-testid="home-refine-topping">
+              <ProductPickerPopover
+                library={library}
+                scope="POST_PROCESS_ADDON"
+                triggerVariant="icon"
+                triggerSize="sm"
+                behaviorContext={behaviorContext}
+                triggerLabel={homeCreatorCopy.intent.refineTopping}
+                onAdd={(ingredient, behavior) => onAddTopping(ingredient, behavior)}
+              />
+              <span
+                aria-hidden
+                className="text-[13px]"
+                style={{ color: 'var(--g-text-secondary)' }}
+              >
+                {homeCreatorCopy.intent.refineTopping}
+              </span>
+            </span>
+          </div>
         </div>
       ) : null}
 

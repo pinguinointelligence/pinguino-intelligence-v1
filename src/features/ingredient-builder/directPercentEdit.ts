@@ -11,7 +11,12 @@ export type DirectPercentEditResult =
     }
   | {
       ok: false;
-      code: 'line_missing' | 'invalid_percent' | 'protected_line' | 'main_zero' | 'no_rebalance_capacity';
+      code:
+        | 'line_missing'
+        | 'invalid_percent'
+        | 'protected_line'
+        | 'main_zero'
+        | 'no_rebalance_capacity';
     };
 
 const protectedConstraint = (set: ConstraintSet, lineId: string): boolean => {

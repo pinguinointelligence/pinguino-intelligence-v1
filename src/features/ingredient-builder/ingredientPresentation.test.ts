@@ -25,7 +25,11 @@ const read = (...p: string[]) => readFileSync(join(SRC, ...p), 'utf8');
 describe('owner defect — the exact bad row can no longer render (tests 1/2/3/12)', () => {
   it('chilled ordinary milk renders as „Świeże", never „Świeży owoc"', () => {
     // REAL row: PI-ING-000234 „MILK 1.5% · Milk · Chilled" (dairy / milk)
-    const row = resultRowTextPl({ name: 'MILK 1.5% · Milk · Chilled', category: 'dairy', form: 'milk' });
+    const row = resultRowTextPl({
+      name: 'MILK 1.5% · Milk · Chilled',
+      category: 'dairy',
+      form: 'milk',
+    });
     expect(row).toBe('MILK 1.5% · Nabiał · Świeże');
     expect(row).not.toContain('Świeży owoc');
     expect(row).not.toContain('Chilled'); // raw internal value never beside the Polish label
@@ -36,12 +40,20 @@ describe('owner defect — the exact bad row can no longer render (tests 1/2/3/1
   });
   it('Fresh Fruit renders as „Świeże" (PINEAPPLE · Owoce · Świeże)', () => {
     expect(
-      resultRowTextPl({ name: 'PINEAPPLE · Fresh Fruit', category: 'fruit', form: 'fresh_fruit_profile' }),
+      resultRowTextPl({
+        name: 'PINEAPPLE · Fresh Fruit',
+        category: 'fruit',
+        form: 'fresh_fruit_profile',
+      }),
     ).toBe('PINEAPPLE · Owoce · Świeże');
   });
   it('fresh herb renders as „Świeże" (BASIL · Zioła · Świeże)', () => {
     expect(
-      resultRowTextPl({ name: 'BASIL · Botanical · Fresh', category: 'botanical', form: 'fresh_herb' }),
+      resultRowTextPl({
+        name: 'BASIL · Botanical · Fresh',
+        category: 'botanical',
+        form: 'fresh_herb',
+      }),
     ).toBe('BASIL · Zioła · Świeże');
   });
 });
@@ -106,20 +118,53 @@ describe('grouped rendering contract (tests 6/7/13/14)', () => {
   const ranked = [
     { id: 'PI-ING-000236', name: 'MILK 3.5% · Milk · Chilled', category: 'dairy', form: 'milk' },
     { id: 'PI-ING-000296', name: 'WHOLE MILK · Milk', category: 'dairy', form: 'milk' },
-    { id: 'PI-ING-000177', name: 'BUTTERMILK · Milk · Chilled', category: 'dairy', form: 'buttermilk' },
-    { id: 'PI-ING-000270', name: 'SKIMMED MILK · Milk', category: 'dairy', form: 'skimmed_milk_powder' },
-    { id: 'PI-ING-000237', name: 'MILK PROTEIN CONCENTRATE WPC 75% · Milk', category: 'dairy', form: 'protein_concentrate' },
-    { id: 'PI-ING-000149', name: 'COCONUT MILK · Coconut · Dry', category: 'coconut', form: 'coconut_milk' },
-    { id: 'PI-ING-002018', name: 'MILKA ALPINE MILK CHOCOLATE · Inclusion', category: 'confectionery_inclusion', form: 'chocolate_bar_inclusion' },
+    {
+      id: 'PI-ING-000177',
+      name: 'BUTTERMILK · Milk · Chilled',
+      category: 'dairy',
+      form: 'buttermilk',
+    },
+    {
+      id: 'PI-ING-000270',
+      name: 'SKIMMED MILK · Milk',
+      category: 'dairy',
+      form: 'skimmed_milk_powder',
+    },
+    {
+      id: 'PI-ING-000237',
+      name: 'MILK PROTEIN CONCENTRATE WPC 75% · Milk',
+      category: 'dairy',
+      form: 'protein_concentrate',
+    },
+    {
+      id: 'PI-ING-000149',
+      name: 'COCONUT MILK · Coconut · Dry',
+      category: 'coconut',
+      form: 'coconut_milk',
+    },
+    {
+      id: 'PI-ING-002018',
+      name: 'MILKA ALPINE MILK CHOCOLATE · Inclusion',
+      category: 'confectionery_inclusion',
+      form: 'chocolate_bar_inclusion',
+    },
   ];
 
   it('splits into non-empty groups in the fixed order; rank preserved inside groups', () => {
     const groups = groupHitsByForm(ranked);
     expect(groups.map((g) => g.headingPl)).toEqual([
-      'Świeże', 'Koncentraty', 'Płynne i napoje', 'Proszki i suche', 'Dodatki',
+      'Świeże',
+      'Koncentraty',
+      'Płynne i napoje',
+      'Proszki i suche',
+      'Dodatki',
     ]);
     // fresh keeps its internal rank order: MILK 3.5% before WHOLE MILK before BUTTERMILK
-    expect(groups[0]!.hits.map((h) => h.id)).toEqual(['PI-ING-000236', 'PI-ING-000296', 'PI-ING-000177']);
+    expect(groups[0]!.hits.map((h) => h.id)).toEqual([
+      'PI-ING-000236',
+      'PI-ING-000296',
+      'PI-ING-000177',
+    ]);
     expect(groups.find((g) => g.group === 'concentrate')!.hits[0]!.id).toBe('PI-ING-000237');
     expect(groups.find((g) => g.group === 'powder')!.hits[0]!.id).toBe('PI-ING-000270');
     expect(groups.find((g) => g.group === 'inclusion')!.hits[0]!.id).toBe('PI-ING-002018');
@@ -130,18 +175,52 @@ describe('grouped rendering contract (tests 6/7/13/14)', () => {
     expect(FORM_GROUP_ORDER.indexOf('paste')).toBeLessThan(FORM_GROUP_ORDER.indexOf('liquid'));
     expect(FORM_GROUP_ORDER.indexOf('liquid')).toBeLessThan(FORM_GROUP_ORDER.indexOf('powder'));
     expect([...FORM_GROUP_ORDER]).toEqual([
-      'fresh', 'frozen', 'puree', 'concentrate', 'paste', 'liquid', 'powder', 'aroma', 'inclusion', 'other',
+      'fresh',
+      'frozen',
+      'puree',
+      'concentrate',
+      'paste',
+      'liquid',
+      'powder',
+      'aroma',
+      'inclusion',
+      'other',
     ]);
   });
 
   it('pineapple family: Świeże → Puree → Pasty → Płynne i napoje', () => {
     const groups = groupHitsByForm([
-      { id: 'PI-ING-000390', name: 'PINEAPPLE · Fresh Fruit', category: 'fruit', form: 'fresh_fruit_profile' },
-      { id: 'PI-ING-000389', name: 'PINEAPPLE · Puree · Frozen/Chilled', category: 'fruit', form: 'fruit_puree' },
-      { id: 'PI-ING-000726', name: 'FORTEFRUTTO PINEAPPLE N · PreGel Paste · ST-45272', category: 'fruit', form: 'fruit_flavor_paste' },
-      { id: 'PI-ING-001889', name: 'FANTA PINEAPPLE · Beverage', category: 'beverage', form: 'fruit_soda' },
+      {
+        id: 'PI-ING-000390',
+        name: 'PINEAPPLE · Fresh Fruit',
+        category: 'fruit',
+        form: 'fresh_fruit_profile',
+      },
+      {
+        id: 'PI-ING-000389',
+        name: 'PINEAPPLE · Puree · Frozen/Chilled',
+        category: 'fruit',
+        form: 'fruit_puree',
+      },
+      {
+        id: 'PI-ING-000726',
+        name: 'FORTEFRUTTO PINEAPPLE N · PreGel Paste · ST-45272',
+        category: 'fruit',
+        form: 'fruit_flavor_paste',
+      },
+      {
+        id: 'PI-ING-001889',
+        name: 'FANTA PINEAPPLE · Beverage',
+        category: 'beverage',
+        form: 'fruit_soda',
+      },
     ]);
-    expect(groups.map((g) => g.headingPl)).toEqual(['Świeże', 'Puree i przeciery', 'Pasty', 'Płynne i napoje']);
+    expect(groups.map((g) => g.headingPl)).toEqual([
+      'Świeże',
+      'Puree i przeciery',
+      'Pasty',
+      'Płynne i napoje',
+    ]);
   });
 
   it('the live picker renders the grouped optgroups, not one generic „Wyniki" group', () => {
@@ -155,18 +234,39 @@ describe('grouped rendering contract (tests 6/7/13/14)', () => {
 describe('census finalization — the FULL live vocabulary maps honestly (verified on tunab, 2026-07-24)', () => {
   it('every chilled dairy census form is „Świeże" — CREAM 18% must never read as „Inne"', () => {
     for (const sub of [
-      'cream_18_percent', 'cream_33_percent_uht', 'clotted_cream', 'creme_fraiche',
-      'fresh_whipping_cream', 'unsalted_butter', 'cream_cheese', 'mascarpone_cream_cheese',
-      'cottage_cheese', 'fatty_cottage_cheese_8_percent', 'soft_cheese', 'blue_cheese_roquefort',
-      'brie_cheese', 'gorgonzola_cheese', 'mozzarella_cheese', 'parmesan_cheese', 'ricotta_cheese',
-      'greek_yogurt', 'natural_yogurt', 'skyr_yoghurt', 'yoghurt_9_percent',
+      'cream_18_percent',
+      'cream_33_percent_uht',
+      'clotted_cream',
+      'creme_fraiche',
+      'fresh_whipping_cream',
+      'unsalted_butter',
+      'cream_cheese',
+      'mascarpone_cream_cheese',
+      'cottage_cheese',
+      'fatty_cottage_cheese_8_percent',
+      'soft_cheese',
+      'blue_cheese_roquefort',
+      'brie_cheese',
+      'gorgonzola_cheese',
+      'mozzarella_cheese',
+      'parmesan_cheese',
+      'ricotta_cheese',
+      'greek_yogurt',
+      'natural_yogurt',
+      'skyr_yoghurt',
+      'yoghurt_9_percent',
     ]) {
       expect(formGroupOf(sub, 'dairy')).toBe('fresh');
       expect(rowFormLabelPl(sub, 'dairy')).toBe('Świeże');
     }
     // real owner row: CREAM 18% · Piątnica Cream · Chilled · BIO
-    expect(resultRowTextPl({ name: 'CREAM 18% · Piątnica Cream · Chilled · BIO', category: 'dairy', form: 'cream_18_percent' }))
-      .toBe('CREAM 18% · Nabiał · Świeże');
+    expect(
+      resultRowTextPl({
+        name: 'CREAM 18% · Piątnica Cream · Chilled · BIO',
+        category: 'dairy',
+        form: 'cream_18_percent',
+      }),
+    ).toBe('CREAM 18% · Nabiał · Świeże');
   });
   it('generic fresh_* vocabulary is fresh (flower, whipping cream) — cheesecake pastes are NOT', () => {
     expect(formGroupOf('fresh_flower', 'botanical')).toBe('fresh');
@@ -211,15 +311,32 @@ describe('census finalization — the FULL live vocabulary maps honestly (verifi
 describe('row text (compact — no raw internal segments)', () => {
   it('keeps the first display segment and drops raw form/storage/SKU tails', () => {
     expect(compactDisplayName('MILK 3.5% · Milk · Chilled')).toBe('MILK 3.5%');
-    expect(compactDisplayName('FORTEFRUTTO PINEAPPLE N · PreGel Paste · ST-45272')).toBe('FORTEFRUTTO PINEAPPLE N');
+    expect(compactDisplayName('FORTEFRUTTO PINEAPPLE N · PreGel Paste · ST-45272')).toBe(
+      'FORTEFRUTTO PINEAPPLE N',
+    );
     expect(compactDisplayName('PLAIN NAME')).toBe('PLAIN NAME');
   });
   it('the owner examples render exactly', () => {
-    expect(resultRowTextPl({ name: 'STRAWBERRY PUREE · Fabbri · 7788', category: 'fruit', form: 'fruit_puree' }))
-      .toBe('STRAWBERRY PUREE · Owoce · Puree');
-    expect(resultRowTextPl({ name: 'FORTEFRUTTO PINEAPPLE N · PreGel Paste · ST-45272', category: 'fruit', form: 'fruit_flavor_paste' }))
-      .toBe('FORTEFRUTTO PINEAPPLE N · Owoce · Pasta');
-    expect(resultRowTextPl({ name: 'FANTA PINEAPPLE · Beverage', category: 'beverage', form: 'fruit_soda' }))
-      .toBe('FANTA PINEAPPLE · Napoje · Napój');
+    expect(
+      resultRowTextPl({
+        name: 'STRAWBERRY PUREE · Fabbri · 7788',
+        category: 'fruit',
+        form: 'fruit_puree',
+      }),
+    ).toBe('STRAWBERRY PUREE · Owoce · Puree');
+    expect(
+      resultRowTextPl({
+        name: 'FORTEFRUTTO PINEAPPLE N · PreGel Paste · ST-45272',
+        category: 'fruit',
+        form: 'fruit_flavor_paste',
+      }),
+    ).toBe('FORTEFRUTTO PINEAPPLE N · Owoce · Pasta');
+    expect(
+      resultRowTextPl({
+        name: 'FANTA PINEAPPLE · Beverage',
+        category: 'beverage',
+        form: 'fruit_soda',
+      }),
+    ).toBe('FANTA PINEAPPLE · Napoje · Napój');
   });
 });

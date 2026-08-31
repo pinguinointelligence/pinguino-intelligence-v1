@@ -9,7 +9,10 @@ import { describe, expect, it } from 'vitest';
 import { stem } from './ingredientSearch';
 
 const MIGRATION = readFileSync(
-  resolve(__dirname, '../../../supabase/migrations/20260824110000_search_relevance_stem_and_rank.sql'),
+  resolve(
+    __dirname,
+    '../../../supabase/migrations/20260824110000_search_relevance_stem_and_rank.sql',
+  ),
   'utf8',
 );
 

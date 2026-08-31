@@ -30,7 +30,7 @@ import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/co
 import type { RecipeMatchScorePresentation } from '@/features/recipe-score';
 import { DirectNumberControl } from '@/features/ingredient-builder/DirectNumberControl';
 import { useRecipeStore } from '@/stores/recipeStore';
-import { useAuthStore } from '@/stores/authStore';
+import { useHomeBehaviorContext } from '../useHomeBehaviorContext';
 import { homeCreatorCopy } from '../homeCreatorCopy';
 import {
   HOME_SWEETNESS_ORDER,
@@ -61,20 +61,6 @@ const SWEETNESS_LABEL: Readonly<Record<HomeSweetness, string>> = {
  * paywall/auth behaviour, so the customer sees the final editor from the beginning and
  * only the DATA becomes available later.
  */
-/**
- * The SAME behaviour context the Pro builder passes. Without it the picker skips
- * `resolveProductBehaviorForSelection` entirely, so HOME got no snapshot for any added
- * line AND lost the canonical refusal for a product whose authority cannot be confirmed.
- * Found while closing the owner's §6 distinction on 2026-08-31.
- */
-function useHomeBehaviorContext() {
-  const accountId = useAuthStore((state) => state.user?.id ?? null);
-  const productProfile = useRecipeStore((state) => state.category);
-  const temperatureC = useRecipeStore((state) => state.target_temperature_c);
-  const mode = useRecipeStore((state) => state.formulation_strategy);
-  return { accountId, productProfile, temperatureC, mode };
-}
-
 function GramControl({
   lineId,
   name,

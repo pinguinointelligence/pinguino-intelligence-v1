@@ -52,8 +52,7 @@ const inputFor = (
   items: [
     {
       id: 'source-line',
-      ingredient:
-        'ingredient_id' in source ? ingredientRowToEngineIngredient(source) : source,
+      ingredient: 'ingredient_id' in source ? ingredientRowToEngineIngredient(source) : source,
       planned_grams: 1000,
       actual_grams: null,
       lock_type: 'unlocked',
@@ -114,7 +113,11 @@ describe('verified Mapper recipe substitute catalogue', () => {
       20,
     );
     expect(candidates.length).toBeGreaterThan(0);
-    expect(candidates.every((candidate) => candidate.authorization?.veganEligibility === 'VEGAN_VERIFIED')).toBe(true);
+    expect(
+      candidates.every(
+        (candidate) => candidate.authorization?.veganEligibility === 'VEGAN_VERIFIED',
+      ),
+    ).toBe(true);
   });
 
   it('supports a real WPC protein row without changing its milk-allergen declaration', () => {
@@ -125,7 +128,9 @@ describe('verified Mapper recipe substitute catalogue', () => {
       20,
     );
     expect(candidates.length).toBeGreaterThan(0);
-    expect(candidates.every((candidate) => candidate.authorization?.allergensFingerprint === 'milk')).toBe(true);
+    expect(
+      candidates.every((candidate) => candidate.authorization?.allergensFingerprint === 'milk'),
+    ).toBe(true);
   });
 
   it('accepts real alcohol candidates whose mass closure includes alcohol', () => {
@@ -136,17 +141,14 @@ describe('verified Mapper recipe substitute catalogue', () => {
       100,
     );
     expect(candidates.length).toBeGreaterThan(0);
-    expect(candidates.some((candidate) => candidate.ingredient!.composition.alcohol_percent > 30)).toBe(true);
+    expect(
+      candidates.some((candidate) => candidate.ingredient!.composition.alcohol_percent > 30),
+    ).toBe(true);
   });
 
   it('never exposes generic same-role substitutes for template-controlled Tara', () => {
     expect(
-      verifiedRecipeSubstituteCandidates(
-        inputFor(row('PI-ING-000492')),
-        'source-line',
-        rows,
-        100,
-      ),
+      verifiedRecipeSubstituteCandidates(inputFor(row('PI-ING-000492')), 'source-line', rows, 100),
     ).toEqual([]);
   });
 
@@ -157,7 +159,9 @@ describe('verified Mapper recipe substitute catalogue', () => {
       rows,
       100,
     );
-    expect(milkCandidates.every((candidate) => candidate.authorization?.allergensFingerprint === 'milk')).toBe(true);
+    expect(
+      milkCandidates.every((candidate) => candidate.authorization?.allergensFingerprint === 'milk'),
+    ).toBe(true);
 
     const privateEgg: EngineIngredient = {
       id: 'private-egg-source',

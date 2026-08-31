@@ -38,7 +38,12 @@ describe('ingredient table UX contracts', () => {
     const store = useIngredientTableUxStore.getState();
     store.toggleRequired('milk');
     expect(useIngredientTableUxStore.getState().metaByLineId.milk?.required).toBe(true);
-    expect(customerRoleFor('unlocked', ingredientRowMeta(useIngredientTableUxStore.getState().metaByLineId, 'milk'))).toBe('standard');
+    expect(
+      customerRoleFor(
+        'unlocked',
+        ingredientRowMeta(useIngredientTableUxStore.getState().metaByLineId, 'milk'),
+      ),
+    ).toBe('standard');
   });
 
   it('stores Addition as customer metadata without inventing Engine semantics', () => {
@@ -52,9 +57,13 @@ describe('ingredient table UX contracts', () => {
   it('keeps availability reversible without removing the row metadata', () => {
     const store = useIngredientTableUxStore.getState();
     store.setUnavailable('milk', true);
-    expect(ingredientRowMeta(useIngredientTableUxStore.getState().metaByLineId, 'milk').unavailable).toBe(true);
+    expect(
+      ingredientRowMeta(useIngredientTableUxStore.getState().metaByLineId, 'milk').unavailable,
+    ).toBe(true);
     useIngredientTableUxStore.getState().setUnavailable('milk', false);
-    expect(ingredientRowMeta(useIngredientTableUxStore.getState().metaByLineId, 'milk').unavailable).toBe(false);
+    expect(
+      ingredientRowMeta(useIngredientTableUxStore.getState().metaByLineId, 'milk').unavailable,
+    ).toBe(false);
   });
 
   it('routes normal deletion without a substitute guard', () => {
@@ -91,12 +100,14 @@ describe('ingredient table UX contracts', () => {
       suggestedPercent: 30,
       suggestedTotalGrams: 300,
     });
-    expect(ingredientRowMeta(useIngredientTableUxStore.getState().metaByLineId, 'fruit').dose)
-      .toMatchObject({ provenance: 'AUTO_SUGGESTED', groupId: 'fresh-fruit-v1' });
+    expect(
+      ingredientRowMeta(useIngredientTableUxStore.getState().metaByLineId, 'fruit').dose,
+    ).toMatchObject({ provenance: 'AUTO_SUGGESTED', groupId: 'fresh-fruit-v1' });
 
     store.markDoseUserSet('fruit');
-    expect(ingredientRowMeta(useIngredientTableUxStore.getState().metaByLineId, 'fruit').dose.provenance)
-      .toBe('USER_SET');
+    expect(
+      ingredientRowMeta(useIngredientTableUxStore.getState().metaByLineId, 'fruit').dose.provenance,
+    ).toBe('USER_SET');
   });
 
   it('hydrates saved dose ownership without resetting USER_SET', () => {
@@ -109,8 +120,9 @@ describe('ingredient table UX contracts', () => {
     useIngredientTableUxStore.getState().hydrateRecipeMeta({
       fruit: { role: 'standard', required: false, dose },
     });
-    expect(ingredientRowMeta(useIngredientTableUxStore.getState().metaByLineId, 'fruit').dose)
-      .toEqual(dose);
+    expect(
+      ingredientRowMeta(useIngredientTableUxStore.getState().metaByLineId, 'fruit').dose,
+    ).toEqual(dose);
   });
 
   it('normalizes legacy persisted row metadata without a dose sidecar', () => {
@@ -119,8 +131,9 @@ describe('ingredient table UX contracts', () => {
         legacy: { role: 'standard', required: false, unavailable: false } as never,
       },
     });
-    expect(ingredientRowMeta(useIngredientTableUxStore.getState().metaByLineId, 'legacy').dose)
-      .toEqual(DEFAULT_INGREDIENT_ROW_META.dose);
+    expect(
+      ingredientRowMeta(useIngredientTableUxStore.getState().metaByLineId, 'legacy').dose,
+    ).toEqual(DEFAULT_INGREDIENT_ROW_META.dose);
   });
 
   it('returns quiet standard defaults for rows without metadata', () => {

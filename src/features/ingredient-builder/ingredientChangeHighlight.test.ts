@@ -25,10 +25,7 @@ describe('recalculatedIngredientLineIds', () => {
     ['product substitution', { ingredientId: 'milk_1_5' }],
   ])('marks a real %s change', (_label, patch) => {
     expect([
-      ...recalculatedIngredientLineIds(
-        [line()],
-        [line(patch as Partial<RecalculationMarkerLine>)],
-      ),
+      ...recalculatedIngredientLineIds([line()], [line(patch as Partial<RecalculationMarkerLine>)]),
     ]).toEqual(['line-1']);
   });
 
