@@ -367,7 +367,14 @@ async function applyCommissionablePayment(deps: DispatchDeps, event: WebhookEven
   const tier = snapshotRow && typeof snapshotRow.tier === 'string' ? snapshotRow.tier : null;
   if (!tier) throw new RetryableEffectError(`tier_snapshot_missing:${month}`);
 
-  // The versioned rate in force (0018 commission_rules; seed = C1 table v1).
+  // Rate resolution splits by tier (owner override 2026-08-31 §11):
+  //   standard/gold → the global versioned table (0018 commission_rules)
+  //   elite         → the partner's OWN versioned rate profile, resolved at the
+  //                   instant the commission was EARNED, so appending a later
+  //                   version can never change an earlier entry.
+  // An elite partner with no profile in force is a data error, not a licence to
+  // guess: it defers as retryable so an admin can fix the profile, rather than
+  // silently paying the old fixed elite rate or the standard rate.
   const { data: ruleRows, error: ruleError } = await deps.db
     .from('commission_rules')
     .select('version, amount_cents')
@@ -377,6 +384,30 @@ async function applyCommissionablePayment(deps: DispatchDeps, event: WebhookEven
   throwOnDbError(ruleError, 'commission_rules lookup');
   const rule = pickLatestRuleVersion((ruleRows ?? []) as unknown as CommissionRuleRow[]);
   if (!rule) throw new RetryableEffectError(`commission_rule_missing:${product}/${commissionCadence}/${tier}`);
+
+  let amountCents = rule.amount_cents;
+  let rateProfileVersionId: string | null = null;
+
+  if (tier === 'elite') {
+    const { data: eliteRows, error: eliteError } = await deps.db.rpc('gellatti_partner_elite_rate_v1', {
+      p_partner_id: partnerId,
+      p_product: product,
+      p_cadence: commissionCadence,
+      p_at: new Date(paidAtUtcMs).toISOString(),
+    });
+    throwOnDbError(eliteError, 'partner_rate_profiles lookup');
+    const eliteRate = Array.isArray(eliteRows) ? eliteRows[0] : eliteRows;
+    const eliteAmount = eliteRate && typeof eliteRate.amount_cents === 'number' ? eliteRate.amount_cents : null;
+    const eliteVersionId =
+      eliteRate && typeof eliteRate.rate_profile_version_id === 'string'
+        ? eliteRate.rate_profile_version_id
+        : null;
+    if (eliteAmount === null || eliteVersionId === null) {
+      throw new RetryableEffectError(`elite_rate_profile_missing:${partnerId}`);
+    }
+    amountCents = eliteAmount;
+    rateProfileVersionId = eliteVersionId;
+  }
 
   const entry = buildCommissionEntryRow({
     partnerId,
@@ -390,7 +421,8 @@ async function applyCommissionablePayment(deps: DispatchDeps, event: WebhookEven
     commissionCadence,
     tier,
     ruleVersion: rule.version,
-    amountCents: rule.amount_cents,
+    rateProfileVersionId,
+    amountCents,
     earnedAtUtcMs: paidAtUtcMs,
     livemode: event.livemode,
   });

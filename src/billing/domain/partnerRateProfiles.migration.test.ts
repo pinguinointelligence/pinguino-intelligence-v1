@@ -19,12 +19,16 @@ const SQL = readFileSync(
 );
 const CODE = SQL.replace(/--.*$/gm, '');
 
-const TABLE = /create table if not exists public\.partner_rate_profiles[\s\S]*?\n\);/.exec(CODE)?.[0] ?? '';
+const TABLE =
+  /create table if not exists public\.partner_rate_profiles[\s\S]*?\n\);/.exec(CODE)?.[0] ?? '';
 const RESOLVER =
-  /create or replace function public\.gellatti_partner_elite_rate_v1[\s\S]*?\$\$;/.exec(CODE)?.[0] ?? '';
+  /create or replace function public\.gellatti_partner_elite_rate_v1[\s\S]*?\$\$;/.exec(
+    CODE,
+  )?.[0] ?? '';
 const OVERLAP =
-  /create or replace function public\.enforce_partner_rate_profile_no_overlap[\s\S]*?\$\$;/.exec(CODE)?.[0] ??
-  '';
+  /create or replace function public\.enforce_partner_rate_profile_no_overlap[\s\S]*?\$\$;/.exec(
+    CODE,
+  )?.[0] ?? '';
 
 describe('RP2 — the four per-partner rates exist as positive cents', () => {
   it('declares one column per (product, cadence)', () => {
@@ -182,7 +186,9 @@ describe('RP7 — a missing profile must not become a wrong payment', () => {
 
 describe('security posture', () => {
   it('a partner may read their own rate history', () => {
-    expect(CODE).toMatch(/create policy partner_rate_profiles_select_own on public\.partner_rate_profiles/);
+    expect(CODE).toMatch(
+      /create policy partner_rate_profiles_select_own on public\.partner_rate_profiles/,
+    );
     expect(CODE).toContain('pr.id = partner_id and pr.user_id = auth.uid()');
   });
 
@@ -199,7 +205,9 @@ describe('security posture', () => {
     expect(CODE).toContain(
       'revoke all on function public.gellatti_partner_elite_rate_v1(uuid, text, text, timestamptz)',
     );
-    expect(/grant execute on function public\.gellatti_partner_elite_rate_v1/.test(CODE)).toBe(false);
+    expect(/grant execute on function public\.gellatti_partner_elite_rate_v1/.test(CODE)).toBe(
+      false,
+    );
   });
 });
 
@@ -212,7 +220,10 @@ describe('safety invariants', () => {
       'payout_batches',
       'partner_codes',
     ]) {
-      expect(new RegExp(`(drop|delete from|update)[^;]*\\b${table}\\b`, 'i').test(CODE), table).toBe(false);
+      expect(
+        new RegExp(`(drop|delete from|update)[^;]*\\b${table}\\b`, 'i').test(CODE),
+        table,
+      ).toBe(false);
     }
   });
 
@@ -223,5 +234,60 @@ describe('safety invariants', () => {
   it('documents a rollback with the correct ordering caveat', () => {
     expect(SQL).toContain('ROLLBACK');
     expect(SQL).toContain('drop the column FIRST');
+  });
+});
+
+describe('the live commission path resolves elite from the profile', () => {
+  const DISPATCH = readFileSync(
+    join(REPO, 'supabase', 'functions', 'stripe-webhook', 'dispatch.ts'),
+    'utf8',
+  );
+
+  it('calls the per-partner resolver for elite, not the global rule table', () => {
+    expect(DISPATCH).toContain("rpc('gellatti_partner_elite_rate_v1'");
+    expect(DISPATCH).toContain("if (tier === 'elite')");
+  });
+
+  it('resolves at the instant the commission was EARNED', () => {
+    expect(DISPATCH).toContain('p_at: new Date(paidAtUtcMs).toISOString()');
+  });
+
+  it('defers rather than guessing when no profile is in force (RP7)', () => {
+    expect(DISPATCH).toContain('elite_rate_profile_missing');
+    expect(DISPATCH).toMatch(/throw new RetryableEffectError\(`elite_rate_profile_missing/);
+  });
+
+  it('never falls back to the standard rate or the old fixed elite row', () => {
+    const eliteBranch = /if \(tier === 'elite'\) \{[\s\S]*?elite_rate_profile_missing[\s\S]*?\}/.exec(
+      DISPATCH,
+    )?.[0];
+    expect(eliteBranch).toBeDefined();
+    // the branch must not silently substitute another tier's amount, nor the
+    // historical fixed elite values that are now suggestions only
+    expect(eliteBranch).not.toMatch(/tier:\s*'standard'/);
+    for (const suggestion of ['299', '1900', '699', '4900']) {
+      expect(eliteBranch, suggestion).not.toContain(`?? ${suggestion}`);
+    }
+  });
+
+  it('overrides the amount but keeps the global rule version on the ledger row', () => {
+    // rule_version stays populated so the entry remains self-describing even
+    // though the money came from the partner's own profile
+    expect(DISPATCH).toContain('ruleVersion: rule.version');
+    expect(DISPATCH).toContain('amountCents = eliteAmount');
+  });
+
+  it('snapshots the profile version onto the ledger row', () => {
+    expect(DISPATCH).toContain('rateProfileVersionId');
+    const EFFECTS = readFileSync(
+      join(REPO, 'supabase', 'functions', 'stripe-webhook', 'effects.ts'),
+      'utf8',
+    );
+    expect(EFFECTS).toContain("'rate_profile_version_id',");
+    expect(EFFECTS).toContain('rate_profile_version_id: input.rateProfileVersionId ?? null');
+  });
+
+  it('standard and gold still use the global versioned table', () => {
+    expect(DISPATCH).toContain("from('commission_rules')");
   });
 });
