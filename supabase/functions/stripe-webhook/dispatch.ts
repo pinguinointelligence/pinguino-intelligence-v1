@@ -31,6 +31,7 @@
  * invite entitlements, deletes, or edits of financial history (adjustments
  * are append-only; entries only ever advance status).
  */
+import { decideShopSettlement } from '../_shared/shopSettlement.ts';
 import { buildIdempotencyKey, routeWebhookEvent } from './handlers.ts';
 import {
   buildCommissionAdjustmentRow,
@@ -166,59 +167,49 @@ async function applyShopOrderSettlement(
 
   const { data: current, error: readError } = await deps.db
     .from('shop_orders')
-    .select('id,status,paid_at,subtotal_cents,currency,stripe_checkout_session_id')
+    .select('id,status,paid_at,expected_total_cents,expected_currency,stripe_checkout_session_id')
     .eq('id', shop.orderId)
     .maybeSingle();
   throwOnDbError(readError, 'shop_orders lookup');
   if (!current) return `shop_order_not_found:${shop.orderId}`;
 
-  // PROVIDER TRUTH, NOT SELF-DESCRIPTION. `metadata` is attacker-shaped input
-  // as far as this writer is concerned: an event that merely NAMES an order
-  // must never settle it. The session in hand has to be the session this order
-  // was created against, and the money has to be the money we asked for.
-  if (
-    current.stripe_checkout_session_id &&
-    shop.sessionId &&
-    current.stripe_checkout_session_id !== shop.sessionId
-  ) {
-    return `shop_order_session_mismatch:${shop.orderId}`;
-  }
+  // ONE settlement authority, shared with shop-order-sync.
+  const verdict = decideShopSettlement(
+    {
+      id: String(current.id),
+      status: String(current.status),
+      paidAt: (current.paid_at as string | null) ?? null,
+      expectedTotalCents: (current.expected_total_cents as number | null) ?? null,
+      expectedCurrency: (current.expected_currency as string | null) ?? null,
+      sessionId: (current.stripe_checkout_session_id as string | null) ?? null,
+    },
+    {
+      orderId: shop.orderId,
+      sessionId: shop.sessionId,
+      mode: shop.mode,
+      paymentStatus: shop.paymentStatus,
+      status: shop.sessionStatus,
+      amountTotal: shop.amountTotal,
+      currency: shop.currency,
+    },
+  );
 
-  const status = current.status as string;
-  if (status === 'refunded' || status === 'cancelled') {
-    return `shop_order_terminal:${status}`;
-  }
+  if (verdict.kind === 'refuse') return verdict.note;
 
-  if (shop.expired && status === 'pending') {
+  if (verdict.kind === 'expire') {
+    const now = new Date().toISOString();
     const { error } = await deps.db
       .from('shop_orders')
-      .update({ status: 'cancelled', cancelled_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .update({ status: 'cancelled', cancelled_at: now, updated_at: now })
       .eq('id', shop.orderId)
       .eq('status', 'pending');
     throwOnDbError(error, 'shop_orders expire');
     return 'shop_order_expired';
   }
 
-  if (!shop.paid) return `shop_order_not_paid:${status}`;
-  if (status === 'paid') return 'shop_order_already_paid';
-
-  // The currency must match, and the amount must be at least what the items
-  // cost — the provider adds shipping/tax on top, so it can legitimately
-  // exceed the subtotal, but it can never fall short of it.
-  const orderCurrency = typeof current.currency === 'string' ? current.currency : null;
-  if (orderCurrency && shop.currency && orderCurrency.toLowerCase() !== shop.currency.toLowerCase()) {
-    return `shop_order_currency_mismatch:${shop.currency}`;
-  }
-  const subtotal = typeof current.subtotal_cents === 'number' ? current.subtotal_cents : null;
-  if (subtotal !== null && shop.amountTotal !== null && shop.amountTotal < subtotal) {
-    return `shop_order_amount_mismatch:${shop.amountTotal}`;
-  }
-
-  const patch: Record<string, unknown> = {
-    status: 'paid',
-    updated_at: new Date().toISOString(),
-  };
-  if (!current.paid_at) patch.paid_at = new Date().toISOString();
+  const now = new Date().toISOString();
+  const patch: Record<string, unknown> = { status: 'paid', updated_at: now };
+  if (!current.paid_at) patch.paid_at = now;
   if (shop.paymentIntentId) patch.stripe_payment_intent_id = shop.paymentIntentId;
   if (shop.amountTotal !== null) patch.total_cents = shop.amountTotal;
   if (shop.shippingCents !== null) patch.shipping_cents = shop.shippingCents;

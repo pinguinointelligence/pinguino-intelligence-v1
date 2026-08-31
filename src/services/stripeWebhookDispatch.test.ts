@@ -712,6 +712,7 @@ const shopSession = (over: Row = {}): Row => ({
   payment_intent: 'pi_test_shop_1',
   amount_total: 7380,
   currency: 'eur',
+  mode: 'payment',
   total_details: { amount_shipping: 990, amount_tax: 0 },
   customer_details: { phone: '+48600100200' },
   collected_information: {
@@ -731,6 +732,7 @@ const seedOrder = (db: FakeDb, over: Row = {}) =>
   db.seed('shop_orders', {
     id: 'order-1', status: 'pending', paid_at: null,
     subtotal_cents: 6390, currency: 'eur',
+    expected_total_cents: 7380, expected_currency: 'eur',
     stripe_checkout_session_id: 'cs_test_shop_1',
     ...over,
   });
@@ -781,7 +783,9 @@ describe('shop order settlement — the provider is the payment authority', () =
       db, shopSession({ status: 'expired', payment_status: 'unpaid' }),
       'evt_stale', 'checkout.session.expired',
     );
-    expect(result.note).toBe('shop_order_not_paid:paid');
+    // The shared authority refuses on the ORDER being settled already,
+    // before it ever looks at the stale session.
+    expect(result.note).toBe('shop_order_already_paid');
     expect(db.rows('shop_orders')[0]!.status).toBe('paid');
     expect(db.rows('shop_orders')[0]!.paid_at).toBe('2026-08-31T13:16:20.584Z');
   });
@@ -800,7 +804,9 @@ describe('shop order settlement — the provider is the payment authority', () =
     const db = new FakeDb();
     seedOrder(db);
     const result = await settle(db, shopSession({ payment_status: 'unpaid' }));
-    expect(result.note).toBe('shop_order_not_paid:pending');
+    // The note names the PROVIDER's payment status, which is the fact that
+    // matters, not the local order status.
+    expect(result.note).toBe('shop_order_not_paid:unpaid');
     expect(db.rows('shop_orders')[0]!.status).toBe('pending');
   });
 
@@ -863,19 +869,35 @@ describe('shop order settlement — the provider is the payment authority', () =
     expect(db.rows('shop_orders')[0]!.status).toBe('pending');
   });
 
-  it('refuses an amount below what the items cost', async () => {
+  it('refuses any amount that is not EXACTLY the expected total', async () => {
+    // Not "at least the subtotal": 7000 clears the 6390 items but is not the
+    // 7380 that was actually asked for.
+    for (const amount_total of [7000, 7379, 7381, 6390, 10000]) {
+      const db = new FakeDb();
+      seedOrder(db);
+      const result = await settle(db, shopSession({ amount_total }));
+      expect(result.note).toContain('amount_mismatch');
+      expect(db.rows('shop_orders')[0]!.status).toBe('pending');
+    }
+  });
+
+  it('refuses an order with no immutable expected total', async () => {
     const db = new FakeDb();
-    seedOrder(db);
-    const result = await settle(db, shopSession({ amount_total: 100 }));
-    expect(result.note).toBe('shop_order_amount_mismatch:100');
+    seedOrder(db, { expected_total_cents: null, expected_currency: null });
+    const result = await settle(db, shopSession());
+    expect(result.note).toBe('shop_order_no_expected_total:order-1');
     expect(db.rows('shop_orders')[0]!.status).toBe('pending');
   });
 
-  it('accepts an amount above the subtotal — shipping and tax ride on top', async () => {
+  it('refuses a completed-but-unpaid session, then settles on async success', async () => {
     const db = new FakeDb();
     seedOrder(db);
-    const result = await settle(db, shopSession());
-    expect(result.note).toBe('shop_order_settled');
+    const pending = await settle(db, shopSession({ payment_status: 'unpaid' }));
+    expect(pending.note).toBe('shop_order_not_paid:unpaid');
+    expect(db.rows('shop_orders')[0]!.status).toBe('pending');
+    const later = await settle(
+      db, shopSession(), 'evt_async', 'checkout.session.async_payment_succeeded');
+    expect(later.note).toBeNull();
     expect(db.rows('shop_orders')[0]!.status).toBe('paid');
   });
 

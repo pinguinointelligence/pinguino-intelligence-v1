@@ -202,6 +202,13 @@ Deno.serve(async (req) => {
       subtotal_cents: subtotal,
       total_cents: subtotal,
       currency,
+      /* IMMUTABLE settlement authority. Written once, here, from the same
+         numbers handed to the provider below: items + the flat courier rate.
+         Tax is 0 (provider-side tax calculation is not enabled) and no
+         discounts exist. Settlement refuses any event whose amount_total does
+         not match this exactly. */
+      expected_total_cents: subtotal + SHIPPING_FLAT_CENTS,
+      expected_currency: currency,
     })
     .select('id,order_number')
     .single();
