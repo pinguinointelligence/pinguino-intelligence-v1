@@ -1357,9 +1357,7 @@ export function IngredientRow({
         mode === 'production'
           ? cn(
               'border-b border-ink/[0.075] px-[var(--pro-mobile-gutter)] py-2 lg:px-3 lg:py-1.5',
-              productionActions?.settled
-                ? 'bg-[var(--g-ivory)]/35'
-                : 'transition-colors hover:bg-[var(--g-ivory)]',
+              productionActions?.settled ? 'bg-[var(--g-ivory)]/35' : 'transition-colors hover:bg-[var(--g-ivory)]',
             )
           : // V2.1: the row's own 54 px grid owns the height, so the shell adds no
             // vertical padding on desktop — that is what makes the served row

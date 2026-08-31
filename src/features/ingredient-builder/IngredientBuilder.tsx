@@ -422,9 +422,13 @@ export function IngredientBuilder({
 
   const header =
     mode === 'production' ? (
-      <div className="sr-only" data-testid="production-table-header" data-table-family="recipe">
-        Plan i Odchylenie są widoczne tylko wtedy, gdy faktyczna ilość różni się od planu. W polu
-        Faktycznie możesz zmniejszyć, zwiększyć, wpisać gramy i potwierdzić wartość.
+      <div
+        className="sr-only"
+        data-testid="production-table-header"
+        data-table-family="recipe"
+      >
+        Plan i Odchylenie są widoczne tylko wtedy, gdy faktyczna ilość różni się od planu.
+        W polu Faktycznie możesz zmniejszyć, zwiększyć, wpisać gramy i potwierdzić wartość.
       </div>
     ) : (
       <div className={`${ROW_GRID} px-3 py-2`} data-testid="recipe-table-header">
