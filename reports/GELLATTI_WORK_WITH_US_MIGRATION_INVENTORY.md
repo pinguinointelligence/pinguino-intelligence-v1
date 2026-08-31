@@ -21,7 +21,7 @@ And the check the owner asked for found a fourth problem that neither of us had 
 
 ---
 
-## 1. THE INVENTORY — TEN FILES, THREE APPLIED
+## 1. THE INVENTORY — ELEVEN FILES, FOUR APPLIED
 
 Referred to by **exact filename**. Ordinal shorthand is no longer used: inserting `200100` after the
 first apply made "#7/#8" ambiguous.
@@ -32,6 +32,7 @@ first apply made "#7/#8" ambiguous.
 | --- | --- | --- | --- | --- |
 | `20260831200000_partner_code_slots_and_alias_ownership.sql` | `partner_code_slots_and_alias_ownership` | **`20260831141546`** | 2 new indexes present · 2 old partial indexes dropped · trigger `partner_codes_slot_limit` present · 2 functions present | **0 rows** — 6 codes / 3 partners / 0 commissions before and after |
 | `20260831200100_partner_code_banned_words.sql` | `partner_code_banned_words` | **`20260831141738`** | `gellatti_partner_code_claim_refusal_v1` replaced; banned-word loop present; grants unchanged | **0 rows** |
+| `20260831200500_partner_rate_profiles.sql` | `partner_rate_profiles` | **`20260831150753`** | table + 3 indexes + RLS + 1 policy present · both functions SECURITY DEFINER with `search_path=public` · ledger 20 → 21 columns · `commission_rules` still 12 rows (elite row kept) | **0 rows** — 0 profiles seeded, ledger still 0, 3 partners / 6 codes unchanged |
 | `20260831200200_partner_code_slot_limit_dedupe.sql` | `partner_code_slot_limit_dedupe` | **`20260831143710`** | trigger `partner_codes_slot_limit` gone · `enforce_partner_code_slot_limit` gone (`0`) · `gellatti_partner_code_guard_v1` byte-identical · both global indexes intact · claim guard now returns the canonical reason | **0 rows** — 6 codes / 3 partners unchanged |
 
 > Registered versions are **read back from `supabase_migrations.schema_migrations` after each
@@ -43,11 +44,16 @@ first apply made "#7/#8" ambiguous.
 
 ### 1.2 PENDING — seven files, exact names
 
-Unchanged by the dedupe: it added a file to the applied side, not to this list.
+`20260831200500_partner_rate_profiles.sql` has moved to the applied side, and
+`20260831200600_partner_rate_profiles_grant_surface.sql` — **written but deliberately NOT
+applied** (§11) — has joined this list, so the count is unchanged at seven.
 
 | Repo filename | Purpose | Depends on |
 | --- | --- | --- |
-| `20260831200500_partner_rate_profiles.sql` | §11 per-partner versioned Elite rates; adds `commission_entries.rate_profile_version_id` | `0016`, `0018` |
+| **`20260831200600_partner_rate_profiles_grant_surface.sql`** | **§11 correction — awaiting owner approval** | `20260831200500` |
+
+| Repo filename | Purpose | Depends on |
+| --- | --- | --- |
 | `20260831201000_partner_application_more_information.sql` | §6 `more_information_needed`; fixes the `in_review` bug | partner application lane, slug fix |
 | `20260831201500_email_jobs.sql` | §1–3 persisted email jobs, idempotent claim, Admin read | none |
 | `20260831202000_partner_tier_snapshot_writer.sql` | §10 Gold writer + historical reconstruction + gap state | `20260831200500` |
@@ -340,3 +346,95 @@ Functional, all inside a transaction that raised at the end so **every probe rol
 Post-rollback re-count: **6 codes, 0 `DEDUPEQA%` rows, 0 commission entries, 0 tier snapshots.**
 
 ---
+
+---
+
+## 11. 🔴 STOPPED — the grant surface is wider than every migration claims
+
+**Standing rule followed:** unexpected live result → stop the sequence → diagnose → prepare the
+proposed forward migration → **report** → **wait**. `20260831200600` is written and **NOT applied**.
+No further migration has been applied.
+
+### 11.1 What the live check returned
+
+Immediately after applying `20260831200500` (registered `20260831150753`), every rate contract
+passed — and then the privilege check returned:
+
+```
+authenticated[select=true, insert=true, update=true, delete=true]
+anon_select=true
+```
+
+The migration grants only `select`, directly under a comment asserting the opposite:
+
+> *"Intentionally NO insert/update/delete grants: a partner setting their own commission rate must be
+> impossible at the DB layer, not merely in the UI."*
+
+### 11.2 Root cause — **not** this migration, and not this workstream
+
+The project carries `ALTER DEFAULT PRIVILEGES` on schema `public`, set by **both** `postgres` and
+`supabase_admin`, granting `arwdDxtm` (**ALL**) on every **new** table to `anon`, `authenticated`
+and `service_role`. It is the Supabase project default.
+
+So the table inherited full CRUD for `anon` and `authenticated` at `CREATE TABLE` time, before any
+line of mine ran. **Writing no GRANT does not produce a table with no grants** — and the omission a
+reviewer would praise achieves nothing. Every pre-existing money table carries the identical ACL:
+
+| Table | `anon` | `authenticated` |
+| --- | --- | --- |
+| `commission_entries` | `arwdDxtm` | `arwdDxtm` |
+| `commission_rules` | `arwdDxtm` | `arwdDxtm` |
+| `partners` | `arwdDxtm` | `arwdDxtm` |
+| `partner_codes` | `arwdDxtm` | `arwdDxtm` |
+| `partner_tier_snapshots` | `arwdDxtm` | `arwdDxtm` |
+
+### 11.3 There is **no live exposure** — RLS contains all of it
+
+Proven as the `authenticated` role carrying a real partner's JWT claims, every probe rolled back:
+
+| Probe | Result |
+| --- | --- |
+| partner inserts a rate profile for **themselves** | **BLOCKED** `42501` (RLS) |
+| partner inserts a rate profile for **another partner** | **BLOCKED** `42501` (RLS) |
+| partner updates their own rate | **BLOCKED**, 0 rows |
+| partner deletes their rate | **BLOCKED**, 0 rows |
+| partner writes `commission_rules` | **BLOCKED** `42501` (RLS) |
+| partner writes `commission_entries` | **BLOCKED** `42501` (RLS) |
+| partner sets `partners.tier = 'elite'` | **BLOCKED**, 0 rows |
+| partner reads **own** rate profile | 1 row — intended |
+| `anon` reads any rate profile | 0 rows |
+
+**Two of my own probes reported CRITICAL and were WRONG.** Recorded so the false alarms are never
+mistaken for evidence:
+
+1. `insert … select` drawing from a source the caller cannot read inserts **zero rows and succeeds
+   trivially**. It proves nothing. Re-run with explicit `values` and `get diagnostics row_count`, the
+   same statement refuses with `42501`.
+2. A probe naming a column that does not exist fails `42703` (`undefined_column`) — a bug in the
+   probe, not a denial by the database.
+
+Neither was reported as a finding. Both are the same lesson the PC-02/PC-03 close-outs recorded:
+**verify the harness before believing the harness.**
+
+### 11.4 Why correct it anyway
+
+Defence in depth on a table that decides how much money a partner is paid. Today RLS is the **only**
+barrier between `authenticated` and a self-serve commission raise. One permissive policy added later,
+or one `disable row level security`, converts a documented-safe table into a live hole with no second
+line. The grant surface should match the contract each migration already claims.
+
+### 11.5 What is prepared — and what is deliberately not
+
+| Item | State |
+| --- | --- |
+| `20260831200600_partner_rate_profiles_grant_surface.sql` | **written, NOT applied** — awaiting approval |
+| The six pending migrations (7 new tables) | **hardened in place** — each now revokes `anon`/`authenticated` before granting only what it intends. They are unapplied files, so this is pre-apply hardening, not a rewrite of history |
+| `migrationGrantSurface.test.ts` | new contract: every table this workstream creates must revoke the inherited grants, must never grant a write to `anon`/`authenticated`, and must enable RLS. **Proven to catch drift** — deleting one `revoke` turns it red, restoring it turns it green |
+| `commission_entries`, `commission_rules`, `partners`, `partner_codes`, `partner_tier_snapshots` | **UNTOUCHED — owner decision.** Narrowing grants on tables that predate this workstream can break existing application paths, and that needs its own QA. Recorded as open |
+
+### 11.6 Decision needed
+
+1. Apply `20260831200600` to correct the one table this workstream created?
+2. Open a separate lane to narrow the five pre-existing money tables — or accept RLS-only there?
+
+Nothing further will be applied until this is answered.

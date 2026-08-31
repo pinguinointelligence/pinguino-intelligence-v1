@@ -222,6 +222,15 @@ end $$;
 revoke all on function public.gellatti_admin_partner_job_runs_v1(text, integer) from public, anon;
 grant execute on function public.gellatti_admin_partner_job_runs_v1(text, integer) to authenticated;
 
+-- ── GRANT SURFACE ───────────────────────────────────────────────────────────
+-- The project carries ALTER DEFAULT PRIVILEGES on schema public granting ALL
+-- (`arwdDxtm`) on every NEW table to anon and authenticated. A new table is
+-- therefore fully writable by any signed-in user the moment it is created, and
+-- omitting a grant achieves nothing. RLS contains it, but a table that decides
+-- money or holds personal data should not have RLS as its ONLY barrier.
+-- Found live after 20260831200500; see
+-- 20260831200600_partner_rate_profiles_grant_surface.sql for the full evidence.
+revoke all on public.partner_job_runs from anon, authenticated;
 -- ============================================================================
 -- ROLLBACK (not applied — see docs/billing-partner/ROLLBACK_PLAN.md):
 --   select cron.unschedule('gellatti-partner-daily');

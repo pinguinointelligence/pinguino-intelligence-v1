@@ -335,6 +335,17 @@ grant select on public.business_leads to authenticated;
 -- through the permission-checked admin function only.
 -- No insert/update/delete grants anywhere: every write goes through a function.
 
+-- ── GRANT SURFACE ───────────────────────────────────────────────────────────
+-- The project carries ALTER DEFAULT PRIVILEGES on schema public granting ALL
+-- (`arwdDxtm`) on every NEW table to anon and authenticated. A new table is
+-- therefore fully writable by any signed-in user the moment it is created, and
+-- omitting a grant achieves nothing. RLS contains it, but a table that decides
+-- money or holds personal data should not have RLS as its ONLY barrier.
+-- Found live after 20260831200500; see
+-- 20260831200600_partner_rate_profiles_grant_surface.sql for the full evidence.
+revoke all on public.business_leads from anon, authenticated;
+grant select on public.business_leads to authenticated;  -- the one intended read
+revoke all on public.business_lead_events from anon, authenticated;
 -- ============================================================================
 -- ROLLBACK (not applied — see docs/billing-partner/ROLLBACK_PLAN.md):
 --   drop function if exists public.gellatti_admin_update_business_lead_v1(uuid, text, text);
