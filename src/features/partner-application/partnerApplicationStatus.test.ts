@@ -16,7 +16,7 @@ import {
 
 const REPO = resolve(import.meta.dirname, '..', '..', '..');
 const MIGRATION = readFileSync(
-  join(REPO, 'supabase', 'migrations', '20260831140000_partner_application_more_information.sql'),
+  join(REPO, 'supabase', 'migrations', '20260831201000_partner_application_more_information.sql'),
   'utf8',
 );
 const SQL = MIGRATION.replace(/--.*$/gm, '');
@@ -247,7 +247,7 @@ describe('AS3 — no LIVE definition still depends on the invalid value', () => 
     it(`the latest definition of ${functionName} contains no executable 'in_review'`, () => {
       const latest = latestDefinitionOf(functionName);
       // our migration must be the one that wins
-      expect(latest.file).toBe('20260831140000_partner_application_more_information.sql');
+      expect(latest.file).toBe('20260831201000_partner_application_more_information.sql');
       // strip comments: the fix is explained in prose above the code it replaces
       const executable = latest.body.replace(/--.*$/gm, '');
       expect(executable).not.toContain('in_review');

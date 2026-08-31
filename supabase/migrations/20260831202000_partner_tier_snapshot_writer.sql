@@ -82,7 +82,7 @@ revoke all on function public.gellatti_partner_active_referred_count_v1(uuid, ti
   from public, anon, authenticated;
 
 -- ── T4: is an Elite override in force at this instant? ──────────────────────
--- The Elite override record IS the rate profile (migration 20260831130000):
+-- The Elite override record IS the rate profile (migration 20260831200500):
 -- assigning Elite means creating a versioned rate profile, so the override and
 -- the rates it implies can never disagree. A partner marked elite with no
 -- profile would have no resolvable rate (RP7), so elite without a profile is

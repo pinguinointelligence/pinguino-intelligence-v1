@@ -1,6 +1,6 @@
 /// <reference types="node" />
 /**
- * Email jobs migration guard (20260831150000).
+ * Email jobs migration guard (20260831201500).
  *
  * Proven statically against the SQL text (comment-stripped). No live DB.
  * Drift between src/notifications/domain/emailJob.ts and the SQL breaks this
@@ -14,7 +14,7 @@ import { DEFAULT_MAX_ATTEMPTS, LEGAL_EMAIL_TRANSITIONS } from './emailJob';
 
 const REPO = resolve(import.meta.dirname, '..', '..', '..');
 const MIGRATION = readFileSync(
-  join(REPO, 'supabase', 'migrations', '20260831150000_email_jobs.sql'),
+  join(REPO, 'supabase', 'migrations', '20260831201500_email_jobs.sql'),
   'utf8',
 );
 const SQL = MIGRATION.replace(/--.*$/gm, '');

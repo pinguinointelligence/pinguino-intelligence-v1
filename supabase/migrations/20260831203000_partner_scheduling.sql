@@ -18,7 +18,7 @@
 --                      commission would defer forever. The monthly job therefore
 --                      runs a CATCH-UP first, which finds every month lacking a
 --                      snapshot and fills it. See the honesty note in
---                      20260831160000 about what a late count can and cannot
+--                      20260831202000 about what a late count can and cannot
 --                      know.
 --   eligibility        `where status = 'held' and eligible_at <= now()`.
 --                      A missed day simply promotes more entries next run.

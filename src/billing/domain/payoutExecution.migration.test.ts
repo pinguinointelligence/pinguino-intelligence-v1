@@ -1,6 +1,6 @@
 /// <reference types="node" />
 /**
- * PAYOUT EXECUTION + SCHEDULING guard (20260831170000, 20260831180000).
+ * PAYOUT EXECUTION + SCHEDULING guard (20260831202500, 20260831203000).
  *
  * payoutNetting.ts stays the calculation authority; these migrations are the
  * execution layer around it. This test asserts the SQL reproduces P1..P7 and
@@ -15,8 +15,8 @@ import { DEFAULT_PAYOUT_THRESHOLD_CENTS } from './payoutNetting';
 const REPO = resolve(import.meta.dirname, '..', '..', '..');
 const read = (file: string) => readFileSync(join(REPO, 'supabase', 'migrations', file), 'utf8');
 
-const PAYOUT_RAW = read('20260831170000_payout_execution.sql');
-const SCHED_RAW = read('20260831180000_partner_scheduling.sql');
+const PAYOUT_RAW = read('20260831202500_payout_execution.sql');
+const SCHED_RAW = read('20260831203000_partner_scheduling.sql');
 const PAYOUT = PAYOUT_RAW.replace(/--.*$/gm, '');
 const SCHED = SCHED_RAW.replace(/--.*$/gm, '');
 
@@ -350,7 +350,7 @@ describe('security posture', () => {
 // Owner acceptance point 4 — scheduler recovery after a MISSED invocation
 // ---------------------------------------------------------------------------
 
-const TIER_RAW = read('20260831160000_partner_tier_snapshot_writer.sql');
+const TIER_RAW = read('20260831202000_partner_tier_snapshot_writer.sql');
 const TIER = TIER_RAW.replace(/--.*$/gm, '');
 const CATCHUP = fn(TIER, 'gellatti_catchup_partner_tier_snapshots_v1');
 const MISSING_MONTHS = fn(TIER, 'gellatti_missing_tier_snapshot_months_v1');

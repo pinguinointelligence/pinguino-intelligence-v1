@@ -260,7 +260,7 @@ export interface PartnerApplicationDraft {
 
 // The status contract lives with its customer copy so the two can never drift.
 // It previously listed 'in_review', which the database CHECK constraint never
-// allowed — see migration 20260831140000.
+// allowed — see migration 20260831201000.
 export type { PartnerApplicationStatus };
 export { PARTNER_APPLICATION_STATUSES };
 

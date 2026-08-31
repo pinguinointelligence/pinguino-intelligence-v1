@@ -1,6 +1,6 @@
 /// <reference types="node" />
 /**
- * Partner ELITE rate-profile migration guard (20260831130000).
+ * Partner ELITE rate-profile migration guard (20260831200500).
  *
  * Proven statically against the SQL text (comment-stripped). No live DB.
  * Drift between src/billing/domain/partnerRateProfiles.ts and the SQL breaks
@@ -14,7 +14,7 @@ import { ELITE_DEFAULT_SUGGESTION_RATES } from './partnerRateProfiles';
 
 const REPO = resolve(import.meta.dirname, '..', '..', '..');
 const SQL = readFileSync(
-  join(REPO, 'supabase', 'migrations', '20260831130000_partner_rate_profiles.sql'),
+  join(REPO, 'supabase', 'migrations', '20260831200500_partner_rate_profiles.sql'),
   'utf8',
 );
 const CODE = SQL.replace(/--.*$/gm, '');

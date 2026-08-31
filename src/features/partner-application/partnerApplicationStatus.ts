@@ -10,7 +10,7 @@
  *  AS2 Every status has a customer label and a customer explanation, in
  *      customer language. No snake_case, no enum name, no SQL vocabulary ever
  *      reaches a customer surface.
- *  AS3 `more_information_needed` is a real state (migration 20260831140000).
+ *  AS3 `more_information_needed` is a real state (migration 20260831201000).
  *      The value `in_review` that appeared in the earlier lane was a typo for a
  *      state that did not exist — it is not part of this contract.
  *  AS4 The map is exhaustive by construction: `Record<PartnerApplicationStatus, …>`

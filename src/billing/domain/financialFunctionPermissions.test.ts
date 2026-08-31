@@ -21,13 +21,13 @@ const MIGRATIONS = join(REPO, 'supabase', 'migrations');
 
 /** Every migration this workstream contributes. */
 const WORKSTREAM_MIGRATIONS = [
-  '20260831120000_partner_code_slots_and_alias_ownership.sql',
-  '20260831130000_partner_rate_profiles.sql',
-  '20260831140000_partner_application_more_information.sql',
-  '20260831150000_email_jobs.sql',
-  '20260831160000_partner_tier_snapshot_writer.sql',
-  '20260831170000_payout_execution.sql',
-  '20260831180000_partner_scheduling.sql',
+  '20260831200000_partner_code_slots_and_alias_ownership.sql',
+  '20260831200500_partner_rate_profiles.sql',
+  '20260831201000_partner_application_more_information.sql',
+  '20260831201500_email_jobs.sql',
+  '20260831202000_partner_tier_snapshot_writer.sql',
+  '20260831202500_payout_execution.sql',
+  '20260831203000_partner_scheduling.sql',
 ] as const;
 
 const SQL_BY_FILE = new Map(

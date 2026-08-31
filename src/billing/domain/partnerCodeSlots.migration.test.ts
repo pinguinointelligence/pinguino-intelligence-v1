@@ -1,6 +1,6 @@
 /// <reference types="node" />
 /**
- * Partner code SLOTS + ALIAS OWNERSHIP migration guard (20260831120000).
+ * Partner code SLOTS + ALIAS OWNERSHIP migration guard (20260831200000).
  *
  * Proven statically against the SQL text (comment-stripped). No live DB.
  * Drift between src/billing/domain/partnerCodeSlots.ts and the SQL breaks this
@@ -15,7 +15,7 @@ import { PARTNER_CODE_MAX_LENGTH, PARTNER_CODE_MIN_LENGTH } from './partnerCodes
 
 const REPO = resolve(import.meta.dirname, '..', '..', '..');
 const SQL = readFileSync(
-  join(REPO, 'supabase', 'migrations', '20260831120000_partner_code_slots_and_alias_ownership.sql'),
+  join(REPO, 'supabase', 'migrations', '20260831200000_partner_code_slots_and_alias_ownership.sql'),
   'utf8',
 );
 const CODE = SQL.replace(/--.*$/gm, ''); // strip line comments

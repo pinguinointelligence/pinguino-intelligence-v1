@@ -1,6 +1,6 @@
 /// <reference types="node" />
 /**
- * Partner TIER SNAPSHOT WRITER guard (20260831160000).
+ * Partner TIER SNAPSHOT WRITER guard (20260831202000).
  *
  * Two halves, both required by the owner:
  *  1. the SQL writer enforces the same rules as tierSnapshots.ts (static scan);
@@ -23,7 +23,7 @@ import {
 
 const REPO = resolve(import.meta.dirname, '..', '..', '..');
 const MIGRATION = readFileSync(
-  join(REPO, 'supabase', 'migrations', '20260831160000_partner_tier_snapshot_writer.sql'),
+  join(REPO, 'supabase', 'migrations', '20260831202000_partner_tier_snapshot_writer.sql'),
   'utf8',
 );
 const SQL = MIGRATION.replace(/--.*$/gm, '');
