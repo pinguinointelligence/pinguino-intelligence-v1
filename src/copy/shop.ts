@@ -512,7 +512,8 @@ export const shopMoney = (cents: number, currency = 'eur'): string =>
 /** One gram formatter, so 1125 never renders as `1125 g` on one surface and
  *  `1 125 g` on the next. The separator is a narrow no-break space. */
 export const shopGrams = (grams: number): string =>
-  // `useGrouping: 'always'` because pl-PL groups only from five digits by
-  // default, and the pack is stated as „1 125 g" everywhere else — in the
-  // product description, in the migration, and on the specimen panel.
-  `${new Intl.NumberFormat('pl-PL', { useGrouping: 'always' }).format(grams)} g`;
+  // Grouped by hand rather than through Intl: pl-PL groups only from five
+  // digits, so `Intl` renders „1125 g" while the pack is stated as „1 125 g"
+  // everywhere else — in the product description, in the migration and on the
+  // specimen panel. The separator is the same U+00A0 pl-PL itself uses.
+  `${String(Math.round(grams)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0')} g`;

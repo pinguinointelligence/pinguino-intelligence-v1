@@ -22,15 +22,16 @@ const edgeSource = () =>
 
 describe('shop shipping', () => {
   it('charges what the cart promises', () => {
-    const rate = edgeSource().match(/SHIPPING_FLAT_CENTS\s*=\s*(\d+)/);
-    expect(rate).not.toBeNull();
-    expect(Number(rate![1])).toBe(SHOP_SHIPPING_FLAT_CENTS);
+    const rate = edgeSource().match(/SHIPPING_FLAT_CENTS\s*=\s*(\d+)/)?.[1];
+    expect(rate).toBeDefined();
+    expect(Number(rate)).toBe(SHOP_SHIPPING_FLAT_CENTS);
   });
 
   it('ships where the checkout says it ships', () => {
     const block = edgeSource().match(/SHIPPING_COUNTRIES\s*=\s*\[([\s\S]*?)\]/);
-    expect(block).not.toBeNull();
-    const countries = [...block![1].matchAll(/'([A-Z]{2})'/g)].map((match) => match[1]);
+    const listed = block?.[1];
+    expect(listed).toBeDefined();
+    const countries = [...listed!.matchAll(/'([A-Z]{2})'/g)].map((match) => match[1]);
     expect(countries.sort()).toEqual([...SHOP_SHIPPING_COUNTRIES].sort());
   });
 
