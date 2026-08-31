@@ -16,6 +16,13 @@ export type EmailFailureKind = 'retryable' | 'permanent';
 export interface AdminEmailJob {
   id: string;
   subject_key: string;
+  /**
+   * EJ9: the business-domain discriminator, from the closed `EmailArea`
+   * vocabulary. Returned by the RPC as `metadata->>'area'` so Admin filters on
+   * a real field instead of parsing the subject string.
+   */
+  domain: string | null;
+  event: string | null;
   subject: string;
   recipient: string;
   environment: string;

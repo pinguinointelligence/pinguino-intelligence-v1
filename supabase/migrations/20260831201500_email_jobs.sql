@@ -39,6 +39,23 @@ create table if not exists public.email_jobs (
   environment text not null check (environment in ('production', 'staging', 'development')),
   -- ES3: additional routing metadata. Never the only way to route a message —
   -- the subject alone must be sufficient.
+  --
+  -- EJ9 (owner §3): this column ALSO carries the business-domain discriminator
+  -- Admin filters on. It is not new state: `buildEmailMetadata()` already writes
+  -- {area, event, entity_id, environment} from the SAME canonical
+  -- OPERATIONAL_SUBJECTS spec that composes the subject, so area/event are
+  -- derived deterministically from the subject key rather than duplicated by
+  -- hand.
+  --
+  -- A separate `domain` column was considered and REJECTED as redundant state.
+  -- What was missing was not a column but a GUARANTEE: metadata is jsonb, so
+  -- nothing forced the keys to be present or the vocabulary to be closed. The
+  -- constraints below supply exactly that, and no more.
+  --
+  -- Domain must NEVER be inferred from the free-text subject. `subject_key`
+  -- holds a camelCase key (`partnerApplicationNew`) whose area mapping lives in
+  -- TypeScript only, so a SQL `like 'partner%'` heuristic would be a naming
+  -- convention masquerading as a contract.
   metadata jsonb not null default '{}'::jsonb,
 
   -- EJ4: the lifecycle
@@ -76,8 +93,27 @@ create table if not exists public.email_jobs (
   -- EJ6: only a retryable, non-terminal job may be scheduled for another go.
   constraint email_jobs_retry_only_when_failed check (
     next_attempt_at is null or status in ('queued', 'failed')
+  ),
+
+  -- EJ9: every job carries a business domain, from the closed EmailArea
+  -- vocabulary in src/notifications/domain/emailSubject.ts. emailJob.migration
+  -- .test.ts asserts this list and that type stay in lockstep, so adding a new
+  -- area (SHOP and LEAD are NOT in the vocabulary yet) must change both
+  -- together or the suite goes red.
+  constraint email_jobs_metadata_has_domain check (
+    metadata ? 'area'
+    and metadata ? 'event'
+    and metadata->>'area' in (
+      'PARTNER', 'MACHINE', 'MOBILE', 'TRAILER', 'FRANCHISE', 'REFERRAL'
+    )
+    and btrim(coalesce(metadata->>'event', '')) <> ''
   )
 );
+
+-- EJ9: Admin filters by domain, so the discriminator is indexed rather than
+-- scanned.
+create index if not exists email_jobs_domain_idx
+  on public.email_jobs ((metadata->>'area'), created_at desc);
 
 create index if not exists email_jobs_due_idx
   on public.email_jobs (next_attempt_at)
@@ -286,6 +322,10 @@ create or replace function public.gellatti_admin_email_jobs_v1(
 ) returns table (
   id uuid,
   subject_key text,
+  -- EJ9 (owner §2): the domain/event discriminator, surfaced explicitly so the
+  -- Admin list can filter without parsing a subject string.
+  domain text,
+  event text,
   subject text,
   recipient text,
   environment text,
@@ -306,11 +346,47 @@ security definer
 set search_path = public
 as $$
 begin
-  if not public.gellatti_admin_has_permission_v1('PARTNER', auth.uid()) then
+  -- ── AUTHORITY: super_admin ONLY (owner ruling, 2026-08-31) ────────────────
+  -- This previously gated on the PARTNER permission, which was wrong in BOTH
+  -- directions. Too broad: email_jobs carries operational mail for Partner,
+  -- Shop, Franchise, Machines, Mobile, Trailer, Referral and Leads, so a
+  -- partner_admin would have gained recipient and subject visibility across
+  -- every unrelated business area. Too narrow: it is not a statement about
+  -- global operational email at all.
+  --
+  -- The existing taxonomy was audited before choosing, and no canonical
+  -- cross-domain OPERATIONAL permission exists:
+  --
+  --   CATALOG     -> super_admin, catalog_admin       (product catalogue)
+  --   SUPPORT     -> super_admin, support_admin       (customer support)
+  --   PARTNER     -> super_admin, partner_admin       (partner programme)
+  --   FINANCE     -> super_admin, finance_admin       (money, payouts)
+  --   CONTENT     -> super_admin, content_moderator   (community moderation)
+  --   ADMIN_READ  -> super_admin + ALL FIVE specialists
+  --
+  -- ADMIN_READ is cross-domain but is the BROADEST of them — it would hand
+  -- every specialist admin the whole email stream, which is strictly worse than
+  -- the PARTNER gate it would replace. The other five are domain-scoped.
+  --
+  -- So, per the owner: super_admin only, rather than abusing a domain
+  -- permission or inventing one. This is checked EXPLICITLY rather than by
+  -- passing an unmapped permission string to gellatti_admin_has_permission_v1
+  -- — that would resolve to super_admin only today purely by omission, and
+  -- would widen silently the moment anyone mapped that string to a role.
+  -- It reads admin_users and honours revoked_at exactly as the canonical
+  -- helper does; it does not create a parallel authority.
+  if not exists (
+    select 1 from public.admin_users a
+    where a.user_id = auth.uid()
+      and a.revoked_at is null
+      and a.role = 'super_admin'
+  ) then
     raise exception 'administrator_required';
   end if;
   return query
-    select j.id, j.subject_key, j.subject, j.recipient, j.environment, j.status,
+    select j.id, j.subject_key,
+           j.metadata->>'area' as domain, j.metadata->>'event' as event,
+           j.subject, j.recipient, j.environment, j.status,
            j.attempts, j.max_attempts, j.next_attempt_at, j.provider_name,
            j.provider_message_id, j.last_failure_kind, j.last_failure_message,
            j.last_failure_code, j.sent_at, j.created_at

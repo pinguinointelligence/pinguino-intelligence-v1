@@ -11,6 +11,17 @@ import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { DEFAULT_MAX_ATTEMPTS, LEGAL_EMAIL_TRANSITIONS } from './emailJob';
+import { OPERATIONAL_SUBJECTS } from './emailSubject';
+
+/**
+ * `EmailArea` is a TYPE, so it cannot be enumerated at runtime. The canonical
+ * runtime source is OPERATIONAL_SUBJECTS — the same table `buildEmailMetadata()`
+ * reads to stamp `metadata.area` — so the vocabulary is derived from it rather
+ * than by declaring a second list that could drift from the first.
+ */
+const EMAIL_AREAS = [
+  ...new Set(Object.values(OPERATIONAL_SUBJECTS).map((spec) => spec.area as string)),
+];
 
 const REPO = resolve(import.meta.dirname, '..', '..', '..');
 const MIGRATION = readFileSync(
@@ -164,12 +175,17 @@ describe('EJ7 — Admin visibility', () => {
     expect(fn).toContain("j.status in ('queued', 'sending', 'failed', 'abandoned')");
   });
 
-  it('checks an admin permission explicitly', () => {
+  it('checks an admin authority explicitly', () => {
+    // Was `expect(fn).toContain('gellatti_admin_has_permission_v1')`. The gate
+    // moved to an explicit super_admin check (owner ruling 2026-08-31) because
+    // no canonical cross-domain operational permission exists and the PARTNER
+    // gate leaked every other business area's recipients. See EJ10 below for
+    // the full contract.
     const fn =
       /create or replace function public\.gellatti_admin_email_jobs_v1[\s\S]*?\$\$;/.exec(
         SQL,
       )?.[0] ?? '';
-    expect(fn).toContain('gellatti_admin_has_permission_v1');
+    expect(fn).toContain("a.role = 'super_admin'");
     expect(fn).toContain('administrator_required');
   });
 
@@ -248,5 +264,81 @@ describe('security posture', () => {
 
   it('documents a rollback', () => {
     expect(MIGRATION).toContain('ROLLBACK');
+  });
+});
+
+describe('EJ9 — the business-domain discriminator (owner §1–§3, 2026-08-31)', () => {
+  const CODE = SQL.replace(/--.*$/gm, '');
+
+  it('constrains the domain to the CANONICAL EmailArea vocabulary, in lockstep', () => {
+    // Parsed out of the CHECK rather than retyped, so the two cannot drift
+    // silently. EmailArea is the authority; SQL follows it.
+    const check = /email_jobs_metadata_has_domain check \(([\s\S]*?)\n  \)/.exec(CODE)?.[1] ?? '';
+    expect(check, 'domain CHECK not found').not.toBe('');
+    const sqlAreas = [...check.matchAll(/'([A-Z]+)'/g)].map((m) => m[1]).sort();
+    const tsAreas = [...EMAIL_AREAS].sort();
+    expect(sqlAreas).toEqual(tsAreas);
+  });
+
+  it('requires area AND event to be present on every row', () => {
+    expect(CODE).toMatch(/metadata \? 'area'/);
+    expect(CODE).toMatch(/metadata \? 'event'/);
+  });
+
+  it('does NOT add a redundant domain column — it constrains the existing metadata', () => {
+    // buildEmailMetadata() already writes {area, event} from the same canonical
+    // OPERATIONAL_SUBJECTS spec that composes the subject. A second column would
+    // be duplicated state that could disagree with itself.
+    const createTable =
+      /create table if not exists public\.email_jobs \(([\s\S]*?)\n\);/.exec(CODE)?.[1] ?? '';
+    expect(createTable, 'create table block not found').not.toBe('');
+    expect(createTable).not.toMatch(/^\s*domain text/m);
+    expect(createTable).toMatch(/metadata jsonb not null/);
+  });
+
+  it('never derives the domain from the free-text subject', () => {
+    expect(CODE).not.toMatch(/subject\s+like/i);
+    expect(CODE).not.toMatch(/subject_key\s+like/i);
+  });
+
+  it('indexes the discriminator so Admin filtering is not a scan', () => {
+    expect(CODE).toMatch(/create index if not exists email_jobs_domain_idx[\s\S]*?metadata->>'area'/);
+  });
+});
+
+describe('EJ10 — admin email read is super_admin only (owner §1)', () => {
+  const CODE = SQL.replace(/--.*$/gm, '');
+  const fn =
+    /create or replace function public\.gellatti_admin_email_jobs_v1[\s\S]*?\$\$;/.exec(CODE)?.[0] ??
+    '';
+
+  it('does not gate on PARTNER, or on any other domain permission', () => {
+    expect(fn, 'admin fn not found').not.toBe('');
+    for (const permission of ['PARTNER', 'CATALOG', 'SUPPORT', 'FINANCE', 'CONTENT']) {
+      expect(fn, `must not gate on ${permission}`).not.toContain(`'${permission}'`);
+    }
+  });
+
+  it('does not gate on ADMIN_READ, which is broader still', () => {
+    // ADMIN_READ resolves to super_admin PLUS all five specialist roles, so it
+    // would be strictly worse than the PARTNER gate it replaced.
+    expect(fn).not.toContain("'ADMIN_READ'");
+  });
+
+  it('requires the super_admin role explicitly and honours revoked_at', () => {
+    expect(fn).toMatch(/from public\.admin_users a/);
+    expect(fn).toMatch(/a\.role = 'super_admin'/);
+    expect(fn).toMatch(/a\.revoked_at is null/);
+    expect(fn).toMatch(/raise exception 'administrator_required'/);
+  });
+
+  it('still keeps message bodies out of the list surface', () => {
+    expect(fn).not.toContain('body_html');
+    expect(fn).not.toContain('body_text');
+  });
+
+  it('returns the domain and event discriminators for filtering', () => {
+    expect(fn).toMatch(/metadata->>'area' as domain/);
+    expect(fn).toMatch(/metadata->>'event' as event/);
   });
 });
