@@ -8,7 +8,8 @@
  *
  * Commerce copy is factual: what it is, how much, how many grams, whether it
  * is in stock, and — for a preorder — the lead time BEFORE checkout, never
- * hidden in terms after payment.
+ * hidden in terms after payment. It is written in customer language: what the
+ * ingredient does in a batch, not what the Engine calls it.
  */
 
 export interface ShopCopy {
@@ -18,10 +19,45 @@ export interface ShopCopy {
     readonly blurb: string;
     readonly contextLabel: string;
   };
+  /** The approved Shop hero — Starter Pack first, one CTA, one honest note. */
+  readonly hero: {
+    readonly eyebrow: string;
+    readonly title: string;
+    readonly lede: string;
+    readonly note: string;
+  };
   readonly starterPack: {
     readonly kicker: string;
     readonly body: string;
     readonly contents: string;
+    readonly packShotTitle: string;
+    readonly packCaption: string;
+    readonly contentsCta: string;
+    readonly contentsTitle: string;
+    readonly contentsHelper: string;
+    readonly packTotal: string;
+    readonly detailKicker: string;
+    readonly detailBody: string;
+    readonly massRow: string;
+    readonly priceRow: string;
+    readonly availabilityRow: string;
+    readonly closingTitle: string;
+    readonly closingBody: string;
+    readonly lede: string;
+    readonly whyTitle: string;
+    readonly whyBodyTitle: string;
+    readonly whyBodyText: string;
+    readonly whySweetTitle: string;
+    readonly whySweetText: string;
+    readonly whyCreamTitle: string;
+    readonly whyCreamText: string;
+    readonly allergens: string;
+    readonly contentsRecap: string;
+    readonly contentsRecapValue: string;
+    readonly shippingRow: string;
+    readonly deliveryRow: string;
+    readonly deliveryValue: string;
+    readonly finalAmountNote: string;
   };
   readonly product: {
     readonly packSize: string;
@@ -33,18 +69,35 @@ export interface ShopCopy {
     readonly preorderWeeks: string;
     readonly outOfStock: string;
     readonly usedFor: string;
+    readonly singlesKicker: string;
+    readonly singlesTitle: string;
+    readonly singlesHelper: string;
+    readonly containsMilk: string;
+    readonly containsEgg: string;
+    readonly detailKicker: string;
   };
   readonly cart: {
     readonly title: string;
+    readonly kicker: string;
     readonly empty: string;
+    readonly emptyCta: string;
     readonly quantity: string;
+    readonly decrease: string;
+    readonly increase: string;
+    readonly perUnit: string;
     readonly remove: string;
     readonly total: string;
+    readonly summaryTitle: string;
+    readonly itemsRow: string;
+    readonly shippingRow: string;
+    readonly grandTotal: string;
     readonly checkout: string;
     readonly redirecting: string;
     readonly signInFirst: string;
     readonly signInCta: string;
     readonly preorderNotice: string;
+    readonly preorderLineItem: string;
+    readonly finalAmountNote: string;
     readonly testMode: string;
     readonly error: string;
   };
@@ -54,6 +107,20 @@ export interface ShopCopy {
     readonly syncPayment: string;
     readonly articlesTitle: string;
     readonly ordersTitle: string;
+    readonly queueToShip: string;
+    readonly queueWaiting: string;
+    readonly queueUnpaid: string;
+    readonly queueShipped: string;
+    readonly packingList: string;
+    readonly shipTo: string;
+    readonly noAddress: string;
+    readonly customer: string;
+    readonly money: string;
+    readonly recordTracking: string;
+    readonly carrier: string;
+    readonly trackingNumber: string;
+    readonly markShipped: string;
+    readonly filterAll: string;
   };
   readonly orders: {
     readonly title: string;
@@ -74,6 +141,30 @@ export interface ShopCopy {
     readonly preorderLine: string;
     readonly checkPayment: string;
     readonly paidConfirmation: string;
+    readonly shipTo: string;
+    readonly tracking: string;
+    readonly items: string;
+    readonly shippingCost: string;
+    readonly subtotal: string;
+  };
+  /** The screen that closes the purchase after the payment page. */
+  readonly confirmation: {
+    readonly kicker: string;
+    readonly checking: string;
+    readonly paidTitle: string;
+    readonly pendingTitle: string;
+    readonly pendingBody: string;
+    readonly failedTitle: string;
+    readonly failedBody: string;
+    readonly cancelledTitle: string;
+    readonly cancelledBody: string;
+    readonly paidLabel: string;
+    readonly step1: string;
+    readonly step2: string;
+    readonly step2Preorder: string;
+    readonly step3: string;
+    readonly viewOrders: string;
+    readonly back: string;
   };
 }
 
@@ -84,12 +175,54 @@ export const shopCopyPl: ShopCopy = {
     blurb: 'Składniki, na których Gellatti liczy receptury. Nic więcej.',
     contextLabel: 'Sklep',
   },
+  hero: {
+    eyebrow: 'Sklep Gellatti',
+    title: 'Gellatti Starter Pack',
+    lede:
+      'Pierwszy zestaw składników Gellatti — siedem pozycji w proporcjach dobranych pod ' +
+      'pierwsze receptury.',
+    note: 'Wysyłka kurierem {shipping} · 2–5 dni roboczych. Kwota końcowa przy płatności.',
+  },
   starterPack: {
     kicker: 'Zestaw startowy',
     body:
       'Siedem składników dobranych tak, żeby Gellatti mogło policzyć recepturę bez szukania ' +
       'specjalistycznych produktów po sklepach. Nie musisz go kupować, żeby korzystać z Gellatti.',
     contents: 'W zestawie',
+    packShotTitle: 'Starter Pack',
+    packCaption: '{count} składników · {grams}',
+    contentsCta: 'Zobacz zawartość',
+    contentsTitle: 'Zawartość zestawu',
+    contentsHelper: 'Dokładne gramatury spakowane w jednym pudełku.',
+    packTotal: 'Razem w opakowaniu',
+    detailKicker: 'Zestaw Gellatti',
+    detailBody:
+      'Karta pokazuje dokładną zawartość, masę, cenę i termin realizacji. Skład każdego ' +
+      'składnika opisany jest osobno niżej.',
+    massRow: 'Masa',
+    priceRow: 'Cena',
+    availabilityRow: 'Dostępność',
+    closingTitle: 'Zamówienie i wysyłka.',
+    closingBody:
+      'Płatność kartą, wysyłka kurierem {shipping} do 15 krajów UE. Kwota widoczna w koszyku ' +
+      'jest kwotą pobieraną — przy płatności nie doliczamy dodatkowych opłat.',
+    lede:
+      'Siedem składników, na których Gellatti liczy receptury — w proporcjach dobranych pod ' +
+      'pierwsze wyroby. Zamiast szukać każdego z nich osobno, dostajesz komplet gotowy do pracy.',
+    whyTitle: 'Dlaczego te siedem',
+    whyBodyTitle: 'Sucha masa i ciało',
+    whyBodyText: 'Odtłuszczone mleko w proszku i inulina budują strukturę bez dodatkowej wody.',
+    whySweetTitle: 'Słodycz i miękkość',
+    whySweetText: 'Dekstroza i fruktoza ustawiają słodycz oraz twardość po zamrożeniu.',
+    whyCreamTitle: 'Kremowość i stabilność',
+    whyCreamText: 'Śmietanka 42%, żółtko i Gellatti Stabilizer trzymają teksturę.',
+    allergens: 'Zawiera mleko i jaja. Skład każdego składnika opisany osobno niżej.',
+    contentsRecap: 'Zawartość',
+    contentsRecapValue: '{count} składników · {grams}',
+    shippingRow: 'Wysyłka',
+    deliveryRow: 'Dostawa',
+    deliveryValue: '2–5 dni po wysyłce',
+    finalAmountNote: 'Kwota końcowa — przy płatności nie doliczamy dodatkowych opłat.',
   },
   product: {
     packSize: 'Opakowanie',
@@ -101,18 +234,36 @@ export const shopCopyPl: ShopCopy = {
     preorderWeeks: 'Na zamówienie · wysyłka za około {weeks} tyg.',
     outOfStock: 'Chwilowo niedostępny',
     usedFor: 'Do czego służy',
+    singlesKicker: 'Pojedyncze składniki',
+    singlesTitle: 'Każdy składnik osobno',
+    singlesHelper: 'Te same składniki co w zestawie, w opakowaniach 500 g.',
+    containsMilk: 'Zawiera mleko',
+    containsEgg: 'Zawiera jaja',
+    detailKicker: 'Składnik Gellatti',
   },
   cart: {
-    title: 'Koszyk',
-    empty: 'Koszyk jest pusty.',
+    title: 'Twoje zamówienie',
+    kicker: 'Koszyk',
+    empty: 'Koszyk jest pusty. Zacznij od zestawu startowego.',
+    emptyCta: 'Zobacz zestaw startowy',
     quantity: 'Ilość',
+    decrease: 'Zmniejsz ilość',
+    increase: 'Zwiększ ilość',
+    perUnit: 'za sztukę',
     remove: 'Usuń',
     total: 'Razem',
+    summaryTitle: 'Podsumowanie',
+    itemsRow: 'Produkty ({count} szt.)',
+    shippingRow: 'Wysyłka kurierem',
+    grandTotal: 'Do zapłaty',
     checkout: 'Przejdź do płatności',
     redirecting: 'Przekierowuję do płatności…',
     signInFirst: 'Zaloguj się, aby złożyć zamówienie.',
     signInCta: 'Zaloguj się',
-    preorderNotice: 'Zamówienie zawiera produkt na zamówienie · wysyłka za około {weeks} tyg.',
+    preorderNotice:
+      'Zamówienie zawiera pozycję na zamówienie — całość wysyłamy za około {weeks} tyg.',
+    preorderLineItem: 'Na zamówienie · wysyłka za około {weeks} tyg.',
+    finalAmountNote: 'Kwota końcowa. Płatność kartą.',
     testMode: 'Staging: płatność w trybie testowym Stripe. Karta nie zostanie obciążona.',
     error: 'Nie udało się rozpocząć płatności. Spróbuj ponownie.',
   },
@@ -122,6 +273,20 @@ export const shopCopyPl: ShopCopy = {
     syncPayment: 'Sprawdź płatność u dostawcy',
     articlesTitle: 'Artykuły',
     ordersTitle: 'Zamówienia',
+    queueToShip: 'Do wysyłki',
+    queueWaiting: 'Czeka na zestaw startowy',
+    queueUnpaid: 'Nieopłacone i nieudane',
+    queueShipped: 'Wysłane',
+    packingList: 'Do spakowania',
+    shipTo: 'Wysyłka do',
+    noAddress: 'Brak adresu — zamówienie nieopłacone.',
+    customer: 'Klient',
+    money: 'Kwoty',
+    recordTracking: 'Zapisz przesyłkę',
+    carrier: 'Przewoźnik',
+    trackingNumber: 'Numer przesyłki',
+    markShipped: 'Oznacz jako wysłane',
+    filterAll: 'Wszystkie',
   },
   orders: {
     title: 'Zamówienia',
@@ -142,6 +307,31 @@ export const shopCopyPl: ShopCopy = {
     preorderLine: 'Na zamówienie · około {weeks} tyg.',
     checkPayment: 'Sprawdź płatność',
     paidConfirmation: 'Zamówienie opłacone.',
+    shipTo: 'Wysyłka do',
+    tracking: 'Przesyłka',
+    items: 'Pozycje',
+    shippingCost: 'Wysyłka',
+    subtotal: 'Produkty',
+  },
+  confirmation: {
+    kicker: 'Zamówienie',
+    checking: 'Sprawdzam płatność u dostawcy…',
+    paidTitle: 'Dziękujemy — zamówienie jest opłacone.',
+    pendingTitle: 'Płatność nie została jeszcze potwierdzona.',
+    pendingBody:
+      'Jeżeli płatność się powiodła, potwierdzenie pojawi się w ciągu kilku minut. ' +
+      'Status sprawdzisz też w swoich zamówieniach.',
+    failedTitle: 'Płatność nie doszła do skutku.',
+    failedBody: 'Nic nie zostało pobrane. Możesz spróbować ponownie z tym samym koszykiem.',
+    cancelledTitle: 'Płatność została przerwana.',
+    cancelledBody: 'Nic nie zostało pobrane. Koszyk czeka nietknięty.',
+    paidLabel: 'Zapłacono',
+    step1: 'Zamówienie jest zapisane na Twoim koncie — status sprawdzisz w „Zamówienia”.',
+    step2: 'Kompletujemy zamówienie i pakujemy.',
+    step2Preorder: 'Zestaw startowy kompletujemy około {weeks} tygodni.',
+    step3: 'Wysyłka kurierem, 2–5 dni roboczych. Numer przesyłki pojawi się przy zamówieniu.',
+    viewOrders: 'Zobacz swoje zamówienia',
+    back: 'Wróć do sklepu',
   },
 };
 
@@ -152,12 +342,53 @@ export const shopCopyEn: ShopCopy = {
     blurb: 'The ingredients Gellatti formulates with. Nothing else.',
     contextLabel: 'Shop',
   },
+  hero: {
+    eyebrow: 'Gellatti shop',
+    title: 'Gellatti Starter Pack',
+    lede:
+      'The first Gellatti ingredient set — seven items in the proportions a first batch needs.',
+    note: 'Courier shipping {shipping} · 2–5 business days. The amount shown is the amount charged.',
+  },
   starterPack: {
     kicker: 'Starter pack',
     body:
       'Seven ingredients chosen so Gellatti can work out a recipe without you hunting for ' +
       'specialist products. You do not need it to use Gellatti.',
     contents: 'In the pack',
+    packShotTitle: 'Starter Pack',
+    packCaption: '{count} ingredients · {grams}',
+    contentsCta: 'See what is inside',
+    contentsTitle: 'What is in the box',
+    contentsHelper: 'Exact packed amounts, in one box.',
+    packTotal: 'Total in the box',
+    detailKicker: 'Gellatti set',
+    detailBody:
+      'This card shows the exact contents, mass, price and lead time. Each ingredient is ' +
+      'described separately below.',
+    massRow: 'Mass',
+    priceRow: 'Price',
+    availabilityRow: 'Availability',
+    closingTitle: 'Ordering and delivery.',
+    closingBody:
+      'Card payment, courier delivery {shipping} to 15 EU countries. The amount shown in the ' +
+      'cart is the amount charged — nothing is added at payment.',
+    lede:
+      'The seven ingredients Gellatti formulates with, in the proportions a first batch needs. ' +
+      'Instead of sourcing each one separately, you get a set that is ready to work with.',
+    whyTitle: 'Why these seven',
+    whyBodyTitle: 'Solids and body',
+    whyBodyText: 'Skimmed milk powder and inulin build structure without adding water.',
+    whySweetTitle: 'Sweetness and softness',
+    whySweetText: 'Dextrose and fructose set sweetness and how hard it freezes.',
+    whyCreamTitle: 'Creaminess and stability',
+    whyCreamText: 'Cream powder 42%, egg yolk and Gellatti Stabilizer hold the texture.',
+    allergens: 'Contains milk and eggs. Each ingredient is described separately below.',
+    contentsRecap: 'Contents',
+    contentsRecapValue: '{count} ingredients · {grams}',
+    shippingRow: 'Shipping',
+    deliveryRow: 'Delivery',
+    deliveryValue: '2–5 days after dispatch',
+    finalAmountNote: 'Final amount — nothing is added at payment.',
   },
   product: {
     packSize: 'Pack',
@@ -169,18 +400,36 @@ export const shopCopyEn: ShopCopy = {
     preorderWeeks: 'On order · ships in about {weeks} weeks',
     outOfStock: 'Currently unavailable',
     usedFor: 'What it does',
+    singlesKicker: 'Single ingredients',
+    singlesTitle: 'Every ingredient on its own',
+    singlesHelper: 'The same ingredients as the pack, in 500 g bags.',
+    containsMilk: 'Contains milk',
+    containsEgg: 'Contains eggs',
+    detailKicker: 'Gellatti ingredient',
   },
   cart: {
-    title: 'Cart',
-    empty: 'Your cart is empty.',
+    title: 'Your order',
+    kicker: 'Cart',
+    empty: 'Your cart is empty. Start with the starter pack.',
+    emptyCta: 'See the starter pack',
     quantity: 'Quantity',
+    decrease: 'Decrease quantity',
+    increase: 'Increase quantity',
+    perUnit: 'each',
     remove: 'Remove',
     total: 'Total',
+    summaryTitle: 'Summary',
+    itemsRow: 'Items ({count})',
+    shippingRow: 'Courier shipping',
+    grandTotal: 'To pay',
     checkout: 'Go to payment',
     redirecting: 'Taking you to payment…',
     signInFirst: 'Sign in to place an order.',
     signInCta: 'Sign in',
-    preorderNotice: 'This order contains an on-order item · ships in about {weeks} weeks',
+    preorderNotice:
+      'This order contains an on-order item — the whole order ships in about {weeks} weeks.',
+    preorderLineItem: 'On order · ships in about {weeks} weeks',
+    finalAmountNote: 'Final amount. Card payment.',
     testMode: 'Staging: Stripe test mode. No card is charged.',
     error: 'Payment could not be started. Please try again.',
   },
@@ -190,6 +439,20 @@ export const shopCopyEn: ShopCopy = {
     syncPayment: 'Check payment with the provider',
     articlesTitle: 'Articles',
     ordersTitle: 'Orders',
+    queueToShip: 'To ship',
+    queueWaiting: 'Waiting on the starter pack',
+    queueUnpaid: 'Unpaid and failed',
+    queueShipped: 'Shipped',
+    packingList: 'Pack this',
+    shipTo: 'Ship to',
+    noAddress: 'No address — the order is not paid.',
+    customer: 'Customer',
+    money: 'Amounts',
+    recordTracking: 'Save the shipment',
+    carrier: 'Carrier',
+    trackingNumber: 'Tracking number',
+    markShipped: 'Mark as shipped',
+    filterAll: 'All',
   },
   orders: {
     title: 'Orders',
@@ -210,6 +473,31 @@ export const shopCopyEn: ShopCopy = {
     preorderLine: 'On order · about {weeks} weeks',
     checkPayment: 'Check payment',
     paidConfirmation: 'Order paid.',
+    shipTo: 'Ship to',
+    tracking: 'Shipment',
+    items: 'Items',
+    shippingCost: 'Shipping',
+    subtotal: 'Items',
+  },
+  confirmation: {
+    kicker: 'Order',
+    checking: 'Checking the payment with the provider…',
+    paidTitle: 'Thank you — the order is paid.',
+    pendingTitle: 'The payment has not been confirmed yet.',
+    pendingBody:
+      'If the payment went through, confirmation appears within a few minutes. ' +
+      'You can also check the status in your orders.',
+    failedTitle: 'The payment did not go through.',
+    failedBody: 'Nothing was charged. You can try again with the same cart.',
+    cancelledTitle: 'The payment was interrupted.',
+    cancelledBody: 'Nothing was charged. Your cart is untouched.',
+    paidLabel: 'Paid',
+    step1: 'The order is saved to your account — check its status under “Orders”.',
+    step2: 'We put the order together and pack it.',
+    step2Preorder: 'The starter pack takes about {weeks} weeks to assemble.',
+    step3: 'Courier delivery, 2–5 business days. The tracking number appears on the order.',
+    viewOrders: 'See your orders',
+    back: 'Back to the shop',
   },
 };
 
@@ -261,3 +549,12 @@ export const shopMoney = (cents: number, currency = 'eur'): string =>
     style: 'currency',
     currency: currency.toUpperCase(),
   }).format(cents / 100);
+
+/** One gram formatter, so 1125 never renders as `1125 g` on one surface and
+ *  `1 125 g` on the next. The separator is a narrow no-break space. */
+export const shopGrams = (grams: number): string =>
+  // Grouped by hand rather than through Intl: pl-PL groups only from five
+  // digits, so `Intl` renders „1125 g" while the pack is stated as „1 125 g"
+  // everywhere else — in the product description, in the migration and on the
+  // specimen panel. The separator is the same U+00A0 pl-PL itself uses.
+  `${String(Math.round(grams)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0')} g`;

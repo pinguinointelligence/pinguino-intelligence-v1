@@ -63,6 +63,13 @@ describe('public pages use the shared card and rail language', () => {
 describe('commerce surfaces draw from the token palette', () => {
   const files = [
     ['features', 'shop', 'ShopCatalog.tsx'],
+    ['features', 'shop', 'ShopCart.tsx'],
+    ['features', 'shop', 'ShopConfirmation.tsx'],
+    ['features', 'shop', 'ShopProductCard.tsx'],
+    ['features', 'shop', 'ShopHeroActions.tsx'],
+    ['features', 'shop', 'ShopHeroPack.tsx'],
+    ['features', 'shop', 'ShopPackaging.tsx'],
+    ['features', 'shop', 'ShopStarterPack.tsx'],
     ['features', 'shop', 'ShopOrdersPanel.tsx'],
     ['pages', 'destinations', 'SubscriptionPage.tsx'],
     ['features', 'global-catalog', 'GlobalCatalogSearchPanel.tsx'],

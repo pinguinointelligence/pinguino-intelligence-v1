@@ -27,6 +27,15 @@ const CORS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+/** Where Gellatti ships today. Widening this is a business decision, not a
+ *  code change made in passing. */
+const SHIPPING_COUNTRIES = [
+  'PL', 'ES', 'DE', 'FR', 'IT', 'PT', 'NL', 'BE', 'AT', 'CZ', 'SK', 'DK', 'SE', 'FI', 'IE',
+] as const;
+
+/** Flat courier rate, in cents, in the order currency. */
+const SHIPPING_FLAT_CENTS = 990;
+
 const json = (status: number, body: Record<string, unknown>) =>
   new Response(JSON.stringify(body), {
     status,
@@ -121,6 +130,62 @@ Deno.serve(async (req) => {
     0,
   );
 
+  /* DOUBLE-CLICK / BACK-BUTTON GUARD.
+     A second request for the same cart must not mint a second order. The
+     browser already disables the button, but a double submit, a retried fetch
+     or a customer who pressed Back and clicked Pay again all arrive here as a
+     genuine second request. If this user has an unpaid order for exactly this
+     cart from the last half hour, they are sent back to ITS session rather than
+     given a new one — Stripe sessions live 24 h, so the link is still good. */
+  const cartKey = [...requested]
+    .map((item) => `${item.sku}:${item.quantity}`)
+    .sort()
+    .join('|');
+  const since = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+  const { data: openOrders } = await admin
+    .from('shop_orders')
+    .select('id,order_number,stripe_checkout_session_id,shop_order_items(sku,quantity)')
+    .eq('user_id', user.id)
+    .eq('status', 'pending')
+    .gte('created_at', since)
+    .not('stripe_checkout_session_id', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(10);
+  const duplicate = (openOrders ?? []).find((row) => {
+    const items = (row.shop_order_items ?? []) as Array<{ sku: string; quantity: number }>;
+    return (
+      items.length === requested.length &&
+      items
+        .map((item) => `${item.sku}:${item.quantity}`)
+        .sort()
+        .join('|') === cartKey
+    );
+  });
+  if (duplicate) {
+    const apiVersionForReuse = Deno.env.get('STRIPE_API_VERSION') ?? '2025-06-30.basil';
+    const reuseStripe = new Stripe(stripeKey, {
+      apiVersion: apiVersionForReuse as Stripe.LatestApiVersion,
+    });
+    try {
+      const existing = await reuseStripe.checkout.sessions.retrieve(
+        duplicate.stripe_checkout_session_id!,
+      );
+      if (existing.status === 'open' && existing.url) {
+        console.log(`shop-checkout: reusing session for order ${duplicate.order_number}`);
+        return json(200, {
+          url: existing.url,
+          orderId: duplicate.id,
+          orderNumber: duplicate.order_number,
+          reused: true,
+        });
+      }
+    } catch (error) {
+      // An unreadable session is not a reason to refuse a sale — fall through
+      // and create a fresh order.
+      console.error('shop-checkout: could not reuse session', error);
+    }
+  }
+
   // The order exists before Stripe does, so a session always maps to one order.
   const orderNumber = `G-${new Date().toISOString().slice(0, 10).replaceAll('-', '')}-${
     crypto.randomUUID().slice(0, 6).toUpperCase()
@@ -175,6 +240,24 @@ Deno.serve(async (req) => {
             },
           },
         })),
+        /* A parcel needs a destination. Checkout collects the address, and
+           `shop-order-sync` writes it back onto the order so whoever packs it
+           can read it without opening Stripe. */
+        shipping_address_collection: { allowed_countries: SHIPPING_COUNTRIES },
+        phone_number_collection: { enabled: true },
+        shipping_options: [
+          {
+            shipping_rate_data: {
+              type: 'fixed_amount',
+              fixed_amount: { amount: SHIPPING_FLAT_CENTS, currency },
+              display_name: 'Wysyłka kurierem',
+              delivery_estimate: {
+                minimum: { unit: 'business_day', value: 2 },
+                maximum: { unit: 'business_day', value: 5 },
+              },
+            },
+          },
+        ],
         success_url: `${body.successUrl!}${body.successUrl!.includes('?') ? '&' : '?'}order=${order.id}`,
         cancel_url: body.cancelUrl!,
         metadata: {

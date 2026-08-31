@@ -2,35 +2,61 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApplicationState } from '@/components/shared/ApplicationState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { applicationSecondaryClasses } from '@/components/ui/applicationControlStyles';
-import {
-  getMyShopOrders,
-  syncShopOrder,
-  type ShopOrder,
-} from '@/services/shop';
+import { getMyShopOrders, syncShopOrder, type ShopOrder } from '@/services/shop';
 import {
   shopCopy as c,
   shopFulfillmentLabelPl,
+  shopGrams,
   shopMoney,
   shopOrderStatusLabelPl,
 } from '@/copy/shop';
+import { shopContentTitle } from './shopContentTitle';
 
-const label = 'text-[10px] font-semibold tracking-[0.13em] text-[var(--g-text-secondary)] uppercase';
+/**
+ * The customer's own orders — the same facts Admin works from, minus the
+ * provider references.
+ *
+ * Somebody who has paid should be able to answer, without writing to anyone:
+ * what did I buy, what did it cost, where is it going, has it shipped, and
+ * under what number. The row carries all five.
+ */
 
-function OrderRow({ order, onSync, syncing }: { order: ShopOrder; onSync: () => void; syncing: boolean }) {
+const label =
+  'text-[10px] font-bold tracking-[0.1em] text-[var(--g-text-secondary)] uppercase';
+
+const chip =
+  'border border-[var(--g-line)] px-2 py-1 text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase';
+
+function OrderRow({
+  order,
+  onSync,
+  syncing,
+}: {
+  order: ShopOrder;
+  onSync: () => void;
+  syncing: boolean;
+}) {
+  const address = [
+    order.shipping.name,
+    order.shipping.line1,
+    order.shipping.line2,
+    [order.shipping.postalCode, order.shipping.city].filter(Boolean).join(' ') || null,
+    order.shipping.country,
+  ].filter((line): line is string => Boolean(line && line.trim()));
+
   return (
-    <article className="rounded-[12px] border border-[var(--g-line)] bg-white p-5" data-testid={`order-${order.orderNumber}`}>
+    <article
+      className="rounded-[12px] border border-[var(--g-line)] bg-white p-5"
+      data-testid={`order-${order.orderNumber}`}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className={label}>{c.orders.number}</p>
           <p className="mt-1 font-mono text-sm text-ink">{order.orderNumber}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="border border-[var(--g-line)] px-2 py-1 text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">
-            {shopOrderStatusLabelPl(order.status)}
-          </span>
-          <span className="border border-[var(--g-line)] px-2 py-1 text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">
-            {shopFulfillmentLabelPl(order.fulfillmentStatus)}
-          </span>
+          <span className={chip}>{shopOrderStatusLabelPl(order.status)}</span>
+          <span className={chip}>{shopFulfillmentLabelPl(order.fulfillmentStatus)}</span>
         </div>
       </div>
 
@@ -38,7 +64,10 @@ function OrderRow({ order, onSync, syncing }: { order: ShopOrder; onSync: () => 
         {order.items.map((item) => (
           <li key={item.sku} className="flex flex-wrap items-baseline justify-between gap-2 py-2">
             <span className="min-w-0 text-ink">
-              {item.title}
+              {shopContentTitle(item.title)}
+              {item.packSizeG ? (
+                <span className="text-[var(--g-text-secondary)]"> · {shopGrams(item.packSizeG)}</span>
+              ) : null}
               {item.quantity > 1 ? ` × ${item.quantity}` : ''}
               {item.isPreorder && order.leadTimeWeeks ? (
                 <span className="ml-2 text-xs text-[var(--g-attention-ink)]">
@@ -46,39 +75,65 @@ function OrderRow({ order, onSync, syncing }: { order: ShopOrder; onSync: () => 
                 </span>
               ) : null}
             </span>
-            <span className="font-mono text-sm text-[var(--g-text-secondary)]">
+            <span className="font-mono text-sm text-[var(--g-text-secondary)] tabular-nums">
               {shopMoney(item.unitPriceCents * item.quantity, order.currency)}
             </span>
           </li>
         ))}
       </ul>
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--g-line)] pt-4">
-        <div className="flex flex-wrap gap-6">
-          <span>
-            <span className={label}>{c.orders.placed}</span>
-            <span className="mt-1 block font-mono text-xs text-[var(--g-text-secondary)]">
-              {order.created_at.slice(0, 16).replace('T', ' ')}
-            </span>
-          </span>
-          <span>
-            <span className={label}>{c.orders.total}</span>
-            <span className="mt-1 block font-mono text-sm text-ink">
-              {shopMoney(order.totalCents, order.currency)}
-            </span>
-          </span>
+      <dl className="mt-4 grid gap-4 border-t border-[var(--g-line)] pt-4 sm:grid-cols-3">
+        <div>
+          <dt className={label}>{c.orders.placed}</dt>
+          <dd className="mt-1 font-mono text-xs text-[var(--g-text-secondary)]">
+            {order.created_at.slice(0, 16).replace('T', ' ')}
+          </dd>
+          <dt className={`${label} mt-3`}>{c.orders.total}</dt>
+          <dd className="mt-1 font-mono text-sm text-ink tabular-nums">
+            {shopMoney(order.totalCents, order.currency)}
+          </dd>
+          {order.shippingCents > 0 ? (
+            <dd className="mt-0.5 font-mono text-[11px] text-[var(--g-text-secondary)]">
+              {c.orders.shippingCost} {shopMoney(order.shippingCents, order.currency)}
+            </dd>
+          ) : null}
         </div>
-        {order.status === 'pending' ? (
+        {address.length > 0 ? (
+          <div>
+            <dt className={label}>{c.orders.shipTo}</dt>
+            <dd className="mt-1 text-[13px] leading-[1.55] text-[var(--g-ink)]">
+              {address.map((line) => (
+                <span key={line} className="block">
+                  {line}
+                </span>
+              ))}
+            </dd>
+          </div>
+        ) : null}
+        {order.tracking.number ? (
+          <div>
+            <dt className={label}>{c.orders.tracking}</dt>
+            <dd className="mt-1 font-mono text-[12px] break-all text-[var(--g-ink)]">
+              {[order.tracking.carrier, order.tracking.number].filter(Boolean).join(' · ')}
+            </dd>
+          </div>
+        ) : null}
+      </dl>
+
+      {order.status === 'pending' ? (
+        <div className="mt-4 border-t border-[var(--g-line)] pt-4">
           <button
             type="button"
             onClick={onSync}
             disabled={syncing}
-            className={applicationSecondaryClasses('disabled:opacity-45')}
+            className={applicationSecondaryClasses(
+              'disabled:border-[var(--g-line-strong)] disabled:bg-[var(--g-line-quiet)] disabled:text-[var(--g-lock)]',
+            )}
           >
             {c.orders.checkPayment}
           </button>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
     </article>
   );
 }
