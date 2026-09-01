@@ -362,11 +362,11 @@ Copy authority: `src/copy/cooperation.ts` (PL + EN, `resolveCooperationCopy`). N
 
 | ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| P-LEAD-01 | Leads | Canonical lead storage for machine / mobile / trailer / franchise | 🟡 | ✅ | ⬜ | ⬜ | 🔓 | this run | `business_leads` covers all four paths. Existing franchise rows are imported idempotently; `franchise_inquiries` is left intact so the import is never the only copy | `20260831203500_business_leads.sql` NOT applied — pending in this lane |
-| P-LEAD-02 | Leads | Each lead preserves id, source, route, type, model/format, configurator answers, country/city, contact, timestamp, status, assignee, notes, history | 🟡 | ✅ | ⬜ | ⬜ | 🔓 | this run | All 15 fields present. Sequence-backed reference (`MCH-2026-00142`); configurator answers kept verbatim as jsonb; history is an append-only event log | `20260831203500_business_leads.sql` NOT applied — pending in this lane |
-| P-LEAD-03 | Leads | Statuses NEW / CONTACTED / QUALIFIED / QUOTED / WON / LOST | 🟡 | ✅ | ⬜ | ⬜ | 🔓 | this run | All six, asserted identical in SQL and TS. A legacy `closed` row maps to `qualified` rather than `lost`, because `lost` would assert an outcome nobody recorded | `20260831203500_business_leads.sql` NOT applied — pending in this lane |
+| P-LEAD-01 | Leads | Canonical lead storage for machine / mobile / trailer / franchise | 🟢 | ✅ | ✅ | ⬜ | 🔓 | this run | `business_leads` covers all four paths. Existing franchise rows are imported idempotently; `franchise_inquiries` is left intact so the import is never the only copy | `20260831203500_business_leads.sql` NOT applied — pending in this lane |
+| P-LEAD-02 | Leads | Each lead preserves id, source, route, type, model/format, configurator answers, country/city, contact, timestamp, status, assignee, notes, history | 🟢 | ✅ | ✅ | ⬜ | 🔓 | this run | All 15 fields present. Sequence-backed reference (`MCH-2026-00142`); configurator answers kept verbatim as jsonb; history is an append-only event log | `20260831203500_business_leads.sql` NOT applied — pending in this lane |
+| P-LEAD-03 | Leads | Statuses NEW / CONTACTED / QUALIFIED / QUOTED / WON / LOST | 🟢 | ✅ | ✅ | ⬜ | 🔓 | this run | All six, asserted identical in SQL and TS. A legacy `closed` row maps to `qualified` rather than `lost`, because `lost` would assert an outcome nobody recorded | `20260831203500_business_leads.sql` NOT applied — pending in this lane |
 | P-LEAD-04 | Leads | Admin: see all, filter by type/status, open details, see configuration, add notes, update status, audit history | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | this run | `AdminBusinessLeadsSection` — filter by path, humanised configurator answers, inline notes, status moves, expandable history. A settled lead offers no forward move, so reopening is deliberate | Served QA after migration |
-| P-LEAD-05 | Leads | Customer gets submission confirmation | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Verify per route |
+| P-LEAD-05 | Leads | Customer gets submission confirmation | 🟢 | ✅ | ✅ | ⬜ | 🔓 | — | — | Verify per route |
 | P-LEAD-06 | Leads | Admin notified at `info@gellatti.com` via the canonical notification system | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | **UNBLOCKED by owner correction §1–§3.** Subjects must use the §2 taxonomy | After EMAIL-01..06 |
 
 ### Q — Asset manifest (§33, owner correction §§15–18 + the owner's 23-asset render list) · **IMMEDIATE PRIORITY**
@@ -661,6 +661,10 @@ None of the three is applied. Each has a proposed correction and none is urgent 
 touch canonical staging overnight.
 
 ### F-1 · `/work-with-us#lead` is a dead anchor — MINE, shipped in #68 · **P1**
+
+> **CLOSED 2026-09-01** by #81 / #82 / #84 — the owner chose option 2, the real
+> business-leads surface. See **F-1 CLOSED** below for the served evidence. F-2 and F-3
+> below are still open.
 `LanePage.tsx` lines 65, 80 and 157 each render `<Link to="/work-with-us#lead">`, so the
 Machines, Mobile and Trailer routes carry three CTAs apiece pointing at `#lead`.
 **No element anywhere in `src/` defines `id="lead"`.** Served proof: the gateway's only ids
@@ -713,3 +717,72 @@ now makes that failure mode structurally impossible here rather than merely dete
 
 Proposed correction: add `eslint-plugin-react` and enable the single rule repo-wide. Owner
 decision because it is a shared-gate change affecting every lane.
+
+---
+
+## F-1 CLOSED — A REAL ENQUIRY SURFACE BEHIND `/work-with-us#lead` (2026-09-01)
+
+Three PRs, all normal merges, no `--admin`, no force push, no direct push to staging:
+**#81** the intake, **#82** the first alignment fix, **#84** the timer correction.
+Canonical staging is **`1f3ba6e0f93109832fcc92ad6e733654dc4648d1`**, served by
+`dpl_4TTUX6eMaQQCuhCFcmcmcrXHzWH4` with an exact `meta.githubCommitSha` match and
+`aliasError: null`.
+
+Migration `20260831203500_business_leads.sql` applied; the server registered it as
+**`20260901041222`**, read back from the live register. Payout execution and the scheduler
+remain deliberately unapplied.
+
+### No second architecture was invented
+The authority already existed and had **no consumer**: `business_leads`, its append-only
+event log, `gellatti_submit_business_lead_v1` and the admin views were all written, and
+`submitBusinessLead()` was called from nowhere. Only the public intake was missing. Every
+field maps to a column that authority already defines, and a test asserts the submitted
+payload carries nothing outside that set.
+
+### §6 — proven on the canonical alias
+
+| Requirement | Evidence |
+| --- | --- |
+| Machines CTA → `#lead`, form visible | `scrollY 4127`, section at `top: 112`, 7 fields, subject „Maszyny i wyposażenie" |
+| Mobile CTA → `#lead`, form visible | same, subject „Wózki mobilne" |
+| Trailer CTA → `#lead`, form visible | same, subject „Przyczepa Gellatti" |
+| One persisted lead, correct attribution | `TRL-2026-00001` → `trailer` / `/trailer`; `MCH-2026-00002` → `machine` / `/machines`; 1 event each |
+| No duplicate on double-submit | three submit events in one tick → **1 RPC call → 1 row** |
+| Invalid state honest | **0 RPC calls**, both field errors in Polish, no success shown |
+| Server-failure state honest | forced 400 → no confirmation, canonical alert, **nothing persisted (0 rows)**, submit re-enabled |
+
+A signed-out visitor really can submit: `MCH-2026-00002` carries `user_id NULL`, written with
+no auth token in `localStorage`.
+
+### §5 — security proven by attempt, not by reading the catalog
+`anon` reading leads or events, updating, deleting, calling the admin list, or minting a
+reference: every one **permission denied**. A signed-in non-owner sees **0 rows** while 1 row
+exists, so the `select_own` policy is doing the work. A signed-in non-admin calling the admin
+list gets `administrator_required`.
+
+### Two defects found by this QA, not by review
+1. **A client-side navigation does not jump to a fragment**, and the app installs no scroll
+   restoration. Fixed in #82 — then measured again and found still wrong: the first scroll
+   ran before the gateway's images loaded, landing at `y=112` while the section's real
+   position was `y=4127`. A direct full load never showed it. The section now re-aligns until
+   its position stops moving.
+2. **`requestAnimationFrame` does not fire in a hidden document** (`document.hidden: true`,
+   no frame within 600 ms), so #82's loop could not run in a background tab. #84 drives it
+   from a timer, which does fire there.
+
+*Honest limit:* jsdom's rAF ignores document visibility, so swapping the timer back for rAF
+does not turn the tests red. The tests cover the settling; the timer choice rests on the
+measured hidden-document behaviour.
+
+### Left on staging deliberately
+Two clearly-marked QA leads — `TRL-2026-00001` and `MCH-2026-00002`, both
+`…@gellatti.invalid` — kept as visible evidence in the admin view. Safe to delete.
+
+### One owner decision, not guessed
+**No consent field exists anywhere** in the canonical authority — not in `business_leads`,
+not in the live `franchise_inquiries`, not in the Partner application. The form was built to
+the spec rather than inventing legal copy. Whether this surface should carry consent wording
+or a privacy link is an owner decision.
+
+**OWNER QA remains ⬜ on every row.** P-LEAD-04 stays Served ⬜ because the admin UI was not
+exercised, and P-LEAD-06 is untouched because email dispatch is not deployed.
