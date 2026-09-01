@@ -76,11 +76,16 @@ const setValue = (control: HTMLInputElement | HTMLSelectElement, value: string) 
   act(() => control.dispatchEvent(new Event('change', { bubbles: true })));
 };
 
-/** Let the anchor's re-alignment loop run for a few animation frames. */
-const frames = async (count: number) => {
+/**
+ * Let the anchor's re-alignment loop tick.
+ *
+ * The loop is timer-driven rather than rAF-driven precisely so it keeps running
+ * in a hidden document, so the test waits on the clock too.
+ */
+const ticks = async (count: number) => {
   for (let i = 0; i < count; i += 1) {
     await act(async () => {
-      await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+      await new Promise((resolve) => setTimeout(resolve, 120));
     });
   }
 };
@@ -115,13 +120,13 @@ describe('the anchor every lane CTA points at', () => {
 
   it('scrolls itself into view when the URL asks for #lead', async () => {
     mount('/work-with-us#lead');
-    await frames(3);
+    await ticks(3);
     expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
   });
 
   it('does not scroll when the visitor merely opens the gateway', async () => {
     mount('/work-with-us');
-    await frames(3);
+    await ticks(3);
     expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
   });
 
@@ -140,7 +145,7 @@ describe('the anchor every lane CTA points at', () => {
     Element.prototype.getBoundingClientRect = moving;
 
     mount('/work-with-us#lead');
-    await frames(4);
+    await ticks(4);
 
     expect((Element.prototype.scrollIntoView as ReturnType<typeof vi.fn>).mock.calls.length)
       .toBeGreaterThan(1);
@@ -151,10 +156,10 @@ describe('the anchor every lane CTA points at', () => {
       () => ({ top: 120, bottom: 520, left: 0, right: 0, width: 800, height: 400 }) as DOMRect,
     );
     mount('/work-with-us#lead');
-    await frames(10);
+    await ticks(10);
     const settledCalls = (Element.prototype.scrollIntoView as ReturnType<typeof vi.fn>).mock.calls
       .length;
-    await frames(10);
+    await ticks(10);
     // A stable page must not be scrolled again on every frame, forever.
     expect((Element.prototype.scrollIntoView as ReturnType<typeof vi.fn>).mock.calls.length).toBe(
       settledCalls,
