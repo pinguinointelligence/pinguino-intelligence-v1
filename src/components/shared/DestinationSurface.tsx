@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { OfficialProLogo } from '@/components/shared/OfficialProLogo';
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import { SurfaceToneContext } from '@/components/ui/surface';
 import { copy } from '@/copy/en';
@@ -30,7 +29,6 @@ export function DestinationSurface({
   title,
   blurb,
   actions,
-  contextLabel,
   headerActions = <DestinationHomeProSwitch />,
   bare = false,
   children,
@@ -39,7 +37,13 @@ export function DestinationSurface({
   title: string;
   blurb?: string;
   actions?: ReactNode;
-  /** Compact lockup descriptor used by the approved global destination shell. */
+  /**
+   * Retained so no destination page has to change, but it NO LONGER REACHES THE
+   * GLOBAL HEADER: since the parity forward fix the header carries the
+   * hamburger, the official wordmark and HOME | PRO and nothing else. Page
+   * identity lives below the header. Retiring the prop across every caller is a
+   * separate cleanup, not a header change.
+   */
   contextLabel?: string;
   /**
    * Controls for the GLOBAL header row — in practice the HOME | PRO switch.
@@ -72,22 +76,14 @@ export function DestinationSurface({
            stays a single unconditional hand-off. */
         actions={headerActions}
         navigationPosition="trailing"
-        /* GELLATTI V2.1 §5 — the approved destination lockup: wordmark, then
-           `<page> · Gellatti Workspace` at 11 px, the workspace half in ink.
-           No vertical rule and no uppercase tracking: the preview reads it as
-           one sentence, not as two competing labels. */
-        brand={
-          <span className="gellatti-destination-brand flex min-w-0 items-center gap-[18px]">
-            <OfficialProLogo />
-            <span className="hidden min-w-0 items-center gap-2 text-[11px] leading-[17px] text-[var(--g-text-secondary)] sm:flex">
-              <span className="truncate">{contextLabel ?? eyebrow ?? title}</span>
-              <span aria-hidden>·</span>
-              <b className="font-bold whitespace-nowrap text-[var(--g-ink)]">
-                {copy.shell.workspace}
-              </b>
-            </span>
-          </span>
-        }
+        /* GLOBAL HEADER PARITY, FORWARD FIX (owner, 2026-09-01): the global row
+           carries the hamburger, the official wordmark and HOME | PRO — nothing
+           else. The destination lockup that used to sit beside the logo
+           („Sklep · Gellatti Workspace", „Współpraca · Gellatti Workspace") is
+           gone, so no route can grow its own header identity. Page identity
+           belongs BELOW the header, where `PageHeading` and each page's own
+           eyebrow already carry it. No `brand` override: `AppShell` renders the
+           canonical `OfficialProLogo`, exactly as HOME and PRO do. */
       >
         <SurfaceToneContext.Provider value="paper">
           <div className="gellatti-destination min-h-screen bg-paper text-ink">
