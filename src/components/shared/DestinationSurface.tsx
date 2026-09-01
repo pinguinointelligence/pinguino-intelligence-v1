@@ -31,7 +31,7 @@ export function DestinationSurface({
   blurb,
   actions,
   contextLabel,
-  headerActions,
+  headerActions = <DestinationHomeProSwitch />,
   bare = false,
   children,
 }: {
@@ -66,13 +66,12 @@ export function DestinationSurface({
   return (
     <div className="pro-studio-radius-system theme-pro-light">
       <AppShell
-        /* The canonical global header (PR #76) carries hamburger, logo and
-           HOME | PRO at one x on every route. Work With Us consumes it and adds
-           nothing: no workbenchChrome, so no PRO module strip, and no header CSS
-           of its own. */
-        actions={<DestinationHomeProSwitch />}
-        navigationPosition="trailing"
+        /* The canonical global header (#76) carries hamburger, logo and HOME | PRO
+           at one x on every route. A destination CONSUMES that slot (#77) and
+           declares no geometry of its own. The default lives on the prop, so this
+           stays a single unconditional hand-off. */
         actions={headerActions}
+        navigationPosition="trailing"
         /* GELLATTI V2.1 §5 — the approved destination lockup: wordmark, then
            `<page> · Gellatti Workspace` at 11 px, the workspace half in ink.
            No vertical rule and no uppercase tracking: the preview reads it as
