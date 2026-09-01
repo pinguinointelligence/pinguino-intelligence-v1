@@ -416,7 +416,7 @@ export function HomeCreatorPage() {
     <AppShell
       navigationPosition="trailing"
       stickyHeader
-      actions={<HomeProSwitch entitlement={entitlement} activeView="home" />}
+      globalSwitch={<HomeProSwitch entitlement={entitlement} activeView="home" />}
       contentClassName="pb-24"
     >
       <div data-testid="home-creator">

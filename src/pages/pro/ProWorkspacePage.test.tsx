@@ -93,7 +93,12 @@ describe('ProWorkspacePage (S3)', () => {
     const html = renderAt('/pro/settings', 'pro');
     expect(html).toContain(w.title);
     expect(html).toContain(w.tabs.settings);
-    expect(html).not.toMatch(/role="tablist"/);
+    // The MODULE strip is what must not be promoted onto a titled section page.
+    // Since the global header parity work the canonical HOME | PRO switch is also a
+    // tablist and renders on every route by contract, so this asserts the strip by
+    // identity instead of banning the role outright.
+    expect(html).not.toContain('data-testid="pro-global-workbench-chrome"');
+    expect(html).toContain('data-testid="home-pro-switch"');
     // Gate copy must be absent for a Pro user.
     expect(html).not.toContain(w.gate.message);
   });

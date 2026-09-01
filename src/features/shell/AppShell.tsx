@@ -33,6 +33,7 @@ import { APP_HEADER_ROW, APP_SHELL_MAX_WIDTH_CLASS } from './shellGeometry';
  */
 export function AppShell({
   actions,
+  globalSwitch,
   brand,
   workbenchChrome,
   children,
@@ -43,6 +44,19 @@ export function AppShell({
   stickyHeader = false,
 }: {
   actions?: ReactNode;
+  /**
+   * THE canonical HOME | PRO switch, and nothing else.
+   *
+   * FROZEN GLOBAL CONTRACT (owner, 2026-09-02): every global product surface
+   * renders hamburger + official wordmark + HOME | PRO. The switch had been
+   * arriving through `actions`, which the workbench branch places inline and the
+   * mobile branch hides — so PRO rendered none at all. It now has its own slot,
+   * closing the work column on EVERY route including the workbench, so it cannot
+   * disappear on one surface again.
+   *
+   * `actions` stays what it always was: PAGE controls.
+   */
+  globalSwitch?: ReactNode;
   /** Optional page-owned lockup. The shared Gellatti wordmark is the default. */
   brand?: ReactNode;
   /** Route-controlled intelligence status and module tabs for the Pro workbench. */
@@ -117,15 +131,27 @@ export function AppShell({
           >
             {brand ?? <OfficialProLogo />}
           </Link>
-          {viewportLock ? actions : null}
-          {/* Non-workbench pages put their actions at the TRAILING EDGE of this same
-              work column — never at the viewport edge — so the HOME|PRO switch keeps
-              one global x whether or not the right display column is occupied. The
-              workbench keeps its own accepted inline placement above, untouched. */}
-          {!viewportLock ? (
-            <div className="ml-auto hidden xl:flex xl:items-center xl:gap-3">{actions}</div>
-          ) : null}
+          {/* The workbench's page actions carry `flex-1`, which used to consume the
+              header row's free space and drag the switch 135 px off the column edge.
+              Containing them here keeps that growth inside their own box, so the
+              switch still closes the column. Their internal layout is unchanged. */}
+          {viewportLock ? <div className="flex min-w-0 items-center">{actions}</div> : null}
+          {/* The TRAILING EDGE of the work column — never the viewport edge — so the
+              switch keeps one global x whether or not the right display column is
+              occupied. Rendered on EVERY route, workbench included: the workbench
+              keeps its own accepted inline `actions` placement above, and the switch
+              still closes the column beside them. */}
+          {/* The review overlay is an OWNER OPT-IN (`?owner-review=1`), not a dev-only
+              control, so it can render in production. Placed before the trailing
+              group it can no longer sit between the switch and the column edge —
+              measured at 167 px of displacement when it rendered after it. */}
           <DesignReviewOverlay />
+          <div className="ml-auto hidden xl:flex xl:items-center xl:gap-3">
+            {/* Page actions first, the switch LAST: HOME | PRO closes the work
+                column, so nothing may sit between it and the column edge. */}
+            {!viewportLock ? actions : null}
+            {globalSwitch}
+          </div>
         </div>
         {viewportLock ? workbenchChrome : null}
         {/* min-w-0 + wrap: page actions may shrink/wrap on narrow screens — the header must
@@ -133,13 +159,14 @@ export function AppShell({
         <div
           className={cn(
             'flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3',
-            viewportLock && 'hidden',
-            /* Above xl the actions live in the work column (above), so this trailing
-               group must not render them a second time. */
-            !viewportLock && 'xl:hidden',
+            /* Above xl everything here lives in the work column, so this trailing
+               group must not render it a second time. */
+            'xl:hidden',
           )}
         >
+          {/* Same order below xl: the switch closes the row. */}
           {!viewportLock ? actions : null}
+          {globalSwitch}
           {/* The plan badge is GONE: the global header shows the real HomeProSwitch for
               every audience (owner override 2026-09-01), and rendering both would be two
               controls saying the same thing. */}

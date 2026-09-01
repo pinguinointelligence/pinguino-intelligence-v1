@@ -152,9 +152,19 @@ describe('one global menu and four local contexts', () => {
     expect(page).toContain(
       "import { HomeProSwitch } from '@/features/home-creator/ui/HomeProSwitch'",
     );
-    expect(page).toContain('<HomeProSwitch entitlement={entitlement} activeView="pro" />');
-    // ...and it sits on the WORK ↔ DISPLAY boundary: the trailing edge of column 1.
-    expect(page).toContain('className="ml-auto flex shrink-0 items-center"');
+    // OWNER, 2026-09-02: the switch moved OUT of the workbar and into the shell's
+    // canonical `globalSwitch` slot. In the workbar it was conditional on
+    // `workbench` — true only for a signed-in PRO on a workbench tab — so a
+    // signed-out visitor saw no switch at all on /pro. Same component, same
+    // `activeView`, now unconditional. The workbar must not render a second copy.
+    expect(page).toContain(
+      'globalSwitch={<HomeProSwitch entitlement={proEntitlement} activeView="pro" />}',
+    );
+    expect(page).not.toContain('<HomeProSwitch entitlement={entitlement} activeView="pro" />');
+    // The trailing edge of column 1 is now owned by the shell, for every route.
+    expect(read('features', 'shell', 'AppShell.tsx')).toContain(
+      'className="ml-auto hidden xl:flex xl:items-center xl:gap-3"',
+    );
     for (const source of [workbar, ingredient, topping]) {
       expect(source).toContain("iconButtonClasses('xs')");
       expect(source).toContain('•••');

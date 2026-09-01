@@ -186,12 +186,18 @@ describe('shop C3 · structure below the offer', () => {
 describe('shop C3 · the Shop declares no header of its own', () => {
   it('consumes the shared header slot instead of building one', () => {
     const page = read('pages', 'destinations', 'GlobalDestinationPages.tsx');
-    // HOME | PRO reaches the global row through the shell's own action slot.
-    expect(page).toContain('headerActions={<HomeProSwitch');
+    // HOME | PRO reaches the global row through the shell's own slot, and the
+    // Shop declares NO state for it: Sklep is neither HOME nor PRO, so it takes
+    // `DestinationSurface`'s neutral default rather than marking HOME active.
+    expect(page).not.toContain('headerActions=');
+    expect(page).not.toMatch(/<HomeProSwitch/);
+    expect(read('components', 'shared', 'DestinationSurface.tsx')).toContain(
+      'headerActions = <DestinationHomeProSwitch />',
+    );
     // The basket is a Shop utility BELOW that row, never a header control.
     expect(page).toContain('shop-cart-link');
     const surface = read('components', 'shared', 'DestinationSurface.tsx');
-    expect(surface).toContain('actions={headerActions}');
+    expect(surface).toContain('globalSwitch={headerActions}');
     // No geometry is declared by the Shop: those files belong to the header
     // lane (#76) and this feature must never redeclare them.
     for (const source of [page, surface, read('features', 'shop', 'ShopCatalog.tsx')]) {

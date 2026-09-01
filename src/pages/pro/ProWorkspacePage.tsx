@@ -125,7 +125,6 @@ function DevPersonaSwitch({ persona }: { persona: ProCorePersona }) {
 }
 
 function ProTopActions({ persona }: { persona: ProCorePersona }) {
-  const entitlement = useHomeEntitlement();
   const unresolvedRequiredCount = useIngredientTableUxStore(
     (state) => Object.keys(state.unresolvedRequiredByLineId).length,
   );
@@ -140,15 +139,12 @@ function ProTopActions({ persona }: { persona: ProCorePersona }) {
         </span>
       ) : null}
       <DevPersonaSwitch persona={persona} />
-      {/* OWNER FROZEN PRO VISUAL, 2026-09-01. The workbench no longer carries its own
-          plan pill: the mode is stated by the CANONICAL `HomeProSwitch` that the global
-          header parity lane made global. Two controls saying "PRO" was one too many.
-          `ml-auto` puts it on the WORK ↔ DISPLAY column boundary — the trailing edge of
-          column 1 — which is the one x the owner froze for every route. This CONSUMES
-          the shared component; it does not fork it. */}
-      <span className="ml-auto flex shrink-0 items-center">
-        <HomeProSwitch entitlement={entitlement} activeView="pro" />
-      </span>
+      {/* The switch used to be rendered HERE, which made it conditional on
+          `workbench` — true only for a signed-in PRO on a workbench tab. A
+          signed-out visitor therefore saw no switch at all on /pro, breaking the
+          frozen contract. It now lives in the shell's `globalSwitch` slot, which
+          renders on every route unconditionally, so the workbar must not render a
+          second copy. */}
     </div>
   );
 }
@@ -339,6 +335,9 @@ function SectionPanel({ tab, persona }: { tab: TabId; persona: ProCorePersona })
 }
 
 export function ProWorkspacePage() {
+  /* Unconditional, above every early return: the canonical switch renders on
+     /pro for EVERY audience, so its entitlement must not sit behind a guard. */
+  const proEntitlement = useHomeEntitlement();
   const [recalcOpen, setRecalcOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -488,6 +487,13 @@ export function ProWorkspacePage() {
         viewportLock={workbench}
         maxWidthClass="max-w-[1776px]"
         brand={<OfficialProLogo />}
+        /* FROZEN GLOBAL CONTRACT (owner, 2026-09-02): PRO renders the SAME
+           canonical switch as every other surface — no PRO-specific control, no
+           plan badge, no private lockup. `activeView="pro"` is the only
+           difference: PRO presents as the current view, HOME as the other one.
+           It closes the work column beside `ProTopActions`; the module strip
+           keeps the right display column untouched. */
+        globalSwitch={<HomeProSwitch entitlement={proEntitlement} activeView="pro" />}
         workbenchChrome={
           workbench ? (
             <ProWorkbenchHeaderChrome activeTab={activeCockpitTab} onTabChange={changeCockpitTab} />
