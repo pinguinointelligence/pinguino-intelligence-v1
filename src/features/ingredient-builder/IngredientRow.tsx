@@ -563,7 +563,7 @@ function RecipeRow({
            which also lifts the role-info control off its old 23 x 36 box: on a
            phone that was under the 44 px touch minimum. Same actions, same
            order, same handlers — geometry only. */
-        className="flex flex-wrap items-center justify-between gap-3 bg-transparent"
+        className="flex max-w-[384px] flex-wrap items-center justify-between gap-3 bg-transparent"
         data-testid="article-panel-quick-actions"
         data-control-height="44"
       >

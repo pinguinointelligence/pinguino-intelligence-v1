@@ -132,7 +132,11 @@ describe('compact ingredient article panel', () => {
     // groups of 44 px pills sitting on the sheet ground, not a 36 px segmented
     // strip in a bordered ivory card. 44 px is also the touch minimum, which
     // the old 23 x 36 role-info cell missed on a phone.
-    expect(quickActions?.className).toContain('flex flex-wrap items-center justify-between');
+    // Capped so the two groups keep the authority's relationship at every
+    // width: it pushes them apart across a 390 px sheet, and without a cap the
+    // wider desktop popover turned that into a void down the middle.
+    expect(quickActions?.className).toContain('flex max-w-[384px] flex-wrap');
+    expect(quickActions?.className).toContain('justify-between');
     expect(quickActions?.className).not.toContain('border-ink/10');
     expect(quickActions?.getAttribute('data-control-height')).toBe('44');
     expect(
