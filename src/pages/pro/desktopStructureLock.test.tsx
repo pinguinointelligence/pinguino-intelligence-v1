@@ -17,7 +17,9 @@ describe('responsive Pro workbench structure', () => {
 
     expect(page).toContain('maxWidthClass="max-w-[1776px]"');
     expect(page).toContain('max-w-[1776px]');
-    expect(page).toContain('data-testid="pro-plan-indicator"');
+    // The mode mark is the canonical switch (owner frozen 2026-09-01), pinned to the
+    // trailing edge of the WORK column rather than a page-private badge.
+    expect(page).toContain('<HomeProSwitch entitlement={entitlement} activeView="pro" />');
     expect(page).toContain('xl:w-[calc(100%-var(--pro-page-gutter))]');
     // V2.1 §8: the strip is anchored by the ONE shared display-column recipe.
     expect(page).toContain('DESKTOP_TAB_STRIP');

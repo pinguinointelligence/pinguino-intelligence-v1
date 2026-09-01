@@ -1357,12 +1357,17 @@ export function IngredientRow({
         mode === 'production'
           ? cn(
               'border-b border-ink/[0.075] px-[var(--pro-mobile-gutter)] py-2 lg:px-3 lg:py-1.5',
-              productionActions?.settled ? 'bg-[var(--g-ivory)]/35' : 'transition-colors hover:bg-[var(--g-ivory)]',
+              productionActions?.settled
+                ? 'bg-[var(--g-ivory)]/35'
+                : 'transition-colors hover:bg-[var(--g-ivory)]',
             )
           : // V2.1: the row's own 54 px grid owns the height, so the shell adds no
             // vertical padding on desktop — that is what makes the served row
             // exactly 54 px instead of 54 + 12.
-            'border-b border-ink/[0.075] px-[var(--pro-mobile-gutter)] py-1 transition-colors hover:bg-[var(--g-ivory)] lg:px-3 lg:py-0 lg:pr-2.5',
+            // OWNER FROZEN PRO VISUAL, 2026-09-01: the ACTIVE row wears the same warm
+            // surface as hover, so a row reached by keyboard or touch reads as active
+            // too — `focus-within` is presentation only and introduces no state.
+            'border-b border-ink/[0.075] px-[var(--pro-mobile-gutter)] py-1 transition-colors hover:bg-[var(--g-ivory)] focus-within:bg-[var(--g-ivory)] lg:px-3 lg:py-0 lg:pr-2.5',
         mode === 'recipe' &&
           customerRoleFor(item.lock_type, meta) === 'main' &&
           'border-gold/20 bg-education-ivory/55 hover:bg-education-ivory/75',

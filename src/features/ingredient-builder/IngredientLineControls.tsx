@@ -306,15 +306,6 @@ export function MobileIngredientSheet({
                  mobile architecture the owner locked. ─────────────────────── */}
           <div className="sticky top-0 z-10 border-b border-ink/[0.08] bg-white px-4 py-3">
             <div className="flex min-w-0 items-center justify-between gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="pro-focus-ring -ml-2 inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-2 text-[11px] font-semibold text-[var(--g-ink)]"
-                data-testid={`ingredient-sheet-back-${item.id}`}
-              >
-                <span aria-hidden>←</span>
-                <span>Wróć</span>
-              </button>
               <div className="flex min-w-0 flex-1 items-center gap-2.5">
                 <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[var(--g-ivory-deep)] text-stone-600">
                   <IngredientCategoryIcon
@@ -336,15 +327,31 @@ export function MobileIngredientSheet({
                   ) : null}
                 </div>
               </div>
+              {/* OWNER FROZEN PRO VISUAL, 2026-09-01. `Wróć` and `×` were two controls
+                  calling the same `onClose`; the frozen sheet keeps ONE, and it reads as
+                  a RETURN rather than a dismissal — the sheet goes back to the list, it
+                  does not discard anything. The removed button's test id rides along so
+                  nothing that targeted either control has to move. */}
               <button
                 type="button"
                 onClick={onClose}
                 aria-label="Zamknij edycję składnika"
+                data-testid={`ingredient-sheet-back-${item.id}`}
                 className={iconButtonClasses('sm')}
               >
-                <span aria-hidden className="text-base leading-none">
-                  ×
-                </span>
+                <svg
+                  aria-hidden
+                  width="17"
+                  height="17"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M19 12H5M11 18l-6-6 6-6" />
+                </svg>
               </button>
             </div>
           </div>
@@ -426,7 +433,7 @@ export function MobileIngredientSheet({
                 type="button"
                 onClick={onClose}
                 data-testid={`row-mobile-done-${item.id}`}
-                className="pro-focus-ring min-h-12 w-full rounded-xl bg-ink px-4 text-sm font-semibold text-white"
+                className="pro-focus-ring min-h-12 w-full rounded-full bg-[var(--g-score-green)] px-4 text-sm font-semibold text-white"
               >
                 Gotowe
               </button>

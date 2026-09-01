@@ -52,6 +52,8 @@ import type { ProCorePersona } from '@/features/pro-core/proCoreCapabilities';
 import type { CockpitTab, ProContextTab } from '@/features/pro-workbench/RecipeProfilePanel';
 import type { LabelWorkspaceView } from '@/features/master-label/LabelWorkspace';
 import { DESKTOP_TAB_STRIP } from '@/features/shell/desktopTabAnchorContract';
+import { HomeProSwitch } from '@/features/home-creator/ui/HomeProSwitch';
+import { useHomeEntitlement } from '@/features/home-creator/useHomeEntitlement';
 import { WorkbenchModuleTabs } from '@/features/pro-workbench/WorkbenchModuleTabs';
 import { ReviewBadge } from '@/features/design-review/ReviewBadge';
 import { OfficialProLogo } from '@/components/shared/OfficialProLogo';
@@ -123,6 +125,7 @@ function DevPersonaSwitch({ persona }: { persona: ProCorePersona }) {
 }
 
 function ProTopActions({ persona }: { persona: ProCorePersona }) {
+  const entitlement = useHomeEntitlement();
   const unresolvedRequiredCount = useIngredientTableUxStore(
     (state) => Object.keys(state.unresolvedRequiredByLineId).length,
   );
@@ -137,13 +140,14 @@ function ProTopActions({ persona }: { persona: ProCorePersona }) {
         </span>
       ) : null}
       <DevPersonaSwitch persona={persona} />
-      {/* GELLATTI V2.1: the workbench plan mark is the approved GRAPHITE pill —
-          the destination pages carry the quiet white one. */}
-      <span
-        className="inline-flex h-6 items-center rounded-full bg-[var(--g-graphite)] px-2.5 text-[9px] font-bold tracking-[0.08em] text-white"
-        data-testid="pro-plan-indicator"
-      >
-        PRO
+      {/* OWNER FROZEN PRO VISUAL, 2026-09-01. The workbench no longer carries its own
+          plan pill: the mode is stated by the CANONICAL `HomeProSwitch` that the global
+          header parity lane made global. Two controls saying "PRO" was one too many.
+          `ml-auto` puts it on the WORK ↔ DISPLAY column boundary — the trailing edge of
+          column 1 — which is the one x the owner froze for every route. This CONSUMES
+          the shared component; it does not fork it. */}
+      <span className="ml-auto flex shrink-0 items-center">
+        <HomeProSwitch entitlement={entitlement} activeView="pro" />
       </span>
     </div>
   );
