@@ -21,6 +21,8 @@ vi.mock('@/services/businessLeads', () => ({
 
 const { LeadEnquirySection } = await import('./LeadEnquirySection');
 
+const originalRect = Element.prototype.getBoundingClientRect;
+
 let host: HTMLDivElement;
 let root: Root;
 beforeEach(() => {
@@ -35,6 +37,9 @@ beforeEach(() => {
 afterEach(() => {
   act(() => root.unmount());
   host.remove();
+  // Two tests stub layout on the PROTOTYPE; leaving that in place would quietly
+  // reshape every test that runs after them.
+  Element.prototype.getBoundingClientRect = originalRect;
 });
 
 const mount = (entry = '/work-with-us') => {
@@ -71,6 +76,15 @@ const setValue = (control: HTMLInputElement | HTMLSelectElement, value: string) 
   act(() => control.dispatchEvent(new Event('change', { bubbles: true })));
 };
 
+/** Let the anchor's re-alignment loop run for a few animation frames. */
+const frames = async (count: number) => {
+  for (let i = 0; i < count; i += 1) {
+    await act(async () => {
+      await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+    });
+  }
+};
+
 const submit = async () => {
   const form = host.querySelector('form')!;
   await act(async () => {
@@ -99,14 +113,52 @@ describe('the anchor every lane CTA points at', () => {
     }
   });
 
-  it('scrolls itself into view when the URL asks for #lead', () => {
+  it('scrolls itself into view when the URL asks for #lead', async () => {
     mount('/work-with-us#lead');
+    await frames(3);
     expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
   });
 
-  it('does not scroll when the visitor merely opens the gateway', () => {
+  it('does not scroll when the visitor merely opens the gateway', async () => {
     mount('/work-with-us');
+    await frames(3);
     expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it('re-aligns while the images above it are still pushing it down', async () => {
+    /**
+     * Measured on staging: arriving from /machines scrolled to y=112 while the
+     * section's real position was y=4127, because the gateway's images had not
+     * loaded when the first scroll ran. A single scroll leaves the visitor at
+     * the top of the page — the dead CTA, one step further along.
+     */
+    let top = 100;
+    const moving = vi.fn(() => {
+      top += 500; // the section keeps sliding down as content loads above it
+      return { top, bottom: top + 400, left: 0, right: 0, width: 800, height: 400 } as DOMRect;
+    });
+    Element.prototype.getBoundingClientRect = moving;
+
+    mount('/work-with-us#lead');
+    await frames(4);
+
+    expect((Element.prototype.scrollIntoView as ReturnType<typeof vi.fn>).mock.calls.length)
+      .toBeGreaterThan(1);
+  });
+
+  it('stops re-aligning once the section holds still', async () => {
+    Element.prototype.getBoundingClientRect = vi.fn(
+      () => ({ top: 120, bottom: 520, left: 0, right: 0, width: 800, height: 400 }) as DOMRect,
+    );
+    mount('/work-with-us#lead');
+    await frames(10);
+    const settledCalls = (Element.prototype.scrollIntoView as ReturnType<typeof vi.fn>).mock.calls
+      .length;
+    await frames(10);
+    // A stable page must not be scrolled again on every frame, forever.
+    expect((Element.prototype.scrollIntoView as ReturnType<typeof vi.fn>).mock.calls.length).toBe(
+      settledCalls,
+    );
   });
 });
 

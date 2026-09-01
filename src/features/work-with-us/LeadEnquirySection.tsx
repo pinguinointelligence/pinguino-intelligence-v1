@@ -79,7 +79,45 @@ export function LeadEnquirySection() {
   const { hash } = useLocation();
   useEffect(() => {
     if (hash !== '#lead') return;
-    anchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    /**
+     * ONE SCROLL IS NOT ENOUGH on a client-side navigation.
+     *
+     * Measured on staging: arriving from /machines landed at y=112 while the
+     * section's real position was y=4127. At mount the gateway's images above
+     * this section have not loaded, so the document is short and the section is
+     * near the top; the scroll succeeds, then the images arrive and push it
+     *4000 px down, leaving the visitor stranded at the top — the dead CTA again,
+     * one step further along. A direct full page load did not show this, because
+     * the document was already laid out.
+     *
+     * So re-align until the section's ABSOLUTE position stops moving. Bounded by
+     * a frame budget, because a page that never settles must not scroll forever.
+     */
+    let settled = 0;
+    let budget = 180; // ~3 s at 60 fps, then leave the page alone
+    let previousTop = Number.NaN;
+    let frame = 0;
+
+    const align = () => {
+      const node = anchorRef.current;
+      if (node === null) return;
+      const top = node.getBoundingClientRect().top + window.scrollY;
+      if (top !== previousTop) {
+        previousTop = top;
+        settled = 0;
+        // Instant, not smooth: this is an arrival, and animating a 4000 px
+        // correction on every reflow would read as the page fighting the reader.
+        node.scrollIntoView({ block: 'start' });
+      } else {
+        settled += 1;
+      }
+      budget -= 1;
+      if (settled < 3 && budget > 0) frame = requestAnimationFrame(align);
+    };
+
+    frame = requestAnimationFrame(align);
+    return () => cancelAnimationFrame(frame);
   }, [hash]);
 
   const validate = (): Record<string, string> => {
