@@ -50,18 +50,23 @@ first apply made "#7/#8" ambiguous.
 > My first report gave `20260831142312` for the second row. That was wrong — the register says
 > `20260831141738`. Confirmed by querying `supabase_migrations.schema_migrations` directly.
 
-### 1.2 PENDING — three files, exact names
+### 1.2 PENDING — two files, exact names
 
-`20260831202000` has moved to the applied side, so **three remain**: payout execution, business leads, and the scheduler.
-
-| Repo filename | Purpose | Depends on |
-| --- | --- | --- |
+`20260831202000` and now `20260831203500` have moved to the applied side, so **two remain**:
+payout execution and the scheduler.
 
 | Repo filename | Purpose | Depends on |
 | --- | --- | --- |
 | `20260831202500_payout_execution.sql` | §14 execution layer + live kill switch | `0018`, `0019` |
-| `20260831203500_business_leads.sql` | §32 lead operations for all four paths | `franchise_inquiries` (read only) |
 | `20260831203000_partner_scheduling.sql` | pg_cron invocation + `partner_job_runs` | **LAST — owner-gated** |
+
+`20260831203500_business_leads.sql` was applied on 2026-09-01 and registered by the server as
+**`20260901041222`** (`business_leads`), read back from the live register rather than predicted.
+It was unblocked by the owner's F-1 instruction: the three lane CTAs pointed at an enquiry surface
+that did not exist, and this migration is the authority behind it. Dependencies were verified
+present BEFORE applying — `touch_updated_at`, `gellatti_admin_has_permission_v1`,
+`gellatti_write_audit_v1` and `franchise_inquiries` (1 row, which the import copied in).
+Payout execution and the scheduler remain deliberately unapplied.
 
 **`20260831203000_partner_scheduling.sql` is deliberately last** and must not be applied until the
 Gold and payout functions are proven manually.

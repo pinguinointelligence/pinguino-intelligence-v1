@@ -10,6 +10,7 @@ import { buttonClasses } from '@/components/ui/buttonStyles';
 import { cn } from '@/lib/cn';
 import { copy } from '@/copy/en';
 import { cooperationCopy } from '@/copy/cooperation';
+import { LeadEnquirySection } from '@/features/work-with-us/LeadEnquirySection';
 import { PartnerApplicationPanel } from '@/features/partner-application/PartnerApplicationPanel';
 import { OwnerAssetImage } from '@/features/work-with-us/OwnerAssetImage';
 import type { OwnerAssetId } from '@/features/work-with-us/ownerAssets';
@@ -315,6 +316,11 @@ export function WorkWithUsPage() {
           ))}
         </div>
       </DestinationSection>
+
+      {/* The destination every lane CTA points at. Before this section existed,
+          `/work-with-us#lead` resolved to nothing and the buttons landed on the
+          top of this page with no way to ask anything. */}
+      <LeadEnquirySection />
     </DestinationSurface>
   );
 }
