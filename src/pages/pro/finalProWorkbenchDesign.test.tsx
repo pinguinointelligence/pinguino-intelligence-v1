@@ -62,7 +62,14 @@ describe('final Pro visual system', () => {
     const workbar = read('features', 'pro-core', 'ProWorkbar.tsx');
     expect(editor).toContain('data-testid="ingredient-action-slot"');
     expect(scoreDock).toContain('data-testid="pro-workbar-recalc"');
-    expect(scoreDock).toMatch(/bg-\[#f58a07\][^"']*text-left text-white/);
+    // OWNER FROZEN PRO VISUAL: the recalculate CTA now rests in graphite like
+    // every other primary action — which is what this test's own name asks for.
+    // Orange stopped being a fill and became the attention dot on the cue that
+    // stands BESIDE the button: orange states the condition, graphite offers
+    // the action. Asserted as a pair so the cue cannot be dropped silently.
+    expect(scoreDock).toMatch(/bg-\[var\(--g-graphite\)\][^"']*text-white/);
+    expect(scoreDock).toContain('data-testid="pro-workbar-recalc-cue"');
+    expect(scoreDock).toMatch(/rounded-full bg-\[#f58a07\]/);
     expect(workbar).toMatch(/bg-ink[^"']*text-white/);
     const tokens = read('styles', 'tokens.css');
     expect(tokens).toContain('--color-nonproduction-pink');
@@ -344,7 +351,10 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     expect(axes).toContain('role="radio"');
     expect(axes).toContain('aria-checked={position === detent}');
     expect(axes).toContain("event.key === 'ArrowRight'");
-    expect(axes).toContain("'border-[#f58a07] bg-[#f58a07] text-white'");
+    // The chosen position is now an orange THUMB on the rail; the numeral it
+    // used to contain became the readout beside the track (see
+    // directionDetentContrast.test.ts for the ratios that motivated the move).
+    expect(axes).toContain('size-4 rounded-full shadow-[0_0_0_3px_#fff]');
     expect(axes).not.toContain('Po zmianie:');
     expect(axes).not.toContain('Legenda kierunku');
     for (const label of ['Wartości odżywcze i koszt', 'Na 100 g', 'Węglowodany', 'Cała partia']) {

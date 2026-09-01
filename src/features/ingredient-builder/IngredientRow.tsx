@@ -158,7 +158,7 @@ function ArticleActionButton({
         onClick={onClick}
         data-article-action="true"
         className={cn(
-          'pro-focus-ring grid h-9 w-full min-w-0 place-items-center rounded-[8px] border bg-white p-0 text-stone-600 transition-colors',
+          'pro-focus-ring grid size-11 shrink-0 place-items-center rounded-full border bg-white/72 p-0 text-stone-600 transition-colors',
           'border-ink/10 hover:border-ink/25 hover:bg-[var(--g-ivory)] hover:text-ink disabled:cursor-not-allowed disabled:border-ink/[0.06] disabled:bg-[var(--g-ivory)]/70 disabled:text-stone-300',
           selected === true && '!border-gold/25 !bg-education-ivory !text-gold',
         )}
@@ -557,10 +557,17 @@ function RecipeRow({
   const articlePanelContent = (
     <div className="text-ink" data-testid="article-panel-content">
       <div
-        className="grid grid-cols-[36px_36px_80px_repeat(3,minmax(0,1fr))] gap-1.5 rounded-[10px] border border-ink/10 bg-[var(--g-ivory)]/55 p-1.5"
+        /* OWNER FROZEN PRO VISUAL: the quick actions are a FRAMELESS panel —
+           the icons sit straight on the sheet ground in two groups, not in a
+           bordered ivory card. Every button is the authority's 44 px pill,
+           which also lifts the role-info control off its old 23 x 36 box: on a
+           phone that was under the 44 px touch minimum. Same actions, same
+           order, same handlers — geometry only. */
+        className="flex max-w-[384px] flex-wrap items-center justify-between gap-3 bg-transparent"
         data-testid="article-panel-quick-actions"
-        data-control-height="36"
+        data-control-height="44"
       >
+        <span className="flex min-w-0 items-center gap-2.5">
         <ArticleActionButton
           label="Przesuń wyżej"
           icon="up"
@@ -574,9 +581,13 @@ function RecipeRow({
           onClick={() => actions.moveDown?.(item.id)}
         />
         <div
-          className="grid h-9 min-w-0 grid-cols-[minmax(0,1fr)_24px] overflow-hidden rounded-[8px] border border-gold/22 bg-white"
+          /* The paired control has to be sized, not just capped: in a flex row
+             `min-w-0` let the crown collapse to 14 px — a real target squeezed
+             out by its own sibling. 92 px gives the crown 64 px beside the
+             28 px role-info segment, both at the 44 px touch height. */
+          className="grid h-11 w-[92px] shrink-0 grid-cols-[minmax(0,1fr)_28px] overflow-hidden rounded-full border border-gold/22 bg-white"
           data-testid="article-panel-role-control"
-          data-control-height="36"
+          data-control-height="44"
         >
           <HoverPreview
             text={isMain ? 'Usuń rolę główną' : mainUnavailableReason || 'Ustaw jako główny'}
@@ -605,7 +616,7 @@ function RecipeRow({
           <HoverPreview
             text="Rola składnika. Możesz oznaczyć składnik jako główny."
             maxWidthPx={260}
-            className="grid h-9 shrink-0 place-items-center border-l border-gold/16 bg-education-ivory/35 text-[9px] font-semibold text-stone-500 transition-colors hover:bg-education-ivory/70"
+            className="grid h-11 shrink-0 place-items-center border-l border-gold/16 bg-education-ivory/35 text-[9px] font-semibold text-stone-500 transition-colors hover:bg-education-ivory/70"
           >
             <button
               type="button"
@@ -622,6 +633,8 @@ function RecipeRow({
             </button>
           </HoverPreview>
         </div>
+        </span>
+        <span className="flex min-w-0 items-center gap-2.5">
         <ArticleActionButton
           label={meta.unavailable ? 'Oznacz jako dostępny' : 'Oznacz jako niedostępny'}
           icon="availability"
@@ -634,6 +647,7 @@ function RecipeRow({
           icon="info"
           onClick={() => setIngredientModalView('data')}
         />
+        </span>
       </div>
 
       {role === 'addition' ? (

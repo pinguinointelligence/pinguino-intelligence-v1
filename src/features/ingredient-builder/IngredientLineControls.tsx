@@ -48,7 +48,7 @@ export function MainRoleBadge({
 }) {
   const className =
     variant === 'article'
-      ? 'inline-flex h-9 w-full min-w-0 shrink-0 items-center justify-center rounded-none border-0 bg-education-ivory/75 px-1.5 text-[10px] font-semibold leading-none text-gold transition-colors hover:bg-education-ivory'
+      ? 'inline-flex h-11 w-full min-w-0 shrink-0 items-center justify-center rounded-none border-0 bg-education-ivory/75 px-2 text-[10px] font-semibold leading-none text-gold transition-colors hover:bg-education-ivory'
       : 'inline-flex h-6 w-[57px] shrink-0 items-center justify-center rounded-lg border border-gold/22 bg-education-ivory px-2 text-[11px] font-semibold text-gold';
   return onClick ? (
     <button
@@ -110,7 +110,7 @@ export function MainRoleTrigger({
       className={cn(
         'pro-focus-ring inline-flex shrink-0 items-center justify-center text-gold transition-colors disabled:cursor-not-allowed disabled:text-stone-300',
         variant === 'article'
-          ? 'h-9 w-full min-w-0 rounded-none border-0 bg-white hover:bg-education-ivory/70'
+          ? 'h-11 w-full min-w-0 rounded-none border-0 bg-white hover:bg-education-ivory/70'
           : "relative h-6 w-[57px] rounded-lg border border-gold/28 bg-white after:absolute after:-inset-y-2.5 after:inset-x-0 after:content-[''] hover:border-gold/45 hover:bg-education-ivory disabled:border-ink/12 disabled:bg-[var(--g-ivory)] disabled:text-stone-400",
       )}
     >

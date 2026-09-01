@@ -136,6 +136,27 @@ export function ProWorkbar({
     createNewDraft();
   };
 
+  const statusNode = (
+    <span
+      className={cn(
+        'min-w-0 truncate text-xs',
+        variant === 'panel'
+          ? 'flex-none text-right'
+          : 'ml-auto min-w-[7rem] flex-1 text-right xl:max-w-48',
+        statusKey === 'error'
+          ? 'text-status-error'
+          : statusKey === 'dirty' || statusKey === 'newUnsaved'
+            ? 'text-status-risky'
+            : 'text-stone-500',
+      )}
+      data-testid="pro-workbar-status"
+      data-workbar-status-placement={variant === 'panel' ? 'band-status' : 'right-aligned'}
+    >
+      <span aria-hidden>● </span>
+      {w.status[statusKey]}
+    </span>
+  );
+
   return (
     <section
       aria-label="Gellatti Pro — nazwa i zapis receptury"
@@ -143,10 +164,26 @@ export function ProWorkbar({
       data-workbar-variant={variant}
       className={cn(
         variant === 'panel'
-          ? 'rounded-[14px] border border-ink/10 bg-white p-2.5 shadow-pro-e0'
+          ? /* OWNER FROZEN PRO VISUAL: inside the display column the recipe bar
+               is a BAND like everything else — a hairline and whitespace, not a
+               fifth white card stacked on the column ground. The docked
+               variant below is a real floating bar and keeps its surface. */
+            'border-t border-[var(--g-line)] pt-3'
           : 'rounded-t-[22px] border border-ink/10 bg-white/97 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-pro-e2 backdrop-blur-xl lg:rounded-none lg:border-0 lg:bg-transparent lg:px-0 lg:shadow-none lg:backdrop-blur-none 2xl:!border-0 2xl:py-0 2xl:pt-px 2xl:!shadow-none',
       )}
     >
+      {variant === 'panel' ? (
+        /* OWNER FROZEN PRO VISUAL: RECEPTURA is a band, so it opens with the
+           same eyebrow + hairline as Wynik, Ustawienia and Wiedza, and the
+           save status rides in that header instead of trailing the buttons. */
+        <div className="mb-[13px] flex items-center gap-2.5">
+          <h3 className="shrink-0 text-[10px] leading-[14px] font-semibold tracking-[0.16em] text-[var(--g-text-muted)] uppercase">
+            Receptura
+          </h3>
+          <span aria-hidden className="h-px flex-1 bg-[var(--g-line)]" />
+          {statusNode}
+        </div>
+      ) : null}
       <div
         className={cn(
           'grid min-w-0 gap-2',
@@ -168,10 +205,16 @@ export function ProWorkbar({
             onClick={requestNewDraft}
             data-testid="pro-workbar-new-recipe"
             data-workbar-action-size="primary"
-            data-workbar-action-width={variant === 'panel' ? 'equal' : 'content'}
+            data-workbar-action-width="content"
             className={cn(
-              'shrink-0 rounded-[14px] border border-ink/15 bg-white px-3 text-xs font-semibold text-ink shadow-pro-e0 transition-colors hover:border-ink/35 hover:bg-[var(--g-ivory)]',
-              variant === 'panel' ? 'h-9 w-[136px]' : 'h-11',
+              /* OWNER FROZEN PRO VISUAL: inside the display column the save row
+                 is a row of 44 px pills, and the PRIMARY leads it. DOM order
+                 stays New → Save → overflow for the docked bar; only the panel
+                 reorders visually, so one contract still describes both. */
+              'shrink-0 border border-ink/15 bg-white text-xs font-semibold text-ink transition-colors hover:border-ink/35 hover:bg-[var(--g-ivory)]',
+              variant === 'panel'
+                ? 'order-2 h-11 rounded-full px-5 shadow-none'
+                : 'h-11 rounded-[14px] px-3 shadow-pro-e0',
             )}
           >
             + Nowa receptura
@@ -183,15 +226,17 @@ export function ProWorkbar({
             data-attention={saveAttention ? 'required' : undefined}
             data-testid="pro-workbar-save"
             data-workbar-action-size="primary"
-            data-workbar-action-width={variant === 'panel' ? 'equal' : 'content'}
+            data-workbar-action-width="content"
             className={cn(
               /* A disabled action still has to be readable. `disabled:opacity-45`
                  washed the whole button to ink@45 % on white — a 2.88:1 label,
                  below AA. The product already settled this pattern for the
                  customer shell (§21.2, audit #17): a SOLID quiet fill with a
                  legible label, measured here at 5.03:1. */
-              'shrink-0 rounded-[14px] bg-ink px-3 text-xs font-semibold text-white shadow-pro-sm transition-all hover:-translate-y-px hover:bg-ink-soft disabled:cursor-not-allowed disabled:bg-[var(--g-line-quiet)] disabled:text-[var(--g-lock)] disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:bg-[var(--g-line-quiet)]',
-              variant === 'panel' ? 'h-9 w-[136px]' : 'h-11',
+              'shrink-0 bg-ink text-xs font-semibold text-white transition-all hover:-translate-y-px hover:bg-ink-soft disabled:cursor-not-allowed disabled:bg-[var(--g-line-quiet)] disabled:text-[var(--g-lock)] disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:bg-[var(--g-line-quiet)]',
+              variant === 'panel'
+                ? 'order-1 h-11 rounded-full px-5 shadow-none'
+                : 'h-11 rounded-[14px] px-3 shadow-pro-sm',
               saveAttention && 'gellatti-next-action-attention',
             )}
           >
@@ -203,7 +248,10 @@ export function ProWorkbar({
                   ? 'Zapisz nową wersję'
                   : w.saveNew}
           </button>
-          <details className="relative shrink-0" data-testid="pro-workbar-menu">
+          <details
+            className={cn('relative shrink-0', variant === 'panel' && 'order-3')}
+            data-testid="pro-workbar-menu"
+          >
             <summary
               className={cn(iconButtonClasses('xs'), 'cursor-pointer list-none')}
               aria-label={w.more}
@@ -230,26 +278,7 @@ export function ProWorkbar({
               </a>
             </div>
           </details>
-          <span
-            className={cn(
-              'min-w-0 truncate text-xs',
-              variant === 'panel'
-                ? 'max-w-[13rem] flex-none text-left'
-                : 'ml-auto min-w-[7rem] flex-1 text-right xl:max-w-48',
-              statusKey === 'error'
-                ? 'text-status-error'
-                : statusKey === 'dirty' || statusKey === 'newUnsaved'
-                  ? 'text-status-risky'
-                  : 'text-stone-500',
-            )}
-            data-testid="pro-workbar-status"
-            data-workbar-status-placement={
-              variant === 'panel' ? 'inline-after-menu' : 'right-aligned'
-            }
-          >
-            <span aria-hidden>● </span>
-            {w.status[statusKey]}
-          </span>
+          {variant === 'panel' ? null : statusNode}
           <span className="sr-only" data-testid="pro-workbar-profile-summary">
             {context}
           </span>
@@ -294,7 +323,11 @@ export function ProWorkbar({
       ) : null}
       {dirty && appliedHistoryLength > 0 ? (
         <p
-          className="mt-2 rounded-[12px] border border-attention/25 bg-pro-amber/35 px-3 py-2 text-xs leading-relaxed text-stone-700"
+          /* OWNER FROZEN PRO VISUAL: unsaved is a STATUS, not a warning. The
+             amber card claimed the weight of an error for a state the user
+             created on purpose and can undo by saving. It is now a quiet note
+             on a hairline — same words, same placement, no alarm. */
+          className="mt-2 border-t border-[var(--g-line)] pt-2 text-xs leading-relaxed text-[var(--g-text-secondary)]"
           data-testid="pro-workbar-applied-unsaved"
         >
           {w.recalcPanel.applied}

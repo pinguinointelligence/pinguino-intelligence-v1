@@ -103,12 +103,24 @@ describe('responsive Pro workbench structure', () => {
     ).toEqual({ left: 8, top: 208, width: 374, height: 104, bottom: 532 });
   });
 
-  it('keeps two approved Direction rows and Settings above the collapsed Nutrition/Cost summary', () => {
+  it('opens the display column with the collapsed Nutrition/Cost result, then Direction and Settings', () => {
     const profile = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
     expect(profile).toContain('data-profile-layout="stacked"');
     expect(profile).toContain('data-testid="profile-nutrition-card"');
     expect(profile).toContain('data-testid="profile-cost-card"');
     expect(profile).toContain('data-testid="profile-nutrition-cost-summary"');
+
+    // OWNER FROZEN PRO VISUAL supersedes the previous order, which put the two
+    // Direction rows and Settings ABOVE the result. The display column now
+    // opens with WYNIK — you read the outcome first, then reach the controls
+    // that move it. Pinned as real order, not just presence, because the whole
+    // point of the change is where the result sits.
+    const grid = profile.slice(profile.indexOf('data-testid="profile-desktop-grid"'));
+    const order = ['NutritionCostProfileGrid', 'ProfileDirectionAxes', 'WorkbenchSettingsLine'].map(
+      (component) => grid.indexOf(`<${component}`),
+    );
+    expect(order.every((at) => at >= 0)).toBe(true);
+    expect(order).toEqual([...order].sort((a, b) => a - b));
     expect(profile).not.toContain('2xl:grid-cols-[331px_273px]');
     expect(profile).not.toContain('2xl:h-[369px]');
     expect(profile).not.toContain('2xl:h-[371px]');

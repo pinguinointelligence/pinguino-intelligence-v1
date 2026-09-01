@@ -791,19 +791,23 @@ describe('WorkbenchSettingsLine — one editable batch field', () => {
     // A grid child, so it can be ordered relative to the batch/Tryb row rather
     // than floating below the whole panel.
     expect(base.parentElement).toBe(grid);
-    // Two-column row: full width on its own line right under batch + Tryb.
-    expect(base.className).toContain('col-span-2');
-    expect(base.className).toContain('order-7');
-    // One-column reflow: the narrow rule lifts it ahead of Tryb.
+    // OWNER FROZEN PRO VISUAL: Base is an ordinary cell of the 2x3 grid,
+    // sitting BESIDE Partia docelowa rather than spanning a fourth row under
+    // it. What the old contract protected — Base immediately follows the batch
+    // field it reports on — is now true by default order at every width, so
+    // the narrow-width override that used to lift it no longer exists.
+    expect(base.className).not.toContain('col-span-2');
+    expect(base.className).toContain('order-6');
     expect(base.className).toContain('profile-settings-base-readout');
+    const batchCell = host.querySelector("[data-settings-cell='batch']") as HTMLElement;
+    expect(batchCell.className).toContain('order-5');
     const theme = readFileSync(
       resolve(import.meta.dirname, '..', '..', 'styles', 'theme-pro-light.css'),
       'utf8',
     );
     const narrow = theme.slice(theme.indexOf('@container right-pane (max-width: 399px)'));
-    expect(narrow).toContain('.profile-settings-base-readout');
-    expect(narrow.indexOf('order: 6')).toBeGreaterThan(-1);
-    expect(narrow).toContain("[data-settings-cell='strategy']");
+    expect(narrow).not.toContain('.profile-settings-base-readout {');
+    expect(narrow).not.toContain("[data-settings-cell='strategy']");
   });
 
   it('still commits an edited batch through the one remaining field', async () => {
