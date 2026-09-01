@@ -6,13 +6,13 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { useAuthStore } from '@/stores/authStore';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { getShopCatalog, startShopCheckout, syncShopOrder } from '@/services/shop';
-import { shopCopy as c, shopMoney } from '@/copy/shop';
+import { shopCopy as c } from '@/copy/shop';
 import { useShopCartStore } from './shopCartStore';
 import { ShopCart, type ShopCartEntry } from './ShopCart';
 import { ShopConfirmation } from './ShopConfirmation';
 import { ShopProductCard } from './ShopProductCard';
-import { ShopStarterContents, ShopStarterPack } from './ShopStarterPack';
-import { SHOP_SHIPPING_FLAT_CENTS } from './shopShipping';
+import { ShopStarterContents } from './ShopStarterContents';
+import { ShopStarterOffer } from './ShopStarterOffer';
 
 /** The Gellatti shop: a small, factual catalogue and one honest checkout. */
 
@@ -101,35 +101,43 @@ export function ShopCatalog() {
       : null;
 
   return (
-    <div className="flex flex-col gap-[58px]">
+    <div data-testid="shop-catalog">
       {confirmationState ? (
-        <ShopConfirmation
-          state={confirmationState}
-          order={sync.data?.order ?? null}
-          onBack={() => setParams({})}
-        />
+        <div className="mb-9">
+          <ShopConfirmation
+            state={confirmationState}
+            order={sync.data?.order ?? null}
+            onBack={() => setParams({})}
+          />
+        </div>
       ) : null}
 
+      {/* SHOP C3 · ONE Zestaw Startowy → W zestawie → Kup osobno.
+          No hero, no second product block, no framed content container. */}
       {bundle ? (
-        <section aria-labelledby="shop-starter">
-          <ShopStarterPack
+        <>
+          <ShopStarterOffer
             product={bundle}
             inCart={cart.lines.some((line) => line.sku === bundle.sku)}
             onAdd={() => cart.add(bundle.sku)}
           />
           <ShopStarterContents product={bundle} />
-        </section>
+        </>
       ) : null}
 
-      <section aria-labelledby="shop-singles">
+      {/* The second shop mode. Separated by air, not by a container. */}
+      <section id="shop-singles" aria-labelledby="shop-singles-title" className="mt-16 md:mt-23">
         <p className={label}>{c.product.singlesKicker}</p>
-        <h2 id="shop-singles" className="mt-2 text-[22px] leading-[1.2] font-bold tracking-[-0.025em]">
+        <h2
+          id="shop-singles-title"
+          className="mt-1.5 text-[25px] leading-[1.2] font-extrabold tracking-[-0.032em]"
+        >
           {c.product.singlesTitle}
         </h2>
-        <p className="mt-1 text-[12px] leading-[1.5] text-[var(--g-text-secondary)]">
+        <p className="mt-1.5 text-[14.5px] leading-[1.5] text-[var(--g-text-secondary)]">
           {c.product.singlesHelper}
         </p>
-        <div className="mt-[18px] grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-4.5 grid md:grid-cols-2 md:gap-x-14">
           {singles.map((product) => (
             <ShopProductCard
               key={product.sku}
@@ -141,32 +149,18 @@ export function ShopCatalog() {
         </div>
       </section>
 
-      <ShopCart
-        entries={entries}
-        authed={authStatus === 'authed'}
-        checkoutPending={checkout.isPending}
-        checkoutError={checkoutError}
-        onQuantity={(sku, quantity) => cart.setQuantity(sku, quantity)}
-        onRemove={(sku) => cart.remove(sku)}
-        onCheckout={startCheckout}
-        onSignIn={() => openAuthModal()}
-        onBrowse={() =>
-          document.getElementById('shop-starter')?.scrollIntoView({ behavior: 'smooth' })
-        }
-      />
-
-      {/* MASTER DESIGNBOOK §7: the approved Shop screen closes on an
-          orange-ruled informational block. The rule is 2 px and it carries
-          meaning — it marks the commerce terms, not decoration. */}
-      <aside
-        className="border-l-2 border-[var(--g-orange)] bg-[var(--g-ivory-deep)] p-[18px]"
-        data-testid="shop-closing-note"
-      >
-        <p className="text-[14px] font-semibold tracking-[-0.01em]">{c.starterPack.closingTitle}</p>
-        <p className="mt-1 max-w-[92ch] text-[12.5px] leading-relaxed text-[var(--g-text-secondary)]">
-          {c.starterPack.closingBody.replace('{shipping}', shopMoney(SHOP_SHIPPING_FLAT_CENTS))}
-        </p>
-      </aside>
+      <div className="mt-16 md:mt-23">
+        <ShopCart
+          entries={entries}
+          authed={authStatus === 'authed'}
+          checkoutPending={checkout.isPending}
+          checkoutError={checkoutError}
+          onQuantity={(sku, quantity) => cart.setQuantity(sku, quantity)}
+          onRemove={(sku) => cart.remove(sku)}
+          onCheckout={startCheckout}
+          onSignIn={() => openAuthModal()}
+        />
+      </div>
     </div>
   );
 }
