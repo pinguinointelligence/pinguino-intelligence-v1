@@ -16,6 +16,10 @@ const hintClass = 'ml-1 font-normal text-[var(--g-text-muted)]';
 
 const LEAD_TYPES = Object.keys(LEAD_TYPE_LABEL) as BusinessLeadType[];
 
+/** How often, and for how long, the anchor re-checks that it is still aligned. */
+const ALIGN_INTERVAL_MS = 100;
+const ALIGN_BUDGET_MS = 3000;
+
 /** The four lanes plus the gateway itself — anything else is not one of ours. */
 const knownRoute = (value: string | null): string | null =>
   value !== null && (value in LEAD_TYPE_BY_ROUTE || value === '/work-with-us') ? value : null;
@@ -87,17 +91,22 @@ export function LeadEnquirySection() {
      * section's real position was y=4127. At mount the gateway's images above
      * this section have not loaded, so the document is short and the section is
      * near the top; the scroll succeeds, then the images arrive and push it
-     *4000 px down, leaving the visitor stranded at the top — the dead CTA again,
-     * one step further along. A direct full page load did not show this, because
-     * the document was already laid out.
+     * 4000 px down, leaving the visitor stranded at the top — the dead CTA
+     * again, one step further along. A direct full page load did not show this,
+     * because the document was already laid out.
      *
-     * So re-align until the section's ABSOLUTE position stops moving. Bounded by
-     * a frame budget, because a page that never settles must not scroll forever.
+     * So re-align until the section's ABSOLUTE position stops moving, bounded in
+     * time so a page that never settles is not scrolled forever.
+     *
+     * Driven by a TIMER, not requestAnimationFrame: rAF does not fire at all
+     * while a document is hidden, so a tab restored in the background or opened
+     * with cmd-click would never align, and neither could the behaviour be
+     * verified in a headless pane. A timer still fires there, clamped.
      */
     let settled = 0;
-    let budget = 180; // ~3 s at 60 fps, then leave the page alone
+    let elapsed = 0;
     let previousTop = Number.NaN;
-    let frame = 0;
+    let timer = 0;
 
     const align = () => {
       const node = anchorRef.current;
@@ -112,12 +121,14 @@ export function LeadEnquirySection() {
       } else {
         settled += 1;
       }
-      budget -= 1;
-      if (settled < 3 && budget > 0) frame = requestAnimationFrame(align);
+      elapsed += ALIGN_INTERVAL_MS;
+      if (settled < 3 && elapsed < ALIGN_BUDGET_MS) {
+        timer = window.setTimeout(align, ALIGN_INTERVAL_MS);
+      }
     };
 
-    frame = requestAnimationFrame(align);
-    return () => cancelAnimationFrame(frame);
+    align();
+    return () => window.clearTimeout(timer);
   }, [hash]);
 
   const validate = (): Record<string, string> => {
