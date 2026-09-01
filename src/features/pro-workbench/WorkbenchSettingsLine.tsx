@@ -357,16 +357,18 @@ export function WorkbenchSettingsLine({
   };
   return (
     <section
-      /* GELLATTI V2.1: ONE ivory Settings panel. The approved preview does not
-         tint the whole card while settings are unconfirmed — the black confirm
-         control carries that state on its own. A real CONFLICT still colours
-         the card, because that is an error, not a pending step. */
+      /* OWNER FROZEN PRO VISUAL: Settings is a BAND in the display column, not
+         an ivory panel sitting on it. At rest it carries no surface at all —
+         the eyebrow and the field grid are the whole treatment.
+
+         A real CONFLICT still takes a surface, because that is an error rather
+         than a pending step, and an error is exactly the exception a surface
+         should be spent on. Unconfirmed remains carried by the control alone. */
       className={cn(
-        'rounded-[10px] border shadow-none transition-colors',
-        compact ? 'p-2.5 lg:p-4' : 'p-3',
+        'transition-colors',
         hardConflict
-          ? 'border-status-error/45 bg-status-error/[0.035]'
-          : 'border-[var(--g-line)] bg-[var(--g-ivory)]',
+          ? 'rounded-[10px] border border-status-error/45 bg-status-error/[0.035] p-2.5 lg:p-3'
+          : 'border-0 bg-transparent p-0',
         className,
       )}
       data-testid="workbench-settings-line"
@@ -377,7 +379,7 @@ export function WorkbenchSettingsLine({
     >
       <div className="mb-2 flex min-h-6 items-center">
         <div className="flex min-w-0 items-center gap-2">
-          <h3 className="text-sm font-semibold text-ink lg:text-[18px] lg:leading-[20px] lg:font-bold">
+          <h3 className="text-[11px] leading-[16px] font-semibold tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">
             Ustawienia
           </h3>
           <span
@@ -435,9 +437,13 @@ export function WorkbenchSettingsLine({
                 }
               }}
               data-testid="profile-settings-confirm"
-              /* The approved control is GRAPHITE, not orange (owner §13). */
+              /* OWNER FROZEN PRO VISUAL: still graphite, no longer a filled
+                 black block. Settings is a step you complete, not the loudest
+                 thing in the column — the ink and the outline say "button"
+                 without competing with Przelicz, which is the real primary.
+                 Same slot, same 46 px, so the 2×3 grid stays even. */
               className={cn(
-                'pro-focus-ring w-full rounded-[8px] border border-[var(--g-graphite)] bg-[var(--g-graphite)] px-[10px] text-xs font-semibold whitespace-nowrap text-white shadow-none disabled:cursor-not-allowed disabled:opacity-35 lg:text-[10px]',
+                'pro-focus-ring w-full rounded-[8px] border border-[var(--g-graphite)] bg-transparent px-[10px] text-xs font-semibold whitespace-nowrap text-[var(--g-graphite)] shadow-none enabled:hover:bg-[var(--g-graphite)] enabled:hover:text-white disabled:cursor-not-allowed disabled:opacity-35 lg:text-[10px]',
                 compact ? 'h-11 lg:h-[46px]' : 'min-h-11',
               )}
             >
@@ -445,10 +451,12 @@ export function WorkbenchSettingsLine({
             </button>
           ) : (
             <span
-              /* Same slot, same 46 px geometry, approved palette — the confirmed
-                 state is a quiet acknowledgement, never a second arrangement. */
+              /* Same slot, same 46 px geometry — the confirmed state is a quiet
+                 acknowledgement, never a second arrangement. It now drops the
+                 border and surface too: a settled step should be the quietest
+                 thing in the grid, not a second bordered field. */
               className={cn(
-                'inline-flex w-full items-center justify-center rounded-[8px] border border-[var(--g-line)] bg-white px-2 text-xs font-semibold whitespace-nowrap text-[var(--g-text-secondary)] lg:text-[10px]',
+                'inline-flex w-full items-center justify-center rounded-[8px] border border-transparent bg-transparent px-2 text-xs font-semibold whitespace-nowrap text-[var(--g-text-muted)] lg:text-[10px]',
                 compact ? 'h-11 lg:h-[46px]' : 'min-h-11',
               )}
               data-testid="profile-settings-confirmed"

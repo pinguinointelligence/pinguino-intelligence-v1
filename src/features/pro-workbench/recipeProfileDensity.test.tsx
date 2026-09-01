@@ -65,11 +65,17 @@ describe('Recipe profile visual density contract', () => {
     expect(settings.includes('profile-settings-final-row')).toBe(false);
     expect(theme.includes('grid-template-rows: subgrid')).toBe(false);
 
-    // The approved confirmation control is GRAPHITE, not orange (owner §13),
-    // and the panel itself is the ivory Settings surface.
-    expect(settings).toContain('bg-[var(--g-graphite)]');
+    // The confirmation control is still GRAPHITE and still never orange (owner
+    // §13) — but OWNER FROZEN PRO VISUAL spends it as ink on an outline rather
+    // than as a filled black block, so Settings stops competing with Przelicz.
+    expect(settings).toContain('text-[var(--g-graphite)]');
+    expect(settings).toContain('border-[var(--g-graphite)] bg-transparent');
     expect(settings.includes('bg-[#f58a07] px-3 text-xs font-semibold text-white')).toBe(false);
-    expect(settings).toContain("'border-[var(--g-line)] bg-[var(--g-ivory)]'");
+    // ...and the panel itself no longer carries the ivory card. Settings is a
+    // band in the display column; only a real CONFLICT still takes a surface.
+    expect(settings).not.toContain("'border-[var(--g-line)] bg-[var(--g-ivory)]'");
+    expect(settings).toContain("'border-0 bg-transparent p-0'");
+    expect(settings).toContain('border-status-error/45 bg-status-error/[0.035]');
   });
 
   it('keeps the Monitor row on ONE line at the approved 520 px display column', () => {

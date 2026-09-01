@@ -143,7 +143,11 @@ export function ProWorkbar({
       data-workbar-variant={variant}
       className={cn(
         variant === 'panel'
-          ? 'rounded-[14px] border border-ink/10 bg-white p-2.5 shadow-pro-e0'
+          ? /* OWNER FROZEN PRO VISUAL: inside the display column the recipe bar
+               is a BAND like everything else — a hairline and whitespace, not a
+               fifth white card stacked on the column ground. The docked
+               variant below is a real floating bar and keeps its surface. */
+            'border-t border-[var(--g-line)] pt-3'
           : 'rounded-t-[22px] border border-ink/10 bg-white/97 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-pro-e2 backdrop-blur-xl lg:rounded-none lg:border-0 lg:bg-transparent lg:px-0 lg:shadow-none lg:backdrop-blur-none 2xl:!border-0 2xl:py-0 2xl:pt-px 2xl:!shadow-none',
       )}
     >
@@ -294,7 +298,11 @@ export function ProWorkbar({
       ) : null}
       {dirty && appliedHistoryLength > 0 ? (
         <p
-          className="mt-2 rounded-[12px] border border-attention/25 bg-pro-amber/35 px-3 py-2 text-xs leading-relaxed text-stone-700"
+          /* OWNER FROZEN PRO VISUAL: unsaved is a STATUS, not a warning. The
+             amber card claimed the weight of an error for a state the user
+             created on purpose and can undo by saving. It is now a quiet note
+             on a hairline — same words, same placement, no alarm. */
+          className="mt-2 border-t border-[var(--g-line)] pt-2 text-xs leading-relaxed text-[var(--g-text-secondary)]"
           data-testid="pro-workbar-applied-unsaved"
         >
           {w.recalcPanel.applied}

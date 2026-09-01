@@ -164,7 +164,12 @@ describe('ProWorkbar (sticky top workbar)', () => {
     expect(dirty).toContain('data-attention="required"');
     expect(dirty).toContain('gellatti-next-action-attention');
     expect(dirty).toContain(copy.proWorkbar.recalcPanel.applied);
-    expect(dirty).toContain('bg-pro-amber');
+    // OWNER FROZEN PRO VISUAL: the notice keeps its copy, its placement and
+    // its clearing behaviour — all still asserted above — but unsaved is a
+    // state the user created on purpose, so it reads as a quiet note on a
+    // hairline rather than an amber card borrowing the weight of an error.
+    expect(dirty).not.toContain('bg-pro-amber');
+    expect(dirty).toContain('border-t border-[var(--g-line)] pt-2');
 
     const saved = render({ savedRecipeId: 'r1', savedRecipeName: 'X', dirty: false });
     expect(saved).toContain('Zapisane');
