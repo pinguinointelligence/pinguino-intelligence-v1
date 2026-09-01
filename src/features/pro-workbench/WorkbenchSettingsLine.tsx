@@ -357,16 +357,18 @@ export function WorkbenchSettingsLine({
   };
   return (
     <section
-      /* GELLATTI V2.1: ONE ivory Settings panel. The approved preview does not
-         tint the whole card while settings are unconfirmed — the black confirm
-         control carries that state on its own. A real CONFLICT still colours
-         the card, because that is an error, not a pending step. */
+      /* OWNER FROZEN PRO VISUAL: Settings is a BAND in the display column, not
+         an ivory panel sitting on it. At rest it carries no surface at all —
+         the eyebrow and the field grid are the whole treatment.
+
+         A real CONFLICT still takes a surface, because that is an error rather
+         than a pending step, and an error is exactly the exception a surface
+         should be spent on. Unconfirmed remains carried by the control alone. */
       className={cn(
-        'rounded-[10px] border shadow-none transition-colors',
-        compact ? 'p-2.5 lg:p-4' : 'p-3',
+        'transition-colors',
         hardConflict
-          ? 'border-status-error/45 bg-status-error/[0.035]'
-          : 'border-[var(--g-line)] bg-[var(--g-ivory)]',
+          ? 'rounded-[10px] border border-status-error/45 bg-status-error/[0.035] p-2.5 lg:p-3'
+          : 'border-0 bg-transparent p-0',
         className,
       )}
       data-testid="workbench-settings-line"
@@ -377,9 +379,42 @@ export function WorkbenchSettingsLine({
     >
       <div className="mb-2 flex min-h-6 items-center">
         <div className="flex min-w-0 items-center gap-2">
-          <h3 className="text-sm font-semibold text-ink lg:text-[18px] lg:leading-[20px] lg:font-bold">
+          <h3 className="text-[11px] leading-[16px] font-semibold tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">
             Ustawienia
           </h3>
+        <span aria-hidden className="h-px flex-1 bg-[var(--g-line)]" />
+        {/* OWNER FROZEN PRO VISUAL: the confirmation is the BAND's action, not
+            a seventh tile in a 2x3 grid. It keeps its handler, its disabled
+            rule and both testids — only its home and its weight changed. */}
+        <span
+          className="flex shrink-0 items-center gap-1.5"
+          data-testid="settings-grid-status"
+          data-settings-cell="confirmation"
+        >
+          {!confirmed || hardConflict ? (
+            <button
+              type="button"
+              disabled={hardConflict}
+              onClick={() => {
+                if (activeDraftIdentity !== null) {
+                  confirmSettings(signature, activeDraftIdentity, store.draftContextSeq);
+                }
+              }}
+              data-testid="profile-settings-confirm"
+              className="pro-focus-ring inline-flex h-7 items-center rounded-full border border-[var(--g-graphite)] bg-transparent px-3 text-[11.5px] font-semibold whitespace-nowrap text-[var(--g-graphite)] enabled:hover:bg-[var(--g-graphite)] enabled:hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+            >
+              Potwierdź ustawienia
+            </button>
+          ) : (
+            <span
+              /* The settled step is the quietest thing in the band. */
+              className="text-[11.5px] font-semibold whitespace-nowrap text-[var(--g-text-secondary)]"
+              data-testid="profile-settings-confirmed"
+            >
+              ✓ Ustawienia potwierdzone
+            </span>
+          )}
+        </span>
           <span
             role="status"
             aria-live="polite"
@@ -408,7 +443,7 @@ export function WorkbenchSettingsLine({
           compact ? 'profile-settings-grid grid grid-cols-2 items-stretch gap-2' : 'space-y-3',
         )}
       >
-        <div className={cn(compact && 'order-2')} data-settings-cell="product-type">
+        <div className={cn(compact && 'order-1')} data-settings-cell="product-type">
           <LabeledSelect
             label={g.productTypeLabel}
             value={store.visibleProductType}
@@ -418,44 +453,6 @@ export function WorkbenchSettingsLine({
             testid="workbench-product-type"
             stacked={compact}
           />
-        </div>
-
-        <div
-          className={cn('flex min-w-0 items-stretch', compact ? 'order-1' : 'ml-[7.3rem]')}
-          data-testid="settings-grid-status"
-          data-settings-cell="confirmation"
-        >
-          {!confirmed || hardConflict ? (
-            <button
-              type="button"
-              disabled={hardConflict}
-              onClick={() => {
-                if (activeDraftIdentity !== null) {
-                  confirmSettings(signature, activeDraftIdentity, store.draftContextSeq);
-                }
-              }}
-              data-testid="profile-settings-confirm"
-              /* The approved control is GRAPHITE, not orange (owner §13). */
-              className={cn(
-                'pro-focus-ring w-full rounded-[8px] border border-[var(--g-graphite)] bg-[var(--g-graphite)] px-[10px] text-xs font-semibold whitespace-nowrap text-white shadow-none disabled:cursor-not-allowed disabled:opacity-35 lg:text-[10px]',
-                compact ? 'h-11 lg:h-[46px]' : 'min-h-11',
-              )}
-            >
-              Potwierdź ustawienia
-            </button>
-          ) : (
-            <span
-              /* Same slot, same 46 px geometry, approved palette — the confirmed
-                 state is a quiet acknowledgement, never a second arrangement. */
-              className={cn(
-                'inline-flex w-full items-center justify-center rounded-[8px] border border-[var(--g-line)] bg-white px-2 text-xs font-semibold whitespace-nowrap text-[var(--g-text-secondary)] lg:text-[10px]',
-                compact ? 'h-11 lg:h-[46px]' : 'min-h-11',
-              )}
-              data-testid="profile-settings-confirmed"
-            >
-              ✓ Ustawienia potwierdzone
-            </span>
-          )}
         </div>
 
         <div className={cn(compact && 'order-3')} data-settings-cell="machine">
@@ -484,7 +481,7 @@ export function WorkbenchSettingsLine({
         </div>
 
         <div
-          className={cn(compact ? 'order-4' : 'ml-[7.3rem]')}
+          className={cn(compact ? 'order-2' : 'ml-[7.3rem]')}
           data-testid="machine-conditional-settings"
           data-settings-cell="serving"
         >
@@ -603,7 +600,7 @@ export function WorkbenchSettingsLine({
             </div>
 
             <div
-              className="profile-settings-final-card relative order-6 min-w-0"
+              className="profile-settings-final-card relative order-4 min-w-0"
               data-settings-cell="strategy"
               data-settings-final-card="strategy"
               title={STRATEGY_COPY[store.formulation_strategy].description}
@@ -715,7 +712,7 @@ export function WorkbenchSettingsLine({
             width under the 2-column row, and re-ordered ahead of Tryb when the
             grid collapses to one column (see `profile-settings-base-readout`). */}
         <p
-          className="profile-settings-base-readout order-7 col-span-2 text-xs text-stone-600"
+          className="profile-settings-base-readout order-6 min-w-0 text-xs text-stone-600"
           data-testid="workbench-recipe-base"
           data-settings-readonly="base"
         >
