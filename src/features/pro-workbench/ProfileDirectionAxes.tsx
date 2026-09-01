@@ -8,6 +8,10 @@ import type { AdjustableAxisId, DirectionIntent } from './recipeProfileStore';
 
 const DETENTS = [-2, -1, 0, 1, 2] as const;
 
+function readout(position: DirectionIntent): string {
+  return position === 0 ? 'bez zmian' : position > 0 ? `+${position}` : `${position}`;
+}
+
 function RegulatorRow({
   id,
   label,
@@ -27,12 +31,29 @@ function RegulatorRow({
 }) {
   return (
     <article
-      /* GELLATTI V2.1: one 66 px bordered band per axis — identity on the left,
-         the five detents ON the rail in the middle, the far label on the right. */
-      className="rounded-[9px] border border-[var(--g-line)] bg-transparent px-2.5 py-2.5 xl:min-h-[66px]"
+      /* OWNER FROZEN PRO VISUAL: a bipolar TRACK, not five boxed detents. The
+         per-axis card border is gone — the axes read as one instrument, so the
+         only rule in the group is the hairline between two axes. */
+      className="py-3 first:pt-0 last:pb-0"
       data-testid={`profile-regulator-${id}`}
       data-regulator-state={disabled ? 'unavailable' : 'interactive'}
     >
+      <div className="mb-1.5 flex items-baseline justify-between gap-3">
+        <b className="text-[13px] leading-[18px] font-bold text-[var(--g-ink)]">{label}</b>
+        {/* The value left the thumb. Inside a 14 px orange dot it was white on
+            #f58a07 (2.46:1) and, on a blocked axis, white on #fcd6a8 (1.37:1).
+            As an ink readout beside the track it clears 4.5:1 in BOTH states
+            and is legible at a glance instead of squinting at a dot. */}
+        <span
+          data-testid={`profile-regulator-${id}-value`}
+          className={cn(
+            'shrink-0 text-[11px] leading-[16px] font-semibold tabular-nums',
+            disabled ? 'text-[var(--g-attention-ink)]' : 'text-[var(--g-ink)]',
+          )}
+        >
+          {readout(position)}
+        </span>
+      </div>
       <div
         role="radiogroup"
         aria-label={label}
@@ -53,51 +74,46 @@ function RegulatorRow({
             onSet(2);
           }
         }}
-        className="grid grid-cols-2 items-center gap-x-3 gap-y-1 min-[520px]:grid-cols-[minmax(86px,1fr)_minmax(0,272px)_minmax(86px,1fr)] min-[520px]:gap-2.5"
+        className="relative grid h-9 grid-cols-5 items-center justify-items-center"
       >
-        <span className="row-start-2 min-w-0 justify-self-start min-[520px]:row-auto">
-          <b className="block text-[11px] leading-[17px] font-bold text-[var(--g-ink)]">{label}</b>
-          <small className="block text-[9px] leading-[13px] text-[var(--g-text-muted)]">
-            {leftLabel}
-          </small>
-        </span>
-        <span className="relative col-span-2 col-start-1 row-start-1 grid h-7 grid-cols-5 items-center justify-items-center min-[520px]:col-span-1 min-[520px]:col-start-2">
-          {/* The rail is a real rail: the five detents sit ON it, they are not
-              five detached circles (owner §12). */}
-          <span
-            aria-hidden
-            className="absolute top-1/2 right-[14px] left-[14px] h-[2px] -translate-y-1/2 bg-[var(--g-rail-track)]"
-          />
-          {DETENTS.map((detent) => (
-            <button
-              key={detent}
-              type="button"
-              role="radio"
-              aria-checked={position === detent}
-              aria-label={`${label}: ${detent > 0 ? `+${detent}` : detent}`}
-              disabled={disabled}
-              onClick={() => onSet(detent)}
+        {/* One continuous rail edge to edge, with the neutral centre marked so
+            the control reads as bipolar before anything is touched. */}
+        <span
+          aria-hidden
+          className="absolute top-1/2 right-[18px] left-[18px] h-[2px] -translate-y-1/2 rounded-full bg-[var(--g-rail-track)]"
+        />
+        <span
+          aria-hidden
+          className="absolute top-1/2 left-1/2 h-[9px] w-[2px] -translate-x-1/2 -translate-y-1/2 bg-[var(--g-line)]"
+        />
+        {DETENTS.map((detent) => (
+          <button
+            key={detent}
+            type="button"
+            role="radio"
+            aria-checked={position === detent}
+            aria-label={`${label}: ${detent > 0 ? `+${detent}` : detent}`}
+            disabled={disabled}
+            onClick={() => onSet(detent)}
+            /* The button is a full 36 px target; only the dot inside it is
+               small. The old design made the 28 px circle the whole control. */
+            className="pro-focus-ring group relative z-10 grid size-9 place-items-center rounded-full bg-transparent"
+          >
+            <span
+              aria-hidden
               className={cn(
-                'pro-focus-ring relative z-10 grid size-7 place-items-center rounded-full border text-[9px] font-bold tabular-nums transition-colors',
+                'block rounded-full transition-[background-color,box-shadow,width,height]',
                 position === detent
-                  ? 'border-[#f58a07] bg-[#f58a07] text-white'
-                  : 'border-[var(--g-line)] bg-white text-[var(--g-ink)] enabled:hover:border-[#f58a07]/60',
-                /* An unavailable axis still reports the chosen detent, so the row
-                   carries explicit muted colours instead of a group opacity.
-                   Dimming the group flattened the selected point to white on
-                   #fcd6a8 (1.37:1) and hid the very value it reports. */
-                position === detent
-                  ? 'disabled:border-[#fcd6a8] disabled:bg-[#fcd6a8] disabled:text-[var(--g-attention-ink)]'
-                  : 'disabled:border-[var(--g-line-quiet)] disabled:bg-white disabled:text-[var(--g-text-muted)]',
+                  ? 'size-[13px] bg-[#f58a07] shadow-[0_0_0_3px_var(--g-ivory)] group-disabled:bg-[#fcd6a8]'
+                  : 'size-[6px] bg-[var(--g-rail-track)] group-enabled:group-hover:bg-[#f58a07]/60 group-disabled:bg-[var(--g-line-quiet)]',
               )}
-            >
-              {detent > 0 ? `+${detent}` : detent}
-            </button>
-          ))}
-        </span>
-        <span className="col-start-2 row-start-2 justify-self-end text-right text-[9px] leading-[13px] text-[var(--g-text-muted)] min-[520px]:col-start-3 min-[520px]:row-auto">
-          {rightLabel}
-        </span>
+            />
+          </button>
+        ))}
+      </div>
+      <div className="mt-1 flex items-baseline justify-between gap-3 text-[9px] leading-[13px] text-[var(--g-text-muted)]">
+        <span className="min-w-0 truncate">{leftLabel}</span>
+        <span className="min-w-0 truncate text-right">{rightLabel}</span>
       </div>
     </article>
   );
@@ -126,16 +142,13 @@ export function ProfileDirectionAxes({
 
   return (
     <section
-      className={cn(
-        'rounded-[10px] border border-[var(--g-line)] bg-white px-4 py-4 shadow-none',
-        className,
-      )}
+      className={cn('bg-transparent', className)}
       data-testid="profile-direction-axes"
     >
-      <h3 className="mb-3 text-[18px] leading-[20px] font-bold text-[var(--g-ink)]">
+      <h3 className="mb-2 text-[11px] leading-[16px] font-semibold tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">
         Dostosuj recepturę
       </h3>
-      <div className="space-y-2">
+      <div className="divide-y divide-[var(--g-line)]">
         {(
           [
             ['sweetness', 'Słodycz'],

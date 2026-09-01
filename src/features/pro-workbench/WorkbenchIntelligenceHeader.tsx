@@ -217,32 +217,40 @@ export function WorkbenchIntelligenceHeader({
           />
         ) : null}
         {pending || recalculateNeeded ? (
-          <button
-            type="button"
-            onClick={onRecalculate}
-            disabled={!onRecalculate || working}
-            aria-busy={working}
-            data-testid="pro-workbar-recalc"
-            className="pro-focus-ring flex h-11 shrink-0 items-center gap-2 rounded-xl bg-[#f58a07] px-4 text-left text-white shadow-pro-e1 disabled:cursor-wait disabled:opacity-70"
-          >
-            <span aria-hidden className={working ? 'animate-spin text-xl' : 'text-xl'}>
-              ↻
-            </span>
-            <span>
-              <strong className="block text-xs font-semibold">
-                {working ? 'Przeliczanie…' : 'Przelicz'}
-              </strong>
-              <span className="block text-[10px] text-white/85">
+          <>
+            {/* OWNER FROZEN PRO VISUAL. The reason the action is asking moves OUT of the
+                button and stands beside it, carried by an orange dot and the attention
+                ink. Orange states the CONDITION; graphite offers the ACTION. The button
+                itself is never permanently orange. */}
+            <span
+              className="flex min-w-0 shrink items-center gap-2 text-[11px] leading-tight text-[var(--g-attention-ink)]"
+              data-testid="pro-workbar-recalc-cue"
+            >
+              <i
+                aria-hidden
+                className="size-1.5 shrink-0 rounded-full bg-[#f58a07]"
+              />
+              <span className="truncate">
                 {working
                   ? 'Gellatti przygotowuje wynik'
                   : missingRoleActionPl
                     ? missingRoleActionPl
                     : journeyState === 'STALE'
-                      ? 'Receptura się zmieniła.'
+                      ? 'Receptura się zmieniła'
                       : 'Zaktualizuj wynik receptury'}
               </span>
             </span>
-          </button>
+            <button
+              type="button"
+              onClick={onRecalculate}
+              disabled={!onRecalculate || working}
+              aria-busy={working}
+              data-testid="pro-workbar-recalc"
+              className="pro-focus-ring flex h-11 shrink-0 items-center justify-center rounded-full bg-[var(--g-graphite)] px-7 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-70"
+            >
+              {working ? 'Przeliczanie…' : 'Przelicz'}
+            </button>
+          </>
         ) : null}
       </div>
     );

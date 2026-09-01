@@ -1042,7 +1042,10 @@ describe('five-detent direction language', () => {
     expect(read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx')).toContain(
       'recipe.setDirectionTarget(axis, next)',
     );
-    expect(read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx')).toContain('size-7');
+    // OWNER FROZEN PRO VISUAL: the 28 px detent became a 36 px target carrying
+    // a 13 px thumb. Geometry only — the intent wiring asserted around it is
+    // what this test is actually for, and it is unchanged.
+    expect(read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx')).toContain('size-9');
     expect(read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx')).toContain(
       'profileSnapshotFromState(store, directionTargets, directionIntents)',
     );
