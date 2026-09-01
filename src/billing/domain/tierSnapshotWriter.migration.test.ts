@@ -1,0 +1,807 @@
+/// <reference types="node" />
+/**
+ * Partner TIER SNAPSHOT WRITER guard (20260831202000).
+ *
+ * Two halves, both required by the owner:
+ *  1. the SQL writer enforces the same rules as tierSnapshots.ts (static scan);
+ *  2. the owner's boundary scenarios hold — 99 Standard, 100 Gold, a later drop
+ *     below 100 leaves the written snapshot alone and downgrades at the NEXT
+ *     snapshot — proven against the pure module that the SQL mirrors.
+ *
+ * Plus the proof the owner asked for explicitly: a commission event reads the
+ * PERSISTED snapshot, never a recomputed or client-supplied tier.
+ */
+import { readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { describe, expect, it } from 'vitest';
+
+import {
+  DEFAULT_GOLD_THRESHOLD,
+  computeTierSnapshot,
+  selectSnapshotForMonth,
+} from './tierSnapshots';
+
+const REPO = resolve(import.meta.dirname, '..', '..', '..');
+const MIGRATION = readFileSync(
+  join(REPO, 'supabase', 'migrations', '20260831202000_partner_tier_snapshot_writer.sql'),
+  'utf8',
+);
+const SQL = MIGRATION.replace(/--.*$/gm, '');
+const DISPATCH = readFileSync(
+  join(REPO, 'supabase', 'functions', 'stripe-webhook', 'dispatch.ts'),
+  'utf8',
+);
+
+const WRITER =
+  /create or replace function public\.gellatti_write_partner_tier_snapshots_v1[\s\S]*?\$\$;/.exec(
+    SQL,
+  )?.[0] ?? '';
+const COUNT =
+  /create or replace function public\.gellatti_partner_active_referred_count_v1[\s\S]*?\$\$;/.exec(
+    SQL,
+  )?.[0] ?? '';
+const ELITE =
+  /create or replace function public\.gellatti_partner_elite_active_v1[\s\S]*?\$\$;/.exec(
+    SQL,
+  )?.[0] ?? '';
+
+// ---------------------------------------------------------------------------
+// 1. SQL invariants
+// ---------------------------------------------------------------------------
+
+describe('the writer exists at all — this is the gap that made Gold unreachable', () => {
+  it('declares a writer for partner_tier_snapshots', () => {
+    expect(WRITER).toContain('insert into public.partner_tier_snapshots');
+  });
+
+  it('dispatch.ts reads that same table, so writer and reader now meet', () => {
+    expect(DISPATCH).toContain("from('partner_tier_snapshots')");
+  });
+});
+
+describe('T2 — the Gold threshold', () => {
+  it('shares the TS threshold of 100', () => {
+    expect(DEFAULT_GOLD_THRESHOLD).toBe(100);
+    expect(SQL).toMatch(
+      /create or replace function public\.gellatti_gold_threshold_v1[\s\S]*?select 100/,
+    );
+  });
+
+  it('uses >= so exactly 100 is Gold and 99 is Standard', () => {
+    expect(WRITER).toContain('when active_count >= v_threshold then');
+    expect(WRITER).not.toContain('active_count > v_threshold');
+  });
+
+  it('defaults to standard', () => {
+    expect(WRITER).toContain("else 'standard'");
+  });
+});
+
+describe('T3 — what counts', () => {
+  it('counts HOME and PRO combined — no product filter at all', () => {
+    expect(COUNT).not.toMatch(/cs\.product\s*=/);
+    expect(COUNT).not.toMatch(/product in \(/);
+  });
+
+  it('counts distinct subscriptions, so a duplicate attribution cannot inflate the tier', () => {
+    expect(COUNT).toContain('count(distinct cs.id)');
+  });
+
+  it('excludes the partner’s own subscription (self-referral)', () => {
+    expect(COUNT).toContain('cs.user_id <> p.user_id');
+  });
+
+  it('counts only attributions whose ownership is LOCKED, not the mutable status', () => {
+    // Was `expect(COUNT).toContain("ra.status = 'active'")`. That assertion
+    // codified a defect: A3 makes ownership permanent once locked, so
+    // `locked_at` is the durable historical fact and the as-of reader already
+    // used it. Keying the live reader on the mutable `status` gave the two
+    // readers different ownership rules for the same subscription.
+    expect(COUNT).toContain('ra.locked_at is not null');
+    expect(COUNT).not.toMatch(/ra\.status\s*=/);
+  });
+
+  it('counts active and trialing', () => {
+    expect(COUNT).toContain("cs.status in ('active', 'trialing')");
+  });
+
+  it('counts past_due ONLY inside its already-paid window, never a fixed number of days', () => {
+    expect(COUNT).toContain("cs.status = 'past_due'");
+    expect(COUNT).toContain('cs.current_period_end > p_at');
+    expect(COUNT).not.toMatch(/interval\s+'\d+\s+day/i);
+  });
+
+  it('counts a cancelling subscription ONLY while its paid access has not ended', () => {
+    // Was `expect(COUNT).not.toContain('cancel_at_period_end')`, under a comment
+    // claiming a cancelling subscription "still counts until access ends".
+    // That is the canonical rule (T3), but ignoring the flag entirely does not
+    // implement it — it counts such a subscription FOREVER, including long
+    // after the paid window closed. The canonical predicate requires
+    // `atUtcMs < paidAccessEndsAtUtcMs` when cancelAtPeriodEnd is set.
+    expect(COUNT).toContain('cancel_at_period_end');
+    expect(COUNT).toMatch(
+      /not cs\.cancel_at_period_end\s*\n?\s*or \(cs\.current_period_end is not null and cs\.current_period_end > p_at\)/,
+    );
+  });
+
+  it('excludes fraud-reversed commissions, exactly as the as-of reader does', () => {
+    expect(COUNT).toContain("ca.reason = 'fraud'");
+  });
+});
+
+describe('T4 — an active Elite override wins', () => {
+  it('is checked before the automatic tier', () => {
+    const caseBlock = /case\s+when elite then 'elite'[\s\S]*?end as tier/.exec(WRITER)?.[0] ?? '';
+    expect(caseBlock).toContain("when elite then 'elite'");
+    expect(caseBlock.indexOf("'elite'")).toBeLessThan(caseBlock.indexOf("'gold'"));
+  });
+
+  it('derives Elite from the rate profile, so the override and its rates cannot disagree', () => {
+    expect(ELITE).toContain('from public.partner_rate_profiles rp');
+  });
+
+  it('respects the window and the revocation', () => {
+    expect(ELITE).toContain('rp.effective_start <= p_at');
+    expect(ELITE).toContain('rp.effective_end is null or p_at < rp.effective_end');
+    expect(ELITE).toContain('rp.revoked_at    is null or p_at < rp.revoked_at');
+  });
+
+  it('records the override on the snapshot for audit', () => {
+    expect(WRITER).toContain('elite_override');
+  });
+});
+
+describe('immutability, idempotency and no retroactive rewrite', () => {
+  it('inserts with ON CONFLICT DO NOTHING — the first snapshot for a month wins', () => {
+    expect(WRITER).toContain('on conflict (partner_id, month) do nothing');
+  });
+
+  it('never updates or deletes an existing snapshot', () => {
+    expect(/update public\.partner_tier_snapshots/i.test(SQL)).toBe(false);
+    expect(/delete from public\.partner_tier_snapshots/i.test(SQL)).toBe(false);
+  });
+
+  it('reports how many were skipped, so a second run is visibly a no-op', () => {
+    expect(WRITER).toContain('snapshotsSkipped');
+  });
+
+  it('the rollback deliberately does NOT remove written snapshots', () => {
+    expect(MIGRATION).toContain('Written snapshots are NOT removed by a rollback');
+  });
+});
+
+describe('Europe/Madrid month boundaries', () => {
+  it('derives the month in Madrid, not UTC or server-local time', () => {
+    expect(WRITER).toContain("at time zone 'Europe/Madrid'");
+    expect(WRITER).toContain("date_trunc('month'");
+  });
+
+  it('refuses a month that is not the first day', () => {
+    expect(WRITER).toContain('tier_snapshot_month_must_be_first_of_month');
+  });
+
+  it('measures counts at an explicit instant rather than an ambient clock', () => {
+    expect(WRITER).toContain('p_count_at timestamptz');
+    expect(WRITER).toContain('countedAt');
+  });
+});
+
+describe('scope and security', () => {
+  it('writes snapshots only for active partners', () => {
+    expect(WRITER).toContain("where p.status = 'active'");
+  });
+
+  it('no writer function is client-callable', () => {
+    for (const fn of [
+      'gellatti_write_partner_tier_snapshots_v1',
+      'gellatti_partner_active_referred_count_v1',
+      'gellatti_partner_elite_active_v1',
+    ]) {
+      expect(SQL, fn).toMatch(new RegExp(`revoke all on function public\\.${fn}`));
+      expect(new RegExp(`grant execute on function public\\.${fn}`).test(SQL), fn).toBe(false);
+    }
+  });
+
+  it('the admin read requires an admin permission', () => {
+    const fn =
+      /create or replace function public\.gellatti_admin_partner_tier_snapshots_v1[\s\S]*?\$\$;/.exec(
+        SQL,
+      )?.[0] ?? '';
+    expect(fn).toContain('gellatti_admin_has_permission_v1');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 2. The owner's boundary scenarios, on the module the SQL mirrors
+// ---------------------------------------------------------------------------
+
+function snapshotFor(count: number, month: string) {
+  return computeTierSnapshot('partner-1', month, count);
+}
+
+describe('owner scenario — 99 snapshots Standard', () => {
+  it('99 eligible actives is Standard', () => {
+    const snapshot = snapshotFor(99, '2026-01');
+    expect(snapshot.count).toBe(99);
+    expect(snapshot.automaticTier).toBe('standard');
+    expect(snapshot.effectiveTier).toBe('standard');
+  });
+});
+
+describe('owner scenario — 100 snapshots Gold', () => {
+  it('exactly 100 flips to Gold', () => {
+    const snapshot = snapshotFor(100, '2026-02');
+    expect(snapshot.count).toBe(100);
+    expect(snapshot.effectiveTier).toBe('gold');
+  });
+
+  it('the boundary is exact — 99 Standard, 100 Gold, 101 Gold', () => {
+    expect(snapshotFor(99, '2026-02').effectiveTier).toBe('standard');
+    expect(snapshotFor(100, '2026-02').effectiveTier).toBe('gold');
+    expect(snapshotFor(101, '2026-02').effectiveTier).toBe('gold');
+  });
+});
+
+describe('owner scenario — dropping below 100 preserves the current snapshot and downgrades NEXT', () => {
+  it('the written Gold snapshot is unchanged by a later drop, and the next month is Standard', () => {
+    const february = snapshotFor(100, '2026-02'); // written when the partner had 100
+    const march = snapshotFor(87, '2026-03'); // the count fell during March
+
+    // the already-written month keeps its tier — this is what immutability buys
+    expect(february.effectiveTier).toBe('gold');
+    expect(february.count).toBe(100);
+
+    // the downgrade lands on the NEXT snapshot, never retroactively
+    expect(march.effectiveTier).toBe('standard');
+    expect(march.count).toBe(87);
+  });
+
+  it('a commission earned in February still resolves Gold after the March downgrade', () => {
+    const history = [snapshotFor(100, '2026-02'), snapshotFor(87, '2026-03')];
+    expect(selectSnapshotForMonth(history, 'partner-1', '2026-02')?.effectiveTier).toBe('gold');
+    expect(selectSnapshotForMonth(history, 'partner-1', '2026-03')?.effectiveTier).toBe('standard');
+  });
+
+  it('selecting a month never falls back to another month', () => {
+    const history = [snapshotFor(100, '2026-02')];
+    expect(selectSnapshotForMonth(history, 'partner-1', '2026-03')).toBeNull();
+    expect(selectSnapshotForMonth(history, 'partner-1', '2026-02')).toEqual(history[0]);
+  });
+
+  it('computation is pure — the same inputs give an identical snapshot', () => {
+    expect(snapshotFor(100, '2026-02')).toEqual(snapshotFor(100, '2026-02'));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 3. The commission event reads the PERSISTED snapshot
+// ---------------------------------------------------------------------------
+
+describe('a commission event reads the persisted snapshot, not a calculation', () => {
+  it('selects the tier from partner_tier_snapshots for the earned month', () => {
+    expect(DISPATCH).toContain("from('partner_tier_snapshots')");
+    expect(DISPATCH).toContain(".select('tier')");
+    expect(DISPATCH).toContain(".eq('month', month)");
+  });
+
+  it('defers the event when the snapshot is missing rather than guessing a tier', () => {
+    expect(DISPATCH).toContain('tier_snapshot_missing');
+    expect(DISPATCH).toMatch(/if \(!tier\) throw new RetryableEffectError/);
+  });
+
+  it('never falls back to the partners.tier convenience mirror', () => {
+    // the tier used for money must come from the month's snapshot only
+    expect(DISPATCH).not.toMatch(/\.select\('[^']*\btier\b[^']*'\)[\s\S]{0,200}from\('partners'\)/);
+    expect(DISPATCH).not.toContain('partnerRow.tier');
+  });
+
+  it('never accepts a tier from the webhook payload or any client input', () => {
+    expect(DISPATCH).not.toMatch(/tier\s*[:=]\s*(event|payload|body|input|req)\./);
+  });
+
+  it('keys the snapshot lookup on the month the commission was EARNED', () => {
+    expect(DISPATCH).toContain('const month = commissionMonthDate(paidAtUtcMs)');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 4. Owner point D — the catch-up contract, BOTH directions
+// ---------------------------------------------------------------------------
+
+describe('owner point D — a late run must produce the SAME snapshot as an on-time run', () => {
+  // The property that makes a catch-up safe: the tier depends only on the
+  // boundary's own facts, so WHEN the job runs cannot change what it writes.
+  it('February Gold → March Standard: the late February write is still Gold', () => {
+    const februaryOnTime = snapshotFor(105, '2026-02'); // what 1 Feb would have written
+    const februaryLate = snapshotFor(105, '2026-02'); // what a 3 Mar catch-up writes
+    expect(februaryLate).toEqual(februaryOnTime);
+    expect(februaryLate.effectiveTier).toBe('gold');
+
+    const march = snapshotFor(87, '2026-03');
+    expect(march.effectiveTier).toBe('standard');
+    // and February is untouched by March's fall
+    expect(februaryLate.count).toBe(105);
+  });
+
+  it('February Standard → March Gold: the inverse never overpays February', () => {
+    const february = snapshotFor(87, '2026-02');
+    const march = snapshotFor(105, '2026-03');
+    expect(february.effectiveTier).toBe('standard');
+    expect(march.effectiveTier).toBe('gold');
+    // February must NOT inherit March's Gold — that would overpay
+    expect(february.count).toBe(87);
+  });
+
+  it('the rejected design would have got both cases wrong', () => {
+    // Filling February with March's count: 87 → Standard, underpaying a Gold
+    // month. And in the inverse, 105 → Gold, overpaying a Standard month.
+    // Recorded as a test so the mistake cannot quietly return.
+    expect(snapshotFor(87, '2026-02').effectiveTier).toBe('standard');
+    expect(snapshotFor(105, '2026-02').effectiveTier).toBe('gold');
+    expect(snapshotFor(87, '2026-02')).not.toEqual(snapshotFor(105, '2026-02'));
+  });
+
+  it('a commission earned in February keeps February’s tier after March moves', () => {
+    const history = [snapshotFor(105, '2026-02'), snapshotFor(87, '2026-03')];
+    expect(selectSnapshotForMonth(history, 'partner-1', '2026-02')?.effectiveTier).toBe('gold');
+    expect(selectSnapshotForMonth(history, 'partner-1', '2026-03')?.effectiveTier).toBe('standard');
+  });
+
+  it('and the same holds in the inverse direction', () => {
+    const history = [snapshotFor(87, '2026-02'), snapshotFor(105, '2026-03')];
+    expect(selectSnapshotForMonth(history, 'partner-1', '2026-02')?.effectiveTier).toBe('standard');
+    expect(selectSnapshotForMonth(history, 'partner-1', '2026-03')?.effectiveTier).toBe('gold');
+  });
+
+  it('writing twice is writing once — the snapshot is a pure function of its inputs', () => {
+    expect(snapshotFor(105, '2026-02')).toEqual(snapshotFor(105, '2026-02'));
+    expect(snapshotFor(87, '2026-03')).toEqual(snapshotFor(87, '2026-03'));
+  });
+
+  it('February and March are computed independently', () => {
+    // no shared state: the March value cannot influence the February one
+    const feb = snapshotFor(105, '2026-02');
+    const mar = snapshotFor(87, '2026-03');
+    expect(feb.month).toBe('2026-02');
+    expect(mar.month).toBe('2026-03');
+    expect(feb.count).not.toBe(mar.count);
+  });
+});
+
+describe('owner point D — the SQL uses the boundary, so late equals on-time', () => {
+  const CATCHUP =
+    /create or replace function public\.gellatti_catchup_partner_tier_snapshots_v1[\s\S]*?\$\$;/.exec(
+      SQL,
+    )?.[0] ?? '';
+
+  it('computes the boundary from the MONTH, never from the run time', () => {
+    expect(CATCHUP).toContain("v_boundary := (v_month::timestamp at time zone 'Europe/Madrid')");
+  });
+
+  it('passes the boundary — not p_now — to both the count and the Elite check', () => {
+    expect(CATCHUP).toContain('gellatti_partner_referred_count_asof_v1(v_partner.id, v_boundary)');
+    expect(CATCHUP).toContain('gellatti_partner_elite_active_v1(v_partner.id, v_boundary)');
+  });
+
+  it('uses p_now ONLY as computed_at, so lateness is visible but not causal', () => {
+    // computed_at is provenance; it must never feed the tier decision
+    expect(CATCHUP).toMatch(/v_count, v_elite, p_now/);
+  });
+
+  it('still refuses to overwrite an existing snapshot', () => {
+    expect(CATCHUP).toContain('on conflict (partner_id, month) do nothing');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 5. Owner point 6 — ON-TIME === LATE equivalence, on the canonical predicate
+// ---------------------------------------------------------------------------
+
+import {
+  countEligibleReferredSubscriptions,
+  isEligibleReferredSubscription,
+  type ReferredSubscriptionEvidence,
+} from './tierSnapshots';
+import { resolveEliteRate, type EliteRateProfileVersion } from './partnerRateProfiles';
+
+const PARTNER = 'partner-1';
+const PARTNER_USER = 'user-partner';
+const FEB_BOUNDARY = Date.UTC(2026, 0, 31, 23, 0, 0); // Madrid midnight 1 Feb
+const MAR_BOUNDARY = Date.UTC(2026, 1, 28, 23, 0, 0); // Madrid midnight 1 Mar
+
+function subs(count: number, offset = 0): ReferredSubscriptionEvidence[] {
+  return Array.from({ length: count }, (_u, i) => ({
+    subscriptionId: `sub-${offset + i}`,
+    attributedPartnerId: PARTNER,
+    customerUserId: `customer-${offset + i}`,
+    product: (i % 2 === 0 ? 'home' : 'pro') as 'home' | 'pro',
+    entitlement: 'paid' as const,
+    status: 'active' as const,
+    cancelAtPeriodEnd: false,
+    paidAccessEndsAtUtcMs: Date.UTC(2027, 0, 1),
+    fraudReversed: false,
+  }));
+}
+
+/** The financial result of a snapshot — everything that must NOT vary. */
+function financialResult(evidence: ReferredSubscriptionEvidence[], month: string, at: number) {
+  const count = countEligibleReferredSubscriptions(evidence, PARTNER, PARTNER_USER, at);
+  const snapshot = computeTierSnapshot(PARTNER, month, count);
+  return {
+    count,
+    tier: snapshot.effectiveTier,
+    month: snapshot.month,
+    counted: evidence
+      .filter((e) => isEligibleReferredSubscription(e, PARTNER, PARTNER_USER, at))
+      .map((e) => e.subscriptionId)
+      .sort(),
+  };
+}
+
+describe('owner point 6 — the same facts must give the same financial result, on time or late', () => {
+  it('A. Feb 105 Gold → Mar 87 Standard, and the late Feb write is identical', () => {
+    const febFacts = subs(105);
+    const onTime = financialResult(febFacts, '2026-02', FEB_BOUNDARY);
+    const late = financialResult(febFacts, '2026-02', FEB_BOUNDARY); // run in March
+    expect(late).toEqual(onTime);
+    expect(late.tier).toBe('gold');
+    expect(late.count).toBe(105);
+    expect(financialResult(subs(87), '2026-03', MAR_BOUNDARY).tier).toBe('standard');
+  });
+
+  it('B. Feb 87 Standard → Mar 105 Gold, and February is never overpaid', () => {
+    const febFacts = subs(87);
+    const onTime = financialResult(febFacts, '2026-02', FEB_BOUNDARY);
+    const late = financialResult(febFacts, '2026-02', FEB_BOUNDARY);
+    expect(late).toEqual(onTime);
+    expect(late.tier).toBe('standard');
+    expect(financialResult(subs(105), '2026-03', MAR_BOUNDARY).tier).toBe('gold');
+  });
+
+  it('C. 99 Standard, 100 Gold — the boundary is exact in both timings', () => {
+    for (const month of ['2026-02', '2026-03'] as const) {
+      const at = month === '2026-02' ? FEB_BOUNDARY : MAR_BOUNDARY;
+      expect(financialResult(subs(99), month, at).tier).toBe('standard');
+      expect(financialResult(subs(100), month, at).tier).toBe('gold');
+    }
+  });
+
+  it('D. 100 Gold then 99 Standard at the next snapshot', () => {
+    expect(financialResult(subs(100), '2026-02', FEB_BOUNDARY).tier).toBe('gold');
+    expect(financialResult(subs(99), '2026-03', MAR_BOUNDARY).tier).toBe('standard');
+  });
+
+  it('the counted subscription IDENTITIES are equal, not merely the total', () => {
+    const facts = subs(100);
+    const a = financialResult(facts, '2026-02', FEB_BOUNDARY);
+    const b = financialResult(facts, '2026-02', FEB_BOUNDARY);
+    expect(b.counted).toEqual(a.counted);
+    expect(new Set(a.counted).size).toBe(100);
+  });
+
+  it('E. an Elite rate effective during the earned period resolves the same late as on time', () => {
+    const version: EliteRateProfileVersion = {
+      versionId: 'v1',
+      partnerId: PARTNER,
+      rates: {
+        homeMonthlyCents: 349,
+        homeAnnualCents: 2200,
+        proMonthlyCents: 799,
+        proAnnualCents: 5500,
+      },
+      effectiveStartUtcMs: Date.UTC(2026, 0, 1),
+      effectiveEndUtcMs: Date.UTC(2026, 2, 1),
+      reason: 'strategic partner',
+      adminActorId: 'admin-1',
+      createdAtUtcMs: Date.UTC(2026, 0, 1),
+      priorVersionId: null,
+      revokedAtUtcMs: null,
+    };
+    // a LATER version must not change what February resolves to
+    const superseding: EliteRateProfileVersion = {
+      ...version,
+      versionId: 'v2',
+      rates: { ...version.rates, proAnnualCents: 9900 },
+      effectiveStartUtcMs: Date.UTC(2026, 2, 1),
+      effectiveEndUtcMs: null,
+      priorVersionId: 'v1',
+    };
+    const onTime = resolveEliteRate({
+      versions: [version],
+      product: 'pro',
+      cadence: 'annual',
+      atUtcMs: FEB_BOUNDARY,
+    });
+    const late = resolveEliteRate({
+      versions: [version, superseding],
+      product: 'pro',
+      cadence: 'annual',
+      atUtcMs: FEB_BOUNDARY,
+    });
+    expect(late).toEqual(onTime);
+    expect(late.resolved && late.amountCents).toBe(5500);
+    expect(late.resolved && late.rateProfileVersionId).toBe('v1');
+  });
+
+  it('F. one unknown threshold-relevant subscription at 99 known must NOT be guessed', () => {
+    // 99 are known-eligible. One more exists whose state at the boundary cannot
+    // be determined. The answer is 99 OR 100 — Standard OR Gold — and the
+    // difference is a tier change. Neither may be assumed.
+    const known = subs(99);
+    const withUnknownCountedAsInactive = countEligibleReferredSubscriptions(
+      known,
+      PARTNER,
+      PARTNER_USER,
+      FEB_BOUNDARY,
+    );
+    const withUnknownCountedAsActive = countEligibleReferredSubscriptions(
+      [...known, ...subs(1, 99)],
+      PARTNER,
+      PARTNER_USER,
+      FEB_BOUNDARY,
+    );
+
+    expect(withUnknownCountedAsInactive).toBe(99);
+    expect(withUnknownCountedAsActive).toBe(100);
+    // and the two assumptions give DIFFERENT tiers — which is exactly why
+    // guessing is forbidden and the month must be refused instead
+    expect(
+      computeTierSnapshot(PARTNER, '2026-02', withUnknownCountedAsInactive).effectiveTier,
+    ).toBe('standard');
+    expect(computeTierSnapshot(PARTNER, '2026-02', withUnknownCountedAsActive).effectiveTier).toBe(
+      'gold',
+    );
+  });
+
+  it('F. the SQL refuses that month rather than choosing a side', () => {
+    const blocker =
+      /create or replace function public\.gellatti_tier_reconstruction_blocker_v1[\s\S]*?\$\$;/.exec(
+        SQL,
+      )?.[0] ?? '';
+    // an unknown state returns a blocker; it is never filtered away into a count
+    expect(blocker).toContain("return 'subscription_state_unknown'");
+    expect(blocker).toContain("return 'missing_initial_state'");
+    expect(blocker).toContain("return 'payment_state_unproven'");
+    const catchup =
+      /create or replace function public\.gellatti_catchup_partner_tier_snapshots_v1[\s\S]*?\$\$;/.exec(
+        SQL,
+      )?.[0] ?? '';
+    expect(catchup).toContain('if v_blocker is not null then');
+    expect(catchup).toContain('continue;');
+  });
+});
+
+describe('T3 — ONE eligibility predicate, two state sources (pre-apply audit, 2026-08-31)', () => {
+  const strip = (x: string) => x.replace(/--.*$/gm, '');
+  const bodyOf = (fn: string) =>
+    strip(
+      new RegExp(`create or replace function public\\.${fn}[\\s\\S]*?\\$\\$;`).exec(SQL)?.[0] ?? '',
+    );
+
+  /** Reads the LIVE customer_subscriptions row. */
+  const LIVE = bodyOf('gellatti_partner_active_referred_count_v1');
+  /** Reads state RECONSTRUCTED from provider events at an instant. */
+  const ASOF = bodyOf('gellatti_partner_referred_count_asof_v1');
+
+  it('finds both readers, so nothing below is vacuous', () => {
+    expect(LIVE, 'live reader not found').not.toBe('');
+    expect(ASOF, 'as-of reader not found').not.toBe('');
+  });
+
+  /**
+   * WHY THIS EXISTS. The on-time writer calls the LIVE reader and the catch-up
+   * writer calls the AS-OF reader. If the two disagree about WHICH
+   * subscriptions are eligible, the same facts yield two different tiers and
+   * the on-time == late property is false.
+   *
+   * They did disagree. The live reader used the mutable `ra.status` instead of
+   * `locked_at`, had no fraud-reversal exclusion, and ignored
+   * `cancel_at_period_end` entirely — under a comment that described the
+   * canonical rule it was not implementing. Caught before this migration was
+   * ever applied; these assertions are what make it stay caught.
+   */
+  const SHARED_RULES: ReadonlyArray<readonly [string, RegExp]> = [
+    ['A3 durable ownership, not the mutable status', /ra\.locked_at is not null/],
+    ['self-referral excluded', /cs\.user_id <> p\.user_id/],
+    ['fraud-reversed commissions excluded', /ca\.reason = 'fraud'/],
+    ['cancel_at_period_end bounded by the paid window', /cancel_at_period_end/],
+    ['past_due only inside the paid window', /past_due/],
+    ['de-duplicated by subscription identity', /count\(distinct cs\.id\)/],
+  ];
+
+  for (const [label, rule] of SHARED_RULES) {
+    it(`LIVE reader applies: ${label}`, () => expect(LIVE).toMatch(rule));
+    it(`AS-OF reader applies: ${label}`, () => expect(ASOF).toMatch(rule));
+  }
+
+  it('neither reader falls back to the mutable attribution status', () => {
+    for (const [name, body] of [
+      ['live', LIVE],
+      ['as-of', ASOF],
+    ] as const) {
+      expect(body, `${name} reader uses mutable ra.status`).not.toMatch(/ra\.status\s*=/);
+    }
+  });
+
+  it('the two writers each use the reader appropriate to their state source', () => {
+    // CATCHUP is scoped to another describe block; derive both here so this
+    // assertion stands on its own.
+    const writer = bodyOf('gellatti_write_partner_tier_snapshots_v1');
+    const catchup = bodyOf('gellatti_catchup_partner_tier_snapshots_v1');
+    expect(writer, 'on-time writer not found').not.toBe('');
+    expect(catchup, 'catch-up writer not found').not.toBe('');
+    // on-time reads live state; catch-up reconstructs it at the boundary
+    expect(writer).toContain('gellatti_partner_active_referred_count_v1');
+    expect(catchup).toContain('gellatti_partner_referred_count_asof_v1');
+  });
+
+  it('every canonical TS branch has a counterpart in BOTH readers', () => {
+    // The canonical predicate is isEligibleReferredSubscription() in
+    // tierSnapshots.ts. Its branches, in order.
+    const canonical: ReadonlyArray<readonly [string, RegExp]> = [
+      ['attribution ownership', /ra\.partner_id = p_partner_id/],
+      ['self-referral', /user_id <> p\.user_id/],
+      ['fraud reversal', /reason = 'fraud'/],
+      ['active/trialing', /'active', 'trialing'/],
+      ['cancel-at-period-end window', /cancel_at_period_end/],
+      ['past_due grace', /past_due/],
+    ];
+    for (const [label, rule] of canonical) {
+      expect(LIVE, `live reader missing ${label}`).toMatch(rule);
+      expect(ASOF, `as-of reader missing ${label}`).toMatch(rule);
+    }
+  });
+});
+
+describe('on-time == late, proven BEFORE apply (owner §3, 2026-08-31)', () => {
+  const strip = (x: string) => x.replace(/--.*$/gm, '');
+  const bodyOf = (fn: string) =>
+    strip(
+      new RegExp(`create or replace function public\\.${fn}[\\s\\S]*?\\$\\$;`).exec(SQL)?.[0] ?? '',
+    );
+  const ONTIME = bodyOf('gellatti_write_partner_tier_snapshots_v1');
+  const LATE = bodyOf('gellatti_catchup_partner_tier_snapshots_v1');
+
+  it('finds both writers', () => {
+    expect(ONTIME, 'on-time writer not found').not.toBe('');
+    expect(LATE, 'catch-up writer not found').not.toBe('');
+  });
+
+  /**
+   * The two writers may differ ONLY in where subscription state comes from.
+   * Everything that turns a count into a tier must be identical, or the same
+   * facts yield different tiers depending on which path happened to run.
+   */
+  it('both derive the threshold from the SAME function, never a literal', () => {
+    for (const [name, body] of [
+      ['on-time', ONTIME],
+      ['late', LATE],
+    ] as const) {
+      expect(body, `${name} must call gellatti_gold_threshold_v1`).toContain(
+        'gellatti_gold_threshold_v1()',
+      );
+      // a hard-coded 100 would drift the moment the threshold changed
+      expect(body, `${name} hard-codes the threshold`).not.toMatch(/>=\s*100\b/);
+    }
+  });
+
+  it('both use >= so exactly the threshold is Gold', () => {
+    for (const body of [ONTIME, LATE]) expect(body).toMatch(/>=\s*v_threshold|>=\s*threshold/);
+  });
+
+  it('both put Elite BEFORE the automatic tier', () => {
+    for (const [name, body] of [
+      ['on-time', ONTIME],
+      ['late', LATE],
+    ] as const) {
+      const branch = /case\s+when [a-z_]*elite[a-z_]* then 'elite'[\s\S]*?end/.exec(body)?.[0] ?? '';
+      expect(branch, `${name} has no elite-first branch`).not.toBe('');
+      expect(branch.indexOf("'elite'")).toBeLessThan(branch.indexOf("'gold'"));
+      expect(branch.indexOf("'gold'")).toBeLessThan(branch.indexOf("'standard'"));
+    }
+  });
+
+  it('both resolve Elite AT the boundary instant, not today', () => {
+    for (const body of [ONTIME, LATE]) {
+      expect(body).toMatch(/gellatti_partner_elite_active_v1\([^)]*(p_count_at|v_boundary)\)/);
+    }
+  });
+
+  it('both are idempotent on (partner, month) — a month is never rewritten', () => {
+    for (const body of [ONTIME, LATE]) {
+      expect(body).toMatch(/on conflict \(partner_id, month\) do nothing/);
+    }
+  });
+
+  it('only the LATE path may refuse, and it refuses rather than guessing', () => {
+    // The unknown-at-threshold case: a blocker means NO snapshot and a typed
+    // gap, never a count that silently drops the unprovable subscription.
+    expect(LATE).toContain('gellatti_tier_reconstruction_blocker_v1');
+    expect(LATE).toContain('if v_blocker is not null then');
+    expect(LATE).toMatch(/insert into public\.partner_tier_snapshot_gaps/);
+    // the refusal must skip the write entirely
+    const blockerBranch = /if v_blocker is not null then[\s\S]*?continue;/.exec(LATE)?.[0] ?? '';
+    expect(blockerBranch, 'blocker branch not found').not.toBe('');
+    expect(blockerBranch).not.toMatch(/insert into public\.partner_tier_snapshots\b/);
+  });
+
+  it('the late path never falls back to a current count or partners.tier', () => {
+    // It must read the AS-OF count at the boundary, and must not consult the
+    // live reader or the denormalised partners.tier column.
+    expect(LATE).toContain('gellatti_partner_referred_count_asof_v1(v_partner.id, v_boundary)');
+    expect(LATE).not.toContain('gellatti_partner_active_referred_count_v1');
+    expect(LATE).not.toMatch(/\bp\.tier\b|partners\.tier/);
+  });
+});
+
+describe('a live-state writer can never manufacture historical truth (owner ruling)', () => {
+  const GUARD = readFileSync(
+    join(REPO, 'supabase', 'migrations', '20260831204000_partner_tier_snapshot_on_time_guard.sql'),
+    'utf8',
+  );
+  const CODE = GUARD.replace(/--.*$/gm, '');
+
+  it('refuses a PAST month with a typed reason, pointing at the catch-up route', () => {
+    expect(CODE).toMatch(/v_month < v_current_month/);
+    expect(CODE).toContain("raise exception 'historical_month_requires_catchup'");
+  });
+
+  it('refuses a FUTURE month, which has no boundary state to measure', () => {
+    expect(CODE).toMatch(/v_month > v_current_month/);
+    expect(CODE).toContain("raise exception 'future_month_not_snapshottable'");
+  });
+
+  it('derives "current" from SERVER time, never from caller input', () => {
+    // Deriving it from p_month or p_count_at would let the caller redefine
+    // which month is current and walk back through the hole being closed.
+    expect(CODE).toMatch(
+      /v_current_month := date_trunc\('month', \(now\(\) at time zone 'Europe\/Madrid'\)\)::date/,
+    );
+    expect(CODE).not.toMatch(/v_current_month\s*:=[^;]*p_count_at/);
+    expect(CODE).not.toMatch(/v_current_month\s*:=[^;]*p_month/);
+  });
+
+  it('rejects a measurement instant in the future', () => {
+    expect(CODE).toContain("raise exception 'tier_snapshot_count_instant_in_future'");
+  });
+
+  it('does not silently redirect a historical call into the catch-up', () => {
+    // Explicit refusal is the contract: rerouting would hide a caller doing
+    // something it should not, and catch-up may legitimately decline to write.
+    expect(CODE).not.toMatch(/gellatti_catchup_partner_tier_snapshots_v1\s*\(/);
+  });
+
+  it('broadens no grant — the role surface is unchanged', () => {
+    expect(CODE).toMatch(
+      /revoke all on function public\.gellatti_write_partner_tier_snapshots_v1\(date, timestamptz\)\s*\n?\s*from public, anon, authenticated/,
+    );
+    expect(CODE).not.toMatch(/grant[^;]*gellatti_write_partner_tier_snapshots_v1/);
+    expect(CODE).not.toMatch(/grant[^;]*partner_tier_snapshot/);
+  });
+
+  it('leaves the tier decision, threshold and immutability untouched', () => {
+    // The guard is a precondition, not a rewrite of the arithmetic.
+    expect(CODE).toContain('public.gellatti_gold_threshold_v1()');
+    expect(CODE).toMatch(/when elite then 'elite'/);
+    expect(CODE).toMatch(/when active_count >= v_threshold then 'gold'/);
+    expect(CODE).toMatch(/on conflict \(partner_id, month\) do nothing/);
+  });
+
+  it('does not touch the catch-up, the readers, or the gaps table', () => {
+    for (const other of [
+      'gellatti_catchup_partner_tier_snapshots_v1',
+      'gellatti_partner_referred_count_asof_v1',
+      'gellatti_tier_reconstruction_blocker_v1',
+      'partner_tier_snapshot_gaps',
+    ]) {
+      expect(CODE, `guard must not redefine ${other}`).not.toMatch(
+        new RegExp(`create (or replace )?(function|table)[^;]*${other}`),
+      );
+    }
+  });
+
+  it('does not edit the applied migration', () => {
+    // 20260831202000 is registered as 20260831190352 and stays as history.
+    expect(SQL).not.toContain("raise exception 'historical_month_requires_catchup'");
+  });
+});

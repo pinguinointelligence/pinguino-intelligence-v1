@@ -611,6 +611,8 @@ export interface CommissionEntryRow {
   cadence: string;
   tier: string;
   rule_version: number;
+  /** Elite only: which partner_rate_profiles version produced amount_cents. */
+  rate_profile_version_id: string | null;
   amount_cents: number;
   currency: 'eur';
   status: 'held';
@@ -631,6 +633,9 @@ export const COMMISSION_ENTRY_ROW_KEYS: readonly (keyof CommissionEntryRow)[] = 
   'cadence',
   'tier',
   'rule_version',
+  // Elite provenance (owner override 2026-08-31 §11): which per-partner rate
+  // profile version produced amount_cents. Null for standard/gold.
+  'rate_profile_version_id',
   'amount_cents',
   'currency',
   'status',
@@ -658,6 +663,7 @@ export function buildCommissionEntryRow(input: {
   commissionCadence: string;
   tier: string;
   ruleVersion: number;
+  rateProfileVersionId?: string | null;
   amountCents: number;
   earnedAtUtcMs: number;
   livemode: boolean;
@@ -674,6 +680,7 @@ export function buildCommissionEntryRow(input: {
     cadence: input.commissionCadence,
     tier: input.tier,
     rule_version: input.ruleVersion,
+    rate_profile_version_id: input.rateProfileVersionId ?? null,
     amount_cents: input.amountCents,
     currency: 'eur',
     status: 'held',

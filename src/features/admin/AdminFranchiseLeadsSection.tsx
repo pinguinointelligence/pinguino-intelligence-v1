@@ -21,12 +21,7 @@ const STATUS_LABEL: Readonly<Record<FranchiseInquiryStatus, string>> = {
   qualified: 'Zakwalifikowane',
   closed: 'Zamknięte',
 };
-const NEXT_STATUS: readonly FranchiseInquiryStatus[] = [
-  'new',
-  'contacted',
-  'qualified',
-  'closed',
-];
+const NEXT_STATUS: readonly FranchiseInquiryStatus[] = ['new', 'contacted', 'qualified', 'closed'];
 
 function LeadRow({
   row,
@@ -54,18 +49,26 @@ function LeadRow({
       </div>
       <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-3">
         <div>
-          <dt className="text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">Format</dt>
+          <dt className="text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">
+            Format
+          </dt>
           <dd className="text-[var(--g-ink)]">{franchiseConceptLabelPl(row.concept)}</dd>
         </div>
         <div>
-          <dt className="text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">Lokalizacja</dt>
+          <dt className="text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">
+            Lokalizacja
+          </dt>
           <dd className="text-[var(--g-ink)]">
             {[row.city, row.country].filter(Boolean).join(', ') || '—'}
           </dd>
         </div>
         <div>
-          <dt className="text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">Wpłynęło</dt>
-          <dd className="font-mono text-xs text-[var(--g-text-secondary)]">{row.created_at.slice(0, 16).replace('T', ' ')}</dd>
+          <dt className="text-[11px] tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">
+            Wpłynęło
+          </dt>
+          <dd className="font-mono text-xs text-[var(--g-text-secondary)]">
+            {row.created_at.slice(0, 16).replace('T', ' ')}
+          </dd>
         </div>
       </dl>
       {row.note ? (
@@ -106,8 +109,7 @@ export function AdminFranchiseLeadsSection() {
   const update = useMutation({
     mutationFn: (input: { inquiryId: string; status: FranchiseInquiryStatus; note?: string }) =>
       setFranchiseInquiryStatus(input),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ['admin-franchise-inquiries'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-franchise-inquiries'] }),
   });
 
   const rows = inquiries.data ?? [];
@@ -118,7 +120,9 @@ export function AdminFranchiseLeadsSection() {
     <>
       <header className="border-b border-[var(--g-line)] pb-6">
         <SectionLabel>Zapytania biznesowe</SectionLabel>
-        <h1 className="mt-2 text-[25px] leading-[1.08] font-[750] tracking-[-0.04em] text-[var(--g-ink)] sm:text-[30px]">Franchise</h1>
+        <h1 className="mt-2 text-[25px] leading-[1.08] font-[750] tracking-[-0.04em] text-[var(--g-ink)] sm:text-[30px]">
+          Franchise
+        </h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--g-text-secondary)]">
           Zapytania ze strony Franchise. Format, kontakt i lokalizacja — bez warunków finansowych,
           bo te ustalasz w rozmowie.
@@ -130,7 +134,9 @@ export function AdminFranchiseLeadsSection() {
         <ApplicationState kind="error" title="Nie udało się wczytać zapytań." />
       ) : null}
       {update.isError ? (
-        <p className="mt-4 text-sm text-status-error">{customerErrorMessage(update.error, 'admin')}</p>
+        <p className="mt-4 text-sm text-status-error">
+          {customerErrorMessage(update.error, 'admin')}
+        </p>
       ) : null}
 
       <div className="mt-7 grid gap-3">

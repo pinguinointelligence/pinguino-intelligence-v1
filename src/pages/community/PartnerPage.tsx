@@ -699,7 +699,9 @@ export function PartnerPage() {
             <ApplicationState
               kind="empty"
               title={
-                applicationStatus === 'submitted' || applicationStatus === 'in_review'
+                applicationStatus === 'submitted' ||
+                applicationStatus === 'under_review' ||
+                applicationStatus === 'more_information_needed'
                   ? 'Zgłoszenie partnerskie w toku'
                   : 'Tryb Partner nie jest jeszcze aktywny'
               }
@@ -711,7 +713,7 @@ export function PartnerPage() {
                   ? 'Status Partnera nie jest aktywny. Historia finansowa pozostaje zachowana.'
                   : applicationStatus === 'submitted'
                     ? 'Twoje zgłoszenie czeka na decyzję. Odezwiemy się w powiadomieniach.'
-                    : applicationStatus === 'in_review'
+                    : applicationStatus === 'more_information_needed'
                       ? 'Potrzebujemy jeszcze kilku informacji do Twojego zgłoszenia.'
                       : applicationStatus === 'rejected'
                         ? 'Poprzednie zgłoszenie zostało rozpatrzone odmownie. Możesz wysłać nowe.'
@@ -723,8 +725,12 @@ export function PartnerPage() {
                     Zobacz Community
                   </Link>
                 ) : (
-                  <Link to="/work-with-us#partner-application" className={applicationSecondaryClasses()}>
-                    {applicationStatus === 'in_review' || applicationStatus === 'rejected'
+                  <Link
+                    to="/work-with-us#partner-application"
+                    className={applicationSecondaryClasses()}
+                  >
+                    {applicationStatus === 'more_information_needed' ||
+                    applicationStatus === 'rejected'
                       ? 'Uzupełnij zgłoszenie'
                       : 'Wyślij zgłoszenie'}
                   </Link>

@@ -12,6 +12,8 @@ import { ADMIN_TABLE, ADMIN_TD, ADMIN_TH } from '@/features/admin/adminUi';
 import { AdminCatalogSection } from '@/features/admin/AdminCatalogSection';
 import { AdminShopSection } from '@/features/admin/AdminShopSection';
 import { AdminFranchiseLeadsSection } from '@/features/admin/AdminFranchiseLeadsSection';
+import { AdminEmailJobsSection } from '@/features/admin/AdminEmailJobsSection';
+import { AdminBusinessLeadsSection } from '@/features/admin/AdminBusinessLeadsSection';
 import { AdminCommunitySection } from '@/features/admin/AdminCommunitySection';
 import { AdminInvitesSection } from '@/features/admin/AdminInvitesSection';
 import { AdminPartnersSection } from '@/features/admin/AdminPartnersSection';
@@ -45,6 +47,8 @@ const NAV = [
   ['partners', 'Partnerzy'],
   ['community', 'Community i treści'],
   ['franchise', 'Zapytania Franchise'],
+  ['leads', 'Zapytania biznesowe'],
+  ['email', 'Wiadomości operacyjne'],
   ['operations', 'Operacje'],
   ['audit', 'Dziennik zdarzeń'],
   ['settings', 'Ustawienia Admina'],
@@ -114,6 +118,8 @@ function AdminSection({ section }: { section: Section }) {
   if (section === 'partners') return <AdminPartnersSection />;
   if (section === 'community') return <AdminCommunitySection />;
   if (section === 'franchise') return <AdminFranchiseLeadsSection />;
+  if (section === 'leads') return <AdminBusinessLeadsSection />;
+  if (section === 'email') return <AdminEmailJobsSection />;
   if (section === 'audit') return <Directory section="AUDIT" />;
   if (section === 'catalog') return <AdminCatalogSection />;
   if (section === 'operations') return <Operations />;
@@ -343,7 +349,9 @@ function ProductRequests() {
           <aside className="hidden h-max overflow-hidden rounded-[var(--radius-pro-studio)] border border-[var(--g-line)] xl:block">
             <div className="bg-pro-warm-raised px-3 py-3">
               <h2 className="text-sm font-semibold text-ink">Kolejka zgłoszeń</h2>
-              <p className="mt-1 text-[10px] text-[var(--g-text-secondary)]">{filtered.length} w bieżącym widoku</p>
+              <p className="mt-1 text-[10px] text-[var(--g-text-secondary)]">
+                {filtered.length} w bieżącym widoku
+              </p>
             </div>
             <div className="max-h-[calc(100vh-190px)] overflow-y-auto">
               {filtered.slice(0, 40).map((request) => (
@@ -364,7 +372,9 @@ function ProductRequests() {
                   <span className="mt-1 block truncate font-mono text-[9px] text-[var(--g-text-secondary)]">
                     {request.ean ?? request.id}
                   </span>
-                  <span className="mt-1 block text-[10px] text-[var(--g-text-secondary)]">{request.status}</span>
+                  <span className="mt-1 block text-[10px] text-[var(--g-text-secondary)]">
+                    {request.status}
+                  </span>
                 </button>
               ))}
             </div>
@@ -390,7 +400,9 @@ function ProductRequests() {
             onClick={() => setStatus(tab)}
             className={cn(
               'min-h-11 shrink-0 rounded-[var(--radius-pro-studio)] px-3 text-[11px] font-semibold sm:min-h-8',
-              status === tab ? 'bg-ink text-white' : 'border border-[var(--g-line)] text-[var(--g-text-secondary)]',
+              status === tab
+                ? 'bg-ink text-white'
+                : 'border border-[var(--g-line)] text-[var(--g-text-secondary)]',
             )}
           >
             {label}
@@ -531,7 +543,9 @@ function ProductRequests() {
                     <>
                       <strong>Ponowna analiza</strong>
                       <br />
-                      <span className="font-mono text-[10px] text-[var(--g-text-muted)]">{request.id}</span>
+                      <span className="font-mono text-[10px] text-[var(--g-text-muted)]">
+                        {request.id}
+                      </span>
                     </>
                   ) : (
                     <span className="font-mono">#{request.requestNumber}</span>
@@ -673,7 +687,10 @@ function RequestDetail({
   });
   return (
     <>
-      <button onClick={onClose} className="min-h-10 text-xs font-semibold text-[var(--g-text-secondary)]">
+      <button
+        onClick={onClose}
+        className="min-h-10 text-xs font-semibold text-[var(--g-text-secondary)]"
+      >
         ← Wróć do kolejki
       </button>
       <Heading
@@ -900,7 +917,10 @@ function ApprovalPreview({ request }: { request: AdminProductAddRequest }) {
     ['Braki', missing.length ? missing.join(', ') : 'Brak otwartych żądań informacji'],
   ] as const;
   return (
-    <section className="border-y border-[var(--g-line)] py-5" aria-label="Podgląd przed zatwierdzeniem">
+    <section
+      className="border-y border-[var(--g-line)] py-5"
+      aria-label="Podgląd przed zatwierdzeniem"
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold text-ink">Podgląd przed zatwierdzeniem</h2>
@@ -1111,7 +1131,9 @@ function GenericTable({ rows }: { rows: Array<Record<string, unknown>> }) {
           ))}
         </tbody>
       </table>
-      {rows.length === 0 ? <p className="py-8 text-sm text-[var(--g-text-secondary)]">Brak rekordów</p> : null}
+      {rows.length === 0 ? (
+        <p className="py-8 text-sm text-[var(--g-text-secondary)]">Brak rekordów</p>
+      ) : null}
     </div>
   );
 }

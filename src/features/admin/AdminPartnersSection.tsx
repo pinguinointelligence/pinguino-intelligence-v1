@@ -126,7 +126,9 @@ export function AdminPartnersSection() {
     <>
       <header className="border-b border-[var(--g-line)] pb-6">
         <SectionLabel>Zgłoszenia i zaproszenia</SectionLabel>
-        <h1 className="mt-2 text-[25px] leading-[1.08] font-[750] tracking-[-0.04em] text-[var(--g-ink)] sm:text-[30px]">Partnerzy</h1>
+        <h1 className="mt-2 text-[25px] leading-[1.08] font-[750] tracking-[-0.04em] text-[var(--g-ink)] sm:text-[30px]">
+          Partnerzy
+        </h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--g-text-secondary)]">
           Jedna ścieżka Partner → przypisanie → rejestr prowizji → konto wypłat Connect. Partner
           powstaje po zatwierdzeniu zgłoszenia albo z zaproszenia e-mailem.

@@ -34,6 +34,7 @@ import { useHomeEntitlement } from '@/features/home-creator/useHomeEntitlement';
 import { ShopOrdersPanel } from '@/features/shop/ShopOrdersPanel';
 import { shopCopy } from '@/copy/shop';
 import { FranchiseInquiryForm } from '@/features/franchise/FranchiseInquiryForm';
+import { OwnerAssetImage } from '@/features/work-with-us/OwnerAssetImage';
 import {
   FRANCHISE_CONCEPT_INITIAL,
   FRANCHISE_CONCEPT_ORDER,
@@ -157,20 +158,12 @@ export function FranchisePage() {
           </a>
         }
         visual={
-          <div className="grid grid-cols-2 bg-white">
-            {FRANCHISE_CONCEPT_ORDER.map((concept) => (
-              <div
-                key={concept}
-                className="grid min-h-36 place-items-center border-b border-l border-[var(--g-line)] p-5 text-center odd:border-l-0 lg:odd:border-l"
-              >
-                <span>
-                  <span className="mx-auto grid size-12 place-items-center rounded-[12px] border border-[var(--g-line)] text-xl">
-                    {FRANCHISE_CONCEPT_INITIAL[concept]}
-                  </span>
-                  <strong className="mt-3 block text-xs">{franchiseConceptLabelPl(concept)}</strong>
-                </span>
-              </div>
-            ))}
+          /* F01 — the owner's Franchise hero. It replaces the four abstract
+             initial tiles that stood here while no photograph existed: a real
+             Gellatti interior says what the lane is faster than four lettered
+             boxes, and the concepts keep their own section below. */
+          <div className="h-full min-h-[240px] overflow-hidden bg-white">
+            <OwnerAssetImage id="F01" priority sizes="(min-width: 1024px) 45vw, 100vw" />
           </div>
         }
       />
@@ -197,6 +190,26 @@ export function FranchisePage() {
               </p>
             </article>
           ))}
+        </div>
+      </DestinationSection>
+      <DestinationSection>
+        <div className="grid gap-px overflow-hidden rounded-[12px] border border-[var(--g-line)] bg-[var(--g-line)] lg:grid-cols-2">
+          <figure className="bg-white">
+            <div className="aspect-[16/10] overflow-hidden">
+              <OwnerAssetImage id="F03" sizes="(min-width: 1024px) 45vw, 100vw" />
+            </div>
+            <figcaption className="px-5 py-4 text-[12px] leading-relaxed text-[var(--g-text-muted)]">
+              Lokal od ulicy. Wygląd i układ ustalamy przy konkretnym miejscu.
+            </figcaption>
+          </figure>
+          <figure className="bg-white">
+            <div className="aspect-[16/10] overflow-hidden">
+              <OwnerAssetImage id="W04" sizes="(min-width: 1024px) 45vw, 100vw" />
+            </div>
+            <figcaption className="px-5 py-4 text-[12px] leading-relaxed text-[var(--g-text-muted)]">
+              Sala i ogródek. Skalę dobieramy do lokalu, nie odwrotnie.
+            </figcaption>
+          </figure>
         </div>
       </DestinationSection>
       <DestinationSection>

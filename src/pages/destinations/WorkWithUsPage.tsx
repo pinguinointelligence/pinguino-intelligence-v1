@@ -5,13 +5,15 @@ import {
   DestinationHero,
   DestinationSection,
   DestinationSectionHead,
-  ImageDirection,
 } from '@/components/shared/destinationEditorial';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { cn } from '@/lib/cn';
 import { copy } from '@/copy/en';
 import { cooperationCopy } from '@/copy/cooperation';
 import { PartnerApplicationPanel } from '@/features/partner-application/PartnerApplicationPanel';
+import { OwnerAssetImage } from '@/features/work-with-us/OwnerAssetImage';
+import type { OwnerAssetId } from '@/features/work-with-us/ownerAssets';
+import { LANES } from '@/copy/workWithUsLanes';
 
 const c = cooperationCopy;
 const w = copy.nav.work;
@@ -23,6 +25,52 @@ const w = copy.nav.work;
  *  copy and every downstream consumer stay in the tree — only the public
  *  presentation drops it, so it can come back without being rebuilt. */
 const SECONDARY_OFFERS = [w.offers.machinesApp, w.offers.machineMixtures, w.offers.app] as const;
+
+/**
+ * The four non-Partner lanes and the owner's assigned image for each.
+ *
+ * W01 carries MACHINES as a category image by owner decision (2026-08-31): it
+ * is professional equipment — a pozzetti counter in use — and is deliberately
+ * NOT presented as any specific machine model, because no delivered photograph
+ * identifies one.
+ *
+ * A05 carries MOBILE and A07 carries TRAILER. Neither is labelled with a model
+ * either: the cart models are unproven, and W03 shows a different trailer from
+ * A06/A07 and stays out of the primary story until its offer is resolved.
+ */
+/**
+ * The three Partner personas the owner assigned. A04 is a PARTNER asset — a
+ * professional using Gellatti in a working gelateria — and is deliberately not
+ * on the Machines route, per the owner's correction of 2026-08-31.
+ */
+const PARTNER_PERSONAS: ReadonlyArray<{
+  asset: OwnerAssetId;
+  title: string;
+  body: string;
+}> = [
+  {
+    asset: 'A03',
+    title: 'Twórcy wideo',
+    body: 'Pokazujesz, jak powstaje receptura, i dajesz ludziom powód, żeby ją powtórzyli.',
+  },
+  {
+    asset: 'A02',
+    title: 'Społeczności i newslettery',
+    body: 'Masz grupę, która Ci ufa. Receptura, którą polecisz, wraca do Ciebie jako Twój link.',
+  },
+  {
+    asset: 'A04',
+    title: 'Profesjonaliści',
+    body: 'Pracujesz z gelato na co dzień. Twoja receptura ma pokrycie w praktyce, a nie w opisie.',
+  },
+];
+
+const LANE_CARDS: ReadonlyArray<(typeof LANES)[keyof typeof LANES] & { asset: OwnerAssetId }> = [
+  { ...LANES.machines, asset: 'W01' },
+  { ...LANES.mobile, asset: 'A05' },
+  { ...LANES.trailer, asset: 'A07' },
+  { ...LANES.franchise, asset: 'F01' },
+];
 
 /**
  * Work with us — the cooperation destination.
@@ -64,19 +112,23 @@ export function WorkWithUsPage() {
           </a>
         }
         visual={
-          /* The approved hero keeps its image direction ON A PHONE too — the
-             authority's mobile hero runs the full graphite band with the frame
-             under the CTA, so hiding it below `lg` shortened the band and
-             pushed everything beneath it out of register. */
+          /* The approved hero keeps its image ON A PHONE too — the authority's
+             mobile hero runs the full graphite band with the frame under the
+             CTA, so hiding it below `lg` shortened the band and pushed
+             everything beneath it out of register.
+
+             A01 is the owner's Partner hero. Its subject sits right-of-centre
+             and its left third is close to empty, which is why it survives the
+             tall mobile crop: `object-cover` trims the empty side first. */
           <div className="grid place-items-center p-[26px] pt-0 lg:p-[26px]">
-            <ImageDirection
-              tone="inverse"
-              className="h-full min-h-[190px] w-full"
-              lines={[
-                'Kierunek assetu: zespół i pracownia Gellatti',
-                'Asset nie jest częścią preview.',
-              ]}
-            />
+            <div className="h-full min-h-[190px] w-full overflow-hidden rounded-[12px]">
+              <OwnerAssetImage
+                id="A01"
+                priority
+                sizes="(min-width: 1024px) 40vw, 100vw"
+                className="object-[70%_center]"
+              />
+            </div>
           </div>
         }
       />
@@ -113,6 +165,31 @@ export function WorkWithUsPage() {
                 ))}
               </ul>
             </div>
+          </div>
+        </DestinationSection>
+
+        {/* ── WHO THIS IS FOR ─────────────────────────────────────────────
+            The owner's three Partner personas. Each photograph carries its own
+            caption rather than a generic label, because "twórca" over a picture
+            of someone filming is a caption that adds nothing. */}
+        <DestinationSection>
+          <DestinationEyebrow>Dla kogo</DestinationEyebrow>
+          <div className="mt-5 grid gap-px border border-[var(--g-line)] bg-[var(--g-line)] sm:grid-cols-3">
+            {PARTNER_PERSONAS.map((persona) => (
+              <figure key={persona.asset} className="bg-white">
+                <div className="aspect-[4/3] overflow-hidden">
+                  <OwnerAssetImage id={persona.asset} sizes="(min-width: 640px) 31vw, 100vw" />
+                </div>
+                <figcaption className="p-[clamp(18px,2vw,26px)]">
+                  <strong className="block text-[14px] leading-[1.35] font-bold text-[var(--g-ink)]">
+                    {persona.title}
+                  </strong>
+                  <p className="mt-2 text-[13px] leading-relaxed text-[var(--g-text-secondary)]">
+                    {persona.body}
+                  </p>
+                </figcaption>
+              </figure>
+            ))}
           </div>
         </DestinationSection>
 
@@ -190,18 +267,52 @@ export function WorkWithUsPage() {
           ))}
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-4 rounded-[12px] border border-[var(--g-line)] bg-[var(--g-ivory-deep)] p-[18px]">
-          <div className="min-w-0">
-            <h3 className="text-[21px] leading-[1.2] font-bold tracking-[-0.02em] text-[var(--g-ink)]">
-              {c.secondary.franchiseTitle}
-            </h3>
-            <p className="mt-1 text-[12px] leading-[1.5] text-[var(--g-text-secondary)]">
-              {c.secondary.franchiseBody}
-            </p>
-          </div>
-          <Link to="/franchise" className={buttonClasses('ghost', 'sm')}>
-            {c.secondary.franchiseCta}
-          </Link>
+      </DestinationSection>
+
+      {/* ── THE FOUR OTHER LANES ──────────────────────────────────────────────
+          Partner owns everything above; these four are the rest of Work With
+          Us. Each card answers the three questions the gateway promises — what
+          is this, who is it for, what next — and nothing more: the subpage
+          carries the detail, so repeating it here would make the gateway a wall
+          of text.
+
+          Every card links to a route that exists. Machines, Mobile and Trailer
+          had no route until now, and a card pointing at a 404 is exactly the
+          dead control §27 forbids. */}
+      <DestinationSection>
+        <DestinationSectionHead
+          eyebrow="Pozostałe kierunki"
+          title="Chcesz sprzedawać Gellatti, a nie tylko je polecać?"
+        />
+        <div className="mt-6 grid gap-px border border-[var(--g-line)] bg-[var(--g-line)] sm:grid-cols-2">
+          {LANE_CARDS.map((lane) => (
+            <article key={lane.href} className="flex flex-col bg-white">
+              <div className="aspect-[16/10] overflow-hidden">
+                <OwnerAssetImage
+                  id={lane.asset}
+                  sizes="(min-width: 640px) 46vw, 100vw"
+                />
+              </div>
+              <div className="flex flex-1 flex-col p-[clamp(20px,2.4vw,30px)]">
+                <DestinationEyebrow>{lane.kicker}</DestinationEyebrow>
+                <h3 className="mt-2 text-[19px] leading-[1.2] font-bold tracking-[-0.025em] text-[var(--g-ink)]">
+                  {lane.title}
+                </h3>
+                <p className="mt-3 text-[13px] leading-relaxed text-[var(--g-text-secondary)]">
+                  {lane.card}
+                </p>
+                <p className="mt-3 text-[12px] leading-relaxed text-[var(--g-text-muted)]">
+                  {lane.forWhom}
+                </p>
+                <Link
+                  to={lane.href}
+                  className={cn(buttonClasses('ghost', 'sm'), 'mt-5 w-fit')}
+                >
+                  {lane.cta}
+                </Link>
+              </div>
+            </article>
+          ))}
         </div>
       </DestinationSection>
     </DestinationSurface>

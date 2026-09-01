@@ -123,7 +123,10 @@ export function AdminUsersSection() {
                     </span>
                   </td>
                   <td className={ADMIN_TD}>
-                    <button className={ADMIN_ROW_ACTION} onClick={() => setSelectedId(String(row.id))}>
+                    <button
+                      className={ADMIN_ROW_ACTION}
+                      onClick={() => setSelectedId(String(row.id))}
+                    >
                       Otwórz
                     </button>
                   </td>
