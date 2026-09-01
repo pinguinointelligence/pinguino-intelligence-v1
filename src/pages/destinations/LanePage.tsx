@@ -1,4 +1,4 @@
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
 import {
   DestinationEyebrow,
@@ -44,6 +44,17 @@ export function LanePage({
   detailSecondary,
   detailSecondaryCaption,
 }: LanePageProps) {
+  const { pathname } = useLocation();
+  /**
+   * Every CTA on this page goes to the ONE enquiry surface on the gateway.
+   *
+   * `?from=` carries the route the visitor is actually on, which becomes the
+   * lead's `source_route` and chooses the initial subject — so arriving from
+   * `/trailer` costs no extra click. The two stay separate afterwards: change
+   * the subject and the route still records where the question started.
+   */
+  const leadHref = `/work-with-us?from=${encodeURIComponent(pathname)}#lead`;
+
   return (
     <DestinationSurface eyebrow={copy.kicker} title={copy.title} blurb={copy.card} bare>
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
@@ -62,7 +73,7 @@ export function LanePage({
               <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-[var(--g-text-secondary)]">
                 {copy.intro}
               </p>
-              <Link to="/work-with-us#lead" className={`${buttonClasses('orange', 'md')} mt-8 inline-flex`}>
+              <Link to={leadHref} className={`${buttonClasses('orange', 'md')} mt-8 inline-flex`}>
                 {copy.cta}
               </Link>
             </div>
@@ -77,7 +88,7 @@ export function LanePage({
               <p className="mt-4 max-w-xl text-[14px] leading-relaxed text-[var(--g-text-secondary)]">
                 {copy.intro}
               </p>
-              <Link to="/work-with-us#lead" className={`${buttonClasses('orange', 'md')} mt-7 inline-flex self-start`}>
+              <Link to={leadHref} className={`${buttonClasses('orange', 'md')} mt-7 inline-flex self-start`}>
                 {copy.cta}
               </Link>
             </div>
@@ -154,7 +165,7 @@ export function LanePage({
           <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-[var(--g-ink)]">
             {copy.next}
           </p>
-          <Link to="/work-with-us#lead" className={`${buttonClasses('orange', 'md')} mt-7 inline-flex`}>
+          <Link to={leadHref} className={`${buttonClasses('orange', 'md')} mt-7 inline-flex`}>
             {copy.cta}
           </Link>
         </div>

@@ -128,18 +128,27 @@ describe('compact ingredient article panel', () => {
     expect(panel?.parentElement).toBe(document.body);
     const quickActions = panel?.querySelector('[data-testid="article-panel-quick-actions"]');
     expect(quickActions).not.toBeNull();
-    expect(quickActions?.className).toContain('grid-cols-[36px_36px_80px_repeat(3,minmax(0,1fr))]');
-    expect(quickActions?.getAttribute('data-control-height')).toBe('36');
+    // OWNER FROZEN PRO VISUAL: the authority's `.apanel` is FRAMELESS — two
+    // groups of 44 px pills sitting on the sheet ground, not a 36 px segmented
+    // strip in a bordered ivory card. 44 px is also the touch minimum, which
+    // the old 23 x 36 role-info cell missed on a phone.
+    // Capped so the two groups keep the authority's relationship at every
+    // width: it pushes them apart across a 390 px sheet, and without a cap the
+    // wider desktop popover turned that into a void down the middle.
+    expect(quickActions?.className).toContain('flex max-w-[384px] flex-wrap');
+    expect(quickActions?.className).toContain('justify-between');
+    expect(quickActions?.className).not.toContain('border-ink/10');
+    expect(quickActions?.getAttribute('data-control-height')).toBe('44');
     expect(
       panel
         ?.querySelector('[data-testid="article-panel-role-control"]')
         ?.getAttribute('data-control-height'),
-    ).toBe('36');
+    ).toBe('44');
     const topIconActions = [
       ...(quickActions?.querySelectorAll<HTMLButtonElement>('[data-article-action="true"]') ?? []),
     ];
     expect(topIconActions).toHaveLength(5);
-    expect(topIconActions.every((action) => action.className.includes('h-9'))).toBe(true);
+    expect(topIconActions.every((action) => action.className.includes('size-11'))).toBe(true);
     expect(panel?.querySelector('[data-testid="article-panel-order-actions"]')).toBeNull();
     expect(panel?.querySelectorAll('[data-icon-family="gellatti-line"]')).toHaveLength(5);
     expect(panel?.querySelector('[data-testid="article-panel-header"]')).not.toBeNull();
@@ -217,7 +226,7 @@ describe('compact ingredient article panel', () => {
     const badge = panel?.querySelector<HTMLButtonElement>('[data-main-presentation="badge"]');
     expect(badge?.textContent).toBe('Główny');
     expect(badge?.getAttribute('aria-label')).toBe('Usuń rolę główną');
-    expect(badge?.className).toContain('h-9');
+    expect(badge?.className).toContain('h-11');
     expect(panel?.querySelector('[data-testid="article-panel-main-ratio"]')).toBeNull();
     expect(panel?.textContent).not.toContain('Proporcja Main');
     expect(panel?.textContent).not.toContain('Waga odzwierciedla bieżącą proporcję gramów');

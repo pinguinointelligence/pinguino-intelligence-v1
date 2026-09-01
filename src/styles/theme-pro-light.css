@@ -202,16 +202,10 @@ body:has(details[open] [data-testid^='row-menu-']) [data-testid='design-review-o
     grid-template-columns: minmax(0, 1fr);
   }
 
-  /* One column: the read-only Base readout must stay directly under the batch
-     field it reports on, so it moves ahead of Tryb (owner UX correction —
-     „Below it, show the current recipe/base state"). */
-  .profile-settings-base-readout {
-    order: 6;
-  }
-
-  .profile-settings-grid [data-settings-cell='strategy'] {
-    order: 7;
-  }
+  /* The Base readout still sits directly under the batch field it reports on —
+     but that is now the DEFAULT order (batch 5, base 6, per the frozen
+     Settings reading order), so this width no longer needs an override to
+     lift it ahead of Tryb. One order, both widths. */
 }
 
 /* The two-row reflow is the MOBILE sheet's geometry (owner §19/§22): the

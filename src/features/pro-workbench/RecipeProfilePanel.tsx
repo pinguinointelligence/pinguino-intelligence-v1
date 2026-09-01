@@ -51,11 +51,17 @@ function CompactMetricRow({
   muted?: boolean;
 }) {
   return (
-    <div className="flex min-h-5 items-center justify-between gap-3 border-b border-ink/7 py-0.5 last:border-0">
-      <dt className={muted ? 'pl-2 text-[10px] text-stone-500' : 'text-[11px] text-stone-600'}>
+    <div className="flex min-h-[26px] items-baseline justify-between gap-3 border-b border-[var(--g-line)] py-1 last:border-0">
+      <dt
+        className={
+          muted
+            ? 'pl-3 text-[10px] leading-[16px] text-[var(--g-text-muted)]'
+            : 'text-[11px] leading-[16px] text-[var(--g-text-secondary)]'
+        }
+      >
         {label}
       </dt>
-      <dd className="shrink-0 font-mono text-[11px] font-semibold tabular-nums text-ink">
+      <dd className="shrink-0 text-[11px] leading-[16px] font-semibold tabular-nums text-[var(--g-ink)]">
         {value}
       </dd>
     </div>
@@ -86,44 +92,69 @@ function NutritionCostProfileGrid({
   const euro = (value: number | null | undefined) =>
     value === null || value === undefined ? '—' : `${value.toFixed(2)} €`;
   return (
-    <details
-      className="group min-w-0 overflow-hidden rounded-[16px] border border-ink/10 bg-white shadow-pro-e1"
-      data-testid="profile-nutrition-cost-summary"
-    >
-      <summary className="pro-focus-ring flex min-h-16 cursor-pointer list-none items-center justify-between gap-4 px-4 py-3">
-        <span className="flex min-w-0 flex-1 items-center gap-3">
-          <span aria-hidden className="grid size-5 shrink-0 place-items-center text-status-ideal">
-            <NutritionSummaryIcon tone="current" className="size-5" />
+    /* OWNER FROZEN PRO VISUAL: the result opens the display column as a
+       READOUT — the number leads at 22 px with its unit tucked in beside it,
+       and the label sits underneath. The old card put a 14 px value behind an
+       icon and a shadow; here the figure you came for is the largest thing in
+       the column. The breakdown stays exactly as expandable as it was. */
+    <section className="min-w-0 border-b border-[var(--g-line)] pb-5">
+      <div className="mb-[13px] flex items-center gap-2.5">
+        <h3 className="shrink-0 text-[10px] leading-[14px] font-semibold tracking-[0.16em] text-[var(--g-text-muted)] uppercase">
+          Wynik
+        </h3>
+        <span aria-hidden className="h-px flex-1 bg-[var(--g-line)]" />
+      </div>
+      <details className="group min-w-0" data-testid="profile-nutrition-cost-summary">
+        <summary className="pro-focus-ring grid cursor-pointer list-none grid-cols-2 overflow-hidden rounded-xl border border-[var(--g-line)] bg-[var(--g-ivory)] [&::-webkit-details-marker]:hidden">
+          <span className="min-w-0 px-4 py-[15px]">
+            <b className="block text-[22px] leading-[1.1] font-semibold tracking-[-0.04em] tabular-nums text-[var(--g-ink)]">
+              {nutrition ? `${nutrition.kcal.toFixed(0)}` : '—'}
+              <u className="text-[11px] font-medium tracking-normal text-[var(--g-text-muted)] no-underline">
+                {' kcal / 100 g'}
+              </u>
+            </b>
+            <span className="mt-1 flex items-center gap-1.5 text-[11px] leading-[16px] font-medium text-[var(--g-text-muted)]">
+              <NutritionSummaryIcon tone="current" className="size-3.5 shrink-0" />
+              <span className="truncate">Wartości odżywcze</span>
+            </span>
           </span>
-          <span>
-            <strong className="block font-mono text-sm tabular-nums text-ink">
-              {nutrition ? `${nutrition.kcal.toFixed(0)} kcal / 100 g` : '— kcal / 100 g'}
-            </strong>
-            <span className="block text-[10px] text-stone-600">Wartości odżywcze</span>
+          <span className="min-w-0 border-l border-[var(--g-line)] px-4 py-[15px]">
+            <b className="block text-[22px] leading-[1.1] font-semibold tracking-[-0.04em] tabular-nums text-[var(--g-ink)]">
+              {costs?.cost_per_kg == null ? '—' : `${costs.cost_per_kg.toFixed(2)}`}
+              <u className="text-[11px] font-medium tracking-normal text-[var(--g-text-muted)] no-underline">
+                {costs?.cost_per_kg == null ? ' / kg' : ' € / kg'}
+              </u>
+            </b>
+            <span className="mt-1 flex items-center gap-1.5 text-[11px] leading-[16px] font-medium text-[var(--g-text-muted)]">
+              <CostSummaryIcon tone="current" className="size-3.5 shrink-0" />
+              <span className="truncate">Koszt receptury</span>
+            </span>
           </span>
-        </span>
-        <span className="h-9 w-px bg-ink/8" aria-hidden />
-        <span className="flex min-w-0 flex-1 items-center gap-3">
-          <span aria-hidden className="grid size-5 shrink-0 place-items-center text-status-ideal">
-            <CostSummaryIcon tone="current" className="size-5" />
+          <span className="col-span-2 flex items-center gap-2 border-t border-[var(--g-line)] px-4 py-2.5 text-[11.5px] leading-[16px] font-medium text-[var(--g-text-secondary)]">
+            <svg
+              aria-hidden
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              className="shrink-0 transition-transform group-open:rotate-180"
+            >
+              <path
+                d="M6 9l6 6 6-6"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            Rozwiń pełny rozkład składników i kosztów
           </span>
-          <span>
-            <strong className="block font-mono text-sm tabular-nums text-ink">
-              {costs?.cost_per_kg == null ? '— / kg' : `${costs.cost_per_kg.toFixed(2)} € / kg`}
-            </strong>
-            <span className="block text-[10px] text-stone-600">Koszt receptury</span>
-          </span>
-        </span>
-        <span className="text-lg text-ink transition-transform group-open:rotate-180" aria-hidden>
-          ⌄
-        </span>
-      </summary>
-      <div className="profile-nutrition-details grid gap-2 border-t border-ink/8 bg-[var(--g-ivory)]/60 p-2 min-[520px]:grid-cols-2">
-        <section
-          className="min-w-0 rounded-[12px] border border-ink/8 bg-white px-2 py-1.5"
-          data-testid="profile-nutrition-card"
-        >
-          <h3 className="mb-1 text-center text-xs font-semibold text-ink">Wartości odżywcze</h3>
+        </summary>
+        <div className="profile-nutrition-details grid gap-x-8 gap-y-5 pt-4 min-[520px]:grid-cols-2">
+        <section className="min-w-0" data-testid="profile-nutrition-card">
+          <h3 className="mb-1.5 text-[9px] leading-[14px] font-semibold tracking-[0.08em] text-[var(--g-text-muted)] uppercase">
+            Wartości odżywcze
+          </h3>
           <dl>
             <CompactMetricRow
               label="Energia"
@@ -142,11 +173,10 @@ function NutritionCostProfileGrid({
             <CompactMetricRow label="Błonnik" value={grams(nutrition?.fiber_g)} />
           </dl>
         </section>
-        <section
-          className="min-w-0 rounded-[12px] border border-ink/8 bg-white px-2 py-1.5"
-          data-testid="profile-cost-card"
-        >
-          <h3 className="mb-1 text-center text-xs font-semibold text-ink">Koszt</h3>
+        <section className="min-w-0" data-testid="profile-cost-card">
+          <h3 className="mb-1.5 text-[9px] leading-[14px] font-semibold tracking-[0.08em] text-[var(--g-text-muted)] uppercase">
+            Koszt
+          </h3>
           <dl>
             <CompactMetricRow label="Na 1 kg" value={euro(costs?.cost_per_kg)} />
             <CompactMetricRow label="Cała partia" value={euro(costs?.total_cost)} />
@@ -154,12 +184,13 @@ function NutritionCostProfileGrid({
             <CompactMetricRow label="Porcja 70 g" value={euro(costs?.cost_per_serving_70g)} />
             <CompactMetricRow label="Porcja 80 g" value={euro(costs?.cost_per_serving_80g)} />
           </dl>
-          <p className="mt-4 text-center text-[10px] text-stone-500">
+          <p className="mt-2 text-[10px] leading-[15px] text-[var(--g-text-muted)]">
             Aktualizuj ceny w produktach
           </p>
-        </section>
-      </div>
-    </details>
+          </section>
+        </div>
+      </details>
+    </section>
   );
 }
 
@@ -369,14 +400,15 @@ function ProfileContent({
           variant="neutral"
         />
       ) : null}
+      {/* OWNER FROZEN PRO VISUAL: the display column opens with WYNIK, then the
+          controls that move it, then settings, then the recipe. The cards are
+          gone, so the rhythm between bands — not a border — is what separates
+          them; the gap has to carry the work the boxes used to do. */}
       <div
-        className="grid min-w-0 items-start gap-3 xl:gap-2.5"
+        className="grid min-w-0 items-start gap-5 xl:gap-[18px]"
         data-testid="profile-desktop-grid"
         data-profile-layout="stacked"
       >
-        <ProfileDirectionAxes result={frozenNutritionResult} className="min-w-0" />
-        <WorkbenchSettingsLine actualBatchG={result.total_batch_g} className="min-w-0" compact />
-        {recipeBar ? <div className="min-w-0">{recipeBar}</div> : null}
         <NutritionCostProfileGrid
           result={frozenNutritionResult}
           nutritionReady={finalNutritionReady}
@@ -384,27 +416,53 @@ function ProfileContent({
           nutritionOverride={finalNutritionProduct?.finalLabelNutritionPer100g}
           costsOverride={finalCostProduct?.finalCosts}
         />
+        <ProfileDirectionAxes result={frozenNutritionResult} className="min-w-0" />
+        <WorkbenchSettingsLine actualBatchG={result.total_batch_g} className="min-w-0" compact />
+        {recipeBar ? <div className="min-w-0">{recipeBar}</div> : null}
       </div>
-      {/* GELLATTI V2.1: the approved 58 px entry — title, its own question line
-          and the orange disclosure mark. */}
-      <button
-        type="button"
-        onClick={onOpenEducation}
-        className="pro-focus-ring mt-2.5 flex min-h-11 w-full items-center justify-between gap-3 rounded-[10px] border border-[var(--g-line)] bg-white px-[13px] text-left shadow-none lg:min-h-[58px]"
-        data-testid="profile-learning-entry"
-      >
-        <span className="min-w-0">
-          <span className="block text-[11px] leading-[20px] font-bold text-[var(--g-graphite)]">
-            Wiedza o recepturze
+      {/* OWNER FROZEN PRO VISUAL: WIEDZA is a BAND like every other section —
+          its own eyebrow closed by a hairline, then one quiet row. It used to
+          be a 58 px bordered card with a permanent orange chevron, which spent
+          the accent colour on a link that is never urgent. */}
+      <section className="mt-5">
+        <div className="mb-[13px] flex items-center gap-2.5">
+          <h3 className="shrink-0 text-[10px] leading-[14px] font-semibold tracking-[0.16em] text-[var(--g-text-muted)] uppercase">
+            Wiedza
+          </h3>
+          <span aria-hidden className="h-px flex-1 bg-[var(--g-line)]" />
+        </div>
+        <button
+          type="button"
+          onClick={onOpenEducation}
+          className="pro-focus-ring flex min-h-11 w-full items-center gap-3 bg-transparent text-left"
+          data-testid="profile-learning-entry"
+        >
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13.5px] leading-[19px] font-semibold tracking-[-0.015em] text-[var(--g-ink)]">
+              Wiedza o recepturze
+            </span>
+            <span className="mt-0.5 block truncate text-[11.5px] leading-[16px] font-normal text-[var(--g-text-muted)]">
+              Dlaczego taki wynik i jak przygotować recepturę?
+            </span>
           </span>
-          <span className="block truncate text-[9px] leading-[16px] font-normal text-[var(--g-text-muted)]">
-            Dlaczego taki wynik i jak przygotować recepturę?
-          </span>
-        </span>
-        <span aria-hidden className="text-[16px] leading-none font-bold text-[var(--g-orange)]">
-          ›
-        </span>
-      </button>
+          <svg
+            aria-hidden
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="none"
+            className="ml-auto shrink-0 text-[var(--g-text-muted)]"
+          >
+            <path
+              d="M9 6l6 6-6 6"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+      </section>
     </div>
   );
 }

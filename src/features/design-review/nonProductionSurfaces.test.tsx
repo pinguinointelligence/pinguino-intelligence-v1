@@ -149,7 +149,12 @@ describe('markers are wired into the heavy shells (source-level proof)', () => {
     expect(direction).not.toContain('border-nonprod/28');
     expect(direction).toContain("data-regulator-state={disabled ? 'unavailable'");
     expect(direction).toContain('aria-disabled={disabled || undefined}');
-    expect(direction).toContain('border-[#f58a07] bg-[#f58a07]');
+    // The approved accent, carried by the frozen track's thumb rather than by
+    // a bordered detent. What this line guards is that the axes stay on the
+    // LIGHT control system — the plain accent, never a nonprod marker — which
+    // the assertions above and below still pin.
+    expect(direction).toContain('bg-[#f58a07]');
+    expect(direction).not.toContain('nonprod');
   });
 });
 

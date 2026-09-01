@@ -1,22 +1,25 @@
 /**
- * Direction detent contrast contract — the UNAVAILABLE state.
+ * Direction readability contract — the reported value, in BOTH states.
  *
  * A blocked axis (`blocked_science` for Vegan/Protein, `blocked_data`,
- * `blocked_runtime`) still renders its chosen detent: the control doubles as a
- * read-only display of `direction_targets`. It used to carry a blanket
- * `disabled:opacity-35`, which composites the whole button group over the white
- * card — the orange fill flattened to #fcd6a8 while the numeral stayed pure
- * white, leaving the reported value at 1.37:1 and effectively invisible.
+ * `blocked_runtime`) still renders its chosen position: the control doubles as
+ * a read-only display of `direction_targets`. That value therefore has to stay
+ * legible when the control cannot be touched.
  *
- * Group opacity cannot be repaired by recolouring the numeral (ink at 35 %
- * lands at 1.66:1), so the state carries explicit colours instead. This
- * contract recomputes the ratios from the source and from tokens.css rather
- * than matching a class string, so it also fails if a token is retuned.
+ * History, because it explains the shape of this file. The value used to be a
+ * numeral printed INSIDE the selected detent. Enabled that was white on
+ * #f58a07 — 2.46:1, carried as an owner-approved V2.1 exception. Disabled it
+ * was worse: a blanket `disabled:opacity-35` composited fill and numeral
+ * together and flattened it to white on #fcd6a8, 1.37:1, hiding the very value
+ * the control existed to report. Recolouring could not repair a group opacity
+ * (ink at 35 % lands at 1.66:1), so the state carried explicit colours.
  *
- * The ENABLED selected point is deliberately NOT covered: white on #f58a07
- * (2.46:1) is the owner-approved V2.1 treatment
- * (`gellatti-global-page-preview-gate-20260828-v2-1/pro-workbench.css`,
- * `.pro-adjustment-scale button.active`). Changing it needs owner approval.
+ * The frozen PRO visual removes the exception rather than re-granting it: the
+ * value moved OUT of the thumb and became an ink readout beside the track, so
+ * the enabled state is no longer a 2.46:1 exception and the disabled state is
+ * attention ink on the page ground. Both are asserted below against real
+ * computed ratios, from source and tokens rather than matched class strings,
+ * so the contract also fails if a token is retuned.
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -25,8 +28,8 @@ import { describe, expect, it } from 'vitest';
 const axes = readFileSync(resolve(import.meta.dirname, 'ProfileDirectionAxes.tsx'), 'utf8');
 const tokens = readFileSync(resolve(import.meta.dirname, '../../styles/tokens.css'), 'utf8');
 
-/** The card behind the detents — `bg-white` on the axes section. */
-const CARD = '#ffffff';
+/** Every ground the readout can sit on — the section itself is transparent. */
+const GROUNDS = ['#ffffff', 'var(--g-ivory)', 'var(--g-ivory-deep)'] as const;
 
 /** First capture of `pattern`, or a named failure — never `undefined`. */
 function capture(source: string, pattern: RegExp, what: string): string {
@@ -70,51 +73,50 @@ function colour(raw: string): string {
   return BARE[raw] ?? raw;
 }
 
-function disabledClass(branch: 'selected' | 'unselected', property: string): string {
-  // The two disabled branches are the last ternary in the detent's `cn(...)`.
-  const branches = axes.match(/disabled:border-\[[^\]]+\][^']*/g) ?? [];
-  if (branches.length !== 2) {
-    throw new Error(`expected 2 disabled branches, found ${branches.length}`);
-  }
-  const source = branches[branch === 'selected' ? 0 : 1] ?? '';
-  const raw = capture(
-    source,
-    new RegExp(`disabled:${property}-(?:\\[([^\\]]+)\\]|([a-z]+))`),
-    `disabled:${property} on the ${branch} branch`,
-  );
+/** The readout's two colours are the ternary on `profile-regulator-*-value`. */
+const READOUT = axes.match(/disabled\s*\?\s*'text-\[([^\]]+)\]'\s*:\s*'text-\[([^\]]+)\]'/);
+
+function readoutColour(state: 'unavailable' | 'interactive'): string {
+  const raw = READOUT?.[state === 'unavailable' ? 1 : 2];
+  if (raw === undefined) throw new Error(`readout colour for ${state} not found`);
   return colour(raw);
 }
 
-describe('Direction detent contrast — unavailable axes', () => {
-  it('never dims the detents with a group opacity', () => {
-    // Group opacity flattens fill AND numeral together; no colour survives it.
+describe('Direction readability — the reported value', () => {
+  it('never dims the control with a group opacity', () => {
+    // Group opacity flattens fill AND value together; no colour survives it.
     expect(axes).not.toContain('disabled:opacity-35');
     expect(axes).not.toMatch(/disabled:opacity-/);
   });
 
-  it('keeps the selected detent readable while it still reports the value', () => {
-    const fill = disabledClass('selected', 'bg');
-    const numeral = disabledClass('selected', 'text');
-
-    expect(contrast(numeral, fill)).toBeGreaterThanOrEqual(4.5);
-    // The fill stays the muted orange the opacity used to produce, so the
-    // unavailable state reads exactly as before — only the numeral changed.
-    expect(fill).toBe('#fcd6a8');
+  it('never prints the value inside the orange thumb again', () => {
+    // The 2.46:1 exception existed only because the numeral lived in the fill.
+    expect(axes).not.toMatch(/bg-\[#f58a07\][^"']*text-white/);
+    expect(axes).toContain('profile-regulator-${id}-value');
   });
 
-  it('keeps the unselected detents readable on the card', () => {
-    const numeral = disabledClass('unselected', 'text');
-
-    expect(disabledClass('unselected', 'bg')).toBe(CARD);
-    expect(contrast(numeral, CARD)).toBeGreaterThanOrEqual(4.5);
+  it('keeps the value readable on every ground it can sit on, in both states', () => {
+    for (const state of ['unavailable', 'interactive'] as const) {
+      const ink = readoutColour(state);
+      for (const ground of GROUNDS) {
+        expect(
+          contrast(ink, colour(ground)),
+          `${state} readout ${ink} on ${ground}`,
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+    }
   });
 
-  it('offers no hover affordance on a blocked axis', () => {
-    expect(axes).toContain('enabled:hover:border-[#f58a07]/60');
-    expect(axes).not.toMatch(/[^:]hover:border-\[#f58a07\]/);
+  it('still marks the chosen position when the axis is blocked', () => {
+    // The thumb keeps the muted orange the old opacity used to produce, so an
+    // unavailable axis reads as before — it just no longer carries the numeral.
+    expect(axes).toContain("disabled ? 'bg-[#fcd6a8]' : 'bg-[#f58a07]'");
   });
 
-  it('leaves the owner-approved V2.1 enabled treatment untouched', () => {
-    expect(axes).toContain("'border-[#f58a07] bg-[#f58a07] text-white'");
+  it('offers no hover affordance that could imply a blocked axis is live', () => {
+    // The frozen track has one mark, positioned by state — there is no per-
+    // detent surface left to tint, so no hover treatment exists to leak.
+    expect(axes).not.toMatch(/hover:bg-\[#f58a07\]/);
+    expect(axes).not.toMatch(/hover:border-\[#f58a07\]/);
   });
 });

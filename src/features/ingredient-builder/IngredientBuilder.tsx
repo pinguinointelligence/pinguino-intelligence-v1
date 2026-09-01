@@ -456,7 +456,17 @@ export function IngredientBuilder({
         Faktycznie możesz zmniejszyć, zwiększyć, wpisać gramy i potwierdzić wartość.
       </div>
     ) : (
-      <div className={`${ROW_GRID} px-3 py-2`} data-testid="recipe-table-header">
+      /* The legend is a TABLE legend: it only means anything once ROW_GRID has
+         columns, which happens at `md`. Below that the grid is one column, so
+         it rendered visually stacked — „Składnik / % / Ilość / Cena/kg" down
+         the phone, four lines of header above a list that needs none. It stays
+         in the accessibility tree at every width; only the sighted mobile
+         rendering is suppressed, and the desktop alignment the legend exists
+         for is untouched. */
+      <div
+        className={`${ROW_GRID} px-3 py-2 sr-only md:not-sr-only`}
+        data-testid="recipe-table-header"
+      >
         {/* Six tracks (V2.1): the leading one belongs to the drag handle. */}
         {['', 'Składnik', '%', 'Ilość', 'Cena/kg', ''].map((label, index) => (
           <span key={`${label}-${index}`} className={`${headCell} ${HEAD_CELL_ALIGN[index] ?? ''}`}>
@@ -1012,7 +1022,11 @@ export function IngredientBuilder({
                       </strong>
                     </div>
                     <div
-                      className="flex min-w-0 flex-wrap items-center gap-2 border-t border-ink/10 bg-white px-[var(--pro-mobile-gutter)] py-2 lg:px-3"
+                      /* OWNER FROZEN PRO VISUAL: the status/action band. Every
+                         other rule down this column is a neutral hairline, so
+                         the one orange line is what separates "the recipe you
+                         are reading" from "the things you can do to it". */
+                      className="flex min-w-0 flex-wrap items-center gap-2 border-t border-[#f58a07] bg-white px-[var(--pro-mobile-gutter)] py-2 lg:px-3"
                       data-testid="ingredient-action-toolbar"
                     >
                       <div
