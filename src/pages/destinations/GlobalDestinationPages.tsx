@@ -28,11 +28,11 @@ import {
   DestinationSectionHead,
 } from '@/components/shared/destinationEditorial';
 import { ShopCatalog } from '@/features/shop/ShopCatalog';
-import { ShopHeroPack } from '@/features/shop/ShopHeroPack';
-import { ShopHeroActions } from '@/features/shop/ShopHeroActions';
-import { SHOP_SHIPPING_FLAT_CENTS } from '@/features/shop/shopShipping';
+import { ShopCartCount } from '@/features/shop/ShopCartCount';
+import { HomeProSwitch } from '@/features/home-creator/ui/HomeProSwitch';
+import { useHomeEntitlement } from '@/features/home-creator/useHomeEntitlement';
 import { ShopOrdersPanel } from '@/features/shop/ShopOrdersPanel';
-import { shopCopy, shopMoney } from '@/copy/shop';
+import { shopCopy } from '@/copy/shop';
 import { FranchiseInquiryForm } from '@/features/franchise/FranchiseInquiryForm';
 import { OwnerAssetImage } from '@/features/work-with-us/OwnerAssetImage';
 import {
@@ -90,32 +90,46 @@ export function HowItWorksPage() {
 }
 
 export function ShopPage() {
+  const entitlement = useHomeEntitlement();
   return (
     <DestinationSurface
       eyebrow={shopCopy.page.eyebrow}
       title={shopCopy.page.title}
       blurb={shopCopy.page.blurb}
       contextLabel={shopCopy.page.contextLabel}
+      /* The Shop declares no header geometry of its own. It hands HOME | PRO
+         to the shared shell, which since #76 places non-workbench actions at
+         the trailing edge of the left work column — the one global position.
+         The basket stays BELOW that row, on the Shop's own utility line. */
+      headerActions={<HomeProSwitch entitlement={entitlement} activeView="home" />}
       bare
     >
-      {/* MASTER DESIGNBOOK §7 · approved Shop screen (`?preview=shop`).
-          The hero leads with the PRODUCT, not the page: greige copy on the
-          left, a controlled graphite half on the right holding a real
-          packaging card. Composition, band height and column split are the
-          approved ones; only the content inside is the live product.
-          Owner correction B (hamburger LEFT) is already carried by AppShell. */}
-      <DestinationHero
-        variant="shop"
-        eyebrow={shopCopy.hero.eyebrow}
-        title={shopCopy.hero.title}
-        blurb={shopCopy.hero.lede}
-        actions={<ShopHeroActions />}
-        note={shopCopy.hero.note.replace('{shipping}', shopMoney(SHOP_SHIPPING_FLAT_CENTS))}
-        visual={<ShopHeroPack />}
-      />
-      <DestinationSection id="sklep-katalog">
+      {/* SHOP C3 (owner approved 2026-08-31, product emphasis 2026-09-01).
+          Utility line → ONE Zestaw Startowy → W zestawie → Kup osobno.
+          No hero, no duplicate product block, no Shop top navigation. */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[10px] leading-[1.25] font-bold tracking-[0.16em] text-[var(--g-text-secondary)] uppercase">
+            {shopCopy.page.introEyebrow}
+          </p>
+          <p className="mt-2 text-[15px] text-[var(--g-text-secondary)] md:text-[16.5px]">
+            {shopCopy.page.introLine}
+          </p>
+        </div>
+        <a
+          href="#shop-cart"
+          className="inline-flex shrink-0 items-center gap-[7px] rounded-full border border-[var(--g-line)] px-3.5 py-[7px] text-[12px] font-semibold text-[var(--g-ink)] transition-colors hover:border-[var(--g-line-strong)] md:px-4 md:py-2 md:text-[12.5px]"
+          data-testid="shop-cart-link"
+        >
+          {shopCopy.page.cartLink}
+          <b className="font-mono text-[12px] font-semibold text-[var(--g-text-secondary)] tabular-nums">
+            <ShopCartCount />
+          </b>
+        </a>
+      </div>
+      <div className="mt-6 md:mt-12">
         <ShopCatalog />
-      </DestinationSection>
+      </div>
     </DestinationSurface>
   );
 }
@@ -352,7 +366,11 @@ export function ProductionHubPage() {
         />
       ) : (
         <>
-          <div role="tablist" aria-label="Sekcje produkcji" className="flex border-b border-[var(--g-line)]">
+          <div
+            role="tablist"
+            aria-label="Sekcje produkcji"
+            className="flex border-b border-[var(--g-line)]"
+          >
             {productionTabs.map((tab, index) => (
               <button
                 key={tab.id}
@@ -380,7 +398,9 @@ export function ProductionHubPage() {
                 }}
                 className={cn(
                   'min-h-11 border-b-2 px-4 text-xs font-semibold sm:min-h-10',
-                  active === tab.id ? 'border-ink text-ink' : 'border-transparent text-[var(--g-text-secondary)]',
+                  active === tab.id
+                    ? 'border-ink text-ink'
+                    : 'border-transparent text-[var(--g-text-secondary)]',
                 )}
                 data-testid={`production-tab-${tab.id}`}
               >

@@ -31,6 +31,7 @@ export function DestinationSurface({
   blurb,
   actions,
   contextLabel,
+  headerActions,
   bare = false,
   children,
 }: {
@@ -40,6 +41,17 @@ export function DestinationSurface({
   actions?: ReactNode;
   /** Compact lockup descriptor used by the approved global destination shell. */
   contextLabel?: string;
+  /**
+   * Controls for the GLOBAL header row — in practice the HOME | PRO switch.
+   *
+   * They are handed straight to `AppShell`, which since the global header
+   * parity change (#76) places non-workbench actions at the trailing edge of
+   * the left work column. This is consumption of that slot, not a second
+   * header implementation: no geometry is declared here.
+   *
+   * `actions` (unprefixed) still belongs to the PAGE heading.
+   */
+  headerActions?: ReactNode;
   /**
    * GELLATTI V2.1 §5 — the commercial destinations (Sklep, Franchise,
    * Współpraca) open on a HERO that carries the page title itself, so the
@@ -60,6 +72,7 @@ export function DestinationSurface({
            of its own. */
         actions={<DestinationHomeProSwitch />}
         navigationPosition="trailing"
+        actions={headerActions}
         /* GELLATTI V2.1 §5 — the approved destination lockup: wordmark, then
            `<page> · Gellatti Workspace` at 11 px, the workspace half in ink.
            No vertical rule and no uppercase tracking: the preview reads it as
