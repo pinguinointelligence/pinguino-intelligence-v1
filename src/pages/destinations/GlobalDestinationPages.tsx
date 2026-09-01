@@ -29,6 +29,8 @@ import {
 } from '@/components/shared/destinationEditorial';
 import { ShopCatalog } from '@/features/shop/ShopCatalog';
 import { ShopCartCount } from '@/features/shop/ShopCartCount';
+import { HomeProSwitch } from '@/features/home-creator/ui/HomeProSwitch';
+import { useHomeEntitlement } from '@/features/home-creator/useHomeEntitlement';
 import { ShopOrdersPanel } from '@/features/shop/ShopOrdersPanel';
 import { shopCopy } from '@/copy/shop';
 import { FranchiseInquiryForm } from '@/features/franchise/FranchiseInquiryForm';
@@ -88,18 +90,23 @@ export function HowItWorksPage() {
 }
 
 export function ShopPage() {
+  const entitlement = useHomeEntitlement();
   return (
     <DestinationSurface
       eyebrow={shopCopy.page.eyebrow}
       title={shopCopy.page.title}
       blurb={shopCopy.page.blurb}
       contextLabel={shopCopy.page.contextLabel}
-      /* The Shop declares no header geometry of its own and no switch state of
-         its own: it takes `DestinationSurface`'s default, the neutral
-         `DestinationHomeProSwitch`. Sklep is neither HOME nor PRO, and marking
-         HOME active here told a visitor they were inside HOME while reading a
-         shop page. The basket stays BELOW that row, on the Shop's own utility
-         line. */
+      /* The Shop declares no header geometry of its own. It hands HOME | PRO
+         to the shared shell, which since #76 places non-workbench actions at
+         the trailing edge of the left work column — the one global position.
+         The basket stays BELOW that row, on the Shop's own utility line.
+
+         NEUTRAL: the Shop is a destination, not HOME. `activeView="home"` marked
+         HOME as the current page while a visitor read a commercial page, which
+         is the claim the owner ruled out for every global destination. Both
+         segments stay visible; neither presents as current. */
+      headerActions={<HomeProSwitch entitlement={entitlement} activeView={null} />}
       bare
     >
       {/* SHOP C3 (owner approved 2026-08-31, product emphasis 2026-09-01).

@@ -187,13 +187,11 @@ describe('shop C3 · the Shop declares no header of its own', () => {
   it('consumes the shared header slot instead of building one', () => {
     const page = read('pages', 'destinations', 'GlobalDestinationPages.tsx');
     // HOME | PRO reaches the global row through the shell's own slot, and the
-    // Shop declares NO state for it: Sklep is neither HOME nor PRO, so it takes
-    // `DestinationSurface`'s neutral default rather than marking HOME active.
-    expect(page).not.toContain('headerActions=');
-    expect(page).not.toMatch(/<HomeProSwitch/);
-    expect(read('components', 'shared', 'DestinationSurface.tsx')).toContain(
-      'headerActions = <DestinationHomeProSwitch />',
-    );
+    // Shop names NO active view: Sklep is neither HOME nor PRO. The explicit
+    // `activeView={null}` is the form `destinationNeutralView` pins.
+    expect(page).toContain('headerActions={<HomeProSwitch');
+    expect(page).toContain('activeView={null}');
+    expect(page).not.toMatch(/activeView=["']home["']/);
     // The basket is a Shop utility BELOW that row, never a header control.
     expect(page).toContain('shop-cart-link');
     const surface = read('components', 'shared', 'DestinationSurface.tsx');
