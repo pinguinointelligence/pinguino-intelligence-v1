@@ -174,6 +174,11 @@ describe('D11 — the complete left Recipe workspace follows the row system', ()
       "scope === 'BASE_FORMULATION' ? 'border border-ink/20 bg-white text-ink hover:border-ink/40' : 'border border-ink/10 bg-[var(--g-ivory)] text-stone-700 hover:border-ink/25'",
     );
     expect(picker).toContain('inline-flex h-11 items-center justify-center rounded-xl');
-    expect(intelligenceHeader).toContain('flex h-11 shrink-0 items-center gap-2 rounded-xl');
+    // OWNER FROZEN PRO VISUAL: the recalculate CTA is the authority's
+    // `.btn-solid` — height 44px, padding 0 28px, border-radius 999px. It keeps
+    // the family's 44 px height beside the rounded-xl pickers; the pill shape
+    // is what marks it as the one primary in the band.
+    expect(intelligenceHeader).toContain('flex h-11 shrink-0 items-center justify-center rounded-full');
+    expect(intelligenceHeader).toContain('px-7');
   });
 });

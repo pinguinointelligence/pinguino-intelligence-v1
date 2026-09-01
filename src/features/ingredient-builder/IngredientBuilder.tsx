@@ -456,7 +456,17 @@ export function IngredientBuilder({
         Faktycznie możesz zmniejszyć, zwiększyć, wpisać gramy i potwierdzić wartość.
       </div>
     ) : (
-      <div className={`${ROW_GRID} px-3 py-2`} data-testid="recipe-table-header">
+      /* The legend is a TABLE legend: it only means anything once ROW_GRID has
+         columns, which happens at `md`. Below that the grid is one column, so
+         it rendered visually stacked — „Składnik / % / Ilość / Cena/kg" down
+         the phone, four lines of header above a list that needs none. It stays
+         in the accessibility tree at every width; only the sighted mobile
+         rendering is suppressed, and the desktop alignment the legend exists
+         for is untouched. */
+      <div
+        className={`${ROW_GRID} px-3 py-2 sr-only md:not-sr-only`}
+        data-testid="recipe-table-header"
+      >
         {/* Six tracks (V2.1): the leading one belongs to the drag handle. */}
         {['', 'Składnik', '%', 'Ilość', 'Cena/kg', ''].map((label, index) => (
           <span key={`${label}-${index}`} className={`${headCell} ${HEAD_CELL_ALIGN[index] ?? ''}`}>
