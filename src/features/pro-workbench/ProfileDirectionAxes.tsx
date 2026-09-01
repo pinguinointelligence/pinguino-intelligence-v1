@@ -8,9 +8,10 @@ import type { AdjustableAxisId, DirectionIntent } from './recipeProfileStore';
 
 const DETENTS = [-2, -1, 0, 1, 2] as const;
 
-function readout(position: DirectionIntent): string {
-  return position === 0 ? 'bez zmian' : position > 0 ? `+${position}` : `${position}`;
-}
+/** `left:` for a detent, matching the frozen 0 / 25 / 50 / 75 / 100 spacing. */
+const at = (detent: DirectionIntent) => `${((detent + 2) / 4) * 100}%`;
+
+const sign = (detent: DirectionIntent) => (detent > 0 ? `+${detent}` : `${detent}`);
 
 function RegulatorRow({
   id,
@@ -31,87 +32,110 @@ function RegulatorRow({
 }) {
   return (
     <article
-      /* OWNER FROZEN PRO VISUAL: a bipolar TRACK, not five boxed detents. The
-         per-axis card border is gone — the axes read as one instrument, so the
-         only rule in the group is the hairline between two axes. */
-      className="py-3 first:pt-0 last:pb-0"
+      /* OWNER FROZEN PRO VISUAL: a bipolar TRACK. The axes are one instrument —
+         no per-axis card, just a rule between them. */
+      className="[&+&]:mt-[22px] [&+&]:border-t [&+&]:border-[var(--g-line)] [&+&]:pt-5"
       data-testid={`profile-regulator-${id}`}
       data-regulator-state={disabled ? 'unavailable' : 'interactive'}
     >
-      <div className="mb-1.5 flex items-baseline justify-between gap-3">
-        <b className="text-[13px] leading-[18px] font-bold text-[var(--g-ink)]">{label}</b>
-        {/* The value left the thumb. Inside a 14 px orange dot it was white on
-            #f58a07 (2.46:1) and, on a blocked axis, white on #fcd6a8 (1.37:1).
-            As an ink readout beside the track it clears 4.5:1 in BOTH states
-            and is legible at a glance instead of squinting at a dot. */}
+      <div className="mb-3 flex items-baseline">
+        <b className="text-[11px] leading-[16px] font-semibold tracking-[0.15em] text-[var(--g-text-secondary)] uppercase">
+          {label}
+        </b>
+        {/* The value reads as text on the page ground. It used to be a numeral
+            printed inside the thumb: white on #f58a07 is 2.46:1, and on a
+            blocked axis white on #fcd6a8 is 1.37:1 — the control hid the very
+            value it exists to report. Here, and in the numeral row below, it
+            clears 4.5:1 in both states. */}
         <span
           data-testid={`profile-regulator-${id}-value`}
           className={cn(
-            'shrink-0 text-[11px] leading-[16px] font-semibold tabular-nums',
-            disabled ? 'text-[var(--g-attention-ink)]' : 'text-[var(--g-ink)]',
+            'ml-auto text-[11px] leading-[16px] tabular-nums',
+            disabled ? 'text-[var(--g-attention-ink)]' : 'text-[var(--g-text-secondary)]',
           )}
         >
-          {readout(position)}
+          {sign(position)}
         </span>
       </div>
-      <div
-        role="radiogroup"
-        aria-label={label}
-        aria-disabled={disabled || undefined}
-        onKeyDown={(event) => {
-          if (disabled) return;
-          if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
-            event.preventDefault();
-            onSet(Math.max(-2, position - 1) as DirectionIntent);
-          } else if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
-            event.preventDefault();
-            onSet(Math.min(2, position + 1) as DirectionIntent);
-          } else if (event.key === 'Home') {
-            event.preventDefault();
-            onSet(-2);
-          } else if (event.key === 'End') {
-            event.preventDefault();
-            onSet(2);
-          }
-        }}
-        className="relative grid h-9 grid-cols-5 items-center justify-items-center"
-      >
-        {/* One continuous rail edge to edge, with the neutral centre marked so
-            the control reads as bipolar before anything is touched. */}
-        <span
-          aria-hidden
-          className="absolute top-1/2 right-[18px] left-[18px] h-[2px] -translate-y-1/2 rounded-full bg-[var(--g-rail-track)]"
-        />
-        <span
-          aria-hidden
-          className="absolute top-1/2 left-1/2 h-[9px] w-[2px] -translate-x-1/2 -translate-y-1/2 bg-[var(--g-line)]"
-        />
-        {DETENTS.map((detent) => (
-          <button
-            key={detent}
-            type="button"
-            role="radio"
-            aria-checked={position === detent}
-            aria-label={`${label}: ${detent > 0 ? `+${detent}` : detent}`}
-            disabled={disabled}
-            onClick={() => onSet(detent)}
-            /* The button is a full 36 px target; only the dot inside it is
-               small. The old design made the 28 px circle the whole control. */
-            className="pro-focus-ring group relative z-10 grid size-9 place-items-center rounded-full bg-transparent"
-          >
+      {/* 10 px of side room so the −2 and +2 thumbs stay inside the column. */}
+      <div className="px-2.5">
+        <div
+          role="radiogroup"
+          aria-label={label}
+          aria-disabled={disabled || undefined}
+          onKeyDown={(event) => {
+            if (disabled) return;
+            if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
+              event.preventDefault();
+              onSet(Math.max(-2, position - 1) as DirectionIntent);
+            } else if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
+              event.preventDefault();
+              onSet(Math.min(2, position + 1) as DirectionIntent);
+            } else if (event.key === 'Home') {
+              event.preventDefault();
+              onSet(-2);
+            } else if (event.key === 'End') {
+              event.preventDefault();
+              onSet(2);
+            }
+          }}
+          className="relative h-[26px]"
+        >
+          <span
+            aria-hidden
+            className="absolute inset-x-0 top-[11px] h-1 rounded-full bg-[var(--g-rail-track)]"
+          />
+          {DETENTS.map((detent) => (
             <span
+              key={`tick-${detent}`}
               aria-hidden
-              className={cn(
-                'block rounded-full transition-[background-color,box-shadow,width,height]',
-                position === detent
-                  ? 'size-[13px] bg-[#f58a07] shadow-[0_0_0_3px_var(--g-ivory)] group-disabled:bg-[#fcd6a8]'
-                  : 'size-[6px] bg-[var(--g-rail-track)] group-enabled:group-hover:bg-[#f58a07]/60 group-disabled:bg-[var(--g-line-quiet)]',
-              )}
+              style={{ left: at(detent) }}
+              className="absolute top-[9px] -ml-px h-2 w-0.5 rounded-[1px] bg-white shadow-[0_0_0_1px_var(--g-line)]"
             />
-          </button>
-        ))}
+          ))}
+          <span
+            aria-hidden
+            style={{ left: at(position) }}
+            className={cn(
+              'absolute top-[5px] -ml-2 size-4 rounded-full shadow-[0_0_0_3px_#fff] transition-[left,background-color]',
+              disabled ? 'bg-[#fcd6a8]' : 'bg-[#f58a07]',
+            )}
+          />
+          {DETENTS.map((detent) => (
+            <button
+              key={detent}
+              type="button"
+              role="radio"
+              aria-checked={position === detent}
+              aria-label={`${label}: ${sign(detent)}`}
+              disabled={disabled}
+              onClick={() => onSet(detent)}
+              style={{ left: at(detent) }}
+              /* A 26 px target centred on each tick — the mark is small, the
+                 thing you press is not. */
+              className="pro-focus-ring absolute top-0 -ml-[13px] size-[26px] rounded-full bg-transparent"
+            />
+          ))}
+        </div>
+        <div className="relative mt-1 h-4">
+          {DETENTS.map((detent) => (
+            <span
+              key={`num-${detent}`}
+              aria-hidden
+              style={{ left: at(detent) }}
+              className={cn(
+                'absolute -translate-x-1/2 text-[10.5px] leading-4 tabular-nums',
+                position === detent
+                  ? 'font-bold text-[var(--g-ink)]'
+                  : 'font-medium text-[var(--g-text-muted)]',
+              )}
+            >
+              {sign(detent)}
+            </span>
+          ))}
+        </div>
       </div>
-      <div className="mt-1 flex items-baseline justify-between gap-3 text-[9px] leading-[13px] text-[var(--g-text-muted)]">
+      <div className="mt-[9px] flex justify-between gap-3 text-[10.5px] leading-[14px] text-[var(--g-text-muted)]">
         <span className="min-w-0 truncate">{leftLabel}</span>
         <span className="min-w-0 truncate text-right">{rightLabel}</span>
       </div>
@@ -142,13 +166,16 @@ export function ProfileDirectionAxes({
 
   return (
     <section
-      className={cn('bg-transparent', className)}
+      className={cn('border-b border-[var(--g-line)] bg-transparent pb-5', className)}
       data-testid="profile-direction-axes"
     >
-      <h3 className="mb-2 text-[11px] leading-[16px] font-semibold tracking-[0.08em] text-[var(--g-text-secondary)] uppercase">
-        Dostosuj recepturę
-      </h3>
-      <div className="divide-y divide-[var(--g-line)]">
+      <div className="mb-[13px] flex items-center gap-2.5">
+        <h3 className="shrink-0 text-[10px] leading-[14px] font-semibold tracking-[0.16em] text-[var(--g-text-muted)] uppercase">
+          Dostosuj recepturę
+        </h3>
+        <span aria-hidden className="h-px flex-1 bg-[var(--g-line)]" />
+      </div>
+      <div>
         {(
           [
             ['sweetness', 'Słodycz'],

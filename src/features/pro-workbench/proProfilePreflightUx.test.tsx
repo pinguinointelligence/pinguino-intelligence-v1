@@ -660,13 +660,17 @@ describe('profile hierarchy and compact preflight', () => {
     const batchAt = card.indexOf('workbench-batch');
     const strategyAt = card.indexOf('workbench-strategy');
     expect(productAt).toBeGreaterThan(-1);
-    expect(confirmationAt).toBeGreaterThan(productAt);
-    expect(machineAt).toBeGreaterThan(confirmationAt);
+    // OWNER FROZEN PRO VISUAL: the confirmation left the grid for the band
+    // header, so it now precedes every field in source. The FIELDS keep their
+    // canonical order relative to one another, which is what this test is for.
+    expect(confirmationAt).toBeLessThan(productAt);
+    expect(machineAt).toBeGreaterThan(productAt);
     expect(conditionalAt).toBeGreaterThan(machineAt);
     expect(batchAt).toBeGreaterThan(conditionalAt);
     expect(strategyAt).toBeGreaterThan(batchAt);
-    expect(card).toContain("compact && 'order-2'");
-    expect(card).toContain("compact ? 'order-1'");
+    // The frozen 2x3 reading order: type | serving / machine | mode / batch | base.
+    expect(card).toContain("compact && 'order-1'");
+    expect(card).toContain("compact ? 'order-2'");
     expect(card).not.toContain('workbench-quality');
     expect(card).not.toContain('Więcej ustawień');
     expect(card).not.toContain('setCostPriority');
@@ -683,12 +687,14 @@ describe('profile hierarchy and compact preflight', () => {
     expect(card).toContain('data-testid="profile-batch-combined"');
     expect(card).toContain('data-testid="settings-grid-status"');
     expect(card).not.toContain('data-testid="settings-header-status"');
-    expect(card.indexOf('data-settings-cell="product-type"')).toBeLessThan(
-      card.indexOf('data-settings-cell="confirmation"'),
-    );
-    expect(card).toContain("compact ? 'order-1'");
-    expect(card).toContain("compact && 'order-2'");
+    // The confirmation is the BAND's action now, so it sits ahead of the grid
+    // in source. It is still exactly one control with both of its testids.
     expect(card.indexOf('data-settings-cell="confirmation"')).toBeLessThan(
+      card.indexOf('data-settings-cell="product-type"'),
+    );
+    expect(card).toContain("compact && 'order-1'");
+    expect(card).toContain("compact ? 'order-2'");
+    expect(card.indexOf('data-settings-cell="product-type"')).toBeLessThan(
       card.indexOf('data-settings-cell="machine"'),
     );
     expect(card).toContain('Baza lodowa bez toppingu');
@@ -1045,7 +1051,7 @@ describe('five-detent direction language', () => {
     // OWNER FROZEN PRO VISUAL: the 28 px detent became a 36 px target carrying
     // a 13 px thumb. Geometry only — the intent wiring asserted around it is
     // what this test is actually for, and it is unchanged.
-    expect(read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx')).toContain('size-9');
+    expect(read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx')).toContain('size-[26px]');
     expect(read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx')).toContain(
       'profileSnapshotFromState(store, directionTargets, directionIntents)',
     );

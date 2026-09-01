@@ -354,7 +354,7 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     // The chosen position is now an orange THUMB on the rail; the numeral it
     // used to contain became the readout beside the track (see
     // directionDetentContrast.test.ts for the ratios that motivated the move).
-    expect(axes).toContain('size-[13px] bg-[#f58a07]');
+    expect(axes).toContain('size-4 rounded-full shadow-[0_0_0_3px_#fff]');
     expect(axes).not.toContain('Po zmianie:');
     expect(axes).not.toContain('Legenda kierunku');
     for (const label of ['Wartości odżywcze i koszt', 'Na 100 g', 'Węglowodany', 'Cała partia']) {

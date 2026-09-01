@@ -103,12 +103,25 @@ describe('ProWorkbar (sticky top workbar)', () => {
     expect(html).toContain('data-workbar-action-size="compact"');
   });
 
-  it('uses equal compact primary buttons and keeps status directly after the menu in the panel', () => {
+  it('uses 44 px pills led by Save and carries the status in the band header in the panel', () => {
     const html = render({ savedRecipeId: null, dirty: false }, 'panel');
-    expect(html.match(/data-workbar-action-width="equal"/g)).toHaveLength(2);
-    expect(html).toContain('data-workbar-status-placement="inline-after-menu"');
-    expect(html.match(/h-9 w-\[136px\]/g)).toHaveLength(2);
-    expect(html).not.toContain('data-workbar-status-placement="inline-after-menu" class="ml-auto');
+    // OWNER FROZEN PRO VISUAL: the panel's save row is the frozen row of 44 px
+    // pills at their natural widths, and RECEPTURA is a band — so the status
+    // rides in the band header rather than trailing the overflow menu.
+    expect(html.match(/data-workbar-action-width="content"/g)).toHaveLength(2);
+    expect(html).toContain('data-workbar-status-placement="band-status"');
+    expect(html).not.toContain('inline-after-menu');
+    expect(html).not.toContain('h-9 w-[136px]');
+    expect(html.match(/h-11 rounded-full px-5/g)).toHaveLength(2);
+    // Exactly one status node — the band header must not duplicate it.
+    expect(html.match(/data-testid="pro-workbar-status"/g)).toHaveLength(1);
+    // Save leads the row visually while DOM order stays New → Save → overflow,
+    // so the docked bar's ordering contract above still describes both.
+    const saveAt = html.indexOf('data-testid="pro-workbar-save"');
+    const newAt = html.indexOf('data-testid="pro-workbar-new-recipe"');
+    expect(newAt).toBeLessThan(saveAt);
+    expect(html).toContain('order-1 h-11 rounded-full px-5');
+    expect(html).toContain('order-2 h-11 rounded-full px-5');
   });
 
   it('NEW recipe: inline name field + „Zapisz recepturę" beside it + exact unsaved status', () => {

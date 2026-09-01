@@ -110,13 +110,13 @@ describe('Direction readability — the reported value', () => {
   it('still marks the chosen position when the axis is blocked', () => {
     // The thumb keeps the muted orange the old opacity used to produce, so an
     // unavailable axis reads as before — it just no longer carries the numeral.
-    expect(axes).toContain('group-disabled:bg-[#fcd6a8]');
-    // ...and stays distinct from the unselected dots beside it.
-    expect(axes).toContain('group-disabled:bg-[var(--g-line-quiet)]');
+    expect(axes).toContain("disabled ? 'bg-[#fcd6a8]' : 'bg-[#f58a07]'");
   });
 
-  it('offers no hover affordance on a blocked axis', () => {
-    expect(axes).toContain('group-enabled:group-hover:bg-[#f58a07]/60');
-    expect(axes).not.toMatch(/[^:]group-hover:bg-\[#f58a07\]/);
+  it('offers no hover affordance that could imply a blocked axis is live', () => {
+    // The frozen track has one mark, positioned by state — there is no per-
+    // detent surface left to tint, so no hover treatment exists to leak.
+    expect(axes).not.toMatch(/hover:bg-\[#f58a07\]/);
+    expect(axes).not.toMatch(/hover:border-\[#f58a07\]/);
   });
 });

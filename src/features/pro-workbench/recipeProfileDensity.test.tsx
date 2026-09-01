@@ -18,32 +18,32 @@ describe('Recipe profile visual density contract', () => {
   it('puts the five positions ON one continuous bipolar rail', () => {
     const axes = read('ProfileDirectionAxes.tsx');
 
-    // OWNER FROZEN PRO VISUAL supersedes the V2.1 boxed-detent band. The axes
-    // stopped being two bordered cards and became one instrument: no per-axis
-    // border, a hairline only BETWEEN the axes, and a rail that runs edge to
-    // edge with the neutral centre marked so the control reads as bipolar
-    // before it is touched. The state model is untouched — five detents,
-    // radiogroup semantics and arrow keys are all still asserted below.
+    // OWNER FROZEN PRO VISUAL supersedes the V2.1 boxed-detent band. Measured
+    // from the frozen authority: a 4 px rail, white 2x8 ticks at 0/25/50/75/100,
+    // a 16 px thumb in a white ring, and the numerals in their own row BELOW
+    // the track instead of inside the mark. The state model is untouched —
+    // five detents, radiogroup and arrow keys are all still asserted elsewhere.
     expect(axes).not.toContain('xl:min-h-[66px]');
-    expect(axes).toContain('divide-y divide-[var(--g-line)]');
+    expect(axes).toContain('[&+&]:border-t [&+&]:border-[var(--g-line)]');
 
-    // A REAL rail behind the positions, inset to the outer centres.
-    expect(axes).toContain('h-[2px] -translate-y-1/2 rounded-full bg-[var(--g-rail-track)]');
-    expect(axes).toContain('right-[18px] left-[18px]');
-    expect(axes).toContain('grid h-9 grid-cols-5');
-    // The bipolar centre notch.
-    expect(axes).toContain('h-[9px] w-[2px]');
-    // 36 px targets carrying a 13 px thumb — the target grew, the mark shrank.
-    expect(axes).toContain('size-9');
-    expect(axes).toContain('size-[13px] bg-[#f58a07]');
-    expect(axes).toContain('size-[6px] bg-[var(--g-rail-track)]');
+    expect(axes).toContain('absolute inset-x-0 top-[11px] h-1 rounded-full bg-[var(--g-rail-track)]');
+    expect(axes).toContain("`${((detent + 2) / 4) * 100}%`");
+    expect(axes).toContain('top-[9px] -ml-px h-2 w-0.5');
+    expect(axes).toContain('top-[5px] -ml-2 size-4 rounded-full shadow-[0_0_0_3px_#fff]');
+    // A 26 px target on a 16 px mark: the thing you press is bigger than the
+    // thing you see, which is the opposite of the old 28 px numeral button.
+    expect(axes).toContain('-ml-[13px] size-[26px]');
+    // The numerals live in their own row and the chosen one is ink, not white
+    // on orange (see directionDetentContrast.test.ts for the ratios).
+    expect(axes).toContain("'font-bold text-[var(--g-ink)]'");
+
     // The chosen position is still the one orange mark in the panel.
-    expect((axes.match(/bg-\[#f58a07\]/g) ?? []).length).toBe(2);
-    // The section carries no card of its own any more; the heading is a quiet
-    // uppercase eyebrow rather than an 18 px card title.
+    expect((axes.match(/bg-\[#f58a07\]/g) ?? []).length).toBe(1);
+    // The section carries no card of its own; the heading is a quiet eyebrow
+    // closed by a hairline that runs to the column edge.
     expect(axes).not.toContain('rounded-[10px] border border-[var(--g-line)] bg-white');
-    expect(axes).toContain("'bg-transparent'");
-    expect(axes).toContain('tracking-[0.08em] text-[var(--g-text-secondary)] uppercase');
+    expect(axes).toContain('tracking-[0.16em] text-[var(--g-text-muted)] uppercase');
+    expect(axes).toContain('h-px flex-1 bg-[var(--g-line)]');
   });
 
   it('lays Settings out as ONE three-row, two-column grid of 46 px fields', () => {
