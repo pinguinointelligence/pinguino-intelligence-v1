@@ -203,7 +203,7 @@ export function DirectNumberControl({
   return (
     <div
       className={cn(
-        'grid min-w-0 max-w-full items-center overflow-hidden rounded-2xl border border-ink/12 bg-white shadow-pro-sm transition-[border-color,background-color,box-shadow] focus-within:border-ink/30 focus-within:shadow-pro-md',
+        'grid min-w-0 max-w-full items-center overflow-hidden rounded-2xl border border-ink/12 bg-white shadow-pro-sm transition-[border-color,background-color,box-shadow] focus-within:border-[#f58a07] focus-within:shadow-[0_0_0_3px_rgb(245_138_7_/_0.15)]',
         compact && 'h-8',
         responsive && 'lg:h-8 lg:rounded-xl lg:shadow-none',
         widthPreset === 'percent' &&

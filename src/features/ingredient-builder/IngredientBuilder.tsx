@@ -87,6 +87,35 @@ const b = copy.studio.builder;
 const headCell = 'text-xs font-medium tracking-[0.04em] text-ivory/70 uppercase';
 
 /**
+ * OWNER FROZEN LEGEND, 2026-09-01.
+ *
+ * Each label aligns to the TEXT it names, not to its own grid track. The accepted QA
+ * method is a text-range/glyph measurement, never an outer element box — the two
+ * disagree by exactly the padding, which is what made earlier attempts read as green
+ * while looking wrong.
+ *
+ *   1 Składnik → the ingredient-name glyphs. They start after the 28 px category icon
+ *                plus its 8 px gap, so the label carries the same 36 px (`pl-9`).
+ *   2 %        → the CENTRE of the percent control, so the label sits over the thing
+ *   3 Ilość    → the CENTRE of the gram control, likewise.
+ *   4 Cena/kg  → the right edge of the cost VALUE, which is right-aligned in its track.
+ *
+ * The frozen authority draws this label as KOSZT. It is NOT renamed here: the label
+ * is pinned as `Cena/kg` by the accepted design contract
+ * (`finalProWorkbenchDesign.test.tsx`) and by `copy.studio.builder.ingredientTable
+ * .columns.price`. Renaming it is a COPY decision, not geometry, and it is reported
+ * for the owner rather than taken here.
+ */
+const HEAD_CELL_ALIGN: readonly string[] = [
+  '',
+  'pl-9',
+  'text-center',
+  'text-center',
+  'text-right',
+  '',
+];
+
+/**
  * Items come from the Engine result; edits return to the canonical recipe store.
  * Recipe-only row metadata never enters RecipeInput or Engine mathematics.
  */
@@ -422,22 +451,15 @@ export function IngredientBuilder({
 
   const header =
     mode === 'production' ? (
-      <div
-        className="sr-only"
-        data-testid="production-table-header"
-        data-table-family="recipe"
-      >
-        Plan i Odchylenie są widoczne tylko wtedy, gdy faktyczna ilość różni się od planu.
-        W polu Faktycznie możesz zmniejszyć, zwiększyć, wpisać gramy i potwierdzić wartość.
+      <div className="sr-only" data-testid="production-table-header" data-table-family="recipe">
+        Plan i Odchylenie są widoczne tylko wtedy, gdy faktyczna ilość różni się od planu. W polu
+        Faktycznie możesz zmniejszyć, zwiększyć, wpisać gramy i potwierdzić wartość.
       </div>
     ) : (
       <div className={`${ROW_GRID} px-3 py-2`} data-testid="recipe-table-header">
         {/* Six tracks (V2.1): the leading one belongs to the drag handle. */}
         {['', 'Składnik', '%', 'Ilość', 'Cena/kg', ''].map((label, index) => (
-          <span
-            key={`${label}-${index}`}
-            className={`${headCell} ${[2, 4].includes(index) ? 'text-right' : ''}`}
-          >
+          <span key={`${label}-${index}`} className={`${headCell} ${HEAD_CELL_ALIGN[index] ?? ''}`}>
             {label || '\u00a0'}
           </span>
         ))}
@@ -966,9 +988,7 @@ export function IngredientBuilder({
           <p className="shrink-0 px-4 pt-4 text-sm leading-relaxed text-ivory/60">{b.empty}</p>
         ) : (
           <>
-            {items.length > 0 ? (
-              <div className={mode === 'recipe' ? 'sr-only' : 'shrink-0'}>{header}</div>
-            ) : null}
+            {items.length > 0 ? <div className="shrink-0">{header}</div> : null}
             <div className="min-h-0 flex-1 overflow-y-auto" data-testid="ingredient-rows-scroll">
               <div>
                 {infeasibleNotice}
