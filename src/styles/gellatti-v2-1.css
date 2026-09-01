@@ -140,16 +140,24 @@
 }
 
 /* ── Approved destination pages ─────────────────────────────────────────── */
-/* The preview's destination header is FULL-BLEED (it is the only full-width
-   element on the page) with a 58 px inset at the 1440 px reference, while the
-   page canvas below it is the centred 1280 px measure. */
-.gellatti-destination-shell > header {
-  height: var(--pro-header-height);
-  max-width: none;
-  width: 100%;
-  padding-inline: clamp(1rem, 4.03vw, 58px);
-  border-bottom-color: color-mix(in srgb, var(--g-ink) 8%, transparent);
-}
+/* GLOBAL HEADER PARITY, FORWARD FIX (owner, 2026-09-01).
+ *
+ * A destination used to redeclare the header box here, with `height`,
+ * `max-width: none`, `width: 100%` and a `clamp(1rem, 4.03vw, 58px)` inline
+ * padding.
+ *
+ * PROVEN CAUSE of the 29.2 px residual, read off the served page with
+ * `CSS.getMatchedStylesForNode` rather than inferred: that selector was a class
+ * plus a type, specificity (0,1,1). Every geometry utility on the shell row —
+ * the xl width calc, the xl zero padding, the 1776 px max-width — is a single
+ * class, (0,1,0), and a media query adds no specificity. The destination rule
+ * therefore won on width, max-width and padding-inline no matter the source
+ * order, so PRO resolved to x 28.8 with 0 padding while every destination
+ * resolved to x 0 with 58 px padding.
+ *
+ * The block is gone. The header box is now declared in exactly ONE place,
+ * `APP_HEADER_ROW`. The page canvas below it is untouched and keeps its own
+ * `APP_PAGE_WORKSPACE` / `APP_PAGE_CANVAS` measures. */
 
 /* The preview's destination canvas: 1280 px, 12 px corners, one hairline. */
 .gellatti-destination {
