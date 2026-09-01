@@ -105,7 +105,7 @@ export function AppShell({
             fixed origin the eye can rely on while moving between sections. */}
         <div
           className={cn(
-            'flex min-w-0 items-center gap-3 sm:gap-5',
+            'flex min-w-0 flex-1 items-center gap-3 sm:gap-5',
             'xl:col-start-1 xl:row-start-1',
           )}
         >
@@ -123,27 +123,14 @@ export function AppShell({
               one global x whether or not the right display column is occupied. The
               workbench keeps its own accepted inline placement above, untouched. */}
           {!viewportLock ? (
-            <div className="ml-auto hidden xl:flex xl:items-center xl:gap-3">{actions}</div>
+            /* Rendered ONCE at every breakpoint. A second copy hidden with `hidden`
+               stayed in the accessibility tree as a zero-width duplicate tablist, so a
+               screen reader met two HOME and two PRO tabs (served 8dd11c9b). */
+            <div className="ml-auto flex items-center gap-2 sm:gap-3">{actions}</div>
           ) : null}
           <DesignReviewOverlay />
         </div>
         {viewportLock ? workbenchChrome : null}
-        {/* min-w-0 + wrap: page actions may shrink/wrap on narrow screens — the header must
-            never force horizontal page overflow (owner P0 responsive rule). */}
-        <div
-          className={cn(
-            'flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3',
-            viewportLock && 'hidden',
-            /* Above xl the actions live in the work column (above), so this trailing
-               group must not render them a second time. */
-            !viewportLock && 'xl:hidden',
-          )}
-        >
-          {!viewportLock ? actions : null}
-          {/* The plan badge is GONE: the global header shows the real HomeProSwitch for
-              every audience (owner override 2026-09-01), and rendering both would be two
-              controls saying the same thing. */}
-        </div>
       </header>
       <main
         className={cn(contentClassName, viewportLock && 'xl:min-h-0 xl:flex-1 xl:overflow-hidden')}
