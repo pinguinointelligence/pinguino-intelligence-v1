@@ -382,12 +382,12 @@ neutral placeholders are development-only.
 | ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Q-ASSET-00 | Assets | Canonical manifest exists, built on the owner's 23-asset list | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | this run | Owner IDs adopted verbatim as authority; per-asset reference file, geometry guard and mobile-crop rule added | — |
-| Q-ASSET-20 | Assets | **Owner's final 13 assets imported, unmodified** | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `248bbfd9` | A01–A07, F01, F03, W01–W04 in `public/images/work-with-us/`, **md5-verified byte-identical** to the owner's files. WebP delivery derivatives at 1600/800px (27 MB → 1.7 MB); originals kept as the authority. No crop, no filter, no logo touched | — |
-| Q-ASSET-21 | Assets | Manifest reconciled to the owner's FINAL mapping | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `ownerAssets.ts` | **No outstanding mismatch.** Owner correction 2026-08-31: the earlier manifest slots for A04/A06/W01 were STALE. Canonical set is A04 → Partner/professional · A06 → Trailer product · W01 → Machines/equipment detail. All 13 approved, none to be regenerated | — |
-| Q-ASSET-22 | Assets | `/machines` hero — typography-first, no photograph | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `765f533e` | Owner decision: do NOT invent a machine image. The route uses a warm-white typography-first hero with one CTA, and W01 as the equipment detail lower down. **Not a blocker.** A dedicated Machines hero stays recorded as a future asset, not an open defect | OWNER QA |
-| Q-ASSET-23 | Assets | Cart model identity stays unassigned | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `765f533e` | A05 (hero) and W02 (events) carry **no model label**. Public wording is model-neutral until a specific cart is proven, per owner instruction. Canonical set Battery Cart · V2C · V4C remains internal | Owner supplies the mapping when ready |
-| Q-ASSET-24 | Assets | **W03 IS the Gellatti Trailer** | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | owner correction | My earlier reading — that W03 showed a different trailer — was **wrong and is withdrawn**. A06, A07 and W03 are one product story on `/trailer` with **no disclaimer**. `gellattissimo` in W03/F01/F03 is intentional Gellatti branding and is never removed | — |
-| Q-ASSET-25 | Assets | **All 13 approved assets placed on a route** | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `bb471350` | A01 gateway hero · A02/A03/A04 Partner personas · A05+W02 `/mobile` · A06+A07+W03 `/trailer` · F01 Franchise hero, F03+W04 Franchise views · W01 gateway Machines card + `/machines` detail. Nothing unused, nothing regenerated | Served QA, then OWNER QA |
+| Q-ASSET-20 | Assets | **Owner's final 13 assets imported, unmodified** | 🟢 | ✅ | ✅ | ⬜ | 🔓 | `248bbfd9` | A01–A07, F01, F03, W01–W04 in `public/images/work-with-us/`, **md5-verified byte-identical** to the owner's files. WebP delivery derivatives at 1600/800px (27 MB → 1.7 MB); originals kept as the authority. No crop, no filter, no logo touched | — |
+| Q-ASSET-21 | Assets | Manifest reconciled to the owner's FINAL mapping | 🟢 | ✅ | ✅ | ⬜ | 🔓 | `ownerAssets.ts` | **No outstanding mismatch.** Owner correction 2026-08-31: the earlier manifest slots for A04/A06/W01 were STALE. Canonical set is A04 → Partner/professional · A06 → Trailer product · W01 → Machines/equipment detail. All 13 approved, none to be regenerated | — |
+| Q-ASSET-22 | Assets | `/machines` hero — typography-first, no photograph | 🟢 | ✅ | ✅ | ⬜ | 🔓 | `765f533e` | Owner decision: do NOT invent a machine image. The route uses a warm-white typography-first hero with one CTA, and W01 as the equipment detail lower down. **Not a blocker.** A dedicated Machines hero stays recorded as a future asset, not an open defect | OWNER QA |
+| Q-ASSET-23 | Assets | Cart model identity stays unassigned | 🟢 | ✅ | ✅ | ⬜ | 🔓 | `765f533e` | A05 (hero) and W02 (events) carry **no model label**. Public wording is model-neutral until a specific cart is proven, per owner instruction. Canonical set Battery Cart · V2C · V4C remains internal | Owner supplies the mapping when ready |
+| Q-ASSET-24 | Assets | **W03 IS the Gellatti Trailer** | 🟢 | ✅ | ✅ | ⬜ | 🔓 | owner correction | My earlier reading — that W03 showed a different trailer — was **wrong and is withdrawn**. A06, A07 and W03 are one product story on `/trailer` with **no disclaimer**. `gellattissimo` in W03/F01/F03 is intentional Gellatti branding and is never removed | — |
+| Q-ASSET-25 | Assets | **All 13 approved assets placed on a route** | 🟢 | ✅ | ✅ | ⬜ | 🔓 | `bb471350` | A01 gateway hero · A02/A03/A04 Partner personas · A05+W02 `/mobile` · A06+A07+W03 `/trailer` · F01 Franchise hero, F03+W04 Franchise views · W01 gateway Machines card + `/machines` detail. Nothing unused, nothing regenerated | Served QA, then OWNER QA |
 | O-FRAN-09 | Franchise | **Franchise still offers przyczepa and wozek as concepts** | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | **OWNER_DECISION_REQUIRED.** §22 says Franchise must not be presented as a cart or trailer, and `/trailer` + `/mobile` now exist as their own lanes — so a visitor meets both twice, framed differently. NOT restructured unilaterally: `concept` is a NOT NULL CHECK column on the applied `franchise_inquiries` table (`punkt, wozek, przyczepa, lokal`), so narrowing the lane needs a migration and would strand existing rows | Owner decides whether Franchise narrows to `lokal` |
 | A-GATE-08 | Gateway | Hero carries the owner's A01, served | 🟢 | ✅ | ⬜ | ⬜ | 🔓 | `248bbfd9` | Served on staging preview: desktop 1440 and 375 px, image decodes, no horizontal scroll, subject held through the tall mobile crop via object-position | **OWNER QA** |
 | Q-REF-01 | Assets | **Reference pack extracted so machines are rendered from real images, not descriptions** | 🟢 | ⬜ | ⬜ | ⬜ | 🔓 | this run | 12 files at `~/Desktop/PI/machines/REFERENCE-FOR-RENDERS/` — V2, V4, V4B, V6, V8, V2C, V4C, Battery Cart, 2x Milano, 2x context | Attach the matching file to every machine render |
@@ -530,7 +530,10 @@ Writing no GRANT does not produce a table with no grants.
 | ⚪ TODO | 106 |
 | **Total rows** | **203** |
 
-Auto ✅ **24** · ⬜ 179. Served ⬜ 203 · Owner ⬜ 203 · Freeze 🔓 203.
+Auto ✅ **24** · ⬜ 179. Served ✅ **6** · ⬜ 197 · Owner ⬜ 203 · Freeze 🔓 203.
+
+The six Served ✅ are the asset rows, proven on the canonical alias at `b611ff71` — see
+**SERVED QA — #68 ON CANONICAL STAGING** below. Owner QA stays ⬜ on every row: it is not mine to mark.
 
 **The 4 remaining 🔴 blockers**, all needing a physical measurement or a supplier answer:
 `N-V4B-FIT` and `Q-T06` (the 30 mm trailer bay), plus two rows downstream of them.
@@ -601,6 +604,119 @@ Lead operations (P) land alongside whichever of G/H/I ships first and are extend
 | Date | Run | What changed |
 | --- | --- | --- |
 | 2026-08-31 | Audit + checklist creation | Repository audited against §§0–44 on `c004d659`; 137 rows created; 6 override conflicts (X1–X6) and 5 owner decisions recorded; machine quotation extracted and all 11 ×2 prices verified; TRAILER-V4B-FIT confirmed as a real 30 mm conflict from source documents |
+
+
+---
+
+## SERVED QA — #68 ON CANONICAL STAGING (2026-09-01)
+
+PR #68 merged to `staging` as **`b611ff71ba9178baddb34feb68ed0a14fc9e7971`** by normal
+merge, all 7 CI checks green. No `--admin`, no force push, no direct push to staging.
+
+**Canonical alias resolved to a commit, not assumed.** `staging.pinguinoai.com` →
+`dpl_D9czTWjkZUoVFtwHgByjADewyDAd`, `state: READY`, `aliasError: null`, and
+`meta.githubCommitSha` = `b611ff71…` — an exact match with the merge commit. The alias
+list on that deployment contains `staging.pinguinoai.com` itself. This is the check whose
+absence produced the branch-preview error; it is now the only accepted evidence.
+
+**The SPA-fallback tell, used this time.** `/images/work-with-us/web/A01.webp` returns
+`content-type: image/webp`, not `text/html`. All 13 WebP derivatives, all 13 `@800`
+variants and all 13 PNG originals return their real content-types.
+
+**Byte identity of the owner's originals.** Each of the 13 served PNGs was SHA-256 hashed
+against its repo file: **13/13 identical**. "Unmodified" is measured, not claimed.
+
+| Route | h1 renders | HOME \| PRO | Neutral | Overflow | Assets |
+| --- | --- | --- | --- | --- | --- |
+| `/work-with-us` | ✅ | one visible pair | all `aria-selected=false` | 0 px | 8 + wordmark |
+| `/machines` | ✅ | one visible pair | all false | 0 px | W01 (no hero photo, by decision) |
+| `/mobile` | ✅ | one visible pair | all false | 0 px | A05 · W02 |
+| `/trailer` | ✅ | one visible pair | all false | 0 px | A07 · A06 · W03 |
+| `/franchise` | ✅ | one visible pair | all false | 0 px | F01 · F03 · W04 |
+
+Measured at **1440×900** and **390×844**; zero horizontal overflow at both. The union of
+rendered assets is all **13/13**, each painted in a real browser with `naturalWidth > 0`.
+Signed-out confirmed: 0 auth keys in `localStorage`, 0 cookies — these routes are public.
+The owner's approved trailer sentence is served verbatim. No model name reaches a visitor
+(`V4C` occurs in the bundle only inside base64 font data, and in source only in a comment).
+
+### Two DOM copies of the switch are correct, not a defect
+`AppShell` renders a non-workbench page's actions twice: once in the work column
+(`hidden xl:flex`) and once in the trailing group (`xl:hidden`). Both exist in the DOM;
+their visibility is mutually exclusive, so exactly one is ever visible. Verified at both
+widths.
+
+### Lazy images are not broken images
+The first probe reported `A01@800.webp` broken. curl showed the file serving correctly, and
+the DOM showed `loading="lazy"` with `complete: false` — the hidden pane never scrolled
+them into view. Forced eager: **9/9 loaded, 0 broken**. Recorded so the next run does not
+file this as a defect.
+
+---
+
+## THREE FINDINGS — DIAGNOSED, NOT FIXED (owner decision required)
+
+Per the standing rule: unexpected live result → STOP → diagnose → propose → REPORT → WAIT.
+None of the three is applied. Each has a proposed correction and none is urgent enough to
+touch canonical staging overnight.
+
+### F-1 · `/work-with-us#lead` is a dead anchor — MINE, shipped in #68 · **P1**
+
+> **CLOSED 2026-09-01** by #81 / #82 / #84 — the owner chose option 2, the real
+> business-leads surface. See **F-1 CLOSED** below for the served evidence. F-2 and F-3
+> below are still open.
+`LanePage.tsx` lines 65, 80 and 157 each render `<Link to="/work-with-us#lead">`, so the
+Machines, Mobile and Trailer routes carry three CTAs apiece pointing at `#lead`.
+**No element anywhere in `src/` defines `id="lead"`.** Served proof: the gateway's only ids
+are `root`, `cooperation-partner`, `partner-application`; `forms: 0`, `inputs: 0`.
+
+Clicking any lane CTA therefore lands on the gateway at the top with no scroll and no
+enquiry surface. The routes work; the promise the button makes does not land.
+
+Root cause: the CTAs were written against the business-leads surface, whose migration
+`20260831203500_business_leads.sql` is still **PENDING** and deliberately gated by the
+owner. The button was built before its destination.
+
+Proposed corrections, owner's choice:
+1. **Point the three CTAs at `#cooperation-partner`**, which exists today. Smallest change,
+   but it sends an equipment enquiry into the Partner section — semantically wrong.
+2. **Land the business-leads lane** (migration + a real `#lead` enquiry section). Correct
+   destination, but it is a gated workstream and larger than a CTA fix.
+3. **Point the CTAs at the lane's own enquiry route** if one is intended per lane.
+
+I recommend deciding this together with the business-leads gate rather than patching the
+href, because option 1 makes the copy lie in a quieter way.
+
+### F-2 · `/shop` tells visitors they are inside HOME — #77's lane · **P2**
+`GlobalDestinationPages.tsx:104` passes `activeView="home"`. Served proof on
+`staging.pinguinoai.com/shop`: HOME renders `aria-selected="true"`.
+
+This is the exact semantic the owner corrected for destinations — a global destination must
+not pretend HOME is active. Work With Us is correctly neutral (`aria-selected=false` on
+both segments, all five routes, both widths); the Shop is not.
+
+Proposed correction: `activeView={null}` on that one line, matching the neutral contract.
+**Not applied** — the Shop is another lane's page and its C3 design is owner-approved; I
+will not edit another lane's file to satisfy my reading of a rule.
+
+### F-3 · The lint gate cannot see a duplicate JSX prop · **P2**
+This is how the header broke. Merging #77 produced an `AppShell` call carrying `actions`
+**twice** — mine and #77's. Git reported no conflict because neither edit overlapped. In
+JSX the later prop wins, so every Work With Us route rendered no HOME | PRO switch at all,
+and typecheck, build and eslint were all green on that file.
+
+Proven by calibration, not assumed: a planted unused variable makes eslint exit 1; the
+duplicate prop makes it exit 0 with no output. `react/jsx-no-duplicate-props` is not
+enabled, and **`eslint-plugin-react` is not a dependency** — closing the gap needs a new
+devDependency, which I will not add to a shared repo unattended.
+
+Mitigated in this lane already: `destinationGlobalHeader.test.tsx` mounts the surface and
+asserts the switch renders, is neutral, and is a mutually-exclusive responsive pair. It
+fails on the real defect (verified by injecting it back), and the `headerActions` default
+now makes that failure mode structurally impossible here rather than merely detected.
+
+Proposed correction: add `eslint-plugin-react` and enable the single rule repo-wide. Owner
+decision because it is a shared-gate change affecting every lane.
 
 ---
 
