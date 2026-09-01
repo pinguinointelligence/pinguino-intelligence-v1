@@ -100,8 +100,13 @@ export function ShopPage() {
       /* The Shop declares no header geometry of its own. It hands HOME | PRO
          to the shared shell, which since #76 places non-workbench actions at
          the trailing edge of the left work column — the one global position.
-         The basket stays BELOW that row, on the Shop's own utility line. */
-      headerActions={<HomeProSwitch entitlement={entitlement} activeView="home" />}
+         The basket stays BELOW that row, on the Shop's own utility line.
+
+         NEUTRAL: the Shop is a destination, not HOME. `activeView="home"` marked
+         HOME as the current page while a visitor read a commercial page, which
+         is the claim the owner ruled out for every global destination. Both
+         segments stay visible; neither presents as current. */
+      headerActions={<HomeProSwitch entitlement={entitlement} activeView={null} />}
       bare
     >
       {/* SHOP C3 (owner approved 2026-08-31, product emphasis 2026-09-01).
