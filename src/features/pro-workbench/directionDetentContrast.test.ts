@@ -73,15 +73,6 @@ function colour(raw: string): string {
   return BARE[raw] ?? raw;
 }
 
-/** The readout's two colours are the ternary on `profile-regulator-*-value`. */
-const READOUT = axes.match(/disabled\s*\?\s*'text-\[([^\]]+)\]'\s*:\s*'text-\[([^\]]+)\]'/);
-
-function readoutColour(state: 'unavailable' | 'interactive'): string {
-  const raw = READOUT?.[state === 'unavailable' ? 1 : 2];
-  if (raw === undefined) throw new Error(`readout colour for ${state} not found`);
-  return colour(raw);
-}
-
 describe('Direction readability — the reported value', () => {
   it('never dims the control with a group opacity', () => {
     // Group opacity flattens fill AND value together; no colour survives it.
@@ -91,20 +82,30 @@ describe('Direction readability — the reported value', () => {
 
   it('never prints the value inside the orange thumb again', () => {
     // The 2.46:1 exception existed only because the numeral lived in the fill.
+    // That half of the contract is permanent and unchanged.
     expect(axes).not.toMatch(/bg-\[#f58a07\][^"']*text-white/);
-    expect(axes).toContain('profile-regulator-${id}-value');
   });
 
-  it('keeps the value readable on every ground it can sit on, in both states', () => {
-    for (const state of ['unavailable', 'interactive'] as const) {
-      const ink = readoutColour(state);
-      for (const ground of GROUNDS) {
-        expect(
-          contrast(ink, colour(ground)),
-          `${state} readout ${ink} on ${ground}`,
-        ).toBeGreaterThanOrEqual(4.5);
-      }
-    }
+  /* OWNER AUTHORITY 2026-09-03 supersedes the VISIBLE readout, not the
+     guarantee behind it. The approved reference prints no numerals: no value
+     beside the label, and no numeral row under the track. What the frozen
+     contract was actually protecting — that the position is never encoded in
+     the 2.46:1 orange alone — now has to hold through the accessible name, so
+     that is what is asserted here. A sighted user reads the position from the
+     thumb and the fill; assistive tech reads "Słodycz: +1" on the checked
+     detent. If the owner ever wants the numeral back on screen, restore the
+     ternary AND the ratio loop that used to live in this file. */
+  it('still reports the value to assistive tech on every detent', () => {
+    expect(axes).toContain('aria-label={`${label}: ${sign(detent)}`}');
+    expect(axes).toContain('aria-checked={position === detent}');
+    expect(axes).toContain('const sign =');
+  });
+
+  it('encodes the position in more than colour alone', () => {
+    // Thumb POSITION and fill WIDTH both carry it, so the reading survives a
+    // viewer who cannot separate the orange from the rail.
+    expect(axes).toContain('style={{ left: at(position) }}');
+    expect(axes).toContain('style={{ left: fillLeft, width: fillWidth }}');
   });
 
   it('still marks the chosen position when the axis is blocked', () => {

@@ -288,8 +288,9 @@ describe('profile semantics and readiness', () => {
     for (const id of ['sweetness', 'softness']) {
       expect(panel).toContain(`['${id}',`);
     }
-    for (const label of ['Słodycz', 'Twardość', 'Mniej słodkie', 'Bardziej twarde'])
-      expect(panel).toContain(label);
+    // End labels removed by the owner reference of 2026-09-03; the axis NAMES
+    // are what the contract protects, and they are unchanged.
+    for (const label of ['Słodycz', 'Twardość']) expect(panel).toContain(label);
     expect(panel).toContain('const DETENTS = [-2, -1, 0, 1, 2] as const');
     expect(panel).not.toContain('creaminess');
     expect(panel).not.toContain('intensity');

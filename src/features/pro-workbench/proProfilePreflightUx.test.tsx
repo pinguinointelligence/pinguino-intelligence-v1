@@ -966,10 +966,12 @@ describe('five-detent direction language', () => {
     expect(axes).toContain("['softness'");
     expect(axes).toContain('[-2, -1, 0, 1, 2]');
     expect(axes).not.toContain('Wybrano:');
-    expect(axes).toContain('Mniej słodkie');
-    expect(axes).toContain('Bardziej słodkie');
-    expect(axes).toContain('Bardziej miękkie');
-    expect(axes).toContain('Bardziej twarde');
+    /* OWNER AUTHORITY 2026-09-03: the approved reference carries NO end labels
+       under the track — the axis is one row, its name and its instrument. The
+       direction each end means is carried by the axis name plus the thumb's
+       position, the way every other bipolar control in the app does it. */
+    expect(axes).not.toContain('Mniej słodkie');
+    expect(axes).not.toContain('Bardziej twarde');
     expect(axes).toContain('profile-regulator-');
     expect(axes).toContain('role="radiogroup"');
     expect(axes).toContain('role="radio"');
