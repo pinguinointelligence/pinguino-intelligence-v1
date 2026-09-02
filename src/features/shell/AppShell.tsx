@@ -113,7 +113,12 @@ export function AppShell({
           `xl:grid ${DESKTOP_WORKBENCH_COLUMNS}`,
           stickyHeader && 'sticky top-0 z-40 bg-paper',
         )}
-        style={{ paddingTop: 'max(env(safe-area-inset-top), 0.5rem)' }}
+        /* The notch inset stays at every width; its FLOOR is a token so the
+           workbench breakpoint can drop it. An inline style outranks every
+           class, so the literal 0.5 rem here was silently beating the
+           `xl:py-0` in APP_HEADER_ROW and standing the whole header band 8 px
+           lower than its own fixed height. See `--app-header-top-floor`. */
+        style={{ paddingTop: 'max(env(safe-area-inset-top), var(--app-header-top-floor, 0.5rem))' }}
       >
         {/* The hamburger is the first element of the header on EVERY screen: one
             fixed origin the eye can rely on while moving between sections. */}
