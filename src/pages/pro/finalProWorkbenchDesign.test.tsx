@@ -166,9 +166,7 @@ describe('one global menu and four local contexts', () => {
     // of a responsive pair — a CSS-hidden duplicate still reached the accessibility tree
     // (served 8dd11c9b). The guarantee this pins — the shell owning `ml-auto` at the
     // column edge — is unchanged.
-    expect(read('features', 'shell', 'AppShell.tsx')).toContain(
-      'ml-auto flex min-w-0 items-center',
-    );
+    expect(read('features', 'shell', 'AppShell.tsx')).toContain('ml-auto flex min-w-0 items-center');
     for (const source of [workbar, ingredient, topping]) {
       expect(source).toContain("iconButtonClasses('xs')");
       expect(source).toContain('•••');
