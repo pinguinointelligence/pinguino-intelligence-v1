@@ -572,8 +572,6 @@ export function HomeCreatorPage() {
               }
               navigate('/subscription');
             }}
-            onSubstitute={() => undefined}
-            onUnavailable={(lineId) => useRecipeStore.getState().markIngredientUnavailable(lineId)}
             library={library}
             onAddIngredient={handleAddIngredient}
             onAddTopping={handleAddTopping}

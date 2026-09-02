@@ -5,17 +5,20 @@
  * NPAC, solids, kcal, cost, supplier and regulatory data. None of those values is read
  * by this component — they are not hidden with CSS, they never enter the render.
  *
- * §54 + owner-locked row, 2026-08-31. Every line carries the FINAL editing control:
+ * §54, OWNER OVERRIDE 2026-09-02. The row is a READOUT, not a control panel:
  *
- *     ingredient | [ − ] [ grams/value ] [ + ] [ CLOSED lock ] [ ⋯ ]
+ *     ingredient | Crown (where Main is allowed) | 84 g | [ ⋯ ]
  *
- * A Demo line shows the mask INSIDE the value segment — `••• g` — so the geometry is
- * identical whether or not grams are visible: revealing them changes the DATA, never the
- * control. The masked string is a constant with no digits in it (pinned by a copy test),
- * so no code path can leak a real gram through the placeholder, and operating a masked
- * control routes to the existing entitlement behaviour instead of doing nothing.
+ * The always-visible `[−] [g] [+] [lock]` editor is SUPERSEDED: six ingredients meant
+ * six permanent editors. The SAME shared PRO `DirectNumberControl` still does every
+ * amount change — it is simply summoned from „Zmień ilość" and dismissed again.
  *
- * The control is the shared PRO `DirectNumberControl`; HOME performs no arithmetic.
+ * A Demo line reads `••• g`. With no input, no spinbutton and no value attribute in the
+ * default row, the masked state cannot leak a gram at all; when the editor opens masked,
+ * the existing entitlement routing applies unchanged.
+ *
+ * HOME performs no arithmetic, and owns no Main rule: Crown reads the canonical
+ * capability resolver and mutates through the canonical `setLockType`.
  */
 import { useState } from 'react';
 import { cn } from '@/lib/cn';
@@ -29,9 +32,11 @@ import type { IngredientLibrary } from '@/features/ingredient-builder/ingredient
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/contracts';
 import type { RecipeMatchScorePresentation } from '@/features/recipe-score';
 import { DirectNumberControl } from '@/features/ingredient-builder/DirectNumberControl';
+import { resolveMainCapability } from '@/features/product-intelligence/mainCapability';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useHomeBehaviorContext } from '../useHomeBehaviorContext';
 import { homeCreatorCopy } from '../homeCreatorCopy';
+import { homeCustomerNotice } from '../homeCustomerNotice';
 import {
   HOME_SWEETNESS_ORDER,
   projectSweetnessForDisplay,
@@ -47,27 +52,23 @@ const SWEETNESS_LABEL: Readonly<Record<HomeSweetness, string>> = {
 };
 
 /**
- * The FINAL recipe-editing control, owner-locked 2026-08-31:
+ * OWNER OVERRIDE 2026-09-02 — the amount.
  *
- *   [ − ] [ grams/value ] [ + ] [ CLOSED lock ]      then the row's [ ⋯ ]
- *
- * It is the shared PRO `DirectNumberControl` — same four-segment geometry, same 44 px
- * targets, same single closed padlock in BOTH lock states (state is colour, never a
- * different glyph), same orange focus. HOME contributes no arithmetic: `−`/`+` and the
- * value field all route to `setPlannedGrams`, and the padlock to `setLockType`.
- *
- * When grams are entitlement-hidden the geometry does NOT change. The `•••` renders
- * INSIDE the value segment and every numeric interaction routes to the existing
- * paywall/auth behaviour, so the customer sees the final editor from the beginning and
- * only the DATA becomes available later.
+ * The row used to carry the full four-segment editor at all times, so six ingredients
+ * meant six permanent editors and the recipe read as a control panel. The DEFAULT state
+ * is now a readout; the SAME shared `DirectNumberControl` appears in place only while
+ * the customer is actually changing the amount, so nothing about lock, masking or
+ * mutation semantics changes — only how long the control is on screen.
  */
-function GramControl({
+function HomeRowAmount({
   lineId,
   name,
   grams,
   locked,
   canSeeGrams,
   onBlocked,
+  editing,
+  onDone,
 }: {
   lineId: string;
   name: string;
@@ -75,49 +76,152 @@ function GramControl({
   locked: boolean;
   canSeeGrams: boolean;
   onBlocked: () => void;
+  editing: boolean;
+  onDone: () => void;
 }) {
+  // The amount as the customer last saw it when the editor opened. Any difference is
+  // what "changed" means here, and it is the only thing the orange emphasis reacts to.
+  const [openedAt, setOpenedAt] = useState<number | null>(null);
+  if (editing && openedAt === null) setOpenedAt(grams);
+  if (!editing && openedAt !== null) setOpenedAt(null);
+  const changed = editing && openedAt !== null && openedAt !== grams;
+
+  if (!editing) {
+    return (
+      <span
+        className={cn(
+          'shrink-0 font-mono text-[15px] tabular-nums',
+          locked && 'underline decoration-dotted underline-offset-4',
+        )}
+        data-testid={`home-amount-${lineId}`}
+        data-locked={locked ? 'true' : undefined}
+        style={{ color: 'var(--g-ink)' }}
+        // A locked amount is worth knowing about, but not worth a second button.
+        title={locked ? homeCreatorCopy.recipe.lockLabel : undefined}
+      >
+        {canSeeGrams ? grams : homeCreatorCopy.recipe.maskedGramsValue}{' '}
+        {homeCreatorCopy.recipe.grams}
+      </span>
+    );
+  }
+
   return (
-    <DirectNumberControl
-      value={grams}
-      step={1}
-      min={0}
-      decimals={0}
-      suffix={homeCreatorCopy.recipe.grams}
-      ariaLabel={`${name} — ${homeCreatorCopy.recipe.gramsFieldLabel}`}
-      testId={`home-grams-${lineId}`}
-      widthPreset="grams"
-      density="responsive"
-      onChange={(next) => useRecipeStore.getState().setPlannedGrams(lineId, next)}
-      {...(canSeeGrams
-        ? {}
-        : {
-            maskedValue: homeCreatorCopy.recipe.maskedGramsValue,
-            maskedLabel: homeCreatorCopy.recipe.maskedGramsLabel,
-            onMaskedInteract: onBlocked,
-          })}
-      lockSegment={{
-        pressed: locked,
-        ariaLabel: `${name} — ${homeCreatorCopy.recipe.lockLabel}`,
-        title: homeCreatorCopy.recipe.lockLabel,
-        suffix: 'g',
-        testId: `home-lock-${lineId}`,
-        onToggle: () =>
-          useRecipeStore.getState().setLockType(lineId, locked ? 'unlocked' : 'grams'),
-      }}
-    />
+    <span className="flex shrink-0 items-center gap-2">
+      <span
+        className={cn('rounded-2xl', changed && 'ring-2')}
+        // Canonical orange, restrained: a ring on the control that changed, not an alert.
+        style={changed ? { boxShadow: '0 0 0 2px var(--g-orange)' } : undefined}
+        data-testid={`home-amount-editor-${lineId}`}
+        data-changed={changed ? 'true' : undefined}
+      >
+        <DirectNumberControl
+          value={grams}
+          step={1}
+          min={0}
+          decimals={0}
+          suffix={homeCreatorCopy.recipe.grams}
+          ariaLabel={`${name} — ${homeCreatorCopy.recipe.gramsFieldLabel}`}
+          testId={`home-grams-${lineId}`}
+          widthPreset="grams"
+          density="responsive"
+          onChange={(next) => useRecipeStore.getState().setPlannedGrams(lineId, next)}
+          {...(canSeeGrams
+            ? {}
+            : {
+                maskedValue: homeCreatorCopy.recipe.maskedGramsValue,
+                maskedLabel: homeCreatorCopy.recipe.maskedGramsLabel,
+                onMaskedInteract: onBlocked,
+              })}
+          lockSegment={{
+            pressed: locked,
+            ariaLabel: `${name} — ${homeCreatorCopy.recipe.lockLabel}`,
+            title: homeCreatorCopy.recipe.lockLabel,
+            suffix: 'g',
+            testId: `home-lock-${lineId}`,
+            onToggle: () =>
+              useRecipeStore.getState().setLockType(lineId, locked ? 'unlocked' : 'grams'),
+          }}
+        />
+      </span>
+      <button
+        type="button"
+        onClick={onDone}
+        data-testid={`home-amount-done-${lineId}`}
+        className="min-h-[44px] shrink-0 rounded-full px-3 text-[13px] focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+        style={{ color: 'var(--g-text-secondary)' }}
+      >
+        {homeCreatorCopy.recipe.doneAmount}
+      </button>
+    </span>
   );
 }
 
+/**
+ * Crown is a primary HOME action, so it is a control rather than the passive badge it
+ * used to be. It renders only where the CANONICAL authority allows Main interaction —
+ * a line that already holds Main, or one the resolver says is selectable. An unresolved
+ * product simply has no Crown to press, which is the existing fail-closed answer shown
+ * rather than explained.
+ */
+function CrownControl({ lineId, isMain, name }: { lineId: string; isMain: boolean; name: string }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={isMain}
+      aria-label={`${name} — ${homeCreatorCopy.recipe.crown}`}
+      data-testid={`home-crown-${lineId}`}
+      onClick={() => useRecipeStore.getState().setLockType(lineId, isMain ? 'unlocked' : 'main')}
+      className={cn(
+        'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-semibold tracking-[0.06em] transition-colors',
+        'focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40',
+      )}
+      style={
+        isMain
+          ? { background: 'var(--g-ink)', color: '#ffffff', borderColor: 'var(--g-ink)' }
+          : {
+              background: 'var(--g-ivory)',
+              color: 'var(--g-text-secondary)',
+              borderColor: 'var(--g-line)',
+            }
+      }
+    >
+      <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true" fill="none">
+        <path
+          d="M2 12.5h12M2.5 4l3 3L8 3l2.5 4 3-3-1 6.5h-9L2.5 4Z"
+          stroke="currentColor"
+          strokeWidth="1.4"
+          strokeLinejoin="round"
+        />
+      </svg>
+      {isMain ? homeCreatorCopy.recipe.crown : null}
+    </button>
+  );
+}
+
+/**
+ * OWNER FROZEN 2026-09-02 — exactly three actions. `Znajdź zamiennik` was wired to a
+ * no-op and is gone; `Nie mam tego składnika` moved out of HOME's menu (the store
+ * function is untouched and PRO keeps it). No product data, no diagnostics: HOME is
+ * not PRO.
+ */
 function RowMenu({
+  lineId,
+  locked,
+  onChangeAmount,
+  onToggleLock,
   onRemove,
-  onSubstitute,
-  onUnavailable,
 }: {
+  lineId: string;
+  locked: boolean;
+  onChangeAmount?: () => void;
+  onToggleLock?: () => void;
   onRemove: () => void;
-  onSubstitute?: () => void;
-  onUnavailable?: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const act = (run: () => void) => () => {
+    setOpen(false);
+    run();
+  };
   return (
     <div className="relative shrink-0">
       <button
@@ -141,42 +245,36 @@ function RowMenu({
           style={{ borderColor: 'var(--g-line)', background: '#ffffff' }}
           data-testid="home-row-menu-panel"
         >
-          {onSubstitute ? (
+          {onChangeAmount ? (
             <button
               type="button"
-              onClick={() => {
-                setOpen(false);
-                onSubstitute();
-              }}
+              onClick={act(onChangeAmount)}
+              data-testid={`home-row-change-amount-${lineId}`}
               className="block w-full px-4 py-3 text-left text-[14px] hover:bg-black/[0.04]"
               style={{ color: 'var(--g-ink)' }}
             >
-              {homeCreatorCopy.recipe.findSubstitute}
+              {homeCreatorCopy.recipe.changeAmount}
             </button>
           ) : null}
-          {onUnavailable ? (
+          {onToggleLock ? (
             <button
               type="button"
-              onClick={() => {
-                setOpen(false);
-                onUnavailable();
-              }}
+              onClick={act(onToggleLock)}
+              data-testid={`home-row-toggle-lock-${lineId}`}
               className="block w-full px-4 py-3 text-left text-[14px] hover:bg-black/[0.04]"
               style={{ color: 'var(--g-ink)' }}
             >
-              {homeCreatorCopy.recipe.dontHaveThis}
+              {locked ? homeCreatorCopy.recipe.unlockLabel : homeCreatorCopy.recipe.lockLabel}
             </button>
           ) : null}
           <button
             type="button"
-            onClick={() => {
-              setOpen(false);
-              onRemove();
-            }}
+            onClick={act(onRemove)}
+            data-testid={`home-row-remove-${lineId}`}
             className="block w-full px-4 py-3 text-left text-[14px] hover:bg-black/[0.04]"
             style={{ color: 'var(--g-ink)' }}
           >
-            {homeCreatorCopy.recipe.remove}
+            {homeCreatorCopy.recipe.removeIngredient}
           </button>
         </div>
       ) : null}
@@ -196,8 +294,6 @@ export function HomeRecipeSection({
   sweetnessStored,
   onSweetness,
   onRemoveItem,
-  onSubstitute,
-  onUnavailable,
   library,
   onAddIngredient,
   onAddTopping,
@@ -219,8 +315,6 @@ export function HomeRecipeSection({
   sweetnessStored: number;
   onSweetness: (choice: HomeSweetness) => void;
   onRemoveItem: (lineId: string) => void;
-  onSubstitute: (lineId: string) => void;
-  onUnavailable: (lineId: string) => void;
   /** §56: the SAME Pro picker, in a simpler HOME presentation. */
   library: IngredientLibrary;
   onAddIngredient: (ingredient: EngineIngredient, behavior?: ProductBehaviorSnapshot) => void;
@@ -241,6 +335,15 @@ export function HomeRecipeSection({
     temperatureC: behaviorTemperatureC,
     mode: behaviorMode,
   } = useHomeBehaviorContext();
+  // Only one amount is ever being changed at a time; the rest of the recipe stays calm.
+  const [editingLineId, setEditingLineId] = useState<string | null>(null);
+  // CANONICAL authority, read straight from the store — HOME derives no Main rule of
+  // its own. A line with no resolved snapshot is not selectable, which is the existing
+  // fail-closed answer.
+  const behaviorSnapshots = useRecipeStore((state) => state.productBehaviorSnapshots);
+  const mainSelectable = (lineId: string): boolean =>
+    resolveMainCapability({ snapshot: behaviorSnapshots[lineId], snapshotRequired: true })
+      .selectable;
 
   return (
     <HomeSection id="recipe" onBack={onBack} fill={false} data-testid="home-section-recipe">
@@ -290,28 +393,34 @@ export function HomeRecipeSection({
           >
             <span className="min-w-0 flex-1 truncate text-[15px]" style={{ color: 'var(--g-ink)' }}>
               {item.ingredient.name}
-              {crownLineIds.includes(item.id) ? (
-                <span
-                  className="ml-2 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-[0.1em]"
-                  data-testid="home-crown-marker"
-                  style={{ background: 'var(--g-ink)', color: '#ffffff' }}
-                >
-                  {homeCreatorCopy.recipe.crown.toUpperCase()}
-                </span>
-              ) : null}
             </span>
-            <GramControl
+            {crownLineIds.includes(item.id) || mainSelectable(item.id) ? (
+              <CrownControl
+                lineId={item.id}
+                name={item.ingredient.name}
+                isMain={crownLineIds.includes(item.id)}
+              />
+            ) : null}
+            <HomeRowAmount
               lineId={item.id}
               name={item.ingredient.name}
               grams={item.planned_grams}
               locked={item.lock_type === 'grams'}
               canSeeGrams={canSeeGrams}
               onBlocked={onGramsBlocked}
+              editing={editingLineId === item.id}
+              onDone={() => setEditingLineId(null)}
             />
             <RowMenu
+              lineId={item.id}
+              locked={item.lock_type === 'grams'}
+              onChangeAmount={() => setEditingLineId(item.id)}
+              onToggleLock={() =>
+                useRecipeStore
+                  .getState()
+                  .setLockType(item.id, item.lock_type === 'grams' ? 'unlocked' : 'grams')
+              }
               onRemove={() => onRemoveItem(item.id)}
-              onSubstitute={() => onSubstitute(item.id)}
-              onUnavailable={() => onUnavailable(item.id)}
             />
           </li>
         ))}
@@ -332,15 +441,22 @@ export function HomeRecipeSection({
                 {homeCreatorCopy.recipe.topping.toUpperCase()}
               </span>
             </span>
-            <GramControl
+            <HomeRowAmount
               lineId={topping.id}
               name={topping.ingredient.name}
               grams={topping.planned_grams}
               locked={false}
               canSeeGrams={canSeeGrams}
               onBlocked={onGramsBlocked}
+              editing={editingLineId === topping.id}
+              onDone={() => setEditingLineId(null)}
             />
-            <RowMenu onRemove={() => onRemoveItem(topping.id)} />
+            <RowMenu
+              lineId={topping.id}
+              locked={false}
+              onChangeAmount={() => setEditingLineId(topping.id)}
+              onRemove={() => onRemoveItem(topping.id)}
+            />
           </li>
         ))}
       </ul>
@@ -352,9 +468,13 @@ export function HomeRecipeSection({
 
           ONE affordance for the section, not one per row, and it stays put at 1, 2 or
           3+ ingredients because it is a sibling of the list, not part of it. The button
-          IS the canonical `ProductPickerPopover` trigger — HOME adds no selection
-          logic — rendered in the Designbook round icon-button variant. The visible
-          label is a desktop-only hint; the accessible name comes from the trigger. */}
+          IS the canonical `ProductPickerPopover` trigger — HOME adds no selection logic.
+
+          OWNER OVERRIDE 2026-09-02: the round icon variant produced two anonymous `+`
+          buttons whose only label was hidden on mobile. They are now the canonical PILL
+          trigger, so each one reads „Dodaj składnik" / „Dodaj topping" at every width.
+          This does NOT reinstate the entry composer's removed refinement row — that
+          screen has no recipe yet; this one does. */}
       <div
         className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-2"
         data-testid="home-add-controls"
@@ -363,23 +483,17 @@ export function HomeRecipeSection({
           <ProductPickerPopover
             library={library}
             scope="BASE_FORMULATION"
-            triggerVariant="icon"
+            triggerVariant="pill"
             behaviorContext={{
               accountId: behaviorAccountId,
               productProfile: behaviorProfile,
               temperatureC: behaviorTemperatureC,
               mode: behaviorMode,
             }}
+            sanitizeNotice={homeCustomerNotice}
             triggerLabel={homeCreatorCopy.recipe.addIngredient}
             onAdd={(ingredient, behavior) => onAddIngredient(ingredient, behavior)}
           />
-          <span
-            aria-hidden
-            className="max-sm:hidden text-[13px]"
-            style={{ color: 'var(--g-text-secondary)' }}
-          >
-            {homeCreatorCopy.recipe.addIngredient}
-          </span>
         </span>
         {/* Toppings get the analogous affordance wherever toppings are offered. HOME has
             no toppings-availability gate today — the topping picker has always been
@@ -389,23 +503,17 @@ export function HomeRecipeSection({
           <ProductPickerPopover
             library={library}
             scope="POST_PROCESS_ADDON"
-            triggerVariant="icon"
+            triggerVariant="pill"
             behaviorContext={{
               accountId: behaviorAccountId,
               productProfile: behaviorProfile,
               temperatureC: behaviorTemperatureC,
               mode: behaviorMode,
             }}
+            sanitizeNotice={homeCustomerNotice}
             triggerLabel={homeCreatorCopy.recipe.addTopping}
             onAdd={(ingredient, behavior) => onAddTopping(ingredient, behavior)}
           />
-          <span
-            aria-hidden
-            className="max-sm:hidden text-[13px]"
-            style={{ color: 'var(--g-text-secondary)' }}
-          >
-            {homeCreatorCopy.recipe.addTopping}
-          </span>
         </span>
       </div>
 
