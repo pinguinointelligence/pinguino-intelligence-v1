@@ -75,7 +75,9 @@ describe('canonical Pro header contract', () => {
     const header = read('features', 'pro-workbench', 'WorkbenchIntelligenceHeader.tsx');
     const dock = read('features', 'pro-workbench', 'WorkbenchRecipeActionDock.tsx');
     const logo = read('components', 'shared', 'OfficialProLogo.tsx');
-    expect(page).toContain('maxWidthClass="max-w-[1776px]"');
+    // In workbench mode the header shares the workbench cap so the module strip
+    // stays on the display column; other PRO surfaces keep the 1776 page width.
+    expect(page).toContain("workbench ? 'max-w-[1440px]' : 'max-w-[1776px]'");
     expect(page).toContain('brand={<OfficialProLogo />}');
     expect(page).not.toContain('data-testid="pro-top-score"');
     expect(header).toContain('data-testid="workbench-intelligence-header"');
