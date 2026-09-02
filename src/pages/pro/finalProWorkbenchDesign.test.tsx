@@ -166,7 +166,7 @@ describe('one global menu and four local contexts', () => {
     // of a responsive pair — a CSS-hidden duplicate still reached the accessibility tree
     // (served 8dd11c9b). The guarantee this pins — the shell owning `ml-auto` at the
     // column edge — is unchanged.
-    expect(read('features', 'shell', 'AppShell.tsx')).toContain('className="ml-auto flex');
+    expect(read('features', 'shell', 'AppShell.tsx')).toContain('ml-auto flex min-w-0 items-center');
     for (const source of [workbar, ingredient, topping]) {
       expect(source).toContain("iconButtonClasses('xs')");
       expect(source).toContain('•••');
@@ -432,7 +432,12 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     // grid. The condition became unconditional when that grid was promoted to the
     // GLOBAL header geometry (owner parity decision, 2026-09-01) — the guarantee this
     // pins is the column placement, which is unchanged and now applies everywhere.
-    expect(shell).toContain("'xl:col-start-1 xl:row-start-1'");
+    // SUPERSEDED, owner 2026-09-02 (option A). The two-track grid moved OFF the
+    // header row into a centred, scaled band, so the hamburger, the wordmark and
+    // the login keep the page's full width on EVERY route — measured 32 / 96 / 32
+    // px identically on Shop and PRO — while HOME | PRO and the module strip stay
+    // on the workbench column edge inside that band.
+    expect(shell).toContain('xl:col-start-1 xl:row-start-1');
     expect(read('styles', 'theme-pro-light.css')).toContain(
       '@container right-pane (max-width: 420px)',
     );
