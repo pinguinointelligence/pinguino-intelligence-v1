@@ -18,7 +18,11 @@ import {
 import { createLiveFrameSource } from './liveFrameSource';
 import { LiveRecognizer } from './liveRecognition';
 import { createLiveScanCapabilities } from './liveScanCapabilities';
-import { LiveScanController, createVideoFrameGrabber } from './liveScanController';
+import {
+  LiveScanController,
+  createVideoFrameGrabber,
+  type LiveScanSnapshot,
+} from './liveScanController';
 import { planHandoff, reviewLabel } from './liveScanHandoff';
 import type { AcceptedProduct, LiveScanSessionState } from './liveScanSession';
 import { emptyLiveScanSession } from './liveScanSession';
@@ -47,6 +51,8 @@ export function LiveMultiScanner({
 }: LiveMultiScannerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const controllerRef = useRef<LiveScanController | null>(null);
+  /** Survives the camera restart that "Skanuj dalej" forces. */
+  const snapshotRef = useRef<LiveScanSnapshot | null>(null);
   const [phase, setPhase] = useState<Phase>('starting');
   const [session, setSession] = useState<LiveScanSessionState>(emptyLiveScanSession());
   /** The name that just locked, shown briefly. Never a diagnostic. */
@@ -82,6 +88,7 @@ export function LiveMultiScanner({
         grabFrame: createVideoFrameGrabber(video),
         recognizer: new LiveRecognizer(createLiveScanCapabilities({ enableOcr })),
         stream,
+        resumeFrom: snapshotRef.current,
         onUpdate: ({ event, state }) => {
           if (cancelled) return;
           setSession(state);
@@ -99,6 +106,8 @@ export function LiveMultiScanner({
       });
       controller.start();
       controllerRef.current = controller;
+      // Resuming rebuilds the list from the carried sweep, not from zero.
+      setSession(controller.state);
       const frames = createLiveFrameSource(video, () => controller.onFrame());
       frames.start();
       stopFrames = () => frames.stop();
@@ -126,10 +135,17 @@ export function LiveMultiScanner({
 
   const remove = useCallback((identityKey: string) => {
     const controller = controllerRef.current;
-    setSession(controller ? controller.remove(identityKey) : emptyLiveScanSession());
+    const next = controller ? controller.remove(identityKey) : emptyLiveScanSession();
+    // The snapshot is what a resumed sweep is rebuilt from, so a removal has to reach it
+    // too — otherwise "Skanuj dalej" would bring the deleted product straight back.
+    snapshotRef.current = controller?.snapshot() ?? null;
+    setSession(next);
   }, []);
 
   const finish = useCallback(() => {
+    // Keep the sweep before the camera goes: the review screen and any later
+    // "Skanuj dalej" both read from here.
+    snapshotRef.current = controllerRef.current?.snapshot() ?? null;
     controllerRef.current?.stop();
     setPhase('review');
   }, []);

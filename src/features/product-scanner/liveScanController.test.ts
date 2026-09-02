@@ -126,6 +126,38 @@ describe('a single uninterrupted sweep collects three products', () => {
   });
 });
 
+describe('"Skanuj dalej" does not lose what was already collected', () => {
+  it('carries the sweep and its reference frames across a camera restart', async () => {
+    let clock = 0;
+    const first = new LiveScanController({
+      grabFrame: () => usableFrame(clock),
+      recognizer: new LiveRecognizer(sweepCapabilities(() => OREO)),
+      onUpdate: () => {},
+    });
+    first.start();
+    clock += 200;
+    first.onFrame();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(first.accepted).toHaveLength(1);
+
+    // Review releases the camera; continuing opens a new one, and a new controller.
+    first.stop();
+    const resumed = new LiveScanController({
+      grabFrame: () => usableFrame(clock),
+      recognizer: new LiveRecognizer(sweepCapabilities(() => null)),
+      onUpdate: () => {},
+      resumeFrom: first.snapshot(),
+    });
+    resumed.start();
+    expect(resumed.accepted.map((p) => p.label)).toEqual(['OREO Original 154 g']);
+    expect(resumed.captureFor('prod-oreo')).not.toBeNull();
+    // And the cooldown came with it, so the same product is not collected twice.
+    resumed.onFrame();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(resumed.accepted).toHaveLength(1);
+  });
+});
+
 describe('the camera is released when the sweep ends', () => {
   it('stops every track on stop()', () => {
     const track = { stop: vi.fn() };

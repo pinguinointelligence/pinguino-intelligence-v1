@@ -45,6 +45,20 @@ export interface LiveScanControllerOptions {
   readonly onUpdate: (update: LiveScanUpdate) => void;
   /** Optional: released on `stop()`, so the camera light goes out when the user cancels. */
   readonly stream?: MediaStream | null;
+  /**
+   * Carry a sweep across a camera restart.
+   *
+   * Ending at the review screen releases the camera, so "Skanuj dalej" has to open a new
+   * one — and with it a new controller. Without this the customer would silently lose
+   * everything they had already collected.
+   */
+  readonly resumeFrom?: LiveScanSnapshot | null;
+}
+
+/** Everything a sweep must survive a camera restart with. */
+export interface LiveScanSnapshot {
+  readonly state: LiveScanSessionState;
+  readonly captures: ReadonlyMap<string, ImageData>;
 }
 
 /**
@@ -55,16 +69,24 @@ export interface LiveScanControllerOptions {
  * Dropping is correct here — the next frame is 33 ms away and shows the same product.
  */
 export class LiveScanController {
-  private session: LiveScanSessionState = emptyLiveScanSession();
+  private session: LiveScanSessionState;
   private readonly window = new RollingBestFrameWindow<ImageData>();
   /** The best frame of the most recently matured window, kept as the reference image. */
   private reference: ImageData | null = null;
   /** Reference images per accepted product, kept out of the pure session state. */
-  private readonly captures = new Map<string, ImageData>();
+  private readonly captures: Map<string, ImageData>;
   private running = false;
   private busy = false;
 
-  constructor(private readonly options: LiveScanControllerOptions) {}
+  constructor(private readonly options: LiveScanControllerOptions) {
+    this.session = options.resumeFrom?.state ?? emptyLiveScanSession();
+    this.captures = new Map(options.resumeFrom?.captures ?? []);
+  }
+
+  /** What a successor controller needs to continue this sweep. */
+  snapshot(): LiveScanSnapshot {
+    return { state: this.session, captures: new Map(this.captures) };
+  }
 
   get state(): LiveScanSessionState {
     return this.session;
