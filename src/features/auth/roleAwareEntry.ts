@@ -43,6 +43,12 @@ export function roleAwareEntryDestination(input: {
   };
 
   if (input.effectiveAccess.canPro) {
+    // `/home` is an EXPLICIT request for HOME, so the account's default experience
+    // does not answer it — the default exists to resolve the ambiguous entries.
+    // Without this a PRO subscriber could not reach HOME by any route: the switch
+    // navigates here, and the redirect sent them straight back to PRO, which made
+    // the always-visible HOME segment (owner §11B) decorative for them.
+    if (input.entry === 'home') return null;
     const landing = resolveDefaultLandingView({
       entitlement,
       defaultExperience: input.defaultExperience ?? null,

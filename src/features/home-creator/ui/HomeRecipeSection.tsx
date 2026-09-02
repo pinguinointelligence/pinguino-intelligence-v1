@@ -93,13 +93,15 @@ function HomeRowAmount({
           'shrink-0 font-mono text-[15px] tabular-nums',
           locked && 'underline decoration-dotted underline-offset-4',
         )}
+        // The editor renders this number with `decimals={0}`; the readout has to agree,
+        // or a line reads „87.10000000000001 g" the moment it is not being edited.
         data-testid={`home-amount-${lineId}`}
         data-locked={locked ? 'true' : undefined}
         style={{ color: 'var(--g-ink)' }}
         // A locked amount is worth knowing about, but not worth a second button.
         title={locked ? homeCreatorCopy.recipe.lockLabel : undefined}
       >
-        {canSeeGrams ? grams : homeCreatorCopy.recipe.maskedGramsValue}{' '}
+        {canSeeGrams ? Math.round(grams) : homeCreatorCopy.recipe.maskedGramsValue}{' '}
         {homeCreatorCopy.recipe.grams}
       </span>
     );

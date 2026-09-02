@@ -27,7 +27,10 @@ const row = readFileSync('src/features/home-creator/ui/HomeRecipeSection.tsx', '
 const control = readFileSync('src/features/ingredient-builder/DirectNumberControl.tsx', 'utf8');
 
 /** The default row renders from here down to the editing branch. */
-const defaultRow = row.slice(row.indexOf('if (!editing) {'), row.indexOf('return (\n    <span className="flex shrink-0 items-center gap-2">'));
+const defaultRow = row.slice(
+  row.indexOf('if (!editing) {'),
+  row.indexOf('return (\n    <span className="flex shrink-0 items-center gap-2">'),
+);
 
 describe('the default row carries no permanent editor', () => {
   it('renders a plain readout, not a control', () => {
@@ -40,9 +43,16 @@ describe('the default row carries no permanent editor', () => {
 
   it('shows the amount when entitled and the mask when not', () => {
     expect(defaultRow).toContain(
-      '{canSeeGrams ? grams : homeCreatorCopy.recipe.maskedGramsValue}',
+      '{canSeeGrams ? Math.round(grams) : homeCreatorCopy.recipe.maskedGramsValue}',
     );
     expect(defaultRow).toContain('homeCreatorCopy.recipe.grams');
+  });
+
+  it('rounds like the editor does, so a readout never shows float noise', () => {
+    // Served signed-in the rows read „87.10000000000001 g"; the editor renders the same
+    // number with `decimals={0}`, so the readout has to agree.
+    expect(defaultRow).toContain('Math.round(grams)');
+    expect(row).toContain('decimals={0}');
   });
 
   it('marks a locked amount without adding a second button', () => {
@@ -54,7 +64,9 @@ describe('the default row carries no permanent editor', () => {
 describe('the amount editor is the shared PRO control, summoned not resident', () => {
   it('opens only for the line being edited', () => {
     expect(row).toContain('editing={editingLineId === item.id}');
-    expect(row).toContain('const [editingLineId, setEditingLineId] = useState<string | null>(null)');
+    expect(row).toContain(
+      'const [editingLineId, setEditingLineId] = useState<string | null>(null)',
+    );
   });
 
   it('reuses DirectNumberControl rather than a HOME lookalike', () => {
@@ -98,7 +110,9 @@ describe('Crown is a direct action on canonical authority', () => {
   });
 
   it('asks the canonical resolver, with a snapshot required', () => {
-    expect(row).toContain('resolveMainCapability({ snapshot: behaviorSnapshots[lineId], snapshotRequired: true })');
+    expect(row).toContain(
+      'resolveMainCapability({ snapshot: behaviorSnapshots[lineId], snapshotRequired: true })',
+    );
     // No HOME Main rule of its own.
     expect(row).not.toMatch(/function\s+\w*[Mm]ainCapab/);
   });
@@ -113,7 +127,10 @@ describe('Crown is a direct action on canonical authority', () => {
 });
 
 describe('the overflow menu stays a HOME menu', () => {
-  const menu = row.slice(row.indexOf('function RowMenu({'), row.indexOf('export function HomeRecipeSection'));
+  const menu = row.slice(
+    row.indexOf('function RowMenu({'),
+    row.indexOf('export function HomeRecipeSection'),
+  );
 
   it('offers exactly the three owner actions', () => {
     expect(menu).toContain('homeCreatorCopy.recipe.changeAmount');

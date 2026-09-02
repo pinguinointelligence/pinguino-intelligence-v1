@@ -24,7 +24,6 @@ import {
   applyPreviewWithServerAuthority,
   cancelPiRecalculation,
   createExplicitStandardRemovalPreviewWithServerAuthority,
-  createSuggestedFixPreviewWithServerAuthority,
   isUndoAvailable,
   openDirectionFallbackPreviewWithServerAuthority,
   openStarterPackRescuePreviewWithServerAuthority,
@@ -186,7 +185,6 @@ function RecalcDiagnosisView({
   refreshingProductBehavior,
   productBehaviorRefreshError,
   onUnlockAndPreview,
-  onSetAdvisoryMaximum,
   onRemoveStandardAndPreview,
   terminal,
   rescueAdvice = null,
@@ -206,7 +204,6 @@ function RecalcDiagnosisView({
   refreshingProductBehavior: boolean;
   productBehaviorRefreshError: string | null;
   onUnlockAndPreview: (lineId: string) => void;
-  onSetAdvisoryMaximum: (lineId: string, grams: number) => void;
   onRemoveStandardAndPreview: (lineId: string) => void;
   terminal: RecalculationTerminalState;
   rescueAdvice?: RescueIngredientAdvice | null;
@@ -350,22 +347,10 @@ function RecalcDiagnosisView({
         ) : null}
         {issue.code === 'impossible_under_constraints' ? (
           <div className="flex flex-wrap gap-2">
-            {issue.conflict && issue.nearestFeasibleGrams !== null ? (
-              <button
-                type="button"
-                className="inline-flex min-h-11 items-center justify-center rounded-lg bg-ivory px-4 py-2 text-sm font-semibold text-shell transition-colors hover:bg-ivory/90"
-                data-testid="pro-recalc-set-advisory-maximum"
-                onClick={() =>
-                  onSetAdvisoryMaximum(issue.conflict!.lineId, issue.nearestFeasibleGrams!)
-                }
-              >
-                {`Ustaw ${formatGramsPl(issue.nearestFeasibleGrams)}`}
-              </button>
-            ) : null}
             {issue.conflict ? (
               <button
                 type="button"
-                className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory transition-colors hover:border-ivory/40"
+                className="inline-flex min-h-11 items-center justify-center rounded-lg bg-ivory px-4 py-2 text-sm font-semibold text-shell transition-colors hover:bg-ivory/90"
                 data-testid="pro-recalc-unlock-and-preview"
                 onClick={() => onUnlockAndPreview(issue.conflict!.lineId)}
               >
@@ -378,7 +363,7 @@ function RecalcDiagnosisView({
               data-testid="pro-recalc-return-to-locks"
               onClick={() => onReturnToRecipe(issue.conflict?.lineId ?? null)}
             >
-              Zostaw bez zmian
+              Wróć do receptury
             </button>
           </div>
         ) : null}
@@ -1012,16 +997,6 @@ export function ProRecalcPanel({
     void unlockConstraintAndRecalculate(lineId);
   };
 
-  /** CROWN-OFF LOCKED ANCHOR (owner, 2026-09-02). The advisory maximum is
-   * already computed by the canonical search (`nearestFeasibleGrams`); this is
-   * the customer's one-click acceptance of it. `constraintSetAfterSuggestedFix`
-   * writes `{ mode: 'locked', grams }`, so the gram lock stays CLOSED at the new
-   * value — an accepted maximum is still the customer's requirement, never a
-   * silent unlock. */
-  const setAdvisoryMaximum = (lineId: string, grams: number) => {
-    void createSuggestedFixPreviewWithServerAuthority({ type: 'set_max', lineId, grams });
-  };
-
   const refreshProductBehavior = () => {
     if (refreshingProductBehavior) return;
     setRefreshingProductBehavior(true);
@@ -1256,7 +1231,6 @@ export function ProRecalcPanel({
               refreshingProductBehavior={refreshingProductBehavior}
               productBehaviorRefreshError={productBehaviorRefreshError}
               onUnlockAndPreview={unlockAndPreview}
-              onSetAdvisoryMaximum={setAdvisoryMaximum}
               onRemoveStandardAndPreview={(lineId) => {
                 void createExplicitStandardRemovalPreviewWithServerAuthority(lineId);
               }}
