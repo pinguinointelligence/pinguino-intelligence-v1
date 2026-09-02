@@ -172,9 +172,12 @@ built around it. The remaining HOME/PRO difference is that PRO *explains* the
 refusal and HOME is silent — same operation refused, different copy, which the
 owner rule expressly allows.
 
-**Capability 7 = PARITY (domain semantics equal).** Still open: comparing the
-*downstream* Preview/Apply resolution of the resulting off-batch draft per
-profile.
+**Capability 7 = MUTATION PARITY / DOWNSTREAM PARITY PENDING** (owner
+bookkeeping correction). Proven: same canonical `setPlannedGrams`, same
+`user_target_grams`, `markDoseUserSet` is provenance/UX metadata, refusal
+semantics equal (copy may differ). Still to prove per profile: Preview →
+manual-target projection → batch closure → Main/Crown limits → carrier →
+Apply → final canonical grams.
 
 ## 3d. Capability 8 — LOCK / UNLOCK (evidence, 2026-09-03)
 
@@ -198,6 +201,48 @@ and a subsequent raw `setLockType(line, 'unlocked')` — the HOME path — leave
 What PRO adds on top is constraint-studio session bookkeeping that HOME does not
 possess. **Classification D — both correct; no canonical divergence.** HOME must
 NOT be routed through the PRO UI wrapper for this.
+
+### Roundtrip proof — PASS, both directions, all four profiles
+
+The §17 constraint map is a **derived cache**, reconciled from canonical recipe
+state in both directions (`reconcileConstraints`, `constraintStudioStore.ts:453`).
+
+| profile | HOME→PRO: PRO seeded → HOME raw unlock → PRO reconcile | PRO→HOME: canonical sidecar, empty §17 → PRO reconcile |
+|---|---|---|
+| GELATO | `{locked,599}` → sidecar cleared → **constraint dropped** | `null` → **re-derived `{locked,599}`** |
+| SORBET | `{locked,161}` → cleared → **dropped** | `null` → **re-derived `{locked,161}`** |
+| VEGAN | `{locked,397}` → cleared → **dropped** | `null` → **re-derived `{locked,397}`** |
+| PROTEIN | `{locked,522}` → cleared → **dropped** | `null` → **re-derived `{locked,522}`** |
+
+No stale solver state in either direction; no canonical state lost.
+**CAPABILITY 8 = PARITY.**
+
+## 3e. Capability 16 — PRODUCT BEHAVIOR (evidence, 2026-09-03)
+
+`setProductBehaviorSnapshot` (HOME, `recipeStore.ts:1904`) vs
+`syncProductBehaviorSnapshots` (PRO, `recipeStore.ts:1933`).
+
+**Identical in every semantic respect:**
+- same validation — line must exist, `snapshot.lineId === lineId`, and
+  `processScope` must match BASE_FORMULATION / POST_PROCESS_ADDON;
+- same owner-review handling — `preserveOwnerReviewGate`;
+- same downstream authority — `reservationAfterMainCheck` recomputes
+  `starterReservedMainGrams`.
+
+**Difference is scope, not semantics:** HOME **merges** one line
+(`next[lineId] = …`, or deletes); PRO **replaces** the whole map
+(`productBehaviorSnapshots: synced`).
+
+These are two legitimate lifecycle operations on one authority — an incremental
+per-line arrival (a resolver answer landing after the line) versus an
+authoritative full-resolver pass. **Classification D — both correct.**
+
+*Caveat recorded, not a defect:* PRO's replace is destructive to lines absent
+from its payload, which is correct for an authoritative resolver sweep but means
+a HOME-added snapshot outside that payload would not survive a PRO sync. Worth a
+targeted roundtrip test when capability 32/33 (HOME↔PRO persistence) is audited.
+
+**CAPABILITY 16 = PARITY (lifecycle difference only).**
 
 ## 4. Still to do (not started)
 
