@@ -154,8 +154,27 @@ differently.**
    (`recipeStore.ts:2137`, inside `setPlannedGrams`). Both surfaces therefore
    plant the manual-target anchor identically.
 
-**Status: divergence located, not yet fixed; downstream resolution comparison
-per profile still pending.**
+### Verdict on capability 7 — PARITY on domain semantics
+
+`markDoseUserSet` was traced end-to-end. It flips dose provenance
+`AUTO_SUGGESTED → USER_SET`. Consumers:
+
+- **behavioural:** only `missingPickerDosePreviewIssue`
+  (`constraintStudioStore.ts:433`), which blocks Preview when
+  `provenance !== 'NONE' && planned_grams < 1`. `AUTO_SUGGESTED` and `USER_SET`
+  satisfy that identically, so the flag does not change the outcome.
+- **other:** `recipeProfilePersistence.ts:191/216` — a *deserialization schema
+  check* on persisted meta, not a formulation decision.
+
+**Therefore `markDoseUserSet` is UI/provenance metadata, not canonical
+formulation behaviour**, and per the owner rule no formulation architecture is
+built around it. The remaining HOME/PRO difference is that PRO *explains* the
+refusal and HOME is silent — same operation refused, different copy, which the
+owner rule expressly allows.
+
+**Capability 7 = PARITY (domain semantics equal).** Still open: comparing the
+*downstream* Preview/Apply resolution of the resulting off-batch draft per
+profile.
 
 ## 3d. Capability 8 — LOCK / UNLOCK (evidence, 2026-09-03)
 
@@ -163,8 +182,22 @@ PRO wraps `setLockType` with `onLineLockTypeChanged` — the constraint-studio
 bridge notification (`useLineLockControls.ts:109-114`). HOME calls
 `setLockType` **raw** (`HomeRecipeSection`), so the bridge is never notified.
 
-**Classification A — PRO correct / HOME broken.** Fix: route HOME through the
-existing wrapper rather than adding a HOME-only guard. Not yet fixed.
+**RETRACTED — measured, and my call-shape classification was wrong.**
+
+`onLineLockTypeChanged` (`constraintStudioStore.ts:1020`) does two things: it
+drops the §17 constraint + clears the staged preview (**B/C — PRO solver session
+state**), and it calls `setGramLock/setPercentLock/clearRangeLock`
+(**A — canonical**).
+
+But the canonical effect is **already in the shared store action**. Measured on
+all four profiles: `setGramLock` writes `grams_constraint {grams: 599/161/397/522}`,
+and a subsequent raw `setLockType(line, 'unlocked')` — the HOME path — leaves
+`grams_constraint: null`, `percent_constraint: null`, `range_constraint: null`.
+**No stale canonical sidecar on any profile.**
+
+What PRO adds on top is constraint-studio session bookkeeping that HOME does not
+possess. **Classification D — both correct; no canonical divergence.** HOME must
+NOT be routed through the PRO UI wrapper for this.
 
 ## 4. Still to do (not started)
 
