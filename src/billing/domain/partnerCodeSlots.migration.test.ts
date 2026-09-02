@@ -6,7 +6,7 @@
  * Drift between src/billing/domain/partnerCodeSlots.ts and the SQL breaks this
  * test — the TS module and the database must enforce the SAME owner rules.
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -314,5 +314,224 @@ describe('ONE canonical ceiling reason (owner ruling §3)', () => {
   it('does not rewrite any historical migration', () => {
     expect(DEDUPE).not.toContain('20260826122000');
     expect(/update public\.partner_codes/i.test(DEDUPE)).toBe(false);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DUPLICATE INDEX REMOVAL (20260902140000)
+//
+// partner_codes carried FOUR unique indexes enforcing TWO rules: the
+// `_permanent_` pair from 20260826120000 and the `_global_` pair from
+// 20260831200000, created six days apart by two workstreams that could not see
+// each other. The `_permanent_` pair is dropped forward-only.
+//
+// The load-bearing test is the FOLD below: it replays every partner_codes index
+// statement across the whole migration directory in filename order and asserts
+// the resulting live index set. It would have failed on the duplication itself,
+// and it fails again if any future migration weakens case-insensitive GLOBAL
+// uniqueness on either column — the invariant, not the index name.
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface PartnerCodeIndex {
+  readonly name: string;
+  readonly unique: boolean;
+  readonly expression: string;
+  readonly partial: boolean;
+  readonly createdBy: string;
+}
+
+const MIGRATIONS_DIR = join(REPO, 'supabase', 'migrations');
+const DEDUPE_MIGRATION = '20260902140000_partner_code_index_dedupe.sql';
+
+/** Text from the first `(` at `open` to its matching `)`, parens balanced. */
+function balancedSlice(sql: string, open: number): { body: string; end: number } {
+  let depth = 0;
+  for (let i = open; i < sql.length; i += 1) {
+    if (sql[i] === '(') depth += 1;
+    else if (sql[i] === ')') {
+      depth -= 1;
+      if (depth === 0) return { body: sql.slice(open + 1, i), end: i };
+    }
+  }
+  throw new Error(`unbalanced parentheses at offset ${open}`);
+}
+
+/**
+ * Replay every `create index` / `drop index` touching public.partner_codes, in
+ * filename order, and return the index set that survives. Comments are stripped
+ * first, so the ROLLBACK blocks (which are comments) never count.
+ *
+ * `through` stops the replay after that filename, so a test can inspect the
+ * state BEFORE a given migration as well as after it.
+ */
+function foldPartnerCodesIndexes(through?: string): Map<string, PartnerCodeIndex> {
+  const files = readdirSync(MIGRATIONS_DIR)
+    .filter((f) => f.endsWith('.sql'))
+    .sort();
+  const live = new Map<string, PartnerCodeIndex>();
+
+  for (const file of files) {
+    const sql = readFileSync(join(MIGRATIONS_DIR, file), 'utf8').replace(/--.*$/gm, '');
+
+    const create =
+      /create\s+(unique\s+)?index\s+(?:concurrently\s+)?(?:if\s+not\s+exists\s+)?([a-z0-9_]+)\s+on\s+public\.partner_codes\s*(?=\()/gi;
+    for (let m = create.exec(sql); m !== null; m = create.exec(sql)) {
+      const { body, end } = balancedSlice(sql, create.lastIndex);
+      const semi = sql.indexOf(';', end);
+      const tail = sql.slice(end + 1, semi === -1 ? undefined : semi);
+      const name = (m[2] ?? '').toLowerCase();
+      // `if not exists` means an earlier definition wins, exactly as in Postgres
+      if (live.has(name)) continue;
+      live.set(name, {
+        name,
+        unique: m[1] !== undefined,
+        expression: body.trim().replace(/\s+/g, ''),
+        partial: /\bwhere\b/i.test(tail),
+        createdBy: file,
+      });
+    }
+
+    const drop =
+      /drop\s+index\s+(?:concurrently\s+)?(?:if\s+exists\s+)?(?:public\.)?([a-z0-9_]+)/gi;
+    for (let m = drop.exec(sql); m !== null; m = drop.exec(sql)) {
+      live.delete((m[1] ?? '').toLowerCase());
+    }
+
+    if (through !== undefined && file === through) break;
+  }
+  return live;
+}
+
+/** Unique, non-partial (= global) indexes whose expression case-folds `column`. */
+function caseInsensitiveGlobalUniques(
+  live: Map<string, PartnerCodeIndex>,
+  column: 'code' | 'slug',
+): PartnerCodeIndex[] {
+  return [...live.values()].filter(
+    (i) =>
+      i.unique &&
+      !i.partial &&
+      (i.expression === `upper(${column})` || i.expression === `lower(${column})`),
+  );
+}
+
+describe('duplicate partner_codes indexes are removed without weakening uniqueness', () => {
+  const DEDUPE_SQL = readFileSync(join(MIGRATIONS_DIR, DEDUPE_MIGRATION), 'utf8');
+  const INDEX_DEDUPE = DEDUPE_SQL.replace(/--.*$/gm, '');
+  const live = foldPartnerCodesIndexes();
+
+  it('REGRESSION: the duplication really existed — four unique indexes, two rules', () => {
+    // state as of 20260831200000, the migration that created the second pair
+    const duplicated = foldPartnerCodesIndexes(
+      '20260831200000_partner_code_slots_and_alias_ownership.sql',
+    );
+    expect(caseInsensitiveGlobalUniques(duplicated, 'code')).toHaveLength(2);
+    expect(caseInsensitiveGlobalUniques(duplicated, 'slug')).toHaveLength(2);
+    // and the slug pair was byte-identical, which is why this went unnoticed
+    const slugs = caseInsensitiveGlobalUniques(duplicated, 'slug');
+    expect(slugs[0]?.expression).toBe(slugs[1]?.expression);
+  });
+
+  it('INVARIANT 1 — code keeps exactly one case-insensitive GLOBAL unique index', () => {
+    const codeUniques = caseInsensitiveGlobalUniques(live, 'code');
+    expect(codeUniques.map((i) => i.name)).toEqual(['partner_codes_code_global_uniq']);
+    expect(codeUniques[0]?.expression).toBe('upper(code)');
+    // NOT partial: an active-only index is the alias-hijack defect X2 fixed
+    expect(codeUniques[0]?.partial).toBe(false);
+  });
+
+  it('INVARIANT 2 — slug keeps exactly one case-insensitive GLOBAL unique index', () => {
+    const slugUniques = caseInsensitiveGlobalUniques(live, 'slug');
+    expect(slugUniques.map((i) => i.name)).toEqual(['partner_codes_slug_global_uniq']);
+    expect(slugUniques[0]?.expression).toBe('lower(slug)');
+    expect(slugUniques[0]?.partial).toBe(false);
+  });
+
+  it('no case-SENSITIVE unique index is left behind to be mistaken for the rule', () => {
+    for (const index of live.values()) {
+      if (!index.unique) continue;
+      expect(['code', 'slug'], `${index.name} indexes a bare column`).not.toContain(
+        index.expression,
+      );
+    }
+  });
+
+  it('the surviving index is the one the live runtime actually probes', () => {
+    // 20260831200200 (claim guard) and 20260831201000 (approval) both filter on
+    // `upper(code)`; only an upper(code) index can serve those.
+    const claimGuard = readFileSync(
+      join(MIGRATIONS_DIR, '20260831200200_partner_code_slot_limit_dedupe.sql'),
+      'utf8',
+    ).replace(/--.*$/gm, '');
+    const approval = readFileSync(
+      join(MIGRATIONS_DIR, '20260831201000_partner_application_more_information.sql'),
+      'utf8',
+    ).replace(/--.*$/gm, '');
+    expect(claimGuard).toContain('where upper(code) = v_code');
+    expect(approval).toContain('where upper(code) = upper(v_code)');
+    expect(caseInsensitiveGlobalUniques(live, 'code')[0]?.expression).toBe('upper(code)');
+  });
+
+  it('drops exactly the two redundant indexes and nothing else', () => {
+    const dropped = [
+      ...INDEX_DEDUPE.matchAll(/drop\s+index\s+if\s+exists\s+public\.([a-z0-9_]+)/gi),
+    ]
+      .flatMap((m) => (m[1] === undefined ? [] : [m[1]]))
+      .sort();
+    expect(dropped).toEqual([
+      'partner_codes_code_permanent_uniq',
+      'partner_codes_slug_permanent_uniq',
+    ]);
+  });
+
+  it('never drops, alters or recreates the two survivors', () => {
+    for (const survivor of ['partner_codes_code_global_uniq', 'partner_codes_slug_global_uniq']) {
+      expect(new RegExp(`drop\\s+index[^;]*${survivor}`, 'i').test(INDEX_DEDUPE), survivor).toBe(
+        false,
+      );
+      expect(new RegExp(`create\\s+[^;]*index[^;]*${survivor}`, 'i').test(INDEX_DEDUPE)).toBe(
+        false,
+      );
+    }
+  });
+
+  it('refuses to run unless both survivors exist, are UNIQUE, VALID and non-partial', () => {
+    // Dropping the duplicates while the survivor is absent would silently
+    // re-open the alias hijack. The pre-flight makes that impossible.
+    expect(INDEX_DEDUPE).toContain("to_regclass('public.partner_codes_code_global_uniq')");
+    expect(INDEX_DEDUPE).toContain("to_regclass('public.partner_codes_slug_global_uniq')");
+    expect(INDEX_DEDUPE).toContain('indisunique and indisvalid and indisready and indpred is null');
+    // the guard reads pg_get_indexdef and refuses a bare (code)/(slug) index
+    expect(INDEX_DEDUPE).toContain(String.raw`upper\(\(?code`);
+    expect(INDEX_DEDUPE).toContain(String.raw`lower\(\(?slug`);
+    // the pre-flight must come BEFORE the drops
+    expect(INDEX_DEDUPE.indexOf('to_regclass')).toBeLessThan(
+      INDEX_DEDUPE.indexOf('drop index if exists public.partner_codes_code_permanent_uniq'),
+    );
+  });
+
+  it('proves the post-state in the database, not only in this file', () => {
+    // the migration re-counts the surviving indexes from pg_index and raises if
+    // it is not exactly one per column
+    expect(INDEX_DEDUPE).toContain('pg_catalog.pg_index');
+    expect(INDEX_DEDUPE).toMatch(/expected exactly ONE case-insensitive global unique index/);
+  });
+
+  it('touches nothing but indexes — no data, no grants, no table surgery', () => {
+    expect(/update\s+public\.partner_codes/i.test(INDEX_DEDUPE)).toBe(false);
+    expect(/delete\s+from\s+public\.partner_codes/i.test(INDEX_DEDUPE)).toBe(false);
+    expect(/alter\s+table[^;]*partner_codes/i.test(INDEX_DEDUPE)).toBe(false);
+    expect(/drop\s+table/i.test(INDEX_DEDUPE)).toBe(false);
+    expect(/grant\s+(insert|update|delete)/i.test(INDEX_DEDUPE)).toBe(false);
+  });
+
+  it('documents a rollback and rewrites no historical migration', () => {
+    expect(DEDUPE_SQL).toContain('ROLLBACK');
+    expect(DEDUPE_SQL).toContain('create unique index partner_codes_code_permanent_uniq');
+  });
+
+  it('leaves the non-unique partner lookup index alone', () => {
+    expect(live.get('partner_codes_partner_idx')?.unique).toBe(false);
+    expect(live.get('partner_codes_partner_idx')?.expression).toBe('partner_id');
   });
 });
