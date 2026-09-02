@@ -15,6 +15,26 @@
 export const APP_SHELL_MAX_WIDTH_CLASS = 'max-w-[1776px]';
 
 /**
+ * THE ONE CANVAS (owner, 2026-09-02).
+ *
+ * Shop's content sits in a 1280 px canvas; the workbench is laid out at the
+ * approved 1440 px authority and rendered at that same 1280 px through `zoom`,
+ * so both surfaces occupy identical space. 1280 / 1440 = 0.8889.
+ *
+ * The header does NOT scale with it. The hamburger, the wordmark and the login
+ * are the page's fixed origins and keep the full page width on every route —
+ * only the band carrying HOME | PRO and the module strip is scaled, because
+ * that band has to line up with the workbench columns underneath it.
+ */
+export const APP_CANVAS_SCALE = 0.8889;
+export const APP_CANVAS_LAYOUT_WIDTH = 1440;
+
+/** Centred, scaled band inside the header: HOME | PRO and the module strip. */
+export const APP_HEADER_CANVAS =
+  'xl:pointer-events-none xl:absolute xl:inset-x-0 xl:mx-auto xl:w-[calc(100%-var(--pro-page-gutter))] ' +
+  'xl:max-w-[1440px] xl:[zoom:0.8889]';
+
+/**
  * The one header row. Identical geometry with and without `viewportLock`, so
  * the hamburger, the wordmark and the page origin land on the same pixels on
  * every screen. `xl:w-[calc(100%-var(--pro-page-gutter))]` + `xl:px-0` is the

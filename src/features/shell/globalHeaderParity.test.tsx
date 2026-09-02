@@ -53,11 +53,18 @@ describe('the header grid is GLOBAL, not a workbench detail', () => {
   });
 
   it('keeps the global elements in column 1 on every page', () => {
-    expect(shell).toContain("'xl:col-start-1 xl:row-start-1'");
+    // SUPERSEDED, owner 2026-09-02 (option A). The two-track grid moved OFF the
+    // header row into a centred, scaled band, so the hamburger, the wordmark and
+    // the login keep the page's full width on EVERY route — measured 32 / 96 / 32
+    // px identically on Shop and PRO — while HOME | PRO and the module strip stay
+    // on the workbench column edge inside that band.
+    expect(shell).toContain('APP_HEADER_CANVAS');
+    expect(shell).toContain('xl:col-start-1 xl:row-start-1');
   });
 
   it('anchors non-workbench actions to the work column, never the viewport edge', () => {
-    expect(shell).toContain('ml-auto flex items-center');
+    // The trailing group is now inside the centred band, still `ml-auto`.
+    expect(shell).toContain('ml-auto flex min-w-0 items-center');
   });
 
   it('does NOT give non-workbench pages the workbench body lock', () => {
