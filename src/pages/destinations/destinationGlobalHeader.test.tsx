@@ -58,20 +58,13 @@ describe('a destination route wears the global header', () => {
     expect(tabs.every((t) => t.getAttribute('aria-selected') === 'false')).toBe(true);
   });
 
-  it('renders the responsive PAIR, of which exactly one is ever visible', () => {
-    // AppShell (#76) places a non-workbench page's actions at the trailing edge of
-    // the work column above xl, and in the wrapping trailing group below it. Both
-    // copies exist in the DOM by design; the guard is that their visibility is
-    // mutually exclusive, so a visitor never sees two switches saying the same thing.
+  it('renders exactly ONE accessible switch, not a responsive pair', () => {
+    // SUPERSEDED. This asserted a DOM pair whose visibility was mutually exclusive.
+    // Served QA on 8dd11c9b showed why that is not enough: the CSS-hidden copy still
+    // existed in the accessibility tree as a zero-width tablist, so a screen reader met
+    // two HOME and two PRO tabs. Visual exclusivity is not exclusivity.
     const lists = [...mountSurface().querySelectorAll('[role="tablist"]')];
-    expect(lists).toHaveLength(2);
-
-    const visibility = lists.map((list) => {
-      const desktopOnly = list.closest('.hidden.xl\\:flex') !== null;
-      const belowXlOnly = list.closest('.xl\\:hidden') !== null;
-      return { desktopOnly, belowXlOnly };
-    });
-    expect(visibility.filter((v) => v.desktopOnly && !v.belowXlOnly)).toHaveLength(1);
-    expect(visibility.filter((v) => v.belowXlOnly && !v.desktopOnly)).toHaveLength(1);
+    expect(lists).toHaveLength(1);
+    expect(lists[0]!.querySelectorAll('[role="tab"]')).toHaveLength(2);
   });
 });
