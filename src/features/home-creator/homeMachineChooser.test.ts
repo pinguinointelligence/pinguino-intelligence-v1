@@ -70,13 +70,53 @@ describe('D · choosing uses the existing canonical setter', () => {
   });
 });
 
-describe('E · „Gotowe" returns to the summary', () => {
+describe('E · leaving the chooser without choosing (HOME-M2)', () => {
+  const section = readFileSync('src/features/home-creator/ui/HomeMachineSection.tsx', 'utf8');
+
   it('ends an open change request even when nothing was picked', () => {
     // `onBack={` also appears for earlier sections, so bound the slice AFTER onDone.
     const start = page.indexOf('onDone={() => {');
     const done = page.slice(start, page.indexOf('onBack={', start));
     expect(start).toBeGreaterThan(-1);
     expect(done).toContain('setForceMachineStage(false)');
+  });
+
+  it('offers a cancel INSIDE the chooser — served, there was no way out', () => {
+    // „Gotowe" lives in the summary branch, so while choosing it does not exist and the
+    // only exit was to pick a machine.
+    const chooser = section.slice(
+      section.indexOf('{view.needsMachineChoice ? ('),
+      section.indexOf(') : ('),
+    );
+    expect(chooser).toContain('data-testid="home-machine-cancel-change"');
+    expect(chooser).toContain('onClick={onCancelChange}');
+  });
+
+  it('only offers it when there is a machine to return to', () => {
+    expect(section).toContain('onCancelChange && view.label !== null');
+  });
+
+  it('cancelling changes nothing — it just closes the request', () => {
+    expect(page).toContain('onCancelChange={() => setForceMachineStage(false)}');
+    // Nothing is written on the way out.
+    const cancel = page.slice(
+      page.indexOf('onCancelChange={'),
+      page.indexOf('onCancelChange={') + 90,
+    );
+    for (const write of ['setMachineSelection', 'setBatchGrams', 'setPlannedGrams']) {
+      expect(cancel, write).not.toContain(write);
+    }
+  });
+
+  it('keeps the previous machine while choosing, so cancel restores it exactly', () => {
+    // `setMachine(null)` here used to drop the container presentation on cancel.
+    const change = page.slice(page.indexOf('onChangeMachine={'), page.indexOf('onCancelChange={'));
+    expect(change).not.toContain('setMachine(null)');
+    expect(change).toContain('setForceMachineStage(true)');
+  });
+
+  it('reuses existing copy rather than inventing a new string', () => {
+    expect(section).toContain('homeCreatorCopy.draft.cancel');
   });
 });
 
