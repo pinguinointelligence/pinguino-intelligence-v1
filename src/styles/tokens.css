@@ -127,10 +127,27 @@
   --pro-mobile-gutter: 1rem;
   /* One header height, identical on every authenticated screen. */
   --pro-header-height: 82px;
+  /* The header's top padding carries the notch inset. The floor UNDER that
+     inset belongs to the short header only: below the workbench breakpoint the
+     header sizes to its content and needs the 8 px, which is why the inline
+     `max(env(safe-area-inset-top), …)` exists at all. At `xl` the header is a
+     fixed 82 px declared with `xl:py-0`, and an inline floor there silently
+     outranks that utility — an inline style beats every class — pushing the
+     whole header band 8 px down and past its own bottom edge. */
+  --app-header-top-floor: 0.5rem;
   /* The workbench header is 90 px in the approved preview; destinations stay 82. */
   --pro-workbench-header-height: 90px;
   /* Mobile preview navigation bar (Receptura/Monitor/Produkcja/Etykieta). */
   --pro-bottom-nav-height: 3.5rem;
+}
+
+/* The notch inset still applies at every width; only its floor is dropped where
+   the header's height is fixed. On a device with a real inset the value simply
+   wins the `max()` as before. */
+@media (min-width: 1280px) {
+  :root {
+    --app-header-top-floor: 0px;
+  }
 }
 
 /* ── Gellatti V2.1 approved visual authority ───────────────────────────────
