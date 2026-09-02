@@ -122,16 +122,19 @@ describe('OWNER RULE · the catalogue decides what is green', () => {
     const capabilities: RecognitionCapabilities = {
       decodeBarcode: vi.fn().mockResolvedValue(null),
       resolveBarcode: vi.fn(),
+      // The identification boundary asked the catalogue and it had no answer.
       recognizeObject: vi.fn().mockResolvedValue({
         identityKey: 'dragonfruit',
         label: 'Pitaja',
         confidence: 0.93,
+        resolved: null,
       }),
       resolveName: vi.fn().mockResolvedValue(null),
     };
     const observation = await new LiveRecognizer(capabilities).observe(frame, good, 0);
     expect(observation.catalogResolved).toBe(false);
-    expect(observation.route).toBe('UNKNOWN');
+    // Counted as a paid call that resolved nothing — that is exactly the cost telemetry.
+    expect(observation.route).toBe('VISION_UNRESOLVED');
     expect(observation.label).toBeNull();
   });
 });

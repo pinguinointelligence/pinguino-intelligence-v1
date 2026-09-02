@@ -45,7 +45,12 @@ const barcodeFrame = (at: number, ean = '5901234123457'): ScanObservation => ({
   route: 'LOCAL_BARCODE',
 });
 
-const recognitionFrame = (at: number, key = 'pi:banana', confidence = 0.9): ScanObservation => ({
+/**
+ * A qualifying but NOT strong recognition: above the confidence floor, below the bar at
+ * which one catalogue-confirmed identification counts as strong. This is the case that
+ * genuinely needs repetition, and it is what these cases are about.
+ */
+const recognitionFrame = (at: number, key = 'pi:banana', confidence = 0.75): ScanObservation => ({
   at,
   quality: good,
   identityKey: key,
@@ -171,6 +176,30 @@ describe('6 · bad frames are ignored silently and a later good one is accepted'
       recognitionFrame(100 + EVIDENCE_WINDOW_MS + 1), // the first two no longer count
     ]);
     expect(state.accepted).toHaveLength(0);
+  });
+});
+
+describe('strong evidence is weighed, not counted', () => {
+  const strong = (at: number): ScanObservation => ({
+    ...recognitionFrame(at),
+    confidence: 0.95,
+  });
+
+  it('a confident, catalogue-confirmed identification still needs a second look', () => {
+    const { events } = run([strong(0), strong(200)]);
+    expect(events.map((e) => e.kind)).toEqual(['candidate', 'confirmed']);
+  });
+
+  it('but text that agrees with it is enough on its own', () => {
+    // Two INDEPENDENT readings of the same label, not the same frame twice.
+    const { events } = run([{ ...strong(0), corroboratedByText: true }]);
+    expect(events[0]?.kind).toBe('confirmed');
+  });
+
+  it('a confident guess the catalogue did NOT confirm earns no shortcut', () => {
+    const unconfirmed = { ...strong(0), catalogResolved: false };
+    const { events } = run([unconfirmed, { ...unconfirmed, at: 200 }]);
+    expect(events.map((e) => e.kind)).toEqual(['candidate', 'candidate']);
   });
 });
 
