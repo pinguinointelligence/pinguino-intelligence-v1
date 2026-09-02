@@ -439,6 +439,7 @@ neutral placeholders are development-only.
 | T-TEST-06 | Tests | Referral matrix: +7d, +3mo, stacking, 4 annual = 12 months, failed first payment, refund, chargeback, cancel-at-period-end, no double reward, no self-referral, no PII | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | After J |
 | T-TEST-07 | Tests | Machines matrix: every branch, every model reachable, no dead end, payload, price, disputed spec omitted, mobile+desktop | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | After L |
 | T-TEST-08 | Tests | Leads matrix: all 4 types, admin receipt, state update, audit, confirmation | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | After P |
+| T-TEST-09 | Tests | **TECH DEBT — `destinationGlobalHeader` test wording may describe a header contract that no longer exists** | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | The test asserts the destination switch renders as a RESPONSIVE PAIR of two mutually-exclusive `[role="tablist"]` copies, and its comments explain the contract in those terms. The canonical served header now renders ONE switch: measured on `843ca841`, `/shop` and `/work-with-us` return **2** `[role="tab"]` nodes where they previously returned 4. The test still PASSES (jsdom has no media queries, so both branches render there), which is the concern — it may now pass for a different reason than the one it documents, and would not catch the pair contract actually breaking. Behaviour on staging is correct and neutral; this is test intent drift, not a product defect. | **NOT to be fixed in this closed lane.** Owner: global-header / test-maintenance lane. Re-word the test to the one-switch contract, or restore the pair assertion deliberately if the pair is still intended. |
 | T-SQA-01 | Served QA | Every checkpoint served-verified on staging: signed out, signed in, role, desktop, mobile, empty/loading/error/success, permission boundaries, real DB, real Stripe Sandbox | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | localhost alone is never accepted | Per checkpoint |
 | T-SQA-02 | Served QA | Accessibility pass | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Per checkpoint |
 
@@ -875,3 +876,39 @@ Not built and not claimed. Email-job persistence and actual provider delivery st
 states.
 
 **OWNER QA remains ⬜ on every row.**
+
+
+---
+
+## POST-REBOOT RECOVERY CHECK (2026-09-02)
+
+The machine shut down after this lane had already been intentionally stopped. Verified
+read-only on recovery; **no implementation was resumed and no code was modified.**
+
+Working tree clean, no uncommitted survivors, no interrupted merge/rebase. All eight of this
+lane's local branches survive but every one has a MERGED PR — there is no open implementation
+branch here. The two stashes present are older and belong to other lanes
+(`claude/home-composer-refinement`, `claude/visual-reconciliation`); neither was touched.
+No Work With Us dev or test process restarted; the one build running on the machine belongs
+to a different worktree and a different lane.
+
+Smoke on canonical staging `8b7244eb` (alias resolved to the deployment by exact
+`githubCommitSha`), at a real 1440×900 viewport — a zero viewport silently turns the landing
+check false, so the probe now refuses to report at all rather than report an artefact:
+
+* `/work-with-us#lead` — CTA lands (section at `top: 112`), form visible, **7 fields**,
+  subject „Przyczepa Gellatti", **0 px overflow**
+* `/shop` — HOME and PRO both visible, **neither active**, 0 px overflow
+
+Both pass, so nothing was changed. **T-TEST-09** above records the one piece of test-intent
+drift found while checking, deliberately left for the global-header / test-maintenance lane.
+
+### Summary-block drift, observed not corrected
+Adding T-TEST-09 meant touching the counts, and the counts do not match the rows. Measured
+on this file: **194** ID rows, of which ⚪ 106 · 🟢 52 · 🟡 32 · 🔴 2 · ⏳ 1. The summary block
+claims 203 rows with ⚪ 106 · 🟢 49 · 🟡 35 · 🔴 4 · ⏳ 9. The drift predates this lane, so
+incrementing it by one would only move the error rather than fix it — the block is left
+exactly as it was. Reconciling it belongs to whoever owns this checklist, not to a stopped
+lane.
+
+**WORK WITH US IMPLEMENTATION = STOPPED · OWNER QA = WAITING.**
