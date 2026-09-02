@@ -162,6 +162,11 @@ export interface ShopCopy {
     readonly filterAll: string;
   };
   readonly orders: {
+    readonly createdNotice: string;
+    readonly viewPdf: string;
+    readonly pdfReady: string;
+    readonly pdfPending: string;
+    readonly pdfFailed: string;
     readonly title: string;
     readonly empty: string;
     readonly number: string;
@@ -371,6 +376,11 @@ export const shopCopyPl: ShopCopy = {
     filterAll: 'Wszystkie',
   },
   orders: {
+    createdNotice: 'Zamówienie utworzone. Poniżej znajdziesz swoje zamówienie.',
+    viewPdf: 'Otwórz listę zakupów (PDF)',
+    pdfReady: 'Gotowa',
+    pdfPending: 'Przygotowujemy',
+    pdfFailed: 'Nie udało się otworzyć listy. Spróbuj ponownie.',
     title: 'Zamówienia',
     empty: 'Nie masz jeszcze zamówień.',
     number: 'Numer',
@@ -572,6 +582,11 @@ export const shopCopyEn: ShopCopy = {
     filterAll: 'All',
   },
   orders: {
+    createdNotice: 'Order created. You will find it below.',
+    viewPdf: 'Open shopping list (PDF)',
+    pdfReady: 'Ready',
+    pdfPending: 'Preparing',
+    pdfFailed: 'Could not open the list. Try again.',
     title: 'Orders',
     empty: 'You have no orders yet.',
     number: 'Number',

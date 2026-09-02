@@ -67,9 +67,20 @@ export interface ShopOrderItem {
   isPreorder: boolean;
 }
 
+/** How an order is fulfilled. A parcel and a PDF answer different questions. */
+export type ShopOrderType = 'PHYSICAL' | 'LOCAL_STARTER_PACK';
+
 export interface ShopOrder {
   id: string;
   orderNumber: string;
+  orderType: ShopOrderType;
+  /** Set only for LOCAL_STARTER_PACK. */
+  localPackCountry: string | null;
+  /** Whether a snapshot exists to regenerate the PDF from. */
+  localPackReady: boolean;
+  /** Delivery state of the notification mail, from `email_jobs`. Never a
+   *  second stored copy, and never shown to the customer as a raw code. */
+  localPackEmailStatus: string | null;
   status: ShopOrderStatus;
   fulfillmentStatus: ShopFulfillmentStatus;
   containsPreorder: boolean;

@@ -144,7 +144,15 @@ export function ShopConfirmation({
       ) : null}
 
       <div className="flex flex-wrap items-center gap-3 border-t border-[var(--g-line)] px-7 py-4">
-        <Link to="/account" className={applicationPrimaryClasses()}>
+        {/* J: land on the ORDER, not the account landing page. The id travels
+            in the URL, so a refresh or a reopened tab returns to the same
+            place — and the same link shape serves a paid parcel and a 0 EUR
+            Local pack, because Account resolves the row by id either way. */}
+        <Link
+          to={order ? `/account?section=orders&order=${order.id}` : '/account?section=orders'}
+          className={applicationPrimaryClasses()}
+          data-testid="confirmation-view-order"
+        >
           {c.confirmation.viewOrders}
         </Link>
         <button type="button" onClick={onBack} className={applicationSecondaryClasses()}>
