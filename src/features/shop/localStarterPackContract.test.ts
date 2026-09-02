@@ -97,6 +97,35 @@ describe('the PDF is reproducible, not live', () => {
   });
 });
 
+describe('a parcel and a PDF cannot wear each other lifecycle', () => {
+  /**
+   * Enforced in the DATABASE, not by UI convention, because the damage is
+   * silent and customer-facing: a Local order marked "shipped" tells someone a
+   * box is in the post when nothing was packed, and a physical order carrying a
+   * PDF snapshot hands out a shopping list for a pack already on its way.
+   *
+   * Proven on staging — `fulfillment_status='shipped'` on a LOCAL row and
+   * `local_pack_snapshot` on a PHYSICAL row are both refused with 23514.
+   */
+  const migration = read(
+    'supabase',
+    'migrations',
+    '20260902190000_shop_order_type_lifecycle_separation.sql',
+  );
+
+  it('refuses a shipped, tracked or charged Local order', () => {
+    expect(migration).toContain('shop_orders_local_is_not_shipped');
+    expect(migration).toMatch(/tracking_number is null/);
+    expect(migration).toMatch(/shipped_at is null/);
+    expect(migration).toMatch(/coalesce\(total_cents, 0\) = 0/);
+  });
+
+  it('refuses a physical order that carries a pack snapshot', () => {
+    expect(migration).toContain('shop_orders_physical_has_no_pack');
+    expect(migration).toMatch(/local_pack_snapshot is null/);
+  });
+});
+
 describe('a free order earns no commission', () => {
   /**
    * P: acquisition attribution is PRESERVED so we can learn which partner
