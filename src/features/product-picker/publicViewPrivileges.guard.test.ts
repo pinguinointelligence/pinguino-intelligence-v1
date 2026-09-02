@@ -46,6 +46,19 @@ const createdViews = (sql: string): string[] =>
     ),
   ].map((m) => m[1].toLowerCase());
 
+/** `create table [if not exists] public.x`. */
+const createdTables = (sql: string): string[] =>
+  [...sql.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?public\.([a-z0-9_]+)/gi)].map((m) =>
+    m[1].toLowerCase(),
+  );
+
+/** Does the migration switch row-level security on for this table? */
+const enablesRls = (sql: string, table: string): boolean =>
+  new RegExp(
+    `alter\\s+table\\s+(?:if\\s+exists\\s+)?public\\.${table}\\s+enable\\s+row\\s+level\\s+security`,
+    'i',
+  ).test(sql);
+
 /** Roles a statement revokes write privileges from, for this view. */
 const revokesWritesFrom = (sql: string, view: string): Set<string> => {
   const roles = new Set<string>();
@@ -104,5 +117,60 @@ describe('the two Mapper search views keep their exact contract', () => {
     expect(corpus).not.toMatch(
       /grant[^;]*\bon\s+public\.mapper_basement_search\s+to[^;]*\banon\b/i,
     );
+  });
+});
+
+describe('a new public table cannot be browser-writable with RLS off', () => {
+  /**
+   * The table half of the same trap. `_main_authority_baseline_20260823` held 2088 rows
+   * with `anon` carrying SELECT/INSERT/UPDATE/DELETE and RLS switched OFF, so nothing
+   * stood between an anonymous caller and the data.
+   *
+   * Browser DML on a table is NORMAL here and deliberately allowed: ~98 tables rely on
+   * "table privileges + RLS", which is why the owner kept Supabase's defaults. What must
+   * never happen is DML with no RLS behind it. So a migration creating a public table
+   * must do ONE of: enable row-level security, or revoke browser writes.
+   */
+  const bound = files.filter((f) => f.slice(0, 14) >= RULE_BINDS_FROM);
+
+  it.each(bound.length ? bound : ['(no migrations at or after the cutoff yet)'])(
+    '%s either enables RLS or revokes browser writes on every public table it creates',
+    (file) => {
+      if (!bound.includes(file)) return;
+      const sql = sqlOf(file);
+      for (const table of new Set(createdTables(sql))) {
+        const revoked = revokesWritesFrom(sql, table);
+        const closed =
+          enablesRls(sql, table) || ['anon', 'authenticated'].every((role) => revoked.has(role));
+        expect(
+          closed,
+          `${file} creates public.${table} but neither enables row-level security nor ` +
+            `revokes writes from anon and authenticated. Supabase's default privileges ` +
+            `make it browser-writable, so one of the two is required.`,
+        ).toBe(true);
+      }
+    },
+  );
+});
+
+describe('the ad-hoc baseline snapshot is not browser-facing', () => {
+  const corpus = files.map(sqlOf).join('\n');
+
+  it('revokes every privilege from anon, authenticated and PUBLIC', () => {
+    // Created outside the migration corpus, so only the revoke is recorded here.
+    expect(corpus).toMatch(
+      /revoke\s+all\s+on\s+public\._main_authority_baseline_20260823\s+from\s+anon,\s*authenticated,\s*public/i,
+    );
+  });
+
+  it('leaves the snapshot DATA alone', () => {
+    const migration = files
+      .filter((f) => corpus && sqlOf(f).includes('_main_authority_baseline_20260823'))
+      .map(sqlOf)
+      .join('\n')
+      .split('\n')
+      .filter((line) => !line.trim().startsWith('--'))
+      .join('\n');
+    expect(migration).not.toMatch(/\b(drop\s+table|truncate|delete\s+from|update\s+public\.)\b/i);
   });
 });
