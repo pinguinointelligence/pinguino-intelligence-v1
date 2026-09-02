@@ -158,8 +158,14 @@ describe('an incomplete starter keeps its Main reservation across a batch resize
       });
       // A complete recipe still fills its new batch exactly.
       expect(sum()).toBeCloseTo(setup.recommendedBatchGrams, 6);
+      // Where a whole-gram stabilizer band is published, the rescale projects
+      // the stabilizer system onto it rather than scaling it fractionally, so
+      // the shares move by the sub-gram amount that projection redistributes.
+      // The discriminator this test exists for is the RESERVATION, not that
+      // last fraction of a gram: no Main mass may be spent.
+      const tolerance = 1 / setup.recommendedBatchGrams;
       ratios().forEach((share, index) => {
-        expect(share).toBeCloseTo(beforeRatios[index]!, 6);
+        expect(Math.abs(share - beforeRatios[index]!)).toBeLessThanOrEqual(tolerance);
       });
       expect(ownerInulinPolicyIssues(buildRecipeInput(st()))).toEqual([]);
     }

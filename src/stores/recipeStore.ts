@@ -96,8 +96,8 @@ import { resolveFunctionalRole } from '@/features/formulation/ingredientRoles';
 import {
   clampOwnerStabilizerComponentGrams,
   evaluateRecipeConstraintAuthority,
-  planSorbetStabilizerSystemRescale,
-  sorbetStabilizerSystemItems,
+  planOwnerStabilizerSystemRescale,
+  ownerStabilizerSystemItems,
 } from '@/features/recipe-constraints';
 import {
   buildRecipeInput,
@@ -862,10 +862,20 @@ export const resizeRecipeBatch = (
 };
 
 /**
- * PC-02 — project the owner-approved Sorbet stabilizer system onto the band the
- * NEW batch derives, then let this same resize authority reconcile everything
- * else around it. The percentage limit lives in the stabilizer authority and is
+ * PC-02 — project the owner-approved stabilizer system onto the band the NEW
+ * batch derives, then let this same resize authority reconcile everything else
+ * around it. The percentage limit lives in the stabilizer authority and is
  * never restated here.
+ *
+ * Bound to the OWNER authority, not to Sorbet. The projection was proved for
+ * Sorbet first, but the defect it repairs is not Sorbet's: a proportional
+ * factor produces fractional grams for EVERY product type whose stabilizer
+ * ceiling is a percentage rounded inward to whole grams. Wiring only the Sorbet
+ * helpers here is what left Gelato holding `2.0100000000000002 g` of TARA GUM
+ * after a resize — the exact value this comment block already described below —
+ * which in turn made the synthetic template stabilizer hold fractional and cost
+ * the LP its integer certification. Product types with no published whole-gram
+ * band resolve to `null` and are left untouched.
  *
  * The projection is skipped — leaving today's behaviour untouched — when any
  * component of the system is not the resize's to move: physically weighed,
@@ -892,7 +902,7 @@ const rescaleWithOwnerStabilizerSystem = (
     reservedMainGrams > 0 &&
     Math.abs(draftSum + reservedMainGrams - state.target_batch_grams) <=
       BATCH_RESIZE_TOLERANCE_GRAMS;
-  const components = sorbetStabilizerSystemItems(resized);
+  const components = ownerStabilizerSystemItems(resized);
   if (components.length === 0) return resized;
   const adjustable = components.every(
     (item) =>
@@ -904,7 +914,7 @@ const rescaleWithOwnerStabilizerSystem = (
   );
   if (!adjustable) return resized;
 
-  const plan = planSorbetStabilizerSystemRescale(
+  const plan = planOwnerStabilizerSystemRescale(
     buildRecipeInput(state),
     buildRecipeInput({ ...state, items: resized, target_batch_grams: nextBatchGrams }),
   );
