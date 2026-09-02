@@ -136,46 +136,113 @@ export function ProWorkbar({
     createNewDraft();
   };
 
+  /* OWNER AUTHORITY 2026-09-02 (approved desktop PDF, §3). RECEPTURA is the
+     recipe's IDENTITY, so it opens the display column instead of closing it,
+     and it has three states rather than one bar:
+
+       unnamed  — a field to name it, save offered
+       saved    — the graphite card, name and version, NO save tongue
+       dirty    — the graphite card plus an orange tongue sliding out from
+                  UNDER it
+
+     The tongue is absolutely positioned and the wrapper reserves its 34 px in
+     EVERY state, so appearing and disappearing moves neither kcal, nor cost,
+     nor the left edge, nor anything below it — the owner's explicit condition.
+     It sits at z-0 behind the card at z-1, so the graphite genuinely occludes
+     its top rather than the tongue being painted over the card. */
+  const identityState: 'unnamed' | 'saved' | 'dirty' = !linked
+    ? 'unnamed'
+    : statusKey === 'dirty'
+      ? 'dirty'
+      : 'saved';
+  const tongueVisible = identityState !== 'saved';
+
   const statusNode = (
     <span
       className={cn(
         'min-w-0 truncate text-xs',
         variant === 'panel'
-          ? 'flex-none text-right'
+          ? 'mt-2.5 flex items-center gap-2 text-[13.5px] leading-[18px] font-semibold'
           : 'ml-auto min-w-[7rem] flex-1 text-right xl:max-w-48',
-        statusKey === 'error'
-          ? 'text-status-error'
-          : statusKey === 'dirty' || statusKey === 'newUnsaved'
-            ? 'text-status-risky'
-            : 'text-stone-500',
+        variant === 'panel'
+          ? /* Two grounds, two palettes. On the GRAPHITE card (#191a1d) the
+               saved/dirty tones measure 8.2:1 and 10.2:1, where the light-ground
+               tokens would be ~2.4:1 and unreadable. The unnamed state is a
+               WHITE surface, so it keeps the light-ground tokens. Picking one
+               palette for both would make one of the two states fail. */
+            identityState === 'unnamed'
+            ? statusKey === 'error'
+              ? 'text-status-error'
+              : 'text-[var(--g-attention-ink)]'
+            : statusKey === 'error'
+              ? 'text-[#ff9a8a]'
+              : statusKey === 'dirty' || statusKey === 'newUnsaved'
+                ? 'text-[#ffb45c]'
+                : 'text-[#5cc47a]'
+          : statusKey === 'error'
+            ? 'text-status-error'
+            : statusKey === 'dirty' || statusKey === 'newUnsaved'
+              ? 'text-status-risky'
+              : 'text-stone-500',
       )}
       data-testid="pro-workbar-status"
-      data-workbar-status-placement={variant === 'panel' ? 'band-status' : 'right-aligned'}
+      data-workbar-status-placement={variant === 'panel' ? 'identity-card' : 'right-aligned'}
     >
       <span aria-hidden>● </span>
       {w.status[statusKey]}
+      {variant === 'panel' && linked && currentVersionNumber ? ` · v${currentVersionNumber}` : ''}
     </span>
   );
 
-  return (
-    <section
-      aria-label="Gellatti Pro — nazwa i zapis receptury"
-      data-testid="pro-workbar"
-      data-workbar-variant={variant}
-      className={cn(
-        variant === 'panel'
-          ? /* OWNER FROZEN PRO VISUAL: inside the display column the recipe bar
-               is a BAND like everything else — a hairline and whitespace, not a
-               fifth white card stacked on the column ground. The docked
-               variant below is a real floating bar and keeps its surface. */
-            'border-t border-[var(--g-line)] pt-3'
-          : 'rounded-t-[22px] border border-ink/10 bg-white/97 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-pro-e2 backdrop-blur-xl lg:rounded-none lg:border-0 lg:bg-transparent lg:px-0 lg:shadow-none lg:backdrop-blur-none 2xl:!border-0 2xl:py-0 2xl:pt-px 2xl:!shadow-none',
-      )}
-    >
-      {variant === 'panel' ? (
-        /* OWNER FROZEN PRO VISUAL: RECEPTURA is a band, so it opens with the
-           same eyebrow + hairline as Wynik, Ustawienia and Wiedza, and the
-           save status rides in that header instead of trailing the buttons. */
+
+  const overflowMenu = (
+    <details className="relative shrink-0" data-testid="pro-workbar-menu">
+      <summary
+        className={cn(iconButtonClasses('xs'), 'cursor-pointer list-none')}
+        aria-label={w.more}
+        title={w.more}
+        data-workbar-action-size="compact"
+      >
+        •••
+      </summary>
+      <div className="absolute top-9 right-0 z-40 w-72 rounded-[22px] border border-ink/15 bg-white p-4 shadow-pro-e3">
+        <p className="text-xs font-semibold tracking-[0.04em] text-stone-600 uppercase">Receptura</p>
+        <p className="mt-2 text-xs text-ink">{context}</p>
+        <p className="mt-1 text-xs text-stone-600">
+          {currentVersionNumber ? `v${currentVersionNumber}` : 'wersja robocza'} ·{' '}
+          {w.status[statusKey]}
+        </p>
+        {/* In the SAVED state the tongue is gone by design, so the deliberate
+            "save another version with no changes" path lives here rather than
+            being lost. */}
+        <button
+          type="button"
+          onClick={() => void doSave()}
+          disabled={save.busy || save.blocked !== null || save.practicalBlocked}
+          className="pro-focus-ring mt-3 block w-full border-t border-ink/10 pt-2 text-left text-xs font-semibold text-stone-600 disabled:text-[var(--g-lock)]"
+        >
+          {linked ? 'Zapisz nową wersję' : w.saveNew}
+        </button>
+        <a
+          href="/pro/versions"
+          className="mt-2 block border-t border-ink/10 pt-2 text-xs font-semibold text-stone-600"
+        >
+          Wersje
+          <ReviewDecisionLabel />
+        </a>
+      </div>
+    </details>
+  );
+
+  if (variant === 'panel') {
+    return (
+      <section
+        aria-label="Gellatti Pro — nazwa i zapis receptury"
+        data-testid="pro-workbar"
+        data-workbar-variant="panel"
+        data-recipe-identity-state={identityState}
+        className="border-b border-[var(--g-line)] pb-5"
+      >
         <div className="mb-[13px] flex items-center gap-2.5">
           <h3
             data-band-eyebrow
@@ -184,23 +251,146 @@ export function ProWorkbar({
             Receptura
           </h3>
           <span aria-hidden className="h-px flex-1 bg-[var(--g-line)]" />
-          {statusNode}
+          <button
+            type="button"
+            onClick={requestNewDraft}
+            data-testid="pro-workbar-new-recipe"
+            data-workbar-action-size="primary"
+            data-workbar-action-width="content"
+            className="pro-focus-ring shrink-0 rounded-full border border-[var(--g-line)] bg-white px-3 py-1 text-[11px] font-semibold whitespace-nowrap text-[var(--g-text-secondary)] transition-colors hover:border-ink/35 hover:text-ink"
+          >
+            + Nowa receptura
+          </button>
+          {overflowMenu}
         </div>
-      ) : null}
+
+        {/* The 34 px are reserved in EVERY state, so the tongue's arrival and
+            departure move nothing below. */}
+        <div className="relative pb-[34px]">
+          {/* Rendered BEFORE the card so the DOM order stays Save → name (the
+              canonical contract), while z-index — not source order — decides
+              that the graphite occludes the tongue's top. */}
+          <button
+            type="button"
+            onClick={() => void doSave()}
+            disabled={save.busy || save.blocked !== null || save.practicalBlocked}
+            data-attention={saveAttention ? 'required' : undefined}
+            data-testid="pro-workbar-save"
+            data-workbar-action-size="primary"
+            data-workbar-action-width="content"
+            data-workbar-save-shape="tongue"
+            className={cn(
+              'pro-focus-ring absolute right-[26px] bottom-0 z-0 inline-flex h-[58px] max-w-[calc(100%-52px)] items-end gap-2 rounded-b-[15px] px-[22px] pb-[9px] text-[15px] leading-4 font-bold tracking-[-0.02em] whitespace-nowrap',
+              /* Graphite ink on the accent is 7.5:1. White on the accent would
+                 be 2.5:1 — the same mistake that was removed from Direction. */
+              'bg-[#f58a07] text-[var(--g-graphite)] transition-[background-color,opacity] hover:bg-[#e07f06]',
+              'disabled:cursor-not-allowed disabled:bg-[var(--g-line-quiet)] disabled:text-[var(--g-lock)]',
+              tongueVisible ? null : 'pointer-events-none opacity-0',
+            )}
+            aria-hidden={tongueVisible ? undefined : true}
+            tabIndex={tongueVisible ? undefined : -1}
+          >
+            {save.busy ? w.status.saving : 'ZAPISZ'}
+          </button>
+
+          {/* ONE surface in every state, so it always occludes the tongue's
+              top. The first attempt left the status line outside the painted
+              area and the tongue showed through a transparent 24 px band —
+              caught by measurement, not by reading the code. */}
+          <div
+            className={cn(
+              'relative z-[1] min-w-0 rounded-2xl px-7 py-6',
+              identityState === 'unnamed'
+                ? 'border-[1.5px] border-[#f58a07]/55 bg-white'
+                : 'border-l-[6px] border-[#f58a07] bg-[var(--g-graphite)]',
+            )}
+            data-testid="pro-recipe-identity-card"
+          >
+            <label className="block">
+              <span className="sr-only">{w.nameLabel}</span>
+              {/* The title IS the name input in both states: renaming a saved
+                  recipe stays exactly where it was, and there is never a second
+                  field competing for the same value. */}
+              <input
+                value={name}
+                placeholder={w.namePlaceholder}
+                onChange={(event) => {
+                  setNameDraft(event.currentTarget.value);
+                  if (nameError) setNameError(null);
+                }}
+                data-testid="pro-workbar-name"
+                className={cn(
+                  'w-full min-w-0 truncate border-0 bg-transparent p-0 leading-[1.05] font-extrabold tracking-[-0.04em] focus:outline-none',
+                  identityState === 'unnamed'
+                    ? 'text-[22px] text-[var(--g-ink)] placeholder:font-semibold placeholder:text-[var(--g-text-muted)]'
+                    : 'text-[28px] text-white placeholder:text-white/40',
+                )}
+              />
+            </label>
+            {statusNode}
+          </div>
+        </div>
+
+        <span className="sr-only" data-testid="pro-workbar-context">
+          {context}
+        </span>
+        <span className="sr-only" data-testid="pro-workbar-profile-summary">
+          {context}
+        </span>
+
+        {nameError ? (
+          <p role="alert" className="mt-1 text-xs text-status-error" data-testid="pro-workbar-name-error">
+            {nameError}
+          </p>
+        ) : null}
+        {dirty && appliedHistoryLength > 0 ? (
+          <p
+            className="mt-2 border-t border-[var(--g-line)] pt-2 text-xs leading-relaxed text-[var(--g-text-secondary)]"
+            data-testid="pro-workbar-applied-unsaved"
+          >
+            {w.recalcPanel.applied}
+          </p>
+        ) : null}
+        {save.error ? (
+          <p role="alert" className="mt-1 text-xs text-status-error" data-testid="pro-workbar-error">
+            {save.error}
+          </p>
+        ) : save.practicalBlockMessage ? (
+          <p className="mt-1 text-xs text-attention" data-testid="pro-workbar-practical-block">
+            {save.practicalBlockMessage}
+          </p>
+        ) : blockedMsg ? (
+          <p className="mt-1 text-xs text-stone-600">{blockedMsg}</p>
+        ) : null}
+
+        <NewRecipeConfirmationDialog
+          open={newRecipeConfirmOpen}
+          onCancel={() => setNewRecipeConfirmOpen(false)}
+          onConfirm={createNewDraft}
+        />
+      </section>
+    );
+  }
+
+  return (
+    <section
+      aria-label="Gellatti Pro — nazwa i zapis receptury"
+      data-testid="pro-workbar"
+      data-workbar-variant={variant}
+      className={cn(
+        'rounded-t-[22px] border border-ink/10 bg-white/97 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-pro-e2 backdrop-blur-xl lg:rounded-none lg:border-0 lg:bg-transparent lg:px-0 lg:shadow-none lg:backdrop-blur-none 2xl:!border-0 2xl:py-0 2xl:pt-px 2xl:!shadow-none',
+      )}
+    >
       <div
         className={cn(
           'grid min-w-0 gap-2',
-          variant === 'panel'
-            ? 'grid-cols-1'
-            : 'xl:grid-cols-[minmax(0,1.62fr)_minmax(360px,1fr)] xl:items-center xl:gap-[var(--pro-workbench-gap)]',
+          'xl:grid-cols-[minmax(0,1.62fr)_minmax(360px,1fr)] xl:items-center xl:gap-[var(--pro-workbench-gap)]',
         )}
       >
         <div
           className={cn(
             'flex min-w-0 flex-wrap items-center px-0.5',
-            variant === 'panel'
-              ? 'order-2 justify-start gap-2.5 sm:flex-nowrap'
-              : 'justify-end gap-2 xl:flex-nowrap',
+            'justify-end gap-2 xl:flex-nowrap',
           )}
         >
           <button
@@ -215,9 +405,7 @@ export function ProWorkbar({
                  stays New → Save → overflow for the docked bar; only the panel
                  reorders visually, so one contract still describes both. */
               'shrink-0 border border-ink/15 bg-white text-xs font-semibold text-ink transition-colors hover:border-ink/35 hover:bg-[var(--g-ivory)]',
-              variant === 'panel'
-                ? 'order-2 h-11 rounded-full px-5 shadow-none'
-                : 'h-11 rounded-[14px] px-3 shadow-pro-e0',
+              'h-11 rounded-[14px] px-3 shadow-pro-e0',
             )}
           >
             + Nowa receptura
@@ -237,22 +425,14 @@ export function ProWorkbar({
                  customer shell (§21.2, audit #17): a SOLID quiet fill with a
                  legible label, measured here at 5.03:1. */
               'shrink-0 bg-ink text-xs font-semibold text-white transition-all hover:-translate-y-px hover:bg-ink-soft disabled:cursor-not-allowed disabled:bg-[var(--g-line-quiet)] disabled:text-[var(--g-lock)] disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:bg-[var(--g-line-quiet)]',
-              variant === 'panel'
-                ? 'order-1 h-11 rounded-full px-5 shadow-none'
-                : 'h-11 rounded-[14px] px-3 shadow-pro-sm',
+              'h-11 rounded-[14px] px-3 shadow-pro-sm',
               saveAttention && 'gellatti-next-action-attention',
             )}
           >
-            {save.busy
-              ? w.status.saving
-              : variant === 'panel'
-                ? 'ZAPISZ'
-                : linked
-                  ? 'Zapisz nową wersję'
-                  : w.saveNew}
+            {save.busy ? w.status.saving : linked ? 'Zapisz nową wersję' : w.saveNew}
           </button>
           <details
-            className={cn('relative shrink-0', variant === 'panel' && 'order-3')}
+            className="relative shrink-0"
             data-testid="pro-workbar-menu"
           >
             <summary
@@ -281,12 +461,12 @@ export function ProWorkbar({
               </a>
             </div>
           </details>
-          {variant === 'panel' ? null : statusNode}
+          {statusNode}
           <span className="sr-only" data-testid="pro-workbar-profile-summary">
             {context}
           </span>
         </div>
-        <div className={cn('flex min-w-0 items-center gap-3', variant === 'panel' && 'order-1')}>
+        <div className="flex min-w-0 items-center gap-3">
           <label className="min-w-28 flex-1">
             <span className="sr-only">{w.nameLabel}</span>
             <input
@@ -299,14 +479,13 @@ export function ProWorkbar({
               data-testid="pro-workbar-name"
               className={cn(
                 'w-full min-w-0 rounded-[10px] border border-ink/15 bg-white px-3 text-sm font-semibold text-ink shadow-pro-e0 placeholder:text-stone-500 focus:border-ink/45 focus:outline-none',
-                variant === 'panel' ? 'h-10' : 'h-11',
+                'h-11',
               )}
             />
           </label>
           <span
             className={cn(
-              'max-w-56 shrink-0 truncate text-xs text-stone-600',
-              variant === 'panel' ? 'sr-only' : 'hidden xl:block',
+              'max-w-56 shrink-0 truncate text-xs text-stone-600 hidden xl:block',
             )}
             data-testid="pro-workbar-context"
           >

@@ -31,7 +31,13 @@ describe('P0 desktop Workbench tab anchor', () => {
 
     expect(contract).toContain(sharedGrid);
     expect(contract).toContain(sharedGap);
-    expect(contract).toContain('xl:w-[calc(var(--g-side-width)+10px)]');
+    // SUPERSEDED, owner geometry decision 2026-09-02: the strip is EXACTLY the
+    // display column, not the column plus 10 px. The overhang was right-aligned,
+    // so it all fell on the LEFT — right edges matched to the pixel while the
+    // left edges sat 10 px apart. Measured live at 1440 after the fix: strip
+    // 896.2→1396.2, column 896.2→1396.2, both deltas 0.
+    expect(contract).toContain('xl:w-[var(--g-side-width)]');
+    expect(contract).not.toContain('+10px');
     expect(contract).toContain('xl:col-start-2');
     expect(contract).toContain('xl:justify-self-end');
 

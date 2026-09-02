@@ -103,25 +103,55 @@ describe('ProWorkbar (sticky top workbar)', () => {
     expect(html).toContain('data-workbar-action-size="compact"');
   });
 
-  it('uses 44 px pills led by Save and carries the status in the band header in the panel', () => {
+  it('renders the recipe IDENTITY card, with the save tongue reserved in every state', () => {
+    // SUPERSEDED, owner authority 2026-09-02 (approved desktop PDF §3). This
+    // used to pin the panel as a row of two 44 px pills with the status in the
+    // band header. The owner replaced that architecture: RECEPTURA is now the
+    // recipe's identity card at the TOP of the display column, the status lives
+    // ON the card, and saving is an orange tongue that slides out from
+    // underneath it. Only the presentation contract moved — every behaviour
+    // assertion in this file is untouched.
     const html = render({ savedRecipeId: null, dirty: false }, 'panel');
-    // OWNER FROZEN PRO VISUAL: the panel's save row is the frozen row of 44 px
-    // pills at their natural widths, and RECEPTURA is a band — so the status
-    // rides in the band header rather than trailing the overflow menu.
     expect(html.match(/data-workbar-action-width="content"/g)).toHaveLength(2);
-    expect(html).toContain('data-workbar-status-placement="band-status"');
-    expect(html).not.toContain('inline-after-menu');
-    expect(html).not.toContain('h-9 w-[136px]');
-    expect(html.match(/h-11 rounded-full px-5/g)).toHaveLength(2);
-    // Exactly one status node — the band header must not duplicate it.
+    expect(html).toContain('data-workbar-status-placement="identity-card"');
+    expect(html).toContain('data-testid="pro-recipe-identity-card"');
+    expect(html).toContain('data-workbar-save-shape="tongue"');
+    // The 34 px are reserved in EVERY state, so the tongue's arrival cannot
+    // move kcal, cost, the left edge or anything below it.
+    expect(html).toContain('relative pb-[34px]');
+    // Behind the card, not painted over it.
+    expect(html).toContain('z-0 inline-flex h-[58px]');
+    expect(html).toContain('relative z-[1]');
+    // Exactly one status node — the card must not duplicate it.
     expect(html.match(/data-testid="pro-workbar-status"/g)).toHaveLength(1);
-    // Save leads the row visually while DOM order stays New → Save → overflow,
-    // so the docked bar's ordering contract above still describes both.
-    const saveAt = html.indexOf('data-testid="pro-workbar-save"');
+    // DOM order stays New → Save → name, so the canonical ordering contract
+    // still describes the panel even though the tongue is positioned.
     const newAt = html.indexOf('data-testid="pro-workbar-new-recipe"');
+    const saveAt = html.indexOf('data-testid="pro-workbar-save"');
+    const nameAt = html.indexOf('data-testid="pro-workbar-name"');
     expect(newAt).toBeLessThan(saveAt);
-    expect(html).toContain('order-1 h-11 rounded-full px-5');
-    expect(html).toContain('order-2 h-11 rounded-full px-5');
+    expect(saveAt).toBeLessThan(nameAt);
+  });
+
+  it('shows the tongue when there is something to save and hides it when clean', () => {
+    const unnamed = render({ savedRecipeId: null, savedRecipeName: null, dirty: false }, 'panel');
+    expect(unnamed).toContain('data-recipe-identity-state="unnamed"');
+    expect(unnamed).not.toContain('pointer-events-none opacity-0');
+
+    const clean = render(
+      { savedRecipeId: 'r1', savedRecipeName: 'Pistachio Dream', currentVersionNumber: 4, dirty: false },
+      'panel',
+    );
+    expect(clean).toContain('data-recipe-identity-state="saved"');
+    // Present for the contract, inert and invisible: state B has no tongue.
+    expect(clean).toContain('pointer-events-none opacity-0');
+
+    const dirtyHtml = render(
+      { savedRecipeId: 'r1', savedRecipeName: 'Pistachio Dream', currentVersionNumber: 4, dirty: true },
+      'panel',
+    );
+    expect(dirtyHtml).toContain('data-recipe-identity-state="dirty"');
+    expect(dirtyHtml).not.toContain('pointer-events-none opacity-0');
   });
 
   it('NEW recipe: inline name field + „Zapisz recepturę" beside it + exact unsaved status', () => {

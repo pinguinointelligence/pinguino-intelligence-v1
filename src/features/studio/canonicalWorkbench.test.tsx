@@ -261,7 +261,7 @@ describe('recalculation entry', () => {
 });
 
 describe('new Pro profile layout', () => {
-  it('exposes four stable right-panel contexts and keeps actual batch in the profile', () => {
+  it('exposes four stable right-panel contexts and surfaces no batch in the profile', () => {
     const profile = read('features', 'pro-workbench', 'RecipeProfilePanel.tsx');
     const tabs = read('features', 'pro-workbench', 'WorkbenchModuleTabs.tsx');
     for (const label of ['Receptura', 'Monitor', 'Produkcja', 'Etykieta']) {
@@ -270,8 +270,14 @@ describe('new Pro profile layout', () => {
     expect(tabs).toContain("export type WorkbenchModuleTab = 'profile' | 'monitor' | 'production' | 'summary'");
     expect(profile).toContain('export type CockpitTab = WorkbenchModuleTab');
     const settings = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
-    expect(settings).toContain('profile-batch-combined');
-    expect(settings).toContain('actualBatchG.toLocaleString');
+    // SUPERSEDED, owner authority 2026-09-02 (final Settings contract): the
+    // profile neither prints NOR edits the batch any more. `Baza receptury`
+    // duplicated the left column's „Baza lodowa"; the `Partia docelowa` field
+    // was removed on the owner's explicit instruction that it must not be
+    // recreated anywhere. The batch authority itself is untouched — it is
+    // simply no longer surfaced here, and that absence is what is protected.
+    expect(settings).not.toContain('profile-batch-combined');
+    expect(settings).not.toContain('actualBatchG');
   });
 
   it('shows explicit gram and percent lock controls through the canonical lock_type action', () => {
