@@ -492,6 +492,39 @@ describe('closed row payloads', () => {
     expect(row.status).toBe('held');
     expect(row.currency).toBe('eur');
     expect(row.eligible_at).toBe(new Date(holdEligibilityUtcMs(earnedAt)).toISOString());
+    // A SUBSCRIPTION entry never points at a shop order — the DB constraint
+    // says the same thing, and this keeps the builder honest about it.
+    expect(row.shop_order_id).toBeNull();
+  });
+
+  // Owner-frozen 2026-09-02 — the same builder, in its one-off shape.
+  it('builds a ONE-OFF entry with no subscription and the order as its key', () => {
+    const earnedAt = Date.UTC(2026, 8, 2, 12, 0, 0);
+    const row = buildCommissionEntryRow({
+      partnerId: 'partner-1',
+      attributionId: 'attr-1',
+      subscriptionCacheId: null,
+      stripeSubscriptionId: null,
+      stripeInvoiceId: null,
+      shopOrderId: 'order-1',
+      stripePaymentIntentId: 'pi_shop_1',
+      offerKey: 'GEL-STARTER-PACK',
+      product: 'shop_starter_pack',
+      commissionCadence: 'one_off',
+      tier: 'standard',
+      ruleVersion: 1,
+      amountCents: 900,
+      earnedAtUtcMs: earnedAt,
+      livemode: false,
+    });
+    // Same column set — one ledger, two shapes, never two tables.
+    expect(Object.keys(row).sort()).toEqual([...COMMISSION_ENTRY_ROW_KEYS].sort());
+    expect(row.shop_order_id).toBe('order-1');
+    expect(row.stripe_subscription_id).toBeNull();
+    expect(row.stripe_invoice_id).toBeNull();
+    expect(row.subscription_id).toBeNull();
+    expect(row.status).toBe('held');
+    expect(row.amount_cents).toBe(900);
   });
 
   it('duplicate deliveries produce byte-identical rows (deterministic mappers)', () => {

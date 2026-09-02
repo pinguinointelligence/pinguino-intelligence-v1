@@ -612,8 +612,8 @@ export interface CommissionEntryRow {
   partner_id: string;
   attribution_id: string | null;
   subscription_id: string | null;
-  stripe_subscription_id: string;
-  stripe_invoice_id: string;
+  stripe_subscription_id: string | null;
+  stripe_invoice_id: string | null;
   stripe_payment_intent_id: string | null;
   offer_key: string;
   product: string;
@@ -628,6 +628,7 @@ export interface CommissionEntryRow {
   earned_at: string;
   eligible_at: string;
   livemode: boolean;
+  shop_order_id: string | null;
 }
 
 export const COMMISSION_ENTRY_ROW_KEYS: readonly (keyof CommissionEntryRow)[] = [
@@ -645,6 +646,9 @@ export const COMMISSION_ENTRY_ROW_KEYS: readonly (keyof CommissionEntryRow)[] = 
   // Elite provenance (owner override 2026-08-31 §11): which per-partner rate
   // profile version produced amount_cents. Null for standard/gold.
   'rate_profile_version_id',
+  // One-off provenance (owner-frozen 2026-09-02): the paid shop order that
+  // earned this commission, and its idempotency key. Null for subscriptions.
+  'shop_order_id',
   'amount_cents',
   'currency',
   'status',
@@ -664,8 +668,11 @@ export function buildCommissionEntryRow(input: {
   partnerId: string;
   attributionId: string | null;
   subscriptionCacheId: string | null;
-  stripeSubscriptionId: string;
-  stripeInvoiceId: string;
+  /** Null ONLY for a one-off entry, which the DB shape constraint enforces. */
+  stripeSubscriptionId: string | null;
+  stripeInvoiceId: string | null;
+  /** Set ONLY for a one-off entry — it is that entry's idempotency key. */
+  shopOrderId?: string | null;
   stripePaymentIntentId: string | null;
   offerKey: string;
   product: string;
@@ -684,6 +691,7 @@ export function buildCommissionEntryRow(input: {
     stripe_subscription_id: input.stripeSubscriptionId,
     stripe_invoice_id: input.stripeInvoiceId,
     stripe_payment_intent_id: input.stripePaymentIntentId,
+    shop_order_id: input.shopOrderId ?? null,
     offer_key: input.offerKey,
     product: input.product,
     cadence: input.commissionCadence,

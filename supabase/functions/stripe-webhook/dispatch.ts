@@ -179,6 +179,154 @@ async function insertIgnoringDuplicate(db: DbClient, table: string, row: Row, co
  *  - the destination is only written when the session actually carries one;
  *  - re-delivery is a no-op, on top of the durable event-id uniqueness.
  */
+/** The Starter Pack SKU is the ONLY shop line that earns a commission today. */
+const STARTER_PACK_SKU = 'GEL-STARTER-PACK';
+
+/**
+ * STARTER PACK COMMISSION — owner-frozen 2026-09-02.
+ *
+ * A paid physical Starter Pack earns 9 EUR (standard) / 19 EUR (gold), ONCE.
+ * Everything that already governs a subscription commission governs this one:
+ * the same `referral_attributions` lock, the same self-referral refusal, the
+ * same month's `partner_tier_snapshots`, the same versioned `commission_rules`,
+ * the same `held` lifecycle and therefore the same reversal path — a refund
+ * finds this entry by payment intent exactly as it finds a subscription's.
+ *
+ * Three refusals are deliberate and produce NO row:
+ *
+ *  - a pack line that was not actually paid for. The guard is on the money,
+ *    not on a SKU: a free or fully discounted pack earns nothing, and reading
+ *    the amount means a future "Local" pack needs no new special case.
+ *  - ELITE. `partner_rate_profiles` has columns for home/pro × monthly/annual
+ *    and nothing for a pack, so there is no honest automatic rate. The seed
+ *    deliberately has no elite row, so this cannot be bypassed by adding code.
+ *  - no attribution — nobody referred this order.
+ */
+async function applyStarterPackCommission(
+  deps: DispatchDeps,
+  event: WebhookEventFacts,
+  orderId: string,
+  paymentIntentId: string | null,
+  paidAtUtcMs: number,
+): Promise<string | null> {
+  // Money first: what did the buyer actually pay for the pack itself?
+  const { data: itemRows, error: itemError } = await deps.db
+    .from('shop_order_items')
+    .select('sku, unit_price_cents, quantity')
+    .eq('order_id', orderId);
+  throwOnDbError(itemError, 'shop_order_items lookup');
+  const packLines = (itemRows ?? []).filter((row) => row.sku === STARTER_PACK_SKU);
+  if (packLines.length === 0) return null; // an ordinary ingredient order
+
+  const packPaidCents = packLines.reduce((sum, row) => {
+    const unit = typeof row.unit_price_cents === 'number' ? row.unit_price_cents : 0;
+    const qty = typeof row.quantity === 'number' ? row.quantity : 0;
+    return sum + Math.max(0, unit) * Math.max(0, qty);
+  }, 0);
+  if (packPaidCents <= 0) return 'skipped_starter_pack_not_paid';
+
+  const { data: orderRow, error: orderError } = await deps.db
+    .from('shop_orders')
+    .select('user_id')
+    .eq('id', orderId)
+    .maybeSingle();
+  throwOnDbError(orderError, 'shop_orders buyer lookup');
+  const buyerUserId = orderRow && typeof orderRow.user_id === 'string' ? orderRow.user_id : null;
+  if (!buyerUserId) return 'skipped_shop_order_has_no_user';
+
+  // SAME attribution authority as a subscription: an ACTIVE lock owns the
+  // buyer, otherwise the freshest in-window PENDING row is chosen. A pack does
+  // NOT lock a pending attribution — locking belongs to the subscription that
+  // the window was opened for; a pack must not consume it.
+  const { data: activeRows, error: activeError } = await deps.db
+    .from('referral_attributions')
+    .select('id, partner_id, user_id, status')
+    .eq('user_id', buyerUserId)
+    .eq('status', 'active');
+  throwOnDbError(activeError, 'referral_attributions active lookup (shop)');
+  let attribution = (activeRows ?? [])[0] ?? null;
+  if (!attribution) {
+    const { data: pendingRows, error: pendingError } = await deps.db
+      .from('referral_attributions')
+      .select('id, partner_id, user_id, method, status, window_expires_at, created_at')
+      .eq('user_id', buyerUserId)
+      .eq('status', 'pending');
+    throwOnDbError(pendingError, 'referral_attributions pending lookup (shop)');
+    const picked = pickAttributionToLock(
+      (pendingRows ?? []) as unknown as AttributionCandidate[],
+      paidAtUtcMs,
+    );
+    if (picked) attribution = (pendingRows ?? []).find((r) => r.id === picked.id) ?? null;
+  }
+  if (!attribution) return 'skipped_no_attribution';
+
+  const partnerId = typeof attribution.partner_id === 'string' ? attribution.partner_id : null;
+  const attributionId = typeof attribution.id === 'string' ? attribution.id : null;
+  if (!partnerId || !attributionId) throw new RetryableEffectError('attribution_row_incomplete');
+
+  // C6 self-referral: a partner may not earn on their own purchase.
+  const { data: partnerRow, error: partnerError } = await deps.db
+    .from('partners')
+    .select('user_id')
+    .eq('id', partnerId)
+    .maybeSingle();
+  throwOnDbError(partnerError, 'partners lookup (shop)');
+  if (partnerRow && partnerRow.user_id === buyerUserId) return 'skipped_self_referral';
+
+  // T6: the tier of the month the commission was EARNED in.
+  const month = commissionMonthDate(paidAtUtcMs);
+  const { data: snapshotRow, error: snapshotError } = await deps.db
+    .from('partner_tier_snapshots')
+    .select('tier')
+    .eq('partner_id', partnerId)
+    .eq('month', month)
+    .maybeSingle();
+  throwOnDbError(snapshotError, 'partner_tier_snapshots lookup (shop)');
+  const tier = snapshotRow && typeof snapshotRow.tier === 'string' ? snapshotRow.tier : null;
+  if (!tier) throw new RetryableEffectError(`tier_snapshot_missing:${month}`);
+
+  // Elite is individual and has no pack column to read, so it is never
+  // auto-booked. The note is the handover to the manual authority.
+  if (tier === 'elite') return 'skipped_elite_starter_pack_manual';
+
+  const { data: ruleRows, error: ruleError } = await deps.db
+    .from('commission_rules')
+    .select('version, amount_cents')
+    .eq('product', 'shop_starter_pack')
+    .eq('cadence', 'one_off')
+    .eq('tier', tier);
+  throwOnDbError(ruleError, 'commission_rules lookup (shop)');
+  const rule = pickLatestRuleVersion((ruleRows ?? []) as unknown as CommissionRuleRow[]);
+  if (!rule) throw new RetryableEffectError(`commission_rule_missing:shop_starter_pack/one_off/${tier}`);
+
+  const entry = buildCommissionEntryRow({
+    partnerId,
+    attributionId,
+    subscriptionCacheId: null,
+    stripeSubscriptionId: null,
+    stripeInvoiceId: null,
+    shopOrderId: orderId,
+    stripePaymentIntentId: paymentIntentId,
+    offerKey: STARTER_PACK_SKU,
+    product: 'shop_starter_pack',
+    commissionCadence: 'one_off',
+    tier,
+    ruleVersion: rule.version,
+    amountCents: rule.amount_cents,
+    earnedAtUtcMs: paidAtUtcMs,
+    livemode: event.livemode,
+  });
+  // The unique index on shop_order_id is what makes a replay a no-op — not a
+  // read-then-write check, which two concurrent deliveries could both pass.
+  const outcome = await insertIgnoringDuplicate(
+    deps.db,
+    'commission_entries',
+    entry as unknown as Row,
+    'commission_entries insert (shop)',
+  );
+  return outcome === 'duplicate' ? 'skipped_duplicate_shop_order_entry' : null;
+}
+
 async function applyShopOrderSettlement(
   deps: DispatchDeps,
   event: WebhookEventFacts,
@@ -254,7 +402,26 @@ async function applyShopOrderSettlement(
     .eq('id', shop.orderId)
     .eq('status', 'pending');
   throwOnDbError(error, 'shop_orders settle');
-  return null;
+
+  // Runs on EVERY delivery, not only the one that won the settle race: the
+  // loser of that race must still be able to book, and the unique index makes
+  // a second attempt harmless.
+  // EARNED-AT is the payment's own time, never wall-clock `now`: the tier
+  // snapshot is looked up by the month the commission was earned in, so a
+  // replay next month must still resolve the ORIGINAL month. Prefer the order's
+  // recorded paid_at; fall back to the Stripe event's timestamp, which is what
+  // the subscription path uses too.
+  const earnedAtUtcMs = current.paid_at
+    ? Date.parse(String(current.paid_at)) || event.created * 1000
+    : event.created * 1000;
+  const commissionNote = await applyStarterPackCommission(
+    deps,
+    event,
+    shop.orderId,
+    shop.paymentIntentId,
+    earnedAtUtcMs,
+  );
+  return commissionNote;
 }
 
 async function applyCheckoutCompletion(deps: DispatchDeps, event: WebhookEventFacts): Promise<string | null> {
