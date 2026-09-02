@@ -83,6 +83,10 @@ class Fake implements DbClient {
       ? [{ id: 'existing', shop_order_id: ORDER, partner_id: PARTNER, amount_cents: 900 }] : []);
   }
   rows(t: string): Row[] { return this.tables.get(t) ?? []; }
+  /** Deep snapshot — anything a replay touches shows up as a diff. */
+  snapshot(): string {
+    return JSON.stringify([...this.tables.entries()].sort(([a], [b]) => a.localeCompare(b)));
+  }
 
   from(table: string): DbTable {
     const ok = <T>(d: T) => ({ data: d, error: null });
@@ -320,5 +324,77 @@ describe('Starter Pack commission', () => {
       'commission_rules',
       'commission_entries',
     ]);
+  });
+});
+
+describe('replay of an already-paid order heals ONLY the commission', () => {
+  const paidOrder = (db: Fake) => {
+    const order = only(db.rows('shop_orders'), 'order');
+    order.status = 'paid';
+    order.paid_at = new Date(PAID_AT * 1000).toISOString();
+    order.stripe_payment_intent_id = 'pi_shop_1';
+    return order;
+  };
+  const deliver = (db: Fake, id: string) =>
+    applyEventEffects(
+      { db, refetch: async (r: StripeResource) => { throw new Error(String(r)); } },
+      ev(id),
+    );
+
+  it('books the missing commission and changes NOTHING else', async () => {
+    const db = new Fake({ tier: 'standard', quantity: 2 });
+    paidOrder(db);
+    // Everything except the ledger, before the replay.
+    const others = () => JSON.stringify(
+      [...db.tables.entries()].filter(([t]) => t !== 'commission_entries').sort(([a], [b]) => a.localeCompare(b)),
+    );
+    const before = others();
+    await deliver(db, 'evt_heal');
+    expect(entries(db)).toHaveLength(1);
+    expect(only(entries(db), 'entry').amount_cents).toBe(1_800);
+    // The order, its items, the attribution, the partner, the snapshots — all
+    // byte-identical. The replay healed the ledger and touched nothing else.
+    expect(others()).toBe(before);
+  });
+
+  it('does not mutate paid_at', async () => {
+    const db = new Fake({ tier: 'standard' });
+    const order = paidOrder(db);
+    const paidAtBefore = order.paid_at;
+    await deliver(db, 'evt_heal_2');
+    expect(only(db.rows('shop_orders'), 'order').paid_at).toBe(paidAtBefore);
+  });
+
+  it('does not duplicate order items or re-trigger fulfilment', async () => {
+    const db = new Fake({ tier: 'standard', extraItems: true });
+    paidOrder(db);
+    const itemsBefore = JSON.stringify(db.rows('shop_order_items'));
+    const order = only(db.rows('shop_orders'), 'order');
+    order.fulfillment_status = 'unfulfilled';
+    await deliver(db, 'evt_heal_3');
+    expect(JSON.stringify(db.rows('shop_order_items'))).toBe(itemsBefore);
+    // Nothing in this path advances fulfilment or notifies the customer.
+    expect(only(db.rows('shop_orders'), 'order').fulfillment_status).toBe('unfulfilled');
+    expect(db.rows('user_notifications').filter((n) => n.recipient_user_id)).toHaveLength(0);
+  });
+
+  it('a SECOND replay after healing is a total no-op', async () => {
+    const db = new Fake({ tier: 'standard' });
+    paidOrder(db);
+    await deliver(db, 'evt_heal_4');
+    const afterHeal = db.snapshot();
+    const second = await deliver(db, 'evt_heal_5');
+    expect(db.snapshot()).toBe(afterHeal);
+    expect(entries(db)).toHaveLength(1);
+    expect(second.note).toContain('skipped_duplicate_shop_order_entry');
+  });
+
+  it('an order that never had a pack stays a plain refusal', async () => {
+    const db = new Fake({ sku: 'GEL-INU-500' });
+    paidOrder(db);
+    const before = db.snapshot();
+    const { note } = await deliver(db, 'evt_heal_6');
+    expect(db.snapshot()).toBe(before);
+    expect(note).toBe('shop_order_already_paid');
   });
 });
