@@ -122,7 +122,13 @@ export function HomeIntentSection({
             value={value}
             onChange={(event) => setValue(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === 'Enter' && !event.shiftKey) {
+              // `key` is the normal identity, but some keyboards and input drivers send
+              // the commit key with an empty `key` name; `code` still identifies it.
+              // While an IME is composing, Enter confirms the composition and must not
+              // commit the idea underneath it.
+              const enter =
+                event.key === 'Enter' || event.code === 'Enter' || event.code === 'NumpadEnter';
+              if (enter && !event.shiftKey && !event.nativeEvent.isComposing) {
                 event.preventDefault();
                 commitTyped();
               }
@@ -261,11 +267,18 @@ export function HomeIntentSection({
         >
           {homeCreatorCopy.intent.resolving}
         </p>
-      ) : chips.length === 0 ? (
-        <p className="mt-3 text-center text-[12px]" style={{ color: 'var(--g-text-muted)' }}>
+      ) : hasIdea || value.trim() !== '' ? null : (
+        /* OWNER SERVED QA: the hint used to depend on chips alone, so someone who had
+           just typed „bananowy sorbet" was still told to add an ingredient. It answers
+           the question the screen is actually in — nothing described yet. */
+        <p
+          className="mt-3 text-center text-[12px]"
+          data-testid="home-intent-empty-hint"
+          style={{ color: 'var(--g-text-muted)' }}
+        >
           {homeCreatorCopy.intent.emptyHint}
         </p>
-      ) : null}
+      )}
     </HomeSection>
   );
 }

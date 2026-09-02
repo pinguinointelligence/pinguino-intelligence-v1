@@ -96,6 +96,11 @@ export interface HomeCreatorCopy {
     readonly anythingElse: string;
     readonly rowMenu: string;
     readonly remove: string;
+    /** The three HOME row actions (OWNER FROZEN 2026-09-02). */
+    readonly changeAmount: string;
+    readonly unlockLabel: string;
+    readonly removeIngredient: string;
+    readonly doneAmount: string;
     readonly findSubstitute: string;
     readonly dontHaveThis: string;
     readonly howToUse: string;
@@ -108,6 +113,8 @@ export interface HomeCreatorCopy {
     readonly recalculate: string;
     readonly maskedGrams: string;
     readonly maskedGramsLabel: string;
+    /** What HOME says when product authority cannot be confirmed (OWNER FROZEN). */
+    readonly unresolvedProduct: string;
     /** The mask WITHOUT a unit — the gram control appends its own suffix. */
     readonly maskedGramsValue: string;
     readonly askAmountTitle: string;
@@ -243,6 +250,10 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     anythingElse: 'Chcesz dodać coś jeszcze?',
     rowMenu: 'Więcej',
     remove: 'Usuń',
+    changeAmount: 'Zmień ilość',
+    unlockLabel: 'Odblokuj ilość',
+    removeIngredient: 'Usuń składnik',
+    doneAmount: 'Gotowe',
     findSubstitute: 'Znajdź zamiennik',
     dontHaveThis: 'Nie mam tego składnika',
     howToUse: 'Jak chcesz tego użyć?',
@@ -255,6 +266,7 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     recalculate: 'Przelicz i popraw',
     maskedGrams: '••• g',
     maskedGramsLabel: 'Gramatura ukryta — dostępna w planie HOME lub PRO',
+    unresolvedProduct: 'Nie możemy teraz potwierdzić danych jednego ze składników.',
     maskedGramsValue: '•••',
     askAmountTitle: 'Ile chcesz dodać',
     askAmountConfirm: 'Dodaj',
@@ -385,6 +397,10 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     anythingElse: 'Want to add anything else?',
     rowMenu: 'More',
     remove: 'Remove',
+    changeAmount: 'Change amount',
+    unlockLabel: 'Unlock the amount',
+    removeIngredient: 'Remove ingredient',
+    doneAmount: 'Done',
     findSubstitute: 'Find substitute',
     dontHaveThis: "I don't have this ingredient",
     howToUse: 'How do you want to use it?',
@@ -397,6 +413,7 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     recalculate: 'Recalculate and fix',
     maskedGrams: '••• g',
     maskedGramsLabel: 'Amount hidden — available on the HOME or PRO plan',
+    unresolvedProduct: "We can't confirm one of the ingredients right now.",
     maskedGramsValue: '•••',
     askAmountTitle: 'How much do you want to add',
     askAmountConfirm: 'Add',
