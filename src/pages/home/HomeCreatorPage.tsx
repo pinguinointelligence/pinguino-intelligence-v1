@@ -533,9 +533,12 @@ export function HomeCreatorPage() {
               }
             }}
             onChangeMachine={() => {
-              setMachine(null);
+              // The machine is deliberately NOT cleared: `forceMachineStage` alone opens
+              // the chooser, and keeping it means Anuluj restores the exact previous
+              // presentation instead of dropping to a plain amount.
               setForceMachineStage(true);
             }}
+            onCancelChange={() => setForceMachineStage(false)}
             onDone={() => {
               // Done also ENDS an open change request, so „Zmień" -> „Gotowe" returns to
               // the summary even when the customer picked nothing. Selecting already
