@@ -22,11 +22,30 @@
 
 /* ── Workbench shell geometry ───────────────────────────────────────────── */
 .gellatti-pro-workbench {
-  /* The preview's outer gutter is 12 px per side; `--pro-page-gutter` is the
-     TOTAL the shell subtracts, so 24 px produces 12 px left and 12 px right on
-     BOTH the header row and the workbench body — which is exactly what keeps
-     the tab strip and the display column on the same pixels. */
-  --pro-page-gutter: 24px;
+  /* NO `--pro-page-gutter` HERE (owner, 2026-09-02).
+   *
+   * This scope used to redeclare `--pro-page-gutter: 24px` to reproduce the
+   * V2.1 preview's 12 px outer gutter. `--pro-page-gutter` is INHERITED, and
+   * this element wraps the shell — so the one global header row resolved the
+   * workbench's local 24 px instead of the `:root` value, on the ONE screen
+   * that is meant to be the master of that geometry.
+   *
+   * `APP_HEADER_ROW` is `w-[calc(100%-var(--pro-page-gutter))]` + `mx-auto`,
+   * and an auto margin on that width is always exactly `gutter / 2`,
+   * independent of the containing block. So the whole residual was the token,
+   * measured on served staging at 1440:
+   *
+   *   :root                     clamp(2rem, 4vw, 4rem) = 57.6 px -> x = 28.8
+   *   .gellatti-pro-workbench   24 px                            -> x = 12
+   *   delta (57.6 - 24) / 2                                      =  16.8 px
+   *
+   * It was NOT the scrollbar: `viewportLock` does remove it, but the served
+   * workbench measured `innerWidth 1440 == clientWidth 1440`, `4vw` resolved
+   * to 57.59 px there anyway, and `gutter / 2` cannot see a scrollbar at all.
+   *
+   * The gutter now comes from `:root` like every other surface, so the header,
+   * the work column, HOME | PRO, the module strip and the display column all
+   * measure from ONE number again. */
   --pro-workbench-gap: var(--g-split-gap);
   /* The blanket `.pro-studio-radius-system` corner normaliser resolves through
      this token, so pointing it at the approved CONTROL radius makes every

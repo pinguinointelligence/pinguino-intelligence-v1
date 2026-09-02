@@ -6,12 +6,13 @@
  * HOME on the flex branch and PRO on the grid branch, 46 px apart at 1440, with the
  * HOME|PRO switch rendering on neither surface.
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { HomeProSwitch } from '@/features/home-creator/ui/HomeProSwitch';
+import { APP_HEADER_ROW, APP_PAGE_WORKSPACE } from '@/features/shell/shellGeometry';
 import {
   segmentTreatment,
   viewSwitchSegments,
@@ -120,5 +121,53 @@ describe('neutral destination state', () => {
   it('still marks the real view active on a non-neutral page', () => {
     expect(segmentTreatment('home', 'home')).toBe('active');
     expect(segmentTreatment('pro', 'pro')).toBe('active');
+  });
+});
+
+describe('ONE page gutter — a page may not re-scope the global header', () => {
+  /**
+   * Served forensic, 2026-09-02. The authenticated PRO workbench sat at
+   * hamburger x = 12 / logo x = 76 while every other surface sat at 28.8 / 92.8.
+   * `.gellatti-pro-workbench` wraps the shell and redeclared the INHERITED
+   * `--pro-page-gutter` as 24 px, so the one header row resolved 24 instead of
+   * the global 57.6 at 1440. `w-[calc(100%-var(--pro-page-gutter))]` + `mx-auto`
+   * makes the auto margin exactly `gutter / 2`, so the residual was
+   * (57.6 - 24) / 2 = 16.8 px — the measured delta, to the pixel.
+   *
+   * The header therefore has ONE gutter authority: `:root` in `tokens.css`.
+   * Any other stylesheet that declares the token can silently move the
+   * hamburger, the wordmark and HOME | PRO on whatever pages it scopes.
+   */
+  // Comments in these files DISCUSS the token by name — this contract is about
+  // declarations, so strip them first (a plain substring match reports the
+  // explanatory comment below as an offender).
+  const rules = (css: string) => css.replace(/\/\*[\s\S]*?\*\//g, '');
+  const declares = (css: string) => /--pro-page-gutter\s*:/.test(rules(css));
+
+  it('declares the gutter only at :root, in tokens.css', () => {
+    const tokens = rules(readFileSync('src/styles/tokens.css', 'utf8'));
+    const declarations = tokens.match(/--pro-page-gutter\s*:/g) ?? [];
+    expect(declarations).toHaveLength(1);
+    expect(tokens).toContain('--pro-page-gutter: clamp(2rem, 4vw, 4rem)');
+  });
+
+  it('lets no other stylesheet redeclare it', () => {
+    const offenders = readdirSync('src/styles')
+      .filter((file) => file.endsWith('.css') && file !== 'tokens.css')
+      .filter((file) => declares(readFileSync(`src/styles/${file}`, 'utf8')));
+    expect(offenders).toEqual([]);
+  });
+
+  it('keeps the workbench scope free of it — that scope wraps the shell', () => {
+    const v21 = rules(readFileSync('src/styles/gellatti-v2-1.css', 'utf8'));
+    const scope = v21.slice(v21.indexOf('.gellatti-pro-workbench {'));
+    expect(scope.slice(0, scope.indexOf('}'))).not.toMatch(/--pro-page-gutter\s*:/);
+  });
+
+  it('still resolves the header and the workspace through that one token', () => {
+    expect(APP_HEADER_ROW).toContain('xl:w-[calc(100%-var(--pro-page-gutter))]');
+    expect(APP_PAGE_WORKSPACE).toContain('xl:w-[calc(100%-var(--pro-page-gutter))]');
+    // mx-auto is what turns the token into the page origin: margin = gutter / 2.
+    expect(APP_HEADER_ROW).toContain('mx-auto');
   });
 });
