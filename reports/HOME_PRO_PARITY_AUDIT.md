@@ -84,7 +84,10 @@ Surfaces defined from the router, not guessed — HOME = `pages/home` +
 `pro-core` + `pro-workbench` + `constraint-studio` + `studio` + `studioFlow`
 (117 files). 25 of the 50 `recipeStore` actions are referenced by either surface.
 
-**SHARED — same canonical action, parity by construction at the state layer (6):**
+**SHARED MUTATION ENDPOINT — PARITY STILL TO VERIFY (6).** Owner correction
+2026-09-03: a common final store action proves only a shared mutation endpoint.
+Parity requires equivalence of *semantic input, guards/refusals, canonical
+payload and resulting state*. These are NOT green:
 `loadRecipeInput`, `removeItem`, `setBatchGrams`, `setDirectionTarget`,
 `setLockType`, `setMachineSelection`.
 
@@ -117,6 +120,51 @@ Surfaces defined from the router, not guessed — HOME = `pages/home` +
 imports the canonical `resolveMainCapability` and `productDosageAuthority`, and
 `homeAmountAuthority.ts` uses canonical `planContainerSplit` — HOME's add/amount
 path is canonical-backed, with "containers" a presentation concept only.
+
+## 3c. Capability 7 — INGREDIENT GRAMS (evidence, 2026-09-03)
+
+**Both surfaces end at the same store action `setPlannedGrams`, but reach it
+differently.**
+
+| | HOME | PRO |
+|---|---|---|
+| entry | `HomeRecipeSection.tsx:129` — `useRecipeStore.getState().setPlannedGrams(...)` **raw** | `IngredientRow.tsx:939` / `IngredientLineControls.tsx:411` → `IngredientBuilder` wrapper (`IngredientBuilder.tsx:252`) |
+| ProductBehavior gate | store-internal only → **silent no-op** | wrapper gate → **`setPickerNotice(reason)`** shown to the user |
+| stabilizer clamp | store-internal `clampOwnerStabilizerComponentGrams` | same authority, applied in the wrapper against `selectCanonicalDraft().input`, and `aggregate.messagePl` surfaced |
+| `markDoseUserSet(lineId)` | **not called** | called |
+
+**Confirmed divergences (cap 7):** HOME refuses **silently** where PRO explains
+(a refusal-semantics divergence, capability 29), and HOME never records
+`markDoseUserSet`, so downstream "the user set this dose" state differs.
+
+**Corrections made during this audit — recorded so they are not re-derived:**
+
+1. `wrapActions` (`useLineLockControls.ts:109`) wraps **only `setLockType`**; it
+   passes `setPlannedGrams` through untouched. HOME is therefore *not* skipping a
+   lock-aware gram layer.
+2. Measured: a gram edit leaves the draft off-batch on **both** surfaces —
+   `setPlannedGrams` never rebalances and never enforces the batch invariant.
+   Measured after a +100 g HOME edit at batch 670: gelato 670 → 769.67,
+   vegan 670 → 770.01, protein 670 → 770.26; sorbet 267.33 → 366.86 (its starter
+   is deliberately incomplete under the GEL-P0-026 Main reservation). **This is
+   not a HOME-only defect** — the batch is resolved downstream in Preview/Apply.
+   The open question is whether both surfaces reach the *same* downstream
+   resolution; that comparison is still pending.
+3. `user_target_grams` is written in exactly ONE place in the whole repo
+   (`recipeStore.ts:2137`, inside `setPlannedGrams`). Both surfaces therefore
+   plant the manual-target anchor identically.
+
+**Status: divergence located, not yet fixed; downstream resolution comparison
+per profile still pending.**
+
+## 3d. Capability 8 — LOCK / UNLOCK (evidence, 2026-09-03)
+
+PRO wraps `setLockType` with `onLineLockTypeChanged` — the constraint-studio
+bridge notification (`useLineLockControls.ts:109-114`). HOME calls
+`setLockType` **raw** (`HomeRecipeSection`), so the bridge is never notified.
+
+**Classification A — PRO correct / HOME broken.** Fix: route HOME through the
+existing wrapper rather than adding a HOME-only guard. Not yet fixed.
 
 ## 4. Still to do (not started)
 
