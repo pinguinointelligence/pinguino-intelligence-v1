@@ -76,8 +76,7 @@ function Harness() {
 
 function FullRecipeHarness() {
   useLegacyRecipeBehaviorRevalidation();
-  const actualBatchG = useRecipeStore((state) => state.target_batch_grams);
-  return <WorkbenchSettingsLine actualBatchG={actualBatchG} compact />;
+  return <WorkbenchSettingsLine compact />;
 }
 
 const mockResolvedBehaviorFor = (recipe: RecipeInput): void => {

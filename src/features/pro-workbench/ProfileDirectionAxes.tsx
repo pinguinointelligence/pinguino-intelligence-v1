@@ -57,8 +57,11 @@ function RegulatorRow({
           {sign(position)}
         </span>
       </div>
-      {/* 10 px of side room so the −2 and +2 thumbs stay inside the column. */}
-      <div className="px-2.5">
+      {/* 13 px, not 10: the side room has to clear the widest thing centred on
+          an end detent, and that is the 26 px HIT TARGET, not the 16 px thumb.
+          At 10 px the −2 and +2 targets overflowed the display column by 3 px
+          each — measured, not visible, but a real horizontal overflow. */}
+      <div className="px-[13px]">
         <div
           role="radiogroup"
           aria-label={label}

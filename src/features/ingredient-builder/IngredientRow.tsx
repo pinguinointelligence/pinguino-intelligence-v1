@@ -706,7 +706,7 @@ function RecipeRow({
       {/* WIDE (lg+) — the accepted Production table row, unchanged. */}
       <div className="hidden lg:block">
         <div
-          className={compact ? COMPACT_ROW_GRID : ROW_GRID}
+          className={cn('group/row', compact ? COMPACT_ROW_GRID : ROW_GRID)}
           onDragOver={(event) => event.preventDefault()}
           onDrop={(event) => {
             event.preventDefault();
@@ -720,10 +720,30 @@ function RecipeRow({
             aria-hidden
             draggable
             onDragStart={() => onDragStart?.(item.id)}
-            className="inline-grid size-11 shrink-0 cursor-grab select-none place-items-center text-[12px] leading-none text-[var(--g-drag)] active:cursor-grabbing md:size-[22px]"
+            className="inline-grid size-11 shrink-0 cursor-grab select-none place-items-center leading-none active:cursor-grabbing md:size-[22px]"
             title="Przeciągnij, aby zmienić kolejność"
           >
-            ⠿
+            {/* OWNER DECISION 2026-09-02 (variant C). This was the single glyph
+                `⠿` in `--g-drag` (#aaa59d) — 2.45:1 on white, BELOW the 3:1
+                floor for non-text UI, and a glyph cannot mark one of its own
+                dots. Six real dots in `--g-text-muted` measure 4.72:1, so the
+                handle is visible from the contrast alone; the accent lights the
+                middle pair only under the pointer, teaching the affordance at
+                the moment of intent without spending the accent — which carries
+                DECISION here (focus, unsaved, confirm) — on furniture that is
+                present in every row. Nothing depends on hover: without a
+                pointer the dots still clear the threshold. */}
+            <span className="grid grid-cols-2 gap-[3px]">
+              {[0, 1, 2, 3, 4, 5].map((dot) => (
+                <span
+                  key={dot}
+                  className={cn(
+                    'size-[3px] rounded-full bg-[var(--g-text-muted)] transition-colors',
+                    (dot === 2 || dot === 3) && 'group-hover/row:bg-[#f58a07]',
+                  )}
+                />
+              ))}
+            </span>
           </span>
 
           <div className="min-w-0">
@@ -955,7 +975,21 @@ function RecipeRow({
               }}
               className={iconButtonClasses('xs')}
             >
-              •••
+              {/* The button shell stays exactly as contracted — it is the
+                  affordance. Only the `•••` text glyph becomes three real dots,
+                  so the middle one can take the accent on row hover, the same
+                  language as the drag handle. */}
+              <span aria-hidden className="flex items-center gap-[2.5px]">
+                {[0, 1, 2].map((dot) => (
+                  <span
+                    key={dot}
+                    className={cn(
+                      'size-[3px] rounded-full bg-current transition-colors',
+                      dot === 1 && 'group-hover/row:bg-[#f58a07]',
+                    )}
+                  />
+                ))}
+              </span>
             </button>
             {rowMenuOpen ? (
               <DialogShell

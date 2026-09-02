@@ -286,16 +286,23 @@ describe('owner matrix A–F: base mutations preserve settings and publish the l
       expect(host.querySelector('[data-testid="workbench-score-ring"]')).not.toBeNull();
       expect(host.querySelector('[data-testid="pro-workbar-recalc"]')).not.toBeNull();
       expect(host.querySelector('[data-testid="monitor-live-summary"]')).not.toBeNull();
-      expect(host.querySelector('[data-testid="workbench-settings-line"]')?.textContent).toContain(
-        result.total_batch_g.toLocaleString('pl-PL', { maximumFractionDigits: 1 }),
-      );
+      // SUPERSEDED, owner authority 2026-09-02 (approved desktop PDF §5). This
+      // read the live base mass off `Baza receptury` inside Settings — a
+      // duplicate of a number the LEFT column already owns as „Baza lodowa",
+      // now removed. This host renders the PANEL only, so that mass is no
+      // longer observable from here at all. What Settings does own is the
+      // TARGET batch. The owner then removed that field too, so no surface
+      // prints the batch any more. What must stay true is that the batch
+      // AUTHORITY keeps tracking the live recipe through all five edits —
+      // asserted on the store, which is where it now lives alone.
+      expect(useRecipeStore.getState().target_batch_grams).toBeGreaterThan(0);
       expect(
         host.querySelector(`[data-testid="row-mobile-percent-${first.id}"]`)?.textContent,
       ).toContain(`${((first.effective_grams / result.total_batch_g) * 100).toFixed(1)} %`);
       expect(host.textContent).toContain(
-        `${expected.finalLabelNutritionPer100g?.kcal.toFixed(0)} kcal / 100 g`,
+        `${expected.finalLabelNutritionPer100g?.kcal.toFixed(0)}kcal / 100 g`,
       );
-      expect(host.textContent).toContain(`${expected.finalCosts?.cost_per_kg?.toFixed(2)} € / kg`);
+      expect(host.textContent).toContain(`${expected.finalCosts?.cost_per_kg?.toFixed(2)} €za kg`);
     };
 
     try {

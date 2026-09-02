@@ -35,7 +35,13 @@ export const DESKTOP_WORKBENCH_COLUMNS =
  * can move any other tab.
  */
 export const DESKTOP_TAB_STRIP =
-  'xl:col-start-2 xl:row-start-1 xl:w-[calc(var(--g-side-width)+10px)] xl:shrink-0 xl:justify-self-end';
+  /* OWNER GEOMETRY DECISION 2026-09-02: the strip is EXACTLY the display
+     column. The old ten-pixel addend made it 530 px against a 520 px track, and because it
+     is right-aligned the whole overhang fell on the LEFT — the right edges
+     matched to the pixel while the left edges were 10 px apart. The strip has
+     no width of its own: it is the column's width, so both edges coincide by
+     construction and cannot drift again. */
+  'xl:col-start-2 xl:row-start-1 xl:w-[var(--g-side-width)] xl:shrink-0 xl:justify-self-end';
 
 /**
  * The anchor is verified by `desktopTabAnchorContract.test.ts`: the strip's

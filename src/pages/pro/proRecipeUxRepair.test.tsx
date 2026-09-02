@@ -229,7 +229,10 @@ describe('the 10-step no-scroll flow — every edit-loop control inside the view
     inViewport('data-testid="workbench-product-type"');
     inViewport('data-testid="workbench-strategy"');
     inViewport('data-testid="workbench-serving"');
-    inViewport('data-testid="workbench-batch"');
+    // SUPERSEDED, owner authority 2026-09-02 (final Settings contract): the
+    // target-batch field is removed from Settings and must not be recreated
+    // anywhere, so there is nothing left to keep in the viewport. The other
+    // controls in this list still carry the contract.
     inViewport('data-testid="ingredient-rows-scroll"');
     inViewport('data-testid="ingredient-add-slot"');
     inViewport('data-testid="ingredient-action-slot"');

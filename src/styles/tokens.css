@@ -185,7 +185,13 @@
   /* Workbench geometry — the preview's own numbers at the 1440 px reference. */
   --g-gutter: 12px;
   --g-split-gap: 12px;
-  --g-side-width: clamp(370px, 36.111vw, 520px);
+  /* OWNER GEOMETRY DECISION 2026-09-02: the approved desktop authority at 1440
+     is a 500 px right column. 36.111vw reaches 520 px there, so the CEILING is
+     what was wrong — not the ratio. Lowering it to 500 pins the authority at
+     1440 and above while every narrower viewport keeps scaling on the same
+     36.111vw as before; the change bites only from 1384.6 px up, where the
+     ratio would otherwise have overshot the approved width. */
+  --g-side-width: clamp(370px, 36.111vw, 500px);
   --g-workbench-header: 90px;
   --g-card-radius: 10px;
   --g-control-radius: 9px;

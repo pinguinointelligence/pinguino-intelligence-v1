@@ -60,6 +60,17 @@ export function buildHomeMachineView(input: {
   readonly targetBatchGrams: number;
   readonly recommendedBatchGrams: number | null;
   readonly containers: number;
+  /**
+   * The customer pressed „Zmień". §42 says a saved machine is never ASKED about again;
+   * it does not say the customer may not ask. Without this the flow re-opened the
+   * machine stage while this view still reported `needsMachineChoice: false` from the
+   * still-set label, so the section kept rendering the summary and the chooser was
+   * unreachable.
+   *
+   * It deliberately does NOT reach the Professional branch: §16's guarantee that HOME
+   * cannot change a Professional recipe's machine is structural, and stays structural.
+   */
+  readonly changeRequested?: boolean;
 }): HomeMachineView {
   if (input.machineKind === 'professional') {
     return {
@@ -85,7 +96,8 @@ export function buildHomeMachineView(input: {
             totalGrams: input.targetBatchGrams,
           }
         : { kind: 'plain_amount', totalGrams: input.targetBatchGrams },
-    // §42: a saved machine is used automatically and never asked about again.
-    needsMachineChoice: !hasHomeMachine,
+    // §42: a saved machine is used automatically and never asked about again — unless
+    // the customer asks.
+    needsMachineChoice: !hasHomeMachine || input.changeRequested === true,
   };
 }

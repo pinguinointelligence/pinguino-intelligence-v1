@@ -122,6 +122,10 @@ export function HomeCreatorPage() {
       amount && recommendedBatchGrams
         ? (capacityGuidance(amount, recommendedBatchGrams)?.containers ?? 1)
         : 1,
+    // „Zmień" already re-opens the machine STAGE through the flow; the view has to hear
+    // about it too, or the section keeps rendering the summary and the chooser never
+    // appears. Same state, propagated — no second machine authority.
+    changeRequested: forceMachineStage,
   });
 
   const flow = useHomeFlow({
@@ -529,10 +533,17 @@ export function HomeCreatorPage() {
               }
             }}
             onChangeMachine={() => {
-              setMachine(null);
+              // The machine is deliberately NOT cleared: `forceMachineStage` alone opens
+              // the chooser, and keeping it means Anuluj restores the exact previous
+              // presentation instead of dropping to a plain amount.
               setForceMachineStage(true);
             }}
+            onCancelChange={() => setForceMachineStage(false)}
             onDone={() => {
+              // Done also ENDS an open change request, so „Zmień" -> „Gotowe" returns to
+              // the summary even when the customer picked nothing. Selecting already
+              // clears it; this covers the cancel path.
+              setForceMachineStage(false);
               // §85: Done updates the SAME recipe and returns to the live position.
               if (draft.recipeReady && amount) {
                 useRecipeStore

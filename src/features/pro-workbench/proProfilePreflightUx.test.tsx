@@ -329,9 +329,13 @@ describe('profile hierarchy and compact preflight', () => {
       // The technical base remains live when only Nutrition is unavailable.
       expect(surface('score').textContent).toContain('Wynik aktualny');
       expect(surface('score').querySelector('[data-testid="workbench-score-ring"]')).not.toBeNull();
-      expect(surface('profile').textContent).toContain('— kcal / 100 g');
+      // SUPERSEDED, owner authority 2026-09-02 (approved desktop PDF §4). The
+      // result is a readout, so the figure and its unit are separate elements
+      // and textContent no longer glues them with a space. The DATA assertion
+      // is unchanged — an empty result still reads „—" above „kcal / 100 g".
+      expect(surface('profile').textContent).toContain('—kcal / 100 g');
       expect(surface('profile').textContent).toContain(
-        `${calculateFinalProduct(input).finalCosts?.cost_per_kg?.toFixed(2)} € / kg`,
+        `${calculateFinalProduct(input).finalCosts?.cost_per_kg?.toFixed(2)} €za kg`,
       );
       expect(
         surface('monitor').querySelector('[data-testid="monitor-live-summary"]'),
@@ -351,10 +355,10 @@ describe('profile hierarchy and compact preflight', () => {
       ).toBe(String(monitorScoreView(result, input).match.score));
       const expectedFinal = calculateFinalProduct(input);
       expect(surface('profile').textContent).toContain(
-        `${expectedFinal.finalLabelNutritionPer100g?.kcal.toFixed(0)} kcal / 100 g`,
+        `${expectedFinal.finalLabelNutritionPer100g?.kcal.toFixed(0)}kcal / 100 g`,
       );
       expect(surface('profile').textContent).toContain(
-        `${expectedFinal.finalCosts?.cost_per_kg?.toFixed(2)} € / kg`,
+        `${expectedFinal.finalCosts?.cost_per_kg?.toFixed(2)} €za kg`,
       );
       expect(
         surface('monitor').querySelector('[data-testid="monitor-live-summary"]'),
@@ -380,10 +384,10 @@ describe('profile hierarchy and compact preflight', () => {
           ?.getAttribute('data-current-result-state'),
       ).toBe('STALE');
       expect(surface('profile').textContent).toContain(
-        `${expectedFinal.finalLabelNutritionPer100g?.kcal.toFixed(0)} kcal / 100 g`,
+        `${expectedFinal.finalLabelNutritionPer100g?.kcal.toFixed(0)}kcal / 100 g`,
       );
       expect(surface('profile').textContent).toContain(
-        `${expectedFinal.finalCosts?.cost_per_kg?.toFixed(2)} € / kg`,
+        `${expectedFinal.finalCosts?.cost_per_kg?.toFixed(2)} €za kg`,
       );
       expect(
         surface('monitor').querySelector('[data-testid="monitor-live-summary"]'),
@@ -484,10 +488,10 @@ describe('profile hierarchy and compact preflight', () => {
         const expectedNutrition = expectedFinal.finalLabelNutritionPer100g;
         const recipeSummary = host.querySelector('[data-testid="profile-nutrition-cost-summary"]');
         expect(recipeSummary?.textContent).toContain(
-          `${expectedNutrition?.kcal.toFixed(0)} kcal / 100 g`,
+          `${expectedNutrition?.kcal.toFixed(0)}kcal / 100 g`,
         );
         expect(recipeSummary?.textContent).toContain(
-          `${expectedFinal.finalCosts?.cost_per_kg?.toFixed(2)} € / kg`,
+          `${expectedFinal.finalCosts?.cost_per_kg?.toFixed(2)} €za kg`,
         );
 
         await act(async () => root.render(panel('summary')));
@@ -590,17 +594,17 @@ describe('profile hierarchy and compact preflight', () => {
         expect(summary, variant.name).not.toBeNull();
         if (variant.nutritionVisible) {
           expect(summary?.textContent, variant.name).toContain(
-            `${expected.finalLabelNutritionPer100g?.kcal.toFixed(0)} kcal / 100 g`,
+            `${expected.finalLabelNutritionPer100g?.kcal.toFixed(0)}kcal / 100 g`,
           );
         } else {
-          expect(summary?.textContent, variant.name).toContain('— kcal / 100 g');
+          expect(summary?.textContent, variant.name).toContain('—kcal / 100 g');
         }
         if (variant.costVisible) {
           expect(summary?.textContent, variant.name).toContain(
-            `${expected.finalCosts?.cost_per_kg?.toFixed(2)} € / kg`,
+            `${expected.finalCosts?.cost_per_kg?.toFixed(2)} €za kg`,
           );
         } else {
-          expect(summary?.textContent, variant.name).toContain('— / kg');
+          expect(summary?.textContent, variant.name).toContain('—za kg');
         }
 
         await act(async () => root.render(panel('monitor')));
@@ -657,7 +661,7 @@ describe('profile hierarchy and compact preflight', () => {
     const confirmationAt = card.indexOf('data-settings-cell="confirmation"');
     const machineAt = card.indexOf('workbench-machine');
     const conditionalAt = card.indexOf('machine-conditional-settings');
-    const batchAt = card.indexOf('workbench-batch');
+    // `workbench-batch` no longer exists — see the field-order note below.
     const strategyAt = card.indexOf('workbench-strategy');
     expect(productAt).toBeGreaterThan(-1);
     // OWNER FROZEN PRO VISUAL: the confirmation left the grid for the band
@@ -666,11 +670,17 @@ describe('profile hierarchy and compact preflight', () => {
     expect(confirmationAt).toBeLessThan(productAt);
     expect(machineAt).toBeGreaterThan(productAt);
     expect(conditionalAt).toBeGreaterThan(machineAt);
-    expect(batchAt).toBeGreaterThan(conditionalAt);
-    expect(strategyAt).toBeGreaterThan(batchAt);
-    // The frozen 2x3 reading order: type | serving / machine | mode / batch | base.
+    expect(strategyAt).toBeGreaterThan(conditionalAt);
+    // SUPERSEDED TWICE, owner authority 2026-09-02. The approved model reads
+    // type | mode / serving | machine — the target-batch field was removed from
+    // this surface entirely on the owner's final Settings contract, so the
+    // grid order is 1 product-type, 2 strategy, 3 conditional, 4 machine — and
+    // the duplicated `Baza receptury` cell is gone entirely.
     expect(card).toContain("compact && 'order-1'");
-    expect(card).toContain("compact ? 'order-2'");
+    expect(card).toContain('relative order-2 min-w-0');
+    expect(card).toContain("compact ? 'order-3'");
+    expect(card).toContain("compact && 'order-4'");
+    expect(card).not.toContain('profile-settings-base-readout order-6');
     expect(card).not.toContain('workbench-quality');
     expect(card).not.toContain('Więcej ustawień');
     expect(card).not.toContain('setCostPriority');
@@ -680,26 +690,35 @@ describe('profile hierarchy and compact preflight', () => {
   it('contains one confirmation action and conditional professional/home contexts', () => {
     const card = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
     expect(card).toContain('data-testid="profile-settings-confirm"');
-    expect(card.match(/Potwierdź ustawienia/g)).toHaveLength(1);
+    // Renamed and relocated by owner authority 2026-09-02 (§8): confirmation
+    // lives INSIDE expanded Settings, to the right of the permanent
+    // „Zapisz jako domyślne", and reads „Potwierdź zmiany".
+    expect(card.match(/data-testid="profile-settings-confirm"/g)).toHaveLength(1);
+    expect(card).toContain('data-testid="profile-settings-save-default"');
     expect(card).toContain('testid="workbench-serving"');
     expect(card).toContain('data-testid="home-machine-capacity"');
     expect(card).toContain('Zalecany wsad na cykl');
-    expect(card).toContain('data-testid="profile-batch-combined"');
+    // The target-batch field is REMOVED from Settings and must not return.
+    expect(card).not.toContain('data-testid="profile-batch-combined"');
+    expect(card).not.toContain('aria-label="Docelowa partia"');
     expect(card).toContain('data-testid="settings-grid-status"');
     expect(card).not.toContain('data-testid="settings-header-status"');
-    // The confirmation is the BAND's action now, so it sits ahead of the grid
-    // in source. It is still exactly one control with both of its testids.
+    // The collapsed band row carries the confirmation STATUS and is the way
+    // into the settings, so it still precedes the grid in source.
     expect(card.indexOf('data-settings-cell="confirmation"')).toBeLessThan(
       card.indexOf('data-settings-cell="product-type"'),
     );
     expect(card).toContain("compact && 'order-1'");
-    expect(card).toContain("compact ? 'order-2'");
+    expect(card).toContain("compact ? 'order-3'");
     expect(card.indexOf('data-settings-cell="product-type"')).toBeLessThan(
       card.indexOf('data-settings-cell="machine"'),
     );
-    expect(card).toContain('Baza lodowa bez toppingu');
+    // The batch card's helper line went with the card itself (owner authority
+    // 2026-09-02, final Settings contract).
+    expect(card).not.toContain('Baza lodowa bez toppingu');
     expect(card).not.toContain('BAZA LODOWA BEZ TOPPINGU');
-    expect(card).toContain("compactSelect, 'w-16'");
+    // `w-16` was the batch UNIT select, removed with the batch field.
+    expect(card).not.toContain("compactSelect, 'w-16'");
     expect(card).not.toContain('2xl:h-[63px]');
     expect(card).not.toContain('Ustaw jako domyślne');
     expect(read('features', 'pro-workbench', 'AccountRecipeDefaults.tsx')).toContain(
@@ -730,7 +749,7 @@ describe('profile hierarchy and compact preflight', () => {
       label: 'Maszyna profesjonalna',
       temperatureC: -12,
     });
-    const professional = renderToStaticMarkup(<WorkbenchSettingsLine actualBatchG={900} />);
+    const professional = renderToStaticMarkup(<WorkbenchSettingsLine />);
     expect(professional).toContain('data-testid="workbench-serving"');
 
     const home = listActiveHomeMachines(MACHINE_CATALOG)[0]!;
