@@ -126,13 +126,70 @@ describe('Crown-OFF unlocked anchor — search and gate share one authority', ()
       source.indexOf('const probe = (grams: number)'),
     );
     expect(assessBlock).toContain('verifyMainEnvelope');
-    // …and the gate's `owner_policy` class, which also moves with the support
-    // vector. Both stabilizer authorities are calculateRecipe-free.
-    expect(assessBlock).toContain('assessGelatoStabilizerSystem');
-    expect(assessBlock).toContain('assessSorbetStabilizerSystem');
+    // The stabilizer authorities are deliberately NOT asserted per candidate:
+    // `component_not_whole_grams` fires on an ordinary gelato starter, so doing
+    // so rejected every candidate and the descent exhausted (served: a feasible
+    // 200 g anchor failed in 20.6 s). The final gate keeps that authority.
+    expect(assessBlock).not.toMatch(/assessGelatoStabilizerSystem\(/);
     // the wrapper may be NAMED in the rationale comment, but never CALLED here
     expect(assessBlock).not.toMatch(/evaluateRecipeConstraintAuthority\(\{/);
     // …and rejects the CANDIDATE (returns null) rather than the whole request.
     expect(assessBlock).toMatch(/!verifyMainEnvelope\([\s\S]{0,400}?\)\.ok\s*\)\s*\{\s*return null;/);
+  });
+});
+
+/**
+ * Why the stabilizer authorities must stay OUT of the gram-descent candidate
+ * path. Served QA, 2026-09-02: with them in, a FEASIBLE 200 g Crown-OFF anchor
+ * failed in 20.6 s exactly like an infeasible 400 g one — every candidate was
+ * rejected and the descent exhausted.
+ */
+describe('Crown-OFF descent — stabilizer authority stays downstream', () => {
+  it('component_not_whole_grams fires on an ordinary gelato starter', async () => {
+    const [{ useRecipeStore }, { buildRecipeInput }, machine, constraints] = await Promise.all([
+      import('@/stores/recipeStore'),
+      import('@/features/studio/buildRecipeInput'),
+      import('@/features/machine-catalog'),
+      import('@/features/recipe-constraints'),
+    ]);
+    const setup = machine.deriveMachineSetup(machine.NINJA_CREAMI_DELUXE_NC502EU, 'gelato');
+    const st = useRecipeStore.getState();
+    st.startNewRecipe('gelato');
+    st.setMachineSelection({
+      kind: 'home',
+      servingModeId: setup.resolvedVisibleMode!,
+      machineId: machine.NINJA_CREAMI_DELUXE_NC502EU.id,
+      label: 'Ninja CREAMi Deluxe',
+      temperatureC: -11,
+      batchGrams: 670,
+      capacityGrams: 670,
+      batchSource: 'MACHINE_DEFAULT',
+    } as never);
+    const input = buildRecipeInput(useRecipeStore.getState());
+
+    // A plain starter carries fractional support grams before practicalization.
+    expect(
+      input.items.some((item) => !Number.isInteger(item.planned_grams)),
+      'starter should have fractional support lines',
+    ).toBe(true);
+
+    // …and the gelato stabilizer authority flags exactly that.
+    const issues = constraints.assessGelatoStabilizerSystem(input).issues.map((i) => i.code);
+    expect(issues).toContain('component_not_whole_grams');
+  });
+
+  it('the candidate path does not consult either stabilizer authority', async () => {
+    const source = await import('node:fs').then((fs) =>
+      fs.readFileSync('src/features/constraint-studio/applyPipeline.ts', 'utf8'),
+    );
+    const assessBlock = source.slice(
+      source.indexOf('const assess = (candidate: RecipeInput'),
+      source.indexOf('const probe = (grams: number)'),
+    );
+    // Named in the rationale comment, never called.
+    expect(assessBlock).not.toMatch(/assessGelatoStabilizerSystem\(/);
+    expect(assessBlock).not.toMatch(/assessSorbetStabilizerSystem\(/);
+    // The final gate keeps the authority: it still runs the full evaluation.
+    expect(source).toContain('evaluateRecipeConstraintAuthority({');
   });
 });
