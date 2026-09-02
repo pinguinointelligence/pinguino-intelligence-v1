@@ -495,7 +495,7 @@ export function ProWorkspacePage() {
          scaled `100dvh` would come up 11 % short of the viewport.
 
          Hierarchy, order, copy and logic are untouched — only the scale. */
-      className={`pro-studio-radius-system theme-pro-light${workbench ? ' gellatti-pro-workbench xl:h-[calc(100dvh/0.8889)] xl:[zoom:0.8889]' : ''}`}
+      className={`pro-studio-radius-system theme-pro-light${workbench ? ' gellatti-pro-workbench xl:h-dvh' : ''}`}
       data-testid="pro-light-scope"
     >
       <AppShell
@@ -504,7 +504,7 @@ export function ProWorkspacePage() {
            module strip — right-aligned inside the header — lands beside the
            display column instead of on it. Measured before this line existed:
            the strip sat 54 px right of the column at 1440 and 149 px at 2368. */
-        maxWidthClass={workbench ? 'max-w-[1440px]' : 'max-w-[1776px]'}
+        maxWidthClass="max-w-[1776px]"
         brand={<OfficialProLogo />}
         /* FROZEN GLOBAL CONTRACT (owner, 2026-09-02): PRO renders the SAME
            canonical switch as every other surface — no PRO-specific control, no
@@ -559,7 +559,7 @@ export function ProWorkspacePage() {
                applied to the whole PRO scope (see `pro-light-scope` above), not
                here: putting it on this panel alone left the HEADER unscaled, and
                the module strip stopped lining up with the display column. */
-            className="xl:mx-auto xl:flex xl:h-full xl:min-h-0 xl:w-[calc(100%-var(--pro-page-gutter))] xl:max-w-[1440px] xl:flex-col"
+            className="xl:mx-auto xl:flex xl:h-full xl:min-h-0 xl:w-[calc(100%-var(--pro-page-gutter))] xl:max-w-[1440px] xl:flex-col xl:[zoom:0.8889]"
             data-testid={`pro-panel-${activeTab}`}
           >
             {activeLibraryHandoff.state === 'loading' ? (
