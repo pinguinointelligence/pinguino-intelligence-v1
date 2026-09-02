@@ -81,7 +81,6 @@ import {
   buildProposalExplanation,
   BATCH_SUM_TOLERANCE_G,
   evaluateRecipeConstraintAuthority,
-  type RecipeConstraintAuthorityIssue,
   rescaleBatchToTarget,
   verifyConstraintsPreserved,
   type ConstraintExplanationEntry,
@@ -3201,43 +3200,7 @@ export function projectManualIngredientTarget(
         requiredLineIds,
       );
       if (!gate.ready) return null;
-      // CROWN-OFF SOFT ANCHOR. This search is the rescue that finds the highest
-      // feasible amount at or below the customer's anchor, so it must reject the
-      // candidates the final Preview gate would reject — otherwise ~400 g is
-      // accepted here and then terminal-refused at that gate with no way back
-      // into the descent. An invalid candidate is rejected INTERNALLY and the
-      // descent simply continues.
-      //
-      // The MAIN ENVELOPE is the class that blocks here (`main_above_hard_limit`
-      // and the approved liquid-dairy-carrier floor). The gate's other blocking
-      // classes — module entitlement, vegan, protein, ECO flavour protection —
-      // are already asserted above in this same function. It is called directly
-      // rather than through `evaluateRecipeConstraintAuthority` because that
-      // wrapper recomputes `calculateRecipe` on every call, while this descent
-      // evaluates hundreds of candidates and `practical.audit.executableResult`
-      // is ALREADY computed here. Served QA proved the cost: a 400 g unlocked
-      // anchor ran 86 s and 91 s and never finished. Same canonical authority,
-      // no second formula, no hardcoded percentage.
-      if (
-        !verifyMainEnvelope({
-          recipe: executable,
-          snapshots: options.productBehaviorSnapshots ?? {},
-          mode: behaviorModule === 'ECO' ? 'eco' : 'optimal',
-          technicalOnlyMainLineIds: options.technicalOnlyMainLineIds,
-        }).ok
-      ) {
-        return null;
-      }
     }
-    // NOT asserted per candidate: the `owner_policy` stabilizer authorities.
-    // Served QA proved why. `assessGelatoStabilizerSystem` returns
-    // `component_not_whole_grams` for an ordinary gelato starter (TARA GUM
-    // 2.01 g, INULIN 36.18 g), so asserting it here rejected EVERY candidate and
-    // the descent exhausted — a feasible 200 g anchor failed in 20.6 s exactly
-    // like an infeasible 400 g one. The final gate itself tolerates that code
-    // for BATCH_RESCUE, which is the tell: it is a practicalization property,
-    // not a property of the candidate mass the descent is choosing. The gate
-    // remains the authority for it.
     return executable;
   };
 
@@ -8665,25 +8628,6 @@ function productBehaviorIdentityViolation(
 
 /** Binds a successful Preview to immutable product/version/policy authority
  * and rejects the rounded vector before it can be shown as applicable. */
-/**
- * The issue classes that BLOCK a finished Preview. Declared once and consumed
- * both by `bindProductBehaviorToPreview` (the safety backstop) and by the
- * Crown-OFF soft-anchor rescue in `projectManualIngredientTarget`, so the
- * search can never again accept a candidate the final gate would reject.
- */
-function finalPreviewAuthorityBlocking(
-  issues: readonly RecipeConstraintAuthorityIssue[],
-): RecipeConstraintAuthorityIssue[] {
-  return issues.filter(
-    (issue) =>
-      issue.source === 'owner_policy' ||
-      issue.source === 'main' ||
-      issue.source === 'product_behavior' ||
-      (issue.source === 'profile' &&
-        (issue.code === 'profile_evidence_missing' || issue.code === 'profile_not_eligible')),
-  );
-}
-
 export function bindProductBehaviorToPreview(
   result: BuildPreviewResult,
   snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>,
@@ -8722,7 +8666,14 @@ export function bindProductBehaviorToPreview(
     module: behaviorModule,
     technicalOnlyMainLineIds,
   });
-  const authorityBlocking = finalPreviewAuthorityBlocking(authority.issues);
+  const authorityBlocking = authority.issues.filter(
+    (issue) =>
+      issue.source === 'owner_policy' ||
+      issue.source === 'main' ||
+      issue.source === 'product_behavior' ||
+      (issue.source === 'profile' &&
+        (issue.code === 'profile_evidence_missing' || issue.code === 'profile_not_eligible')),
+  );
   if (authorityBlocking.length > 0) {
     const violations: MainEnvelopeViolation[] = authorityBlocking.map((issue) => ({
       code: issue.source === 'main' ? issue.code : 'product_behavior_missing',
@@ -8733,13 +8684,14 @@ export function bindProductBehaviorToPreview(
     // built — NOT on the recipe the user is looking at. Reporting its percentage unqualified is how
     // the app came to tell an owner „Grupa Main ma 0.2%" about a draft whose canonical combined
     // Main share is 16 %. Both numbers were true; only one of them was about their recipe.
-    // The internal authority sentence stays on `violations[]` for diagnostics and
-    // tests; the customer sees what to DO, not which rule fired.
+    const firstMessage = violations[0]?.messagePl;
     return {
       ok: false,
       code: 'product_behavior_invalid',
       violations,
-      messagePl: copy.blocked.recipeCannotBeFitted,
+      messagePl: firstMessage
+        ? copy.blocked.rejectedProposalAuthority(firstMessage)
+        : 'Nie udało się potwierdzić zachowania produktu w tej recepturze.',
     };
   }
   result.preview.productBehaviorFingerprint = productBehaviorSnapshotFingerprint(snapshots);

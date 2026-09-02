@@ -242,17 +242,6 @@ export const constraintStudioCopy = {
     batchMismatch: (proposedSum: number, targetBatch: number) =>
       `Suma składników w podglądzie (${formatGramsPl(proposedSum)}) nie zgadza się z docelową ` +
       `masą partii (${formatGramsPl(targetBatch)}). Receptura nie została zmieniona.`,
-    /**
-     * CUSTOMER COPY RULE (owner, 2026-09-02): a customer-facing refusal explains
-     * the SOLUTION, never our algorithm. Hard-limit and carrier percentages,
-     * NPAC/POD/solids/water and internal violation codes stay in diagnostics and
-     * in `violations[]`, which tests and the internal surfaces still read.
-     * Embedding the authority's own sentence here is how the app came to tell a
-     * customer „grupa Main przekracza twardy limit 45.0%".
-     */
-    recipeCannotBeFitted:
-      'Nie udało się dopasować tej receptury przy tych ustawieniach. ' +
-      'Zmień ilość składnika lub odblokuj jeden z elementów receptury.',
     /* Owner P0 (definitive fail) — the exact required rejection sentence. */
     unsafeProposal:
       'Nie udało się utworzyć bezpiecznej receptury. Propozycja została odrzucona. ' +
