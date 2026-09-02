@@ -86,6 +86,33 @@ export function publicRateCard(tier: PublicAffiliateTier): readonly PublicRate[]
 }
 
 /**
+ * STARTER PACK — owner-frozen 2026-09-02.
+ *
+ * Retail 59 € + shipping; commission is 9 € (Standard) / 19 € (Gold) per pack
+ * sold, and Elite is individual like every other Elite figure. It is a ONE-OFF
+ * sale, so a pack enters a year once and is never multiplied by twelve.
+ *
+ * Why it lives HERE and not in `commissionRules`: that module mirrors the
+ * `commission_rules` LEDGER table, whose product column carries only home and
+ * pro. Declaring a starter-pack product there would put the code and the
+ * database into exactly the disagreement this file exists to prevent. So this
+ * is the single public source for the figure, and it is deliberately visible
+ * that the ledger cannot yet BOOK it — quoting a rate and paying it are two
+ * different capabilities.
+ */
+export const PUBLIC_STARTER_PACK_RETAIL_CENTS = 5_900 as const;
+
+const STARTER_PACK_COMMISSION_CENTS: Readonly<Record<PublicAffiliateTier, number>> = frozen({
+  standard: 900,
+  gold: 1_900,
+});
+
+/** The publicly quotable Starter Pack commission for one tier. */
+export function publicStarterPackRate(tier: PublicAffiliateTier): number {
+  return STARTER_PACK_COMMISSION_CENTS[tier];
+}
+
+/**
  * The Gold entry threshold, read from the tier authority — never restated.
  * `gellatti_gold_threshold_v1()` returns the same 100 in the database.
  */

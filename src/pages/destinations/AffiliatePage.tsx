@@ -9,6 +9,7 @@ import {
   PUBLIC_GOLD_THRESHOLD,
   formatEuro,
   publicRateCard,
+  publicStarterPackRate,
   type PublicAffiliateTier,
 } from '@/features/affiliate/publicRateAuthority';
 import {
@@ -197,17 +198,6 @@ const RATE_LABEL: Record<string, string> = {
   'pro:annual': c.rates.proAnnual,
 };
 
-/**
- * OWNER-PENDING (Rewizja 1 §5). No Starter Pack commission has ever been
- * frozen — `commission_rules` holds only home/pro × monthly/annual. These are
- * a PROPOSAL, so the row is muted, dashed and captioned, and is deliberately
- * NOT read through `publicRateAuthority`: it is not a rate yet.
- */
-const STARTER_PACK_PROPOSAL_CENTS: Record<PublicAffiliateTier, number> = {
-  standard: 900,
-  gold: 1900,
-};
-
 function TierCard({ tier }: { tier: PublicAffiliateTier }) {
   const gold = tier === 'gold';
   return (
@@ -246,18 +236,15 @@ function TierCard({ tier }: { tier: PublicAffiliateTier }) {
             </dd>
           </div>
         ))}
-        <div className="flex items-baseline justify-between gap-3 border-t border-dashed border-[var(--g-line)] pt-3">
+        <div className="flex items-baseline justify-between gap-3">
           <dt className="text-[12px] font-semibold tracking-[0.04em] text-[var(--g-text-muted)]">
             {c.rates.starterPackLabel}
           </dt>
-          <dd className="m-0 text-[14.5px] font-semibold text-[var(--g-text-muted)] tabular-nums">
-            {formatEuro(STARTER_PACK_PROPOSAL_CENTS[tier])}
+          <dd className="m-0 text-[14.5px] font-semibold text-[var(--g-ink)] tabular-nums">
+            {formatEuro(publicStarterPackRate(tier))}
           </dd>
         </div>
       </dl>
-      <p className="mt-2.5 text-[11px] leading-[1.45] text-[var(--g-text-muted)]">
-        {c.rates.starterPackPending}
-      </p>
     </article>
   );
 }
@@ -330,7 +317,7 @@ function Calculator() {
             // One level prices the WHOLE estimate: a Standard partner sells
             // packs at the Standard rate, a Gold partner at the Gold rate.
             // A second switch here only invited them to disagree.
-            rateCents: STARTER_PACK_PROPOSAL_CENTS[mode],
+            rateCents: publicStarterPackRate(mode),
           }),
     [mode, counts, starterPacks],
   );
@@ -367,10 +354,9 @@ function Calculator() {
             ))}
           </div>
 
-          {/* Starter Pack sits apart from the four plan fields: it is a
-              one-off product, and its rate is a proposal rather than a frozen
-              rate — so it carries its own level switch and its own caveat. */}
-          <div className="mt-5 rounded-[14px] border border-dashed border-[var(--g-line)] px-5 py-5">
+          {/* Starter Pack sits apart from the four plan fields because it is a
+              ONE-OFF sale, not a subscription: it enters the year once. */}
+          <div className="mt-5 rounded-[14px] border border-[var(--g-line-quiet,#e6e2db)] px-5 py-5">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
               <label className="block sm:w-[220px]">
                 <span className="block text-[11.5px] font-semibold tracking-[0.05em] text-[var(--g-text-muted)] uppercase">
@@ -391,15 +377,10 @@ function Calculator() {
               <p className="pb-3 text-[12.5px] leading-[1.5] text-[var(--g-text-secondary)]">
                 {c.calculator.starterPackRateLabel}:{' '}
                 <strong className="font-semibold text-[var(--g-ink)] tabular-nums">
-                  {isCustomTermsMode(mode)
-                    ? '—'
-                    : formatEuro(STARTER_PACK_PROPOSAL_CENTS[mode])}
+                  {isCustomTermsMode(mode) ? '—' : formatEuro(publicStarterPackRate(mode))}
                 </strong>
               </p>
             </div>
-            <p className="mt-3 text-[11px] leading-[1.45] text-[var(--g-text-muted)]">
-              {c.rates.starterPackPending}
-            </p>
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-3">

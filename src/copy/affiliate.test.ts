@@ -42,8 +42,13 @@ describe('affiliate copy', () => {
 
   // D03 — attribution is explained in customer words.
   it('explains attribution simply', () => {
-    expect(affiliateCopyPl.hero.lede).toMatch(/przypisan/i);
-    expect(affiliateCopyPl.recurring.steps.some((step) => /przypisan/i.test(step.title))).toBe(
+    // The owner's language pass replaced the CRM word "przypisany" with plain
+    // Polish. D03 asks that attribution be EXPLAINED, not that one term be
+    // used, so this accepts either — and still fails if the idea disappears.
+    expect(affiliateCopyPl.hero.lede).toMatch(/przypisan|zostaje z Tobą/i);
+    expect(
+      affiliateCopyPl.recurring.steps.some((step) => /przypisan|zostaje z Tobą/i.test(step.title)),
+    ).toBe(
       true,
     );
   });
@@ -70,27 +75,29 @@ describe('affiliate copy', () => {
     expect(affiliateCopyPl.rates.eliteCta).toBe('Porozmawiajmy');
   });
 
-  // Rewizja 1 §5 — the Starter Pack commission was NEVER frozen. The amount
-  // lives in the page as an owner-pending proposal, so copy must carry the
-  // caveat and must not state a figure of its own.
-  it('marks the Starter Pack rate as awaiting approval, with no amount in copy', () => {
+  // OWNER-FROZEN 2026-09-02 — the Starter Pack commission is canonical now
+  // (9 EUR Standard / 19 EUR Gold). Copy still carries no figure of its own:
+  // the page reads it from publicStarterPackRate at render time.
+  it('names the Starter Pack without ever stating its amount', () => {
     for (const copy of [affiliateCopyPl, affiliateCopyEn]) {
-      expect(copy.rates.starterPackPending.length).toBeGreaterThan(0);
+      expect(copy.rates.starterPackLabel.length).toBeGreaterThan(0);
       expect(copy.rates.starterPackLabel).not.toMatch(/\d/);
-      expect(copy.rates.starterPackPending).not.toMatch(/\d/);
+      expect(copy.rates.starterPackUnit).not.toMatch(/\d/);
     }
-    expect(affiliateCopyPl.rates.starterPackPending).toMatch(/czeka na zatwierdzenie/);
+    // Nothing anywhere may still call the rate provisional.
+    const all = JSON.stringify([affiliateCopyPl, affiliateCopyEn]);
+    expect(all).not.toMatch(/czeka na zatwierdzenie|awaiting approval/i);
   });
 
   // Rewizja 1 §3 — the flow said only "partner earns". The customer's own
   // gain is annual-only, and the monthly exclusion must be stated, not implied.
-  it('states the annual customer benefit and excludes monthly', () => {
+  it('states the annual customer benefit and scopes it to annual plans', () => {
     for (const copy of [affiliateCopyPl, affiliateCopyEn]) {
       expect(copy.customerBenefit.bodyTemplate).toContain('{emphasis}');
       expect(copy.customerBenefit.monthlyNote.length).toBeGreaterThan(0);
     }
-    expect(affiliateCopyPl.customerBenefit.emphasis).toBe('15 miesięcy w cenie 12');
-    expect(affiliateCopyPl.customerBenefit.monthlyNote).toMatch(/miesięczn/);
+    expect(affiliateCopyPl.customerBenefit.emphasis).toBe('3 dodatkowe miesiące bez opłat');
+    expect(affiliateCopyPl.customerBenefit.monthlyNote).toMatch(/roczn/);
   });
 
   // C07 / C08 / E08 — no rate may be typed into copy at all; the page reads

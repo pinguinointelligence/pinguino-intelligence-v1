@@ -9,9 +9,11 @@ import {
   PUBLIC_GOLD_THRESHOLD,
   PUBLIC_HOLD_FULL_MONTHS,
   PUBLIC_MINIMUM_PAYOUT_CENTS,
+  PUBLIC_STARTER_PACK_RETAIL_CENTS,
   formatEuro,
   publicRate,
   publicRateCard,
+  publicStarterPackRate,
 } from './publicRateAuthority';
 
 /**
@@ -90,14 +92,42 @@ describe('affiliate public rate authority', () => {
     // Strip comments: the file documents the threshold in prose, and prose is
     // not a second source of truth.
     const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
-    for (const literal of [199, 249, 299, 499, 599, 699, 900, 1400, 1900, 2900, 3900, 4900, 2500]) {
-      expect(code).not.toMatch(new RegExp(`\\b${literal}\\b`));
+    // The Starter Pack block is the ONE exemption, and it is narrow on purpose:
+    // that commission has no upstream to import — `commission_rules` carries
+    // only home and pro — so the owner froze it here (2026-09-02) and this file
+    // IS its source. Everything else must still come from resolveCommission.
+    const subscriptionRates = code.slice(0, code.indexOf('STARTER_PACK_COMMISSION_CENTS'))
+      + code.slice(code.indexOf('export function publicStarterPackRate'));
+    for (const literal of [199, 249, 299, 499, 599, 699, 1400, 2900, 3900, 4900, 2500]) {
+      expect(subscriptionRates).not.toMatch(new RegExp(`\\b${literal}\\b`));
     }
+    // And the exemption stays exactly one block wide.
+    expect(code.match(/5_900|900|1_900/g)?.length).toBeLessThanOrEqual(4);
   });
 
   it('formats euro for Polish display without inventing decimals', () => {
     expect(formatEuro(199)).toMatch(/1,99/);
     expect(formatEuro(900)).toMatch(/^9\s?€$|9\s€/);
     expect(formatEuro(0)).toMatch(/0/);
+  });
+});
+
+describe('Starter Pack — owner-frozen 2026-09-02', () => {
+  it('quotes 9 EUR Standard and 19 EUR Gold, from the authority', () => {
+    expect(publicStarterPackRate('standard')).toBe(900);
+    expect(publicStarterPackRate('gold')).toBe(1_900);
+  });
+
+  it('carries the retail price the commission is paid against', () => {
+    expect(PUBLIC_STARTER_PACK_RETAIL_CENTS).toBe(5_900);
+  });
+
+  it('is quotable for every public tier, and Elite is not a public tier', () => {
+    for (const tier of PUBLIC_AFFILIATE_TIERS) {
+      expect(publicStarterPackRate(tier)).toBeGreaterThan(0);
+    }
+    // Elite stays individual: it is not in PUBLIC_AFFILIATE_TIERS at all, so
+    // there is no way to ask this function for an Elite figure.
+    expect([...PUBLIC_AFFILIATE_TIERS]).not.toContain(CUSTOM_TERMS_TIER);
   });
 });

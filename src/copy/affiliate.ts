@@ -103,8 +103,6 @@ export interface AffiliateCopy {
     readonly eliteCta: string;
     readonly starterPackLabel: string;
     readonly starterPackUnit: string;
-    /** OWNER-PENDING: no Starter Pack commission has ever been frozen. */
-    readonly starterPackPending: string;
   };
   readonly calculator: {
     readonly eyebrow: string;
@@ -181,13 +179,13 @@ export const affiliateCopyPl: AffiliateCopy = {
     eyebrow: 'Program Affiliate',
     titleLine1: 'Polecaj i zarabiaj',
     titleLine2: 'na każdym odnowieniu.',
-    lede: 'Dostajesz własny link i własny kod. Klient, który przez nie przyjdzie, zostaje przypisany do Ciebie — a prowizja nie kończy się na pierwszej płatności.',
+    lede: 'Dostajesz własny link i kod. Kto przyjdzie przez nie do Gellatti, zostaje z Tobą — a Ty otrzymujesz wynagrodzenie także za kolejne odnowienia.',
     points: [
       'Własny link i własny kod',
-      'Przypisany klient zostaje Twój',
-      'Kolejne prowizje z udanych odnowień',
+      'Twoi odbiorcy zostają z Tobą',
+      'Wynagrodzenie także za odnowienia',
     ],
-    note: 'Prowizję nalicza każda kwalifikowana, opłacona płatność.',
+    note: 'Wynagrodzenie otrzymujesz za każdą opłaconą płatność.',
   },
   cta: {
     signedOut: 'Dołącz do Affiliate',
@@ -213,40 +211,38 @@ export const affiliateCopyPl: AffiliateCopy = {
   },
   recurring: {
     eyebrow: 'Jak liczy się prowizja',
-    title: 'Jedno polecenie może płacić wielokrotnie.',
-    body: 'Prowizja nie kończy się na pierwszej płatności. Jeśli klient pozostaje przypisany do Ciebie, każde kwalifikowane opłacone odnowienie nalicza kolejną prowizję.',
+    title: 'Dobra rekomendacja pracuje dłużej niż jeden dzień.',
+    body: 'Wynagrodzenie nie kończy się na pierwszej płatności. Dopóki polecona osoba zostaje z Gellatti, każde opłacone odnowienie liczy się dla Ciebie.',
     steps: [
-      { title: 'Klient kupuje', body: 'Przychodzi przez Twój link albo podaje Twój kod.' },
-      {
-        title: 'Zostaje przypisany',
-        body: 'Przypisanie zapisuje się przy pierwszej opłaconej płatności.',
-      },
-      { title: 'Odnawia subskrypcję', body: 'Kolejny okres zostaje opłacony.' },
-      { title: 'Kolejna prowizja', body: 'Naliczamy ją za to odnowienie.' },
+      { title: 'Ktoś korzysta z polecenia', body: 'Przychodzi przez Twój link albo podaje Twój kod.' },
+      { title: 'Zostaje z Tobą', body: 'Od pierwszej opłaconej płatności jest Twoim poleceniem.' },
+      { title: 'Zostaje na dłużej', body: 'Przedłuża plan na kolejny okres.' },
+      { title: 'Ty znów otrzymujesz wynagrodzenie', body: 'Za to odnowienie i za każde następne.' },
     ],
-    honest: 'Nieudana, zwrócona lub nieopłacona płatność nie tworzy prowizji.',
+    honest: 'Liczy się opłacona płatność — nieopłacona lub zwrócona nie daje wynagrodzenia.',
   },
   customerBenefit: {
-    figure: '15',
-    figureUnit: ' mies.',
-    title: 'Klient też zyskuje.',
-    bodyTemplate: 'Kto kupi plan roczny z Twojego linku lub kodu, dostaje {emphasis}. Cena się nie zmienia.',
-    emphasis: '15 miesięcy w cenie 12',
-    monthlyNote: 'Przy planie miesięcznym bonus nie przysługuje.',
+    figure: '3',
+    figureUnit: ' miesiące gratis',
+    title: 'Daj swoim odbiorcom coś więcej.',
+    bodyTemplate:
+      'Każdy, kto wybierze roczny plan Gellatti z Twojego linku lub kodu, otrzyma {emphasis}.',
+    emphasis: '3 dodatkowe miesiące bez opłat',
+    monthlyNote: 'Korzyść dotyczy planów rocznych.',
   },
   rates: {
     eyebrow: 'Stawki',
     title: 'Standard, Gold i warunki indywidualne.',
-    body: 'Stawki są kwotowe, w euro, za każdą udaną płatność i za każde udane odnowienie.',
+    body: 'Konkretne kwoty w euro — za każdą opłaconą płatność i za każde odnowienie.',
     perRenewal: 'za udane odnowienie',
     homeMonthly: 'HOME miesięcznie',
     proMonthly: 'PRO miesięcznie',
     homeAnnual: 'HOME rocznie',
     proAnnual: 'PRO rocznie',
     standardName: 'Standard',
-    standardBlurb: 'Poziom startowy. Obowiązuje od pierwszego przypisanego klienta.',
+    standardBlurb: 'Poziom startowy. Działa od pierwszej poleconej osoby.',
     goldName: 'Gold',
-    goldBlurbTemplate: 'Wyższe stawki od {threshold} aktywnych, płacących poleconych klientów.',
+    goldBlurbTemplate: 'Wyższe stawki, gdy Twoje polecenia utrzymają {threshold} aktywnych planów.',
     goldBadgeTemplate: 'od {threshold} aktywnych klientów',
     eliteName: 'Elite',
     eliteTerms: 'Dla największych partnerów',
@@ -255,14 +251,13 @@ export const affiliateCopyPl: AffiliateCopy = {
     eliteCta: 'Porozmawiajmy',
     starterPackLabel: 'Zestaw Startowy',
     starterPackUnit: 'za zestaw',
-    starterPackPending: 'Stawka za Zestaw Startowy czeka na zatwierdzenie.',
   },
   calculator: {
     eyebrow: 'Kalkulator',
     title: 'Policz swoją prowizję.',
-    body: 'Wpisz, ilu aktywnych klientów przypisanych do Ciebie zakładasz w każdym planie.',
+    body: 'Wpisz, ile osób z Twojego polecenia spodziewasz się w każdym planie.',
     modeLabel: 'Poziom',
-    inputsLabel: 'Aktywni klienci',
+    inputsLabel: 'Polecone osoby',
     homeMonthlyLabel: 'HOME — plan miesięczny',
     homeAnnualLabel: 'HOME — plan roczny',
     proMonthlyLabel: 'PRO — plan miesięczny',
@@ -274,51 +269,55 @@ export const affiliateCopyPl: AffiliateCopy = {
     starterPacksLabel: 'Zestawy Startowe — sprzedane',
     starterPackRateLabel: 'Stawka za Zestaw Startowy',
     fromStarterPacks: 'Prowizja z Zestawów Startowych',
-    assumption: 'Szacunek zakłada udane kwalifikowane płatności i odnowienia. Stawka za Zestaw Startowy czeka na zatwierdzenie.',
+    assumption: 'To szacunek przy opłaconych planach i odnowieniach.',
     eliteState: 'Indywidualne warunki',
     eliteCta: 'Porozmawiajmy',
     reset: 'Wyczyść',
   },
   audience: {
     eyebrow: 'Dla kogo',
-    title: 'Dla tych, którzy mają komu polecić.',
+    title: 'Dla tych, którzy pomagają innym wybierać lepiej.',
     groups: [
       {
-        title: 'Społeczności i media',
-        body: 'Grupa, newsletter, podcast albo portal — wszędzie tam, gdzie ktoś pyta o polecenie.',
+        title: 'Twórcy i influencerzy',
+        body: 'Pokazujesz rozwiązania, które inspirują, ułatwiają pracę albo pomagają tworzyć lepsze lody.',
       },
       {
-        title: 'Branża i szkolenia',
-        body: 'Lodziarnia, cukiernia, szkoła lub szkolenia — polecasz to, czego sam używasz.',
+        title: 'Profesjonaliści i edukatorzy',
+        body: 'Pracujesz w branży lub uczysz innych? Polecaj narzędzie, które rozwiązuje realne problemy w codziennej pracy.',
       },
       {
-        title: 'Twórcy',
-        body: 'Tworzysz materiały, które Twoja publiczność chce powtórzyć u siebie.',
+        title: 'Media i społeczności',
+        body: 'Prowadzisz grupę, newsletter, podcast lub portal? Dziel się Gellatti tam, gdzie Twoi odbiorcy szukają praktycznych odpowiedzi.',
       },
     ],
   },
   how: {
-    eyebrow: 'Jak zacząć',
-    title: 'Trzy kroki i masz swoje linki.',
+    eyebrow: 'Jak to działa',
+    title: 'Polecasz. Oni zyskują. Ty zarabiasz.',
     steps: [
-      { index: '01', title: 'Zgłoś się', body: 'Krótki formularz. Sprawdzimy zgłoszenie.' },
+      {
+        index: '01',
+        title: 'Dołącz do programu',
+        body: 'Krótki formularz. Sprawdzimy zgłoszenie.',
+      },
       {
         index: '02',
-        title: 'Dostajesz kody i linki',
-        body: 'Własne kody i linki. Do kampanii możesz tworzyć kolejne.',
+        title: 'Odbierz swoje linki i kody',
+        body: 'Twórz własne linki i kody dla różnych kanałów i kampanii.',
       },
       {
         index: '03',
-        title: 'Polecasz i zarabiasz',
-        body: 'Wyniki, przypisani klienci i prowizje są widoczne na bieżąco.',
+        title: 'Dziel się Gellatti',
+        body: 'Twoi odbiorcy korzystają z dodatkowych korzyści, a Ty widzisz przypisanych klientów i prowizje na bieżąco.',
       },
     ],
   },
   apply: {
     eyebrow: 'Zgłoszenie',
-    title: 'Dołącz do programu Affiliate.',
-    body: 'Prowizja zaczyna się od pierwszej opłaconej płatności Twojego klienta i wraca przy każdym odnowieniu.',
-    signedOutBody: 'Konto założysz po drodze — wrócisz prosto do zgłoszenia.',
+    title: 'Polecaj rozwiązanie, które naprawdę pomaga.',
+    body: 'Twoi odbiorcy dostają dodatkową korzyść. Ty otrzymujesz prowizję za udane płatności i kolejne odnowienia.',
+    signedOutBody: 'Konto założysz po drodze — wrócisz prosto tutaj.',
     signInCta: 'Zgłoś się',
   },
   panel: {
@@ -421,7 +420,6 @@ export const affiliateCopyEn: AffiliateCopy = {
     eliteCta: "Let's talk",
     starterPackLabel: 'Starter Pack',
     starterPackUnit: 'per pack',
-    starterPackPending: 'The Starter Pack rate is awaiting approval.',
   },
   calculator: {
     eyebrow: 'Calculator',
