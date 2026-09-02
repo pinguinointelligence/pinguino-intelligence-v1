@@ -301,6 +301,7 @@ export function HomeRecipeSection({
   onAddTopping,
   onGramsBlocked,
   onSave,
+  saveNotice,
   onLetsMakeIt,
   onShare,
   canShare,
@@ -324,6 +325,12 @@ export function HomeRecipeSection({
   onGramsBlocked: () => void;
   onAddTopping: (ingredient: RecipeToppingIngredient, behavior?: ProductBehaviorSnapshot) => void;
   onSave: () => void;
+  /**
+   * Why a save did not happen. The canonical handler already produces a customer
+   * sentence; HOME simply has to show it. Without this the button looked enabled,
+   * did nothing, and said nothing.
+   */
+  saveNotice?: string | null;
   onLetsMakeIt: () => void;
   onShare: () => void;
   canShare: boolean;
@@ -596,6 +603,20 @@ export function HomeRecipeSection({
             </button>
           ) : null}
         </div>
+        {/* Served: „Zapisz recepturę" could refuse and say nothing at all — the canonical
+            handler already produced a customer sentence and HOME dropped it, so the
+            button looked enabled, did nothing, and explained nothing. */}
+        {saveNotice ? (
+          <p
+            className="mt-3 text-[13px] leading-snug"
+            data-testid="home-save-notice"
+            role="status"
+            aria-live="polite"
+            style={{ color: 'var(--g-attention-ink)' }}
+          >
+            {saveNotice}
+          </p>
+        ) : null}
       </div>
     </HomeSection>
   );

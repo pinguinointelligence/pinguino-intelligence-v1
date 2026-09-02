@@ -15,6 +15,15 @@ describe('responsive Pro workbench structure', () => {
     // so every authenticated screen measures from the Production master.
     const geometry = read('features', 'shell', 'shellGeometry.ts');
 
+    // OWNER 2026-09-02: the workbench now renders inside Shop's canvas, so in
+    // workbench mode the header shares that cap — otherwise the module strip,
+    // right-aligned in the header, lands beside the display column instead of
+    // on it (measured: 54 px off at 1440, 149 px at 2368). Every other PRO
+    // surface keeps the 1776 px page width.
+    // SUPERSEDED, owner 2026-09-02 (option A). The header keeps the page's full
+    // width on EVERY route again — the 1440 cap it briefly carried is now on the
+    // centred band inside it, not on the row, so the hamburger, the wordmark and
+    // the login measure 32 / 96 / 32 px identically on Shop and PRO.
     expect(page).toContain('maxWidthClass="max-w-[1776px]"');
     expect(page).toContain('max-w-[1776px]');
     // The mode mark is the canonical switch (owner frozen 2026-09-01), pinned to the

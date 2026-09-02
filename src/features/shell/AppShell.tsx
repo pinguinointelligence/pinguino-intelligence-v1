@@ -10,7 +10,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { AppNavDrawer } from './AppNavDrawer';
 import { navigationAudience } from './appNav';
 import { DESKTOP_WORKBENCH_COLUMNS } from './desktopTabAnchorContract';
-import { APP_HEADER_ROW, APP_SHELL_MAX_WIDTH_CLASS } from './shellGeometry';
+import { APP_HEADER_CANVAS, APP_HEADER_ROW, APP_SHELL_MAX_WIDTH_CLASS } from './shellGeometry';
 
 /**
  * THE ONE canonical application shell.
@@ -110,7 +110,13 @@ export function AppShell({
              the viewport (`h-dvh`, no page scroll) — correct for the workbench, wrong
              for HOME's long sequential document. Geometry is shared; scroll behaviour
              stays each page's own. */
-          `xl:grid ${DESKTOP_WORKBENCH_COLUMNS}`,
+          /* OWNER 2026-09-02 (option A): the two-track grid moved OFF the header row
+             and into the centred band below. The row itself is the page's full
+             width on every route, so the hamburger, the wordmark and the login sit
+             on the same pixels everywhere — 32 / 96 / 32 px, measured identically
+             on Shop and PRO — instead of being dragged inward by whatever canvas
+             the surface beneath happens to use. */
+          'xl:relative xl:flex',
           stickyHeader && 'sticky top-0 z-40 bg-paper',
         )}
         /* The notch inset stays at every width; its FLOOR is a token so the
@@ -131,7 +137,6 @@ export function AppShell({
             // Deliberately NOT applied from `sm` up — the desktop header keeps the
             // geometry it was frozen with.
             'max-sm:flex-1',
-            'xl:col-start-1 xl:row-start-1',
           )}
         >
           <AppNavDrawer />
@@ -171,14 +176,45 @@ export function AppShell({
               still occupies the accessibility tree: served measurement on 8dd11c9b
               found a zero-width tablist, so a screen reader met two HOME and two PRO
               tabs. Visual exclusivity is not exclusivity. */}
-          <div className="ml-auto flex items-center gap-2 sm:gap-3">
+        </div>
+
+        {/* OWNER 2026-09-02, option A: HOME | PRO stays on the WORKBENCH's column
+            edge — the same x on Shop, on HOME and on every destination, not each
+            page's own trailing edge. That edge only exists inside the canvas, so
+            the two-track grid lives here: a centred band of the canvas width,
+            scaled by the same factor as the workbench body beneath it, which is
+            also what keeps the module strip on the display column.
+
+            `contents` below the breakpoint, an absolutely centred grid from `xl`
+            up — ONE instance of the switch either way. Rendering a second copy and
+            hiding it with `xl:hidden` is exactly the trap the note above
+            describes: a CSS-hidden control still sits in the accessibility tree.
+
+            `pointer-events-none` on the band with `pointer-events-auto` on its own
+            controls: the band spans the row, and without this it would sit over
+            the hamburger and the login and swallow their clicks. */}
+        <div className={cn('contents', APP_HEADER_CANVAS, `xl:grid ${DESKTOP_WORKBENCH_COLUMNS}`)}>
+          <div className="pointer-events-auto ml-auto flex min-w-0 items-center gap-2 sm:gap-3 xl:col-start-1 xl:row-start-1 xl:justify-end">
             {/* Page actions first, the switch LAST: HOME | PRO closes the work
                 column, so nothing may sit between it and the column edge. */}
             {!viewportLock ? actions : null}
             {globalSwitch}
           </div>
+          {viewportLock ? workbenchChrome : null}
         </div>
-        {viewportLock ? workbenchChrome : null}
+
+        {/* OWNER 2026-09-02: the login closes the row at the same inset the
+            hamburger opens it, so the header reads as one symmetrical band on
+            every route. It sits OUTSIDE the centred band on purpose — the band is
+            absolutely positioned from `xl` up and would otherwise carry the login
+            inward with it. Presentation only for now: no session, no menu, no
+            navigation behind it. */}
+        <span
+          data-testid="app-header-login"
+          className="ml-auto hidden shrink-0 items-center rounded-full border border-[var(--g-line)] px-4 py-1.5 text-[12px] font-semibold whitespace-nowrap text-[var(--g-text-secondary)] xl:inline-flex"
+        >
+          Zaloguj
+        </span>
       </header>
       <main
         className={cn(contentClassName, viewportLock && 'xl:min-h-0 xl:flex-1 xl:overflow-hidden')}

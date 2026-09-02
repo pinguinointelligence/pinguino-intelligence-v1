@@ -480,11 +480,30 @@ export function ProWorkspacePage() {
     // White precision workspace: presentation-only token remap. The same components,
     // values, content, actions and below-fold review zone remain intact.
     <div
+      /* OWNER 2026-09-02: PRO must read as the SAME application as Shop, not an
+         enlarged one. The whole workbench scope is laid out at the approved
+         1440 px authority and rendered at Shop's 1280 px canvas — 1280/1440 =
+         0.8889 — so rows, type, steppers, spacing, the display column, the
+         recipe card, WYNIK, USTAWIENIA and the module strip all shrink by the
+         same factor, together. It sits HERE rather than on the workbench panel
+         so the header scales with the body; on the panel alone the module strip
+         stopped lining up with the display column beneath it.
+
+         `zoom`, not `transform: scale()`: zoom takes part in layout, so the
+         scope genuinely occupies the smaller box instead of leaving a phantom
+         one. The locked height is divided by the same factor, otherwise the
+         scaled `100dvh` would come up 11 % short of the viewport.
+
+         Hierarchy, order, copy and logic are untouched — only the scale. */
       className={`pro-studio-radius-system theme-pro-light${workbench ? ' gellatti-pro-workbench xl:h-dvh' : ''}`}
       data-testid="pro-light-scope"
     >
       <AppShell
         viewportLock={workbench}
+        /* In workbench mode the header must share the workbench's cap, or the
+           module strip — right-aligned inside the header — lands beside the
+           display column instead of on it. Measured before this line existed:
+           the strip sat 54 px right of the column at 1440 and 149 px at 2368. */
         maxWidthClass="max-w-[1776px]"
         brand={<OfficialProLogo />}
         /* FROZEN GLOBAL CONTRACT (owner, 2026-09-02): PRO renders the SAME
@@ -530,7 +549,17 @@ export function ProWorkspacePage() {
           // ONE-SCREEN workbench (recipe + monitor): no page heading, no tab row — the
           // viewport belongs to the edit loop; every destination lives in the hamburger.
           <div
-            className="xl:mx-auto xl:flex xl:h-full xl:min-h-0 xl:w-[calc(100%-var(--pro-page-gutter))] xl:max-w-[1776px] xl:flex-col"
+            /* OWNER 2026-09-02: PRO has to read as the SAME application as Shop,
+               not an enlarged one. Shop's content sits in `APP_PAGE_CANVAS`
+               (max-w-1280) nested inside the 1776 px workspace; the workbench had
+               no inner canvas and ran nearly edge to edge.
+
+               A bare max-width would only crop the page — the rows, type,
+               steppers and gaps would stay oversized. The scale is therefore
+               applied to the whole PRO scope (see `pro-light-scope` above), not
+               here: putting it on this panel alone left the HEADER unscaled, and
+               the module strip stopped lining up with the display column. */
+            className="xl:mx-auto xl:flex xl:h-full xl:min-h-0 xl:w-[calc(100%-var(--pro-page-gutter))] xl:max-w-[1440px] xl:flex-col xl:[zoom:0.8889]"
             data-testid={`pro-panel-${activeTab}`}
           >
             {activeLibraryHandoff.state === 'loading' ? (
