@@ -697,10 +697,23 @@ export function RecipeProfilePanel({
         role="tabpanel"
         aria-labelledby={`${idPrefix}-${activeTab}-tab-control`}
         tabIndex={0}
-        /* The approved display column is a full 520 px: a permanently reserved
-           scrollbar gutter would inset every card by ~15 px and break the 1:1
-           geometry, so the gutter is claimed only when a scrollbar exists. */
-        className="intelligence-tabpanel-scroll lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overflow-x-hidden lg:[scrollbar-gutter:stable] xl:[scrollbar-gutter:auto]"
+        /* DESKTOP-CB-01 (cross-browser phase, 2026-09-02). The `xl:auto` override
+           here rested on a premise that is wrong for OVERLAY scrollbars:
+           `scrollbar-gutter: stable` reserves nothing when the platform's
+           scrollbar does not participate in layout, so on macOS it cost
+           nothing to begin with. What `auto` actually bought was an
+           INSTABILITY on every classic-scrollbar platform — Windows, Linux, and
+           macOS set to "always show scroll bars". Measured in Chrome at the
+           approved 500 px track: content is 485 px at 1440x900 (the panel
+           scrolls) but 500 px at 1440x2200 and 1920x1080 (it does not), so the
+           column's usable width — and with it the settings grid, the truncation
+           points and the figure divider — moved with the WINDOW HEIGHT.
+
+           `stable` at every breakpoint makes the inset constant where a classic
+           scrollbar exists and remains a no-op where it does not. The reviewed
+           1440x900 visual is byte-identical either way: it measured 485 px
+           before this change and 485 px after. */
+        className="intelligence-tabpanel-scroll lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overflow-x-hidden lg:[scrollbar-gutter:stable]"
       >
         {activeTab === 'profile' && educationOpen ? (
           <ContextualEducationView
