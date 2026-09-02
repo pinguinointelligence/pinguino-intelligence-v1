@@ -29,8 +29,49 @@ const label = 'text-[10px] font-semibold tracking-[0.13em] text-stone-500 upperc
  * commissions, the Partner workspace — but the only route in was an admin
  * invitation, so the cooperation page had no door. This panel writes a real
  * `partner_applications` row through the server, and Admin decides.
+ *
+ * ONE PANEL, TWO SURFACES. Work With Us presents this as the *Partner*
+ * application; `/affiliate` presents the SAME flow, the same RPC and the same
+ * `partner_applications` row as the *Affiliate* application. Only the wording
+ * and the anchor differ, which is what `labels` and `anchorId` carry. A second
+ * application component would mean a second application system — the one thing
+ * this programme must not have.
  */
-export function PartnerApplicationPanel() {
+export interface PartnerApplicationLabels {
+  readonly formTitle?: string;
+  readonly signInFirst?: string;
+  readonly signInCta?: string;
+  readonly activeTitle?: string;
+  readonly activeBody?: string;
+  readonly activeCta?: string;
+  /** Where the approved applicant's panel lives. */
+  readonly activeHref?: string;
+  readonly pendingTitle?: string;
+  readonly pendingBody?: string;
+  readonly informationBody?: string;
+}
+
+export function PartnerApplicationPanel({
+  labels,
+  anchorId = 'partner-application',
+}: {
+  labels?: PartnerApplicationLabels;
+  anchorId?: string;
+} = {}) {
+  // Defaults are the cooperation copy this panel shipped with, so Work With Us
+  // is byte-identical unless a caller deliberately overrides a string.
+  const t = {
+    formTitle: labels?.formTitle ?? c.form.title,
+    signInFirst: labels?.signInFirst ?? c.form.signInFirst,
+    signInCta: labels?.signInCta ?? c.form.signInCta,
+    activeTitle: labels?.activeTitle ?? c.state.activeTitle,
+    activeBody: labels?.activeBody ?? c.state.activeBody,
+    activeCta: labels?.activeCta ?? c.state.activeCta,
+    activeHref: labels?.activeHref ?? '/partner',
+    pendingTitle: labels?.pendingTitle ?? c.state.pendingTitle,
+    pendingBody: labels?.pendingBody ?? c.state.pendingBody,
+    informationBody: labels?.informationBody ?? c.state.informationBody,
+  };
   const authStatus = useAuthStore((state) => state.status);
   const user = useAuthStore((state) => state.user);
   const openAuthModal = useAuthModalStore((state) => state.open);
@@ -76,17 +117,15 @@ export function PartnerApplicationPanel() {
 
   if (!authed) {
     return (
-      <div className="rounded-[12px] border border-ink/12 bg-white p-6" id="partner-application">
-        <h3 className="text-lg font-semibold tracking-[-0.02em]">{c.form.title}</h3>
-        <p className="mt-2 max-w-prose text-sm leading-relaxed text-stone-600">
-          {c.form.signInFirst}
-        </p>
+      <div className="rounded-[12px] border border-ink/12 bg-white p-6" id={anchorId}>
+        <h3 className="text-lg font-semibold tracking-[-0.02em]">{t.formTitle}</h3>
+        <p className="mt-2 max-w-prose text-sm leading-relaxed text-stone-600">{t.signInFirst}</p>
         <button
           type="button"
           onClick={() => openAuthModal()}
           className={cn(applicationPrimaryClasses(), 'mt-5')}
         >
-          {c.form.signInCta}
+          {t.signInCta}
         </button>
       </div>
     );
@@ -98,14 +137,11 @@ export function PartnerApplicationPanel() {
 
   if (mine.data?.partnerActive) {
     return (
-      <div
-        className="rounded-[12px] border border-ink/12 bg-[#e7e3dd] p-6"
-        id="partner-application"
-      >
-        <h3 className="text-lg font-semibold tracking-[-0.02em]">{c.state.activeTitle}</h3>
-        <p className="mt-2 text-sm leading-relaxed text-stone-600">{c.state.activeBody}</p>
-        <a href="/partner" className={cn(applicationPrimaryClasses(), 'mt-5 inline-flex')}>
-          {c.state.activeCta}
+      <div className="rounded-[12px] border border-ink/12 bg-[#e7e3dd] p-6" id={anchorId}>
+        <h3 className="text-lg font-semibold tracking-[-0.02em]">{t.activeTitle}</h3>
+        <p className="mt-2 text-sm leading-relaxed text-stone-600">{t.activeBody}</p>
+        <a href={t.activeHref} className={cn(applicationPrimaryClasses(), 'mt-5 inline-flex')}>
+          {t.activeCta}
         </a>
       </div>
     );
@@ -115,10 +151,10 @@ export function PartnerApplicationPanel() {
   if (status === 'submitted' || status === 'more_information_needed' || submit.data?.id) {
     const reason = mine.data?.application?.decision_reason;
     return (
-      <div className="rounded-[12px] border border-ink/12 bg-white p-6" id="partner-application">
-        <h3 className="text-lg font-semibold tracking-[-0.02em]">{c.state.pendingTitle}</h3>
+      <div className="rounded-[12px] border border-ink/12 bg-white p-6" id={anchorId}>
+        <h3 className="text-lg font-semibold tracking-[-0.02em]">{t.pendingTitle}</h3>
         <p className="mt-2 max-w-prose text-sm leading-relaxed text-stone-600">
-          {status === 'more_information_needed' ? c.state.informationBody : c.state.pendingBody}
+          {status === 'more_information_needed' ? t.informationBody : t.pendingBody}
         </p>
         {reason ? <p className="mt-3 text-sm text-stone-600">{reason}</p> : null}
       </div>
@@ -130,14 +166,14 @@ export function PartnerApplicationPanel() {
 
   return (
     <form
-      id="partner-application"
+      id={anchorId}
       className="rounded-[12px] border border-ink/12 bg-white p-6"
       onSubmit={(event) => {
         event.preventDefault();
         if (canSubmit && !submit.isPending) submit.mutate();
       }}
     >
-      <h3 className="text-lg font-semibold tracking-[-0.02em]">{c.form.title}</h3>
+      <h3 className="text-lg font-semibold tracking-[-0.02em]">{t.formTitle}</h3>
       <p className="mt-2 max-w-prose text-sm leading-relaxed text-stone-600">{c.form.blurb}</p>
       {rejected ? (
         <p className="mt-3 max-w-prose text-sm text-stone-600">{c.state.rejectedBody}</p>

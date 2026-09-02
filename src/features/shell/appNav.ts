@@ -177,14 +177,24 @@ export const APP_NAV_ITEMS: readonly AppNavItem[] = [
     audiences: ['guest', 'home', 'pro'],
     isActive: communityDestination,
   },
+  /**
+   * GELLATTI AFFILIATE — the public programme destination.
+   *
+   * It takes the ecosystem slot Work With Us used to hold in the drawer. Work
+   * With Us is NOT deleted: `/work-with-us` still routes and still serves the
+   * business-equipment lanes (machines, mobile, trailer, franchise, leads), and
+   * the Franchise entry below still reaches that family. What changed is the
+   * PRIMARY drawer, where the owner wants the recurring-commission programme
+   * rather than the equipment gateway.
+   */
   {
-    id: 'workWithUs',
-    label: s.items.workWithUs,
-    to: '/work-with-us',
+    id: 'affiliate',
+    label: s.items.affiliate,
+    to: '/affiliate',
     group: 'ecosystem',
     order: 2,
     audiences: ['guest', 'home', 'pro'],
-    isActive: exact('/work-with-us'),
+    isActive: exact('/affiliate'),
   },
   {
     id: 'franchise',

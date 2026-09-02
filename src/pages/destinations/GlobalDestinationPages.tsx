@@ -4,6 +4,7 @@ import { DestinationSurface } from '@/components/shared/DestinationSurface';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { applicationPrimaryClasses } from '@/components/ui/applicationControlStyles';
 import { cn } from '@/lib/cn';
+import { ReferAFriendPanel } from '@/features/referral/ReferAFriendPanel';
 import { useAuthStore } from '@/stores/authStore';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
@@ -739,6 +740,12 @@ export function AccountSettingsPage() {
           </div>
           <div className={ACCOUNT_PANEL}>
             <AccountRecipeDefaults />
+          </div>
+          {/* Poleć Gellatti lives in the signed-in account experience, not on a
+              public page: it is a member benefit, not an acquisition offer.
+              The money programme is Affiliate and has its own route. */}
+          <div className={ACCOUNT_PANEL}>
+            <ReferAFriendPanel />
           </div>
         </div>
       )}

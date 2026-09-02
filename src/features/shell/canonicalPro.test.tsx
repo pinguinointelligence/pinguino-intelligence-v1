@@ -111,7 +111,7 @@ describe('canonical Gellatti Pro — menu (proofs 4–6, 17–18)', () => {
       // surfaces. Label settings keep working inside Production/Label.
       'community',
       'memberShop',
-      'workWithUs',
+      'affiliate',
       'franchise',
     ]);
     expect(items.some((item) => item.to === '/pro/monitor')).toBe(false);

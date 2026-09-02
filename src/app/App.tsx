@@ -5,6 +5,7 @@ import { AppProviders } from './providers';
 import { AppRoutes } from './router';
 import { NotificationCenter } from '@/features/notifications/NotificationCenter';
 import { PartnerReferralBridge } from '@/features/partner/PartnerReferralBridge';
+import { ReferralClaimBridge } from '@/features/referral/ReferralClaimBridge';
 
 export function App() {
   return (
@@ -15,6 +16,7 @@ export function App() {
           <AuthModalHost />
           <NotificationCenter />
           <PartnerReferralBridge />
+          <ReferralClaimBridge />
         </BrowserRouter>
       </AppProviders>
     </AppErrorBoundary>
