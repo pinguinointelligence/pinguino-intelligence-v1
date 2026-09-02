@@ -86,14 +86,31 @@
 
   /* ── Module tabs (owner §8) ───────────────────────────────────────────
      Underline only. The preview has NO filled or boxed active tab: the
-     active module is marked by a 2 px orange rule on the header hairline. */
+     active module is marked by a 2 px orange rule ON THE HEADER HAIRLINE.
+
+     That last phrase is the contract, and the strip had stopped honouring it.
+     It was sized from `--g-workbench-header` (90px) — a height that only ever
+     reached the header through `.gellatti-pro-workbench > header`, a selector
+     that stopped matching when the header box was unified into APP_HEADER_ROW.
+     The live header is `--pro-header-height` (82px), so the strip stood 8px
+     taller than the band it belongs to and, measured at 1920:
+
+       header hairline   y 82
+       strip             y 0-90      (8px past the hairline)
+       orange rule       y 90        floating in the gap before the panes at 94
+       tab label axis    45          against the header's own axis of 41
+
+     Sizing the strip from the header it lives in puts the rule back on the
+     hairline and the labels back on the header's axis. Horizontal geometry is
+     NOT touched here: the strip is still measured from the display column by
+     `desktopTabAnchorContract`, which is what keeps switching modules at 0px. */
   .gellatti-pro-workbench [data-testid='pro-context-tabs'] {
     border-bottom: 0;
-    height: var(--g-workbench-header);
+    height: var(--pro-header-height);
   }
 
   .gellatti-pro-workbench [data-testid='pro-context-tabs'] > button {
-    min-height: var(--g-workbench-header);
+    min-height: var(--pro-header-height);
     font-size: 12px;
     font-weight: 600;
     background: transparent;
