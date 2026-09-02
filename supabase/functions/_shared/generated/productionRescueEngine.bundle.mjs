@@ -4296,6 +4296,38 @@ const validEnvelopeNumber = (value) => typeof value === "number" && Number.isFin
 * into raw grams for search. This is O(N), creates no new scientific constant
 * and still fails closed when bases or family compatibility cannot be proven.
 */
+/**
+* The canonical Main group arithmetic, shared by BOTH bands so there is exactly
+* one equivalent-percentage calculation in the codebase:
+*
+*   SENSORY band  — floor + OPTIMAL preference target. Scoped to the CROWN
+*                   (`lock_type === 'main'`), because those are optimisation
+*                   intents, and Crown is what expresses intent.
+*   SAFETY band   — hard limit + approved liquid dairy carrier floor. Scoped to
+*                   MAIN CAPABILITY, because a product that is acting as the
+*                   Main is unsafe past its published limits whether or not the
+*                   customer crowned it.
+*
+* Returns null when the group is empty, a snapshot is missing, or a multi-Main
+* group has no derivable combined envelope.
+*/
+function mainGroupFacts(group, targetBatchGrams) {
+	if (group.length === 0) return null;
+	const first = group[0].snapshot;
+	const multi = group.length > 1;
+	const multiEnvelope = multi ? resolveMultiMainEnvelope(group) : null;
+	if (multi && multiEnvelope === null) return null;
+	if (!multi && (!validEnvelopeNumber(first.ecoFloorPercent) || !validEnvelopeNumber(first.optimalCeilingPercent) || !validEnvelopeNumber(first.hardLimitPercent))) return null;
+	const equivalentGrams = group.reduce((sum, { item, snapshot }) => sum + item.planned_grams * (snapshot.mainEquivalentFactor ?? 0), 0);
+	return {
+		equivalentPercent: targetBatchGrams > 0 ? equivalentGrams / targetBatchGrams * 100 : 0,
+		floor: multi ? multiEnvelope.floorPercent : first.ecoFloorPercent,
+		ceiling: multi ? multiEnvelope.optimalCeilingPercent : first.optimalCeilingPercent,
+		hard: multi ? multiEnvelope.hardLimitPercent : first.hardLimitPercent,
+		multiEnvelope,
+		policyId: multi ? multiEnvelope.policyId : first.mainPolicyId
+	};
+}
 function resolveMultiMainEnvelope(resolved) {
 	if (resolved.length < 2) return null;
 	const first = resolved[0].snapshot;
@@ -4337,7 +4369,8 @@ const baseSnapshots = (snapshots) => Object.values(snapshots).filter((snapshot) 
 * final Preview/Apply gates. It deliberately ignores sensory Main policy
 * readiness: only the approved liquid-dairy carrier minimum is checked. */
 function verifyMainTechnicalCarrier(input) {
-	const managedMains = input.recipe.items.filter((item) => item.lock_type === "main" && input.snapshots[item.id] !== void 0);
+	const explicitMains = input.mainLineIds === void 0 ? null : new Set(input.mainLineIds);
+	const managedMains = input.recipe.items.filter((item) => input.snapshots[item.id] !== void 0 && (explicitMains === null ? item.lock_type === "main" : explicitMains.has(item.id)));
 	const dairyPolicies = managedMains.map((item) => input.snapshots[item.id]).filter((snapshot) => snapshot.requiresLiquidDairyCarrier && snapshot.liquidDairyCarrierFloorPercent !== null);
 	const dairyFloor = dairyPolicies.length > 0 ? Math.max(...dairyPolicies.map((snapshot) => snapshot.liquidDairyCarrierFloorPercent)) : null;
 	if (dairyFloor === null) return [];
@@ -4363,13 +4396,48 @@ function verifyMainEnvelope(input) {
 		excludeLineIds: [...technicalOnlyMainLineIds]
 	}));
 	const mains = input.recipe.items.filter((item) => item.lock_type === "main" && !technicalOnlyMainLineIds.has(item.id) && !userHeld.has(item.id));
-	if (mains.length === 0) return {
-		ok: true,
-		equivalentPercent: null,
-		targetPercent: null,
-		hardLimitPercent: null,
-		policyId: null
+	const capabilityCandidates = input.recipe.items.filter((item) => !technicalOnlyMainLineIds.has(item.id)).map((item) => ({
+		item,
+		snapshot: input.snapshots[item.id]
+	})).filter((entry) => entry.snapshot !== void 0).filter(({ snapshot }) => resolveMainCapability({
+		snapshot,
+		snapshotRequired: true
+	}).selectable);
+	const capabilityGroup = capabilityCandidates.every(({ snapshot }) => resolveMainCapability({
+		snapshot,
+		snapshotRequired: true
+	}).state === "MAIN_CAPABLE") ? capabilityCandidates : [];
+	const safetyViolations = () => {
+		const facts = mainGroupFacts(capabilityGroup, input.recipe.target_batch_grams);
+		if (facts === null) return [];
+		if (facts.equivalentPercent < facts.floor - EPSILON) return [];
+		const lineIds = capabilityGroup.map(({ item }) => item.id);
+		const found = [];
+		if (facts.equivalentPercent > facts.hard + EPSILON) found.push({
+			code: "main_above_hard_limit",
+			lineIds,
+			messagePl: `Grupa Main przekracza twardy limit ${facts.hard.toFixed(1)}%.`
+		});
+		found.push(...verifyMainTechnicalCarrier({
+			recipe: input.recipe,
+			snapshots: input.snapshots,
+			mainLineIds: lineIds
+		}));
+		return found;
 	};
+	if (mains.length === 0) {
+		const unsafe = safetyViolations();
+		return unsafe.length > 0 ? {
+			ok: false,
+			violations: unsafe
+		} : {
+			ok: true,
+			equivalentPercent: null,
+			targetPercent: null,
+			hardLimitPercent: null,
+			policyId: null
+		};
+	}
 	const managed = mains.filter((item) => input.snapshots[item.id] !== void 0);
 	const requiredLineIds = new Set(productBehaviorRequiredLineIds({ items: input.recipe.items }));
 	const missingRequired = mains.filter((item) => input.snapshots[item.id] === void 0 && requiredLineIds.has(item.id));
@@ -4381,13 +4449,19 @@ function verifyMainEnvelope(input) {
 			messagePl: "Składnik Główny wymaga ponownej walidacji technicznej produktu."
 		}]
 	};
-	if (managed.length === 0) return {
-		ok: true,
-		equivalentPercent: null,
-		targetPercent: null,
-		hardLimitPercent: null,
-		policyId: null
-	};
+	if (managed.length === 0) {
+		const unsafe = safetyViolations();
+		return unsafe.length > 0 ? {
+			ok: false,
+			violations: unsafe
+		} : {
+			ok: true,
+			equivalentPercent: null,
+			targetPercent: null,
+			hardLimitPercent: null,
+			policyId: null
+		};
+	}
 	const violations = [];
 	if (managed.length !== mains.length) violations.push({
 		code: "main_behavior_missing",
@@ -4445,6 +4519,8 @@ function verifyMainEnvelope(input) {
 		recipe: input.recipe,
 		snapshots: input.snapshots
 	}));
+	const alreadyRaised = new Set(violations.map((violation) => violation.code));
+	violations.push(...safetyViolations().filter((violation) => !alreadyRaised.has(violation.code)));
 	return violations.length > 0 ? {
 		ok: false,
 		violations

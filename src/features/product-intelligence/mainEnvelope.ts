@@ -45,6 +45,59 @@ const validEnvelopeNumber = (value: number | null | undefined): value is number 
  * into raw grams for search. This is O(N), creates no new scientific constant
  * and still fails closed when bases or family compatibility cannot be proven.
  */
+/**
+ * The canonical Main group arithmetic, shared by BOTH bands so there is exactly
+ * one equivalent-percentage calculation in the codebase:
+ *
+ *   SENSORY band  — floor + OPTIMAL preference target. Scoped to the CROWN
+ *                   (`lock_type === 'main'`), because those are optimisation
+ *                   intents, and Crown is what expresses intent.
+ *   SAFETY band   — hard limit + approved liquid dairy carrier floor. Scoped to
+ *                   MAIN CAPABILITY, because a product that is acting as the
+ *                   Main is unsafe past its published limits whether or not the
+ *                   customer crowned it.
+ *
+ * Returns null when the group is empty, a snapshot is missing, or a multi-Main
+ * group has no derivable combined envelope.
+ */
+function mainGroupFacts(
+  group: readonly ManagedMain[],
+  targetBatchGrams: number,
+): {
+  equivalentPercent: number;
+  floor: number;
+  ceiling: number;
+  hard: number;
+  multiEnvelope: MultiMainEnvelope | null;
+  policyId: string | null;
+} | null {
+  if (group.length === 0) return null;
+  const first = group[0]!.snapshot;
+  const multi = group.length > 1;
+  const multiEnvelope = multi ? resolveMultiMainEnvelope(group) : null;
+  if (multi && multiEnvelope === null) return null;
+  if (
+    !multi &&
+    (!validEnvelopeNumber(first.ecoFloorPercent) ||
+      !validEnvelopeNumber(first.optimalCeilingPercent) ||
+      !validEnvelopeNumber(first.hardLimitPercent))
+  ) {
+    return null;
+  }
+  const equivalentGrams = group.reduce(
+    (sum, { item, snapshot }) => sum + item.planned_grams * (snapshot.mainEquivalentFactor ?? 0),
+    0,
+  );
+  return {
+    equivalentPercent: targetBatchGrams > 0 ? (equivalentGrams / targetBatchGrams) * 100 : 0,
+    floor: multi ? multiEnvelope!.floorPercent : first.ecoFloorPercent!,
+    ceiling: multi ? multiEnvelope!.optimalCeilingPercent : first.optimalCeilingPercent!,
+    hard: multi ? multiEnvelope!.hardLimitPercent : first.hardLimitPercent!,
+    multiEnvelope,
+    policyId: multi ? multiEnvelope!.policyId : first.mainPolicyId,
+  };
+}
+
 function resolveMultiMainEnvelope(resolved: readonly ManagedMain[]): MultiMainEnvelope | null {
   if (resolved.length < 2) return null;
 
@@ -180,9 +233,17 @@ const baseSnapshots = (
 export function verifyMainTechnicalCarrier(input: {
   recipe: RecipeInput;
   snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
+  /** The Main group whose policy imposes the carrier floor. Defaults to the
+   * CROWN group. `verifyMainEnvelope` passes the capability-scoped group once
+   * the safety band has engaged, so an uncrowned product that is acting as the
+   * Main cannot escape its own carrier requirement. */
+  mainLineIds?: readonly string[];
 }): MainEnvelopeViolation[] {
+  const explicitMains = input.mainLineIds === undefined ? null : new Set(input.mainLineIds);
   const managedMains = input.recipe.items.filter(
-    (item) => item.lock_type === 'main' && input.snapshots[item.id] !== undefined,
+    (item) =>
+      input.snapshots[item.id] !== undefined &&
+      (explicitMains === null ? item.lock_type === 'main' : explicitMains.has(item.id)),
   );
   const dairyPolicies = managedMains
     .map((item) => input.snapshots[item.id]!)
@@ -255,14 +316,65 @@ export function verifyMainEnvelope(input: {
     (item) =>
       item.lock_type === 'main' && !technicalOnlyMainLineIds.has(item.id) && !userHeld.has(item.id),
   );
+  // CROWN-OFF SAFETY BAND. Crown expresses OPTIMISATION INTENT; it must not
+  // decide whether safety rules exist. A MAIN_CAPABLE product that has reached
+  // Main territory — its canonical equivalent share has reached the published
+  // `eco_floor_percent` — carries its own hard limit and carrier floor whether
+  // or not the customer crowned it. Below that threshold the product is a
+  // garnish and the Main policy does not engage.
+  const capabilityCandidates: ManagedMain[] = input.recipe.items
+    .filter((item) => !technicalOnlyMainLineIds.has(item.id))
+    .map((item) => ({ item, snapshot: input.snapshots[item.id] }))
+    .filter((entry): entry is ManagedMain => entry.snapshot !== undefined)
+    .filter(({ snapshot }) => resolveMainCapability({ snapshot, snapshotRequired: true }).selectable);
+  // COMPLETE-OR-NOTHING. A PARTIAL Main group has no derivable envelope: judging
+  // one calibrated member against its own single-product limit while an
+  // uncalibrated sibling is invisible manufactures a violation that no published
+  // policy supports. If any Main-capable line is user-held/uncalibrated, the
+  // combined envelope is unknown and today's behaviour (skip) stands — exactly
+  // as the Crown path already fails open for `userHeld` under §6/§21.
+  const capabilityGroup: ManagedMain[] = capabilityCandidates.every(
+    ({ snapshot }) =>
+      resolveMainCapability({ snapshot, snapshotRequired: true }).state === 'MAIN_CAPABLE',
+  )
+    ? capabilityCandidates
+    : [];
+  const safetyViolations = (): MainEnvelopeViolation[] => {
+    const facts = mainGroupFacts(capabilityGroup, input.recipe.target_batch_grams);
+    if (facts === null) return [];
+    // Engagement threshold: the canonical GROUP equivalent share, so split Main
+    // lines cannot each sit under the floor and together exceed it.
+    if (facts.equivalentPercent < facts.floor - EPSILON) return [];
+    const lineIds = capabilityGroup.map(({ item }) => item.id);
+    const found: MainEnvelopeViolation[] = [];
+    if (facts.equivalentPercent > facts.hard + EPSILON) {
+      found.push({
+        code: 'main_above_hard_limit',
+        lineIds,
+        messagePl: `Grupa Main przekracza twardy limit ${facts.hard.toFixed(1)}%.`,
+      });
+    }
+    found.push(
+      ...verifyMainTechnicalCarrier({
+        recipe: input.recipe,
+        snapshots: input.snapshots,
+        mainLineIds: lineIds,
+      }),
+    );
+    return found;
+  };
+
   if (mains.length === 0) {
-    return {
-      ok: true,
-      equivalentPercent: null,
-      targetPercent: null,
-      hardLimitPercent: null,
-      policyId: null,
-    };
+    const unsafe = safetyViolations();
+    return unsafe.length > 0
+      ? { ok: false, violations: unsafe }
+      : {
+          ok: true,
+          equivalentPercent: null,
+          targetPercent: null,
+          hardLimitPercent: null,
+          policyId: null,
+        };
   }
   const managed = mains.filter((item) => input.snapshots[item.id] !== undefined);
   const requiredLineIds = new Set(productBehaviorRequiredLineIds({ items: input.recipe.items }));
@@ -282,13 +394,16 @@ export function verifyMainEnvelope(input: {
     };
   }
   if (managed.length === 0) {
-    return {
-      ok: true,
-      equivalentPercent: null,
-      targetPercent: null,
-      hardLimitPercent: null,
-      policyId: null,
-    };
+    const unsafe = safetyViolations();
+    return unsafe.length > 0
+      ? { ok: false, violations: unsafe }
+      : {
+          ok: true,
+          equivalentPercent: null,
+          targetPercent: null,
+          hardLimitPercent: null,
+          policyId: null,
+        };
   }
   const violations: MainEnvelopeViolation[] = [];
   if (managed.length !== mains.length) {
@@ -375,6 +490,16 @@ export function verifyMainEnvelope(input: {
   }
   violations.push(
     ...verifyMainTechnicalCarrier({ recipe: input.recipe, snapshots: input.snapshots }),
+  );
+  // Crown-ON behaviour above is unchanged and stays frozen (GEL-P0-027). The
+  // capability-scoped band is ADDITIVE here, and only ever adds a code the
+  // Crown group did not already raise: it closes the split-Main bypass, where
+  // a crowned Main sits inside its envelope while an UNCROWNED Main-capable
+  // line pushes the canonical group past the hard limit or under the carrier
+  // floor.
+  const alreadyRaised = new Set(violations.map((violation) => violation.code));
+  violations.push(
+    ...safetyViolations().filter((violation) => !alreadyRaised.has(violation.code)),
   );
 
   return violations.length > 0
