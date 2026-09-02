@@ -97,12 +97,18 @@ function NutritionCostProfileGrid({
        and the label sits underneath. The old card put a 14 px value behind an
        icon and a shadow; here the figure you came for is the largest thing in
        the column. The breakdown stays exactly as expandable as it was. */
-    <section className="min-w-0">
+    <section className="min-w-0 pb-3">
       {/* OWNER AUTHORITY 2026-09-03 (approved desktop reference). There is NO
           eyebrow above the figures. The numbers are the loudest thing in the
           column and need no one to announce them; a "WYNIK" label above a
           30 px figure only pushed the reading down by a row. The section keeps
-          its accessible name below, on the summary. */}
+          its accessible name below, on the summary.
+
+          The extra 12 px under this section is the one uneven gap in the
+          column, and it is deliberate: the readout is a READING, the three
+          boxes below are INSTRUMENTS. Everything else is spaced on one 26 px
+          step, so the single larger gap reads as the seam between the two
+          kinds of thing rather than as drift. */}
       <details className="group min-w-0" data-testid="profile-nutrition-cost-summary">
         {/* OWNER AUTHORITY 2026-09-02 (approved desktop PDF, §4). The result was
             a bordered two-cell box on ivory — a container competing with the
@@ -115,13 +121,14 @@ function NutritionCostProfileGrid({
           className="pro-focus-ring cursor-pointer list-none [&::-webkit-details-marker]:hidden"
           data-result-presentation="readout"
         >
-          {/* 7.5 px so the 44 px ring is CENTRED on the same vertical axis as
-              the 17 px chevron below it (21 + 17/2 = 29.5 = 7.5 + 44/2), which
-              is also the axis the band legends sit on. Aligning their left
-              edges instead pushed the ring 13.5 px right of the chevron. */}
-          <span className="flex min-w-0 items-center pl-[7.5px]">
+          {/* 9.5 px so the 40 px ring is CENTRED on the same vertical axis as
+              the 17 px chevron below it (21 + 17/2 = 29.5 = 9.5 + 40/2).
+              Aligning their left edges instead pushes the ring right of the
+              chevron; this number is derived from the ring size, so it moves
+              whenever the ring does. */}
+          <span className="flex min-w-0 items-center pl-[9.5px]">
             <span className="flex min-w-0 shrink-0 items-center gap-[14px]">
-              <span className="grid size-11 shrink-0 place-items-center rounded-full border border-[var(--g-line)] text-[var(--g-ink)]">
+              <span className="grid size-10 shrink-0 place-items-center rounded-full border border-[var(--g-line)] text-[var(--g-ink)]">
                 <NutritionSummaryIcon tone="current" className="size-[18px] shrink-0" />
               </span>
               <span className="min-w-0">
@@ -135,7 +142,7 @@ function NutritionCostProfileGrid({
             </span>
             <span aria-hidden className="mx-[18px] w-px shrink-0 self-stretch bg-[var(--g-line)]" />
             <span className="flex min-w-0 shrink-0 items-center gap-[14px]">
-              <span className="grid size-11 shrink-0 place-items-center rounded-full border border-[var(--g-line)] text-[var(--g-ink)]">
+              <span className="grid size-10 shrink-0 place-items-center rounded-full border border-[var(--g-line)] text-[var(--g-ink)]">
                 <CostSummaryIcon tone="current" className="size-[18px] shrink-0" />
               </span>
               <span className="min-w-0">
@@ -449,7 +456,7 @@ function ProfileContent({
 
           The explanatory second line is gone. The reference carries one line,
           and the row's own words already say what is behind it. */}
-      <section className="pro-legend-box mt-[26px] px-5 pt-[22px] pb-[18px]">
+      <section className="pro-legend-box mt-[26px] px-5 py-7">
         <h3
           data-band-legend
           className="text-[10px] leading-[14px] font-semibold tracking-[0.16em] text-[var(--g-text-muted)] uppercase"
@@ -462,8 +469,8 @@ function ProfileContent({
           className="pro-focus-ring flex w-full min-w-0 items-center gap-4 bg-transparent text-left"
           data-testid="profile-learning-entry"
         >
-          <span className="grid size-11 shrink-0 place-items-center rounded-full border border-[var(--g-line)] text-[var(--g-ink)]">
-            <svg aria-hidden width="19" height="19" viewBox="0 0 24 24" fill="none">
+          <span className="grid size-[38px] shrink-0 place-items-center rounded-full border border-[var(--g-line)] text-[var(--g-ink)]">
+            <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none">
               <g stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 6.6C10.4 5.2 8.4 4.6 5.4 4.6A1 1 0 0 0 4.4 5.6v11.1a1 1 0 0 0 1 1c3 0 5 .6 6.6 2 1.6-1.4 3.6-2 6.6-2a1 1 0 0 0 1-1V5.6a1 1 0 0 0-1-1c-3 0-5 .6-6.6 2Z" />
                 <path d="M12 6.6v13.1" />

@@ -37,19 +37,26 @@ function RegulatorRow({
          ONE ROW — its name on the left, its track on the right. The stacked
          form (name above, track below, numerals under that, end labels under
          those) spent four lines on what the reference says in one, and made
-         two axes taller than the whole result readout above them. */
-      className="grid grid-cols-[104px_1fr] items-center gap-5 py-[5px]"
+         two axes taller than the whole result readout above them.
+
+         `contents`, not a grid of its own: both rows are cells of the SAME
+         grid on the parent, so the two tracks start on one x whatever the
+         label column resolves to. Two independent grids would align only in
+         Polish and drift the moment "Słodycz" and "Twardość" translate to
+         different widths. */
+      className="contents"
       data-testid={`profile-regulator-${id}`}
       data-regulator-state={disabled ? 'unavailable' : 'interactive'}
     >
       <b className="min-w-0 truncate text-[15px] leading-[21px] font-semibold tracking-[-0.02em] text-[var(--g-ink)]">
         {label}
       </b>
-      {/* 13 px, not 10: the side room has to clear the widest thing centred on
-          an end detent, and that is the 26 px HIT TARGET, not the 16 px thumb.
-          At 10 px the −2 and +2 targets overflowed the display column by 3 px
-          each — measured, not visible, but a real horizontal overflow. */}
-      <div className="min-w-0 px-[13px]">
+      {/* No side inset here. The 13 px the track used to carry existed because
+          it ran to the DISPLAY COLUMN's own edge, where a 26 px hit target
+          centred on ±2 overflowed by 3 px. Inside this box the 20 px padding
+          already absorbs that half-target, so insetting again would pull both
+          end detents 13 px off the reference and shorten the instrument. */}
+      <div className="min-w-0">
         <div
           role="radiogroup"
           aria-label={label}
@@ -153,7 +160,7 @@ export function ProfileDirectionAxes({
 
   return (
     <section
-      className={cn('pro-legend-box bg-transparent px-5 pt-[22px] pb-[18px]', className)}
+      className={cn('pro-legend-box bg-transparent px-5 pt-8 pb-6', className)}
       data-testid="profile-direction-axes"
     >
       <h3
@@ -162,7 +169,11 @@ export function ProfileDirectionAxes({
       >
         Dostosuj recepturę
       </h3>
-      <div>
+      {/* The label column is `max-content` with a 76 px floor, not a fixed
+          width: German and Hungarian run 45-80% longer than Polish, and a
+          fixed column would clip them. The track keeps `min-w-0` so it yields
+          instead of overflowing the column. */}
+      <div className="grid grid-cols-[minmax(104px,max-content)_1fr] items-center gap-x-5 gap-y-3">
         {(
           [
             ['sweetness', 'Słodycz'],
