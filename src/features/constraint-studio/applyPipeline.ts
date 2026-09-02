@@ -80,8 +80,6 @@ import {
   applyConstraintsToRecipe,
   buildProposalExplanation,
   BATCH_SUM_TOLERANCE_G,
-  assessGelatoStabilizerSystem,
-  assessSorbetStabilizerSystem,
   evaluateRecipeConstraintAuthority,
   type RecipeConstraintAuthorityIssue,
   rescaleBatchToTarget,
@@ -3231,19 +3229,15 @@ export function projectManualIngredientTarget(
         return null;
       }
     }
-    // The gate's remaining blocking class is `owner_policy` — the stabilizer
-    // system authorities. Their percentages move with the support vector, so a
-    // descent CAN walk into one; both are `calculateRecipe`-free, so asserting
-    // them per candidate costs nothing measurable. Module entitlement, vegan,
-    // protein and ECO flavour protection are already asserted above, which
-    // leaves the candidate path and the final gate agreeing on every class the
-    // gate blocks on.
-    if (
-      assessGelatoStabilizerSystem(executable).issues.length > 0 ||
-      assessSorbetStabilizerSystem(executable).issues.length > 0
-    ) {
-      return null;
-    }
+    // NOT asserted per candidate: the `owner_policy` stabilizer authorities.
+    // Served QA proved why. `assessGelatoStabilizerSystem` returns
+    // `component_not_whole_grams` for an ordinary gelato starter (TARA GUM
+    // 2.01 g, INULIN 36.18 g), so asserting it here rejected EVERY candidate and
+    // the descent exhausted — a feasible 200 g anchor failed in 20.6 s exactly
+    // like an infeasible 400 g one. The final gate itself tolerates that code
+    // for BATCH_RESCUE, which is the tell: it is a practicalization property,
+    // not a property of the candidate mass the descent is choosing. The gate
+    // remains the authority for it.
     return executable;
   };
 
