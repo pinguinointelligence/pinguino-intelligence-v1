@@ -28,9 +28,8 @@ export interface HomeCreatorCopy {
     readonly listening: string;
     readonly voiceUnavailable: string;
     readonly chipsLabel: string;
-    /** Refinement actions shown beside the chips once an idea exists (OWNER FROZEN). */
-    readonly refineIngredient: string;
-    readonly refineTopping: string;
+    /** What the composer asks once at least one idea chip exists (OWNER FROZEN). */
+    readonly anythingElse: string;
     readonly removeChip: string;
     readonly cta: string;
     readonly emptyHint: string;
@@ -177,8 +176,7 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     listening: 'Słucham…',
     voiceUnavailable: 'Ta przeglądarka nie obsługuje mowy. Napisz albo zeskanuj.',
     chipsLabel: 'Twój pomysł',
-    refineIngredient: 'Składnik',
-    refineTopping: 'Topping',
+    anythingElse: 'Jeszcze coś?',
     removeChip: 'Usuń',
     cta: 'Stwórz swoją recepturę',
     emptyHint: 'Dodaj przynajmniej jeden składnik albo smak.',
@@ -320,8 +318,7 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     listening: 'Listening…',
     voiceUnavailable: 'This browser has no speech input. Type or scan instead.',
     chipsLabel: 'Your idea',
-    refineIngredient: 'Ingredient',
-    refineTopping: 'Topping',
+    anythingElse: 'Anything else?',
     removeChip: 'Remove',
     cta: 'Create your recipe',
     emptyHint: 'Add at least one ingredient or flavour.',
