@@ -80,6 +80,8 @@ import {
   applyConstraintsToRecipe,
   buildProposalExplanation,
   BATCH_SUM_TOLERANCE_G,
+  assessGelatoStabilizerSystem,
+  assessSorbetStabilizerSystem,
   evaluateRecipeConstraintAuthority,
   type RecipeConstraintAuthorityIssue,
   rescaleBatchToTarget,
@@ -3202,25 +3204,45 @@ export function projectManualIngredientTarget(
       );
       if (!gate.ready) return null;
       // CROWN-OFF SOFT ANCHOR. This search is the rescue that finds the highest
-      // feasible amount at or below the customer's anchor, so it has to judge a
-      // candidate by the SAME authority that `bindProductBehaviorToPreview`
-      // applies to the finished Preview. Judging it by a narrower set is what
-      // let ~400 g be accepted here and then terminal-refused at the final gate
-      // with no way back into the search. Same call, same filter — no second
-      // formula, no hardcoded percentage; an invalid candidate is rejected
-      // INTERNALLY and the descent simply continues.
+      // feasible amount at or below the customer's anchor, so it must reject the
+      // candidates the final Preview gate would reject — otherwise ~400 g is
+      // accepted here and then terminal-refused at that gate with no way back
+      // into the descent. An invalid candidate is rejected INTERNALLY and the
+      // descent simply continues.
+      //
+      // The MAIN ENVELOPE is the class that blocks here (`main_above_hard_limit`
+      // and the approved liquid-dairy-carrier floor). The gate's other blocking
+      // classes — module entitlement, vegan, protein, ECO flavour protection —
+      // are already asserted above in this same function. It is called directly
+      // rather than through `evaluateRecipeConstraintAuthority` because that
+      // wrapper recomputes `calculateRecipe` on every call, while this descent
+      // evaluates hundreds of candidates and `practical.audit.executableResult`
+      // is ALREADY computed here. Served QA proved the cost: a 400 g unlocked
+      // anchor ran 86 s and 91 s and never finished. Same canonical authority,
+      // no second formula, no hardcoded percentage.
       if (
-        finalPreviewAuthorityBlocking(
-          evaluateRecipeConstraintAuthority({
-            recipe: executable,
-            snapshots: options.productBehaviorSnapshots ?? {},
-            module: behaviorModule,
-            technicalOnlyMainLineIds: options.technicalOnlyMainLineIds,
-          }).issues,
-        ).length > 0
+        !verifyMainEnvelope({
+          recipe: executable,
+          snapshots: options.productBehaviorSnapshots ?? {},
+          mode: behaviorModule === 'ECO' ? 'eco' : 'optimal',
+          technicalOnlyMainLineIds: options.technicalOnlyMainLineIds,
+        }).ok
       ) {
         return null;
       }
+    }
+    // The gate's remaining blocking class is `owner_policy` — the stabilizer
+    // system authorities. Their percentages move with the support vector, so a
+    // descent CAN walk into one; both are `calculateRecipe`-free, so asserting
+    // them per candidate costs nothing measurable. Module entitlement, vegan,
+    // protein and ECO flavour protection are already asserted above, which
+    // leaves the candidate path and the final gate agreeing on every class the
+    // gate blocks on.
+    if (
+      assessGelatoStabilizerSystem(executable).issues.length > 0 ||
+      assessSorbetStabilizerSystem(executable).issues.length > 0
+    ) {
+      return null;
     }
     return executable;
   };
