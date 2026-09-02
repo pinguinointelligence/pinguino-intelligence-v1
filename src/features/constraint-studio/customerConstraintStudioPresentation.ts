@@ -35,24 +35,23 @@ export function customerPreviewIssueMessagePl(issue: PreviewIssue): string {
     );
   }
   if (issue.code === 'impossible_under_constraints') {
-    const conflictPart = issue.conflict
-      ? `Przy ograniczeniu „${issue.conflict.ingredientName}” = ${formatGramsPl(issue.conflict.grams)} `
-      : 'Przy obecnych ograniczeniach ';
-    const searchPart = issue.capReached
-      ? 'Sprawdziliśmy bezpieczny zakres korekt bez osiągnięcia zatwierdzonych wartości.'
-      : 'Sprawdziliśmy wszystkie dozwolone korekty.';
-    const nearestPart =
-      issue.nearestFeasibleGrams !== null && issue.conflict
-        ? ` Najbliższa wykonalna wartość dla „${issue.conflict.ingredientName}”: ${formatGramsPl(issue.nearestFeasibleGrams)}.`
-        : '';
-    const metrics = [...new Set([...issue.hardViolatedMetrics, ...issue.residualViolatedMetrics])];
-    const metricPart =
-      metrics.length > 0
-        ? ` Parametry techniczne poza zakresem: ${metrics
-            .map((metric) => constraintStudioCopy.diagnosis.metricLabels[metric] ?? metric)
-            .join(', ')}.`
-        : '';
-    return `${conflictPart}${searchPart}${nearestPart}${metricPart}`;
+    // CUSTOMER COPY RULE (owner, 2026-09-02). A locked amount that cannot work
+    // gets the ANSWER, not our algorithm: the requested value, and the maximum
+    // we can actually use. The `Ustaw X g` action is rendered beside this by
+    // FeasibilityNotice. Solver attempt counts and the out-of-range technical
+    // metrics (NPAC, dry matter, water, …) stay in the Pro/diagnostic renderer
+    // `previewIssueMessagePl`, which is unchanged.
+    if (issue.nearestFeasibleGrams !== null && issue.conflict) {
+      // The ingredient is NAMED: with several lines on screen the two sentences
+      // alone would not say which one to change. A product name is the
+      // customer's own vocabulary, not one of our internal rules.
+      return (
+        `„${issue.conflict.ingredientName}” — ` +
+        `${formatGramsPl(issue.conflict.grams)} nie jest możliwe w tej recepturze. ` +
+        `Maksymalnie możemy użyć ${formatGramsPl(issue.nearestFeasibleGrams)}.`
+      );
+    }
+    return constraintStudioCopy.blocked.recipeCannotBeFitted;
   }
   return previewIssueMessagePl(issue);
 }

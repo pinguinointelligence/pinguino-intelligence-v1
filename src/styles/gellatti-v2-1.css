@@ -103,6 +103,28 @@
     border-radius: 8px !important;
   }
 
+  /* ── Display-column band eyebrows ─────────────────────────────────────
+     ONE canonical inset for the five band labels — WYNIK, DOSTOSUJ RECEPTURĘ,
+     USTAWIENIA, RECEPTURA, WIEDZA — rather than five one-off fixes.
+
+     WYNIK is the first thing in the column, so its glyph box origin lands
+     exactly on the panel's top-left corner, and that panel is
+     `border-radius: 10px` with `overflow: hidden`: the arc shaved up to
+     1.34 px off the W's topmost ink row. Insetting only WYNIK would have cured
+     the clip and left it 2 px out of line with the other four, so the whole
+     set moves together.
+
+     It is a TRANSFORM, deliberately. Padding would widen each heading and push
+     its `flex-1` hairline 2 px right, changing rules the owner froze; a
+     transform moves painted glyphs only, so every hairline's x and length,
+     every container and all vertical spacing stay exactly as they were.
+
+     Scoped to the workbench breakpoint: the corner that clips is desktop
+     geometry, and mobile keeps its current rendering untouched. */
+  .gellatti-pro-workbench [data-band-eyebrow] {
+    transform: translateX(2px);
+  }
+
   /* ── Module tabs (owner §8) ───────────────────────────────────────────
      Underline only. The preview has NO filled or boxed active tab: the
      active module is marked by a 2 px orange rule ON THE HEADER HAIRLINE.

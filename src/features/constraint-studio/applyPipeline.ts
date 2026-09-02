@@ -81,6 +81,7 @@ import {
   buildProposalExplanation,
   BATCH_SUM_TOLERANCE_G,
   evaluateRecipeConstraintAuthority,
+  type RecipeConstraintAuthorityIssue,
   rescaleBatchToTarget,
   verifyConstraintsPreserved,
   type ConstraintExplanationEntry,
@@ -3200,6 +3201,26 @@ export function projectManualIngredientTarget(
         requiredLineIds,
       );
       if (!gate.ready) return null;
+      // CROWN-OFF SOFT ANCHOR. This search is the rescue that finds the highest
+      // feasible amount at or below the customer's anchor, so it has to judge a
+      // candidate by the SAME authority that `bindProductBehaviorToPreview`
+      // applies to the finished Preview. Judging it by a narrower set is what
+      // let ~400 g be accepted here and then terminal-refused at the final gate
+      // with no way back into the search. Same call, same filter — no second
+      // formula, no hardcoded percentage; an invalid candidate is rejected
+      // INTERNALLY and the descent simply continues.
+      if (
+        finalPreviewAuthorityBlocking(
+          evaluateRecipeConstraintAuthority({
+            recipe: executable,
+            snapshots: options.productBehaviorSnapshots ?? {},
+            module: behaviorModule,
+            technicalOnlyMainLineIds: options.technicalOnlyMainLineIds,
+          }).issues,
+        ).length > 0
+      ) {
+        return null;
+      }
     }
     return executable;
   };
@@ -8628,6 +8649,25 @@ function productBehaviorIdentityViolation(
 
 /** Binds a successful Preview to immutable product/version/policy authority
  * and rejects the rounded vector before it can be shown as applicable. */
+/**
+ * The issue classes that BLOCK a finished Preview. Declared once and consumed
+ * both by `bindProductBehaviorToPreview` (the safety backstop) and by the
+ * Crown-OFF soft-anchor rescue in `projectManualIngredientTarget`, so the
+ * search can never again accept a candidate the final gate would reject.
+ */
+function finalPreviewAuthorityBlocking(
+  issues: readonly RecipeConstraintAuthorityIssue[],
+): RecipeConstraintAuthorityIssue[] {
+  return issues.filter(
+    (issue) =>
+      issue.source === 'owner_policy' ||
+      issue.source === 'main' ||
+      issue.source === 'product_behavior' ||
+      (issue.source === 'profile' &&
+        (issue.code === 'profile_evidence_missing' || issue.code === 'profile_not_eligible')),
+  );
+}
+
 export function bindProductBehaviorToPreview(
   result: BuildPreviewResult,
   snapshots: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>,
@@ -8666,14 +8706,7 @@ export function bindProductBehaviorToPreview(
     module: behaviorModule,
     technicalOnlyMainLineIds,
   });
-  const authorityBlocking = authority.issues.filter(
-    (issue) =>
-      issue.source === 'owner_policy' ||
-      issue.source === 'main' ||
-      issue.source === 'product_behavior' ||
-      (issue.source === 'profile' &&
-        (issue.code === 'profile_evidence_missing' || issue.code === 'profile_not_eligible')),
-  );
+  const authorityBlocking = finalPreviewAuthorityBlocking(authority.issues);
   if (authorityBlocking.length > 0) {
     const violations: MainEnvelopeViolation[] = authorityBlocking.map((issue) => ({
       code: issue.source === 'main' ? issue.code : 'product_behavior_missing',
@@ -8684,14 +8717,13 @@ export function bindProductBehaviorToPreview(
     // built — NOT on the recipe the user is looking at. Reporting its percentage unqualified is how
     // the app came to tell an owner „Grupa Main ma 0.2%" about a draft whose canonical combined
     // Main share is 16 %. Both numbers were true; only one of them was about their recipe.
-    const firstMessage = violations[0]?.messagePl;
+    // The internal authority sentence stays on `violations[]` for diagnostics and
+    // tests; the customer sees what to DO, not which rule fired.
     return {
       ok: false,
       code: 'product_behavior_invalid',
       violations,
-      messagePl: firstMessage
-        ? copy.blocked.rejectedProposalAuthority(firstMessage)
-        : 'Nie udało się potwierdzić zachowania produktu w tej recepturze.',
+      messagePl: copy.blocked.recipeCannotBeFitted,
     };
   }
   result.preview.productBehaviorFingerprint = productBehaviorSnapshotFingerprint(snapshots);
